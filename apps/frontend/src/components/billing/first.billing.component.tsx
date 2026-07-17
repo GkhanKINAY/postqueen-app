@@ -115,15 +115,11 @@ export const FirstBillingComponent = () => {
     return (
       <>
         <div className="text-[46px] font-[600] leading-[110%] tablet:text-[36px] mobile:!text-[30px] whitespace-pre-line text-balance">
-          {t('billing_join_over', 'Join Over')}{' '}
+          {t('billing_grow_your', 'Grow your')}{' '}
           <span className="text-[#FC69FF]">
-            {t('billing_entrepreneurs_count', '20,000+ Entrepreneurs')}
+            {t('billing_social_presence_highlight', 'social presence')}
           </span>{' '}
-          {t('billing_who_use', 'who use')}{' '}
-          {t(
-            'billing_postqueen_grow_social',
-            'PostQueen To Grow Their Social Presence'
-          )}
+          {t('billing_with_postqueen_line', 'with PostQueen')}
         </div>
 
         <div className="flex" onClick={showYouTube}>
