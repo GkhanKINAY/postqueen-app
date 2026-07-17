@@ -24,8 +24,8 @@
 
 PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app), the open-source social media scheduling tool by Gitroom. We build on the upstream project and publish our modifications in this repository under the same [AGPL-3.0](LICENSE) license. Huge thanks to Nevo David and the Postiz contributors for the foundation this project stands on.
 
+- Documentation: https://docs.postqueen.ai
 - Upstream project: https://github.com/gitroomhq/postiz-app
-- Upstream docs (largely applicable to this fork): https://docs.postiz.com
 
 ## Features
 
@@ -47,7 +47,7 @@ PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app), the op
 
 ## Quick Start
 
-The upstream [Quick Start Guide](https://docs.postiz.com/quickstart) applies to this fork as well. Docker Compose and Helm setups live in [postqueen-docker-compose](https://github.com/GkhanKINAY/postqueen-docker-compose) and [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart).
+See the [Quick Start Guide](https://docs.postqueen.ai/quickstart). Docker Compose and Helm setups live in [postqueen-docker-compose](https://github.com/GkhanKINAY/postqueen-docker-compose) and [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart).
 
 ## Syncing with upstream
 
