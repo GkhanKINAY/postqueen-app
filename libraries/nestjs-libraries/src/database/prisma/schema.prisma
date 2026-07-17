@@ -968,3 +968,24 @@ model Announcement {
   color       AnnouncementColor @default(INFO)
   createdAt   DateTime          @default(now())
 }
+
+enum OtpPurpose {
+  LOGIN
+  REGISTER
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  email      String
+  codeHash   String
+  purpose    OtpPurpose @default(LOGIN)
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  ip         String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+}

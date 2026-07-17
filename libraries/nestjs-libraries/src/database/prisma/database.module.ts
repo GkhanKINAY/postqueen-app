@@ -44,6 +44,9 @@ import { ErrorsRepository } from '@gitroom/nestjs-libraries/database/prisma/erro
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsRepository } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.repository';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
+import { OtpRepository } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.repository';
+import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
+import { GuardService } from '@gitroom/nestjs-libraries/services/guard.service';
 
 @Global()
 @Module({
@@ -97,6 +100,9 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     ErrorsService,
     AdminStatsRepository,
     AdminStatsService,
+    OtpRepository,
+    OtpService,
+    GuardService,
   ],
   get exports() {
     return this.providers;

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Provider, User } from '@prisma/client';
+import { randomInt } from 'crypto';
+import { OtpPurpose, Provider, User } from '@prisma/client';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -11,6 +12,8 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
+import { GuardService } from '@gitroom/nestjs-libraries/services/guard.service';
 
 @Injectable()
 export class AuthService {
@@ -19,8 +22,131 @@ export class AuthService {
     private _organizationService: OrganizationService,
     private _notificationService: NotificationService,
     private _emailService: EmailService,
-    private _providerManager: AuthProviderManager
+    private _providerManager: AuthProviderManager,
+    private _otpService: OtpService,
+    private _guardService: GuardService
   ) {}
+
+  // Passwordless email-code login (cloud). Kept behind PASSWORDLESS_LOGIN so
+  // self-hosters keep the email+password + OAuth flow unchanged.
+  private otpCode() {
+    return randomInt(0, 1_000_000).toString().padStart(6, '0');
+  }
+
+  async requestOtp(email: string, ip: string, captchaToken?: string) {
+    if (!this._emailService.hasProvider()) {
+      throw new Error('Email delivery is not configured');
+    }
+
+    email = email.toLowerCase();
+
+    const decision = await this._guardService.challenge({
+      action: 'otp_request',
+      ip,
+      email,
+      captchaToken,
+    });
+    if (!decision.allow) {
+      throw new Error(
+        decision.requireCaptcha
+          ? 'Please complete the verification and try again'
+          : 'Too many requests, please try again later'
+      );
+    }
+
+    const code = this.otpCode();
+
+    await this._otpService.invalidateActive(email, OtpPurpose.LOGIN);
+    await this._otpService.create({
+      email,
+      codeHash: AuthChecker.hashPassword(code),
+      purpose: OtpPurpose.LOGIN,
+      expiresAt: dayjs().add(10, 'minutes').toDate(),
+      ip,
+    });
+
+    await this._notificationService.sendEmail(
+      email,
+      'Your PostQueen sign-in code',
+      `Your sign-in code is <strong style="font-size:20px;letter-spacing:2px">${code}</strong>.<br />It expires in 10 minutes. If you didn't request it, you can ignore this email.`
+    );
+
+    // Never reveal whether the email maps to an existing account.
+    return { sent: true };
+  }
+
+  async verifyOtp(
+    email: string,
+    code: string,
+    ip: string,
+    userAgent: string,
+    captchaToken?: string
+  ) {
+    email = email.toLowerCase();
+
+    const decision = await this._guardService.challenge({
+      action: 'otp_verify',
+      ip,
+      email,
+      captchaToken,
+    });
+    if (!decision.allow) {
+      throw new Error('Verification blocked, please request a new code');
+    }
+
+    const record = await this._otpService.getLatestActive(
+      email,
+      OtpPurpose.LOGIN
+    );
+
+    if (!record || dayjs(record.expiresAt).isBefore(dayjs())) {
+      throw new Error('Invalid or expired code');
+    }
+
+    if (record.attempts >= 5) {
+      await this._otpService.consume(record.id);
+      throw new Error('Too many attempts, request a new code');
+    }
+
+    if (!AuthChecker.comparePassword(code, record.codeHash)) {
+      await this._otpService.incrementAttempts(record.id);
+      throw new Error('Invalid or expired code');
+    }
+
+    await this._otpService.consume(record.id);
+
+    let user: User | null = await this._userService.getUserByEmail(email);
+    let isNew = false;
+
+    if (!user) {
+      const prefix = email.split('@')[0] || '';
+      const company = prefix.length >= 3 ? prefix.slice(0, 64) : 'Workspace';
+      const create = await this._organizationService.createOrgAndUser(
+        {
+          email,
+          password: '',
+          provider: Provider.LOCAL,
+          company,
+          datafast_visitor_id: '',
+        },
+        ip,
+        userAgent
+      );
+
+      user = create.users[0].user as User;
+      isNew = true;
+      this._track('register', email, '').catch(() => {});
+      await NewsletterService.register(email);
+    }
+
+    // The code proves ownership of the inbox, so the account is verified.
+    if (!user.activated) {
+      await this._userService.activateUser(user.id);
+      user.activated = true;
+    }
+
+    return { jwt: await this.jwt(user), isNew };
+  }
   async canRegister(provider: string) {
     if (
       process.env.DISABLE_REGISTRATION !== 'true' ||

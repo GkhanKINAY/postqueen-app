@@ -16,6 +16,8 @@ import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
+import { OtpRequestDto } from '@gitroom/nestjs-libraries/dtos/auth/otp.request.dto';
+import { OtpVerifyDto } from '@gitroom/nestjs-libraries/dtos/auth/otp.verify.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
@@ -305,5 +307,74 @@ export class AuthController {
     response.status(200).json({
       login: true,
     });
+  }
+
+  private setAuthCookie(response: Response, jwt: string) {
+    response.cookie('auth', jwt, {
+      domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+      ...(!process.env.NOT_SECURED
+        ? {
+            secure: true,
+            httpOnly: true,
+            sameSite: 'none',
+          }
+        : {}),
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+    });
+
+    if (process.env.NOT_SECURED) {
+      response.header('auth', jwt);
+    }
+  }
+
+  @Post('/otp/request')
+  async otpRequest(
+    @Body() body: OtpRequestDto,
+    @RealIP() ip: string,
+    @Res({ passthrough: false }) response: Response
+  ) {
+    if (process.env.PASSWORDLESS_LOGIN !== 'true') {
+      return response.status(400).send('Passwordless login is disabled');
+    }
+
+    try {
+      await this._authService.requestOtp(body.email, ip, body.captchaToken);
+      return response.status(200).json({ sent: true });
+    } catch (e: any) {
+      return response.status(400).send(e.message);
+    }
+  }
+
+  @Post('/otp/verify')
+  async otpVerify(
+    @Body() body: OtpVerifyDto,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string,
+    @Res({ passthrough: false }) response: Response
+  ) {
+    if (process.env.PASSWORDLESS_LOGIN !== 'true') {
+      return response.status(400).send('Passwordless login is disabled');
+    }
+
+    try {
+      const { jwt, isNew } = await this._authService.verifyOtp(
+        body.email,
+        body.code,
+        ip,
+        userAgent,
+        body.captchaToken
+      );
+
+      this.setAuthCookie(response, jwt);
+
+      if (isNew) {
+        response.header('onboarding', 'true');
+      }
+      response.header('reload', 'true');
+
+      return response.status(200).json({ login: true, isNew });
+    } catch (e: any) {
+      return response.status(400).send(e.message);
+    }
   }
 }
