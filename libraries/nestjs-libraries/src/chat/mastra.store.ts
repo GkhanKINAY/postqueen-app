@@ -1,6 +1,6 @@
 import { PostgresStore } from '@mastra/pg';
 
 export const pStore = new PostgresStore({
-  id: 'postiz-store',
+  id: 'postqueen-store',
   connectionString: process.env.DATABASE_URL!,
 });

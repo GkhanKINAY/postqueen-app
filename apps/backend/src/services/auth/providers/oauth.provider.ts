@@ -7,31 +7,31 @@ import {
 export class OauthProvider extends AuthProviderAbstract {
   private getConfig() {
     const {
-      POSTIZ_OAUTH_AUTH_URL,
-      POSTIZ_OAUTH_CLIENT_ID,
-      POSTIZ_OAUTH_CLIENT_SECRET,
-      POSTIZ_OAUTH_TOKEN_URL,
-      POSTIZ_OAUTH_USERINFO_URL,
+      POSTQUEEN_OAUTH_AUTH_URL,
+      POSTQUEEN_OAUTH_CLIENT_ID,
+      POSTQUEEN_OAUTH_CLIENT_SECRET,
+      POSTQUEEN_OAUTH_TOKEN_URL,
+      POSTQUEEN_OAUTH_USERINFO_URL,
       FRONTEND_URL,
     } = process.env;
 
     if (
-      !POSTIZ_OAUTH_USERINFO_URL ||
-      !POSTIZ_OAUTH_TOKEN_URL ||
-      !POSTIZ_OAUTH_CLIENT_ID ||
-      !POSTIZ_OAUTH_CLIENT_SECRET ||
-      !POSTIZ_OAUTH_AUTH_URL ||
+      !POSTQUEEN_OAUTH_USERINFO_URL ||
+      !POSTQUEEN_OAUTH_TOKEN_URL ||
+      !POSTQUEEN_OAUTH_CLIENT_ID ||
+      !POSTQUEEN_OAUTH_CLIENT_SECRET ||
+      !POSTQUEEN_OAUTH_AUTH_URL ||
       !FRONTEND_URL
     ) {
-      throw new Error('POSTIZ_OAUTH environment variables are not set');
+      throw new Error('POSTQUEEN_OAUTH environment variables are not set');
     }
 
     return {
-      authUrl: POSTIZ_OAUTH_AUTH_URL,
-      clientId: POSTIZ_OAUTH_CLIENT_ID,
-      clientSecret: POSTIZ_OAUTH_CLIENT_SECRET,
-      tokenUrl: POSTIZ_OAUTH_TOKEN_URL,
-      userInfoUrl: POSTIZ_OAUTH_USERINFO_URL,
+      authUrl: POSTQUEEN_OAUTH_AUTH_URL,
+      clientId: POSTQUEEN_OAUTH_CLIENT_ID,
+      clientSecret: POSTQUEEN_OAUTH_CLIENT_SECRET,
+      tokenUrl: POSTQUEEN_OAUTH_TOKEN_URL,
+      userInfoUrl: POSTQUEEN_OAUTH_USERINFO_URL,
       frontendUrl: FRONTEND_URL,
     };
   }

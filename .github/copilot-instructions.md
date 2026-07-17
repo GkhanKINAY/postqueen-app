@@ -1,5 +1,5 @@
 
-# Copilot Coding Agent Instructions for Postiz
+# Copilot Coding Agent Instructions for PostQueen
 
 ## Project Architecture
 - Monorepo managed by NX, with apps in `apps/` and shared code in `libraries/`.
@@ -29,7 +29,7 @@
 
 ## Integration Points
 - External APIs: Social media (Instagram, Facebook), Make.com, N8N, Resend, Stripe, etc.
-- SDK (`apps/sdk`) provides programmatic access to Postiz features.
+- SDK (`apps/sdk`) provides programmatic access to PostQueen features.
 - Extension (`apps/extension`) is built with Vite, React, TypeScript, and Tailwind CSS.
 
 ## Key Files & Directories
@@ -43,9 +43,9 @@
 - `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — Database schema
 
 ## Documentation
-- Main docs: https://docs.postiz.com/
-- Developer guide: https://docs.postiz.com/developer-guide
-- Public API: https://docs.postiz.com/public-api
+- Main docs: https://docs.postqueen.ai/
+- Developer guide: https://docs.postqueen.ai/developer-guide
+- Public API: https://docs.postqueen.ai/public-api
 
 ---
 

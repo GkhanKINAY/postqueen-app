@@ -12,7 +12,7 @@ function toQueryString(obj: Record<string, any>): string {
   return params.toString();
 }
 
-export default class Postiz {
+export default class PostQueen {
   constructor(
     private _apiKey: string,
     private _path = 'https://api.postqueen.ai'

@@ -1,7 +1,7 @@
 {
   "name": "@postqueen/node",
   "version": "1.0.0",
-  "description": "Node.js SDK for the PostQueen social media scheduling API (fork of @postiz/node)",
+  "description": "Node.js SDK for the PostQueen social media scheduling API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -17,7 +17,7 @@
     "scheduling tool",
     "social media scheduling tool"
   ],
-  "author": "PostQueen (fork of @postiz/node by Nevo David)",
+  "author": "PostQueen (based on upstream work by Nevo David)",
   "license": "AGPL-3.0",
   "homepage": "https://postqueen.ai",
   "repository": {
