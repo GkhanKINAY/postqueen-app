@@ -23,13 +23,13 @@ You accept the agreement by following the instructions on the [CLA page](https:/
 
 This is an open source project, with an open and welcoming community that is always keen to welcome new contributors. We recommend the two best ways to interact with the community are:
 
-- **GitHub issues**: To discuss more slowly, or longer-written messages.
-- **[Discord chat](https://discord.postqueen.ai)**: To chat with people [Discord chat](https://discord.postqueen.ai/) and a quicker feedback.
+- **GitHub issues**: To discuss changes, ask questions, or share longer-written messages.
+- **Email [support@postqueen.ai](mailto:support@postqueen.ai)**: For anything that doesn't fit a public issue.
 
 As a general rule;
 
 - **If a change is less than 3 lines**: You're probably safe just to submit the change without a discussion. This includes typos, dependency changes, and quick fixes, etc.
-- **If a change is more than 3 lines**: It's probably best to discuss the change in an issue or on discord first. This is simply because you might not be aware of the roadmap for the project, or understand the impact this change might have. We're just trying to save you time here, and importantly, avoid you being disappointed if your change isn't accepted.
+- **If a change is more than 3 lines**: It's probably best to discuss the change in an issue first. This is simply because you might not be aware of the roadmap for the project, or understand the impact this change might have. We're just trying to save you time here, and importantly, avoid you being disappointed if your change isn't accepted.
 
 ## Types of Contributions
 
