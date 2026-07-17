@@ -22,7 +22,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
           #add-edit-modal, .hideCopilot {
             background: transparent !important;
           }
-          html body.dark, html {
+          html body, html {
             background: transparent !important;
           }
         `}

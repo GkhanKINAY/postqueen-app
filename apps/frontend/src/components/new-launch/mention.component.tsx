@@ -79,23 +79,23 @@ const MentionList: FC = (props: any) => {
   }
 
   return (
-    <div className="dropdown-menu bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto p-2">
+    <div className="dropdown-menu bg-newBgColorInner border border-newBorder rounded-lg shadow-lg max-h-60 overflow-y-auto p-2">
       {props?.items?.none ? (
-        <div className="flex items-center justify-center p-2 text-gray-500">
+        <div className="flex items-center justify-center p-2 text-textItemBlur">
           We don't have autocomplete for this social media
         </div>
       ) : props?.loading ? (
-        <div className="flex items-center justify-center p-2 text-gray-500">
+        <div className="flex items-center justify-center p-2 text-textItemBlur">
           Loading...
         </div>
       ) : props?.items ? (
         props.items.length === 0 ? (
-          <div className="p-2 text-gray-500 text-center">No results found</div>
+          <div className="p-2 text-textItemBlur text-center">No results found</div>
         ) : (
           props?.items?.map((item: any, index: any) => (
             <button
-              className={`flex gap-[10px] w-full p-2 text-start rounded hover:bg-gray-100 ${
-                index === selectedIndex ? 'bg-blue-100' : ''
+              className={`flex gap-[10px] w-full p-2 text-start rounded hover:bg-boxHover ${
+                index === selectedIndex ? "bg-boxFocused text-textItemFocused" : ""
               }`}
               key={item.id || index}
               onClick={() => selectItem(index)}
@@ -105,12 +105,12 @@ const MentionList: FC = (props: any) => {
                 alt={item.label}
                 className="w-[30px] h-[30px] rounded-full object-cover"
               />
-              <div className="flex-1 text-gray-800">{item.label}</div>
+              <div className="flex-1 text-newTextColor">{item.label}</div>
             </button>
           ))
         )
       ) : (
-        <div className="p-2 text-gray-500 text-center">Loading...</div>
+        <div className="p-2 text-textItemBlur text-center">Loading...</div>
       )}
     </div>
   );

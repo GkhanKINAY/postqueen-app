@@ -58,7 +58,7 @@ export const AgentChat: FC = () => {
         style={
           {
             '--copilot-kit-primary-color': 'var(--new-btn-text)',
-            '--copilot-kit-background-color': 'var(--new-bg-color)',
+            '--copilot-kit-background-color': 'var(--new-bgColorInner)',
           } as CopilotKitCSSProperties
         }
         className="trz agent bg-newBgColorInner flex flex-col gap-[15px] transition-all flex-1 items-center relative"
@@ -69,14 +69,14 @@ export const AgentChat: FC = () => {
             labels={{
               title: t('your_assistant', 'Your Assistant'),
               initial: t('agent_welcome_message', `Hello, I am your PostQueen agent 🙌🏻.
-              
+
 I can schedule a post or multiple posts to multiple channels and generate pictures and videos.
 
 You can select the channels you want to use from the left menu.
 
 You can see your previous conversations from the right menu.
 
-You can also use me as an MCP Server, check Settings >> Public API
+You can also connect external AI tools to me over MCP — see Settings → Developers.
 `),
             }}
             UserMessage={Message}

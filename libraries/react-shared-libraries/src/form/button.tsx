@@ -33,13 +33,44 @@ export const Button: FC<
     secondary?: boolean;
     loading?: boolean;
     innerClassName?: string;
+    /**
+     * Visual variant. `primary` (brand fill) is the default; `secondary` keeps
+     * the legacy neutral fill. New: `outline` and `ghost` for lower-emphasis
+     * actions. The legacy `secondary` boolean still maps to `secondary`.
+     */
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    size?: 'sm' | 'md' | 'lg';
   }
-> = ({ children, loading, innerClassName, secondary, ...props }) => {
+> = ({
+  children,
+  loading,
+  innerClassName,
+  secondary,
+  variant,
+  size = 'md',
+  ...props
+}) => {
   const ref = useRef<HTMLButtonElement | null>(null);
   const [height, setHeight] = useState<number | null>(null);
   useEffect(() => {
     setHeight(ref.current?.offsetHeight || 40);
   }, []);
+  // `secondary` (legacy boolean) still wins for back-compat; otherwise use the
+  // variant, defaulting to the brand primary.
+  const resolved = secondary ? 'secondary' : variant || 'primary';
+  const variantClass = {
+    primary: 'bg-forth text-white hover:opacity-90',
+    secondary: 'bg-third text-newTextColor hover:bg-boxHover',
+    outline:
+      'bg-transparent border border-newBorder text-newTextColor hover:bg-boxHover',
+    ghost: 'bg-transparent text-newTextColor hover:bg-boxHover',
+    danger: 'bg-red-500 text-white hover:opacity-90',
+  }[resolved];
+  const sizeClass = {
+    sm: 'h-[34px] px-[16px] text-[13px]',
+    md: 'h-[40px] px-[24px]',
+    lg: 'h-[48px] px-[28px] text-[15px]',
+  }[size];
   return (
     <button
       {...props}
@@ -47,9 +78,9 @@ export const Button: FC<
       ref={ref}
       className={clsx(
         (props.disabled || loading) && 'opacity-50 pointer-events-none',
-        `${
-          secondary ? 'bg-third' : 'bg-forth text-white'
-        } px-[24px] h-[40px] cursor-pointer items-center justify-center flex relative`,
+        variantClass,
+        sizeClass,
+        'rounded-[8px] font-[500] cursor-pointer items-center justify-center flex relative transition-all',
         props?.className
       )}
     >

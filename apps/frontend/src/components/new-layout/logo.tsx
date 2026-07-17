@@ -1,21 +1,22 @@
 'use client';
 
-export const Logo = () => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="60"
-      height="60"
-      viewBox="0 0 32 32"
-      fill="none"
-      className="mt-[8px] min-w-[60px] min-h-[60px]"
-    >
-      <rect width="32" height="32" rx="8" fill="#7c3aed" />
-      <path
-        d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z"
-        fill="#ffffff"
-      />
-      <rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff" />
-    </svg>
-  );
-};
+import Link from 'next/link';
+import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
+
+/**
+ * Icon-only brand mark for the left rail (40px inside the 64px rail), with a
+ * small "postqueen.ai" tagline under it. Links to the Calendar so the crown
+ * doubles as a "home" affordance.
+ */
+export const Logo = () => (
+  <Link
+    href="/launches"
+    aria-label="Calendar"
+    className="flex flex-col items-center gap-[4px] transition-transform duration-200 hover:scale-105"
+  >
+    <PostQueenLogo tileClassName="size-10" />
+    <span className="text-[9px] leading-none whitespace-nowrap font-[500] text-newTextColor/70">
+      postqueen.ai
+    </span>
+  </Link>
+);

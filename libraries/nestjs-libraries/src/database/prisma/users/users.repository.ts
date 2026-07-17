@@ -44,6 +44,16 @@ export class UsersRepository {
       where: {
         id,
       },
+      include: {
+        // Surfaces the uploaded avatar on /user/self so the top-bar UserMenu
+        // can render it instead of the initial fallback.
+        picture: {
+          select: {
+            id: true,
+            path: true,
+          },
+        },
+      },
     });
   }
 

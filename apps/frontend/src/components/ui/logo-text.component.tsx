@@ -1,26 +1,6 @@
-import React from 'react';
+import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 
-export const LogoTextComponent = () => {
-  return (
-    <div className="flex items-center gap-[8px]">
-      <svg
-        width="33"
-        height="33"
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <rect width="32" height="32" rx="8" fill="#7c3aed" />
-        <path
-          d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z"
-          fill="#ffffff"
-        />
-        <rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff" />
-      </svg>
-      <span className="text-[22px] font-semibold leading-none tracking-tight text-current">
-        postqueen
-      </span>
-    </div>
-  );
-};
+/** Mark + wordmark lockup, used on the auth screens and the billing paywall. */
+export const LogoTextComponent = () => (
+  <PostQueenLogo wordmark tileClassName="size-9" />
+);

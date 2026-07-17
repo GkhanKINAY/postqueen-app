@@ -4,25 +4,25 @@ import 'react-tooltip/dist/react-tooltip.css';
 import '@copilotkit/react-ui/styles.css';
 import LayoutContext from '@gitroom/frontend/components/layout/layout.context';
 import { ReactNode } from 'react';
-import { Plus_Jakarta_Sans } from 'next/font/google';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
-
-const jakartaSans = Plus_Jakarta_Sans({
-  weight: ['600', '500'],
-  style: ['normal', 'italic'],
-  subsets: ['latin'],
-});
+import { fontClassName } from '../fonts';
+import { cookies } from 'next/headers';
+import {
+  resolveTheme,
+  THEME_COOKIE,
+} from '@gitroom/frontend/components/layout/theme';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  const mode = resolveTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <html>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
       </head>
       <body
-        className={clsx(jakartaSans.className, 'dark text-primary !bg-primary')}
+        className={clsx(fontClassName, mode, 'text-primary !bg-primary')}
       >
         <VariableContextComponent
           language="en"
@@ -34,6 +34,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL!}
           plontoKey={process.env.NEXT_PUBLIC_POLOTNO!}
           billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
+          turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           discordUrl={process.env.NEXT_PUBLIC_DISCORD_SUPPORT!}
           frontEndUrl={process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}

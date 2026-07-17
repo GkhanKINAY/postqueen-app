@@ -8,21 +8,22 @@ import { Input } from '@gitroom/react/form/input';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
-import { GithubProvider } from '@gitroom/frontend/components/auth/providers/github.provider';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import clsx from 'clsx';
-import { GoogleProvider } from '@gitroom/frontend/components/auth/providers/google.provider';
-import { OauthProvider } from '@gitroom/frontend/components/auth/providers/oauth.provider';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
-import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import dynamic from 'next/dynamic';
 import { WalletUiProvider } from '@gitroom/frontend/components/auth/providers/placeholder/wallet.ui.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import useCookie from 'react-use-cookie';
+import {
+  AuthShell,
+  AuthStep,
+} from '@gitroom/frontend/components/auth/auth-shell';
+import { OtpEmailStep } from '@gitroom/frontend/components/auth/otp-email-step';
 const WalletProvider = dynamic(
   () => import('@gitroom/frontend/components/auth/providers/wallet.provider'),
   {
@@ -89,9 +90,9 @@ export function RegisterAfter({
   provider: string;
 }) {
   const t = useT();
-  const { isGeneral, genericOauth, neynarClientId, billingEnabled } =
-    useVariables();
+  const { billingEnabled, passwordlessLogin } = useVariables();
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<AuthStep>('method');
   const router = useRouter();
   const fireEvents = useFireEvents();
   const track = useTrack();
@@ -145,121 +146,133 @@ export function RegisterAfter({
         });
       });
   };
+  // The fields + submit shared by the email step and the after-OAuth path
+  // (which only needs Company). email/password render only when not returning
+  // from a provider round-trip.
+  const emailFields = (
+    <div className="flex flex-col gap-[12px]">
+      <div className="text-textColor">
+        {!isAfterProvider && (
+          <>
+            <Input
+              label="Email"
+              translationKey="label_email"
+              {...form.register('email')}
+              type="email"
+              autoFocus
+              placeholder={t('email_address', 'Email Address')}
+            />
+            <Input
+              label="Password"
+              translationKey="label_password"
+              {...form.register('password')}
+              autoComplete="off"
+              type="password"
+              placeholder={t('label_password', 'Password')}
+            />
+          </>
+        )}
+        <Input
+          label="Company"
+          translationKey="label_company"
+          {...form.register('company')}
+          autoComplete="off"
+          type="text"
+          placeholder={t('label_company', 'Company')}
+        />
+      </div>
+      <div className={clsx('text-[12px] text-textItemBlur')}>
+        {t(
+          'by_registering_you_agree_to_our',
+          'By registering you agree to our'
+        )}
+        &nbsp;
+        <a
+          href={`https://postqueen.ai/terms`}
+          className="underline hover:font-bold text-newTextColor"
+          rel="nofollow"
+        >
+          {t('terms_of_service', 'Terms of Service')}
+        </a>
+        &nbsp;
+        {t('and', 'and')}&nbsp;
+        <a
+          href={`https://postqueen.ai/privacy`}
+          rel="nofollow"
+          className="underline hover:font-bold text-newTextColor"
+        >
+          {t('privacy_policy', 'Privacy Policy')}
+        </a>
+        &nbsp;
+      </div>
+      <div className="w-full flex mt-[12px]">
+        <Button
+          type="submit"
+          className="flex-1 rounded-[10px] !h-[52px]"
+          loading={loading}
+        >
+          {t('create_account', 'Create Account')}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const footer = (
+    <p className="mt-auto pt-[24px] text-center text-sm text-textItemBlur">
+      {t('already_have_an_account', 'Already Have An Account?')}&nbsp;
+      <Link
+        href="/auth/login"
+        className="underline cursor-pointer text-newTextColor font-[500]"
+      >
+        {t('sign_in', 'Sign In')}
+      </Link>
+    </p>
+  );
+
+  if (!isAfterProvider && passwordlessLogin) {
+    return (
+      <div className="flex-1 flex">
+        <AuthShell
+          title={t('sign_up', 'Sign Up')}
+          step={step}
+          onContinueEmail={() => setStep('email')}
+          onBack={() => setStep('method')}
+          extraProviders={billingEnabled ? <WalletProvider /> : undefined}
+          emailStep={
+            <OtpEmailStep submitLabel={t('create_account', 'Create Account')} />
+          }
+          footer={footer}
+        />
+      </div>
+    );
+  }
+
   return (
     <FormProvider {...form}>
       <form className="flex-1 flex" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-col flex-1">
-          <div>
-            <h1 className="text-[40px] font-[500] -tracking-[0.8px] text-start cursor-pointer">
+        {isAfterProvider ? (
+          // Returning from an OAuth round-trip: no provider choice, just the
+          // remaining Company field.
+          <div className="flex flex-col flex-1">
+            <h1 className="text-[40px] font-[600] -tracking-[0.8px] font-display">
               {t('sign_up', 'Sign Up')}
             </h1>
-          </div>
-          <div className="text-[14px] mt-[32px] mb-[12px]">
-            {t('continue_with', 'Continue With')}
-          </div>
-          <div className="flex flex-col">
-            {!isAfterProvider &&
-              (!isGeneral ? (
-                <GithubProvider />
-              ) : (
-                <div className="gap-[8px] flex">
-                  {genericOauth && isGeneral ? (
-                    <OauthProvider />
-                  ) : (
-                    <GoogleProvider />
-                  )}
-                  {!!neynarClientId && <FarcasterProvider />}
-                  {billingEnabled && <WalletProvider />}
-                </div>
-              ))}
-            {!isAfterProvider && (
-              <div className="h-[20px] mb-[24px] mt-[24px] relative">
-                <div className="absolute w-full h-[1px] bg-fifth top-[50%] -translate-y-[50%]" />
-                <div
-                  className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
-                >
-                  <div className="px-[16px]">{t('or', 'or')}</div>
-                </div>
-              </div>
-            )}
-            <div className="flex flex-col gap-[12px]">
-              <div className="text-textColor">
-                {!isAfterProvider && (
-                  <>
-                    <Input
-                      label="Email"
-                      translationKey="label_email"
-                      {...form.register('email')}
-                      type="email"
-                      placeholder={t('email_address', 'Email Address')}
-                    />
-                    <Input
-                      label="Password"
-                      translationKey="label_password"
-                      {...form.register('password')}
-                      autoComplete="off"
-                      type="password"
-                      placeholder={t('label_password', 'Password')}
-                    />
-                  </>
-                )}
-                <Input
-                  label="Company"
-                  translationKey="label_company"
-                  {...form.register('company')}
-                  autoComplete="off"
-                  type="text"
-                  placeholder={t('label_company', 'Company')}
-                />
-              </div>
-              <div className={clsx('text-[12px]')}>
-                {t(
-                  'by_registering_you_agree_to_our',
-                  'By registering you agree to our'
-                )}
-                &nbsp;
-                <a
-                  href={`https://postqueen.ai/terms`}
-                  className="underline hover:font-bold"
-                  rel="nofollow"
-                >
-                  {t('terms_of_service', 'Terms of Service')}
-                </a>
-                &nbsp;
-                {t('and', 'and')}&nbsp;
-                <a
-                  href={`https://postqueen.ai/privacy`}
-                  rel="nofollow"
-                  className="underline hover:font-bold"
-                >
-                  {t('privacy_policy', 'Privacy Policy')}
-                </a>
-                &nbsp;
-              </div>
-              <div className="text-center mt-6">
-                <div className="w-full flex">
-                  <Button
-                    type="submit"
-                    className="flex-1 rounded-[10px] !h-[52px]"
-                    loading={loading}
-                  >
-                    {t('create_account', 'Create Account')}
-                  </Button>
-                </div>
-                <p className="mt-4 text-sm">
-                  {t('already_have_an_account', 'Already Have An Account?')}
-                  &nbsp;
-                  <Link
-                    href="/auth/login"
-                    className="underline  cursor-pointer"
-                  >
-                    {t('sign_in', 'Sign In')}
-                  </Link>
-                </p>
-              </div>
+            <div className="min-h-[420px] flex flex-col mt-[32px]">
+              {emailFields}
+              {footer}
             </div>
           </div>
-        </div>
+        ) : (
+          <AuthShell
+            title={t('sign_up', 'Sign Up')}
+            step={step}
+            onContinueEmail={() => setStep('email')}
+            onBack={() => setStep('method')}
+            extraProviders={billingEnabled ? <WalletProvider /> : undefined}
+            emailStep={emailFields}
+            footer={footer}
+          />
+        )}
       </form>
     </FormProvider>
   );

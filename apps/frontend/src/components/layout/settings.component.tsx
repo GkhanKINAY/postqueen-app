@@ -19,7 +19,7 @@ import { useSWRConfig } from 'swr';
 import clsx from 'clsx';
 import { TeamsComponent } from '@gitroom/frontend/components/settings/teams.component';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
-import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
+import { ChangeLanguageComponent } from '@gitroom/frontend/components/layout/language.component';
 import { useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { PublicComponent } from '@gitroom/frontend/components/public-api/public.component';
@@ -81,12 +81,31 @@ export const SettingsPopup: FC<{
     close();
   }, []);
 
-  const [tab, setTab] = useState('global_settings');
+  // Tabs can be deep-linked, e.g. /settings?tab=api (Connect) or ?tab=teams
+  // (Invite). Fall back to Global Settings for an unknown/absent param.
+  const settingsTabs = [
+    'global_settings',
+    'language',
+    'teams',
+    'webhooks',
+    'autopost',
+    'sets',
+    'signatures',
+    'api',
+    'approved_apps',
+  ];
+  const requestedTab = url.get('tab');
+  const [tab, setTab] = useState(
+    requestedTab && settingsTabs.includes(requestedTab)
+      ? requestedTab
+      : 'global_settings'
+  );
 
   const t = useT();
   const list = useMemo(() => {
     const arr = [];
     arr.push({ tab: 'global_settings', label: t('global_settings', 'Global Settings') });
+    arr.push({ tab: 'language', label: t('language', 'Language') });
     // Populate tabs based on user permissions
     if (user?.tier?.team_members && isGeneral) {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });
@@ -140,13 +159,6 @@ export const SettingsPopup: FC<{
             </div>
           ))}
         </div>
-        <div>
-          {showLogout && (
-            <div className="mt-4">
-              <LogoutComponent />
-            </div>
-          )}
-        </div>
       </div>
       <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px]">
         <FormProvider {...form}>
@@ -163,6 +175,11 @@ export const SettingsPopup: FC<{
               {tab === 'global_settings' && (
                 <div>
                   <GlobalSettings />
+                </div>
+              )}
+              {tab === 'language' && (
+                <div>
+                  <ChangeLanguageComponent />
                 </div>
               )}
               {tab === 'teams' && !!user?.tier?.team_members && isGeneral && (

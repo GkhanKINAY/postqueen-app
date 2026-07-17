@@ -53,6 +53,18 @@ const nextConfig = {
             ? '/api/uploads/:path*'
             : '/404',
       },
+      // Local dev only: in production nginx serves the frontend and backend on
+      // one origin, so the client's relative /api calls just work. The Next dev
+      // server has no backend, so proxy /api to the compose backend when
+      // DEV_BACKEND_PROXY is set.
+      ...(process.env.DEV_BACKEND_PROXY
+        ? [
+            {
+              source: '/api/:path*',
+              destination: `${process.env.DEV_BACKEND_PROXY}/api/:path*`,
+            },
+          ]
+        : []),
     ];
   },
 };

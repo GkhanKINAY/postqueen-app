@@ -79,7 +79,7 @@ export default function OAuthAuthorizePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center text-white relative overflow-hidden">
+      <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-[#612BD3] rounded-full blur-[120px]" />
           <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
@@ -88,11 +88,11 @@ export default function OAuthAuthorizePage() {
           <div className="flex justify-center mb-[24px]">
             <Logo />
           </div>
-          <div className="text-[16px] text-gray-400">
+          <div className="text-[16px] text-textItemBlur">
             Please wait...
           </div>
           <div className="mt-[32px] flex justify-center">
-            <div className="w-[48px] h-[48px] border-[3px] border-[#612BD3] border-t-transparent rounded-full animate-spin" />
+            <div className="w-[48px] h-[48px] border-[3px] border-btnPrimary border-t-transparent rounded-full animate-spin" />
           </div>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function OAuthAuthorizePage() {
 
   if (error) {
     return (
-      <div className="flex flex-1 items-center justify-center text-white relative overflow-hidden">
+      <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-[#612BD3] rounded-full blur-[120px]" />
           <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
@@ -126,7 +126,7 @@ export default function OAuthAuthorizePage() {
           <div className="text-[28px] font-semibold mb-[12px]">
             Authorization Error
           </div>
-          <div className="text-[16px] text-gray-400 max-w-[400px]">
+          <div className="text-[16px] text-textItemBlur max-w-[400px]">
             {error}
           </div>
         </div>
@@ -139,7 +139,7 @@ export default function OAuthAuthorizePage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center text-white relative overflow-hidden">
+    <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
       <div className="absolute inset-0 opacity-30">
         <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-[#612BD3] rounded-full blur-[120px]" />
         <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-[#FC69FF] rounded-full blur-[120px]" />
@@ -150,7 +150,7 @@ export default function OAuthAuthorizePage() {
           <Logo />
         </div>
 
-        <div className="bg-[#1A1919] rounded-[16px] p-[32px] flex flex-col gap-[24px]">
+        <div className="bg-newBgColorInner rounded-[16px] p-[32px] flex flex-col gap-[24px]">
           <div className="flex flex-col items-center gap-[16px]">
             {appInfo.app.picture?.path ? (
               <img
@@ -159,7 +159,7 @@ export default function OAuthAuthorizePage() {
                 className="w-[64px] h-[64px] rounded-full object-cover"
               />
             ) : (
-              <div className="w-[64px] h-[64px] rounded-full bg-[#2A2929] flex items-center justify-center text-[24px] text-gray-400">
+              <div className="w-[64px] h-[64px] rounded-full bg-newBgLineColor flex items-center justify-center text-[24px] text-textItemBlur">
                 {appInfo.app.name?.[0]?.toUpperCase() || '?'}
               </div>
             )}
@@ -167,14 +167,14 @@ export default function OAuthAuthorizePage() {
               {appInfo.app.name}
             </h2>
             {appInfo.app.description && (
-              <div className="text-gray-400 text-center text-[14px]">
+              <div className="text-textItemBlur text-center text-[14px]">
                 {appInfo.app.description}
               </div>
             )}
           </div>
 
-          <div className="border-t border-[#2A2929] pt-[16px]">
-            <div className="text-[14px] text-gray-400 mb-[12px]">
+          <div className="border-t border-newBorder pt-[16px]">
+            <div className="text-[14px] text-textItemBlur mb-[12px]">
               This application is requesting access to your PostQueen account. It
               will be able to:
             </div>
@@ -189,14 +189,14 @@ export default function OAuthAuthorizePage() {
             <button
               onClick={() => handleAction('approve')}
               disabled={submitting}
-              className="flex-1 bg-[#612BD3] hover:bg-[#7B3FF2] disabled:opacity-50 text-white rounded-[8px] py-[10px] px-[16px] text-[14px] font-semibold transition-colors"
+              className="flex-1 bg-btnPrimary hover:opacity-90 disabled:opacity-50 text-white rounded-[8px] py-[10px] px-[16px] text-[14px] font-semibold transition-opacity"
             >
               Authorize
             </button>
             <button
               onClick={() => handleAction('deny')}
               disabled={submitting}
-              className="flex-1 bg-[#2A2929] hover:bg-[#3A3939] disabled:opacity-50 text-white rounded-[8px] py-[10px] px-[16px] text-[14px] font-semibold transition-colors"
+              className="flex-1 bg-btnSimple hover:opacity-90 disabled:opacity-50 text-btnText rounded-[8px] py-[10px] px-[16px] text-[14px] font-semibold transition-opacity"
             >
               Deny
             </button>

@@ -121,8 +121,17 @@ module.exports = {
         loginBox: 'url(/auth/login-box.png)',
         loginBg: 'url(/auth/bg-login.png)',
       },
+      // Published as CSS variables by src/app/fonts.ts on <body>. This used to
+      // read ['Helvetica Neue'], contradicting the font actually applied to
+      // <body> — harmless only because nothing in the app used `font-sans`.
       fontFamily: {
-        sans: ['Helvetica Neue'],
+        sans: ['var(--font-dm-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: [
+          'var(--font-jakarta)',
+          'var(--font-dm-sans)',
+          'ui-sans-serif',
+          'sans-serif',
+        ],
       },
       animation: {
         fade: 'fadeOut 0.5s ease-in-out',

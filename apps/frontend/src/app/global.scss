@@ -16,7 +16,17 @@ body {
   color: var(--new-btn-text);
 }
 
-body * {
+// Brand gradient for the logo tile. Mirrors the landing site's .crown-gradient
+// (postqueen.ai globals.css): brand-600 -> brand-500 -> pop-600. These are brand
+// values, not theme surfaces, so they are the same in light and dark.
+.crown-gradient {
+  background-image: linear-gradient(145deg, #6d28d9, #7c3aed 45%, #e0189e);
+}
+
+// Only suppress the outline for pointer interaction; keyboard focus must stay
+// visible. This was an unscoped `body * { outline: none !important }`, which
+// removed every focus ring in the app and made it unusable without a mouse.
+body *:focus:not(:focus-visible) {
   outline: none !important;
 }
 
@@ -726,6 +736,10 @@ html[dir='rtl'] [dir='ltr'] {
 .rm-bg .b1 {
   background: transparent !important;
   gap: 0 !important;
+  // The media toolbar row carries a full-width border-t; inside the agent
+  // chat (which has no composer frame) it reads as a stray line above the
+  // Insert/Design/AI-Image buttons, so drop it here only.
+  border-top: none !important;
 }
 
 .copilotKitMessage img {
@@ -754,13 +768,15 @@ html[dir='rtl'] [dir='ltr'] {
   }
 }
 
+// Fades the testimonial marquee into the page at both ends. Must follow the
+// theme: a hardcoded black fade paints a dark band across a light background.
 .blackGradBottomBg {
-  background: linear-gradient(180deg, #0e0e0e 0%, rgba(14, 14, 14, 0) 100%);
+  background: linear-gradient(180deg, var(--new-bgColor) 0%, transparent 100%);
   rotate: 180deg;
 }
 
 .blackGradTopBg {
-  background: linear-gradient(180deg, #0e0e0e 0%, rgba(14, 14, 14, 0) 100%);
+  background: linear-gradient(180deg, var(--new-bgColor) 0%, transparent 100%);
 }
 
 .billing-form input {

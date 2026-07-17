@@ -62,7 +62,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                         (p) => p.integration.id === integration.id
                       ) === -1
                         ? 'grayscale border-transparent'
-                        : 'border-[#622FF6]'
+                        : 'border-btnPrimary'
                     )}
                   >
                     <ImageWithFallback
@@ -74,7 +74,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                           (p) => p.integration.id === integration.id
                         ) === -1
                           ? 'border-transparent'
-                          : 'border-[#000]'
+                          : 'border-newBgColor'
                       )}
                       alt={integration.identifier}
                       width={42}

@@ -14,13 +14,17 @@
     --new-blockSeparator: #272626;
     --new-btn-simple: #313030;
     --new-btn-text: #ffffff;
-    --new-btn-primary: #612bd3;
-    --new-ai-btn: #d82d7e;
+    // Brand purple and pink, shared with the landing site (postqueen.ai
+    // globals.css: --color-brand-500 / --color-pop-600 / --color-pop-300).
+    // Keep these identical across .dark and .light — the brand does not change
+    // with the theme, only the surfaces around it do.
+    --new-btn-primary: #7c3aed;
+    --new-ai-btn: #e0189e;
     --new-box-hover: #201f1f;
     --new-table-border: #2b2b2b;
     --new-table-header: #1e1d1d;
     --new-table-text: #9c9c9c;
-    --new-table-text-focused: #fc69ff;
+    --new-table-text-focused: #ff70e6;
     --new-small-strips: #191818;
     --new-big-strips: #161515;
     --new-col-color: #2c2b2b;
@@ -43,31 +47,38 @@
     --youtube-action-color: #272727;
     --youtube-svg-border: #A0A0A0;
   }
+  // Light surfaces follow the landing site's neutral family (postqueen.ai
+  // globals.css @theme): warm greys rather than the blue-grey this shipped
+  // with, so the app and the marketing site read as one product. The tinted
+  // page / white card split is kept deliberately — it is what gives cards
+  // their depth; a pure-white page would flatten the whole UI.
   .light {
     --new-back-drop: #2d1b57;
-    --new-settings: #eceef1;
+    --new-settings: #ececf1;
     --new-sep: #d5d9dd;
-    --new-border: #eaecee;
-    --new-bgColor: #f0f2f4;
-    --new-bgColorInner: #ffffff;
-    --new-bgLineColor: #e7e9eb;
-    --new-textItemFocused: #3900b2;
-    --new-textItemBlur: #777b7f;
-    --new-boxFocused: #ebe8ff;
-    --new-textColor: 14 14 14;
+    --new-border: #e3e3ea; // slightly darker than surface for a crisp field edge
+    --new-bgColor: #f5f5f7; // --color-surface
+    --new-bgColorInner: #ffffff; // --color-bg
+    --new-bgLineColor: #f0f0f3;
+    --new-textItemFocused: #5b21b6; // --color-brand-700
+    --new-textItemBlur: #62626e; // --color-muted
+    --new-boxFocused: #f3eefe; // --color-brand-50
+    --new-textColor: 11 11 14; // --color-ink
     --new-blockSeparator: #f2f2f4;
-    --new-btn-simple: #eceef1;
-    --new-btn-text: #0e0e0e;
-    --new-btn-primary: #612bd3;
-    --new-ai-btn: #d82d7e;
-    --new-box-hover: #f4f6f8;
-    --new-table-border: #e7e9eb;
-    --new-table-header: #f5f7f9;
-    --new-table-text: #777b7f;
-    --new-table-text-focused: #fc69ff;
-    --new-small-strips: #191818;
-    --new-big-strips: #f5f7f9;
-    --new-col-color: #eff1f3;
+    --new-btn-simple: #ececf1;
+    --new-btn-text: #0b0b0e; // --color-ink
+    --new-btn-primary: #7c3aed; // --color-brand-500
+    --new-ai-btn: #e0189e; // --color-pop-600
+    --new-box-hover: #f5f5f7;
+    --new-table-border: #e3e3ea;
+    --new-table-header: #f5f5f7;
+    --new-table-text: #62626e;
+    // pop-600, not pop-300: the light pink this shipped with (#fc69ff) is
+    // unreadable as text on white.
+    --new-table-text-focused: #e0189e;
+    --new-small-strips: #f5f5f7;
+    --new-big-strips: #f5f5f7;
+    --new-col-color: #ececf1;
     --new-menu-dots: #696868;
     --new-menu-hover: #000;
     --menu-shadow: -22px 83px 24px 0 rgba(55, 52, 75, 0),
@@ -102,10 +113,10 @@
     --color-secondary: #090b13;
     --color-text: #ffffff;
     --color-third: #080b13;
-    --color-forth: #612ad5;
+    --color-forth: #7c3aed; // --color-brand-500 (shared Button uses bg-forth)
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
-    --color-seventh: #7236f1;
+    --color-seventh: #6d28d9; // --color-brand-600
     --color-gray: #8c8c8c;
     --color-input: var(--new-table-header);
     --color-input-text: #64748b;
@@ -168,14 +179,14 @@
     --color-modalCustom: #000000;
   }
   .light {
-    --color-primary: #f0f2f4;
+    --color-primary: #f5f5f7; // --color-surface
     --color-secondary: #fff;
     --color-text: #000;
     --color-third: white;
-    --color-forth: #612ad5;
+    --color-forth: #7c3aed; // --color-brand-500 (shared Button uses bg-forth)
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
-    --color-seventh: #7236f1;
+    --color-seventh: #6d28d9; // --color-brand-600
     --color-gray: #8c8c8c;
     --color-input: var(--new-table-header);
     --color-input-text: #64748b;
