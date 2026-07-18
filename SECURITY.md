@@ -55,7 +55,7 @@ When reporting a security vulnerability, please provide as much detail as possib
 
 If the report has immediate urgency, please contact one (or more) of the maintainers via email:
 
-- @egelhaus ([E-Mail](mailto:egelhaus@ennogelhaus.de))
+- PostQueen Security ([E-Mail](mailto:support@postqueen.ai))
 
 ### AI Reports
 

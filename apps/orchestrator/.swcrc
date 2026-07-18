@@ -7,7 +7,7 @@
       "dynamicImport": true
     },
     "target": "es2020",
-    "baseUrl": "/Users/nevodavid/Projects/gitroom",
+    "baseUrl": "../..",
     "paths": {
       "@gitroom/backend/*": ["apps/backend/src/*"],
       "@gitroom/cron/*": ["apps/cron/src/*"],

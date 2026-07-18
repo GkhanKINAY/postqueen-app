@@ -16,7 +16,7 @@ import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creat
 
 dayjs.extend(utc);
 export const metadata: Metadata = {
-  title: `${isGeneralServerSide() ? 'PostQueen' : 'Gitroom'} Preview`,
+  title: `${isGeneralServerSide() ? 'PostQueen' : 'PostQueen'} Preview`,
   description: '',
 };
 export default async function Auth(

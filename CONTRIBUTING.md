@@ -52,7 +52,7 @@ This project follows a Fork/Feature Branch/Pull Request model. If you're not fam
 1. **Fork the project:** Create a personal copy of the repository on your GitHub account.
 2. **Clone your fork:** Bring a copy of your fork to your local machine.
    ```bash
-   git clone https://github.com/YOUR_USERNAME/postqueen.git
+   git clone https://github.com/YOUR_USERNAME/postqueen-app.git
    ```
 3. **Create a new branch**: Start a new branch for your changes
    ```bash

@@ -27,14 +27,14 @@ const useFaqList = () => {
     {
       title: t(
         'faq_can_i_trust_postqueen_gitroom',
-        `Can I trust ${isGeneral ? 'PostQueen' : 'Gitroom'}?`
+        `Can I trust ${isGeneral ? 'PostQueen' : 'PostQueen'}?`
       ),
       description: t(
         'faq_postqueen_gitroom_is_proudly_open_source',
         `${
-          isGeneral ? 'PostQueen' : 'Gitroom'
+          isGeneral ? 'PostQueen' : 'PostQueen'
         } is proudly open-source! We believe in an ethical and transparent culture, meaning that ${
-          isGeneral ? 'PostQueen' : 'Gitroom'
+          isGeneral ? 'PostQueen' : 'PostQueen'
         } will live forever. You can check out the entire code or use it for personal projects. To view the open-source repository, <a href="https://github.com/GkhanKINAY/postqueen-app" target="_blank" style="text-decoration: underline;">click here</a>.`
       ),
     },
@@ -43,7 +43,7 @@ const useFaqList = () => {
       description: t(
         'faq_postqueen_gitroom_allows_you_to_schedule_posts',
         `${
-          isGeneral ? 'PostQueen' : 'Gitroom'
+          isGeneral ? 'PostQueen' : 'PostQueen'
         } allows you to schedule your posts between different channels.
 A channel is a publishing platform where you can schedule your posts.
 For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Reddit, Linkedin, Dribbble, Threads and Pinterest.`
