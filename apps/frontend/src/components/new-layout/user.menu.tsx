@@ -151,7 +151,7 @@ export const UserMenu = () => {
                 />
               </svg>
               {t('logout_from', 'Logout from')}
-              {isGeneral ? ' PostQueen' : ' Gitroom'}
+              {isGeneral ? ' PostQueen' : ' PostQueen'}
             </button>
           </div>
         </div>
