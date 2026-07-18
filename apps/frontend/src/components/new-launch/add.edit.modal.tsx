@@ -216,11 +216,6 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
   }
 
   return (
-    <>
-      <style>
-        {`#support-discord {display: none !important;}`}
-      </style>
-      <ManageModal {...props} />
-    </>
+    <ManageModal {...props} />
   );
 };

@@ -19,7 +19,6 @@ interface VariableContextInterface {
   storageProvider: 'local' | 'cloudflare';
   backendUrl: string;
   environment: string;
-  discordUrl: string;
   uploadDirectory: string;
   facebookPixel: string;
   telegramBotName: string;
@@ -54,7 +53,6 @@ const VariableContext = createContext({
   storageProvider: 'local',
   plontoKey: '',
   backendUrl: '',
-  discordUrl: '',
   uploadDirectory: '',
   isSecured: false,
   telegramBotName: '',

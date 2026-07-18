@@ -17,7 +17,7 @@
     "scheduling tool",
     "social media scheduling tool"
   ],
-  "author": "PostQueen (based on upstream work by Nevo David)",
+  "author": "PostQueen",
   "license": "AGPL-3.0",
   "homepage": "https://postqueen.ai",
   "repository": {

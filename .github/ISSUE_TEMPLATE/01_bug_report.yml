@@ -1,5 +1,5 @@
 name: "🐛 Bug Report"
-description: "Submit a bug report to help us improve,\nif you have a problem installing the app please join our https://discord.postqueen.ai instead for help."
+description: "Submit a bug report to help us improve,\nif you have a problem installing the app please email support@postqueen.ai instead for help."
 title: "Give your bug report a good title "
 labels: ["type: bug"]
 body:
@@ -81,6 +81,6 @@ body:
   - type: dropdown
     attributes:
       label: Are you willing to submit PR?
-      description: This is absolutely not required, but we are happy to guide you in the contribution process. Find us in help-needed channel on [Discord](https://discord.postqueen.ai)!
+      description: This is absolutely not required, but we are happy to guide you in the contribution process.
       options:
         - "Yes I am willing to submit a PR!"

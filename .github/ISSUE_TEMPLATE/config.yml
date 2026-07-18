@@ -5,8 +5,8 @@ blank_issues_enabled: true
 contact_links:
   # The first link definition
   - name: 🙏 Installation Issue
-    url: https://discord.postqueen.ai
-    about: If you have an installation / configuration issue.
+    url: mailto:support@postqueen.ai
+    about: If you have an installation / configuration issue, email us.
 
   # You can add more links if needed
   - name: Security Issue

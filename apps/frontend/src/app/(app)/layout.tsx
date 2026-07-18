@@ -65,7 +65,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
-          discordUrl={process.env.NEXT_PUBLIC_DISCORD_SUPPORT!}
           frontEndUrl={process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}
           genericOauth={!!process.env.POSTQUEEN_GENERIC_OAUTH}
