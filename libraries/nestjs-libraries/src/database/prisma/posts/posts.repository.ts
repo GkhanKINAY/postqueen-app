@@ -523,6 +523,22 @@ export class PostsRepository {
     const uuid = uuidv4();
 
     for (const value of body.value) {
+      // The upsert below is keyed on the id alone, and updateData() reconnects
+      // the row to `orgId` — so without this check, passing another
+      // organization's post id moves that post into the caller's organization
+      // and overwrites its content. An id that matches nothing is fine: it
+      // falls through to create, inside the caller's own organization.
+      if (value.id) {
+        const existing = await this._post.model.post.findUnique({
+          where: { id: value.id },
+          select: { organizationId: true },
+        });
+
+        if (existing && existing.organizationId !== orgId) {
+          throw new Error('Post not found');
+        }
+      }
+
       const updateData = (type: 'create' | 'update') => ({
         publishDate: dayjs(date).toDate(),
         integration: {
@@ -628,6 +644,7 @@ export class PostsRepository {
       ? (
           await this._post.model.post.findFirst({
             where: {
+              organizationId: orgId,
               group: body.group,
               deletedAt: null,
               parentPostId: null,
@@ -642,6 +659,11 @@ export class PostsRepository {
     if (body.group) {
       await this._post.model.post.updateMany({
         where: {
+          // `group` comes straight from the request body. Without this filter
+          // any caller could soft-delete every post in another organization's
+          // group. deletePost() a few hundred lines up already scopes the same
+          // way; this call site simply missed it.
+          organizationId: orgId,
           group: body.group,
           deletedAt: null,
         },
@@ -850,12 +872,25 @@ export class PostsRepository {
     });
   }
 
-  createComment(
+  async createComment(
     orgId: string,
     userId: string,
     postId: string,
     content: string
   ) {
+    const post = await this._post.model.post.findFirst({
+      where: {
+        id: postId,
+        organizationId: orgId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!post) {
+      throw new Error('Post not found');
+    }
+
     return this._comments.model.comments.create({
       data: {
         organizationId: orgId,
