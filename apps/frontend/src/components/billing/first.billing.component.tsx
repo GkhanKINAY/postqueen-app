@@ -63,6 +63,21 @@ export const FirstBillingComponent = () => {
     setStripe(loadStripe(stripeClient));
   }, []);
 
+  // Preselect whatever the visitor picked on the marketing site. UtmSaver
+  // stashed it before registration redirected them here; read it after mount so
+  // the server render stays deterministic.
+  useEffect(() => {
+    const selectedPlan = localStorage.getItem('selectedPlan');
+    if (selectedPlan && pricing[selectedPlan]) {
+      setTier(selectedPlan);
+    }
+
+    const selectedPeriod = localStorage.getItem('selectedPeriod');
+    if (selectedPeriod === 'MONTHLY' || selectedPeriod === 'YEARLY') {
+      setPeriod(selectedPeriod);
+    }
+  }, []);
+
   const loadCheckout = useCallback(async () => {
     return (
       await fetch('/billing/embedded', {

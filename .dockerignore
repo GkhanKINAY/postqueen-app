@@ -1,6 +1,14 @@
 # We want the docker builds to be clean, and as fast as possible. Don't send
 # any half-built stuff in the build context as a pre-caution (also saves copying
 # 180k files in node_modules that isn't used!).
+# Secrets must never enter the build context: Dockerfile does `COPY . /app`, so
+# anything here lands in a published image layer.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
 **/node_modules
 node_modules/*
 node_modules

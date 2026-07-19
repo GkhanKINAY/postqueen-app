@@ -216,6 +216,9 @@ export class StripeService {
       (await stripe.products.create({
         active: true,
         name: body.billing,
+        // Cloud software, business use. Stripe Tax needs this to pick the right
+        // treatment per jurisdiction; the generic services code under-collects.
+        tax_code: 'txcd_10103001',
       }));
 
     const pricesList = await stripe.prices.list({
@@ -244,6 +247,9 @@ export class StripeService {
           (body.period === 'MONTHLY'
             ? priceData.month_price
             : priceData.year_price) * 100,
+        // Listed prices are pre-tax; automatic_tax adds it on top. A price with
+        // no tax_behavior makes Checkout fail once automatic tax is enabled.
+        tax_behavior: 'exclusive',
         recurring: {
           interval: body.period === 'MONTHLY' ? 'month' : 'year',
         },
@@ -457,6 +463,11 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      // Tax needs a location. The customer already exists, so customer_update
+      // tells Checkout to write the collected billing address back to it.
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
+      billing_address_collection: 'required',
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -518,6 +529,9 @@ export class StripeService {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
+      billing_address_collection: 'required',
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
@@ -669,6 +683,9 @@ export class StripeService {
       (await stripe.products.create({
         active: true,
         name: body.billing,
+        // Cloud software, business use. Stripe Tax needs this to pick the right
+        // treatment per jurisdiction; the generic services code under-collects.
+        tax_code: 'txcd_10103001',
       }));
 
     const pricesList = await stripe.prices.list({
@@ -696,6 +713,9 @@ export class StripeService {
           (body.period === 'MONTHLY'
             ? priceData.month_price
             : priceData.year_price) * 100,
+        // Listed prices are pre-tax; automatic_tax adds it on top. A price with
+        // no tax_behavior makes Checkout fail once automatic tax is enabled.
+        tax_behavior: 'exclusive',
         recurring: {
           interval: body.period === 'MONTHLY' ? 'month' : 'year',
         },
@@ -735,6 +755,9 @@ export class StripeService {
       (await stripe.products.create({
         active: true,
         name: body.billing,
+        // Cloud software, business use. Stripe Tax needs this to pick the right
+        // treatment per jurisdiction; the generic services code under-collects.
+        tax_code: 'txcd_10103001',
       }));
 
     const pricesList = await stripe.prices.list({
@@ -762,6 +785,9 @@ export class StripeService {
           (body.period === 'MONTHLY'
             ? priceData.month_price
             : priceData.year_price) * 100,
+        // Listed prices are pre-tax; automatic_tax adds it on top. A price with
+        // no tax_behavior makes Checkout fail once automatic tax is enabled.
+        tax_behavior: 'exclusive',
         recurring: {
           interval: body.period === 'MONTHLY' ? 'month' : 'year',
         },
