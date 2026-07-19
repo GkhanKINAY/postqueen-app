@@ -17,9 +17,11 @@ export const NeynarAuthButton: FC<{
   const { client_id } = useNeynarContext();
   const [showModal, setShowModal] = useState(false);
   const authWindowRef = useRef<Window | null>(null);
-  const neynarLoginUrl = `${
-    process.env.NEYNAR_LOGIN_URL ?? 'https://app.neynar.com/login'
-  }?client_id=${client_id}`;
+  // This is a client component, so a non-NEXT_PUBLIC_ variable is never
+  // injected into the bundle — the override silently did nothing. Neynar's
+  // login host is fixed anyway, so state it plainly instead of pretending it
+  // is configurable.
+  const neynarLoginUrl = `https://app.neynar.com/login?client_id=${client_id}`;
   const authOrigin = new URL(neynarLoginUrl).origin;
   const modalRef = useRef<HTMLDivElement>(null);
   const handleMessage = useCallback(
