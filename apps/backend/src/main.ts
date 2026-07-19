@@ -19,12 +19,13 @@ import { PostValidationExceptionFilter } from '@gitroom/backend/api/routes/posts
 import { HttpExceptionFilter } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { ConfigurationChecker } from '@gitroom/helpers/configuration/configuration.checker';
 import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
+import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 async function start() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     cors: {
-      ...(!process.env.NOT_SECURED ? { credentials: true } : {}),
+      ...(areCookiesSecured() ? { credentials: true } : {}),
       allowedHeaders: [
         'Content-Type',
         'Authorization',
@@ -38,7 +39,7 @@ async function start() {
         'onboarding',
         'activate',
         'x-copilotkit-runtime-client-gql-version',
-        ...(process.env.NOT_SECURED ? ['auth', 'showorg', 'impersonate'] : []),
+        ...(!areCookiesSecured() ? ['auth', 'showorg', 'impersonate'] : []),
       ],
       origin: [
         process.env.FRONTEND_URL,

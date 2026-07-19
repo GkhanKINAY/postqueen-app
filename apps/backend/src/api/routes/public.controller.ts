@@ -27,6 +27,7 @@ import { promisify } from 'util';
 import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 const pump = promisify(pipeline);
 
@@ -98,7 +99,7 @@ export class PublicController {
     if (!req.cookies.track) {
       res.cookie('track', uniqueId, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
+        ...(areCookiesSecured()
           ? {
               secure: true,
               httpOnly: true,
@@ -112,7 +113,7 @@ export class PublicController {
     if (body.fbclid && !req.cookies.fbclid) {
       res.cookie('fbclid', body.fbclid, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
+        ...(areCookiesSecured()
           ? {
               secure: true,
               httpOnly: true,

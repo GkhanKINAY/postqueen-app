@@ -16,6 +16,7 @@ import {
   THEME_COOKIE,
 } from '@gitroom/frontend/components/layout/theme';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const mode = resolveTheme((await cookies()).get(THEME_COOKIE)?.value);
@@ -54,7 +55,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           facebookPixel={process.env.NEXT_PUBLIC_FACEBOOK_PIXEL!}
           telegramBotName={process.env.TELEGRAM_BOT_NAME!}
           neynarClientId={process.env.NEYNAR_CLIENT_ID!}
-          isSecured={!process.env.NOT_SECURED}
+          isSecured={areCookiesSecured()}
           isChatBase={false}
           chatbaseBotId={''}
           onboardingVideoUrl={''}

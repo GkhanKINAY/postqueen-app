@@ -7,11 +7,12 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 export const removeAuth = (res: Response) => {
   res.cookie('auth', '', {
     domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-    ...(!process.env.NOT_SECURED
+    ...(areCookiesSecured()
       ? {
           secure: true,
           httpOnly: true,

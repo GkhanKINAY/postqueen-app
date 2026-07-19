@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { internalFetch } from '@gitroom/helpers/utils/internal.fetch';
 import acceptLanguage from 'accept-language';
+import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import {
   cookieName,
   headerName,
@@ -66,7 +67,7 @@ export async function proxy(request: NextRequest) {
     );
     response.cookies.set('auth', '', {
       path: '/',
-      ...(!process.env.NOT_SECURED
+      ...(areCookiesSecured()
         ? {
             secure: true,
             httpOnly: true,
@@ -113,7 +114,7 @@ export async function proxy(request: NextRequest) {
     if (org) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
       redirect.cookies.set('org', org, {
-        ...(!process.env.NOT_SECURED
+        ...(areCookiesSecured()
           ? {
               path: '/',
               secure: true,
@@ -143,7 +144,7 @@ export async function proxy(request: NextRequest) {
       );
       if (id) {
         redirect.cookies.set('showorg', id, {
-          ...(!process.env.NOT_SECURED
+          ...(areCookiesSecured()
             ? {
                 path: '/',
                 secure: true,
