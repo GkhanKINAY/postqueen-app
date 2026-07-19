@@ -21,6 +21,12 @@ interface VariableContextInterface {
    * different hosts; falls back to frontEndUrl when unset.
    */
   legalUrl: string;
+  /**
+   * Affiliate programme of whoever runs this install. Read here rather than
+   * from process.env in the menu: NEXT_PUBLIC_* is inlined when the image is
+   * built, so a client component could never see a runtime value.
+   */
+  affiliateUrl: string;
   plontoKey: string;
   storageProvider: 'local' | 'cloudflare';
   backendUrl: string;
@@ -57,6 +63,7 @@ const VariableContext = createContext({
   mainUrl: '',
   frontEndUrl: '',
   legalUrl: '',
+  affiliateUrl: '',
   storageProvider: 'local',
   plontoKey: '',
   backendUrl: '',

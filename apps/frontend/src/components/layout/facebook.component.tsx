@@ -1,8 +1,15 @@
 'use client';
 
 import Script from 'next/script';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
+
 export const FacebookComponent = () => {
-  if (!process.env.NEXT_PUBLIC_FACEBOOK_PIXEL) {
+  // From context, not process.env: this is a client component, so NEXT_PUBLIC_*
+  // is inlined when the image is built and is undefined in every published
+  // build. The pixel therefore never loaded for anyone, including us.
+  const { facebookPixel } = useVariables();
+
+  if (!facebookPixel) {
     return null;
   }
   return (
@@ -15,7 +22,7 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 '/f.js');
-fbq('init', '${process.env.NEXT_PUBLIC_FACEBOOK_PIXEL}');
+fbq('init', '${facebookPixel}');
 `}
     </Script>
   );

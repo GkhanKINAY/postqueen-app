@@ -181,6 +181,11 @@ export function RegisterAfter({
           placeholder={t('label_company', 'Company')}
         />
       </div>
+      {/* Only claim the user agreed to terms when this deployment actually
+          publishes them. Without LEGAL_URL these links resolved to pages the
+          app does not serve, so self-hosted signups pointed at a 404 while
+          still asserting agreement. */}
+      {!!legalUrl && (
       <div className={clsx('text-[12px] text-textItemBlur')}>
         {t(
           'by_registering_you_agree_to_our',
@@ -205,6 +210,7 @@ export function RegisterAfter({
         </a>
         &nbsp;
       </div>
+      )}
       <div className="w-full flex mt-[12px]">
         <Button
           type="submit"

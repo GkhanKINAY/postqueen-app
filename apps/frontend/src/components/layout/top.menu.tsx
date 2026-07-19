@@ -20,7 +20,7 @@ interface MenuItemInterface {
 }
 
 export const useMenuItem = () => {
-  const { isGeneral } = useVariables();
+  const { isGeneral, affiliateUrl } = useVariables();
   const t = useT();
   const { openModal } = useModals();
 
@@ -248,10 +248,12 @@ export const useMenuItem = () => {
         </svg>
       ),
       // An affiliate programme belongs to whoever runs the install, so this is
-      // hidden unless one is configured. It used to point at the vendor's
-      // programme, which sent every self-hosted deployment's users there.
-      path: process.env.NEXT_PUBLIC_AFFILIATE_URL || '',
-      hide: !process.env.NEXT_PUBLIC_AFFILIATE_URL,
+      // hidden unless one is configured — it used to point at the vendor's
+      // programme, sending every self-hosted deployment's users there. Read from
+      // context, not process.env: NEXT_PUBLIC_* is inlined at image build time
+      // and a client component would never see what the operator configured.
+      path: affiliateUrl,
+      hide: !affiliateUrl,
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
     },

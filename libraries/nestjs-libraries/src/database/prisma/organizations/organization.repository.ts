@@ -39,7 +39,7 @@ export class OrganizationRepository {
                 activated: true,
                 email: email
                   ? email.split('@').join(`+${saasName}@`)
-                  : `${saasName}+` + makeId(10) + '@postqueen.ai',
+                  : `${saasName}+` + makeId(10) + '@no-reply.invalid',
                 name: name ? `${name}###${id}` : `Unnamed User###${id}`,
                 providerName: 'LOCAL',
                 password: AuthService.hashPassword(makeId(500)),
