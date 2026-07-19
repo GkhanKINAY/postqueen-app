@@ -693,5 +693,7 @@
   "watch_tutorial_description": "Watch this short video to learn how to get the most out of PostQueen",
   "back": "Back",
   "get_started": "Get Started",
-  "kick_select_channel": "Select Channel"
+  "kick_select_channel": "Select Channel",
+  "webhook_failed": "The endpoint did not accept the test webhook",
+  "post_save_failed": "Could not save the post, please try again"
 }

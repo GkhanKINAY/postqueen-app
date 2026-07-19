@@ -418,11 +418,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // post cap, or failing server-side validation — still showed "Added
         // successfully" and closed the editor, losing everything the user wrote.
         if (response && !response.ok) {
-          const reason = await response.text().catch(() => '');
+          // The body is a Nest error object; showing it raw put
+          // {"statusCode":400,...} in front of the user.
+          const reason = await response
+            .json()
+            .then((body) => body?.message)
+            .catch(() => '');
+
           setLoading(false);
           toaster.show(
-            reason ||
-              t('post_save_failed', 'Could not save the post, please try again'),
+            typeof reason === 'string' && reason
+              ? reason
+              : t('post_save_failed', 'Could not save the post, please try again'),
             'warning'
           );
           return;
