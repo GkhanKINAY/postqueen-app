@@ -102,12 +102,16 @@ export const SettingsPopup: FC<{
   );
 
   const t = useT();
+  // Teams and Developers call ADMIN-gated endpoints as soon as they mount.
+  // Tier alone said nothing about the caller's role, so a regular member saw
+  // the tabs and got a 402 for opening them.
+  const isOrgAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
   const list = useMemo(() => {
     const arr = [];
     arr.push({ tab: 'global_settings', label: t('global_settings', 'Global Settings') });
     arr.push({ tab: 'language', label: t('language', 'Language') });
     // Populate tabs based on user permissions
-    if (user?.tier?.team_members && isGeneral) {
+    if (user?.tier?.team_members && isGeneral && isOrgAdmin) {
       arr.push({ tab: 'teams', label: t('teams', 'Teams') });
     }
     if (user?.tier?.webhooks) {
@@ -122,13 +126,13 @@ export const SettingsPopup: FC<{
     if (user?.tier.current !== 'FREE') {
       arr.push({ tab: 'signatures', label: t('signatures', 'Signatures') });
     }
-    if (user?.tier?.public_api && isGeneral && showLogout) {
+    if (user?.tier?.public_api && isGeneral && showLogout && isOrgAdmin) {
       arr.push({ tab: 'api', label: t('developers', 'Developers') });
     }
     arr.push({ tab: 'approved_apps', label: t('approved_apps', 'Approved Apps') });
 
     return arr;
-  }, [user, isGeneral, showLogout, t]);
+  }, [user, isGeneral, showLogout, isOrgAdmin, t]);
 
   useEffect(() => {
     loadProfile();
@@ -182,7 +186,10 @@ export const SettingsPopup: FC<{
                   <ChangeLanguageComponent />
                 </div>
               )}
-              {tab === 'teams' && !!user?.tier?.team_members && isGeneral && (
+              {tab === 'teams' &&
+                !!user?.tier?.team_members &&
+                isGeneral &&
+                isOrgAdmin && (
                 <div>
                   <TeamsComponent />
                 </div>
@@ -215,7 +222,8 @@ export const SettingsPopup: FC<{
               {tab === 'api' &&
                 !!user?.tier?.public_api &&
                 isGeneral &&
-                showLogout && (
+                showLogout &&
+                isOrgAdmin && (
                   <div>
                     <PublicComponent />
                   </div>

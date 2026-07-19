@@ -9,6 +9,11 @@ import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.req
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { Request } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
+import {
+  AuthorizationActions,
+  Sections,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -61,6 +66,7 @@ export class BillingController {
   }
 
   @Post('/embedded')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   embedded(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -78,6 +84,7 @@ export class BillingController {
   }
 
   @Post('/subscribe')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   subscribe(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -95,6 +102,7 @@ export class BillingController {
   }
 
   @Get('/portal')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
     const customer = await this._stripeService.getCustomerByOrganizationId(
       org.id
@@ -111,6 +119,7 @@ export class BillingController {
   }
 
   @Post('/cancel')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async cancel(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
@@ -127,6 +136,7 @@ export class BillingController {
   }
 
   @Post('/prorate')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   prorate(
     @GetOrgFromRequest() org: Organization,
     @Body() body: BillingSubscribeDto
@@ -185,12 +195,14 @@ export class BillingController {
   }
 
   @Get('/chatbase-refund/preview')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   chatbaseRefundPreview(@GetOrgFromRequest() org: Organization) {
     this.assertChatbaseEnabled();
     return this._stripeService.chatbaseRefundPreview(org.id);
   }
 
   @Post('/chatbase-refund')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async chatbaseRefund(
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization

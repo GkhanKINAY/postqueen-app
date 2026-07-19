@@ -50,5 +50,17 @@ const getErrorMessage = (error: {
         default:
           return 'You have reached the maximum number of generated videos for your subscription. Please upgrade your subscription to generate more videos.';
       }
+    // ADMIN is a role check, not a quota — there is nothing to upgrade. Without
+    // a case here the message was undefined and the dialog rendered blank.
+    case Sections.ADMIN:
+      switch (error.action) {
+        default:
+          return 'Only a workspace admin can do this. Please ask an admin of this workspace.';
+      }
+    case Sections.TEAM_MEMBERS:
+      switch (error.action) {
+        default:
+          return 'Your subscription does not include team members. Please upgrade your subscription to invite your team.';
+      }
   }
 };

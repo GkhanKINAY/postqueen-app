@@ -104,14 +104,11 @@ function LayoutContextInner(params: { children: ReactNode }) {
       }
 
       if (response.status === 402) {
+        // Read from a clone: returning `true` below hands the original response
+        // back to the caller, which reads the body again.
+        const { message } = await response.clone().json();
         if (
-          await deleteDialog(
-            (
-              await response.json()
-            ).message,
-            'Move to billing',
-            'Payment Required'
-          )
+          await deleteDialog(message, 'Move to billing', 'Payment Required')
         ) {
           window.open('/billing', '_blank');
           return false;

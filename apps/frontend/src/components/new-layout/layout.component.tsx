@@ -38,6 +38,7 @@ import { StreakComponent } from '@gitroom/frontend/components/layout/streak.comp
 import { PreConditionComponent } from '@gitroom/frontend/components/layout/pre-condition.component';
 import { AttachToFeedbackIcon } from '@gitroom/frontend/components/new-layout/sentry.feedback.component';
 import { FirstBillingComponent } from '@gitroom/frontend/components/billing/first.billing.component';
+import { BillingAdminRequiredComponent } from '@gitroom/frontend/components/billing/billing.admin.required.component';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import { UserMenu } from '@gitroom/frontend/components/new-layout/user.menu';
@@ -116,7 +117,11 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
             <div className="flex flex-col min-h-screen min-w-screen text-newTextColor p-[12px]">
               <div>{user?.admin ? <Impersonate /> : <div />}</div>
               {user.tier === 'FREE' && isGeneral && billingEnabled ? (
-                <FirstBillingComponent />
+                ['ADMIN', 'SUPERADMIN'].includes(user?.role!) ? (
+                  <FirstBillingComponent />
+                ) : (
+                  <BillingAdminRequiredComponent />
+                )
               ) : (
                 <>
                   <AnnouncementBanner />
