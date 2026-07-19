@@ -5,9 +5,12 @@
 # anything here lands in a published image layer.
 .env
 .env.*
-!.env.example
 **/.env
 **/.env.*
+# Negations must come last: Docker applies the final matching rule, so putting
+# this above the **/.env.* line would leave the example file excluded.
+!.env.example
+!**/.env.example
 
 **/node_modules
 node_modules/*
