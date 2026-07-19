@@ -43,8 +43,18 @@ export class VideoManager {
     identifier: string
   ): (VideoParams & { instance: VideoAbstract<any> }) | undefined {
     const video = (Reflect.getMetadata('video', VideoAbstract) || []).find(
-      (p: any) => p.identifier === identifier
+      // `available` is the provider's API-key check. getAllVideos() filters on
+      // it, so routes that take a raw identifier string used to reach providers
+      // the operator never configured. An unknown identifier was worse still:
+      // spreading `undefined` and reading `video.target` threw a bare
+      // TypeError, which also made every `if (!video)` guard downstream dead
+      // code. Returning undefined brings those guards to life.
+      (p: any) => p.identifier === identifier && p.available
     );
+
+    if (!video) {
+      return undefined;
+    }
 
     return {
       ...video,
