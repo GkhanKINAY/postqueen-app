@@ -80,6 +80,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           stripeClient={process.env.STRIPE_PUBLISHABLE_KEY!}
           isChatBase={!!process.env.CHATBASE_TOKEN}
           chatbaseBotId={process.env.CHATBASE_BOT_ID || ''}
+          onboardingVideoUrl={process.env.ONBOARDING_VIDEO_URL || ''}
+          repositoryUrl={process.env.REPOSITORY_URL || ''}
           billingEnabled={isBillingEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}

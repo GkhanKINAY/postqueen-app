@@ -9,6 +9,7 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { AddProviderComponent } from '@gitroom/frontend/components/launches/add.provider.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -242,6 +243,7 @@ const OnboardingStep2: FC<{ onBack: () => void; onFinish: () => void }> = ({
   onFinish,
 }) => {
   const t = useT();
+  const { onboardingVideoUrl } = useVariables();
 
   return (
     <div className="flex flex-col gap-[24px] flex-1">
@@ -257,18 +259,22 @@ const OnboardingStep2: FC<{ onBack: () => void; onFinish: () => void }> = ({
         </div>
       </div>
 
-      {/* YouTube Video Embed */}
-      <div className="relative flex-1 rounded-[12px] overflow-hidden">
-        <div className="absolute left-0 top-0 w-full h-full flex justify-center">
-          <iframe
-            className="h-full aspect-video"
-            src="https://www.youtube.com/embed/BdsCVvEYgHU?si=vvhaZJ8I5oXXvVJS?autoplay=1"
-            title="PostQueen Tutorial"
-            allow="autoplay"
-            allowFullScreen
-          />
+      {/* Tutorial video — hidden unless this installation configured its own.
+          The URL used to be hardcoded, so every deployment played (and sent
+          analytics to) somebody else's video. */}
+      {!!onboardingVideoUrl && (
+        <div className="relative flex-1 rounded-[12px] overflow-hidden">
+          <div className="absolute left-0 top-0 w-full h-full flex justify-center">
+            <iframe
+              className="h-full aspect-video"
+              src={onboardingVideoUrl}
+              title="Tutorial"
+              allow="autoplay"
+              allowFullScreen
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex justify-between pt-[24px] mt-[8px]">

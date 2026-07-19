@@ -9,6 +9,8 @@ interface VariableContextInterface {
   isChatBase: boolean;
   /** Chatbase bot this deployment owns; the SSO token is signed against it. */
   chatbaseBotId: string;
+  onboardingVideoUrl: string;
+  repositoryUrl: string;
   /** Store listing for this deployment's own browser extension build. */
   extensionStoreUrl: string;
   isGeneral: boolean;
@@ -59,6 +61,8 @@ const VariableContext = createContext({
   genericOauth: false,
   isChatBase: false,
   chatbaseBotId: '',
+  onboardingVideoUrl: '',
+  repositoryUrl: '',
   extensionStoreUrl: '',
   oauthLogoUrl: '',
   googleAdsId: '',

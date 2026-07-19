@@ -6,7 +6,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 const useFaqList = () => {
-  const { isGeneral } = useVariables();
+  const { repositoryUrl } = useVariables();
   const user = useUser();
   const t = useT();
   return [
@@ -19,7 +19,7 @@ const useFaqList = () => {
             ),
             description: t(
               'faq_to_confirm_credit_card_information_postqueen_will_hold',
-              'To confirm credit card information PostQueen will hold $2 and release it immediately, you can cancel your subscription anytime from settings without talking to a person'
+              'To confirm your credit card a small temporary authorization may be placed and released immediately. You can cancel your subscription anytime from settings without talking to a person'
             ),
           },
         ]
@@ -27,24 +27,22 @@ const useFaqList = () => {
     {
       title: t(
         'faq_can_i_trust_postqueen_gitroom',
-        `Can I trust ${isGeneral ? 'PostQueen' : 'PostQueen'}?`
+        'Can I trust PostQueen?'
       ),
-      description: t(
-        'faq_postqueen_gitroom_is_proudly_open_source',
-        `${
-          isGeneral ? 'PostQueen' : 'PostQueen'
-        } is proudly open-source! We believe in an ethical and transparent culture, meaning that ${
-          isGeneral ? 'PostQueen' : 'PostQueen'
-        } will live forever. You can check out the entire code or use it for personal projects. To view the open-source repository, <a href="https://github.com/GkhanKINAY/postqueen-app" target="_blank" style="text-decoration: underline;">click here</a>.`
-      ),
+      description:
+        t(
+          'faq_postqueen_gitroom_is_proudly_open_source',
+          'PostQueen is proudly open-source! We believe in an ethical and transparent culture, meaning that PostQueen will live forever. You can check out the entire code or use it for personal projects.'
+        ) +
+        (repositoryUrl
+          ? ` <a href="${repositoryUrl}" target="_blank" style="text-decoration: underline;">View the source code</a>.`
+          : ''),
     },
     {
       title: t('faq_what_are_channels', 'What are channels?'),
       description: t(
         'faq_postqueen_gitroom_allows_you_to_schedule_posts',
-        `${
-          isGeneral ? 'PostQueen' : 'PostQueen'
-        } allows you to schedule your posts between different channels.
+        `PostQueen allows you to schedule your posts between different channels.
 A channel is a publishing platform where you can schedule your posts.
 For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Reddit, Linkedin, Dribbble, Threads and Pinterest.`
       ),

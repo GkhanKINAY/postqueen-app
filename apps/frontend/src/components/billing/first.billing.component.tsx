@@ -47,7 +47,7 @@ const EmbeddedBilling = dynamic(
 );
 
 export const FirstBillingComponent = () => {
-  const { stripeClient } = useVariables();
+  const { stripeClient, onboardingVideoUrl } = useVariables();
   const user = useUser();
   const dub = useDubClickId();
   const [stripe, setStripe] = useState<null | Promise<Stripe>>(null);
@@ -100,8 +100,8 @@ export const FirstBillingComponent = () => {
       children: (
         <iframe
           className="h-full aspect-video min-w-[800px]"
-          src="https://www.youtube.com/embed/BdsCVvEYgHU?si=vvhaZJ8I5oXXvVJS?autoplay=1"
-          title="PostQueen Tutorial"
+          src={onboardingVideoUrl}
+          title="Tutorial"
           allow="autoplay"
           allowFullScreen
         />
@@ -137,20 +137,27 @@ export const FirstBillingComponent = () => {
           {t('billing_with_postqueen_line', 'with PostQueen')}
         </div>
 
-        <div className="flex" onClick={showYouTube}>
-          <div className="tablet:mb-[32px] cursor-pointer mt-[32px] flex gap-[10px] items-center underline hover:font-[700]">
-            <div>
-              <SafeImage
-                className="text-[12px]"
-                src="/icons/platforms/youtube.svg"
-                width={22.5}
-                height={16}
-                alt="YouTube"
-              />
+        {!!onboardingVideoUrl && (
+          <div className="flex" onClick={showYouTube}>
+            <div className="tablet:mb-[32px] cursor-pointer mt-[32px] flex gap-[10px] items-center underline hover:font-[700]">
+              <div>
+                <SafeImage
+                  className="text-[12px]"
+                  src="/icons/platforms/youtube.svg"
+                  width={22.5}
+                  height={16}
+                  alt="YouTube"
+                />
+              </div>
+              <div>
+                {t(
+                  'billing_see_the_power',
+                  'See the power of PostQueen (click here)'
+                )}
+              </div>
             </div>
-            <div>See the power of PostQueen (click here)</div>
           </div>
-        </div>
+        )}
 
         {!!user?.allowTrial && (
           <div className="flex mt-[32px] mb-[10px] gap-[15px] tablet:mt-[32px] tablet:mb-[32px] text-[16px] font-[500] mobile:flex-col">
