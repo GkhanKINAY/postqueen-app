@@ -29,6 +29,22 @@ export class MediaRepository {
     });
   }
 
+  /**
+   * Which of `ids` this organization actually owns. Used to reject media ids
+   * borrowed from another organization before they are stored on a post —
+   * getMediaById() resolves by id alone, and it is called from the publish
+   * worker where no organization is in scope.
+   */
+  findOwnedMediaIds(org: string, ids: string[]) {
+    return this._media.model.media.findMany({
+      where: {
+        organizationId: org,
+        id: { in: ids },
+      },
+      select: { id: true },
+    });
+  }
+
   getMediaById(id: string) {
     return this._media.model.media.findUnique({
       where: {

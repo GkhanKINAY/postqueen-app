@@ -852,6 +852,7 @@ export class PostsRepository {
     return this._tags.model.tags.update({
       where: {
         id,
+        orgId,
       },
       data: {
         name: body.name,

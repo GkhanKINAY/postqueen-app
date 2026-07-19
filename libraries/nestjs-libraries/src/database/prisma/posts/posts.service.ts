@@ -900,6 +900,30 @@ export class PostsService {
         content: removeLinks ? stripLinks(updateContent[i]) : updateContent[i],
       }));
 
+      // Media entries carrying an id but no path are resolved from the database
+      // at publish time by id alone, so a borrowed id would pull another
+      // organization's file into this post. Reject them at the door, where the
+      // organization is still in scope.
+      const borrowedMediaIds = [
+        ...new Set(
+          (post.value || [])
+            .flatMap((p) => p.image || [])
+            .filter((image: any) => image?.id && !image?.path)
+            .map((image: any) => image.id as string)
+        ),
+      ];
+
+      if (borrowedMediaIds.length) {
+        const owned = await this._mediaService.findOwnedMediaIds(
+          orgId,
+          borrowedMediaIds
+        );
+
+        if (owned.length !== borrowedMediaIds.length) {
+          throw new Error('Media not found');
+        }
+      }
+
       const { posts } = await this._postRepository.createOrUpdatePost(
         body.type,
         orgId,

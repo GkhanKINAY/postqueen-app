@@ -29,6 +29,10 @@ export class MediaService {
     return this._mediaRepository.deleteMedia(org, id);
   }
 
+  findOwnedMediaIds(org: string, ids: string[]) {
+    return this._mediaRepository.findOwnedMediaIds(org, ids);
+  }
+
   getMediaById(id: string) {
     return this._mediaRepository.getMediaById(id);
   }
