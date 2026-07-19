@@ -138,14 +138,18 @@ const StripeInputs: FC<{
   const [ready, setReady] = useState(false);
   return (
     <>
-      {/*<div>*/}
-      {/*  <h4 className="mb-[32px] text-[24px] font-[700]">*/}
-      {/*    {checkout.type === 'loading'*/}
-      {/*      ? ''*/}
-      {/*      : t('billing_billing_address', 'Billing Address')}*/}
-      {/*  </h4>*/}
-      {/*  <BillingAddressElement />*/}
-      {/*</div>*/}
+      {/* The session is created with automatic_tax and
+          billing_address_collection: 'required', so the address has to be
+          collected here — Stripe Tax has no other way to learn the customer's
+          location in the embedded flow. */}
+      <div>
+        <h4 className="mb-[32px] text-[24px] font-[700]">
+          {checkout.type === 'loading'
+            ? ''
+            : t('billing_billing_address', 'Billing Address')}
+        </h4>
+        <BillingAddressElement />
+      </div>
       <div>
         <h4 className="mb-[32px] text-[24px] font-[700]">
           {checkout.type === 'loading' ? '' : t('billing_payment', 'Payment')}
@@ -153,7 +157,7 @@ const StripeInputs: FC<{
         <PaymentElement
           id="payment-element"
           options={{
-            fields: { billingDetails: { address: 'if_required' } },
+            fields: { billingDetails: { address: 'never' } },
             layout: 'tabs',
           }}
           onReady={() => setReady(true)}

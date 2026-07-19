@@ -244,6 +244,7 @@ export class StripeService {
     const findPrice =
       pricesList.data.find(
         (p) =>
+          p?.tax_behavior === 'exclusive' &&
           p?.recurring?.interval?.toLowerCase() ===
             (body.period === 'MONTHLY' ? 'month' : 'year') &&
           p?.nickname === body.billing + ' ' + body.period &&
@@ -331,6 +332,16 @@ export class StripeService {
     };
 
     const sub = currentUserSubscription.data[0];
+
+    // Nothing left to cancel — a retry of a cancel that already went through.
+    // Report it as cancelled rather than throwing; the outcome the caller
+    // asked for is already true.
+    if (!sub) {
+      return {
+        id,
+        cancel_at: new Date(),
+      };
+    }
 
     // If the user is toggling back (un-cancelling), just remove the cancel
     if (sub.cancel_at_period_end) {
@@ -621,7 +632,7 @@ export class StripeService {
   }
 
   async applyDiscount(customer: string) {
-    const check = this.checkDiscount(customer);
+    const check = await this.checkDiscount(customer);
     if (!check) {
       return false;
     }
@@ -635,6 +646,10 @@ export class StripeService {
         })
       ).data.find((f) => f.status === 'active' || f.status === 'trialing'),
     };
+
+    if (!currentUserSubscription.data) {
+      return false;
+    }
 
     await stripe.subscriptions.update(currentUserSubscription.data.id, {
       discounts: [
@@ -682,6 +697,20 @@ export class StripeService {
     body: BillingSubscribeDto,
     allowTrial: boolean
   ) {
+    // First-run checkout only. Without this, an org that already pays could
+    // reach it again (direct POST, or a stale render that still thinks the tier
+    // is FREE) and Stripe would create a *second* subscription on the same
+    // customer, billing both. The Subscription row is unique per organization,
+    // so it would only ever show whichever webhook landed last, and cancelling
+    // acts on one subscription — leaving the other charging invisibly.
+    // Plan changes belong to subscribe(), which updates in place.
+    const existingSubscription =
+      await this._subscriptionService.getSubscription(organizationId);
+
+    if (existingSubscription) {
+      throw new Error('This organization already has an active subscription');
+    }
+
     const id = makeId(10);
     const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
@@ -711,6 +740,7 @@ export class StripeService {
     const findPrice =
       pricesList.data.find(
         (p) =>
+          p?.tax_behavior === 'exclusive' &&
           p?.recurring?.interval?.toLowerCase() ===
             (body.period === 'MONTHLY' ? 'month' : 'year') &&
           p?.unit_amount ===
@@ -783,6 +813,7 @@ export class StripeService {
     const findPrice =
       pricesList.data.find(
         (p) =>
+          p?.tax_behavior === 'exclusive' &&
           p?.recurring?.interval?.toLowerCase() ===
             (body.period === 'MONTHLY' ? 'month' : 'year') &&
           p?.unit_amount ===
