@@ -273,6 +273,7 @@ export const CustomVariables: FC<{
   );
 };
 const ExtensionNotFound: FC = () => {
+  const { extensionStoreUrl } = useVariables();
   const modals = useModals();
   const t = useT();
   return (
@@ -288,11 +289,12 @@ const ExtensionNotFound: FC = () => {
           type="button"
           className="flex-1"
           onClick={() => {
-            // TODO: replace extension ID once the PostQueen extension is published
-            window.open(
-              'https://chromewebstore.google.com/detail/postqueen/cidhffagahknaeodkplfbcpfeielnkjl?hl=en',
-              '_blank'
-            );
+            // The listing this deployment publishes, if any. Sending users to the
+            // vendor's build is useless: its origin allowlist is baked at build
+            // time and will not talk to a self-hosted frontend.
+            if (extensionStoreUrl) {
+              window.open(extensionStoreUrl, '_blank');
+            }
             modals.closeCurrent();
           }}
         >

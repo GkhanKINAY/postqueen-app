@@ -49,6 +49,7 @@ export const ChatbaseComponentLoad: FC = () => {
 };
 
 const ChatBaseCode: FC<{ token: string }> = ({ token }) => {
+  const { chatbaseBotId } = useVariables();
   const fetch = useFetch();
 
   useEffect(() => {
@@ -75,7 +76,7 @@ const ChatBaseCode: FC<{ token: string }> = ({ token }) => {
     const onLoad = function () {
       const script = document.createElement('script');
       script.src = 'https://www.chatbase.co/embed.min.js';
-      script.id = '1zVZuOz0vgFE_NLumfPPj';
+      script.id = chatbaseBotId;
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       script.domain = 'www.chatbase.co';

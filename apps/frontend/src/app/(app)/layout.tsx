@@ -47,9 +47,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const language = cookieStore.get(cookieName)?.value || fallbackLng;
   const mode = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
-  const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
-    ? PlausibleProvider
-    : Fragment;
+  // Only load Plausible when this deployment has actually configured it.
+  // Keying it off the Stripe key meant enabling billing silently started
+  // beaconing every visitor to plausible.io.
+  const plausibleDomain = process.env.PLAUSIBLE_DOMAIN || '';
+  const Plausible = plausibleDomain ? PlausibleProvider : Fragment;
   return (
     <html>
       <head>
@@ -76,11 +78,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           plontoKey={process.env.NEXT_PUBLIC_POLOTNO!}
           stripeClient={process.env.STRIPE_PUBLISHABLE_KEY!}
           isChatBase={!!process.env.CHATBASE_TOKEN}
+          chatbaseBotId={process.env.CHATBASE_BOT_ID || ''}
           billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
-          legalUrl={process.env.LEGAL_URL || process.env.FRONTEND_URL!}
+          legalUrl={process.env.LEGAL_URL || ''}
           affiliateUrl={process.env.AFFILIATE_URL || ''}
           isGeneral={!!process.env.IS_GENERAL}
           genericOauth={!!process.env.POSTQUEEN_GENERIC_OAUTH}
@@ -90,7 +93,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           cloudflareUrl={process.env.CLOUDFLARE_BUCKET_URL || ''}
           mainUrl={process.env.MAIN_URL || ''}
           mcpUrl={process.env.MCP_URL}
-          dub={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          dub={!!process.env.DUB_PUBLISHABLE_KEY}
           facebookPixel={process.env.NEXT_PUBLIC_FACEBOOK_PIXEL!}
           telegramBotName={process.env.TELEGRAM_BOT_NAME!}
           neynarClientId={process.env.NEYNAR_CLIENT_ID!}
@@ -99,6 +102,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           disableXAnalytics={!!process.env.DISABLE_X_ANALYTICS}
           sentryDsn={process.env.NEXT_PUBLIC_SENTRY_DSN!}
           extensionId={process.env.EXTENSION_ID || ''}
+          extensionStoreUrl={process.env.EXTENSION_STORE_URL || ''}
           googleAdsId={process.env.NEXT_PUBLIC_GTM_ID}
           googleAdsTrialTracking={process.env.NEXT_PUBLIC_TRACKING_TRIAL}
           language={language}
@@ -117,7 +121,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <DubAnalytics />
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            <Plausible domain={analyticsDomain()}>
+            <Plausible domain={plausibleDomain}>
               <PHProvider
                 phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
                 host={process.env.NEXT_PUBLIC_POSTHOG_HOST}

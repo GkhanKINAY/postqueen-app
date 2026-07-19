@@ -39,7 +39,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
-          legalUrl={process.env.LEGAL_URL || process.env.FRONTEND_URL!}
+          legalUrl={process.env.LEGAL_URL || ''}
           affiliateUrl={process.env.AFFILIATE_URL || ''}
           isGeneral={!!process.env.IS_GENERAL}
           genericOauth={!!process.env.POSTQUEEN_GENERIC_OAUTH}
@@ -55,10 +55,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           neynarClientId={process.env.NEYNAR_CLIENT_ID!}
           isSecured={!process.env.NOT_SECURED}
           isChatBase={false}
+          chatbaseBotId={''}
           disableImageCompression={!!process.env.DISABLE_IMAGE_COMPRESSION}
           disableXAnalytics={!!process.env.DISABLE_X_ANALYTICS}
           sentryDsn={process.env.NEXT_PUBLIC_SENTRY_DSN!}
           extensionId={process.env.EXTENSION_ID || ''}
+          extensionStoreUrl={process.env.EXTENSION_STORE_URL || ''}
           transloadit={
             process.env.TRANSLOADIT_AUTH && process.env.TRANSLOADIT_TEMPLATE
               ? [

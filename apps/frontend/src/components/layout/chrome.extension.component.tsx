@@ -1,12 +1,14 @@
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 export const ChromeExtensionComponent = () => {
-  const { billingEnabled } = useVariables();
-  if (!billingEnabled) {
+  const { billingEnabled, extensionStoreUrl } = useVariables();
+  // No listing configured means this deployment has not published an
+  // extension; the vendor's build only talks to the vendor's domain.
+  if (!billingEnabled || !extensionStoreUrl) {
     return null;
   }
   return (
     <a
-      href="https://chromewebstore.google.com/detail/postqueen/cidhffagahknaeodkplfbcpfeielnkjl"
+      href={extensionStoreUrl}
       target="_blank"
       className="hover:text-newTextColor"
     >
