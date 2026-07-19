@@ -19,15 +19,52 @@ function deriveLegacyKeyIv(secret: string) {
   return { key, iv };
 }
 
-export function decrypt_legacy_using_IV(hexCiphertext: string) {
-  const { key, iv } = deriveLegacyKeyIv(process.env.JWT_SECRET);
+/**
+ * Key used for encryption at rest, separate from the JWT signing key.
+ *
+ * These were the same value, which quietly made JWT_SECRET impossible to
+ * rotate: it signs sessions *and* encrypts every integration's OAuth and
+ * refresh tokens, provider credentials and stored cookies. Rotating it would
+ * have made all of those undecryptable, disconnecting every social account.
+ *
+ * Falls back to JWT_SECRET when unset, so an existing install — including any
+ * self-hosted one — keeps working untouched.
+ */
+function encryptionSecret() {
+  return process.env.ENCRYPTION_KEY || process.env.JWT_SECRET!;
+}
+
+function decryptWith(secret: string, hexCiphertext: string) {
+  const { key, iv } = deriveLegacyKeyIv(secret);
   const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  const out = Buffer.concat([decipher.update(hexCiphertext, 'hex'), decipher.final()]);
+  const out = Buffer.concat([
+    decipher.update(hexCiphertext, 'hex'),
+    decipher.final(),
+  ]);
   return out.toString('utf8');
 }
 
+export function decrypt_legacy_using_IV(hexCiphertext: string) {
+  try {
+    return decryptWith(encryptionSecret(), hexCiphertext);
+  } catch (err) {
+    // Rows written before ENCRYPTION_KEY was introduced are under JWT_SECRET.
+    // Try that once so introducing the split does not orphan existing data;
+    // re-encryption happens naturally as those records are next written.
+    if (
+      process.env.ENCRYPTION_KEY &&
+      process.env.JWT_SECRET &&
+      process.env.ENCRYPTION_KEY !== process.env.JWT_SECRET
+    ) {
+      return decryptWith(process.env.JWT_SECRET, hexCiphertext);
+    }
+
+    throw err;
+  }
+}
+
 export function encrypt_legacy_using_IV(utf8Plaintext: string) {
-  const { key, iv } = deriveLegacyKeyIv(process.env.JWT_SECRET);
+  const { key, iv } = deriveLegacyKeyIv(encryptionSecret());
   const cipher = crypto.createCipheriv(algorithm, key, iv);
   const out = Buffer.concat([cipher.update(utf8Plaintext, 'utf8'), cipher.final()]);
   return out.toString('hex');
