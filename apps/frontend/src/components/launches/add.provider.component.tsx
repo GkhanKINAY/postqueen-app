@@ -110,6 +110,7 @@ export const UrlModal: FC<{
   gotoUrl(url: string): void;
 }> = (props) => {
   const { gotoUrl } = props;
+  const modals = useModals();
   const methods = useForm({
     mode: 'onChange',
   });
@@ -123,7 +124,7 @@ export const UrlModal: FC<{
     <div className="rounded-[4px] border border-customColor6 bg-sixth px-[16px] pb-[16px] relative">
       <TopTitle title={`Instance URL`} />
       <button
-        onClick={close}
+        onClick={() => modals.closeCurrent()}
         className="outline-none absolute end-[20px] top-[20px] mantine-UnstyledButton-root mantine-ActionIcon-root hover:bg-tableBorder cursor-pointer mantine-Modal-close mantine-1dcetaa"
         type="button"
       >

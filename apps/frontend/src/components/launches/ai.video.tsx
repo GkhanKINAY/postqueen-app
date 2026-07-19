@@ -45,6 +45,11 @@ export const Modal: FC<{
 
     const customParams = form.getValues();
     if (!(await form.trigger())) {
+      // The modal is already closed and the editor locked by this point, so
+      // returning without clearing both leaves the whole composer disabled
+      // with no way back except reloading and losing the draft.
+      setLocked(false);
+      setLoading(false);
       toaster.show('Please fill all required fields', 'warning');
       return;
     }

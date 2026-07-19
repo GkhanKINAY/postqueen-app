@@ -94,7 +94,6 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
 
   const loadMessages = useCallback(async (idToSet: string) => {
     const data = await (await fetch(`/copilot/${idToSet}/list`)).json();
-    console.log(data);
     setMessages(
       data.messages.map((p: any) => {
         return new TextMessage({
@@ -357,7 +356,7 @@ const OpenModal: FC<{
   }, []);
   return (
     <div onClick={() => respond('continue')}>
-      Opening manually ${JSON.stringify(args)}
+      Opening the composer…
     </div>
   );
 };
