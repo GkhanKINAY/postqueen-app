@@ -26,14 +26,36 @@ import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
+import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 
 @ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
   constructor(
     private _authService: AuthService,
-    private _emailService: EmailService
+    private _emailService: EmailService,
+    private _abuseGuardService: AbuseGuardService
   ) {}
+
+  /**
+   * These routes are unauthenticated and were entirely unthrottled: the global
+   * throttler short-circuits everything except the public posts endpoint. That
+   * left credential stuffing on /login and mail bombing through /register and
+   * /forgot with no ceiling at all.
+   */
+  private async isAbusive(
+    action: 'login' | 'register' | 'forgot',
+    email: string,
+    ip: string
+  ) {
+    const decision = await this._abuseGuardService.challenge({
+      action,
+      email,
+      ip,
+    });
+
+    return !decision.allow;
+  }
 
   @Get('/can-register')
   async canRegister() {
@@ -50,6 +72,13 @@ export class AuthController {
     @RealIP() ip: string,
     @UserAgent() userAgent: string
   ) {
+    if (await this.isAbusive('register', body.email, ip)) {
+      response
+        .status(429)
+        .send('Too many requests, please try again later');
+      return;
+    }
+
     try {
       const getOrgFromCookie = this._authService.getOrgFromCookie(
         req?.cookies?.org
@@ -124,6 +153,13 @@ export class AuthController {
     @RealIP() ip: string,
     @UserAgent() userAgent: string
   ) {
+    if (await this.isAbusive('login', body.email, ip)) {
+      response
+        .status(429)
+        .send('Too many requests, please try again later');
+      return;
+    }
+
     try {
       const getOrgFromCookie = this._authService.getOrgFromCookie(
         req?.cookies?.org
@@ -181,9 +217,11 @@ export class AuthController {
   }
 
   @Post('/forgot')
-  async forgot(@Body() body: ForgotPasswordDto) {
+  async forgot(@Body() body: ForgotPasswordDto, @RealIP() ip: string) {
     try {
-      await this._authService.forgot(body.email);
+      if (!(await this.isAbusive('forgot', body.email, ip))) {
+        await this._authService.forgot(body.email);
+      }
       return {
         forgot: true,
       };

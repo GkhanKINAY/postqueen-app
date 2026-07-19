@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
-export type GuardAction = 'otp_request' | 'otp_verify';
+export type GuardAction =
+  | 'otp_request'
+  | 'otp_verify'
+  | 'login'
+  | 'register'
+  | 'forgot';
 
 export interface GuardChallengeInput {
   action: GuardAction;
@@ -73,6 +78,21 @@ export class AbuseGuardService {
       otp_verify: {
         email: int('GUARD_OTP_VERIFY_EMAIL', 10),
         ip: int('GUARD_OTP_VERIFY_IP', 60),
+      },
+      // Deliberately loose: these guard against credential stuffing and mail
+      // bombing, not against a person mistyping their password. A shared office
+      // NAT should never hit the IP ceiling in normal use.
+      login: {
+        email: int('GUARD_LOGIN_EMAIL', 20),
+        ip: int('GUARD_LOGIN_IP', 60),
+      },
+      register: {
+        email: int('GUARD_REGISTER_EMAIL', 5),
+        ip: int('GUARD_REGISTER_IP', 20),
+      },
+      forgot: {
+        email: int('GUARD_FORGOT_EMAIL', 5),
+        ip: int('GUARD_FORGOT_IP', 20),
       },
     };
   }
