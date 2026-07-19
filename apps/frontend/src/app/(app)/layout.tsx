@@ -29,6 +29,20 @@ import {
   THEME_COOKIE,
 } from '@gitroom/frontend/components/layout/theme';
 
+/**
+ * Domain reported to the analytics providers. Taken from this deployment rather
+ * than hardcoded: with a fixed value, a self-hosted install that configured its
+ * own Plausible or DataFast account reported its traffic under the vendor's
+ * domain instead of its own.
+ */
+function analyticsDomain(): string {
+  try {
+    return new URL(process.env.FRONTEND_URL || '').hostname;
+  } catch {
+    return '';
+  }
+}
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const language = cookieStore.get(cookieName)?.value || fallbackLng;
@@ -43,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {!!process.env.DATAFAST_WEBSITE_ID && (
           <Script
             data-website-id={process.env.DATAFAST_WEBSITE_ID}
-            data-domain="postqueen.ai"
+            data-domain={analyticsDomain()}
             src="https://datafa.st/js/script.js"
             strategy="afterInteractive"
           />
@@ -66,6 +80,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
+          legalUrl={process.env.LEGAL_URL || process.env.FRONTEND_URL!}
           isGeneral={!!process.env.IS_GENERAL}
           genericOauth={!!process.env.POSTQUEEN_GENERIC_OAUTH}
           oauthLogoUrl={process.env.NEXT_PUBLIC_POSTQUEEN_OAUTH_LOGO_URL!}
@@ -101,9 +116,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <DubAnalytics />
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            <Plausible
-              domain="postqueen.ai"
-            >
+            <Plausible domain={analyticsDomain()}>
               <PHProvider
                 phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
                 host={process.env.NEXT_PUBLIC_POSTHOG_HOST}

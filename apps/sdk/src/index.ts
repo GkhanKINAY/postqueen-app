@@ -15,7 +15,8 @@ function toQueryString(obj: Record<string, any>): string {
 export default class PostQueen {
   constructor(
     private _apiKey: string,
-    private _path = 'https://api.postqueen.ai'
+    // Override for self-hosted installs: new PostQueen(key, 'https://your-host/api')
+    private _path = process.env.POSTQUEEN_API_URL || 'https://api.postqueen.ai'
   ) {}
 
   async post(posts: CreatePostDto) {

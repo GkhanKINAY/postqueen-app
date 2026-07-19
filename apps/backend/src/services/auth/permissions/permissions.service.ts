@@ -143,8 +143,8 @@ export class PermissionsService {
       }
 
       if (
-        section === Sections.FEATURED_BY_GITROOM &&
-        options.featured_by_gitroom
+        section === Sections.FEATURED &&
+        options.featured
       ) {
         can(action, section);
         continue;

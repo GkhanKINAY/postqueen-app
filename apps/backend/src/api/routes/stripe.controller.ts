@@ -5,7 +5,11 @@ import {
   RawBodyRequest,
   Req,
 } from '@nestjs/common';
-import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import {
+  LEGACY_SUBSCRIPTION_SERVICE_TAGS,
+  StripeService,
+  SUBSCRIPTION_SERVICE_TAG,
+} from '@gitroom/nestjs-libraries/services/stripe.service';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Stripe')
@@ -24,13 +28,18 @@ export class StripeController {
       process.env.STRIPE_SIGNING_KEY
     );
 
-    // Maybe it comes from another stripe webhook
-    if (
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      event?.data?.object?.metadata?.service !== 'gitroom' &&
-      event.type !== 'invoice.payment_succeeded'
-    ) {
+    // One Stripe account can serve several integrations, so ignore anything we
+    // did not create. The legacy tags matter for installs migrated from
+    // upstream: their existing subscriptions still carry the old value, and
+    // dropping them here would silently stop processing their renewals.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const service = event?.data?.object?.metadata?.service;
+    const isOurs =
+      service === SUBSCRIPTION_SERVICE_TAG ||
+      LEGACY_SUBSCRIPTION_SERVICE_TAGS.includes(service);
+
+    if (!isOurs && event.type !== 'invoice.payment_succeeded') {
       return { ok: true };
     }
 

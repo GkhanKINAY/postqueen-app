@@ -9,6 +9,30 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# Checks run BEFORE any substitution. Steps 1 and 9 tokenize and restore the
+# vendored @postiz/wallets name, so anything that can exit in between would
+# leave those placeholders written to disk.
+#
+# These are functional identifiers, not branding. The Stripe tag decides whether
+# a webhook event is processed at all: if a merge reintroduces the upstream
+# literal while the webhook expects ours, subscription events are dropped and
+# nothing errors. Assert rather than substitute — if upstream restructures this,
+# stop and let a human look instead of rewriting code we no longer recognise.
+if grep -q "service: 'gitroom'" libraries/nestjs-libraries/src/services/stripe.service.ts; then
+  echo "ERROR: upstream reintroduced the literal Stripe service tag." >&2
+  echo "       Restore SUBSCRIPTION_SERVICE_TAG in stripe.service.ts before deploying," >&2
+  echo "       or subscription webhooks will be silently ignored." >&2
+  exit 1
+fi
+# Source only: dist/ and .next/ hold stale compiled copies that would trip this
+# on every run without meaning anything.
+if grep -rq "featured_by_gitroom" apps libraries \
+     --include='*.ts' --include='*.tsx' \
+     --exclude-dir=dist --exclude-dir=.next --exclude-dir=node_modules; then
+  echo "ERROR: upstream reintroduced featured_by_gitroom; rename it to 'featured'." >&2
+  exit 1
+fi
+
 # Text files under git, minus protected paths.
 FILES=$(git ls-files -- . \
   ':!README.md' ':!CHANGELOG.md' ':!LICENSE' \

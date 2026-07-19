@@ -15,8 +15,31 @@ const localize = false;
 
 const merge = isDev ? devManifest : ({} as ManifestV3Export);
 
+const frontendUrl =
+  import.meta.env?.FRONTEND_URL || process?.env?.FRONTEND_URL || '';
+
+/**
+ * The page origins allowed to talk to this extension. Derived from FRONTEND_URL
+ * rather than hardcoded, so a self-hosted build trusts its own domain — with a
+ * fixed list, the extension only ever worked against the vendor's deployment.
+ */
+function externallyConnectableMatches(): string[] {
+  const matches = ['http://localhost/*', 'https://localhost/*'];
+  try {
+    const { hostname } = new URL(frontendUrl);
+    if (hostname && hostname !== 'localhost') {
+      matches.push(`https://${hostname}/*`, `https://*.${hostname}/*`);
+    }
+  } catch {
+    // FRONTEND_URL unset or malformed: localhost-only, which fails loudly in
+    // development rather than silently trusting somebody else's domain.
+  }
+  return matches;
+}
+
 export const baseManifest = {
   ...manifest,
+  externally_connectable: { matches: externallyConnectableMatches() },
   host_permissions: [
     import.meta.env?.FRONTEND_URL || process?.env?.FRONTEND_URL + '/*',
     (import.meta.env?.NEXT_PUBLIC_BACKEND_URL || process?.env?.NEXT_PUBLIC_BACKEND_URL || '') + '/*',

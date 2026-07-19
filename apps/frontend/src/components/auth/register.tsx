@@ -90,7 +90,7 @@ export function RegisterAfter({
   provider: string;
 }) {
   const t = useT();
-  const { billingEnabled, passwordlessLogin } = useVariables();
+  const { billingEnabled, passwordlessLogin, legalUrl } = useVariables();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<AuthStep>('method');
   const router = useRouter();
@@ -188,7 +188,7 @@ export function RegisterAfter({
         )}
         &nbsp;
         <a
-          href={`https://postqueen.ai/terms`}
+          href={`${legalUrl}/terms-of-service`}
           className="underline hover:font-bold text-newTextColor"
           rel="nofollow"
         >
@@ -197,7 +197,7 @@ export function RegisterAfter({
         &nbsp;
         {t('and', 'and')}&nbsp;
         <a
-          href={`https://postqueen.ai/privacy`}
+          href={`${legalUrl}/privacy-policy`}
           rel="nofollow"
           className="underline hover:font-bold text-newTextColor"
         >

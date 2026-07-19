@@ -14,6 +14,21 @@ import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
 
+/**
+ * Stamped on every subscription this app creates. The webhook uses it to ignore
+ * events from other integrations that share the same Stripe account, so the
+ * value written here and the value accepted there must always agree — if they
+ * drift apart, subscription events are silently discarded and nothing errors.
+ */
+export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
+
+/**
+ * Tags this app used to write. An install that migrated from upstream still has
+ * live subscriptions carrying the old value, and their renewals have to keep
+ * being processed, so the webhook accepts these too. Never write them.
+ */
+export const LEGACY_SUBSCRIPTION_SERVICE_TAGS = ['gitroom'];
+
 @Injectable()
 export class StripeService {
   constructor(
@@ -321,7 +336,7 @@ export class StripeService {
     if (sub.cancel_at_period_end) {
       const { cancel_at } = await stripe.subscriptions.update(sub.id, {
         cancel_at_period_end: false,
-        metadata: { service: 'gitroom', id },
+        metadata: { service: SUBSCRIPTION_SERVICE_TAG, id },
       });
 
       return {
@@ -351,7 +366,7 @@ export class StripeService {
     // Payment succeeded — cancel at end of billing period
     const { cancel_at } = await stripe.subscriptions.update(sub.id, {
       cancel_at_period_end: true,
-      metadata: { service: 'gitroom', id },
+      metadata: { service: SUBSCRIPTION_SERVICE_TAG, id },
     });
 
     return {
@@ -471,7 +486,7 @@ export class StripeService {
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
-          service: 'gitroom',
+          service: SUBSCRIPTION_SERVICE_TAG,
           ...body,
           userId,
           uniqueId,
@@ -535,7 +550,7 @@ export class StripeService {
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
-          service: 'gitroom',
+          service: SUBSCRIPTION_SERVICE_TAG,
           ...body,
           userId,
           uniqueId,
@@ -821,7 +836,7 @@ export class StripeService {
       await stripe.subscriptions.update(currentUserSubscription.data[0].id, {
         cancel_at_period_end: false,
         metadata: {
-          service: 'gitroom',
+          service: SUBSCRIPTION_SERVICE_TAG,
           ...body,
           userId,
           id,

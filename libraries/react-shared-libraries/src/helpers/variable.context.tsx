@@ -15,6 +15,12 @@ interface VariableContextInterface {
   cloudflareUrl: string;
   mainUrl: string;
   frontEndUrl: string;
+  /**
+   * Where this deployment publishes its Terms and Privacy pages. Separate
+   * from frontEndUrl because the app and the marketing site can live on
+   * different hosts; falls back to frontEndUrl when unset.
+   */
+  legalUrl: string;
   plontoKey: string;
   storageProvider: 'local' | 'cloudflare';
   backendUrl: string;
@@ -50,6 +56,7 @@ const VariableContext = createContext({
   cloudflareUrl: '',
   mainUrl: '',
   frontEndUrl: '',
+  legalUrl: '',
   storageProvider: 'local',
   plontoKey: '',
   backendUrl: '',

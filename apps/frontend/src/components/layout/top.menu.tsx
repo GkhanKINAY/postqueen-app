@@ -247,7 +247,11 @@ export const useMenuItem = () => {
           />
         </svg>
       ),
-      path: 'https://affiliate.postqueen.ai',
+      // An affiliate programme belongs to whoever runs the install, so this is
+      // hidden unless one is configured. It used to point at the vendor's
+      // programme, which sent every self-hosted deployment's users there.
+      path: process.env.NEXT_PUBLIC_AFFILIATE_URL || '',
+      hide: !process.env.NEXT_PUBLIC_AFFILIATE_URL,
       role: ['ADMIN', 'SUPERADMIN', 'USER'],
       requireBilling: true,
     },

@@ -6,10 +6,31 @@ const EXTENSION_VERSION = '2.0.0';
 const REFRESH_ALARM_NAME = 'cookie-refresh';
 const STORAGE_KEY = 'refreshEntries';
 
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^https?:\/\/localhost(:\d+)?$/,
-  /^https?:\/\/([a-z0-9-]+\.)*postqueen\.ai$/,
-];
+/**
+ * Origins allowed to message this extension. Built from FRONTEND_URL at build
+ * time instead of a fixed list: hardcoding the vendor's domain meant every
+ * self-hosted deployment was rejected with "Unauthorized origin" and had no
+ * setting to fix it.
+ */
+function buildAllowedOriginPatterns(): RegExp[] {
+  const patterns = [/^https?:\/\/localhost(:\d+)?$/];
+  const frontendUrl = import.meta.env?.FRONTEND_URL || '';
+
+  try {
+    const { hostname } = new URL(frontendUrl);
+    if (hostname && hostname !== 'localhost') {
+      const escaped = hostname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      patterns.push(new RegExp(`^https?://([a-z0-9-]+\\.)*${escaped}$`));
+    }
+  } catch {
+    // Unset or malformed: trust only localhost. Better to refuse than to
+    // accept an origin nobody configured.
+  }
+
+  return patterns;
+}
+
+const ALLOWED_ORIGIN_PATTERNS = buildAllowedOriginPatterns();
 
 function isOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return false;

@@ -6,7 +6,7 @@ export interface PricingInnerInterface {
   posts_per_month: number;
   team_members: boolean;
   community_features: boolean;
-  featured_by_gitroom: boolean;
+  featured: boolean;
   ai: boolean;
   import_from_channels: boolean;
   image_generator?: boolean;
@@ -29,7 +29,7 @@ export const pricing: PricingInterface = {
     posts_per_month: 0,
     team_members: false,
     community_features: false,
-    featured_by_gitroom: false,
+    featured: false,
     ai: false,
     import_from_channels: false,
     image_generator: false,
@@ -48,7 +48,7 @@ export const pricing: PricingInterface = {
     team_members: false,
     ai: true,
     community_features: false,
-    featured_by_gitroom: false,
+    featured: false,
     import_from_channels: true,
     image_generator: false,
     public_api: true,
@@ -65,7 +65,7 @@ export const pricing: PricingInterface = {
     image_generation_count: 100,
     community_features: true,
     team_members: true,
-    featured_by_gitroom: true,
+    featured: true,
     ai: true,
     import_from_channels: true,
     image_generator: true,
@@ -83,7 +83,7 @@ export const pricing: PricingInterface = {
     image_generation_count: 300,
     community_features: true,
     team_members: true,
-    featured_by_gitroom: true,
+    featured: true,
     ai: true,
     import_from_channels: true,
     image_generator: true,
@@ -101,7 +101,7 @@ export const pricing: PricingInterface = {
     image_generation_count: 500,
     community_features: true,
     team_members: true,
-    featured_by_gitroom: true,
+    featured: true,
     ai: true,
     import_from_channels: true,
     image_generator: true,
