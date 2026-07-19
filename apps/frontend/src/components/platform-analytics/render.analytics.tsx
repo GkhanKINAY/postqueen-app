@@ -5,6 +5,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
 interface AnalyticsDataItem {
   label: string;
@@ -194,6 +195,8 @@ export const RenderAnalytics: FC<{
     revalidateOnMount: true,
   });
 
+  const toast = useToaster();
+
   const refreshChannel = useCallback(
     (
         integrationData: Integration & {
@@ -209,6 +212,18 @@ export const RenderAnalytics: FC<{
             }
           )
         ).json();
+
+        // The endpoint answers { err: true } with no url when generateAuthUrl
+        // throws — bad or missing provider credentials, or the provider being
+        // unreachable. Navigating anyway sent the user to /undefined.
+        if (!url) {
+          toast.show(
+            'Could not connect to the platform, please try again later',
+            'warning'
+          );
+          return;
+        }
+
         window.location.href = url;
       },
     []

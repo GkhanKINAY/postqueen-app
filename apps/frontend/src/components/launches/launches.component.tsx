@@ -452,6 +452,18 @@ export const LaunchesComponent = () => {
             }
           )
         ).json();
+
+        // The endpoint answers { err: true } with no url when generateAuthUrl
+        // throws — bad or missing provider credentials, or the provider being
+        // unreachable. Navigating anyway sent the user to /undefined.
+        if (!url) {
+          toast.show(
+            'Could not connect to the platform, please try again later',
+            'warning'
+          );
+          return;
+        }
+
         window.location.href = url;
       },
     []
