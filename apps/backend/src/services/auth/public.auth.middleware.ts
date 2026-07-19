@@ -37,7 +37,7 @@ export class PublicAuthMiddleware implements NestMiddleware {
         }
 
         // @ts-ignore
-        req.org = { ...org, users: [{ users: { role: 'SUPERADMIN' } }] };
+        req.org = { ...org, users: [{ role: 'SUPERADMIN' }] };
       } else {
         const org = await this._organizationService.getOrgByApiKey(auth);
         if (!org) {
@@ -55,7 +55,7 @@ export class PublicAuthMiddleware implements NestMiddleware {
         }
 
         // @ts-ignore
-        req.org = { ...org, users: [{ users: { role: 'SUPERADMIN' } }] };
+        req.org = { ...org, users: [{ role: 'SUPERADMIN' }] };
       }
     } catch (err) {
       throw new HttpForbiddenException();
