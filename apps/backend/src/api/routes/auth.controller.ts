@@ -259,15 +259,16 @@ export class AuthController {
   async resendActivation(@Body() body: ResendActivationDto) {
     try {
       await this._authService.resendActivationEmail(body.email);
-      return {
-        success: true,
-      };
-    } catch (e: any) {
-      return {
-        success: false,
-        message: e.message,
-      };
+    } catch (e) {
+      // Swallowed on purpose. Reporting "user not found" versus "already
+      // activated" versus success turned this route into a three-way oracle on
+      // whether an address has an account and whether it is active. /auth/forgot
+      // already answers uniformly; this now matches it.
     }
+
+    return {
+      success: true,
+    };
   }
 
   @Post('/oauth/:provider/exists')

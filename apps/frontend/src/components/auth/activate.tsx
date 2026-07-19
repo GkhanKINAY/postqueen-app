@@ -12,7 +12,7 @@ type ResendInputs = {
   email: string;
 };
 
-type ResendStatus = 'idle' | 'sent' | 'already_activated';
+type ResendStatus = 'idle' | 'sent';
 
 const COOLDOWN_SECONDS = 60;
 
@@ -50,11 +50,9 @@ export function Activate() {
       if (result.success) {
         setStatus('sent');
         setCooldown(COOLDOWN_SECONDS);
-      } else if (result.message === 'Account is already activated') {
-        setStatus('already_activated');
       } else {
         form.setError('email', {
-          message: result.message || t('failed_to_resend', 'Failed to resend activation email'),
+          message: t('failed_to_resend', 'Failed to resend activation email'),
         });
       }
     } catch (e) {
@@ -107,20 +105,6 @@ export function Activate() {
               </Button>
             )}
           </div>
-        ) : status === 'already_activated' ? (
-          <div className="flex flex-col gap-4">
-            <div className="text-green-400">
-              {t(
-                'account_already_activated',
-                'Great news! Your account is already activated.'
-              )}
-            </div>
-            <Link href="/auth/login">
-              <Button className="rounded-[10px] !h-[52px] w-full">
-                {t('go_to_login', 'Go to Login')}
-              </Button>
-            </Link>
-          </div>
         ) : (
           <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -144,14 +128,12 @@ export function Activate() {
             </form>
           </FormProvider>
         )}
-        {status !== 'already_activated' && (
-          <p className="mt-4 text-sm text-textColor">
-            {t('already_activated', 'Already activated?')}&nbsp;
-            <Link href="/auth/login" className="underline cursor-pointer">
-              {t('sign_in', 'Sign In')}
-            </Link>
-          </p>
-        )}
+        <p className="mt-4 text-sm text-textColor">
+          {t('already_activated', 'Already activated?')}&nbsp;
+          <Link href="/auth/login" className="underline cursor-pointer">
+            {t('sign_in', 'Sign In')}
+          </Link>
+        </p>
       </div>
     </div>
   );
