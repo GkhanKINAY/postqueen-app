@@ -124,6 +124,13 @@ export class AuthService {
     let isNew = false;
 
     if (!user) {
+      // Only the account-creation branch is gated; an existing user signing in
+      // never reaches it. Without this the flag was cosmetic — the signup page
+      // said registration was closed while this route happily created accounts.
+      if (!(await this.canRegister(Provider.LOCAL))) {
+        throw new Error('Registration is disabled');
+      }
+
       const prefix = email.split('@')[0] || '';
       const company = prefix.length >= 3 ? prefix.slice(0, 64) : 'Workspace';
       const create = await this._organizationService.createOrgAndUser(
