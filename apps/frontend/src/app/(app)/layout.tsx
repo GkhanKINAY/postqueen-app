@@ -28,6 +28,7 @@ import {
   resolveTheme,
   THEME_COOKIE,
 } from '@gitroom/frontend/components/layout/theme';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 /**
  * Domain reported to the analytics providers. Taken from this deployment rather
@@ -79,7 +80,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           stripeClient={process.env.STRIPE_PUBLISHABLE_KEY!}
           isChatBase={!!process.env.CHATBASE_TOKEN}
           chatbaseBotId={process.env.CHATBASE_BOT_ID || ''}
-          billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          billingEnabled={isBillingEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}

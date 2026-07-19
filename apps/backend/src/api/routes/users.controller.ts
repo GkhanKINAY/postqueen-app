@@ -34,6 +34,7 @@ import {
   AuthorizationActions,
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @ApiTags('User')
 @Controller('/user')
@@ -110,21 +111,21 @@ export class UsersController {
     return {
       ...user,
       orgId: organization.id,
-      totalChannels: !process.env.STRIPE_PUBLISHABLE_KEY
+      totalChannels: !isBillingEnabled()
         ? 10000
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
       tier:
         // @ts-ignore
         organization?.subscription?.subscriptionTier ||
-        (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE'),
+        (!isBillingEnabled() ? 'ULTIMATE' : 'FREE'),
       // @ts-ignore
       role: organization?.users[0]?.role,
       // @ts-ignore
       isLifetime: !!organization?.subscription?.isLifetime,
       admin: !!user.isSuperAdmin,
       impersonate: !!impersonate,
-      isTrailing: !process.env.STRIPE_PUBLISHABLE_KEY
+      isTrailing: !isBillingEnabled()
         ? false
         : organization?.isTrailing,
       allowTrial: organization?.allowTrial,

@@ -25,6 +25,7 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.function.dto';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @ApiTags('Media')
 @Controller('/media')
@@ -57,7 +58,7 @@ export class MediaController {
     isPicturePrompt = false
   ) {
     const total = await this._subscriptionService.checkCredits(org);
-    if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
+    if (isBillingEnabled() && total.credits <= 0) {
       return false;
     }
 

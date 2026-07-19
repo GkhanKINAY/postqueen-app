@@ -13,6 +13,7 @@ import {
   resolveTheme,
   THEME_COOKIE,
 } from '@gitroom/frontend/components/layout/theme';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const mode = resolveTheme((await cookies()).get(THEME_COOKIE)?.value);
@@ -33,7 +34,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           environment={process.env.NODE_ENV!}
           backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL!}
           plontoKey={process.env.NEXT_PUBLIC_POLOTNO!}
-          billingEnabled={!!process.env.STRIPE_PUBLISHABLE_KEY}
+          billingEnabled={isBillingEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}

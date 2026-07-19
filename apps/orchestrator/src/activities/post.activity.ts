@@ -23,6 +23,7 @@ import {
   postId as postIdSearchParam,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
 function slimPost(post: any) {
@@ -112,7 +113,7 @@ export class PostActivity {
 
   @ActivityMethod()
   async getPost(orgId: string, postId: string) {
-    if (process.env.STRIPE_SECRET_KEY) {
+    if (isBillingEnabled()) {
       const subscription = await this._subscriptionService.getSubscription(
         orgId
       );
@@ -130,7 +131,7 @@ export class PostActivity {
 
   @ActivityMethod()
   async getPostsList(orgId: string, postId: string) {
-    if (process.env.STRIPE_SECRET_KEY) {
+    if (isBillingEnabled()) {
       const subscription = await this._subscriptionService.getSubscription(
         orgId
       );
@@ -206,7 +207,7 @@ export class PostActivity {
 
   @ActivityMethod()
   async postSocial(integration: Integration, posts: Post[]) {
-    if (process.env.STRIPE_SECRET_KEY) {
+    if (isBillingEnabled()) {
       const subscription = await this._subscriptionService.getSubscription(
         integration.organizationId
       );
