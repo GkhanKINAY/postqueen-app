@@ -407,12 +407,26 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       }
 
       if (!dummy) {
-        addEditSets
-          ? addEditSets(data)
+        const response = addEditSets
+          ? (addEditSets(data), undefined)
           : await fetch('/posts', {
               method: 'POST',
               body: JSON.stringify(data),
             });
+
+        // The result used to be discarded, so a rejected save — over the monthly
+        // post cap, or failing server-side validation — still showed "Added
+        // successfully" and closed the editor, losing everything the user wrote.
+        if (response && !response.ok) {
+          const reason = await response.text().catch(() => '');
+          setLoading(false);
+          toaster.show(
+            reason ||
+              t('post_save_failed', 'Could not save the post, please try again'),
+            'warning'
+          );
+          return;
+        }
 
         if (!addEditSets) {
           mutate();

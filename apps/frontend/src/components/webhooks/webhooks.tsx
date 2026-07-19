@@ -198,9 +198,8 @@ export const AddOrEditWebhook: FC<{
   );
   const sendTest = useCallback(async () => {
     const url = form.getValues('url');
-    toast.show(t('webhook_sent', 'Webhook send'), 'success');
     try {
-      await fetch(`/webhooks/send?url=${encodeURIComponent(url)}`, {
+      const response = await fetch(`/webhooks/send?url=${encodeURIComponent(url)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,8 +235,20 @@ export const AddOrEditWebhook: FC<{
           },
         ]),
       });
+
+      const result = await response.json().catch(() => ({ send: false }));
+
+      toast.show(
+        result?.send
+          ? t('webhook_sent', 'Webhook delivered')
+          : t('webhook_failed', 'The endpoint did not accept the test webhook'),
+        result?.send ? 'success' : 'warning'
+      );
     } catch (e: any) {
-      /** empty **/
+      toast.show(
+        t('webhook_failed', 'The endpoint did not accept the test webhook'),
+        'warning'
+      );
     }
   }, []);
 

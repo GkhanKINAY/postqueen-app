@@ -55,16 +55,24 @@ export class WebhookController {
 
   @Post('/send')
   async sendWebhook(@Body() body: any, @Query() query: OnlyURL) {
+    // The whole point of this button is to prove the endpoint works, so report
+    // what happened. It used to swallow every failure and answer send: true.
     try {
-      await fetch(query.url, {
+      const response = await fetch(query.url, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch (err) {
-      /** sent **/
-    }
 
-    return { send: true };
+      return {
+        send: response.ok,
+        status: response.status,
+      };
+    } catch (err) {
+      return {
+        send: false,
+        error: (err as Error)?.message || 'Could not reach the URL',
+      };
+    }
   }
 }
