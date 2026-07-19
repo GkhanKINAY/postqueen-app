@@ -473,6 +473,18 @@ export class OrganizationRepository {
       return false;
     }
 
+    const checkIfMemberExists =
+      await this._userOrg.model.userOrganization.findFirst({
+        where: {
+          userId,
+          organizationId: orgId,
+        },
+      });
+
+    if (checkIfMemberExists) {
+      return false;
+    }
+
     const duplicate = await this.findOrgMemberByEmailOfUser(orgId, userId);
     if (duplicate) {
       throw new Error('EMAIL_ALREADY_IN_ORG');
