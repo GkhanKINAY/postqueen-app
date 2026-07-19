@@ -19,7 +19,7 @@ services:
       # === Storage Settings
       STORAGE_PROVIDER: 'local'
       UPLOAD_DIRECTORY: '/uploads'
-      NEXT_PUBLIC_UPLOAD_DIRECTORY: '/uploads'
+      NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY: 'uploads'
 
       # === Cloudflare (R2) Settings
       # STORAGE_PROVIDER: 'cloudflare'
