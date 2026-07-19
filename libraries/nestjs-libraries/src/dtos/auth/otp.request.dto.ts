@@ -5,7 +5,8 @@ export class OtpRequestDto {
   @IsDefined()
   email: string;
 
-  // Cloudflare Turnstile / captcha token, verified by the Guard service.
+  // Cloudflare Turnstile token. Verified server-side when TURNSTILE_SECRET
+  // is set; ignored otherwise.
   @IsString()
   @IsOptional()
   captchaToken?: string;

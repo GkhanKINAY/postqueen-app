@@ -13,7 +13,7 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
-import { GuardService } from '@gitroom/nestjs-libraries/services/guard.service';
+import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +24,7 @@ export class AuthService {
     private _emailService: EmailService,
     private _providerManager: AuthProviderManager,
     private _otpService: OtpService,
-    private _guardService: GuardService
+    private _abuseGuardService: AbuseGuardService
   ) {}
 
   // Passwordless email-code login (cloud). Kept behind PASSWORDLESS_LOGIN so
@@ -40,7 +40,7 @@ export class AuthService {
 
     email = email.toLowerCase();
 
-    const decision = await this._guardService.challenge({
+    const decision = await this._abuseGuardService.challenge({
       action: 'otp_request',
       ip,
       email,
@@ -48,9 +48,9 @@ export class AuthService {
     });
     if (!decision.allow) {
       throw new Error(
-        decision.requireCaptcha
-          ? 'Please complete the verification and try again'
-          : 'Too many requests, please try again later'
+        decision.reason === 'rate_limited'
+          ? 'Too many requests, please try again later'
+          : 'Please complete the verification and try again'
       );
     }
 
@@ -79,19 +79,24 @@ export class AuthService {
     email: string,
     code: string,
     ip: string,
-    userAgent: string,
-    captchaToken?: string
+    userAgent: string
   ) {
     email = email.toLowerCase();
 
-    const decision = await this._guardService.challenge({
+    // Rate limiting only — the captcha is solved when the code is requested,
+    // and its token is single-use so none exists by this point. Guessing the
+    // code is separately capped at 5 attempts below.
+    const decision = await this._abuseGuardService.challenge({
       action: 'otp_verify',
       ip,
       email,
-      captchaToken,
     });
     if (!decision.allow) {
-      throw new Error('Verification blocked, please request a new code');
+      throw new Error(
+        decision.reason === 'rate_limited'
+          ? 'Too many attempts, please try again later'
+          : 'Verification blocked, please request a new code'
+      );
     }
 
     const record = await this._otpService.getLatestActive(

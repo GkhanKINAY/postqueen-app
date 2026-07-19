@@ -46,7 +46,7 @@ import { AdminStatsRepository } from '@gitroom/nestjs-libraries/database/prisma/
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
 import { OtpRepository } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.repository';
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
-import { GuardService } from '@gitroom/nestjs-libraries/services/guard.service';
+import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 
 @Global()
 @Module({
@@ -102,7 +102,7 @@ import { GuardService } from '@gitroom/nestjs-libraries/services/guard.service';
     AdminStatsService,
     OtpRepository,
     OtpService,
-    GuardService,
+    AbuseGuardService,
   ],
   get exports() {
     return this.providers;

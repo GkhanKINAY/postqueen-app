@@ -57,7 +57,7 @@ function ensureScript(): Promise<void> {
  * Cloudflare Turnstile widget (explicit render). Emits the token via `onToken`
  * on success, and an empty string on expiry/error so the caller can require a
  * fresh solve. Only rendered when a site key is configured; with no key the
- * whole widget is absent and the Guard service simply skips the captcha gate.
+ * whole widget is absent and the server skips the captcha gate.
  */
 export function TurnstileWidget({
   siteKey,

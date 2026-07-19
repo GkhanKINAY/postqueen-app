@@ -361,8 +361,7 @@ export class AuthController {
         body.email,
         body.code,
         ip,
-        userAgent,
-        body.captchaToken
+        userAgent
       );
 
       this.setAuthCookie(response, jwt);
