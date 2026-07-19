@@ -1,5 +1,6 @@
 import {
   Logger,
+  HttpStatus,
   Controller,
   Get,
   Post,
@@ -43,6 +44,9 @@ export class CopilotController {
       process.env.OPENAI_API_KEY === ''
     ) {
       Logger.warn('OpenAI API key not set, chat functionality will not work');
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        msg: 'AI features are not configured on this installation.',
+      });
       return;
     }
 
@@ -69,6 +73,9 @@ export class CopilotController {
       process.env.OPENAI_API_KEY === ''
     ) {
       Logger.warn('OpenAI API key not set, chat functionality will not work');
+      res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        msg: 'AI features are not configured on this installation.',
+      });
       return;
     }
     const mastra = await this._mastraService.mastra();
