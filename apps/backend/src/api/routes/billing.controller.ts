@@ -171,8 +171,22 @@ export class BillingController {
     return this._stripeService.cancelSubscription(org.id);
   }
 
+  /**
+   * These endpoints exist to back the Chatbase support agent's refund tool, but
+   * they are ordinary authenticated routes: with the widget switched off they
+   * were still reachable, letting any signed-in customer refund themselves and
+   * cancel their own subscription over the API. Refuse unless the integration
+   * that is meant to front them is actually configured.
+   */
+  private assertChatbaseEnabled() {
+    if (!process.env.CHATBASE_TOKEN) {
+      throw new HttpException('Not found', 404);
+    }
+  }
+
   @Get('/chatbase-refund/preview')
   chatbaseRefundPreview(@GetOrgFromRequest() org: Organization) {
+    this.assertChatbaseEnabled();
     return this._stripeService.chatbaseRefundPreview(org.id);
   }
 
@@ -181,6 +195,8 @@ export class BillingController {
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization
   ) {
+    this.assertChatbaseEnabled();
+
     const refund = await this._stripeService.chatbaseRefund(org.id);
 
     if (refund.refunded) {
