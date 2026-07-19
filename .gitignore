@@ -9,9 +9,12 @@ tmp
 # one `git add -A` away from a public repo.
 .env
 .env.*
-!.env.example
 **/.env
 **/.env.*
+# Negations must come last: git applies the final matching rule, so putting
+# this above the **/.env.* line would leave the example file ignored.
+!.env.example
+!**/.env.example
 # dependencies
 node_modules
 
