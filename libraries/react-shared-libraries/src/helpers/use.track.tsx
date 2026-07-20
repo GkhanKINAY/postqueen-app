@@ -3,6 +3,15 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useCallback } from 'react';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+
+// The Meta pixel installs itself on window; nothing in the app declares it, so
+// the read below has no type. The file this lives in only guards the call at
+// use time, which the compiler cannot see.
+declare global {
+  interface Window {
+    fbq?: (...args: any[]) => void;
+  }
+}
 export const useTrack = () => {
   const user = useUser();
   const fetch = useFetch();
