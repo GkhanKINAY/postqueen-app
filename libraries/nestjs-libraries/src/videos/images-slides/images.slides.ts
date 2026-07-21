@@ -132,7 +132,7 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
                 path.indexOf('http') === -1
                   ? process.env.FRONTEND_URL +
                     '/' +
-                    process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY +
+                    (process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads') +
                     path
                   : path,
             });

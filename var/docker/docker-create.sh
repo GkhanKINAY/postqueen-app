@@ -2,4 +2,4 @@
 
 docker kill postqueen || true 
 docker rm postqueen || true 
-docker create --name postqueen -p 3000:3000 -p 4200:4200 localhost/postqueen
+docker create --name postqueen -p 4007:5000 localhost/postqueen

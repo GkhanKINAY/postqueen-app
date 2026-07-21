@@ -181,7 +181,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
                       coverImageOptions: {
                         coverImageURL: `${
                           settings?.main_image?.path?.indexOf('http') === -1
-                            ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY}`
+                            ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/${process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads'}`
                             : ``
                         }${settings?.main_image?.path}`,
                       },

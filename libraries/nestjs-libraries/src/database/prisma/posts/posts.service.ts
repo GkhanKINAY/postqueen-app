@@ -364,7 +364,7 @@ export class PostsService {
                 m.path.indexOf('http') === -1
                   ? process.env.FRONTEND_URL +
                     '/' +
-                    process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY +
+                    (process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads') +
                     m.path
                   : m.path,
               type: 'image',
@@ -412,7 +412,7 @@ export class PostsService {
                   path.indexOf('http') === -1
                     ? process.env.FRONTEND_URL +
                       '/' +
-                      process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY +
+                      (process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads') +
                       path
                     : path,
                 type: 'image',
