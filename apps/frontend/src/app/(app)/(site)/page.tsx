@@ -6,8 +6,9 @@ export const metadata: Metadata = {
   description: '',
 };
 
-// The app home is the AI chat (Agents); the Calendar is one click away in the
-// rail. There was no root index before — the app fell through to /launches.
+// The app home is the Calendar (Launches), the primary scheduling workspace;
+// the Agent is one click away in the rail. proxy.ts already sends "/" to
+// /launches for general deployments — this keeps the fallback aligned.
 export default async function Page() {
-  return redirect('/agents');
+  return redirect('/launches');
 }
