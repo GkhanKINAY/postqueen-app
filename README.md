@@ -15,7 +15,7 @@
   <a href="https://postqueen.ai">Website</a> ·
   <a href="https://app.postqueen.ai">Live App</a> ·
   <a href="https://api.postqueen.ai/docs">API Reference</a> ·
-  <a href="https://github.com/GkhanKINAY/postqueen-docs">Docs</a> ·
+  <a href="https://docs.postqueen.ai">Docs</a> ·
   <a href="https://www.npmjs.com/package/postqueen">CLI</a>
 </p>
 
