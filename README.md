@@ -264,8 +264,14 @@ If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - Found a vulnerability? See [SECURITY.md](SECURITY.md)
 
+## 💜 Why we built PostQueen, and a thank you
+
+AI is moving faster every day, and we believe **agentic AI will be an indispensable part of daily life from 2030 onward**. We set out to build an agentic product of our own, in the spirit of tools like Chatbase and Wispr Flow.
+
+When we found that **Nevo David had open-sourced [Postiz](https://github.com/gitroomhq/postiz-app) under AGPL-3.0**, it was exactly the foundation we had been looking for. PostQueen builds on that foundation and grows it in its own direction: an AI assistant that writes, designs and schedules your social media for you. Our aim is a genuinely distinct product, not a fork with a paywall bolted on.
+
+So, from the bottom of our hearts: **thank you, Nevo David and the Postiz contributors**, for building something great and keeping it open. 🙏💜 We are proud to build on your work.
+
 ## License
 
-This repository's source code is available under the [AGPL-3.0 license](LICENSE).
-
-PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0). Huge thanks to Nevo David and the Postiz contributors for the foundation this project stands on. Original work © Nevo David / Gitroom and the Postiz contributors. Modifications © PostQueen.
+This repository's source code is available under the [AGPL-3.0 license](LICENSE). Original work © Nevo David / Gitroom and the Postiz contributors. Modifications © PostQueen.
