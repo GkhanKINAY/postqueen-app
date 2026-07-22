@@ -11,8 +11,9 @@
 <div align="center">
   <h2>The queen of your posts 👑</h2>
   <p>
-    She writes your best hooks, makes the visuals, and runs every social channel for you.<br/>
-    You say the word; she does the rest, and <strong>nothing goes out without your approval</strong>.
+    She writes your best hooks, makes the images, edits the videos, and lines everything up on your<br/>
+    calendar for the day and time you choose. You say the word; she does the rest, and
+    <strong>nothing goes out without your approval</strong>.
   </p>
   <p><em>An open-source alternative to Buffer, Hootsuite, Sprout Social and Later.</em></p>
 </div>
@@ -36,6 +37,10 @@
   <a href="https://github.com/GkhanKINAY/postqueen-app/commits/main"><img src="https://img.shields.io/github/commit-activity/m/GkhanKINAY/postqueen-app" alt="Commit activity"></a>
 </p>
 
+<p align="center">
+  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="46" alt="Start free for 7 days" /></a>
+</p>
+
 <br/>
 
 <p align="center">
@@ -44,26 +49,24 @@
 
 <p align="center">
   <a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a>
-  &nbsp;&nbsp;·&nbsp;&nbsp;
-  <a href="https://postqueen.ai/pricing"><strong>Start a 7-day free trial »</strong></a>
 </p>
-
-<br/>
-
-> PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0). Huge thanks to Nevo David and the Postiz contributors for the foundation this project stands on.
 
 ---
 
-## ✨ What PostQueen does for you
+## 👑 Everything PostQueen does for you
 
-- ✍️ **Writes the post.** Hooks, captions and threads in your voice, shaped for each platform.
-- 🎨 **Makes the visuals.** Generate images and short vertical videos with no design tools.
-- 📅 **Schedules everywhere.** One idea, tailored per channel, published across 30+ networks.
-- ✅ **Waits for your approval.** Every post lands in your queue to review, edit or delete first.
-- 📈 **Shows what works.** Post and audience analytics on the major networks.
-- 👥 **Brings your team.** Roles, comments, approvals and multi-brand workspaces.
+<p align="center">
+  <img src=".github/assets/features.svg" width="820" alt="PostQueen features: scheduling, AI assistant, AI design, AI video, auto actions, teamwork, analytics, marketplace" />
+</p>
 
-Run it as a managed cloud product with a 7-day free trial, or self-host the whole stack for free.
+- 📅 **Scheduling.** Plan every channel on one visual calendar; drag to reschedule, click to edit.
+- 🤖 **AI Assistant.** Generate hooks, captions and threads in your voice, shaped per platform.
+- 🎨 **AI Design.** A built-in, Canva-like editor plus AI image generation for post visuals.
+- 🎬 **AI Video.** Turn a photo and a script into a short vertical video for Reels, Shorts and TikTok.
+- ⚡ **Auto Actions (Plugs).** Auto repost, like and comment when a post hits a milestone.
+- 👥 **Teamwork.** Roles, comments, approvals and multi-brand workspaces for your whole team.
+- 📈 **Analytics.** Track post and audience performance on the major networks.
+- 🛒 **Marketplace.** Buy or exchange posts with other members.
 
 ---
 
@@ -77,20 +80,52 @@ You don't need to write a line of code. Connect PostQueen to the AI assistant yo
 
 > *"Make an image for this post and schedule it for Friday at 9am."*
 
-> *"What should I post today? Give me three ideas and queue the best one."*
+Your assistant writes it, designs it, and drops it into your **PostQueen queue**, where you review and approve before anything goes live.
 
-Your assistant writes it, designs it, and drops it into your **PostQueen queue**, where you review and approve before anything goes live. It talks to the tools you already use:
+> 🔑 **First, grab your API key** at **[app.postqueen.ai/settings](https://app.postqueen.ai/settings)** (Developers → Public API → Reveal).
 
-<p align="center">
-  <a href="https://postqueen.ai/claude-code"><b>Claude Code</b></a> &nbsp;·&nbsp;
-  <a href="https://postqueen.ai/chatgpt"><b>ChatGPT</b></a> &nbsp;·&nbsp;
-  <a href="https://postqueen.ai/cursor"><b>Cursor</b></a> &nbsp;·&nbsp;
-  <a href="https://postqueen.ai/openclaw"><b>OpenClaw</b></a> &nbsp;·&nbsp;
-  <a href="https://postqueen.ai/hermes-agent"><b>Hermes</b></a> &nbsp;·&nbsp;
-  <a href="https://postqueen.ai/codex"><b>Codex</b></a>
-</p>
+---
 
-> 🔑 **First, grab your API key** at **[app.postqueen.ai/settings](https://app.postqueen.ai/settings)** (Developers → Public API → Reveal). You will use it in every option below.
+## 🤝 Works with your AI
+
+This is what makes PostQueen different: **drive it from whatever AI you already talk to.** Every agent below connects over the same CLI and hosted MCP server.
+
+### 🟣 Claude Code
+
+Tell it, in plain English:
+
+> *"Schedule a tweet for tomorrow morning announcing our new feature, and attach the screenshot from `./assets/launch.png`."*
+
+Claude Code connects over the CLI or MCP and runs, under the hood:
+
+```bash
+postqueen integrations:list
+postqueen upload ./assets/launch.png
+postqueen posts:create \
+  -c "We just launched our new feature..." \
+  -m "<uploaded-url>" \
+  -s "2026-03-02T09:00:00Z" \
+  -i "<x-integration-id>"
+```
+
+The draft lands in your queue for approval. [Set up Claude Code »](https://postqueen.ai/claude-code)
+
+### 🦞 OpenClaw
+
+Message it from WhatsApp, Telegram, Slack or Discord:
+
+> *"Create 4 posts about fitness for TikTok, LinkedIn, X and Instagram and schedule them for this week."*
+
+It drafts all four, tailored per platform, and queues them for your approval. [Set up OpenClaw »](https://postqueen.ai/openclaw)
+
+### And the rest of your stack
+
+- **[ChatGPT](https://postqueen.ai/chatgpt):** draft in ChatGPT, then let PostQueen fan the result out to every channel.
+- **[Cursor](https://postqueen.ai/cursor):** manage your channels from the editor you build in, over the CLI or MCP.
+- **[Hermes](https://postqueen.ai/hermes-agent):** hand your posting pipeline to an agent that plans multi-step tasks end to end.
+- **[Codex](https://postqueen.ai/codex):** one prompt in, a scheduled week out.
+
+Not on the list? PostQueen's CLI and MCP server are model-agnostic, so **any MCP client or command-running agent works**: Gemini CLI, Aider, Cline, Warp, Windsurf, or your own.
 
 ---
 
@@ -116,15 +151,13 @@ claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/<YOUR_API
 }
 ```
 
-**ChatGPT:** Settings → Connectors → add a custom connector pointing at `https://api.postqueen.ai/mcp/<YOUR_API_KEY>`.
-
-Works with **Claude Code, ChatGPT, Cursor, OpenClaw, Hermes, Codex** and any other MCP client (Gemini CLI, Aider, Cline, Warp, or your own). Full guide: [postqueen.ai/mcp](https://postqueen.ai/mcp).
+**ChatGPT:** Settings → Connectors → add a custom connector pointing at `https://api.postqueen.ai/mcp/<YOUR_API_KEY>`. Full guide: [postqueen.ai/mcp](https://postqueen.ai/mcp).
 
 ---
 
 ## ⌨️ Agent CLI
 
-Prefer the terminal, or building an agent that runs commands? The `postqueen` CLI drives everything and returns clean JSON, so any model-agnostic agent can use it.
+Prefer the terminal, or building an agent that runs commands? The `postqueen` CLI drives everything and returns clean JSON.
 
 ```bash
 npm i -g postqueen
@@ -133,19 +166,13 @@ postqueen integrations:list   # your connected channels
 postqueen posts:create -c "Hello from PostQueen" -s "2026-01-01T09:00:00Z" -i <integration-id>
 ```
 
-Install it as a skill for terminal agents with `npx skills add GkhanKINAY/postqueen-agent`. Full command reference: [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent) and [postqueen.ai/agent](https://postqueen.ai/agent).
+Install it as a skill for terminal agents with `npx skills add GkhanKINAY/postqueen-agent`. Full reference: [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent).
 
----
+## 🤖 Build your own agent
 
-## 🤖 Build your own agent (agentic scheduling)
-
-Because every action in the app is also a public API call, you can point **your own** AI agent at PostQueen and let it plan, draft and schedule on its own, on a recurring schedule if you like. A "heartbeat" job can check a folder or a prompt, generate the week's posts, and queue them, all while a human stays in the loop: **nothing publishes until it is approved**. Start from the [Agent CLI](https://postqueen.ai/agent) or [MCP](https://postqueen.ai/mcp) guides.
-
----
+Because every action is a public API call, you can point **your own** agent at PostQueen and let it plan, draft and schedule on a recurring basis. A heartbeat job (a cron entry or an always-on loop) can wake up, decide what to post, and queue it, with a human still approving before anything ships. Start from the [Agent CLI](https://postqueen.ai/agent) or [MCP](https://postqueen.ai/mcp) guides.
 
 ## 🧩 Public API, SDK & n8n
-
-Everything the dashboard does is a REST call, so you can wire PostQueen into any stack:
 
 | Tool | What it is | Get started |
 | --- | --- | --- |
@@ -153,8 +180,6 @@ Everything the dashboard does is a REST call, so you can wire PostQueen into any
 | **NodeJS SDK** | Typed client for Node | [`@postqueen/node`](https://www.npmjs.com/package/@postqueen/node) |
 | **n8n node** | No-code automation node | [`n8n-nodes-postqueen`](https://www.npmjs.com/package/n8n-nodes-postqueen) |
 | **Webhooks** | Get notified when posts publish | [docs](https://docs.postqueen.ai) |
-
-A first request, listing your connected channels:
 
 ```bash
 curl https://api.postqueen.ai/public/v1/integrations \
@@ -181,11 +206,18 @@ LinkedIn and Instagram each support both personal and page/professional posting,
 
 ---
 
-## 🚀 Quick start
+## 🚀 Get started
 
-**☁️ Cloud.** Skip the setup, start a [7-day free trial](https://postqueen.ai/pricing), and you are posting in minutes.
+<p align="center">
+  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="52" alt="Start free for 7 days" /></a>
+</p>
 
-**🐳 Self-host.** The whole stack runs with Docker Compose:
+<p align="center">Skip the setup: connect your channels and schedule your first post in minutes.</p>
+
+<details>
+<summary><strong>🐳 Prefer to self-host? Free, with Docker Compose</strong></summary>
+
+<br/>
 
 ```bash
 git clone https://github.com/GkhanKINAY/postqueen-docker-compose
@@ -194,22 +226,14 @@ cd postqueen-docker-compose
 docker compose up -d       # then open http://localhost:4007
 ```
 
-- **Full guide:** the [Quick Start](https://docs.postqueen.ai/quickstart) covers cloud and self-host end to end.
-- **Kubernetes / Helm:** [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart).
-- **Configuration:** every environment variable is documented in the [configuration reference](https://docs.postqueen.ai/configuration/reference) and this repo's [`.env.example`](.env.example).
-- **Local development** of this repo: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Full [self-host guide](https://docs.postqueen.ai/quickstart), [Kubernetes / Helm](https://github.com/GkhanKINAY/postqueen-helmchart), and [configuration reference](https://docs.postqueen.ai/configuration/reference). Local development of this repo: [CONTRIBUTING.md](CONTRIBUTING.md).
+</details>
 
 ---
 
 ## 🧱 Tech stack
 
-- pnpm workspaces (monorepo)
-- [Next.js](https://nextjs.org) (React) for the frontend
-- [NestJS](https://nestjs.com) for the backend API
-- [Prisma](https://www.prisma.io) (default: PostgreSQL)
-- [Temporal](https://temporal.io) for scheduling and publishing workers
-- Redis for cache and queues
-- [Resend](https://resend.com) for email notifications
+pnpm workspaces (monorepo) · [Next.js](https://nextjs.org) (frontend) · [NestJS](https://nestjs.com) (backend) · [Prisma](https://www.prisma.io) (PostgreSQL) · [Temporal](https://temporal.io) (scheduling and publishing workers) · Redis (cache and queues) · [Resend](https://resend.com) (email).
 
 ---
 
@@ -244,4 +268,4 @@ If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find
 
 This repository's source code is available under the [AGPL-3.0 license](LICENSE).
 
-Original work © Nevo David / Gitroom and the Postiz contributors. Modifications © PostQueen.
+PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0). Huge thanks to Nevo David and the Postiz contributors for the foundation this project stands on. Original work © Nevo David / Gitroom and the Postiz contributors. Modifications © PostQueen.
