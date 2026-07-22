@@ -90,9 +90,9 @@ X · LinkedIn · Instagram · Facebook · TikTok · YouTube · Threads · Pinter
 </details>
 
 <details>
-<summary><strong>Community & chat (7)</strong></summary>
+<summary><strong>Community & chat (8)</strong></summary>
 
-Discord · Slack · Telegram · Mastodon · Twitch · Kick · MeWe
+Discord · Slack · Telegram · Mastodon · Twitch · Kick · MeWe · VK
 </details>
 
 <details>
@@ -102,9 +102,9 @@ WordPress · Medium · Dev.to · Hashnode · Tumblr · Listmonk
 </details>
 
 <details>
-<summary><strong>Web3 & decentralized (4)</strong></summary>
+<summary><strong>Web3 & decentralized (3)</strong></summary>
 
-Nostr · Farcaster · Lemmy · VK
+Nostr · Farcaster · Lemmy
 </details>
 
 <details>
