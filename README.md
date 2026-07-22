@@ -1,21 +1,21 @@
 <p align="center">
   <a href="https://postqueen.ai">
-    <img src=".github/assets/header.svg" width="840" alt="PostQueen: your AI social media assistant" />
+    <img src=".github/assets/header.svg" width="840" alt="PostQueen: the queen of your posts, your AI social media assistant" />
   </a>
 </p>
 
-<h3 align="center">🆕&nbsp; NEW: the PostQueen <a href="https://postqueen.ai/agent">Agent CLI</a> + <a href="https://postqueen.ai/mcp">MCP server</a>: plug Claude&nbsp;Code, ChatGPT, Cursor, OpenClaw, Hermes or Codex straight into your channels.</h3>
+<h3 align="center">🆕&nbsp; NEW: run your social media by talking to your AI. Plan, generate and schedule a whole month of content to 30+ networks just by asking, then review it all in a visual calendar.</h3>
 
 <br/>
 
 <div align="center">
-  <h2>The queen of your posts 👑</h2>
   <p>
-    She writes your best hooks, makes the images, edits the videos, and lines everything up on your<br/>
-    calendar for the day and time you choose. You say the word; she does the rest, and
-    <strong>nothing goes out without your approval</strong>.
+    <strong>Stop writing posts by hand.</strong> Tell PostQueen what is going on (a sale, a new product, a<br/>
+    milestone) and she finds the best hook, picks a photo with colors that fit your brand, writes it for<br/>
+    every platform, and lines it up on your calendar. A social media manager for you or your whole team,<br/>
+    a content creator or a business, that never sleeps.
   </p>
-  <p><em>An open-source alternative to Buffer, Hootsuite, Sprout Social and Later.</em></p>
+  <p><strong>PostQueen</strong>: an open-source alternative to <strong>Buffer, Hootsuite, Sprout Social, Later</strong> and more.</p>
 </div>
 
 <br/>
@@ -23,9 +23,10 @@
 <p align="center">
   <a href="https://postqueen.ai">Website</a> &nbsp;·&nbsp;
   <a href="https://postqueen.ai/pricing">Pricing</a> &nbsp;·&nbsp;
-  <a href="https://app.postqueen.ai/auth">Start free</a> &nbsp;·&nbsp;
   <a href="https://docs.postqueen.ai">Docs</a> &nbsp;·&nbsp;
   <a href="https://api.postqueen.ai/docs">API Reference</a> &nbsp;·&nbsp;
+  <a href="https://postqueen.ai/agent">Agents</a> &nbsp;·&nbsp;
+  <a href="https://postqueen.ai/mcp">MCP</a> &nbsp;·&nbsp;
   <a href="https://www.npmjs.com/package/postqueen">CLI</a>
 </p>
 
@@ -38,18 +39,18 @@
 </p>
 
 <p align="center">
-  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="46" alt="Start free on the cloud" /></a>
+  <img src=".github/assets/channels.svg" width="780" alt="Publishes to 30+ social networks" />
+</p>
+
+<p align="center">
+  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a>
   &nbsp;&nbsp;
-  <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="46" alt="Self-host it free" /></a>
-</p>
-
-<br/>
-
-<p align="center">
-  <img src=".github/assets/channels.svg" width="780" alt="Supported social networks" />
+  <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a>
 </p>
 
 <p align="center">
+  <a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a>
 </p>
 
@@ -58,42 +59,150 @@
 ## 👑 Everything PostQueen does for you
 
 <p align="center">
-  <img src=".github/assets/features.svg" width="820" alt="PostQueen features: scheduling, AI assistant, AI design, AI video, auto actions, teamwork, analytics, cross-posting" />
+  <img src=".github/assets/features.svg" width="880" alt="Scheduling, AI Assistant, AI Design, AI Video, Auto Actions, Teamwork, Analytics, Cross-posting" />
 </p>
 
-- 📅 **Scheduling.** Plan every channel on one visual calendar; drag to reschedule, click to edit.
-- 🤖 **AI Assistant.** Generate hooks, captions and threads in your voice, shaped per platform.
-- 🎨 **AI Design.** A built-in, Canva-like editor plus AI image generation for post visuals.
-- 🎬 **AI Video.** Turn a photo and a script into a short vertical video for Reels, Shorts and TikTok.
-- ⚡ **Auto Actions (Plugs).** Auto repost, like and comment when a post hits a milestone.
-- 👥 **Teamwork.** Roles, comments and multi-brand workspaces for your whole team.
-- 📈 **Analytics.** Track post and audience performance on the major networks.
-- 🔁 **Cross-posting.** Write once, tailor each post per channel, and recycle evergreen content on a schedule.
+All of it is real, and all of it is yours to run: PostQueen is fully open-source, so you can use the managed cloud or host the whole thing yourself.
 
 ---
 
 ## 💬 Just talk to your AI
 
-You don't need to write a line of code. Connect PostQueen to the AI assistant you already use, then just ask:
+Think of PostQueen as the social media manager on your team, one you simply talk to. Tell her what is happening and she does the thinking: she finds a hook that fits your topic, picks an image with colors that match your brand, writes a version for each platform, and drops it on your calendar. Ask her in plain words, in **your own language** (PostQueen speaks 16 languages, Turkish included), by text or, if your assistant supports voice, hands-free by speaking.
 
-> *"Post about our launch on X and LinkedIn tomorrow morning."*
+Just say what you want:
 
-> *"Turn this blog post into a week of posts, one a day."*
+> *"Plan a month of content for our coffee shop and fill the calendar."*
 
-> *"Make an image for this post and schedule it for Friday at 9am."*
+> *"Take this photo of today's special and put it on Instagram at lunchtime."*
 
-Your assistant writes it, designs it, and drops it into your **PostQueen queue**, where you review and approve before anything goes live.
+> *"We just hit 10k followers, write a warm thank-you post for all our channels."*
+
+> *"Turn my latest YouTube video into posts for X, LinkedIn and Threads."*
+
+**You stay in control.** Everything lands in your calendar first, so you can read it, tweak it, or delete it before it goes out. Prefer to sign off on every single post? Ask her to save them as drafts, and nothing publishes until you schedule it yourself.
+
+<br/>
+
+<p align="center">
+  <img src=".github/assets/works-with.svg" width="760" alt="Works with Claude Code, ChatGPT, Cursor, OpenClaw, Hermes, Codex" />
+</p>
+
+Already using an AI assistant? Point it at PostQueen and it drives everything over the same Agent CLI and hosted MCP server.
+
+### Claude Code
+
+> *"Announce our new summer menu on X and Instagram tomorrow at noon, and use the photo in `./menu.jpg`."*
+
+Claude Code connects over the CLI or MCP and does the work for you:
+
+```bash
+postqueen integrations:list
+postqueen upload ./menu.jpg
+postqueen posts:create \
+  -c "Our summer menu is here 🌞" \
+  -m "<uploaded-url>" \
+  -s "2026-06-01T12:00:00Z" \
+  -i "<instagram-id>"
+```
+
+[Claude Code integration »](https://postqueen.ai/claude-code)
+
+### ChatGPT
+
+> *"Write a fun post about our weekend sale, make a matching image, and schedule it for Friday morning on Instagram and Facebook."*
+
+Draft and refine in ChatGPT, then let it publish everywhere through the MCP connector. [ChatGPT integration »](https://postqueen.ai/chatgpt)
+
+### Cursor
+
+> *"Turn our latest blog post into three posts and space them across next week."*
+
+Run your channels without leaving the editor you build in. [Cursor integration »](https://postqueen.ai/cursor)
+
+### OpenClaw
+
+> *"Create a week of gym content: a tip, a quote and a class reminder, and schedule them all."*
+
+Message it from WhatsApp, Telegram, Slack or Discord and it works hands-free. [OpenClaw integration »](https://postqueen.ai/openclaw)
+
+### Hermes
+
+> *"Every Monday, plan the week's posts for our bakery and fill the calendar."*
+
+Hand your whole posting routine to an agent that plans and runs multi-step tasks. [Hermes integration »](https://postqueen.ai/hermes-agent)
+
+### Codex
+
+> *"Draft a short daily tip for our brand and schedule one for each morning next week."*
+
+OpenAI's software agent: one prompt in, a scheduled week out. [Codex integration »](https://postqueen.ai/codex)
+
+**And any other agent.** PostQueen's CLI and MCP server are model-agnostic, so any MCP client or command-running agent works too: **Gemini CLI, Aider, Cline, Warp, Windsurf**, or your own scripts.
+
+---
+
+## 🌐 Supported networks
+
+PostQueen publishes to **30+ social networks** out of the box:
+
+<p align="center">
+  <img src=".github/assets/channels.svg" width="820" alt="Supported social networks" />
+</p>
+
+- **Major social:** X, LinkedIn, Instagram, Facebook, TikTok, YouTube, Threads, Pinterest, Reddit, Bluesky
+- **Community & chat:** Discord, Slack, Telegram, Mastodon, Twitch, Kick, MeWe, VK
+- **Publishing & blogs:** WordPress, Medium, Dev.to, Hashnode, Tumblr, Listmonk, Moltbook
+- **Web3 & decentralized:** Nostr, Farcaster, Lemmy
+- **Creator & business:** Google Business Profile, Whop, Skool, Dribbble
+
+LinkedIn and Instagram each support both personal and page posting, so the number of connectors runs a little higher. New connectors ship regularly.
+
+---
+
+## 🚀 Get started
+
+PostQueen is **fully open-source (AGPL-3.0)**. Pick whichever way suits you:
+
+### ☁️ Cloud
+
+The fastest way to start: connect your channels and schedule your first post in minutes, with a **7-day free trial** and nothing to run yourself. [Start free »](https://postqueen.ai)
+
+### 🐳 Self-host
+
+Own your data and run the whole stack for free. You will need Docker, about 4 GB of RAM, and a domain with TLS (social networks send their OAuth callbacks there).
+
+```bash
+git clone https://github.com/GkhanKINAY/postqueen-docker-compose
+cd postqueen-docker-compose
+# open docker-compose.yaml and set a unique JWT_SECRET and your public URLs
+docker compose up -d          # then open http://localhost:4007
+```
+
+The stack runs the app, PostgreSQL, Redis and a Temporal cluster (the engine that publishes on time). For the full walkthrough see the [self-host guide](https://docs.postqueen.ai/quickstart), for Kubernetes see [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart), and every setting is documented in the [configuration reference](https://docs.postqueen.ai/configuration/reference).
+
+---
+
+## 🧱 Tech stack
+
+- **pnpm workspaces** (monorepo)
+- **[Next.js](https://nextjs.org)** (React) for the frontend
+- **[NestJS](https://nestjs.com)** for the backend API
+- **[Prisma](https://www.prisma.io)** (default: PostgreSQL)
+- **[Temporal](https://temporal.io)** for scheduling and publishing workers
+- **Redis** for cache and queues
+- **[Resend](https://resend.com)** for email notifications
 
 ---
 
 ## 🔑 Get your API key
 
-You will need a PostQueen API key for every option below. It takes a minute:
+You will need an API key to use the CLI, the MCP server, the SDK or the public API. It takes a minute:
 
 1. Open **[app.postqueen.ai/settings](https://app.postqueen.ai/settings)** (or your own self-hosted instance).
 2. Go to **Developers → Public API**.
 3. Click **Reveal** to show your key.
-4. Copy it and export it in your shell:
+4. Copy it and set it in your shell:
 
 ```bash
 export POSTQUEEN_API_KEY="your_api_key"
@@ -103,81 +212,11 @@ Keep it secret: it grants full access to your account. You can revoke or rotate 
 
 ---
 
-## 🤝 Works with your AI
-
-This is what makes PostQueen different: **drive it from whatever AI you already talk to.** Every agent connects over the same Agent CLI and hosted MCP server, drafts into your queue, and waits for your approval.
-
-### 🟣 Claude Code
-
-Tell it, in plain English:
-
-> *"Schedule a tweet for tomorrow morning announcing our new feature, and attach the screenshot from `./assets/launch.png`."*
-
-Claude Code connects over the CLI or MCP and runs, under the hood:
-
-```bash
-postqueen integrations:list
-postqueen upload ./assets/launch.png
-postqueen posts:create \
-  -c "We just launched our new feature..." \
-  -m "<uploaded-url>" \
-  -s "2026-03-02T09:00:00Z" \
-  -i "<x-integration-id>"
-```
-
-The draft lands in your queue for approval. [Set up Claude Code »](https://postqueen.ai/claude-code)
-
-### 🟢 ChatGPT
-
-Draft and refine in ChatGPT, then let it publish everywhere through the MCP connector.
-
-> *"Write a witty launch post, make a square image for it, and schedule it to X, LinkedIn and Instagram for Tuesday at 9am."*
-
-[Set up ChatGPT »](https://postqueen.ai/chatgpt)
-
-### 🔵 Cursor
-
-Manage your channels without leaving the editor you build in; Cursor drives PostQueen over the CLI or MCP.
-
-> *"Post the release notes from CHANGELOG.md to our channels this afternoon."*
-
-[Set up Cursor »](https://postqueen.ai/cursor)
-
-### 🦞 OpenClaw
-
-Message it from WhatsApp, Telegram, Slack or Discord and it works hands-free.
-
-> *"Create 4 posts about fitness for TikTok, LinkedIn, X and Instagram and schedule them for this week."*
-
-[Set up OpenClaw »](https://postqueen.ai/openclaw)
-
-### ⚡ Hermes
-
-Hand your whole posting pipeline to an agent that plans and runs multi-step tasks end to end.
-
-> *"Every Monday, turn last week's blog posts into a week of scheduled content."*
-
-[Set up Hermes »](https://postqueen.ai/hermes-agent)
-
-### 🟩 Codex
-
-OpenAI's software agent: one prompt in, a scheduled week out, straight from your terminal.
-
-> *"Draft and schedule a daily tip for X and LinkedIn for the next seven days."*
-
-[Set up Codex »](https://postqueen.ai/codex)
-
-### And any other agent
-
-PostQueen's CLI and MCP server are **model-agnostic**, so any MCP client or command-running agent works: **Gemini CLI, Aider, Cline, Warp, Windsurf**, or your own scripts. If it can run a command or speak MCP, it can drive PostQueen.
-
----
-
 ## 🔌 Connect over MCP
 
 The [Model Context Protocol](https://modelcontextprotocol.io) lets AI assistants call tools. PostQueen ships a hosted MCP server, so any MCP client can draft, schedule and manage posts as if it were built in.
 
-**One-line connect (Claude Code or any CLI client):**
+**One line (Claude Code or any CLI client):**
 
 ```bash
 claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/<YOUR_API_KEY>
@@ -197,8 +236,6 @@ claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/<YOUR_API
 
 **ChatGPT:** Settings → Connectors → add a custom connector pointing at `https://api.postqueen.ai/mcp/<YOUR_API_KEY>`. Full guide: [postqueen.ai/mcp](https://postqueen.ai/mcp).
 
----
-
 ## ⌨️ Agent CLI
 
 Prefer the terminal, or building an agent that runs commands? The `postqueen` CLI drives everything and returns clean JSON.
@@ -214,7 +251,7 @@ Install it as a skill for terminal agents with `npx skills add GkhanKINAY/postqu
 
 ## 🤖 Build your own agent
 
-Because every action is a public API call, you can point **your own** agent at PostQueen and let it plan, draft and schedule on a recurring basis. A heartbeat job (a cron entry or an always-on loop) can wake up, decide what to post, and queue it, with a human still approving before anything ships. Start from the [Agent CLI](https://postqueen.ai/agent) or [MCP](https://postqueen.ai/mcp) guides.
+Because every action is a public API call, you can point your own agent at PostQueen and let it plan, draft and schedule on a schedule you set. A simple recurring job can wake up, decide what to post, and queue it. Start from the [Agent CLI](https://postqueen.ai/agent) or [MCP](https://postqueen.ai/mcp) guides.
 
 ## 🧩 Public API, SDK & n8n
 
@@ -231,58 +268,6 @@ curl https://api.postqueen.ai/public/v1/integrations \
 ```
 
 Plug the same API into Make.com, Zapier or your own scripts.
-
----
-
-## 🌐 Supported networks
-
-PostQueen publishes to **30+ social networks** out of the box:
-
-| Group | Networks |
-| --- | --- |
-| **Major social** | X · LinkedIn · Instagram · Facebook · TikTok · YouTube · Threads · Pinterest · Reddit · Bluesky |
-| **Community & chat** | Discord · Slack · Telegram · Mastodon · Twitch · Kick · MeWe · VK |
-| **Publishing & blogs** | WordPress · Medium · Dev.to · Hashnode · Tumblr · Listmonk · Moltbook |
-| **Web3 & decentralized** | Nostr · Farcaster · Lemmy |
-| **Creator & business** | Google Business Profile · Whop · Skool · Dribbble |
-
-LinkedIn and Instagram each support both personal and page/professional posting, so the number of connectors runs a little higher. New connectors ship regularly.
-
----
-
-## 🚀 Get started
-
-PostQueen is **fully open-source (AGPL-3.0)**. Run it whichever way suits you; both options are honest about what they cost:
-
-<p align="center">
-  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="50" alt="Start free on the cloud" /></a>
-  &nbsp;&nbsp;
-  <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="50" alt="Self-host it free" /></a>
-</p>
-
-- ☁️ **Cloud.** The fastest path: connect your channels and schedule your first post in minutes, with a **7-day free trial** and nothing to run yourself.
-- 🐳 **Self-host.** Own your data and run the whole stack for free with Docker Compose:
-
-```bash
-git clone https://github.com/GkhanKINAY/postqueen-docker-compose
-cd postqueen-docker-compose
-# open docker-compose.yaml and set a unique JWT_SECRET + your public URLs
-docker compose up -d       # then open http://localhost:4007
-```
-
-Full [self-host guide](https://docs.postqueen.ai/quickstart), [Kubernetes / Helm](https://github.com/GkhanKINAY/postqueen-helmchart), and [configuration reference](https://docs.postqueen.ai/configuration/reference). Local development of this repo: [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## 🧱 Tech stack
-
-- **pnpm workspaces** (monorepo)
-- **[Next.js](https://nextjs.org)** (React) for the frontend
-- **[NestJS](https://nestjs.com)** for the backend API
-- **[Prisma](https://www.prisma.io)** (default: PostgreSQL)
-- **[Temporal](https://temporal.io)** for scheduling and publishing workers
-- **Redis** for cache and queues
-- **[Resend](https://resend.com)** for email notifications
 
 ---
 
@@ -307,19 +292,13 @@ We would love to hear from you, whether you hit a bug, have an idea, or just wan
 
 If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find it.
 
-## Contributing & Security
-
-- [Contributing guide](CONTRIBUTING.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- Found a vulnerability? See [SECURITY.md](SECURITY.md)
-
 ## 💜 Why we built PostQueen, and a thank you
 
-AI is moving faster every day, and we believe **agentic AI will be an indispensable part of daily life from 2030 onward**. We set out to build an agentic product of our own, in the spirit of tools like Chatbase and Wispr Flow.
+We believe the way we work is about to change. AI is getting better every month, and before long, getting real work done by simply talking to an assistant will feel completely normal. We wanted to build something for that shift, in the spirit of tools we admire like [Chatbase](https://www.chatbase.co) and [Wispr Flow](https://wisprflow.ai).
 
-When we found that **Nevo David had open-sourced [Postiz](https://github.com/gitroomhq/postiz-app) under AGPL-3.0**, it was exactly the foundation we had been looking for. PostQueen builds on that foundation and grows it in its own direction: an AI assistant that writes, designs and schedules your social media for you. Our aim is a genuinely distinct product, not a fork with a paywall bolted on.
+Social media felt like the perfect place to start: it takes real time and effort, and most of it is work an assistant can carry for you. When we found that Nevo David had open-sourced [Postiz](https://github.com/gitroomhq/postiz-app) under AGPL-3.0, we knew we had the foundation we needed. [PostQueen](https://postqueen.ai) grows that work in its own direction: an assistant that runs your social media, so you can spend your time on everything else.
 
-So, from the bottom of our hearts: **thank you, Nevo David and the Postiz contributors**, for building something great and keeping it open. 🙏💜 We are proud to build on your work.
+Thank you, Nevo David and the Postiz contributors. We could not have started this without you. 🙏💜
 
 ## License
 

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="919" height="56" viewBox="0 0 919 56" role="img" aria-label="Works with Claude Code, ChatGPT, Cursor, OpenClaw, Hermes, Codex">
+  <text x="8" y="34" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#9a93b8">Works with</text>
+  <rect x="96" y="8" width="161" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="168.5" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">Claude Code</text>
+  <text x="237" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+  <rect x="269" y="8" width="124" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="323" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">ChatGPT</text>
+  <text x="373" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+  <rect x="405" y="8" width="115" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="454.5" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">Cursor</text>
+  <text x="500" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+  <rect x="532" y="8" width="134" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="591" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">OpenClaw</text>
+  <text x="646" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+  <rect x="678" y="8" width="115" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="727.5" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">Hermes</text>
+  <text x="773" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+  <rect x="805" y="8" width="106" height="40" rx="20" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="850" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">Codex</text>
+  <text x="891" y="34" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#a78bfa">»</text>
+</svg>
