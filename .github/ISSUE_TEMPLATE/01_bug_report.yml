@@ -14,8 +14,6 @@ body:
       label: "📜 Description"
       description: "A clear and concise description of what the bug is."
       placeholder: "It bugs out when ..."
-    validations:
-      required: true
   - type: textarea
     id: steps-to-reproduce
     validations:
