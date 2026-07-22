@@ -128,6 +128,7 @@ cp .env.example .env      # set a unique JWT_SECRET and your public URLs
 docker compose up -d      # then open http://localhost:4007
 ```
 
+- **Full guide:** the complete [Quick Start](https://docs.postqueen.ai/quickstart) covers cloud and self-host setup end to end
 - **Kubernetes / Helm:** [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart)
 - **Configuration:** every environment variable is documented in [`.env.example`](.env.example)
 - **Local development** of this repo: see [CONTRIBUTING.md](CONTRIBUTING.md)
