@@ -175,7 +175,7 @@ Write a post once and she tailors it to each platform's limits and format, and g
 Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. And in whatever language you use: she answers in yours, and the app itself ships in 16.
 
 <p align="center">
-  <img src=".github/assets/studio.svg?v=6" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
+  <img src=".github/assets/studio.svg?v=7" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
 </p>
 
 ### She keeps score and keeps working
@@ -191,7 +191,7 @@ Follower growth, impressions and per-post engagement sit right next to your cale
 Pick a milestone and an action. When a post hits the number you chose, she reposts it, likes it or drops a comment, automatically.
 
 <p align="center">
-  <img src=".github/assets/autoactions.svg?v=7" width="620" alt="Auto Actions: when a post hits your milestone she reposts it automatically" />
+  <img src=".github/assets/autoactions.svg?v=8" width="620" alt="Auto Actions: when a post hits your milestone she reposts it automatically" />
 </p>
 
 #### 🤝 Teamwork
@@ -199,7 +199,7 @@ Pick a milestone and an action. When a post hits the number you chose, she repos
 Invite the team: roles, shared calendars and multi-brand workspaces, so everyone runs on the same queen.
 
 <p align="center">
-  <img src=".github/assets/teamwork.svg?v=7" width="620" alt="Teamwork: owner, admin and member roles in one workspace" />
+  <img src=".github/assets/teamwork.svg?v=8" width="620" alt="Teamwork: owner, admin and member roles in one workspace" />
 </p>
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
@@ -208,13 +208,9 @@ All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole
 
 ## ⚙️ How she works
 
-```mermaid
-flowchart TD
-    A["🧑 You<br/>(or your AI assistant)"] -->|MCP · CLI · API · n8n| B["👑 PostQueen"]
-    B --> C["📅 Your calendar<br/>review · edit · approve drafts"]
-    C --> D["⏰ Temporal scheduler<br/>publishes on time, retries on failure"]
-    D --> E["🌐 30+ networks"]
-```
+<p align="center">
+  <img src=".github/assets/pipeline.svg" width="640" alt="You say it, PostQueen writes it, it waits on your calendar, and Temporal publishes it on time to your networks" />
+</p>
 
 1. **Say it once.** From the app, WhatsApp, your terminal or ChatGPT.
 2. **She does the work.** Research, platform-specific copy, and an image or video to match.
