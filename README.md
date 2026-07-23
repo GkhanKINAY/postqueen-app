@@ -103,6 +103,10 @@ Try saying:
 
 OpenClaw runs quietly on your machine and answers you on WhatsApp, Telegram, Slack or Discord. It finds your accounts, has PostQueen generate whatever is missing, and schedules the posts while you keep scrolling. Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
 
+<p align="center">
+  <img src=".github/assets/phone-openclaw.svg" width="300" alt="OpenClaw on your phone: one message and the posts are scheduled" />
+</p>
+
 ### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
