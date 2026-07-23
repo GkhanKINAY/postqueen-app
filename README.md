@@ -5,13 +5,13 @@
 </p>
 
 <h3 align="center">
-  <a href="https://postqueen.ai/agent">🆕 NEW: meet the PostQueen Agent, run your social media from Claude Code, ChatGPT or OpenClaw »</a>
+  <a href="https://postqueen.ai/agent">🆕 NEW: meet the PostQueen Agent, run your social media from Claude Code, ChatGPT, OpenClaw or Hermes »</a>
 </h3>
 
 <br/>
 
 <p align="center">
-  <strong>Don't run a content calendar. Just tell your AI what is happening.</strong>
+  <strong>Meet PostQueen, your AI social media manager: stop running a content calendar and just tell her what is happening.</strong>
 </p>
 
 <p align="center">
@@ -94,7 +94,7 @@ Say it in plain words, in your own language:
   <img src=".github/assets/pill-claude-code.svg" height="46" alt="Claude Code" /> <img src=".github/assets/pill-chatgpt.svg" height="46" alt="ChatGPT" /> <img src=".github/assets/pill-openclaw.svg" height="46" alt="OpenClaw" /> <img src=".github/assets/pill-codex.svg" height="46" alt="Codex" /> <img src=".github/assets/pill-cursor.svg" height="46" alt="Cursor" /> <img src=".github/assets/pill-gemini-cli.svg" height="46" alt="Gemini CLI" /> <img src=".github/assets/pill-hermes.svg" height="46" alt="Hermes" /> <img src=".github/assets/pill-warp.svg" height="46" alt="Warp" /> <img src=".github/assets/pill-cline.svg" height="46" alt="Cline" /> <img src=".github/assets/pill-windsurf.svg" height="46" alt="Windsurf" /> <img src=".github/assets/pill-aider.svg" height="46" alt="Aider" />
 </p>
 
-### 📱 From your phone
+### <img src=".github/assets/icon-openclaw.svg" height="24" alt="" /> From your phone 📱
 
 Message **OpenClaw** on WhatsApp, Telegram, Slack or Discord, from the couch, the airport, anywhere. It picks up your message, talks to PostQueen, uploads your media and schedules the posts while you keep scrolling:
 
@@ -104,7 +104,7 @@ Message **OpenClaw** on WhatsApp, Telegram, Slack or Discord, from the couch, th
 
 Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
 
-### ⌨️ From your terminal
+### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
 
@@ -125,7 +125,7 @@ postqueen posts:create \
 
 Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp; [Codex »](https://postqueen.ai/codex) &nbsp;·&nbsp; [Cursor »](https://postqueen.ai/cursor)
 
-### 🟢 From ChatGPT
+### <img src=".github/assets/icon-chatgpt.svg" height="24" alt="" /> From ChatGPT
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
@@ -193,11 +193,20 @@ Full walkthrough: [self-host guide](https://docs.postqueen.ai/installation/docke
 
 Write once, be everywhere. PostQueen publishes to **30+ networks** out of the box:
 
-- **Major social:** X, LinkedIn, Instagram, Facebook, TikTok, YouTube, Threads, Pinterest, Reddit, Bluesky
-- **Community and chat:** Discord, Slack, Telegram, Mastodon, Twitch, Kick, MeWe, VK
-- **Publishing and blogs:** WordPress, Medium, Dev.to, Hashnode, Tumblr, Listmonk, Moltbook
-- **Web3 and decentralized:** Nostr, Farcaster, Lemmy
-- **Creator and business:** Google Business Profile, Whop, Skool, Dribbble
+**Major social**<br/>
+<img src=".github/assets/channels/x.svg" height="20" alt="" />&nbsp;X &nbsp; <img src=".github/assets/channels/linkedin.svg" height="20" alt="" />&nbsp;LinkedIn &nbsp; <img src=".github/assets/channels/instagram.svg" height="20" alt="" />&nbsp;Instagram &nbsp; <img src=".github/assets/channels/facebook.svg" height="20" alt="" />&nbsp;Facebook &nbsp; <img src=".github/assets/channels/tiktok.svg" height="20" alt="" />&nbsp;TikTok &nbsp; <img src=".github/assets/channels/youtube.svg" height="20" alt="" />&nbsp;YouTube &nbsp; <img src=".github/assets/channels/threads.svg" height="20" alt="" />&nbsp;Threads &nbsp; <img src=".github/assets/channels/pinterest.svg" height="20" alt="" />&nbsp;Pinterest &nbsp; <img src=".github/assets/channels/reddit.svg" height="20" alt="" />&nbsp;Reddit &nbsp; <img src=".github/assets/channels/bluesky.svg" height="20" alt="" />&nbsp;Bluesky
+
+**Community and chat**<br/>
+<img src=".github/assets/channels/discord.svg" height="20" alt="" />&nbsp;Discord &nbsp; <img src=".github/assets/channels/slack.svg" height="20" alt="" />&nbsp;Slack &nbsp; <img src=".github/assets/channels/telegram.svg" height="20" alt="" />&nbsp;Telegram &nbsp; <img src=".github/assets/channels/mastodon.svg" height="20" alt="" />&nbsp;Mastodon &nbsp; <img src=".github/assets/channels/twitch.svg" height="20" alt="" />&nbsp;Twitch &nbsp; <img src=".github/assets/channels/kick.svg" height="20" alt="" />&nbsp;Kick &nbsp; <img src=".github/assets/channels/mewe.svg" height="20" alt="" />&nbsp;MeWe &nbsp; <img src=".github/assets/channels/vk.svg" height="20" alt="" />&nbsp;VK
+
+**Publishing and blogs**<br/>
+<img src=".github/assets/channels/wordpress.svg" height="20" alt="" />&nbsp;WordPress &nbsp; <img src=".github/assets/channels/medium.svg" height="20" alt="" />&nbsp;Medium &nbsp; <img src=".github/assets/channels/devto.svg" height="20" alt="" />&nbsp;Dev.to &nbsp; <img src=".github/assets/channels/hashnode.svg" height="20" alt="" />&nbsp;Hashnode &nbsp; <img src=".github/assets/channels/listmonk.svg" height="20" alt="" />&nbsp;Listmonk &nbsp; Tumblr &nbsp; Moltbook
+
+**Web3 and decentralized**<br/>
+<img src=".github/assets/channels/nostr.svg" height="20" alt="" />&nbsp;Nostr &nbsp; <img src=".github/assets/channels/warpcast.svg" height="20" alt="" />&nbsp;Farcaster &nbsp; <img src=".github/assets/channels/lemmy.svg" height="20" alt="" />&nbsp;Lemmy
+
+**Creator and business**<br/>
+<img src=".github/assets/channels/google-business.svg" height="20" alt="" />&nbsp;Google Business Profile &nbsp; <img src=".github/assets/channels/whop.svg" height="20" alt="" />&nbsp;Whop &nbsp; <img src=".github/assets/channels/skool.svg" height="20" alt="" />&nbsp;Skool &nbsp; <img src=".github/assets/channels/dribbble.svg" height="20" alt="" />&nbsp;Dribbble
 
 LinkedIn and Instagram each support both personal and page posting. New connectors ship regularly: see the full list with per-network guides at [postqueen.ai/channels](https://postqueen.ai/channels).
 
