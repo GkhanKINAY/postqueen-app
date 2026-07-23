@@ -267,6 +267,10 @@ Full command reference: [postqueen-agent](https://github.com/GkhanKINAY/postquee
 
 REST at `https://api.postqueen.ai/public/v1`, with your API key as the `Authorization` header:
 
+<p align="center">
+  <img src=".github/assets/api-client.svg" width="620" alt="An API client posting to the PostQueen public API: the request body and the 201 response with the scheduled post ids" />
+</p>
+
 ```bash
 curl https://api.postqueen.ai/public/v1/integrations \
   -H "Authorization: $POSTQUEEN_API_KEY"
