@@ -11,7 +11,7 @@
     <rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff"/>
   </g>
   <text x="450" y="151" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="56" font-weight="800" fill="#ffffff" letter-spacing="0.5">PostQueen</text>
-  <text x="450" y="192" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="23" font-weight="600" fill="#cec7f5">The queen of your posts, your AI social media assistant</text>
-  <text x="450" y="222" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16.5" font-weight="400" fill="#9c94c9">Tell her the topic. She writes, designs and schedules it to 30+ networks, ready for you.</text>
+  <text x="450" y="192" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="23" font-weight="600" fill="#cec7f5">Your AI social media manager</text>
+  <text x="450" y="222" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16.5" font-weight="400" fill="#9c94c9">You talk. She writes, designs and schedules. Better than you would.</text>
   <rect x="330" y="238" width="240" height="2.5" rx="1.25" fill="url(#crownline)"/>
 </svg>

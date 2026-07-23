@@ -11,11 +11,11 @@
 <br/>
 
 <p align="center">
-  <strong>Meet PostQueen, your AI social media manager: stop running a content calendar and just tell her what is happening.</strong>
+  <strong>Stop doing social media yourself.</strong>
 </p>
 
 <p align="center">
-  One message becomes a month of content on 30+ networks. PostQueen finds the hook, writes a version for every platform, designs the image, and lines everything up on a visual calendar. You read it, tweak what you want, and get on with your day.
+  PostQueen is an AI employee for your social media. Tell her what to share, in one sentence. She writes the copy, designs the visual and schedules it on every channel you have. You just review the calendar.
 </p>
 
 <p align="center">
@@ -49,6 +49,13 @@
   <img src=".github/assets/channels/instagram.svg" height="44" alt="Instagram" /> <img src=".github/assets/channels/youtube.svg" height="44" alt="YouTube" /> <img src=".github/assets/channels/google-business.svg" height="44" alt="Google Business Profile" /> <img src=".github/assets/channels/dribbble.svg" height="44" alt="Dribbble" /> <img src=".github/assets/channels/linkedin.svg" height="44" alt="LinkedIn" /> <img src=".github/assets/channels/reddit.svg" height="44" alt="Reddit" /> <img src=".github/assets/channels/tiktok.svg" height="44" alt="TikTok" /> <img src=".github/assets/channels/facebook.svg" height="44" alt="Facebook" /> <img src=".github/assets/channels/pinterest.svg" height="44" alt="Pinterest" /> <img src=".github/assets/channels/threads.svg" height="44" alt="Threads" /> <img src=".github/assets/channels/x.svg" height="44" alt="X" /> <img src=".github/assets/channels/slack.svg" height="44" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="44" alt="Discord" /> <img src=".github/assets/channels/mastodon.svg" height="44" alt="Mastodon" /> <img src=".github/assets/channels/bluesky.svg" height="44" alt="Bluesky" /> <img src=".github/assets/channels/lemmy.svg" height="44" alt="Lemmy" /> <img src=".github/assets/channels/warpcast.svg" height="44" alt="Farcaster" /> <img src=".github/assets/channels/telegram.svg" height="44" alt="Telegram" /> <img src=".github/assets/channels/nostr.svg" height="44" alt="Nostr" /> <img src=".github/assets/channels/vk.svg" height="44" alt="VK" /> <img src=".github/assets/channels/devto.svg" height="44" alt="Dev.to" /> <img src=".github/assets/channels/medium.svg" height="44" alt="Medium" /> <img src=".github/assets/channels/hashnode.svg" height="44" alt="Hashnode" /> <img src=".github/assets/channels/wordpress.svg" height="44" alt="WordPress" /> <img src=".github/assets/channels/whop.svg" height="44" alt="Whop" /> <img src=".github/assets/channels/kick.svg" height="44" alt="Kick" /> <img src=".github/assets/channels/mewe.svg" height="44" alt="MeWe" /> <img src=".github/assets/channels/twitch.svg" height="44" alt="Twitch" /> <img src=".github/assets/channels/listmonk.svg" height="44" alt="Listmonk" /> <img src=".github/assets/channels/skool.svg" height="44" alt="Skool" />
 </p>
 
+
+<h3 align="center">Schedule and generate posts with AI</h3>
+
+<p align="center">
+  <img src=".github/assets/calendar.svg" width="660" alt="The PostQueen calendar: a week of posts across your channels, with AI generation and drag to reschedule" />
+</p>
+
 <p align="center">
   <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="52" alt="Start free for 7 days" /></a>
   &nbsp;&nbsp;
@@ -59,34 +66,17 @@
 
 ---
 
-## 👑 Meet your new social media manager
-
-Social media is real work: finding an angle, writing eight versions of the same news, resizing images, remembering to actually hit publish. PostQueen is the teammate who takes all of that off your plate. She is the queen of your posts: you tell her what is happening, she does the rest, and everything she makes waits for you on a calendar you can read at a glance.
-
-<p align="center">
-  <img src=".github/assets/calendar.svg" width="660" alt="The PostQueen calendar: a week of posts across your channels, with AI generation and drag to reschedule" />
-</p>
-
-Here is what she handles for you, all of it real and shipping today:
-
-<img src=".github/assets/feature-scheduling.svg" width="410" alt="" /> <img src=".github/assets/feature-assistant.svg" width="410" alt="" /> <img src=".github/assets/feature-design.svg" width="410" alt="" /> <img src=".github/assets/feature-video.svg" width="410" alt="" /> <img src=".github/assets/feature-autoactions.svg" width="410" alt="" /> <img src=".github/assets/feature-rss.svg" width="410" alt="" /> <img src=".github/assets/feature-analytics.svg" width="410" alt="" /> <img src=".github/assets/feature-teamwork.svg" width="410" alt="" /> <img src=".github/assets/feature-crosspost.svg" width="410" alt="" /> <img src=".github/assets/feature-languages.svg" width="410" alt="" />
-
-She keeps score, too. Follower growth, impressions and per-post engagement live right next to your calendar:
-
-<p align="center">
-  <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
-</p>
-
-
-All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
-
----
-
 ## 💬 Just talk to her
 
-PostQueen lives in the app, but you don't have to. She is wired into the tools you already talk to: your AI assistant on your phone, your coding agent in your terminal, ChatGPT in your browser. Wherever you say it, she gets it done.
+Message her like a colleague, from the tools you already use: WhatsApp or Telegram through OpenClaw, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
-Say it in plain words, in your own language:
+<p align="center">
+  <img src=".github/assets/chat-openclaw.svg" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
+</p>
+
+That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
+
+Try saying:
 
 > *"Plan a month of content for our coffee shop and fill the calendar."*
 
@@ -96,7 +86,7 @@ Say it in plain words, in your own language:
 
 > *"Turn my latest YouTube video into posts for X, LinkedIn and Threads."*
 
-**You stay in control.** Everything lands on your calendar first, where you can read it, tweak it, or delete it before it goes out. Want to sign off on every single post? Ask her to save drafts, and nothing publishes until you schedule it yourself.
+**You get the final word.** Everything lands on your calendar first: read it, tweak it, or delete it before it goes out. Prefer to approve every post? Ask for drafts, and nothing publishes until you schedule it yourself.
 
 <br/>
 
@@ -106,13 +96,7 @@ Say it in plain words, in your own language:
 
 ### <img src=".github/assets/icon-openclaw.svg" height="24" alt="" /> From your phone 📱
 
-Message **OpenClaw** on WhatsApp, Telegram, Slack or Discord, from the couch, the airport, anywhere. It picks up your message, has PostQueen generate the visual, and schedules the posts while you keep scrolling:
-
-<p align="center">
-  <img src=".github/assets/chat-openclaw.svg" width="620" alt="You ask OpenClaw for a post with a visual, it generates the image with PostQueen and schedules it to Instagram and Facebook" />
-</p>
-
-Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
+OpenClaw runs quietly on your machine and answers you on WhatsApp, Telegram, Slack or Discord. It finds your accounts, has PostQueen generate whatever is missing, and schedules the posts while you keep scrolling. Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
 
 ### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
 
@@ -161,6 +145,36 @@ Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on deman
 
 ---
 
+## 👑 What she takes off your plate
+
+Everything below ships today, in the cloud and in the open-source code. We call her the queen of your posts because she earns the title: sharper hooks, better timing and more consistency than hand-run social media.
+
+### One calendar, every channel
+
+Write a post once and she tailors it to each platform's limits and format. Point her at your blog's RSS feed and new articles post themselves.
+
+<img src=".github/assets/feature-crosspost.svg" width="410" alt="" /> <img src=".github/assets/feature-rss.svg" width="410" alt="" />
+
+### She writes, designs and films
+
+Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. In your language: she speaks 16.
+
+<img src=".github/assets/feature-assistant.svg" width="410" alt="" /> <img src=".github/assets/feature-design.svg" width="410" alt="" /> <img src=".github/assets/feature-video.svg" width="410" alt="" /> <img src=".github/assets/feature-languages.svg" width="410" alt="" />
+
+### She keeps score and keeps working
+
+Follower growth, impressions and per-post engagement sit right next to your calendar. Auto Actions keep the momentum: repost, like or comment automatically when a post hits a milestone, and teammates work alongside you with roles and comments.
+
+<p align="center">
+  <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
+</p>
+
+<img src=".github/assets/feature-autoactions.svg" width="410" alt="" /> <img src=".github/assets/feature-teamwork.svg" width="410" alt="" />
+
+All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
+
+---
+
 ## ⚙️ How she works
 
 ```mermaid
@@ -171,10 +185,10 @@ flowchart TD
     D --> E["🌐 30+ networks"]
 ```
 
-1. **You say it.** In the app, or through any connected assistant.
-2. **She plans and writes.** The AI agent researches your topic, picks a hook, writes per-platform versions, and can generate the image or video to go with them.
-3. **It lands on your calendar.** Scheduled posts wait in the queue where you can still edit or delete them; drafts wait for your explicit go.
-4. **It publishes on time.** A [Temporal](https://temporal.io) workflow engine fires each post at the right moment, with automatic retries, and keeps refreshing your platform tokens in the background.
+1. **Say it once.** From the app, WhatsApp, your terminal or ChatGPT.
+2. **She does the work.** Research, platform-specific copy, and an image or video to match.
+3. **You get the final word.** Everything waits on your calendar: edit it, delete it, or keep drafts until you approve them.
+4. **It goes out on time.** A [Temporal](https://temporal.io) workflow engine fires every post exactly when planned, with automatic retries, and refreshes your platform tokens in the background.
 
 Curious about the internals? Read [how it works](https://docs.postqueen.ai/howitworks) in the docs.
 
