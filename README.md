@@ -108,6 +108,10 @@ Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
 
+<p align="center">
+  <img src=".github/assets/terminal-claude.svg" width="620" alt="Claude Code in a terminal: you ask in plain words, it runs the postqueen CLI and schedules the posts" />
+</p>
+
 ```bash
 # Install the skill
 npx skills add GkhanKINAY/postqueen-agent
