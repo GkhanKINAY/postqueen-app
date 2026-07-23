@@ -141,7 +141,7 @@ Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp;
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
 <p align="center">
-  <img src=".github/assets/chat-chatgpt.svg?v=7" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
+  <img src=".github/assets/chat-chatgpt.svg?v=8" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
 </p>
 
 ```text
@@ -154,7 +154,19 @@ Set-up guide: [ChatGPT »](https://postqueen.ai/chatgpt)
 
 Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on demand. A small recurring job wakes up every morning, checks yesterday's numbers with `analytics:platform`, and drafts today's post before you have had coffee. Every PostQueen action is a CLI command or an MCP call with clean JSON output, so any agent that can run a command can run your social media.
 
+<p align="center">
+  <img src=".github/assets/nightshift.svg" width="620" alt="At 4 AM the agent wakes up, checks yesterday's numbers and drafts today's post; it waits on your calendar for 9 AM" />
+</p>
+
 **Any other agent works too:** Gemini CLI, Aider, Cline, Warp, Windsurf, or your own scripts. Start from the [Agent guide](https://postqueen.ai/agent) or the [MCP guide](https://postqueen.ai/mcp), and see the full command reference in [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent).
+
+---
+
+## 👥 Built for creators and business owners
+
+If posting is part of your job but not your whole job, she is for you. Creators who want to stay visible without living in the apps, owners who would rather run the business than the brand account, and builders who want an agent doing it all for them:
+
+<img src=".github/assets/persona-creator.svg" width="410" alt="Creators: post every day without living in the apps" /> <img src=".github/assets/persona-business.svg" width="410" alt="Business owners: the cafe, the gym, the store, on autopilot" /> <img src=".github/assets/persona-tinkerer.svg" width="410" alt="AI tinkerers: wire her into Claude, ChatGPT or OpenClaw" /> <img src=".github/assets/persona-agency.svg" width="410" alt="Agencies and teams: multi-brand workspaces, roles and reviews" />
 
 ---
 
@@ -175,7 +187,7 @@ Write a post once and she tailors it to each platform's limits and format, and g
 Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. And in whatever language you use: she answers in yours, and the app itself ships in 16.
 
 <p align="center">
-  <img src=".github/assets/studio.svg?v=7" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
+  <img src=".github/assets/studio.svg?v=8" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
 </p>
 
 ### She keeps score and keeps working
@@ -184,14 +196,6 @@ Follower growth, impressions and per-post engagement sit right next to your cale
 
 <p align="center">
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
-</p>
-
-#### 💬 Threads and comments
-
-Some stories will not fit in one post. Give her the pieces and she publishes a proper thread from a single schedule: the opener first, every follow-up a few minutes later, in order. Great for X threads and comment chains.
-
-<p align="center">
-  <img src=".github/assets/comments.svg?v=2" width="620" alt="One schedule, a whole thread: the post and its follow-up comments go out minutes apart, in order" />
 </p>
 
 #### 🤝 Teamwork
