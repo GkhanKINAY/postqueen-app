@@ -42,16 +42,17 @@
   <img src=".github/assets/channels.svg" width="780" alt="Publishes to 30+ social networks" />
 </p>
 
-<table align="center">
-  <tr>
-    <td align="center"><a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a></td>
-    <td align="center"><a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a></td>
-    <td align="center"><a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a></td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a>
+</p>
+
+<p align="center">
+  <a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a>
+</p>
 
 ---
 
