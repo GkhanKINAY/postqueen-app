@@ -96,10 +96,10 @@ Say it in plain words, in your own language:
 
 ### <img src=".github/assets/icon-openclaw.svg" height="24" alt="" /> From your phone 📱
 
-Message **OpenClaw** on WhatsApp, Telegram, Slack or Discord, from the couch, the airport, anywhere. It picks up your message, talks to PostQueen, uploads your media and schedules the posts while you keep scrolling:
+Message **OpenClaw** on WhatsApp, Telegram, Slack or Discord, from the couch, the airport, anywhere. It picks up your message, has PostQueen generate the visual, and schedules the posts while you keep scrolling:
 
 <p align="center">
-  <img src=".github/assets/chat-openclaw.svg" width="620" alt="You ask OpenClaw on Telegram to post your article, it replies with the scheduled posts" />
+  <img src=".github/assets/chat-openclaw.svg" width="620" alt="You ask OpenClaw for a post with a visual, it generates the image with PostQueen and schedules it to Instagram and Facebook" />
 </p>
 
 Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
