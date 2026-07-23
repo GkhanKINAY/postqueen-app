@@ -107,6 +107,10 @@ OpenClaw runs quietly on your machine and answers you on WhatsApp, Telegram, Sla
   <img src=".github/assets/phone-openclaw.svg" width="300" alt="OpenClaw on your phone: one message and the posts are scheduled" />
 </p>
 
+<p align="center">
+  <img src=".github/assets/badge-whatsapp.svg" height="30" alt="WhatsApp" /> <img src=".github/assets/badge-telegram.svg" height="30" alt="Telegram" /> <img src=".github/assets/channels/slack.svg" height="30" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="30" alt="Discord" />
+</p>
+
 ### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
@@ -162,13 +166,17 @@ Everything below ships today, in the cloud and in the open-source code. We call 
 
 Write a post once and she tailors it to each platform's limits and format. Point her at your blog's RSS feed and new articles post themselves.
 
-<img src=".github/assets/feature-crosspost.svg" width="410" alt="" /> <img src=".github/assets/feature-rss.svg" width="410" alt="" />
+<p align="center">
+  <img src=".github/assets/fanout.svg" width="640" alt="Write one post and PostQueen tailors it per platform; RSS articles feed in automatically" />
+</p>
 
 ### She writes, designs and films
 
-Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. In your language: she speaks 16.
+Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. And in whatever language you use: she answers in yours, and the app itself ships in 16.
 
-<img src=".github/assets/feature-assistant.svg" width="410" alt="" /> <img src=".github/assets/feature-design.svg" width="410" alt="" /> <img src=".github/assets/feature-video.svg" width="410" alt="" /> <img src=".github/assets/feature-languages.svg" width="410" alt="" />
+<p align="center">
+  <img src=".github/assets/studio.svg" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
+</p>
 
 ### She keeps score and keeps working
 
@@ -223,6 +231,10 @@ cd postqueen-docker-compose
 # set a unique JWT_SECRET and your public URLs in docker-compose.yaml
 docker compose up -d          # then open http://localhost:4007
 ```
+
+<p align="center">
+  <img src=".github/assets/compose-up.svg" width="620" alt="docker compose up: the PostQueen stack starts and is ready on localhost 4007" />
+</p>
 
 You will need Docker, about 4 GB of RAM, and for connecting real social accounts a public HTTPS domain behind a reverse proxy (the networks send their OAuth callbacks there). The stack ships the app, PostgreSQL, Redis and Temporal.
 
