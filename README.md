@@ -180,18 +180,18 @@ Give her a topic and she comes back with the hook, the caption, an on-brand imag
 
 ### She keeps score and keeps working
 
-Follower growth, impressions and per-post engagement sit right next to your calendar:
+Follower growth, impressions and per-post engagement sit right next to your calendar. And Auto Actions can repost, like or comment for you when a post hits the milestone you set:
 
 <p align="center">
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
 </p>
 
-#### ⚡ Auto Actions
+#### 💬 Threads and comments
 
-Pick a milestone and an action. When a post hits the number you chose, she reposts it, likes it or drops a comment, automatically.
+Publish a post together with its follow-up comments in one schedule: she threads them, spaces them minutes apart, and keeps the story in order.
 
 <p align="center">
-  <img src=".github/assets/autoactions.svg?v=8" width="620" alt="Auto Actions: when a post hits your milestone she reposts it automatically" />
+  <img src=".github/assets/comments.svg" width="620" alt="One schedule, a whole thread: the post and its follow-up comments go out minutes apart, in order" />
 </p>
 
 #### 🤝 Teamwork
@@ -208,9 +208,13 @@ All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole
 
 ## ⚙️ How she works
 
-<p align="center">
-  <img src=".github/assets/pipeline.svg" width="640" alt="You say it, PostQueen writes it, it waits on your calendar, and Temporal publishes it on time to your networks" />
-</p>
+```mermaid
+flowchart TD
+    A["🧑 You<br/>(or your AI assistant)"] -->|MCP · CLI · API · n8n| B["👑 PostQueen"]
+    B --> C["📅 Your calendar<br/>review · edit · approve drafts"]
+    C --> D["⏰ Temporal scheduler<br/>publishes on time, retries on failure"]
+    D --> E["🌐 30+ networks"]
+```
 
 1. **Say it once.** From the app, WhatsApp, your terminal or ChatGPT.
 2. **She does the work.** Research, platform-specific copy, and an image or video to match.
