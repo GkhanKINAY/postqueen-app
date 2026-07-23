@@ -186,7 +186,7 @@ Follower growth, impressions and per-post engagement sit right next to your cale
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
 </p>
 
-<img src=".github/assets/feature-autoactions.svg" width="410" alt="" /> <img src=".github/assets/feature-teamwork.svg" width="410" alt="" />
+<img src=".github/assets/autoactions.svg" width="410" alt="Auto Actions: at 50 likes she reposts it automatically" /> <img src=".github/assets/teamwork.svg" width="410" alt="Teamwork: roles and comments on posts" />
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
 
