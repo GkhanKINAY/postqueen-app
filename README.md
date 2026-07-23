@@ -146,7 +146,7 @@ Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on deman
 ## ⚙️ How she works
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["🧑 You<br/>(or your AI assistant)"] -->|MCP · CLI · API · n8n| B["👑 PostQueen"]
     B --> C["📅 Your calendar<br/>review · edit · approve drafts"]
     C --> D["⏰ Temporal scheduler<br/>publishes on time, retries on failure"]
