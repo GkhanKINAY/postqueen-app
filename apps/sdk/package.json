@@ -1,7 +1,7 @@
 {
   "name": "@postqueen/node",
-  "version": "1.0.0",
-  "description": "Node.js SDK for the PostQueen social media scheduling API",
+  "version": "1.0.1",
+  "description": "Node.js SDK for the PostQueen social media scheduling API (fork of @postiz/node)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

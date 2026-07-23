@@ -1,5 +1,7 @@
 # PostQueen NodeJS SDK
 
+> Fork of [`@postiz/node`](https://github.com/gitroomhq/postiz-app) (AGPL-3.0) by Nevo David / Gitroom, rebranded for [PostQueen](https://postqueen.ai).
+
 This is the NodeJS SDK for [PostQueen](https://postqueen.ai).
 
 You can start by installing the package:
@@ -22,3 +24,7 @@ The available methods are:
 - `deletePost(id: string)` - Delete a post by ID
 
 Alternatively you can use the SDK with curl, check the [PostQueen API documentation](https://docs.postqueen.ai/public-api) for more information.
+
+## License
+
+[AGPL-3.0](./LICENSE). PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app) by Nevo David / Gitroom — thank you to the Postiz contributors for the foundation this builds on.
