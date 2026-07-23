@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Cross-posting: Write once, tailored to each platform.">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d9488"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
-  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
-  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
-  <g transform="translate(52,56)"><path d="M-13,-2 A13,13 0 0 1 10,-7" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M10,-7 L4.5,-8.5 M10,-7 L8.5,-1.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M13,2 A13,13 0 0 1 -10,7" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M-10,7 L-4.5,8.5 M-10,7 L-8.5,1.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></g>
-  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">Cross-posting</text>
-  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">Write once, tailored to each platform.</text>
-</svg>

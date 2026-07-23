@@ -76,7 +76,7 @@
 Message her like a colleague, from the tools you already use: WhatsApp or Telegram through OpenClaw, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
 <p align="center">
-  <img src=".github/assets/chat-openclaw.svg?v=6" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
+  <img src=".github/assets/chat-openclaw.svg?v=7" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
 </p>
 
 That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
@@ -141,7 +141,7 @@ Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp;
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
 <p align="center">
-  <img src=".github/assets/chat-chatgpt.svg?v=6" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
+  <img src=".github/assets/chat-chatgpt.svg?v=7" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
 </p>
 
 ```text
@@ -188,10 +188,10 @@ Follower growth, impressions and per-post engagement sit right next to your cale
 
 #### 💬 Threads and comments
 
-Publish a post together with its follow-up comments in one schedule: she threads them, spaces them minutes apart, and keeps the story in order.
+Some stories will not fit in one post. Give her the pieces and she publishes a proper thread from a single schedule: the opener first, every follow-up a few minutes later, in order. Great for X threads and comment chains.
 
 <p align="center">
-  <img src=".github/assets/comments.svg" width="620" alt="One schedule, a whole thread: the post and its follow-up comments go out minutes apart, in order" />
+  <img src=".github/assets/comments.svg?v=2" width="620" alt="One schedule, a whole thread: the post and its follow-up comments go out minutes apart, in order" />
 </p>
 
 #### 🤝 Teamwork

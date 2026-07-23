@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="AI Design: On-brand images plus a built-in editor.">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#db2777"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>
-  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
-  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
-  <g transform="translate(52,56)"><rect x="-15" y="-12" width="30" height="24" rx="4" fill="none" stroke="#fff" stroke-width="2.6"/><circle cx="-6" cy="-3" r="3.2" fill="#fff"/><path d="M-15,9 L-5,-1 L2,5 L7,1 L15,9 Z" fill="#fff"/></g>
-  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">AI Design</text>
-  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">On-brand images plus a built-in editor.</text>
-</svg>

@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="AI Assistant: The best hook and caption for your topic.">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d28d9"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
-  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
-  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
-  <g transform="translate(52,56)"><path d="M0,-16 C1.6,-6 6,-1.6 16,0 C6,1.6 1.6,6 0,16 C-1.6,6 -6,1.6 -16,0 C-6,-1.6 -1.6,-6 0,-16 Z" fill="#fff"/><path d="M11,-14 C11.4,-11 12.6,-9.8 15.5,-9.4 C12.6,-9 11.4,-7.8 11,-5 C10.6,-7.8 9.4,-9 6.5,-9.4 C9.4,-9.8 10.6,-11 11,-14 Z" fill="#fff" opacity="0.85"/></g>
-  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">AI Assistant</text>
-  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">The best hook and caption for your topic.</text>
-</svg>
