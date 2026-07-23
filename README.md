@@ -4,19 +4,17 @@
   </a>
 </p>
 
-<h3 align="center">🆕&nbsp; NEW: run your social media by talking to your AI. Plan, generate and schedule a whole month of content to 30+ networks just by asking, then review it all in a visual calendar.</h3>
+<h3 align="center">🆕&nbsp; NEW: run your social media just by talking to your AI. Plan a month of content, generate it and schedule it to 30+ networks, then review it all on a visual calendar.</h3>
 
 <br/>
 
-<div align="center">
-  <p>
-    <strong>Stop writing posts by hand.</strong> Tell PostQueen what is going on (a sale, a new product, a<br/>
-    milestone) and she finds the best hook, picks a photo with colors that fit your brand, writes it for<br/>
-    every platform, and lines it up on your calendar. A social media manager for you or your whole team,<br/>
-    a content creator or a business, that never sleeps.
-  </p>
-  <p><strong>PostQueen</strong>: an open-source alternative to <strong>Buffer, Hootsuite, Sprout Social, Later</strong> and more.</p>
-</div>
+<p align="center">
+  <strong>Stop writing posts by hand.</strong> Tell PostQueen what is happening, a sale, a new product, a milestone, and she finds the best hook, picks a photo in your brand colors, writes a version for every platform, and lines it up on your calendar. A social media manager that never sleeps, for a creator or a whole company.
+</p>
+
+<p align="center">
+  <strong>PostQueen</strong> is an open-source alternative to <strong>Buffer, Hootsuite, Sprout Social, Later</strong> and more.
+</p>
 
 <br/>
 
@@ -46,12 +44,6 @@
   <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a>
   &nbsp;&nbsp;
   <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a>
-</p>
-
-<p align="center">
-  <a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a>
 </p>
 
 ---
