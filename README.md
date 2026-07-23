@@ -133,6 +133,10 @@ Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp;
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
+<p align="center">
+  <img src=".github/assets/chat-chatgpt.svg" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
+</p>
+
 ```text
 Settings → Connectors → add:  https://api.postqueen.ai/mcp/<YOUR_API_KEY>
 ```
