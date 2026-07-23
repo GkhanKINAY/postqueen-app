@@ -164,10 +164,10 @@ Everything below ships today, in the cloud and in the open-source code. We call 
 
 ### One calendar, every channel
 
-Write a post once and she tailors it to each platform's limits and format. Point her at your blog's RSS feed and new articles post themselves.
+Write a post once and she tailors it to each platform's limits and format, and gives each one its own day and time if you want. Point her at your blog's RSS feed and new articles post themselves.
 
 <p align="center">
-  <img src=".github/assets/fanout.svg" width="640" alt="Write one post and PostQueen tailors it per platform; RSS articles feed in automatically" />
+  <img src=".github/assets/fanout.svg?v=6" width="640" alt="Write one post and PostQueen tailors it per platform; RSS articles feed in automatically" />
 </p>
 
 ### She writes, designs and films
@@ -175,7 +175,7 @@ Write a post once and she tailors it to each platform's limits and format. Point
 Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. And in whatever language you use: she answers in yours, and the app itself ships in 16.
 
 <p align="center">
-  <img src=".github/assets/studio.svg" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
+  <img src=".github/assets/studio.svg?v=6" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
 </p>
 
 ### She keeps score and keeps working

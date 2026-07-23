@@ -11,10 +11,10 @@
   <!-- caption card -->
   <rect x="240" y="28" width="180" height="110" rx="12" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
   <text x="256" y="52" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8b84b5">Caption</text>
-  <text x="256" y="76" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#e8e3ff">Dessert first. Always.</text>
-  <rect x="256" y="90" width="148" height="6" rx="3" fill="#3b3268"/>
-  <rect x="256" y="102" width="120" height="6" rx="3" fill="#3b3268"/>
-  <rect x="256" y="114" width="134" height="6" rx="3" fill="#332a5c"/>
+  <text x="256" y="72" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#e8e3ff">Life is short.</text>
+  <text x="256" y="90" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#e8e3ff">Eat dessert first.</text>
+  <rect x="256" y="102" width="148" height="6" rx="3" fill="#3b3268"/>
+  <rect x="256" y="114" width="120" height="6" rx="3" fill="#332a5c"/>
   <!-- image card -->
   <rect x="240" y="150" width="180" height="110" rx="12" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
   <clipPath id="stimg"><rect x="252" y="162" width="156" height="66" rx="8"/></clipPath>
