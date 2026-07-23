@@ -1,31 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="260" viewBox="0 0 410 260" role="img" aria-label="Teamwork: roles and comments on posts">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
-  <rect x="1" y="1" width="408" height="258" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
-  <text x="24" y="36" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">Teamwork</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="320" viewBox="0 0 620 320" role="img" aria-label="Teamwork: owner, admin and member roles in one workspace">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient>
+  <linearGradient id="av1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+  <linearGradient id="av2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#db2777"/><stop offset="1" stop-color="#ec4899"/></linearGradient>
+  <linearGradient id="av3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0891b2"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+  <rect x="1" y="1" width="618" height="318" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
   
-  <rect x="24" y="52" width="112" height="128" rx="12" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
-  <circle cx="80" cy="88" r="20" fill="#3b3268"/>
-  <text x="80" y="94" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#e8e3ff">MJ</text>
-  <text x="80" y="126" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#ffffff">Maya</text>
-  <rect x="40" y="140" width="80" height="24" rx="12" fill="#7c3aed"/>
-  <text x="80" y="156" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" fill="#ffffff">Owner</text>
+  <rect x="46" y="56" width="164" height="180" rx="16" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
+  <circle cx="128" cy="112" r="34" fill="url(#av1)"/>
+  <clipPath id="av46"><circle cx="128" cy="112" r="34"/></clipPath>
+  <g clip-path="url(#av46)">
+  <circle cx="128" cy="104" r="16" fill="#e9d5ff"/>
+  <path d="M102,150 C 102,122 154,122 154,150 Z" fill="#4c1d95"/></g>
+  <text x="128" y="172" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">Maya</text>
+  <rect x="80" y="186" width="96" height="28" rx="14" fill="#7c3aed"/>
+  <text x="128" y="205" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#ffffff">Owner</text>
   
-  <rect x="148" y="52" width="112" height="128" rx="12" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
-  <circle cx="204" cy="88" r="20" fill="#3b3268"/>
-  <text x="204" y="94" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#e8e3ff">DK</text>
-  <text x="204" y="126" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#ffffff">Deniz</text>
-  <rect x="164" y="140" width="80" height="24" rx="12" fill="#5b21b6"/>
-  <text x="204" y="156" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" fill="#ffffff">Admin</text>
+  <rect x="228" y="56" width="164" height="180" rx="16" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
+  <circle cx="310" cy="112" r="34" fill="url(#av2)"/>
+  <clipPath id="av228"><circle cx="310" cy="112" r="34"/></clipPath>
+  <g clip-path="url(#av228)">
+  <circle cx="310" cy="104" r="16" fill="#fbcfe8"/>
+  <path d="M284,150 C 284,122 336,122 336,150 Z" fill="#831843"/></g>
+  <text x="310" y="172" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">Deniz</text>
+  <rect x="262" y="186" width="96" height="28" rx="14" fill="#5b21b6"/>
+  <text x="310" y="205" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#ffffff">Admin</text>
   
-  <rect x="272" y="52" width="112" height="128" rx="12" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
-  <circle cx="328" cy="88" r="20" fill="#3b3268"/>
-  <text x="328" y="94" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#e8e3ff">AL</text>
-  <text x="328" y="126" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" font-weight="600" fill="#ffffff">Alex</text>
-  <rect x="288" y="140" width="80" height="24" rx="12" fill="#3b3268"/>
-  <text x="328" y="156" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" font-weight="700" fill="#ffffff">Member</text>
-  <!-- comment bubble -->
-  <rect x="52" y="196" width="252" height="44" rx="14" fill="#241d45"/>
-  <path d="M84,196 L94,186 L102,196 Z" fill="#241d45"/>
-  <text x="70" y="215" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" font-weight="600" fill="#a78bfa">Deniz</text>
-  <text x="70" y="232" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#c9c2ef">Can we move this one to 6 pm?</text>
+  <rect x="410" y="56" width="164" height="180" rx="16" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
+  <circle cx="492" cy="112" r="34" fill="url(#av3)"/>
+  <clipPath id="av410"><circle cx="492" cy="112" r="34"/></clipPath>
+  <g clip-path="url(#av410)">
+  <circle cx="492" cy="104" r="16" fill="#cffafe"/>
+  <path d="M466,150 C 466,122 518,122 518,150 Z" fill="#155e75"/></g>
+  <text x="492" y="172" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">Alex</text>
+  <rect x="444" y="186" width="96" height="28" rx="14" fill="#3b3268"/>
+  <text x="492" y="205" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="700" fill="#ffffff">Member</text>
+  <text x="310" y="284" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#9c94c9">Invite the team: roles, shared calendars and multi-brand workspaces.</text>
 </svg>

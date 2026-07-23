@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://postqueen.ai">
-    <img src=".github/assets/header.svg" width="840" alt="PostQueen, the queen of your posts, your AI social media assistant" />
+    <img src=".github/assets/header.svg?v=6" width="840" alt="PostQueen, the queen of your posts, your AI social media assistant" />
   </a>
 </p>
 
@@ -76,7 +76,7 @@
 Message her like a colleague, from the tools you already use: WhatsApp or Telegram through OpenClaw, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
 <p align="center">
-  <img src=".github/assets/chat-openclaw.svg" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
+  <img src=".github/assets/chat-openclaw.svg?v=6" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
 </p>
 
 That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
@@ -116,7 +116,7 @@ OpenClaw runs quietly on your machine and answers you on WhatsApp, Telegram, Sla
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
 
 <p align="center">
-  <img src=".github/assets/terminal-claude.svg" width="620" alt="Claude Code in a terminal: you ask in plain words, it runs the postqueen CLI and schedules the posts" />
+  <img src=".github/assets/terminal-claude.svg?v=6" width="620" alt="Claude Code in a terminal: you ask in plain words, it runs the postqueen CLI and schedules the posts" />
 </p>
 
 ```bash
@@ -141,7 +141,7 @@ Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp;
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
 <p align="center">
-  <img src=".github/assets/chat-chatgpt.svg" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
+  <img src=".github/assets/chat-chatgpt.svg?v=6" width="620" alt="ChatGPT with the PostQueen connector: it generates two post images and schedules them to Instagram and X" />
 </p>
 
 ```text
@@ -186,7 +186,13 @@ Follower growth, impressions and per-post engagement sit right next to your cale
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
 </p>
 
-<img src=".github/assets/autoactions.svg" width="410" alt="Auto Actions: at 50 likes she reposts it automatically" /> <img src=".github/assets/teamwork.svg" width="410" alt="Teamwork: roles and comments on posts" />
+<p align="center">
+  <img src=".github/assets/autoactions.svg?v=6" width="620" alt="Auto Actions: at 50 likes she reposts it automatically" />
+</p>
+
+<p align="center">
+  <img src=".github/assets/teamwork.svg?v=6" width="620" alt="Teamwork: owner, admin and member roles in one workspace" />
+</p>
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
 
@@ -313,7 +319,7 @@ Full command reference: [postqueen-agent](https://github.com/GkhanKINAY/postquee
 REST at `https://api.postqueen.ai/public/v1`, with your API key as the `Authorization` header:
 
 <p align="center">
-  <img src=".github/assets/api-client.svg" width="620" alt="An API client posting to the PostQueen public API: the request body and the 201 response with the scheduled post ids" />
+  <img src=".github/assets/api-client.svg?v=6" width="620" alt="An API client posting to the PostQueen public API: the request body and the 201 response with the scheduled post ids" />
 </p>
 
 ```bash
