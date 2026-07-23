@@ -77,55 +77,51 @@ Just say what you want:
 <br/>
 
 <p align="center">
-  <img src=".github/assets/works-with.svg" width="760" alt="Works with Claude Code, ChatGPT, Cursor, OpenClaw, Hermes, Codex" />
+  <img src=".github/assets/works-with.svg" width="820" alt="Works with Claude Code, OpenClaw, Hermes, ChatGPT, Codex, Cursor, Gemini CLI, Aider, Cline and Warp" />
 </p>
 
-Already using an AI assistant? Point it at PostQueen and it runs everything over the same Agent CLI and hosted MCP server.
+Already using an AI assistant? Point it at PostQueen and it runs everything over the same Agent CLI and hosted MCP server, so you drive your social media from the tool you are already in.
 
-**Here is [Claude Code](https://postqueen.ai/claude-code) doing it end to end** from one sentence:
+### In your terminal
 
-> *"Announce our new summer menu on X and Instagram tomorrow at noon, and use the photo in `./menu.jpg`."*
+Install PostQueen as a skill, then Claude Code, Codex, Cursor or Gemini CLI can post for you:
 
 ```bash
+# Install the skill
+npx skills add GkhanKINAY/postqueen-agent
+
+# Set your API key
+export POSTQUEEN_API_KEY=your_api_key
+
+# List your connected platforms
 postqueen integrations:list
-postqueen upload ./menu.jpg
+
+# Create your first post
 postqueen posts:create \
-  -c "Our summer menu is here 🌞" \
-  -m "<uploaded-url>" \
-  -s "2026-06-01T12:00:00Z" \
-  -i "<instagram-id>"
+  -c "Hello from PostQueen!" \
+  -s "2026-01-01T12:00:00Z" \
+  -i "your-integration-id"
 ```
 
-**Prefer another assistant?** Same setup, you just talk to it:
+Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp; [Codex »](https://postqueen.ai/codex) &nbsp;·&nbsp; [Cursor »](https://postqueen.ai/cursor)
 
-<table>
-  <tr>
-    <th align="left">Assistant</th>
-    <th align="left">Try saying</th>
-  </tr>
-  <tr>
-    <td valign="top"><strong><a href="https://postqueen.ai/openclaw">OpenClaw&nbsp;»</a></strong><br/><sub>WhatsApp, Telegram, Slack, Discord</sub></td>
-    <td valign="top"><em>"Create a week of gym content: a tip, a quote and a class reminder, and schedule them all."</em></td>
-  </tr>
-  <tr>
-    <td valign="top"><strong><a href="https://postqueen.ai/hermes-agent">Hermes&nbsp;»</a></strong><br/><sub>Plans and runs multi-step routines</sub></td>
-    <td valign="top"><em>"Every Monday, plan the week's posts for our bakery and fill the calendar."</em></td>
-  </tr>
-  <tr>
-    <td valign="top"><strong><a href="https://postqueen.ai/chatgpt">ChatGPT&nbsp;»</a></strong><br/><sub>Draft, refine, then publish</sub></td>
-    <td valign="top"><em>"Write a fun post about our weekend sale, make a matching image, and schedule it for Friday morning on Instagram and Facebook."</em></td>
-  </tr>
-  <tr>
-    <td valign="top"><strong><a href="https://postqueen.ai/codex">Codex&nbsp;»</a></strong><br/><sub>OpenAI's software agent</sub></td>
-    <td valign="top"><em>"Draft a short daily tip for our brand and schedule one for each morning next week."</em></td>
-  </tr>
-  <tr>
-    <td valign="top"><strong><a href="https://postqueen.ai/cursor">Cursor&nbsp;»</a></strong><br/><sub>Right inside your editor</sub></td>
-    <td valign="top"><em>"Turn our latest blog post into three posts and space them across next week."</em></td>
-  </tr>
-</table>
+### From any chat app
 
-**And any other agent.** PostQueen's CLI and MCP server are model-agnostic, so any MCP client or command-running agent works too: **Gemini CLI, Aider, Cline, Warp, Windsurf**, or your own scripts.
+Message OpenClaw from WhatsApp, Telegram, Slack or Discord. It runs quietly on your machine, picks up your message, finds your connected accounts, uploads the media and schedules the posts, all while you get on with your day:
+
+```text
+You: Post my blog article to X, LinkedIn and Reddit with the cover image,
+     schedule it for tomorrow at 9am.
+
+OpenClaw: Done! Posts scheduled:
+  • X          tomorrow, 9:00 AM
+  • LinkedIn   tomorrow, 9:00 AM
+  • Reddit     tomorrow, 9:00 AM  (r/programming)
+```
+
+Set-up guides: [OpenClaw »](https://postqueen.ai/openclaw) &nbsp;·&nbsp; [Hermes »](https://postqueen.ai/hermes-agent) &nbsp;·&nbsp; [ChatGPT »](https://postqueen.ai/chatgpt)
+
+**Any other agent works too.** Everything is a CLI command or an MCP call, so you can point any MCP client at PostQueen: **Gemini CLI, Aider, Cline, Warp, Windsurf**, or your own scripts. Start from the [Agent CLI](https://postqueen.ai/agent) or [MCP](https://postqueen.ai/mcp) guide.
 
 ---
 
