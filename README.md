@@ -197,20 +197,17 @@ Full walkthrough: [self-host guide](https://docs.postqueen.ai/installation/docke
 
 Write once, be everywhere. PostQueen publishes to **30+ networks** out of the box:
 
-**Major social**<br/>
-<img src=".github/assets/channels/x.svg" height="20" alt="" />&nbsp;X &nbsp; <img src=".github/assets/channels/linkedin.svg" height="20" alt="" />&nbsp;LinkedIn &nbsp; <img src=".github/assets/channels/instagram.svg" height="20" alt="" />&nbsp;Instagram &nbsp; <img src=".github/assets/channels/facebook.svg" height="20" alt="" />&nbsp;Facebook &nbsp; <img src=".github/assets/channels/tiktok.svg" height="20" alt="" />&nbsp;TikTok &nbsp; <img src=".github/assets/channels/youtube.svg" height="20" alt="" />&nbsp;YouTube &nbsp; <img src=".github/assets/channels/threads.svg" height="20" alt="" />&nbsp;Threads &nbsp; <img src=".github/assets/channels/pinterest.svg" height="20" alt="" />&nbsp;Pinterest &nbsp; <img src=".github/assets/channels/reddit.svg" height="20" alt="" />&nbsp;Reddit &nbsp; <img src=".github/assets/channels/bluesky.svg" height="20" alt="" />&nbsp;Bluesky
+<p align="center">
+  <img src=".github/assets/channels/instagram.svg" height="44" alt="Instagram" /> <img src=".github/assets/channels/youtube.svg" height="44" alt="YouTube" /> <img src=".github/assets/channels/google-business.svg" height="44" alt="Google Business Profile" /> <img src=".github/assets/channels/dribbble.svg" height="44" alt="Dribbble" /> <img src=".github/assets/channels/linkedin.svg" height="44" alt="LinkedIn" /> <img src=".github/assets/channels/reddit.svg" height="44" alt="Reddit" /> <img src=".github/assets/channels/tiktok.svg" height="44" alt="TikTok" /> <img src=".github/assets/channels/facebook.svg" height="44" alt="Facebook" /> <img src=".github/assets/channels/pinterest.svg" height="44" alt="Pinterest" /> <img src=".github/assets/channels/threads.svg" height="44" alt="Threads" /> <img src=".github/assets/channels/x.svg" height="44" alt="X" /> <img src=".github/assets/channels/slack.svg" height="44" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="44" alt="Discord" /> <img src=".github/assets/channels/mastodon.svg" height="44" alt="Mastodon" /> <img src=".github/assets/channels/bluesky.svg" height="44" alt="Bluesky" /> <img src=".github/assets/channels/lemmy.svg" height="44" alt="Lemmy" /> <img src=".github/assets/channels/warpcast.svg" height="44" alt="Farcaster" /> <img src=".github/assets/channels/telegram.svg" height="44" alt="Telegram" /> <img src=".github/assets/channels/nostr.svg" height="44" alt="Nostr" /> <img src=".github/assets/channels/vk.svg" height="44" alt="VK" /> <img src=".github/assets/channels/devto.svg" height="44" alt="Dev.to" /> <img src=".github/assets/channels/medium.svg" height="44" alt="Medium" /> <img src=".github/assets/channels/hashnode.svg" height="44" alt="Hashnode" /> <img src=".github/assets/channels/wordpress.svg" height="44" alt="WordPress" /> <img src=".github/assets/channels/whop.svg" height="44" alt="Whop" /> <img src=".github/assets/channels/kick.svg" height="44" alt="Kick" /> <img src=".github/assets/channels/mewe.svg" height="44" alt="MeWe" /> <img src=".github/assets/channels/twitch.svg" height="44" alt="Twitch" /> <img src=".github/assets/channels/listmonk.svg" height="44" alt="Listmonk" /> <img src=".github/assets/channels/skool.svg" height="44" alt="Skool" />
+</p>
 
-**Community and chat**<br/>
-<img src=".github/assets/channels/discord.svg" height="20" alt="" />&nbsp;Discord &nbsp; <img src=".github/assets/channels/slack.svg" height="20" alt="" />&nbsp;Slack &nbsp; <img src=".github/assets/channels/telegram.svg" height="20" alt="" />&nbsp;Telegram &nbsp; <img src=".github/assets/channels/mastodon.svg" height="20" alt="" />&nbsp;Mastodon &nbsp; <img src=".github/assets/channels/twitch.svg" height="20" alt="" />&nbsp;Twitch &nbsp; <img src=".github/assets/channels/kick.svg" height="20" alt="" />&nbsp;Kick &nbsp; <img src=".github/assets/channels/mewe.svg" height="20" alt="" />&nbsp;MeWe &nbsp; <img src=".github/assets/channels/vk.svg" height="20" alt="" />&nbsp;VK
-
-**Publishing and blogs**<br/>
-<img src=".github/assets/channels/wordpress.svg" height="20" alt="" />&nbsp;WordPress &nbsp; <img src=".github/assets/channels/medium.svg" height="20" alt="" />&nbsp;Medium &nbsp; <img src=".github/assets/channels/devto.svg" height="20" alt="" />&nbsp;Dev.to &nbsp; <img src=".github/assets/channels/hashnode.svg" height="20" alt="" />&nbsp;Hashnode &nbsp; <img src=".github/assets/channels/listmonk.svg" height="20" alt="" />&nbsp;Listmonk &nbsp; Tumblr &nbsp; Moltbook
-
-**Web3 and decentralized**<br/>
-<img src=".github/assets/channels/nostr.svg" height="20" alt="" />&nbsp;Nostr &nbsp; <img src=".github/assets/channels/warpcast.svg" height="20" alt="" />&nbsp;Farcaster &nbsp; <img src=".github/assets/channels/lemmy.svg" height="20" alt="" />&nbsp;Lemmy
-
-**Creator and business**<br/>
-<img src=".github/assets/channels/google-business.svg" height="20" alt="" />&nbsp;Google Business Profile &nbsp; <img src=".github/assets/channels/whop.svg" height="20" alt="" />&nbsp;Whop &nbsp; <img src=".github/assets/channels/skool.svg" height="20" alt="" />&nbsp;Skool &nbsp; <img src=".github/assets/channels/dribbble.svg" height="20" alt="" />&nbsp;Dribbble
+| Category | Networks |
+| --- | --- |
+| **Major social** | X, LinkedIn, Instagram, Facebook, TikTok, YouTube, Threads, Pinterest, Reddit, Bluesky |
+| **Community and chat** | Discord, Slack, Telegram, Mastodon, Twitch, Kick, MeWe, VK |
+| **Publishing and blogs** | WordPress, Medium, Dev.to, Hashnode, Tumblr, Listmonk, Moltbook |
+| **Web3 and decentralized** | Nostr, Farcaster, Lemmy |
+| **Creator and business** | Google Business Profile, Whop, Skool, Dribbble |
 
 LinkedIn and Instagram each support both personal and page posting. New connectors ship regularly: see the full list with per-network guides at [postqueen.ai/channels](https://postqueen.ai/channels).
 
