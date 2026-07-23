@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Scheduling: Every channel on one visual calendar.">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
+  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
+  <g transform="translate(52,56)"><rect x="-15" y="-13" width="30" height="26" rx="4" fill="none" stroke="#fff" stroke-width="2.6"/><line x1="-15" y1="-5" x2="15" y2="-5" stroke="#fff" stroke-width="2.6"/><line x1="-8" y1="-18" x2="-8" y2="-10" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><line x1="8" y1="-18" x2="8" y2="-10" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="-7" cy="3" r="2" fill="#fff"/><circle cx="0" cy="3" r="2" fill="#fff"/><circle cx="7" cy="3" r="2" fill="#fff"/></g>
+  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">Scheduling</text>
+  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">Every channel on one visual calendar.</text>
+</svg>

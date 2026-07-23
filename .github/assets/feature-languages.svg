@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="16 languages: Talk to her in yours, Turkish included.">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#be185d"/><stop offset="1" stop-color="#e11d48"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
+  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
+  <g transform="translate(52,56)"><circle cx="0" cy="0" r="15" fill="none" stroke="#fff" stroke-width="2.6"/><ellipse cx="0" cy="0" rx="6.5" ry="15" fill="none" stroke="#fff" stroke-width="2.2"/><line x1="-15" y1="0" x2="15" y2="0" stroke="#fff" stroke-width="2.2"/><path d="M-13,-7 A17,10 0 0 0 13,-7 M-13,7 A17,10 0 0 1 13,7" fill="none" stroke="#fff" stroke-width="2.2"/></g>
+  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">16 languages</text>
+  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">Talk to her in yours, Turkish included.</text>
+</svg>

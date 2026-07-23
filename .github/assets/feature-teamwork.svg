@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Teamwork: Roles, comments and multi-brand spaces.">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
+  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.14"/>
+  <g transform="translate(52,56)"><circle cx="-6" cy="-6" r="5" fill="#fff"/><circle cx="8" cy="-4" r="4" fill="#fff"/><path d="M-15,13 C-15,3.5 -8.5,1.5 -6,1.5 C-3.5,1.5 3,3.5 3,13 Z" fill="#fff"/><path d="M4,13 C4.5,5.5 9.5,3.5 11.5,3.5 C13.5,3.5 16,6.5 16,13 Z" fill="#fff" opacity="0.9"/></g>
+  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="22" font-weight="700" fill="#ffffff">Teamwork</text>
+  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="400" fill="#f3edff">Roles, comments and multi-brand spaces.</text>
+</svg>

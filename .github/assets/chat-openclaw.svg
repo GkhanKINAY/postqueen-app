@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="430" viewBox="0 0 620 430" role="img" aria-label="Chat with OpenClaw: you ask for posts, it schedules them through PostQueen">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="618" height="428" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <!-- title bar -->
+  <rect x="1" y="1" width="618" height="58" rx="22" fill="#1b1633"/>
+  <rect x="1" y="38" width="618" height="21" fill="#1b1633"/>
+  <circle cx="40" cy="30" r="17" fill="#241d45"/>
+  <svg viewBox="0 0 120 120" width="28" height="28" x="26" y="16">
+  <defs>
+    <linearGradient id="lobster-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff4d4d"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </linearGradient>
+  </defs>
+  
+  <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z" fill="url(#lobster-gradient)"/>
+  
+  <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z" fill="url(#lobster-gradient)"/>
+  
+  <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" fill="url(#lobster-gradient)"/>
+  
+  <path d="M45 15 Q35 5 30 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round"/>
+  <path d="M75 15 Q85 5 90 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round"/>
+  
+  <circle cx="45" cy="35" r="6" fill="#050810"/>
+  <circle cx="75" cy="35" r="6" fill="#050810"/>
+  <circle cx="46" cy="34" r="2.5" fill="#00e5cc"/>
+  <circle cx="76" cy="34" r="2.5" fill="#00e5cc"/>
+
+</svg>
+  <text x="68" y="27" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="700" fill="#ffffff">OpenClaw</text>
+  <text x="68" y="46" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#8b84b5">your agent, on WhatsApp or Telegram</text>
+  <!-- user bubble (right) -->
+  <rect x="150" y="78" width="446" height="86" rx="16" fill="#5b21b6"/>
+  <text x="172" y="108" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#ffffff">Post my blog article to X, LinkedIn and Reddit</text>
+  <text x="172" y="132" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#ffffff">with the cover image, schedule it for</text>
+  <text x="172" y="156" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#ffffff">tomorrow at 9am.</text>
+  <!-- agent bubble (left) -->
+  <rect x="24" y="182" width="440" height="196" rx="16" fill="#211b3f"/>
+  <text x="46" y="214" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#e8e3ff">Done! 3 posts scheduled with PostQueen:</text>
+  <text x="46" y="248" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16.5" fill="#c4b5fd">•  X            tomorrow, 9:00 AM</text>
+  <text x="46" y="276" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16.5" fill="#c4b5fd">•  LinkedIn     tomorrow, 9:00 AM</text>
+  <text x="46" y="304" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16.5" fill="#c4b5fd">•  Reddit       tomorrow, 9:00 AM  (r/programming)</text>
+  <text x="46" y="342" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#e8e3ff">They are on your calendar if you want to</text>
+  <text x="46" y="366" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" fill="#e8e3ff">tweak anything first.</text>
+  <g transform="translate(216,352) scale(0.72)"><path d="M2 16 L4 5 L9.5 10 L14 2 L18.5 10 L24 5 L26 16 Z" fill="#fbbf24"/><rect x="3" y="17.6" width="22" height="3" rx="1.5" fill="#fbbf24"/></g>
+  <!-- input bar -->
+  <rect x="24" y="392" width="572" height="0.1" fill="none"/>
+  <rect x="24" y="394" width="500" height="0" fill="none"/>
+  <rect x="24" y="392" width="520" height="26" rx="13" fill="#1b1633"/>
+  <text x="44" y="410" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" fill="#6f6899">Message…</text>
+  <circle cx="576" cy="405" r="15" fill="#7c3aed"/>
+  <path d="M570,405 L583,405 M578,399 L584,405 L578,411" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+</svg>
