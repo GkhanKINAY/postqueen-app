@@ -42,17 +42,16 @@
   <img src=".github/assets/channels.svg" width="780" alt="Publishes to 30+ social networks" />
 </p>
 
-<p align="center">
-  <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a>
-  &nbsp;&nbsp;
-  <a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a>
-</p>
-
-<p align="center">
-  <a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="48" alt="Start free for 7 days" /></a></td>
+    <td align="center"><a href="https://github.com/GkhanKINAY/postqueen-docker-compose"><img src=".github/assets/cta-selfhost.svg" height="48" alt="Self-host it free" /></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://postqueen.ai/pricing"><strong>See pricing »</strong></a></td>
+    <td align="center"><a href="https://docs.postqueen.ai"><strong>Explore the docs »</strong></a></td>
+  </tr>
+</table>
 
 ---
 
@@ -88,13 +87,11 @@ Just say what you want:
   <img src=".github/assets/works-with.svg" width="760" alt="Works with Claude Code, ChatGPT, Cursor, OpenClaw, Hermes, Codex" />
 </p>
 
-Already using an AI assistant? Point it at PostQueen and it drives everything over the same Agent CLI and hosted MCP server.
+Already using an AI assistant? Point it at PostQueen and it runs everything over the same Agent CLI and hosted MCP server.
 
-### Claude Code
+**Here is [Claude Code](https://postqueen.ai/claude-code) doing it end to end** from one sentence:
 
 > *"Announce our new summer menu on X and Instagram tomorrow at noon, and use the photo in `./menu.jpg`."*
-
-Claude Code connects over the CLI or MCP and does the work for you:
 
 ```bash
 postqueen integrations:list
@@ -106,37 +103,34 @@ postqueen posts:create \
   -i "<instagram-id>"
 ```
 
-[Claude Code integration »](https://postqueen.ai/claude-code)
+**Prefer another assistant?** Same setup, you just talk to it:
 
-### ChatGPT
-
-> *"Write a fun post about our weekend sale, make a matching image, and schedule it for Friday morning on Instagram and Facebook."*
-
-Draft and refine in ChatGPT, then let it publish everywhere through the MCP connector. [ChatGPT integration »](https://postqueen.ai/chatgpt)
-
-### Cursor
-
-> *"Turn our latest blog post into three posts and space them across next week."*
-
-Run your channels without leaving the editor you build in. [Cursor integration »](https://postqueen.ai/cursor)
-
-### OpenClaw
-
-> *"Create a week of gym content: a tip, a quote and a class reminder, and schedule them all."*
-
-Message it from WhatsApp, Telegram, Slack or Discord and it works hands-free. [OpenClaw integration »](https://postqueen.ai/openclaw)
-
-### Hermes
-
-> *"Every Monday, plan the week's posts for our bakery and fill the calendar."*
-
-Hand your whole posting routine to an agent that plans and runs multi-step tasks. [Hermes integration »](https://postqueen.ai/hermes-agent)
-
-### Codex
-
-> *"Draft a short daily tip for our brand and schedule one for each morning next week."*
-
-OpenAI's software agent: one prompt in, a scheduled week out. [Codex integration »](https://postqueen.ai/codex)
+<table>
+  <tr>
+    <th align="left">Assistant</th>
+    <th align="left">Try saying</th>
+  </tr>
+  <tr>
+    <td valign="top"><strong><a href="https://postqueen.ai/openclaw">OpenClaw&nbsp;»</a></strong><br/><sub>WhatsApp, Telegram, Slack, Discord</sub></td>
+    <td valign="top"><em>"Create a week of gym content: a tip, a quote and a class reminder, and schedule them all."</em></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong><a href="https://postqueen.ai/hermes-agent">Hermes&nbsp;»</a></strong><br/><sub>Plans and runs multi-step routines</sub></td>
+    <td valign="top"><em>"Every Monday, plan the week's posts for our bakery and fill the calendar."</em></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong><a href="https://postqueen.ai/chatgpt">ChatGPT&nbsp;»</a></strong><br/><sub>Draft, refine, then publish</sub></td>
+    <td valign="top"><em>"Write a fun post about our weekend sale, make a matching image, and schedule it for Friday morning on Instagram and Facebook."</em></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong><a href="https://postqueen.ai/codex">Codex&nbsp;»</a></strong><br/><sub>OpenAI's software agent</sub></td>
+    <td valign="top"><em>"Draft a short daily tip for our brand and schedule one for each morning next week."</em></td>
+  </tr>
+  <tr>
+    <td valign="top"><strong><a href="https://postqueen.ai/cursor">Cursor&nbsp;»</a></strong><br/><sub>Right inside your editor</sub></td>
+    <td valign="top"><em>"Turn our latest blog post into three posts and space them across next week."</em></td>
+  </tr>
+</table>
 
 **And any other agent.** PostQueen's CLI and MCP server are model-agnostic, so any MCP client or command-running agent works too: **Gemini CLI, Aider, Cline, Warp, Windsurf**, or your own scripts.
 
