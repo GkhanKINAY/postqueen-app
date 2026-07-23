@@ -63,9 +63,19 @@
 
 Social media is real work: finding an angle, writing eight versions of the same news, resizing images, remembering to actually hit publish. PostQueen is the teammate who takes all of that off your plate. She is the queen of your posts: you tell her what is happening, she does the rest, and everything she makes waits for you on a calendar you can read at a glance.
 
+<p align="center">
+  <img src=".github/assets/calendar.svg" width="660" alt="The PostQueen calendar: a week of posts across your channels, with AI generation and drag to reschedule" />
+</p>
+
 Here is what she handles for you, all of it real and shipping today:
 
 <img src=".github/assets/feature-scheduling.svg" width="410" alt="" /> <img src=".github/assets/feature-assistant.svg" width="410" alt="" /> <img src=".github/assets/feature-design.svg" width="410" alt="" /> <img src=".github/assets/feature-video.svg" width="410" alt="" /> <img src=".github/assets/feature-autoactions.svg" width="410" alt="" /> <img src=".github/assets/feature-rss.svg" width="410" alt="" /> <img src=".github/assets/feature-analytics.svg" width="410" alt="" /> <img src=".github/assets/feature-teamwork.svg" width="410" alt="" /> <img src=".github/assets/feature-crosspost.svg" width="410" alt="" /> <img src=".github/assets/feature-languages.svg" width="410" alt="" />
+
+She keeps score, too. Follower growth, impressions and per-post engagement live right next to your calendar:
+
+<p align="center">
+  <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
+</p>
 
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
