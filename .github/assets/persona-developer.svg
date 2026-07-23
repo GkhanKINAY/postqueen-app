@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Developers: OAuth2, REST API and SDK — build posting into your own product.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="24" y="34" width="44" height="44" rx="10" fill="#1b1430" stroke="#60a5fa" stroke-width="1.5"/>
+  <g transform="translate(46,56)" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M-4.5,-7 L-11.5,0 L-4.5,7"/>
+    <path d="M4.5,-7 L11.5,0 L4.5,7"/>
+    <path d="M2,-9.5 L-2,9.5"/>
+  </g>
+  <text x="90" y="44" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Developers</text>
+  <text x="90" y="68" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">OAuth2, REST API and SDK: build posting</text>
+  <text x="90" y="87" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">into your own product.</text>
+</svg>

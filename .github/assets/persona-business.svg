@@ -1,8 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Business owners: The cafe, the gym, the store: on autopilot.">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ea580c"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs>
-  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#g)"/>
-  <circle cx="52" cy="56" r="30" fill="#ffffff" opacity="0.16"/>
-  <g transform="translate(52,56)"><path d="M-15,-4 L-13,-14 L13,-14 L15,-4 Z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><path d="M-15,-4 Q-15,2 -10,2 Q-5,2 -5,-4 Q-5,2 0,2 Q5,2 5,-4 Q5,2 10,2 Q15,2 15,-4" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M-12,4 L-12,15 L12,15 L12,4" fill="none" stroke="#fff" stroke-width="2.6"/><rect x="2" y="7" width="7" height="8" fill="#fff"/></g>
-  <text x="98" y="50" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="21" font-weight="700" fill="#ffffff">Business owners</text>
-  <text x="98" y="78" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" font-weight="400" fill="#fff3ec">The cafe, the gym, the store: on autopilot.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="112" viewBox="0 0 410 112" role="img" aria-label="Business owners: no time for socials — the cafe, the gym, the store on autopilot.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="110" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="24" y="34" width="44" height="44" rx="10" fill="#1b1430" stroke="#f59e0b" stroke-width="1.5"/>
+  <g transform="translate(46,56)" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M-11,-3 L-9.5,-10 L9.5,-10 L11,-3 Z"/>
+    <path d="M-11,-3 Q-11,1.5 -7.3,1.5 Q-3.7,1.5 -3.7,-3 Q-3.7,1.5 0,1.5 Q3.7,1.5 3.7,-3 Q3.7,1.5 7.3,1.5 Q11,1.5 11,-3"/>
+    <path d="M-8.5,3 L-8.5,11 L8.5,11 L8.5,3"/>
+    <path d="M1.5,11 L1.5,6 L6,6 L6,11"/>
+  </g>
+  <text x="90" y="44" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Business owners</text>
+  <text x="90" y="68" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">No time for socials: the cafe, the gym,</text>
+  <text x="90" y="87" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">the store on autopilot.</text>
 </svg>

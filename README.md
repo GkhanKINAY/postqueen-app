@@ -73,10 +73,10 @@
 
 ## 💬 Just talk to her
 
-Message her like a colleague, from the tools you already use: WhatsApp or Telegram through OpenClaw, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
+Message her like a colleague, from the tools you already use: WhatsApp, Telegram or the Claude app on your phone, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
 <p align="center">
-  <img src=".github/assets/chat-openclaw.svg?v=7" width="620" alt="A voice note to OpenClaw: PostQueen generates the visual and schedules the posts" />
+  <img src=".github/assets/chat-agent.svg?v=1" width="620" alt="A voice note to your AI agent: PostQueen generates the visual and schedules the posts" />
 </p>
 
 That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
@@ -99,16 +99,21 @@ Try saying:
   <img src=".github/assets/pill-claude-code.svg" height="46" alt="Claude Code" /> <img src=".github/assets/pill-chatgpt.svg" height="46" alt="ChatGPT" /> <img src=".github/assets/pill-openclaw.svg" height="46" alt="OpenClaw" /> <img src=".github/assets/pill-codex.svg" height="46" alt="Codex" /> <img src=".github/assets/pill-cursor.svg" height="46" alt="Cursor" /> <img src=".github/assets/pill-gemini-cli.svg" height="46" alt="Gemini CLI" /> <img src=".github/assets/pill-hermes.svg" height="46" alt="Hermes" /> <img src=".github/assets/pill-warp.svg" height="46" alt="Warp" /> <img src=".github/assets/pill-cline.svg" height="46" alt="Cline" /> <img src=".github/assets/pill-windsurf.svg" height="46" alt="Windsurf" /> <img src=".github/assets/pill-aider.svg" height="46" alt="Aider" />
 </p>
 
-### <img src=".github/assets/icon-openclaw.svg" height="24" alt="" /> From your phone 📱
+### From your phone 📱
 
-OpenClaw runs quietly on your machine and answers you on WhatsApp, Telegram, Slack or Discord. It finds your accounts, has PostQueen generate whatever is missing, and schedules the posts while you keep scrolling. Set-up guide: [OpenClaw »](https://postqueen.ai/openclaw)
+There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number.
+
+- **OpenClaw** — runs quietly on your machine and answers you on WhatsApp, Telegram, Slack or Discord. It finds your accounts, has PostQueen generate whatever is missing, and schedules the posts while you keep scrolling. [OpenClaw »](https://postqueen.ai/openclaw)
+- **Claude app** — add PostQueen as a connector on claude.ai and it syncs to Claude on iOS and Android. Dictate the post on your walk; it is on the calendar before you are home. [MCP »](https://postqueen.ai/mcp)
+- **ChatGPT** — add the PostQueen connector once and it is there wherever you are signed in. [ChatGPT »](https://postqueen.ai/chatgpt)
+- **Hermes and any other agent** — anything that can run a CLI command or call MCP can run your social media. [Agent guide »](https://postqueen.ai/agent)
 
 <p align="center">
-  <img src=".github/assets/phone-openclaw.svg" width="300" alt="OpenClaw on your phone: one message and the posts are scheduled" />
+  <img src=".github/assets/phone-agent.svg" width="300" alt="Your agent on your phone: one message and the posts are scheduled" />
 </p>
 
 <p align="center">
-  <img src=".github/assets/badge-whatsapp.svg" height="30" alt="WhatsApp" /> <img src=".github/assets/badge-telegram.svg" height="30" alt="Telegram" /> <img src=".github/assets/channels/slack.svg" height="30" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="30" alt="Discord" />
+  <img src=".github/assets/badge-whatsapp.svg" height="30" alt="WhatsApp" /> <img src=".github/assets/badge-telegram.svg" height="30" alt="Telegram" /> <img src=".github/assets/badge-claude.svg" height="30" alt="Claude" /> <img src=".github/assets/badge-chatgpt.svg" height="30" alt="ChatGPT" /> <img src=".github/assets/channels/slack.svg" height="30" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="30" alt="Discord" />
 </p>
 
 ### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
@@ -162,11 +167,11 @@ Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on deman
 
 ---
 
-## 👥 Built for creators and business owners
+## 👥 Who is she for?
 
-If posting is part of your job but not your whole job, she is for you. Creators who want to stay visible without living in the apps, owners who would rather run the business than the brand account, and builders who want an agent doing it all for them:
+If posting is part of your job but not your whole job, she is for you. Creators who want to stay visible without living in the apps, owners who would rather run the business than the brand account, developers and automation teams who treat publishing as a building block, and anyone who would rather just tell an agent what to post:
 
-<img src=".github/assets/persona-creator.svg" width="410" alt="Creators: post every day without living in the apps" /> <img src=".github/assets/persona-business.svg" width="410" alt="Business owners: the cafe, the gym, the store, on autopilot" /> <img src=".github/assets/persona-tinkerer.svg" width="410" alt="AI tinkerers: wire her into Claude, ChatGPT or OpenClaw" /> <img src=".github/assets/persona-agency.svg" width="410" alt="Agencies and teams: multi-brand workspaces, roles and reviews" />
+<img src=".github/assets/persona-creator.svg?v=2" width="410" alt="Creators: post every day without living in the apps" /> <img src=".github/assets/persona-business.svg?v=2" width="410" alt="Business owners: no time for socials — the cafe, the gym, the store on autopilot" /> <img src=".github/assets/persona-developer.svg" width="410" alt="Developers: OAuth2, REST API and SDK — build posting into your own product" /> <img src=".github/assets/persona-agent.svg" width="410" alt="Agent-first: wire her into Claude, ChatGPT, OpenClaw or Hermes and let it run" /> <img src=".github/assets/persona-automation.svg" width="410" alt="Automation teams: n8n, Make.com or Zapier flows that draft, approve and publish" /> <img src=".github/assets/persona-agency.svg?v=2" width="410" alt="Agencies and brands: multi-brand workspaces with roles, reviews and approvals" />
 
 ---
 
@@ -331,7 +336,7 @@ Full command reference: [postqueen-agent](https://github.com/GkhanKINAY/postquee
 REST at `https://api.postqueen.ai/public/v1`, with your API key as the `Authorization` header:
 
 <p align="center">
-  <img src=".github/assets/api-client.svg?v=6" width="620" alt="An API client posting to the PostQueen public API: the request body and the 201 response with the scheduled post ids" />
+  <img src=".github/assets/api-client.svg?v=7" width="620" alt="An API client posting to the PostQueen public API: the request body and the 201 response with the scheduled post ids" />
 </p>
 
 ```bash
