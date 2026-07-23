@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="620" height="340" viewBox="0 0 620 340" role="img" aria-label="Auto Actions: at 50 likes she reposts it automatically">
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="312" viewBox="0 0 620 312" role="img" aria-label="Auto Actions: when a post hits your milestone she reposts it automatically">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
-  <rect x="1" y="1" width="618" height="338" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="1" y="1" width="618" height="310" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
   <!-- post card -->
   <rect x="28" y="30" width="370" height="252" rx="16" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
   <circle cx="66" cy="70" r="20" fill="#7c3aed"/>
@@ -27,10 +27,8 @@
   <text x="318" y="231" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" fill="#8b84b5">12</text>
   <!-- tooltip -->
   <path d="M398,158 L420,146 L420,170 Z" fill="#7c3aed"/>
-  <rect x="418" y="112" width="180" height="92" rx="14" fill="#7c3aed"/>
-  <text x="438" y="144" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#ffffff">At 50 likes,</text>
-  <text x="438" y="164" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#ffffff">she reposts it.</text>
-  <text x="438" y="188" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#e9d5ff">Automatically.</text>
-  <!-- caption -->
-  <text x="310" y="316" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#9c94c9">Repost, like or comment on your own posts when they hit a milestone.</text>
+  <rect x="418" y="112" width="188" height="92" rx="14" fill="#7c3aed"/>
+  <text x="438" y="144" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#ffffff">Your milestone:</text>
+  <text x="438" y="164" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" font-weight="700" fill="#ffffff">50 likes.</text>
+  <text x="438" y="188" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#e9d5ff">She reposts it, automatically.</text>
 </svg>

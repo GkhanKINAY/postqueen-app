@@ -180,18 +180,26 @@ Give her a topic and she comes back with the hook, the caption, an on-brand imag
 
 ### She keeps score and keeps working
 
-Follower growth, impressions and per-post engagement sit right next to your calendar. Auto Actions keep the momentum: repost, like or comment automatically when a post hits a milestone, and teammates work alongside you with roles and comments.
+Follower growth, impressions and per-post engagement sit right next to your calendar:
 
 <p align="center">
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
 </p>
 
-<p align="center">
-  <img src=".github/assets/autoactions.svg?v=6" width="620" alt="Auto Actions: at 50 likes she reposts it automatically" />
-</p>
+#### ⚡ Auto Actions
+
+Pick a milestone and an action. When a post hits the number you chose, she reposts it, likes it or drops a comment, automatically.
 
 <p align="center">
-  <img src=".github/assets/teamwork.svg?v=6" width="620" alt="Teamwork: owner, admin and member roles in one workspace" />
+  <img src=".github/assets/autoactions.svg?v=7" width="620" alt="Auto Actions: when a post hits your milestone she reposts it automatically" />
+</p>
+
+#### 🤝 Teamwork
+
+Invite the team: roles, shared calendars and multi-brand workspaces, so everyone runs on the same queen.
+
+<p align="center">
+  <img src=".github/assets/teamwork.svg?v=7" width="620" alt="Teamwork: owner, admin and member roles in one workspace" />
 </p>
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
