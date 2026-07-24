@@ -39,10 +39,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-  <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&amp;color=6d28d9" alt="CLI on npm"></a>
-  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/v/@postqueen/node?label=SDK&amp;color=7c3aed" alt="SDK on npm"></a>
-  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n&amp;color=e0189e" alt="n8n node on npm"></a>
+  <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src=".github/assets/badge-license.svg" alt="License: AGPL-3.0"></a>
+  <a href="https://www.npmjs.com/package/postqueen"><img src=".github/assets/badge-cli.svg" alt="CLI on npm"></a>
+  <a href="https://www.npmjs.com/package/@postqueen/node"><img src=".github/assets/badge-sdk.svg" alt="SDK on npm"></a>
+  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src=".github/assets/badge-n8n.svg" alt="n8n node on npm"></a>
 </p>
 
 <br/>
@@ -109,7 +109,11 @@ Try saying:
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-phone.svg" width="840" alt="From your phone" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## 📱 From your phone
 
 There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number. Message it there, and it manages your whole PostQueen calendar — drafting, scheduling and publishing from inside the chat.
 
@@ -123,7 +127,11 @@ Pick your app — every card is a click away from its two-minute set-up guide:
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-open-agents.svg" width="840" alt="Meet her open agents: OpenClaw and Hermes" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## 🦞 Meet her open agents: OpenClaw &amp; Hermes
 
 The two open-source agents everyone is running right now both speak PostQueen natively. **OpenClaw** lives on your machine and answers you from any chat app. **Hermes** does that too — and give it one brief, it plans your whole week on its own. Both drive the same `postqueen` CLI.
 
@@ -137,7 +145,11 @@ The two open-source agents everyone is running right now both speak PostQueen na
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-terminal.svg" width="840" alt="From your terminal" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## 💻 From your terminal
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor, Gemini CLI, Warp, Cline, Windsurf or Aider** can plan and publish for you between commits:
 
@@ -166,7 +178,11 @@ Pick your agent — each card opens its guide:
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-chatgpt.svg" width="840" alt="From ChatGPT" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## <img src=".github/assets/icon-chatgpt.svg" height="26" alt="" /> From ChatGPT
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
@@ -182,7 +198,11 @@ Set-up guide: [ChatGPT »](https://postqueen.ai/chatgpt)
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-claude.svg" width="840" alt="From Claude" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## <img src=".github/assets/icon-claude.svg" height="26" alt="" /> From Claude
 
 The same one-link connector works on claude.ai — and it follows you into the Claude apps on iOS, Android and desktop. Ask Claude to plan and schedule your week:
 
@@ -198,7 +218,11 @@ Set-up guide: [Claude »](https://postqueen.ai/mcp)
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-automations.svg" width="840" alt="From your automations" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## 🔌 From your automations
 
 No agent, no problem — the same public API that powers everything above plugs straight into your tools:
 
@@ -206,7 +230,11 @@ No agent, no problem — the same public API that powers everything above plugs 
 
 <br/>
 
-<p align="center"><img src=".github/assets/title-nightshift.svg" width="840" alt="An agent that works while you sleep" /></p>
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+## 🌙 An agent that works while you sleep
 
 Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on demand. A small recurring job wakes up every morning, checks yesterday's numbers with `analytics:platform`, and drafts today's post before you have had coffee. Every PostQueen action is a CLI command or an MCP call with clean JSON output, so any agent that can run a command can run your social media.
 
