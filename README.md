@@ -19,7 +19,8 @@
 </p>
 
 <p align="center">
-  <img src=".github/assets/outcomes.svg" width="840" alt="Views on autopilot. Posts every day. Launches everywhere — while you do your actual job." />
+  <strong>Views on autopilot. Posts every day. Launches everywhere.</strong><br/>
+  <em>All while you do your actual job.</em>
 </p>
 
 <p align="center">
