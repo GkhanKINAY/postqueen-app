@@ -115,7 +115,7 @@ Try saying:
 
 ### From your phone 📱
 
-There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number.
+There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number. Message it there, and it manages your whole PostQueen calendar — drafting, scheduling and publishing from inside the chat.
 
 <p align="center">
   <img src=".github/assets/phone-agent.svg?v=5" width="300" alt="One message from any chat app and the posts are scheduled" />
@@ -123,9 +123,25 @@ There is no PostQueen app to install, and that is the point: whichever assistant
 
 Pick your app — every card is a click away from its two-minute set-up guide:
 
-<a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-whatsapp.svg" width="410" alt="WhatsApp: text or voice-note her, through OpenClaw running on your machine — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-telegram.svg" width="410" alt="Telegram: message her like any contact; every post lands on your calendar first — set-up guide" /></a> <a href="https://postqueen.ai/mcp"><img src=".github/assets/app-claude.svg" width="410" alt="Claude app: add the MCP connector on claude.ai; it syncs to iOS and Android — set-up guide" /></a> <a href="https://postqueen.ai/chatgpt"><img src=".github/assets/app-chatgpt.svg" width="410" alt="ChatGPT: add the connector once, use it wherever you are signed in — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-slack.svg" width="410" alt="Slack: ask her from any channel, through OpenClaw — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-discord.svg" width="410" alt="Discord: run your server's socials without leaving Discord — set-up guide" /></a>
+<a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-whatsapp.svg" width="410" alt="WhatsApp: text or voice-note her, through OpenClaw or Hermes on your machine — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-telegram.svg" width="410" alt="Telegram: message her like any contact; every post lands on your calendar first — set-up guide" /></a> <a href="https://postqueen.ai/mcp"><img src=".github/assets/app-claude.svg" width="410" alt="Claude app: add the MCP connector on claude.ai; it syncs to iOS and Android — set-up guide" /></a> <a href="https://postqueen.ai/chatgpt"><img src=".github/assets/app-chatgpt.svg" width="410" alt="ChatGPT: add the connector once and it manages your calendar wherever you sign in — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-slack.svg" width="410" alt="Slack: ask her from any channel, through OpenClaw or Hermes — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-discord.svg" width="410" alt="Discord: run your server's socials without leaving Discord — set-up guide" /></a>
 
-**Hermes and any other agent work too** — anything that can run a CLI command or call MCP can run your socials. [Agent guide »](https://postqueen.ai/agent)
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+### 🦞 Meet her open agents: OpenClaw &amp; Hermes
+
+The two open-source agents everyone is running right now both speak PostQueen natively. **OpenClaw** lives on your machine and answers you from any chat app. **Hermes** does that too — and give it one brief, it plans your whole week on its own. Both drive the same `postqueen` CLI.
+
+<p align="center">
+  <img src=".github/assets/open-agents.svg" width="660" alt="OpenClaw and Hermes running PostQueen: chat apps feed OpenClaw, a one-line brief feeds Hermes, both drive the postqueen CLI and posts land on the calendar" />
+</p>
+
+<a href="https://postqueen.ai/openclaw"><img src=".github/assets/spotlight-openclaw.svg" width="410" alt="OpenClaw: runs on your machine; message her from WhatsApp, Telegram, Slack or Discord — set-up guide" /></a> <a href="https://postqueen.ai/hermes-agent"><img src=".github/assets/spotlight-hermes.svg" width="410" alt="Hermes: the self-improving autonomous agent; one brief becomes a planned, verified week — set-up guide" /></a>
+
+**Any other agent works too** — anything that can run a CLI command or call MCP can run your socials. [Agent guide »](https://postqueen.ai/agent)
 
 <br/>
 

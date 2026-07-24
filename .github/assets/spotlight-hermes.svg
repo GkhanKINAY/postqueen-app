@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Hermes: the self-improving autonomous agent; one brief becomes a planned, verified week.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="122" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="24" y="40" width="44" height="44" rx="10" fill="#1b1430" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="46" y="70" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="24" font-weight="700" fill="#ffffff">H</text>
+  <text x="90" y="42" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Hermes</text>
+  <text x="90" y="66" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">Self-improving and autonomous: one brief</text>
+  <text x="90" y="85" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">becomes a planned, verified week.</text>
+  <text x="90" y="107" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#a78bfa">Set-up guide &#187;</text>
+</svg>

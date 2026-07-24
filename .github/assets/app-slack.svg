@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Slack: ask her from any channel, through OpenClaw. Great for teams.">
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Slack: ask her from any channel, through OpenClaw or Hermes. Great for teams.">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
   <rect x="1" y="1" width="408" height="122" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
   <rect x="24" y="40" width="44" height="44" rx="10" fill="#400F41"/>
@@ -10,6 +10,6 @@
   </svg>
   <text x="90" y="42" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Slack</text>
   <text x="90" y="66" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">Ask her from any channel, through</text>
-  <text x="90" y="85" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">OpenClaw. Great for teams.</text>
+  <text x="90" y="85" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">OpenClaw or Hermes. Great for teams.</text>
   <text x="90" y="107" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#ECB22E">Set-up guide &#187;</text>
 </svg>

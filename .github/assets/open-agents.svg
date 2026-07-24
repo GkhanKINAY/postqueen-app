@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="380" viewBox="0 0 660 380" role="img" aria-label="OpenClaw and Hermes running PostQueen: chat apps feed OpenClaw, a one-line brief feeds Hermes, both drive the postqueen CLI and posts land on the calendar.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient>
+    <linearGradient id="lobg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ff4d4d"/><stop offset="100%" stop-color="#991b1b"/></linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#5b21b6"/></marker>
+  </defs>
+  <rect x="1" y="1" width="658" height="378" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+
+  <!-- OpenClaw lane: chat apps -> OpenClaw -> PostQueen -->
+  <text x="30" y="52" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#9c94c9">ANY CHAT APP</text>
+  <rect x="30" y="62" width="34" height="34" rx="8" fill="#25D366"/>
+  <svg viewBox="0 0 24 24" width="20" height="20" x="37" y="69" fill="#ffffff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+  <rect x="72" y="62" width="34" height="34" rx="8" fill="#229ED9"/>
+  <svg viewBox="0 0 24 24" width="20" height="20" x="79" y="69" fill="#ffffff"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+  <rect x="30" y="104" width="34" height="34" rx="8" fill="#400F41"/>
+  <svg viewBox="0 0 33 32" width="22" height="22" x="36" y="110">
+    <path d="M9.35432 19.7481C9.35432 21.1851 8.1929 22.3465 6.7559 22.3465C5.31889 22.3465 4.15747 21.1851 4.15747 19.7481C4.15747 18.3111 5.31889 17.1497 6.7559 17.1497H9.35432V19.7481ZM10.6535 19.7481C10.6535 18.3111 11.815 17.1497 13.252 17.1497C14.689 17.1497 15.8504 18.3111 15.8504 19.7481V26.2441C15.8504 27.6812 14.689 28.8426 13.252 28.8426C11.815 28.8426 10.6535 27.6812 10.6535 26.2441V19.7481Z" fill="#E01E5A"/>
+    <path d="M13.252 9.31501C11.815 9.31501 10.6536 8.1536 10.6536 6.71659C10.6536 5.27958 11.815 4.11816 13.252 4.11816C14.689 4.11816 15.8504 5.27958 15.8504 6.71659V9.31501H13.252ZM13.252 10.6339C14.689 10.6339 15.8504 11.7953 15.8504 13.2323C15.8504 14.6693 14.689 15.8308 13.252 15.8308H6.73624C5.29923 15.8308 4.13782 14.6693 4.13782 13.2323C4.13782 11.7953 5.29923 10.6339 6.73624 10.6339H13.252Z" fill="#36C5F0"/>
+    <path d="M23.6654 13.2323C23.6654 11.7953 24.8268 10.6339 26.2638 10.6339C27.7008 10.6339 28.8622 11.7953 28.8622 13.2323C28.8622 14.6693 27.7008 15.8308 26.2638 15.8308H23.6654V13.2323ZM22.3662 13.2323C22.3662 14.6693 21.2047 15.8308 19.7677 15.8308C18.3307 15.8308 17.1693 14.6693 17.1693 13.2323V6.71659C17.1693 5.27958 18.3307 4.11816 19.7677 4.11816C21.2047 4.11816 22.3662 5.27958 22.3662 6.71659V13.2323Z" fill="#2EB67D"/>
+    <path d="M19.7677 23.6457C21.2047 23.6457 22.3662 24.8071 22.3662 26.2441C22.3662 27.6812 21.2047 28.8426 19.7677 28.8426C18.3307 28.8426 17.1693 27.6812 17.1693 26.2441V23.6457H19.7677ZM19.7677 22.3465C18.3307 22.3465 17.1693 21.1851 17.1693 19.7481C17.1693 18.3111 18.3307 17.1497 19.7677 17.1497H26.2835C27.7205 17.1497 28.8819 18.3111 28.8819 19.7481C28.8819 21.1851 27.7205 22.3465 26.2835 22.3465H19.7677Z" fill="#ECB22E"/>
+  </svg>
+  <rect x="72" y="104" width="34" height="34" rx="8" fill="#5662EB"/>
+  <svg viewBox="0 0 33 32" width="24" height="24" x="77" y="109">
+    <path d="M25.4756 7.67453C23.7413 6.88135 21.9106 6.31848 20.0303 6.00024C19.7741 6.46043 19.542 6.93365 19.335 7.418C18.3348 7.26713 17.3247 7.1912 16.3131 7.19083C15.3033 7.19083 14.2885 7.26758 13.291 7.41605C13.0873 6.93519 12.8507 6.45839 12.594 6C10.7135 6.32127 8.88271 6.88527 7.14744 7.67786C3.70111 12.7762 2.76714 17.7471 3.23412 22.6475C5.25217 24.138 7.51076 25.2716 9.9118 25.9991C10.4503 25.2723 10.9326 24.4984 11.3421 23.6931C10.5608 23.4021 9.80676 23.0422 9.08897 22.6179C9.27785 22.481 9.46258 22.3399 9.64107 22.2028C11.7282 23.1831 14.0088 23.6944 16.3162 23.6944C18.6237 23.6944 20.9042 23.1831 22.9915 22.2026C23.1721 22.35 23.3569 22.4912 23.5436 22.6178C22.8244 23.0429 22.069 23.4036 21.2863 23.6959C21.6973 24.5029 22.1758 25.2737 22.7168 26C25.12 25.2748 27.3804 24.1412 29.3989 22.6489L29.3983 22.6495C29.9463 16.9667 28.4622 12.0414 25.4756 7.67453ZM11.9327 19.6338C10.6313 19.6338 9.5562 18.4528 9.5562 16.9999C9.5562 15.547 10.5939 14.3557 11.9285 14.3557C13.2631 14.3557 14.3299 15.547 14.3071 16.9999C14.2842 18.4528 13.259 19.6338 11.9327 19.6338ZM20.6998 19.6338C19.3963 19.6338 18.3253 18.4528 18.3253 16.9999C18.3253 15.547 19.3631 14.3557 20.6998 14.3557C22.0364 14.3557 23.0949 15.547 23.0721 16.9999C23.0493 18.4528 22.026 19.6338 20.6998 19.6338Z" fill="#ffffff"/>
+  </svg>
+
+  <path d="M112 100 C 140 100, 155 100, 182 100" fill="none" stroke="#5b21b6" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <rect x="192" y="68" width="64" height="64" rx="12" fill="#1b1430" stroke="#ff4d4d" stroke-width="1.5"/>
+  <svg viewBox="0 0 120 120" width="44" height="44" x="202" y="78">
+    <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z" fill="url(#lobg)"/>
+    <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z" fill="url(#lobg)"/>
+    <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" fill="url(#lobg)"/>
+    <path d="M45 15 Q35 5 30 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M75 15 Q85 5 90 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <circle cx="45" cy="35" r="6" fill="#050810"/>
+    <circle cx="75" cy="35" r="6" fill="#050810"/>
+    <circle cx="46" cy="34" r="2.5" fill="#00e5cc"/>
+    <circle cx="76" cy="34" r="2.5" fill="#00e5cc"/>
+  </svg>
+  <text x="224" y="152" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#ffffff">OpenClaw</text>
+  <text x="224" y="168" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#9c94c9">runs on your machine</text>
+
+  <path d="M258 100 C 360 100, 470 125, 540 162" fill="none" stroke="#5b21b6" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- Hermes lane: one brief -> Hermes -> CLI -> PostQueen -->
+  <text x="30" y="252" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#9c94c9">ONE BRIEF</text>
+  <rect x="30" y="262" width="150" height="46" rx="12" fill="#5b21b6"/>
+  <text x="44" y="281" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" fill="#ffffff">Fill next week's</text>
+  <text x="44" y="298" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" fill="#ffffff">calendar for me.</text>
+
+  <path d="M184 285 C 200 285, 208 285, 220 285" fill="none" stroke="#5b21b6" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <rect x="228" y="253" width="64" height="64" rx="12" fill="#1b1430" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="260" y="296" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="30" font-weight="700" fill="#ffffff">H</text>
+  <text x="260" y="337" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#ffffff">Hermes</text>
+  <text x="260" y="353" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#9c94c9">plans the whole week</text>
+
+  <path d="M296 285 C 312 285, 318 285, 330 285" fill="none" stroke="#5b21b6" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <rect x="338" y="262" width="150" height="46" rx="10" fill="#1b1633" stroke="#2a2150" stroke-width="1"/>
+  <text x="349" y="281" font-family="'SF Mono',Menlo,Consolas,monospace" font-size="9.8" fill="#c9c2ef">postqueen posts:create</text>
+  <text x="349" y="298" font-family="'SF Mono',Menlo,Consolas,monospace" font-size="9.8"><tspan fill="#4ade80">&#10003;</tspan><tspan fill="#6f6899"> scheduled &#183; JSON</tspan></text>
+
+  <path d="M488 268 C 512 252, 528 218, 542 190" fill="none" stroke="#5b21b6" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- PostQueen node -->
+  <g transform="translate(547,150) scale(1.75)">
+    <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+    <path d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z" fill="#ffffff"/>
+    <rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff"/>
+  </g>
+  <text x="575" y="228" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">PostQueen</text>
+  <rect x="515" y="240" width="120" height="22" rx="6" fill="#241d45"/>
+  <text x="575" y="255" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Tue 09:00 <tspan fill="#4ade80">&#10003;</tspan></text>
+  <rect x="515" y="268" width="120" height="22" rx="6" fill="#241d45"/>
+  <text x="575" y="283" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Wed 12:30 <tspan fill="#4ade80">&#10003;</tspan></text>
+  <rect x="515" y="296" width="120" height="22" rx="6" fill="#241d45"/>
+  <text x="575" y="311" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Fri 18:00 <tspan fill="#4ade80">&#10003;</tspan></text>
+</svg>
