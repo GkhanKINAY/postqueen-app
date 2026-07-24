@@ -40,9 +40,9 @@
 
 <p align="center">
   <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src=".github/assets/badge-license.svg" alt="License: AGPL-3.0"></a>
-  <a href="https://www.npmjs.com/package/postqueen"><img src=".github/assets/badge-cli.svg" alt="CLI on npm"></a>
-  <a href="https://www.npmjs.com/package/@postqueen/node"><img src=".github/assets/badge-sdk.svg" alt="SDK on npm"></a>
-  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src=".github/assets/badge-n8n.svg?v=2" alt="n8n node on npm"></a>
+  <a href="https://www.npmjs.com/package/postqueen"><img src=".github/assets/badge-cli.svg?v=2" alt="CLI on npm"></a>
+  <a href="https://www.npmjs.com/package/@postqueen/node"><img src=".github/assets/badge-sdk.svg?v=2" alt="SDK on npm"></a>
+  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src=".github/assets/badge-n8n.svg?v=3" alt="n8n node on npm"></a>
 </p>
 
 <br/>
