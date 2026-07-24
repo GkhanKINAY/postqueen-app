@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300" role="img" aria-label="Give her a topic and she returns the hook and the on-brand visual, in any language">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300" role="img" aria-label="You name the topic and she comes back with the caption, the on-brand visual and the video, in any language">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient>
   </defs>
@@ -31,5 +31,5 @@
   <text x="72" y="226" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c9c2ef">¡Hola!</text>
   <text x="30" y="258" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" fill="#8b84b5">She answers in the language you use.</text>
   <!-- footer -->
-  <text x="320" y="284" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#9c94c9">One topic in. The hook and the visual out.</text>
+  <text x="320" y="284" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#9c94c9">You name the topic. She comes back with the post.</text>
 </svg>
