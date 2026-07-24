@@ -24,6 +24,10 @@
 
 <br/>
 
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 <p align="center">
   <a href="https://postqueen.ai">Website</a> &nbsp;·&nbsp;
   <a href="https://postqueen.ai/pricing">Pricing</a> &nbsp;·&nbsp;
@@ -48,6 +52,12 @@
   <img src=".github/assets/channels/instagram.svg" height="44" alt="Instagram" /> <img src=".github/assets/channels/youtube.svg" height="44" alt="YouTube" /> <img src=".github/assets/channels/google-business.svg" height="44" alt="Google Business Profile" /> <img src=".github/assets/channels/dribbble.svg" height="44" alt="Dribbble" /> <img src=".github/assets/channels/linkedin.svg" height="44" alt="LinkedIn" /> <img src=".github/assets/channels/reddit.svg" height="44" alt="Reddit" /> <img src=".github/assets/channels/tiktok.svg" height="44" alt="TikTok" /> <img src=".github/assets/channels/facebook.svg" height="44" alt="Facebook" /> <img src=".github/assets/channels/pinterest.svg" height="44" alt="Pinterest" /> <img src=".github/assets/channels/threads.svg" height="44" alt="Threads" /> <img src=".github/assets/channels/x.svg" height="44" alt="X" /> <img src=".github/assets/channels/slack.svg" height="44" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="44" alt="Discord" /> <img src=".github/assets/channels/mastodon.svg" height="44" alt="Mastodon" /> <img src=".github/assets/channels/bluesky.svg" height="44" alt="Bluesky" /> <img src=".github/assets/channels/lemmy.svg" height="44" alt="Lemmy" /> <img src=".github/assets/channels/warpcast.svg" height="44" alt="Farcaster" /> <img src=".github/assets/channels/telegram.svg" height="44" alt="Telegram" /> <img src=".github/assets/channels/nostr.svg" height="44" alt="Nostr" /> <img src=".github/assets/channels/vk.svg" height="44" alt="VK" /> <img src=".github/assets/channels/devto.svg" height="44" alt="Dev.to" /> <img src=".github/assets/channels/medium.svg" height="44" alt="Medium" /> <img src=".github/assets/channels/hashnode.svg" height="44" alt="Hashnode" /> <img src=".github/assets/channels/wordpress.svg" height="44" alt="WordPress" /> <img src=".github/assets/channels/whop.svg" height="44" alt="Whop" /> <img src=".github/assets/channels/kick.svg" height="44" alt="Kick" /> <img src=".github/assets/channels/mewe.svg" height="44" alt="MeWe" /> <img src=".github/assets/channels/twitch.svg" height="44" alt="Twitch" /> <img src=".github/assets/channels/listmonk.svg" height="44" alt="Listmonk" /> <img src=".github/assets/channels/skool.svg" height="44" alt="Skool" />
 </p>
 
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 <h3 align="center">Schedule and generate posts with AI</h3>
 
@@ -110,7 +120,7 @@ Try saying:
 There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number.
 
 <p align="center">
-  <img src=".github/assets/phone-agent.svg?v=3" width="300" alt="One message from any chat app and the posts are scheduled" />
+  <img src=".github/assets/phone-agent.svg?v=4" width="300" alt="One message from any chat app and the posts are scheduled" />
 </p>
 
 Pick your app — every card is a click away from its two-minute set-up guide:
@@ -150,7 +160,7 @@ postqueen posts:create \
 
 Pick your agent — each card opens its guide:
 
-<a href="https://postqueen.ai/claude-code"><img src=".github/assets/agent-claude-code.svg" width="410" alt="Claude Code: install the PostQueen skill; it plans, schedules and verifies right from your repo — set-up guide" /></a> <a href="https://postqueen.ai/codex"><img src=".github/assets/agent-codex.svg" width="410" alt="Codex: give it the CLI and it drafts and schedules between tasks — set-up guide" /></a> <a href="https://postqueen.ai/cursor"><img src=".github/assets/agent-cursor.svg" width="410" alt="Cursor: drive your socials from the editor's agent, over MCP or the CLI — set-up guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-gemini-cli.svg" width="410" alt="Gemini CLI: runs every postqueen command with clean JSON output — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-warp.svg" width="410" alt="Warp: the agentic terminal runs her CLI like any other command — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-cline.svg" width="410" alt="Cline: point it at the skill and let it work your calendar — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-windsurf.svg" width="410" alt="Windsurf: Cascade can schedule your week while you code — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-aider.svg" width="410" alt="Aider: pair-program your social pipeline with the postqueen CLI — agent guide" /></a>
+<a href="https://postqueen.ai/claude-code"><img src=".github/assets/agent-claude-code.svg" width="410" alt="Claude Code: install the PostQueen skill; it plans, schedules and verifies right from your repo — set-up guide" /></a> <a href="https://postqueen.ai/codex"><img src=".github/assets/agent-codex.svg" width="410" alt="Codex: give it the CLI and it drafts and schedules between tasks — set-up guide" /></a> <a href="https://postqueen.ai/cursor"><img src=".github/assets/agent-cursor.svg" width="410" alt="Cursor: drive your socials from the editor's agent, over MCP or the CLI — set-up guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-gemini-cli.svg" width="410" alt="Gemini CLI: runs every postqueen command with clean JSON output — set-up guide" /></a> <a href="https://postqueen.ai/hermes-agent"><img src=".github/assets/agent-hermes.svg" width="410" alt="Hermes: the autonomous agent runs multi-step plans over the postqueen CLI — set-up guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-warp.svg" width="410" alt="Warp: the agentic terminal runs her CLI like any other command — set-up guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-cline.svg" width="410" alt="Cline: point it at the skill and let it work your calendar — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-windsurf.svg" width="410" alt="Windsurf: Cascade can schedule your week while you code — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-aider.svg" width="410" alt="Aider: pair-program your social pipeline with the postqueen CLI — agent guide" /></a>
 
 <br/>
 
@@ -171,6 +181,18 @@ Settings → Connectors → add:  https://api.postqueen.ai/mcp/<YOUR_API_KEY>
 ```
 
 Set-up guide: [ChatGPT »](https://postqueen.ai/chatgpt)
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+### From your automations 🔌
+
+No agent, no problem — the same public API that powers everything above plugs straight into your tools:
+
+<a href="https://api.postqueen.ai/docs"><img src=".github/assets/auto-api.svg" width="410" alt="Public API: REST with Swagger docs; your API key is the only set-up — API reference" /></a> <a href="https://github.com/GkhanKINAY/postqueen-n8n"><img src=".github/assets/auto-n8n.svg" width="410" alt="n8n: drop the community node into any workflow, no code needed — get the node" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-make.svg" width="410" alt="Make.com: call her from any scenario with the HTTP module and your key — how-to" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-zapier.svg" width="410" alt="Zapier: wire posts into thousands of apps with a webhook and the API — how-to" /></a>
 
 <br/>
 
