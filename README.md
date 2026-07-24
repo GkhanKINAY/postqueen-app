@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  She is not a scheduler you operate. She is how a TikTok racks up views, how a YouTube channel posts every single day, how a launch hits every channel at once — <strong>while you do your actual job</strong>.
+  <img src=".github/assets/outcomes.svg" width="840" alt="Views on autopilot. Posts every day. Launches everywhere — while you do your actual job." />
 </p>
 
 <p align="center">
@@ -234,7 +234,17 @@ No agent, no problem — the same public API that powers everything above plugs 
   <img src=".github/assets/flow-everywhere.svg" width="620" alt="An n8n workflow: any content source, PostQueen Create Post, published to every social channel at once" />
 </p>
 
-Set-up, seven example workflows and the full operation list live in the [n8n node repo »](https://github.com/GkhanKINAY/postqueen-n8n)
+The workflows n8n builders actually grow channels with — a fresh AI video queued to YouTube every morning, and every new clip fanned out to TikTok, Reels and Shorts:
+
+<p align="center">
+  <img src=".github/assets/flow-youtube.svg" width="620" alt="An n8n workflow: schedule trigger every morning, PostQueen Generate Video, PostQueen Create Post to YouTube" />
+</p>
+
+<p align="center">
+  <img src=".github/assets/flow-clips.svg" width="620" alt="An n8n workflow: a new video file, PostQueen Upload File, PostQueen Create Post to TikTok, Reels and Shorts" />
+</p>
+
+Set-up, nine example workflows and the full operation list live in the [n8n node repo »](https://github.com/GkhanKINAY/postqueen-n8n)
 
 <a href="https://api.postqueen.ai/docs"><img src=".github/assets/auto-api.svg" width="410" alt="Public API: REST with Swagger docs; your API key is the only set-up — API reference" /></a> <a href="https://github.com/GkhanKINAY/postqueen-n8n"><img src=".github/assets/auto-n8n.svg" width="410" alt="n8n: drop the community node into any workflow, no code needed — get the node" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-make.svg" width="410" alt="Make.com: call her from any scenario with the HTTP module and your key — how-to" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-zapier.svg" width="410" alt="Zapier: wire posts into thousands of apps with a webhook and the API — how-to" /></a>
 
