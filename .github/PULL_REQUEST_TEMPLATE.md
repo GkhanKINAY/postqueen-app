@@ -17,3 +17,4 @@ Put a "X" in the boxes below to indicate you have followed the checklist;
 - [ ] I have read the [CONTRIBUTING](https://github.com/GkhanKINAY/postqueen-app/blob/main/CONTRIBUTING.md) guide.
 - [ ] I checked that there were no similar issues or PRs already open for this.
 - [ ] This PR fixes just ONE issue
+- [ ] I agree to the Contributor License Agreement that applies to me: [ICLA](https://github.com/GkhanKINAY/postqueen-app/blob/main/ICLA.md) as an individual, or [CCLA](https://github.com/GkhanKINAY/postqueen-app/blob/main/CCLA.md) on behalf of an entity.

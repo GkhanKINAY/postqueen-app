@@ -5,9 +5,10 @@ rights granted by a corporation or other legal entity ("Entity") to the PostQuee
 maintainer for Contributions submitted on the Entity's behalf. Individuals
 contributing in a personal capacity should use the [ICLA](./ICLA.md) instead.
 
-An authorized representative of the Entity accepts this Agreement by following the
-instructions on the [CLA page](https://contribute.postqueen.ai/p/postqueen/cla)
-and identifying the Entity and the employees authorized to contribute.
+An authorized representative of the Entity accepts this Agreement by ticking the
+Contributor License Agreement box in a pull request, and by emailing
+[support@postqueen.ai](mailto:support@postqueen.ai) to identify the Entity and the
+employees authorized to contribute on its behalf.
 
 ## 1. Definitions
 

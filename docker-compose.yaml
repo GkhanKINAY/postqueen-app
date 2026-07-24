@@ -76,7 +76,6 @@ services:
       # POSTQUEEN_OAUTH_USERINFO_URL: 'https://authentik.example.com/application/o/userinfo'
       # POSTQUEEN_OAUTH_CLIENT_ID: ''
       # POSTQUEEN_OAUTH_CLIENT_SECRET: ''
-      # POSTQUEEN_OAUTH_SCOPE: "openid profile email"  # Optional: uncomment to override default scope
 
       # === Sentry
 

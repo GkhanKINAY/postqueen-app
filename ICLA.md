@@ -7,8 +7,8 @@ Contribution you submit to the Project as an individual (not on behalf of an
 employer or other entity — use the [CCLA](./CCLA.md) for that).
 
 You accept this Agreement by submitting a Contribution to the Project (for
-example, by opening a pull request) and/or by following the instructions on the
-[CLA page](https://contribute.postqueen.ai/p/postqueen/cla).
+example, by opening a pull request) and by ticking the Contributor License
+Agreement box in that pull request.
 
 ## 1. Definitions
 
