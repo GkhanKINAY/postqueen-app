@@ -32,7 +32,7 @@
   <text x="82" y="150" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" fill="#ffffff">Push today&#39;s podcast to</text>
   <text x="82" y="172" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" fill="#ffffff">X and LinkedIn at 5pm</text>
   <text x="82" y="194" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14.5" fill="#ffffff">with the cover art.</text>
-  <text x="262" y="206" text-anchor="end" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="10.5" fill="#ddd0f7">14:32</text>
+  <text x="262" y="206" text-anchor="end" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="10.5" fill="#ddd0f7">2:32 PM</text>
   <!-- agent bubble -->
   <rect x="22" y="234" width="224" height="150" rx="15" fill="#211b3f"/>
   <circle cx="44" cy="262" r="7" fill="#16a34a"/>

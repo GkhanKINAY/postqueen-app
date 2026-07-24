@@ -72,9 +72,9 @@
   </g>
   <text x="575" y="228" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#ffffff">PostQueen</text>
   <rect x="515" y="240" width="120" height="22" rx="6" fill="#241d45"/>
-  <text x="575" y="255" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Tue 09:00 <tspan fill="#4ade80">&#10003;</tspan></text>
+  <text x="575" y="255" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Tue 9:00 AM <tspan fill="#4ade80">&#10003;</tspan></text>
   <rect x="515" y="268" width="120" height="22" rx="6" fill="#241d45"/>
-  <text x="575" y="283" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Wed 12:30 <tspan fill="#4ade80">&#10003;</tspan></text>
+  <text x="575" y="283" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Wed 12:30 PM <tspan fill="#4ade80">&#10003;</tspan></text>
   <rect x="515" y="296" width="120" height="22" rx="6" fill="#241d45"/>
-  <text x="575" y="311" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Fri 18:00 <tspan fill="#4ade80">&#10003;</tspan></text>
+  <text x="575" y="311" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11" fill="#c9c2ef">Fri 6:00 PM <tspan fill="#4ade80">&#10003;</tspan></text>
 </svg>

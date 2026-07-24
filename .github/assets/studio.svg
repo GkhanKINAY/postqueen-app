@@ -26,7 +26,7 @@
   <rect x="30" y="130" width="76" height="30" rx="15" fill="#241d45"/>
   <text x="68" y="150" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c9c2ef">Hello</text>
   <rect x="52" y="168" width="94" height="30" rx="15" fill="#241d45"/>
-  <text x="99" y="188" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c9c2ef">Merhaba</text>
+  <text x="99" y="188" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c9c2ef">Bonjour</text>
   <rect x="34" y="206" width="76" height="30" rx="15" fill="#241d45"/>
   <text x="72" y="226" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c9c2ef">¡Hola!</text>
   <text x="30" y="258" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="12.5" fill="#8b84b5">She answers in the language you use.</text>

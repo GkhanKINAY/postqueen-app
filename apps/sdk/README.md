@@ -73,7 +73,7 @@ the [API reference](https://api.postqueen.ai/docs) for the schema of the channel
 | `integrations()` | List connected channels; returns parsed JSON |
 | `deletePost(id: string)` | Delete a post; returns the raw `Response`, so call `.json()` yourself if you need the body |
 
-`upload()` maps the extension to a content type; `png`, `jpg`, `jpeg` and `gif` are recognised.
+`upload()` maps the extension to a content type; `png`, `jpg`, `jpeg` and `gif` are recognized.
 
 ## Self-hosted instances
 

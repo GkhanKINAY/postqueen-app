@@ -302,7 +302,7 @@ Write a post once and she reshapes it for every platform you are on, within each
 
 ### She writes, designs and films
 
-Give her a topic and she comes back with the whole package: a hook that stops the scroll, a caption in your voice and an image that matches your brand. Want a video too? She adds a short vertical one with an AI voiceover. And she creates in whatever language you speak to her, with the interface itself translated into 16 of them.
+Give her a topic and she comes back with the whole package: a hook that stops the scroll, a caption in your voice and an image that matches your brand. Want a video too? She adds a short vertical one with an AI voiceover. And she creates in whatever language you speak to her.
 
 <p align="center">
   <img src=".github/assets/studio.svg?v=9" width="640" alt="Give her one topic and she returns the caption, the on-brand image and a voiced video, in any language" />
