@@ -19,11 +19,6 @@
 </p>
 
 <p align="center">
-  <strong>Views on autopilot. Posts every day. Launches everywhere.</strong><br/>
-  <em>All while you do your actual job.</em>
-</p>
-
-<p align="center">
   <strong><a href="https://postqueen.ai">PostQueen</a></strong> is the open-source alternative to <strong>Buffer, Hootsuite, Sprout Social</strong> and <strong>Later</strong>.
 </p>
 
