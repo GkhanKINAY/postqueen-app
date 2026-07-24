@@ -47,7 +47,7 @@
   <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src=".github/assets/badge-license.svg" alt="License: AGPL-3.0"></a>
   <a href="https://www.npmjs.com/package/postqueen"><img src=".github/assets/badge-cli.svg" alt="CLI on npm"></a>
   <a href="https://www.npmjs.com/package/@postqueen/node"><img src=".github/assets/badge-sdk.svg" alt="SDK on npm"></a>
-  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src=".github/assets/badge-n8n.svg" alt="n8n node on npm"></a>
+  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src=".github/assets/badge-n8n.svg?v=2" alt="n8n node on npm"></a>
 </p>
 
 <br/>
@@ -492,7 +492,7 @@ The `postqueen` CLI drives the whole product and always returns clean JSON, whic
 
 ```bash
 npm i -g postqueen
-postqueen auth:login          # browser device flow, or use POSTQUEEN_API_KEY
+export POSTQUEEN_API_KEY=your_api_key   # from app.postqueen.ai/settings
 postqueen integrations:list
 postqueen posts:create -c "Hello world 👑" -s "2026-08-01T09:00:00Z" -i <integration-id>
 ```
@@ -620,6 +620,7 @@ The same API plugs into Make.com, Zapier or your own cron jobs.
 - 🐛 **Found a bug or have an idea?** [Open an issue](https://github.com/GkhanKINAY/postqueen-app/issues).
 - 💌 **Need a hand?** Email **support@postqueen.ai**.
 - 📚 **Getting started?** The [docs](https://docs.postqueen.ai) walk you through everything.
+- 🤝 **Want to contribute?** Start with the [contribution guide](https://github.com/GkhanKINAY/postqueen-app/blob/main/CONTRIBUTING.md); security reports go to [SECURITY.md](https://github.com/GkhanKINAY/postqueen-app/blob/main/SECURITY.md).
 
 If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find it.
 
