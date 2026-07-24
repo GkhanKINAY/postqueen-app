@@ -19,7 +19,7 @@
   <rect x="232" y="70" width="150" height="118" rx="14" fill="#241d45" stroke="#7c3aed" stroke-width="1.5"/>
   <g transform="translate(307,110)"><g transform="translate(-11,-11) scale(0.7)"><rect width="32" height="32" rx="8" fill="#7c3aed"/><path d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z" fill="#ffffff"/><rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff"/></g></g>
   <text x="307" y="152" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#ffffff">PostQueen</text>
-  <text x="307" y="171" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#8b84b5">Generate Video &#183; veo3</text>
+  <text x="307" y="171" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="11.5" fill="#8b84b5">Generate Video</text>
   <rect x="426" y="70" width="150" height="118" rx="14" fill="#241d45" stroke="#7c3aed" stroke-width="1.5"/>
   <g transform="translate(501,110)"><g transform="translate(-11,-11) scale(0.7)"><rect width="32" height="32" rx="8" fill="#7c3aed"/><path d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z" fill="#ffffff"/><rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff"/></g></g>
   <text x="501" y="152" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#ffffff">PostQueen</text>
