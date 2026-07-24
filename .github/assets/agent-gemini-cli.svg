@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Gemini CLI: Runs every postqueen command with clean JSON output.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="122" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="24" y="40" width="44" height="44" rx="10" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <svg viewBox="0 0 24 24" width="26" height="26" x="33" y="49" fill="#ffffff"><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/></svg>
+  <text x="90" y="42" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Gemini CLI</text>
+  <text x="90" y="66" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">Runs every postqueen command with clean</text>
+  <text x="90" y="85" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">JSON output.</text>
+  <text x="90" y="107" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#a78bfa">Agent guide &#187;</text>
+</svg>

@@ -125,7 +125,7 @@ Pick your app — every card is a click away from its two-minute set-up guide:
 
 <br/>
 
-### <img src=".github/assets/icon-claude-code.svg" height="36" alt="" /> <img src=".github/assets/icon-codex.svg" height="36" alt="" /> <img src=".github/assets/icon-cursor.svg" height="36" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="36" alt="" /> <img src=".github/assets/icon-warp.svg" height="36" alt="" /> <img src=".github/assets/icon-cline.svg" height="36" alt="" /> <img src=".github/assets/icon-windsurf.svg" height="36" alt="" /> <img src=".github/assets/icon-aider.svg" height="36" alt="" /> From your terminal
+### From your terminal 💻
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor, Gemini CLI, Warp, Cline, Windsurf or Aider** can plan and publish for you between commits:
 
@@ -148,7 +148,9 @@ postqueen posts:create \
   -i "your-integration-id"
 ```
 
-Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp; [Codex »](https://postqueen.ai/codex) &nbsp;·&nbsp; [Cursor »](https://postqueen.ai/cursor)
+Pick your agent — each card opens its guide:
+
+<a href="https://postqueen.ai/claude-code"><img src=".github/assets/agent-claude-code.svg" width="410" alt="Claude Code: install the PostQueen skill; it plans, schedules and verifies right from your repo — set-up guide" /></a> <a href="https://postqueen.ai/codex"><img src=".github/assets/agent-codex.svg" width="410" alt="Codex: give it the CLI and it drafts and schedules between tasks — set-up guide" /></a> <a href="https://postqueen.ai/cursor"><img src=".github/assets/agent-cursor.svg" width="410" alt="Cursor: drive your socials from the editor's agent, over MCP or the CLI — set-up guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-gemini-cli.svg" width="410" alt="Gemini CLI: runs every postqueen command with clean JSON output — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-warp.svg" width="410" alt="Warp: the agentic terminal runs her CLI like any other command — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-cline.svg" width="410" alt="Cline: point it at the skill and let it work your calendar — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-windsurf.svg" width="410" alt="Windsurf: Cascade can schedule your week while you code — agent guide" /></a> <a href="https://postqueen.ai/agent"><img src=".github/assets/agent-aider.svg" width="410" alt="Aider: pair-program your social pipeline with the postqueen CLI — agent guide" /></a>
 
 <br/>
 
@@ -156,7 +158,7 @@ Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp;
 
 <br/>
 
-### <img src=".github/assets/icon-chatgpt.svg" height="36" alt="" /> From ChatGPT
+### From ChatGPT
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
