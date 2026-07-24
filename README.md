@@ -73,10 +73,10 @@
 
 ## 💬 Just talk to her
 
-Message her like a colleague, from the tools you already use: WhatsApp, Telegram or the Claude app on your phone, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
+Message her like a colleague from wherever you already type or talk: WhatsApp or Telegram, the Claude app on your phone, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
 <p align="center">
-  <img src=".github/assets/chat-agent.svg?v=1" width="620" alt="A voice note to your AI agent: PostQueen generates the visual and schedules the posts" />
+  <img src=".github/assets/chat-agent.svg?v=2" width="620" alt="Just talk to her: one voice note and PostQueen generates the visual and schedules the posts" />
 </p>
 
 That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
@@ -103,20 +103,15 @@ Try saying:
 
 There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number.
 
-- **OpenClaw** — runs quietly on your machine and answers you on WhatsApp, Telegram, Slack or Discord. It finds your accounts, has PostQueen generate whatever is missing, and schedules the posts while you keep scrolling. [OpenClaw »](https://postqueen.ai/openclaw)
-- **Claude app** — add PostQueen as a connector on claude.ai and it syncs to Claude on iOS and Android. Dictate the post on your walk; it is on the calendar before you are home. [MCP »](https://postqueen.ai/mcp)
-- **ChatGPT** — add the PostQueen connector once and it is there wherever you are signed in. [ChatGPT »](https://postqueen.ai/chatgpt)
-- **Hermes and any other agent** — anything that can run a CLI command or call MCP can run your social media. [Agent guide »](https://postqueen.ai/agent)
-
 <p align="center">
-  <img src=".github/assets/phone-agent.svg" width="300" alt="Your agent on your phone: one message and the posts are scheduled" />
+  <img src=".github/assets/phone-agent.svg?v=2" width="300" alt="One message from any chat app and the posts are scheduled" />
 </p>
 
-<p align="center">
-  <img src=".github/assets/badge-whatsapp.svg" height="30" alt="WhatsApp" /> <img src=".github/assets/badge-telegram.svg" height="30" alt="Telegram" /> <img src=".github/assets/badge-claude.svg" height="30" alt="Claude" /> <img src=".github/assets/badge-chatgpt.svg" height="30" alt="ChatGPT" /> <img src=".github/assets/channels/slack.svg" height="30" alt="Slack" /> <img src=".github/assets/channels/discord.svg" height="30" alt="Discord" />
-</p>
+<img src=".github/assets/route-openclaw.svg" width="410" alt="OpenClaw: runs on your machine, answers on WhatsApp, Telegram, Slack or Discord" /> <img src=".github/assets/route-claude.svg" width="410" alt="Claude app: add the connector on claude.ai and it syncs to iOS and Android — just dictate" /> <img src=".github/assets/route-chatgpt.svg" width="410" alt="ChatGPT: add the connector once, use it wherever you are signed in" /> <img src=".github/assets/route-agent.svg" width="410" alt="Hermes and any agent: anything that can run a CLI command or call MCP can run your socials" />
 
-### <img src=".github/assets/icon-claude-code.svg" height="24" alt="" /> <img src=".github/assets/icon-codex.svg" height="24" alt="" /> <img src=".github/assets/icon-cursor.svg" height="24" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="24" alt="" /> From your terminal
+Set-up guides: [OpenClaw »](https://postqueen.ai/openclaw) &nbsp;·&nbsp; [Claude / MCP »](https://postqueen.ai/mcp) &nbsp;·&nbsp; [ChatGPT »](https://postqueen.ai/chatgpt) &nbsp;·&nbsp; [Agent guide »](https://postqueen.ai/agent)
+
+### <img src=".github/assets/icon-claude-code.svg" height="30" alt="" /> <img src=".github/assets/icon-codex.svg" height="30" alt="" /> <img src=".github/assets/icon-cursor.svg" height="30" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="30" alt="" /> From your terminal
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
 
@@ -141,7 +136,7 @@ postqueen posts:create \
 
 Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp; [Codex »](https://postqueen.ai/codex) &nbsp;·&nbsp; [Cursor »](https://postqueen.ai/cursor)
 
-### <img src=".github/assets/icon-chatgpt.svg" height="24" alt="" /> From ChatGPT
+### <img src=".github/assets/icon-chatgpt.svg" height="30" alt="" /> From ChatGPT
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
