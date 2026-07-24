@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Telegram: message her like any contact; every post lands on your calendar first.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="408" height="122" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="24" y="40" width="44" height="44" rx="10" fill="#229ED9"/>
+  <svg viewBox="0 0 24 24" width="26" height="26" x="33" y="49" fill="#ffffff"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+  <text x="90" y="42" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Telegram</text>
+  <text x="90" y="66" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">Message her like any contact; every post</text>
+  <text x="90" y="85" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13.5" fill="#c4b5fd">lands on your calendar first.</text>
+  <text x="90" y="107" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#60a5fa">Set-up guide &#187;</text>
+</svg>

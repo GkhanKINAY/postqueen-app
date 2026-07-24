@@ -36,9 +36,9 @@
 
 <p align="center">
   <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-  <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&color=6d28d9" alt="CLI on npm"></a>
-  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/v/@postqueen/node?label=SDK&color=7c3aed" alt="SDK on npm"></a>
-  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n&color=e0189e" alt="n8n node on npm"></a>
+  <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&amp;color=6d28d9" alt="CLI on npm"></a>
+  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/v/@postqueen/node?label=SDK&amp;color=7c3aed" alt="SDK on npm"></a>
+  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n&amp;color=e0189e" alt="n8n node on npm"></a>
 </p>
 
 <br/>
@@ -76,7 +76,7 @@
 Message her like a colleague from wherever you already type or talk: WhatsApp or Telegram, the Claude app on your phone, your terminal through Claude Code, ChatGPT through MCP. Say what you want posted, and consider it handled.
 
 <p align="center">
-  <img src=".github/assets/chat-agent.svg?v=2" width="620" alt="Just talk to her: one voice note and PostQueen generates the visual and schedules the posts" />
+  <img src=".github/assets/chat-agent.svg?v=3" width="620" alt="Just talk to her: one voice note and PostQueen generates the visual and schedules the posts" />
 </p>
 
 That first message is a voice note, and that is the point: if your assistant supports voice, you can say it out loud. Voice note in, posts out.
@@ -99,21 +99,35 @@ Try saying:
   <img src=".github/assets/pill-claude-code.svg" height="46" alt="Claude Code" /> <img src=".github/assets/pill-chatgpt.svg" height="46" alt="ChatGPT" /> <img src=".github/assets/pill-openclaw.svg" height="46" alt="OpenClaw" /> <img src=".github/assets/pill-codex.svg" height="46" alt="Codex" /> <img src=".github/assets/pill-cursor.svg" height="46" alt="Cursor" /> <img src=".github/assets/pill-gemini-cli.svg" height="46" alt="Gemini CLI" /> <img src=".github/assets/pill-hermes.svg" height="46" alt="Hermes" /> <img src=".github/assets/pill-warp.svg" height="46" alt="Warp" /> <img src=".github/assets/pill-cline.svg" height="46" alt="Cline" /> <img src=".github/assets/pill-windsurf.svg" height="46" alt="Windsurf" /> <img src=".github/assets/pill-aider.svg" height="46" alt="Aider" />
 </p>
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### From your phone 📱
 
 There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number.
 
 <p align="center">
-  <img src=".github/assets/phone-agent.svg?v=2" width="300" alt="One message from any chat app and the posts are scheduled" />
+  <img src=".github/assets/phone-agent.svg?v=3" width="300" alt="One message from any chat app and the posts are scheduled" />
 </p>
 
-<img src=".github/assets/route-openclaw.svg" width="410" alt="OpenClaw: runs on your machine, answers on WhatsApp, Telegram, Slack or Discord" /> <img src=".github/assets/route-claude.svg" width="410" alt="Claude app: add the connector on claude.ai and it syncs to iOS and Android — just dictate" /> <img src=".github/assets/route-chatgpt.svg" width="410" alt="ChatGPT: add the connector once, use it wherever you are signed in" /> <img src=".github/assets/route-agent.svg" width="410" alt="Hermes and any agent: anything that can run a CLI command or call MCP can run your socials" />
+Pick your app — every card is a click away from its two-minute set-up guide:
 
-Set-up guides: [OpenClaw »](https://postqueen.ai/openclaw) &nbsp;·&nbsp; [Claude / MCP »](https://postqueen.ai/mcp) &nbsp;·&nbsp; [ChatGPT »](https://postqueen.ai/chatgpt) &nbsp;·&nbsp; [Agent guide »](https://postqueen.ai/agent)
+<a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-whatsapp.svg" width="410" alt="WhatsApp: text or voice-note her, through OpenClaw running on your machine — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-telegram.svg" width="410" alt="Telegram: message her like any contact; every post lands on your calendar first — set-up guide" /></a> <a href="https://postqueen.ai/mcp"><img src=".github/assets/app-claude.svg" width="410" alt="Claude app: add the MCP connector on claude.ai; it syncs to iOS and Android — set-up guide" /></a> <a href="https://postqueen.ai/chatgpt"><img src=".github/assets/app-chatgpt.svg" width="410" alt="ChatGPT: add the connector once, use it wherever you are signed in — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-slack.svg" width="410" alt="Slack: ask her from any channel, through OpenClaw — set-up guide" /></a> <a href="https://postqueen.ai/openclaw"><img src=".github/assets/app-discord.svg" width="410" alt="Discord: run your server's socials without leaving Discord — set-up guide" /></a>
 
-### <img src=".github/assets/icon-claude-code.svg" height="30" alt="" /> <img src=".github/assets/icon-codex.svg" height="30" alt="" /> <img src=".github/assets/icon-cursor.svg" height="30" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="30" alt="" /> From your terminal
+**Hermes and any other agent work too** — anything that can run a CLI command or call MCP can run your socials. [Agent guide »](https://postqueen.ai/agent)
 
-Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor or Gemini CLI** can plan and publish for you between commits:
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+### <img src=".github/assets/icon-claude-code.svg" height="36" alt="" /> <img src=".github/assets/icon-codex.svg" height="36" alt="" /> <img src=".github/assets/icon-cursor.svg" height="36" alt="" /> <img src=".github/assets/icon-gemini-cli.svg" height="36" alt="" /> <img src=".github/assets/icon-warp.svg" height="36" alt="" /> <img src=".github/assets/icon-cline.svg" height="36" alt="" /> <img src=".github/assets/icon-windsurf.svg" height="36" alt="" /> <img src=".github/assets/icon-aider.svg" height="36" alt="" /> From your terminal
+
+Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor, Gemini CLI, Warp, Cline, Windsurf or Aider** can plan and publish for you between commits:
 
 <p align="center">
   <img src=".github/assets/terminal-claude.svg?v=6" width="620" alt="Claude Code in a terminal: you ask in plain words, it runs the postqueen CLI and schedules the posts" />
@@ -136,7 +150,13 @@ postqueen posts:create \
 
 Set-up guides: [Claude Code »](https://postqueen.ai/claude-code) &nbsp;·&nbsp; [Codex »](https://postqueen.ai/codex) &nbsp;·&nbsp; [Cursor »](https://postqueen.ai/cursor)
 
-### <img src=".github/assets/icon-chatgpt.svg" height="30" alt="" /> From ChatGPT
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
+### <img src=".github/assets/icon-chatgpt.svg" height="36" alt="" /> From ChatGPT
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
@@ -150,6 +170,12 @@ Settings → Connectors → add:  https://api.postqueen.ai/mcp/<YOUR_API_KEY>
 
 Set-up guide: [ChatGPT »](https://postqueen.ai/chatgpt)
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### 🌙 An agent that works while you sleep
 
 Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on demand. A small recurring job wakes up every morning, checks yesterday's numbers with `analytics:platform`, and drafts today's post before you have had coffee. Every PostQueen action is a CLI command or an MCP call with clean JSON output, so any agent that can run a command can run your social media.
@@ -160,6 +186,8 @@ Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on deman
 
 **Any other agent works too:** Gemini CLI, Aider, Cline, Warp, Windsurf, or your own scripts. Start from the [Agent guide](https://postqueen.ai/agent) or the [MCP guide](https://postqueen.ai/mcp), and see the full command reference in [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent).
 
+<br/>
+
 ---
 
 ## 👥 Who is she for?
@@ -168,11 +196,19 @@ If posting is part of your job but not your whole job, she is for you. Creators 
 
 <img src=".github/assets/persona-creator.svg?v=2" width="410" alt="Creators: post every day without living in the apps" /> <img src=".github/assets/persona-business.svg?v=2" width="410" alt="Business owners: no time for socials — the cafe, the gym, the store on autopilot" /> <img src=".github/assets/persona-developer.svg" width="410" alt="Developers: OAuth2, REST API and SDK — build posting into your own product" /> <img src=".github/assets/persona-agent.svg" width="410" alt="Agent-first: wire her into Claude, ChatGPT, OpenClaw or Hermes and let it run" /> <img src=".github/assets/persona-automation.svg" width="410" alt="Automation teams: n8n, Make.com or Zapier flows that draft, approve and publish" /> <img src=".github/assets/persona-agency.svg?v=2" width="410" alt="Agencies and brands: multi-brand workspaces with roles, reviews and approvals" />
 
+<br/>
+
 ---
 
 ## 👑 What she takes off your plate
 
 Everything below ships today, in the cloud and in the open-source code. We call her the queen of your posts because she earns the title: sharper hooks, better timing and more consistency than hand-run social media.
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### One calendar, every channel
 
@@ -182,6 +218,12 @@ Write a post once and she tailors it to each platform's limits and format, and g
   <img src=".github/assets/fanout.svg?v=6" width="640" alt="Write one post and PostQueen tailors it per platform; RSS articles feed in automatically" />
 </p>
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### She writes, designs and films
 
 Give her a topic and she comes back with the hook, the caption, an on-brand image, even a short vertical video with AI voiceover. And in whatever language you use: she answers in yours, and the app itself ships in 16.
@@ -190,6 +232,12 @@ Give her a topic and she comes back with the hook, the caption, an on-brand imag
   <img src=".github/assets/studio.svg?v=8" width="640" alt="One topic in: the caption, the on-brand image and a voiced video out, in any language" />
 </p>
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### She keeps score and keeps working
 
 Follower growth, impressions and per-post engagement sit right next to your calendar. And Auto Actions can repost, like or comment for you when a post hits the milestone you set:
@@ -197,6 +245,12 @@ Follower growth, impressions and per-post engagement sit right next to your cale
 <p align="center">
   <img src=".github/assets/analytics.svg" width="620" alt="PostQueen analytics: engagement chart, followers, impressions and video views" />
 </p>
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 #### 🤝 Teamwork
 
@@ -207,6 +261,8 @@ Invite the team: roles, shared calendars and multi-brand workspaces, so everyone
 </p>
 
 All of it is open source under AGPL-3.0. Use the managed cloud, or run the whole thing on your own server: same code, same queen.
+
+<br/>
 
 ---
 
@@ -227,9 +283,17 @@ flowchart TD
 
 Curious about the internals? Read [how it works](https://docs.postqueen.ai/howitworks) in the docs.
 
+<br/>
+
 ---
 
 ## 🚀 Get started in minutes
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### ☁️ Cloud, the fast lane
 
@@ -238,6 +302,12 @@ Skip the setup entirely. Create an account, connect your channels, and schedule 
 <p align="center">
   <a href="https://postqueen.ai"><img src=".github/assets/cta-cloud.svg" height="52" alt="Start free for 7 days" /></a>
 </p>
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### 🐳 Self-host, the free lane
 
@@ -257,6 +327,8 @@ docker compose up -d          # then open http://localhost:4007
 You will need Docker, about 4 GB of RAM, and for connecting real social accounts a public HTTPS domain behind a reverse proxy (the networks send their OAuth callbacks there). The stack ships the app, PostgreSQL, Redis and Temporal.
 
 Full walkthrough: [self-host guide](https://docs.postqueen.ai/installation/docker-compose) &nbsp;·&nbsp; Kubernetes: [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart) &nbsp;·&nbsp; every setting: [configuration reference](https://docs.postqueen.ai/configuration/reference)
+
+<br/>
 
 ---
 
@@ -278,11 +350,19 @@ Write once, be everywhere. PostQueen publishes to **30+ networks** out of the bo
 
 LinkedIn and Instagram each support both personal and page posting. New connectors ship regularly: see the full list with per-network guides at [postqueen.ai/channels](https://postqueen.ai/channels).
 
+<br/>
+
 ---
 
 ## 🛠️ For developers and builders
 
 Everything the app does is a public API call, which is why agents drive it so well. Pick your surface:
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### 1. Get your API key
 
@@ -293,6 +373,12 @@ Everything the app does is a public API call, which is why agents drive it so we
 ```bash
 export POSTQUEEN_API_KEY="your_api_key"
 ```
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### 2. Connect over MCP
 
@@ -313,6 +399,12 @@ claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/<YOUR_API
 
 Full guide with per-client steps: [postqueen.ai/mcp](https://postqueen.ai/mcp) &nbsp;·&nbsp; tool reference: [docs](https://docs.postqueen.ai/mcp/tools)
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### 3. Script it with the CLI
 
 The `postqueen` CLI drives the whole product and always returns clean JSON, which makes it equally good for shell scripts and AI agents:
@@ -325,6 +417,12 @@ postqueen posts:create -c "Hello world 👑" -s "2026-08-01T09:00:00Z" -i <integ
 ```
 
 Full command reference: [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent) &nbsp;·&nbsp; [CLI docs](https://docs.postqueen.ai/cli/introduction)
+
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
 
 ### 4. Call the API or the SDK
 
@@ -388,6 +486,12 @@ await postqueen.post({
 });
 ```
 
+<br/>
+
+<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+
+<br/>
+
 ### 5. Automate without code
 
 | Tool | What it is | Get started |
@@ -398,6 +502,8 @@ await postqueen.post({
 | **Webhooks** | Get notified when posts publish | [configuration reference](https://docs.postqueen.ai/configuration/reference) |
 
 The same API plugs into Make.com, Zapier or your own cron jobs.
+
+<br/>
 
 ---
 
@@ -411,6 +517,8 @@ The same API plugs into Make.com, Zapier or your own cron jobs.
 - **Redis** for cache and queues
 - **[Resend](https://resend.com)** for email notifications
 
+<br/>
+
 ---
 
 ## 🛡️ Compliance
@@ -422,6 +530,8 @@ The same API plugs into Make.com, Zapier or your own cron jobs.
 - PostQueen never asks users to paste social-platform credentials into the hosted product.
 - Users always authenticate directly with each platform (X, LinkedIn, Discord, and so on), which keeps every platform's compliance and your data privacy intact.
 
+<br/>
+
 ---
 
 ## ❤️ Community and support
@@ -432,6 +542,8 @@ The same API plugs into Make.com, Zapier or your own cron jobs.
 
 If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find it.
 
+<br/>
+
 ---
 
 ## 🙏 Thank you, Postiz
@@ -439,6 +551,8 @@ If PostQueen saves you time, a ⭐ on the repo genuinely helps other people find
 PostQueen is a fork of [Postiz](https://github.com/gitroomhq/postiz-app) by Nevo David, released under AGPL-3.0. Postiz gave us a rock-solid open-source scheduler: the connectors, the calendar, the Temporal pipeline, years of careful work that we did not have to redo. We forked it because we wanted to take that foundation in a specific direction, a social media manager you talk to instead of operate, and building on Postiz let us start from something that already worked.
 
 Thank you, Nevo David and every Postiz contributor. This project exists because you chose to open-source yours. If PostQueen is not quite what you need, [Postiz](https://postiz.com) itself might be, and it deserves your star too. 🙏
+
+<br/>
 
 ---
 
