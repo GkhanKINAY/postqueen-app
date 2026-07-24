@@ -19,6 +19,10 @@
 </p>
 
 <p align="center">
+  She is not a scheduler you operate. She is how a TikTok racks up views, how a YouTube channel posts every single day, how a launch hits every channel at once — <strong>while you do your actual job</strong>.
+</p>
+
+<p align="center">
   <strong><a href="https://postqueen.ai">PostQueen</a></strong> is the open-source alternative to <strong>Buffer, Hootsuite, Sprout Social</strong> and <strong>Later</strong>.
 </p>
 
@@ -224,7 +228,13 @@ Set-up guide: [Claude »](https://postqueen.ai/mcp)
 
 ## 🔌 From your automations
 
-No agent, no problem — the same public API that powers everything above plugs straight into your tools:
+No agent, no problem — the same public API that powers everything above plugs straight into your tools. Hook **n8n** up once and every post and video your workflow produces goes out to every channel you have, scheduled and published by PostQueen in a single step:
+
+<p align="center">
+  <img src=".github/assets/flow-everywhere.svg" width="620" alt="An n8n workflow: any content source, PostQueen Create Post, published to every social channel at once" />
+</p>
+
+Set-up, seven example workflows and the full operation list live in the [n8n node repo »](https://github.com/GkhanKINAY/postqueen-n8n)
 
 <a href="https://api.postqueen.ai/docs"><img src=".github/assets/auto-api.svg" width="410" alt="Public API: REST with Swagger docs; your API key is the only set-up — API reference" /></a> <a href="https://github.com/GkhanKINAY/postqueen-n8n"><img src=".github/assets/auto-n8n.svg" width="410" alt="n8n: drop the community node into any workflow, no code needed — get the node" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-make.svg" width="410" alt="Make.com: call her from any scenario with the HTTP module and your key — how-to" /></a> <a href="https://docs.postqueen.ai/public-api/introduction"><img src=".github/assets/auto-zapier.svg" width="410" alt="Zapier: wire posts into thousands of apps with a webhook and the API — how-to" /></a>
 
