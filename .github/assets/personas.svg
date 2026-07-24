@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="402" viewBox="0 0 840 402" role="img" aria-label="Who is she for: creators, business owners, developers, agent-first users, automation teams, agencies and brands.">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
+  <rect x="1" y="1" width="838" height="400" rx="22" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <line x1="36" y1="138" x2="804" y2="138" stroke="#241d45" stroke-width="1"/>
+  <line x1="36" y1="260" x2="804" y2="260" stroke="#241d45" stroke-width="1"/>
+  <line x1="420" y1="30" x2="420" y2="372" stroke="#241d45" stroke-width="1"/>
+  <rect x="36" y="36" width="44" height="44" rx="10" fill="#1b1430" stroke="#ec4899" stroke-width="1.5"/>
+  <g transform="translate(58,58)" fill="none" stroke="#ec4899" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="-12" y="-7" width="24" height="16" rx="3"/>
+    <circle cx="1" cy="1" r="4.8"/>
+    <path d="M-12,-7 L-8,-12 L-2,-12 L1,-7"/>
+    <circle cx="8" cy="-3" r="1.2" fill="#ec4899" stroke="none"/>
+  </g>
+  <text x="100" y="52" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Creators</text>
+  <text x="100" y="74" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">Post every day without living</text>
+  <text x="100" y="92" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">in the apps.</text>
+  <rect x="436" y="36" width="44" height="44" rx="10" fill="#1b1430" stroke="#f59e0b" stroke-width="1.5"/>
+  <g transform="translate(458,58)" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M-11,-3 L-9.5,-10 L9.5,-10 L11,-3 Z"/>
+    <path d="M-11,-3 Q-11,1.5 -7.3,1.5 Q-3.7,1.5 -3.7,-3 Q-3.7,1.5 0,1.5 Q3.7,1.5 3.7,-3 Q3.7,1.5 7.3,1.5 Q11,1.5 11,-3"/>
+    <path d="M-8.5,3 L-8.5,11 L8.5,11 L8.5,3"/>
+    <path d="M1.5,11 L1.5,6 L6,6 L6,11"/>
+  </g>
+  <text x="500" y="52" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Business owners</text>
+  <text x="500" y="74" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">No time for socials: the cafe, the gym,</text>
+  <text x="500" y="92" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">the store on autopilot.</text>
+  <rect x="36" y="158" width="44" height="44" rx="10" fill="#1b1430" stroke="#60a5fa" stroke-width="1.5"/>
+  <g transform="translate(58,180)" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M-4.5,-7 L-11.5,0 L-4.5,7"/>
+    <path d="M4.5,-7 L11.5,0 L4.5,7"/>
+    <path d="M2,-9.5 L-2,9.5"/>
+  </g>
+  <text x="100" y="174" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Developers</text>
+  <text x="100" y="196" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">OAuth2, REST API and SDK: build posting</text>
+  <text x="100" y="214" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">into your own product.</text>
+  <rect x="436" y="158" width="44" height="44" rx="10" fill="#1b1430" stroke="#a78bfa" stroke-width="1.5"/>
+  <g transform="translate(458,180)" fill="#a78bfa">
+    <path d="M-1 -10 C0 -5.1 3.1 -2 8 -1 C3.1 0 0 3.1 -1 8 C-2 3.1 -5.1 0 -10 -1 C-5.1 -2 -2 -5.1 -1 -10 Z"/>
+    <path d="M7.5 -9 C7.85 -7.3 8.8 -6.35 10.5 -6 C8.8 -5.65 7.85 -4.7 7.5 -3 C7.15 -4.7 6.2 -5.65 4.5 -6 C6.2 -6.35 7.15 -7.3 7.5 -9 Z" opacity="0.85"/>
+  </g>
+  <text x="500" y="174" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Agent-first</text>
+  <text x="500" y="196" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">Wire her into Claude, ChatGPT, OpenClaw</text>
+  <text x="500" y="214" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">or Hermes and let it run.</text>
+  <rect x="36" y="280" width="44" height="44" rx="10" fill="#1b1430" stroke="#4ade80" stroke-width="1.5"/>
+  <g transform="translate(58,302)" fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="-8" cy="-6" r="3.4"/>
+    <circle cx="8" cy="-6" r="3.4"/>
+    <circle cx="0" cy="7" r="3.4"/>
+    <path d="M-4.6,-6 L4.6,-6"/>
+    <path d="M-6.2,-3.2 L-1.7,4.2"/>
+    <path d="M6.2,-3.2 L1.7,4.2"/>
+  </g>
+  <text x="100" y="296" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Automation teams</text>
+  <text x="100" y="318" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">n8n, Make.com or Zapier flows that draft,</text>
+  <text x="100" y="336" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">approve and publish.</text>
+  <rect x="436" y="280" width="44" height="44" rx="10" fill="#1b1430" stroke="#2dd4bf" stroke-width="1.5"/>
+  <g transform="translate(458,302)" fill="none" stroke="#2dd4bf" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="-11" y="-5" width="9.5" height="15" rx="1.2"/>
+    <rect x="1.5" y="-10" width="9.5" height="20" rx="1.2"/>
+    <path d="M-8.6,-1.5 h4.7 M-8.6,2.5 h4.7 M-8.6,6.5 h4.7"/>
+    <path d="M3.9,-6.5 h4.7 M3.9,-2.5 h4.7 M3.9,1.5 h4.7 M3.9,5.5 h4.7"/>
+  </g>
+  <text x="500" y="296" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ffffff">Agencies &amp; brands</text>
+  <text x="500" y="318" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">Multi-brand workspaces with roles,</text>
+  <text x="500" y="336" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="13" fill="#c4b5fd">reviews and approvals.</text>
+</svg>

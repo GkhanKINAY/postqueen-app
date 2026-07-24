@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="70" viewBox="0 0 840 70" role="img" aria-label="From your terminal">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient><linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed" stop-opacity="0.55"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/></linearGradient></defs>
+  <rect x="1" y="1" width="838" height="68" rx="16" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
+  <rect x="16" y="13" width="44" height="44" rx="10" fill="#1b1430" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="38" y="44" text-anchor="middle" font-size="24">💻</text>
+  <text x="78" y="44" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="800" fill="#ffffff">From your terminal</text>
+  <rect x="364" y="34" width="412" height="2.5" rx="1.25" fill="url(#fade)"/>
+  <g transform="translate(794,22) scale(0.8)" opacity="0.5">
+    <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+    <path d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z" fill="#ffffff"/>
+    <rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#ffffff"/>
+  </g>
+</svg>

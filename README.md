@@ -109,11 +109,7 @@ Try saying:
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
-
-<br/>
-
-### From your phone 📱
+<p align="center"><img src=".github/assets/title-phone.svg" width="840" alt="From your phone" /></p>
 
 There is no PostQueen app to install, and that is the point: whichever assistant you already carry in your pocket becomes her phone number. Message it there, and it manages your whole PostQueen calendar — drafting, scheduling and publishing from inside the chat.
 
@@ -127,11 +123,7 @@ Pick your app — every card is a click away from its two-minute set-up guide:
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
-
-<br/>
-
-### 🦞 Meet her open agents: OpenClaw &amp; Hermes
+<p align="center"><img src=".github/assets/title-open-agents.svg" width="840" alt="Meet her open agents: OpenClaw and Hermes" /></p>
 
 The two open-source agents everyone is running right now both speak PostQueen natively. **OpenClaw** lives on your machine and answers you from any chat app. **Hermes** does that too — and give it one brief, it plans your whole week on its own. Both drive the same `postqueen` CLI.
 
@@ -145,11 +137,7 @@ The two open-source agents everyone is running right now both speak PostQueen na
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
-
-<br/>
-
-### From your terminal 💻
+<p align="center"><img src=".github/assets/title-terminal.svg" width="840" alt="From your terminal" /></p>
 
 Give your coding agent hands. Install PostQueen as a skill and **Claude Code, Codex, Cursor, Gemini CLI, Warp, Cline, Windsurf or Aider** can plan and publish for you between commits:
 
@@ -178,11 +166,7 @@ Pick your agent — each card opens its guide:
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
-
-<br/>
-
-### From ChatGPT
+<p align="center"><img src=".github/assets/title-chatgpt.svg" width="840" alt="From ChatGPT" /></p>
 
 One link, no install. Add PostQueen as a connector and ask ChatGPT to draft and schedule your week:
 
@@ -198,11 +182,23 @@ Set-up guide: [ChatGPT »](https://postqueen.ai/chatgpt)
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
+<p align="center"><img src=".github/assets/title-claude.svg" width="840" alt="From Claude" /></p>
+
+The same one-link connector works on claude.ai — and it follows you into the Claude apps on iOS, Android and desktop. Ask Claude to plan and schedule your week:
+
+<p align="center">
+  <img src=".github/assets/chat-claude.svg" width="620" alt="Claude with the PostQueen connector: it plans a five-post launch week and schedules every post to X and LinkedIn" />
+</p>
+
+```text
+claude.ai → Settings → Connectors → add:  https://api.postqueen.ai/mcp/<YOUR_API_KEY>
+```
+
+Set-up guide: [Claude »](https://postqueen.ai/mcp)
 
 <br/>
 
-### From your automations 🔌
+<p align="center"><img src=".github/assets/title-automations.svg" width="840" alt="From your automations" /></p>
 
 No agent, no problem — the same public API that powers everything above plugs straight into your tools:
 
@@ -210,11 +206,7 @@ No agent, no problem — the same public API that powers everything above plugs 
 
 <br/>
 
-<p align="center"><img src=".github/assets/divider.svg" width="840" alt="" /></p>
-
-<br/>
-
-### 🌙 An agent that works while you sleep
+<p align="center"><img src=".github/assets/title-nightshift.svg" width="840" alt="An agent that works while you sleep" /></p>
 
 Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on demand. A small recurring job wakes up every morning, checks yesterday's numbers with `analytics:platform`, and drafts today's post before you have had coffee. Every PostQueen action is a CLI command or an MCP call with clean JSON output, so any agent that can run a command can run your social media.
 
@@ -232,7 +224,9 @@ Agents like **Hermes** and **OpenClaw** can run on a schedule, not just on deman
 
 If posting is part of your job but not your whole job, she is for you. Creators who want to stay visible without living in the apps, owners who would rather run the business than the brand account, developers and automation teams who treat publishing as a building block, and anyone who would rather just tell an agent what to post:
 
-<img src=".github/assets/persona-creator.svg?v=2" width="410" alt="Creators: post every day without living in the apps" /> <img src=".github/assets/persona-business.svg?v=2" width="410" alt="Business owners: no time for socials — the cafe, the gym, the store on autopilot" /> <img src=".github/assets/persona-developer.svg" width="410" alt="Developers: OAuth2, REST API and SDK — build posting into your own product" /> <img src=".github/assets/persona-agent.svg" width="410" alt="Agent-first: wire her into Claude, ChatGPT, OpenClaw or Hermes and let it run" /> <img src=".github/assets/persona-automation.svg" width="410" alt="Automation teams: n8n, Make.com or Zapier flows that draft, approve and publish" /> <img src=".github/assets/persona-agency.svg?v=2" width="410" alt="Agencies and brands: multi-brand workspaces with roles, reviews and approvals" />
+<p align="center">
+  <img src=".github/assets/personas.svg" width="840" alt="Who is she for: creators, business owners, developers, agent-first users, automation teams, agencies and brands" />
+</p>
 
 <br/>
 
