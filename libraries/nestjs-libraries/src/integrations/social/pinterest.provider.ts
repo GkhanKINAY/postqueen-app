@@ -271,7 +271,7 @@ export class PinterestProvider
         })
       ).json();
 
-      const { data, status } = await axios.get(findMp4.path, {
+      const { data } = await axios.get(findMp4.path, {
         responseType: 'stream',
       });
 
