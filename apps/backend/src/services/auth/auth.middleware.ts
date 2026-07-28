@@ -9,6 +9,7 @@ import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/excep
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { setSentryUserContext } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
 
 export const removeAuth = (res: Response) => {
   res.cookie('auth', '', {
@@ -81,6 +82,12 @@ export class AuthMiddleware implements NestMiddleware {
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
           req.org = loadImpersonate.organization;
+
+          setSentryUserContext({
+            userId: user.id,
+            orgId: loadImpersonate.organization.id,
+            paymentId: loadImpersonate.organization.paymentId,
+          });
           next();
           return;
         }
@@ -122,6 +129,12 @@ export class AuthMiddleware implements NestMiddleware {
         isTrailing:
           !!setOrg.isTrailing && trialWindow(setOrg.createdAt).open,
       };
+
+      setSentryUserContext({
+        userId: user.id,
+        orgId: setOrg.id,
+        paymentId: setOrg.paymentId,
+      });
     } catch (err) {
       throw new HttpForbiddenException();
     }
