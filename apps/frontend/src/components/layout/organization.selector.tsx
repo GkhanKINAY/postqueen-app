@@ -227,7 +227,7 @@ export const OrganizationSelector: FC<{
             <div className="bg-btnPrimary !flex !relative max-w-[500px] mx-auto py-[12px] px-[12px]">Select Organization</div>
           )}
           {!asOpenSelect && (
-            <div className="flex items-center">
+            <div className="flex items-center gap-[6px]">
               <svg
                 className={
                   user?.tier.current === 'FREE'
@@ -245,6 +245,9 @@ export const OrganizationSelector: FC<{
                   fill="currentColor"
                 />
               </svg>
+              {!!current?.name && (
+                <div className="max-w-[120px] truncate">{current.name}</div>
+              )}
             </div>
           )}
           {data?.length > 1 && (
