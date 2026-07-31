@@ -21,6 +21,14 @@ interface Organization {
   id: string;
 }
 
+// Upstream shows the member's role beside each organization so someone with the
+// same email in two workspaces can tell them apart. Their markup hardcodes
+// `text-customColor18`, which is on the deprecated token list here, so the
+// label is shared and the colour comes from `text-pqSoft` like every other
+// muted string in this menu.
+const orgRoleLabel = (role: 'SUPERADMIN' | 'ADMIN' | 'USER') =>
+  role === 'SUPERADMIN' ? 'Super-Admin' : role === 'ADMIN' ? 'Admin' : 'User';
+
 const RailOrgChrome: FC<{
   name?: string;
   collapsed?: boolean;
@@ -187,7 +195,15 @@ export const OrganizationSelector: FC<{
                     isCurrent && 'bg-pqBoxFocused'
                   )}
                 >
-                  <span className="min-w-0 flex-1 truncate">{org.name}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {org.name}
+                    {!!(org as any).users?.[0]?.role && (
+                      <span className="text-pqSoft">
+                        {' '}
+                        ({orgRoleLabel((org as any).users[0].role)})
+                      </span>
+                    )}
+                  </span>
                   {isCurrent && (
                     <svg
                       viewBox="0 0 24 24"
@@ -260,8 +276,15 @@ export const OrganizationSelector: FC<{
               {data?.map((org: Organization) => (
                 <div key={org.id} onClick={changeOrg(org)}>
                   {org.name}
+                  {!!(org as any).users?.[0]?.role && (
+                    <span className="text-pqSoft">
+                      {' '}
+                      ({orgRoleLabel((org as any).users[0].role)})
+                    </span>
+                  )}
                 </div>
               ))}
+
             </div>
           )}
         </div>
