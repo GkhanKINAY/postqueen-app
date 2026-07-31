@@ -578,10 +578,15 @@ export class PostsRepository {
     body: PostBody,
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
-    inter?: number
+    inter?: number,
+    // Keep the existing group instead of rotating it, so open clients
+    // (calendar) holding the group stay valid. Used by out-of-band updates
+    // (agent / MCP / public API); the dashboard keeps the rotate-and-sweep.
+    keepGroup = false
   ) {
     const posts: Post[] = [];
     const uuid = uuidv4();
+    const group = keepGroup && body.group ? body.group : uuid;
 
     for (const value of body.value) {
       // The upsert below is keyed on the id alone, and updateData() reconnects
@@ -625,7 +630,7 @@ export class PostsRepository {
           : {}),
         content: value.content,
         delay: value.delay || 0,
-        group: uuid,
+        group,
         intervalInDays: inter ? +inter : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),
@@ -717,7 +722,7 @@ export class PostsRepository {
         )?.id!
       : undefined;
 
-    if (body.group) {
+    if (body.group && !keepGroup) {
       await this._post.model.post.updateMany({
         where: {
           // `group` comes straight from the request body. Without this filter
@@ -727,6 +732,24 @@ export class PostsRepository {
           organizationId: orgId,
           group: body.group,
           deletedAt: null,
+        },
+        data: {
+          parentPostId: null,
+          deletedAt: new Date(),
+        },
+      });
+    }
+
+    // keepGroup: the updated rows still carry the old group, so sweep only the
+    // rows dropped from it (removed comments) by id instead of by group.
+    if (body.group && keepGroup) {
+      await this._post.model.post.updateMany({
+        where: {
+          group: body.group,
+          deletedAt: null,
+          id: {
+            notIn: posts.map((p) => p.id),
+          },
         },
         data: {
           parentPostId: null,
