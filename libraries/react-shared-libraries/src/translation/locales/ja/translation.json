@@ -746,5 +746,12 @@
   "get_started": "開始",
   "kick_select_channel": "チャンネルを選択",
   "ai_not_configured_title": "AI is not configured",
-  "ai_not_configured_body": "AI features are not configured on this installation."
+  "ai_not_configured_body": "AI features are not configured on this installation.",
+  "what_do_you_want_to_do": "何をしたいですか？",
+  "just_update_post_details": "投稿の詳細だけを更新する",
+  "reschedule_post": "投稿の日時を変更する",
+  "republish_the_post": "投稿を再公開する",
+  "post_already_published_republish_warning": "この投稿は既に公開されています。再公開すると、もう一度投稿されます：",
+  "republish_at": "公開日時：",
+  "republish_recurring_note": "これは定期投稿です：今後すべての繰り返しに対して変更が適用されます。"
 }

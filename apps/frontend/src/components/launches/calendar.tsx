@@ -1257,8 +1257,19 @@ export const CalendarColumn: FC<{
                   <div className="flex flex-col">
                     <div className="text-[20px] mb-[20px]">
                       {t(
-                        'post_already_published_drag',
-                        'This post was already published, what do you want to do?'
+                        'post_already_published_republish_warning',
+                        'This post was already published. Republishing will publish it again to'
+                      )}{' '}
+                      {post.integration?.name}{' '}
+                      {t('republish_at', 'at')}{' '}
+                      {getDate.format('DD/MM/YYYY HH:mm')}.
+                      {(!!item.interval || !!post.intervalInDays) && (
+                        <div className="mt-[10px]">
+                          {t(
+                            'republish_recurring_note',
+                            'This is a recurring post: your changes apply to all future recurrences starting now.'
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="flex w-full gap-[10px]">
@@ -1318,6 +1329,10 @@ export const CalendarColumn: FC<{
             body: JSON.stringify({
               date: dropAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
               action,
+              // A published post always confirms through the modal above
+              // before reaching here, so the opt-in is already the user's
+              // answer. On a QUEUE post the flag is a no-op server-side.
+              ...(action === 'schedule' ? { republish: true } : {}),
             }),
           }));
         } catch (e) {

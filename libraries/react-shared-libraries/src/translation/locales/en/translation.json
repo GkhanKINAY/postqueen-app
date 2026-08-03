@@ -1071,5 +1071,12 @@
   "billing_still_processing_title": "Payment still processing",
   "billing_still_processing": "Your payment is taking longer than usual to confirm. Your card has not been charged twice — if your plan does not appear in a few minutes, contact support and we will sort it out.",
   "provider_options_failed": "We could not load the options for this channel.",
-  "try_again": "Try again"
+  "try_again": "Try again",
+  "what_do_you_want_to_do": "What do you want to do?",
+  "just_update_post_details": "Just update the post details",
+  "reschedule_post": "Reschedule the post",
+  "republish_the_post": "Republish the post",
+  "post_already_published_republish_warning": "This post was already published. Republishing will publish it again to",
+  "republish_at": "at",
+  "republish_recurring_note": "This is a recurring post: your changes apply to all future recurrences starting now."
 }
