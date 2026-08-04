@@ -5,6 +5,7 @@ import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import sharp from 'sharp';
 import { createReadStream, statSync } from 'fs';
+import { Readable } from 'stream';
 
 export type ValidityMedia = {
   path: string;
@@ -169,7 +170,8 @@ export abstract class SocialAbstract {
   protected async mediaChunk(
     path: string,
     start: number,
-    end: number
+    end: number,
+    identifier = ''
   ): Promise<Buffer> {
     if (path.indexOf('http') === 0) {
       const response = await fetch(path, {
@@ -181,7 +183,7 @@ export abstract class SocialAbstract {
       // upload corrupted chunks.
       if (response.status !== 206) {
         throw new BadBody(
-          '',
+          identifier,
           '{}',
           Buffer.from('{}'),
           `Media server did not honor the range request (status ${response.status})`
@@ -197,6 +199,33 @@ export abstract class SocialAbstract {
         .on('end', () => resolve(Buffer.concat(chunks)))
         .on('error', reject);
     });
+  }
+
+  // Opens the media as a Node stream. The media path is user-influenced, so
+  // remote URLs go through the same SSRF-safe dispatcher as every other
+  // outbound request - never fetch these with plain axios/fetch.
+  protected async mediaStream(
+    path: string,
+    identifier = ''
+  ): Promise<Readable> {
+    if (path.indexOf('http') !== 0) {
+      return createReadStream(path);
+    }
+
+    const response = await fetch(path, {
+      dispatcher: getSsrfSafeDispatcher(),
+    } as any);
+
+    if (!response.ok || !response.body) {
+      throw new BadBody(
+        identifier,
+        '{}',
+        Buffer.from('{}'),
+        'Could not read the media for upload'
+      );
+    }
+
+    return Readable.fromWeb(response.body as any);
   }
 
   // Streamed request bodies can't be replayed by this.fetch's retry, so
