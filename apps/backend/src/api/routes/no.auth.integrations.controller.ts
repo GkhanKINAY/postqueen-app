@@ -24,6 +24,7 @@ import {
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 
 @ApiTags('Integrations')
 @Controller('/integrations')
@@ -287,6 +288,8 @@ export class NoAuthIntegrationsController {
               apiKey: org.apiKey,
             }),
           }),
+          // @ts-ignore — undici option, not in lib.dom fetch types
+          dispatcher: getSsrfSafeDispatcher(),
         });
       } catch (err) {}
 
