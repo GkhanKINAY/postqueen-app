@@ -222,6 +222,8 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
       // bytes so the file is never buffered in memory.
       const headResponse = await fetch(item.path, {
         method: 'HEAD',
+        // identity encoding so content-length matches the bytes the GET streams
+        headers: { 'accept-encoding': 'identity' },
         // @ts-ignore - undici-only option; blocks SSRF to internal IPs
         dispatcher: getSsrfSafeDispatcher(),
       });
@@ -261,6 +263,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
       ).json();
 
       const fileResponse = await fetch(item.path, {
+        headers: { 'accept-encoding': 'identity' },
         // @ts-ignore - undici-only option; blocks SSRF to internal IPs
         dispatcher: getSsrfSafeDispatcher(),
       });
