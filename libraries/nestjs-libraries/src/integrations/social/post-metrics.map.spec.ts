@@ -8,7 +8,7 @@ import {
   mapFacebookPostInsights,
   mapInstagramMediaInsights,
   mapLinkedInShareStats,
-  mapPinterestLifetimeMetrics,
+  mapPinterestSummaryMetrics,
   mapThreadsInsights,
   mapTikTokBusinessVideoStats,
   mapTikTokVideoStats,
@@ -239,7 +239,7 @@ describe('platform field maps', () => {
   });
 
   it('leaves Pinterest reactions and comments null', () => {
-    const mapped = mapPinterestLifetimeMetrics('pin1', {
+    const mapped = mapPinterestSummaryMetrics('pin1', {
       IMPRESSION: 300,
       PIN_CLICK: 12,
       SAVE: 4,

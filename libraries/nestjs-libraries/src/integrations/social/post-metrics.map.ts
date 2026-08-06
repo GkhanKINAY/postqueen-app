@@ -292,9 +292,9 @@ export function mapThreadsInsights(
   });
 }
 
-export function mapPinterestLifetimeMetrics(
+export function mapPinterestSummaryMetrics(
   platformPostId: string,
-  lifetime?: {
+  summary?: {
     IMPRESSION?: number;
     PIN_CLICK?: number;
     OUTBOUND_CLICK?: number;
@@ -302,14 +302,14 @@ export function mapPinterestLifetimeMetrics(
   } | null
 ): NormalizedPostMetrics {
   const raw: Record<string, number> = {};
-  const pinClick = asCount(lifetime?.PIN_CLICK);
-  const outbound = asCount(lifetime?.OUTBOUND_CLICK);
-  const saves = asCount(lifetime?.SAVE);
+  const pinClick = asCount(summary?.PIN_CLICK);
+  const outbound = asCount(summary?.OUTBOUND_CLICK);
+  const saves = asCount(summary?.SAVE);
   if (pinClick != null) raw.pinClicks = pinClick;
   if (outbound != null) raw.outboundClicks = outbound;
   if (saves != null) raw.saves = saves;
   return row(platformPostId, {
-    impressions: asCount(lifetime?.IMPRESSION),
+    impressions: asCount(summary?.IMPRESSION),
     reactions: null,
     comments: null,
     shares: null,
