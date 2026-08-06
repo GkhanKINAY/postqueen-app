@@ -262,7 +262,7 @@ export const OrganizationSelector: FC<{
                 />
               </svg>
               {!!current?.name && (
-                <div className="max-w-[240px] truncate">{current.name}</div>
+                <div className="max-w-[240px] truncate">{current?.name}</div>
               )}
             </div>
           )}
