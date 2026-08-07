@@ -204,10 +204,8 @@ export function useUppyUploader(props: {
       props.onStart();
     });
     uppy2.on('complete', async (result) => {
-      for (const file of [...result.successful]) {
-        uppy2.removeFile(file.id);
-      }
-
+      // Clear after plugins settle — per-file removeFile during complete raced
+      // ThumbnailGenerator (when enabled) and left queue warnings.
       props.onEnd();
       // Sort results by original add order to maintain file sequence
       const sortedSuccessful = [...result.successful].sort((a, b) => {
@@ -223,6 +221,7 @@ export function useUppyUploader(props: {
         setLocked(false);
         fileOrderIndex = 0;
         onUploadSuccess(sortedSuccessful.map((p) => p.response.body));
+        uppy2.clear();
         return;
       }
 
@@ -265,12 +264,14 @@ export function useUppyUploader(props: {
         setLocked(false);
         fileOrderIndex = 0;
         onUploadSuccess(loadAllMedia);
+        uppy2.clear();
         return;
       }
 
       setLocked(false);
       fileOrderIndex = 0;
       onUploadSuccess(sortedSuccessful.map((p) => p.response.body.saved));
+      uppy2.clear();
     });
     uppy2.on('upload-success', (file, response) => {
       // @ts-ignore
