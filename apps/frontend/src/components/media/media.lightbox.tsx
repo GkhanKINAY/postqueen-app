@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import clsx from 'clsx';
 
 export type LightboxMedia = {
   id: string;
@@ -13,10 +12,7 @@ export type LightboxMedia = {
   originalName?: string | null;
   name?: string;
   meta?: string;
-  uiDemo?: boolean;
   fileSize?: number;
-  /** Demo tile fill when the path is a video sample or the image fails. */
-  thumbGradient?: string;
 };
 
 function mediaMetaLabel(media: LightboxMedia) {
@@ -27,7 +23,7 @@ function mediaMetaLabel(media: LightboxMedia) {
   if (!format) {
     if (isVideo) format = 'MP4';
     else {
-      const ext = name.split('.').pop()?.toUpperCase();
+    const ext = name.split('.').pop()?.toUpperCase();
       format = ext && ext.length <= 5 ? ext : 'Image';
     }
   }
@@ -37,7 +33,6 @@ function mediaMetaLabel(media: LightboxMedia) {
       kb >= 1024
         ? `${(kb / 1024).toFixed(kb >= 10240 ? 0 : 1)} MB`
         : `${Math.max(1, Math.round(kb))} KB`;
-    // Prefer EXT · size when meta was dimensions-only (demo) or bare format.
     if (!media.meta || !/\d+\s*(KB|MB)/i.test(media.meta)) {
       const extOnly = format.split('·')[0].trim();
       return `${extOnly} · ${size}`;
@@ -58,8 +53,7 @@ export const MediaLightbox: FC<{
   const [mounted, setMounted] = useState(false);
   const isVideo =
     hasExtension(media.path, 'mp4') || /\.webm$/i.test(media.path);
-  const url = media.uiDemo ? media.path : mediaDirectory.set(media.path);
-  const gradient = media.thumbGradient;
+  const url = mediaDirectory.set(media.path);
   const metaLabel = mediaMetaLabel(media);
 
   useEffect(() => {
@@ -158,20 +152,7 @@ export const MediaLightbox: FC<{
             </svg>
           </button>
         </div>
-        <div
-          className={clsx(
-            'relative grid aspect-[16/10] place-items-center overflow-hidden rounded-[14px] outline outline-1 outline-white/12 -outline-offset-1',
-            !gradient && 'bg-pqSettings'
-          )}
-          style={gradient ? { background: gradient } : undefined}
-        >
-          {!!gradient && (
-            <div
-              className="absolute inset-0"
-              style={{ background: gradient }}
-              aria-hidden
-            />
-          )}
+        <div className="relative grid aspect-[16/10] place-items-center overflow-hidden rounded-[14px] bg-pqSettings outline outline-1 outline-white/12 -outline-offset-1">
           {isVideo ? (
             <video
               className="relative z-[1] max-h-full max-w-full object-contain"

@@ -11,7 +11,6 @@ import {
   tierLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import clsx from 'clsx';
-import { isDevBillingStageEnabled } from '@gitroom/frontend/components/billing/dev-billing-stage';
 
 /** Load period/tier when lock-card opens FinishTrial without billing props. */
 const useFinishTrialSubscription = (enabled: boolean) => {
@@ -41,8 +40,6 @@ export const FinishTrial: FC<{
   /** What Stripe will / did charge — from the billing screen when known. */
   charged?: number;
   period?: 'MONTHLY' | 'YEARLY';
-  /** DEV localhost preview — skips POST /billing/finish-trial when enabled. */
-  dryRun?: boolean;
 }> = (props) => {
   const [phase, setPhase] = useState<FinishPhase>('pending');
   const fetch = useFetch();
@@ -139,10 +136,6 @@ export const FinishTrial: FC<{
   }, [close, router]);
 
   useEffect(() => {
-    if (props.dryRun && isDevBillingStageEnabled()) {
-      timer(1500).then(() => setPhase(lifetime ? 'founder' : 'charged'));
-      return;
-    }
     finishSubscription();
   }, []);
 

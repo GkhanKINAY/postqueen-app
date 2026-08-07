@@ -3,10 +3,10 @@
 // Writes a placeholder channel on a development database so the surfaces that
 // only exist once a channel is connected can be looked at.
 //
-//   node scripts/seed-dev-channel.mjs --org <id> --dry
-//   node scripts/seed-dev-channel.mjs --org <id>
-//   node scripts/seed-dev-channel.mjs --org <id> --count 6 --disable-over 5
-//   node scripts/seed-dev-channel.mjs --org <id> --revoke
+//   node scripts/dev-only/seed-dev-channel.mjs --org <id> --dry
+//   node scripts/dev-only/seed-dev-channel.mjs --org <id>
+//   node scripts/dev-only/seed-dev-channel.mjs --org <id> --count 6 --disable-over 5
+//   node scripts/dev-only/seed-dev-channel.mjs --org <id> --revoke
 //
 // `--count N` writes N of them, and `--disable-over K` sets `disabled` on
 // everything past the Kth — which is the state a downgrade leaves behind.

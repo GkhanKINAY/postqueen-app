@@ -3,9 +3,9 @@
 // Gives a development user a second organization, so the workspace switcher can
 // be looked at.
 //
-//   node scripts/seed-dev-org.mjs --user <email> --dry
-//   node scripts/seed-dev-org.mjs --user <email>
-//   node scripts/seed-dev-org.mjs --user <email> --revoke
+//   node scripts/dev-only/seed-dev-org.mjs --user <email> --dry
+//   node scripts/dev-only/seed-dev-org.mjs --user <email>
+//   node scripts/dev-only/seed-dev-org.mjs --user <email> --revoke
 //
 // What it unblocks: `organization.selector.tsx:89` returns null unless the
 // account belongs to more than one organization — `if (!(data?.length > 1))`.

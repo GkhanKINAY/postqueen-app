@@ -3,11 +3,11 @@
 // Puts a development organization into any (tier, trial, lifetime) combination,
 // so the gates that differ between them can be walked instead of reasoned about.
 //
-//   node scripts/dev-state.mjs --org <id> --tier GROWTH --trial --dry
-//   node scripts/dev-state.mjs --org <id> --tier CREATOR --lifetime
-//   node scripts/dev-state.mjs --org <id> --created-days-ago 8
-//   node scripts/dev-state.mjs --org <id> --show
-//   node scripts/dev-state.mjs --org <id> --reset
+//   node scripts/dev-only/dev-state.mjs --org <id> --tier GROWTH --trial --dry
+//   node scripts/dev-only/dev-state.mjs --org <id> --tier CREATOR --lifetime
+//   node scripts/dev-only/dev-state.mjs --org <id> --created-days-ago 8
+//   node scripts/dev-only/dev-state.mjs --org <id> --show
+//   node scripts/dev-only/dev-state.mjs --org <id> --reset
 //
 // `--created-days-ago N` moves the organization's registration date, which is
 // the only thing `trialWindow()` reads. It is how the seventh day is reached

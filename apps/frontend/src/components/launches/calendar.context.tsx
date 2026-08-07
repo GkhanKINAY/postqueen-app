@@ -25,11 +25,6 @@ import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
 import { useTourDemo } from '@gitroom/frontend/components/onboarding/tour';
-import {
-  isUiDemoEnabled,
-  UI_DEMO_ROWS,
-  UI_DEMO_STORAGE_KEY,
-} from '@gitroom/frontend/components/launches/ui-demo-posts';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 extend(isoWeek);
 extend(weekOfYear);
@@ -203,8 +198,6 @@ export const CalendarContext = createContext({
   setChannelFilter: (ids: string[]) => {
     /** empty **/
   },
-  /** True when calendar/list are filled with non-persisted UI demo rows. */
-  uiDemoActive: false,
   /** Bumped by Today to scroll Day/Week to the current hour. */
   scrollToNowToken: 0,
   requestScrollToNow: () => {
@@ -359,17 +352,6 @@ export const CalendarWeekProvider: FC<{
     },
     [panelPinScope]
   );
-
-  // Persist uiDemo query into localStorage so a hard refresh keeps the fixture.
-  useEffect(() => {
-    const flag = searchParams.get('uiDemo');
-    if (flag !== '1' && flag !== '0') return;
-    try {
-      localStorage.setItem(UI_DEMO_STORAGE_KEY, flag);
-    } catch {
-      /* private mode */
-    }
-  }, [searchParams]);
 
   const params = useMemo(() => {
     return new URLSearchParams({
@@ -658,55 +640,12 @@ export const CalendarWeekProvider: FC<{
   );
   const rawListPosts = useMemo(() => listData?.posts || [], [listData?.posts]);
 
-  // Tour stagger OR design fixture when the account is empty (dev / ?uiDemo=1).
+  // Tour stagger when the account is empty and the tour is running.
   const tourDemo = useTourDemo();
-  const uiDemoOn = isUiDemoEnabled(searchParams.get('uiDemo'));
-  // Wait until the active fetch settles so real posts are not replaced by a
-  // flash of fixture rows while SWR is still loading.
-  const fetchSettled =
-    filters.display === 'list' ? !listIsLoading : !calendarIsLoading;
-  const uiDemoActive =
-    uiDemoOn &&
-    fetchSettled &&
-    !realPosts.length &&
-    !rawListPosts.length &&
-    !tourDemo.length;
 
   const demoWeekStart = useMemo(
     () => newDayjs(filters.startDate).startOf('isoWeek'),
     [filters.startDate]
-  );
-
-  const mapUiDemo = useCallback(
-    () =>
-      UI_DEMO_ROWS.map((row, index) => {
-        const publishDate = demoWeekStart
-          .add(row.day, 'day')
-          .hour(row.hour)
-          .minute(0)
-          .second(0);
-        const past = publishDate.isBefore(newDayjs());
-        const state =
-          past && row.state === 'QUEUE' ? ('PUBLISHED' as const) : row.state;
-        return {
-          id: `pq-ui-demo-${index}`,
-          content: `<p>${row.body}</p>`,
-          publishDate: publishDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
-          state,
-          group: `pq-ui-demo-${index}`,
-          creationMethod: row.method,
-          integration: {
-            id: `pq-ui-demo-integration-${index}`,
-            name: row.channel,
-            picture: null,
-            providerIdentifier: row.provider,
-          },
-          tags: row.tags.map((tag, ti) => ({
-            tag: { id: `pq-ui-demo-tag-${index}-${ti}`, ...tag },
-          })),
-        };
-      }),
-    [demoWeekStart]
   );
 
   const mapTourDemo = useCallback(
@@ -736,9 +675,8 @@ export const CalendarWeekProvider: FC<{
   const posts = useMemo(() => {
     if (realPosts.length) return realPosts;
     if (tourDemo.length) return mapTourDemo() as any[];
-    if (uiDemoActive) return mapUiDemo() as any[];
     return realPosts;
-  }, [realPosts, tourDemo.length, uiDemoActive, mapTourDemo, mapUiDemo]);
+  }, [realPosts, tourDemo.length, mapTourDemo]);
   const comments = useMemo(() => calendarData?.comments || [], [calendarData?.comments]);
 
   const matchChannel = useCallback(
@@ -753,9 +691,8 @@ export const CalendarWeekProvider: FC<{
   const listPosts = useMemo(() => {
     const weekStart = demoWeekStart;
     let rows: any[] = rawListPosts.filter(matchChannel);
-    if (!rows.length && !realPosts.length) {
-      if (tourDemo.length) rows = mapTourDemo();
-      else if (uiDemoActive) rows = mapUiDemo();
+    if (!rows.length && !realPosts.length && tourDemo.length) {
+      rows = mapTourDemo();
     }
     // Day deep-link: if the list endpoint hasn't returned that day yet, fall
     // back to calendar rows already on screen (See all from a cell).
@@ -784,9 +721,7 @@ export const CalendarWeekProvider: FC<{
     realPosts,
     posts,
     tourDemo.length,
-    uiDemoActive,
     mapTourDemo,
-    mapUiDemo,
     demoWeekStart,
     listRange,
     listSort,
@@ -910,7 +845,6 @@ export const CalendarWeekProvider: FC<{
         setPostsPanelOpen,
         channelFilter,
         setChannelFilter,
-        uiDemoActive,
         scrollToNowToken,
         requestScrollToNow,
       }}

@@ -3,7 +3,7 @@
 import { Button } from '@gitroom/react/form/button';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { capitalize } from 'lodash';
 import { ModalFormActions } from '@gitroom/frontend/components/layout/new-modal';
@@ -21,8 +21,6 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
 import { useRouter } from 'next/navigation';
 import { leaveSettingsFor } from '@gitroom/frontend/components/layout/leave-settings';
-import { useDevBillingStageOptional } from '@gitroom/frontend/components/billing/dev-billing-stage.provider';
-
 const roles = [
   {
     name: 'User',
@@ -148,9 +146,6 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
   const user = useUser();
   const t = useT();
   const [inviting, setInviting] = useState(false);
-  const lookBilling = useDevBillingStageOptional();
-  const lookUnlocksTeams =
-    !!lookBilling?.active && !!user?.tier?.team_members;
   const myLevel = user?.role === 'USER' ? 0 : user?.role === 'ADMIN' ? 1 : 2;
   const getLevel = useCallback(
     (role: 'USER' | 'ADMIN' | 'SUPERADMIN') =>
@@ -159,13 +154,7 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
   );
   const loadTeam = useCallback(async (): Promise<TeamLoadResult> => {
     const res = await fetch('/settings/team');
-    // Backend is source of truth for real subscriptions. DEV LOOK override can
-    // claim team_members while GET still 402s — unlock the Teams UI for preview
-    // (empty list) instead of forcing TeamsUpgradeLock.
     if (res.status === 402) {
-      if (lookUnlocksTeams) {
-        return { kind: 'ok', users: [] };
-      }
       return { kind: 'upgrade' };
     }
     if (!res.ok) {
@@ -173,16 +162,12 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
     }
     const body = await res.json();
     return { kind: 'ok', users: (body.users || []) as TeamRow[] };
-  }, [fetch, lookUnlocksTeams]);
+  }, [fetch]);
   const { data, mutate } = useSWR('/api/teams', loadTeam, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
   });
-
-  useEffect(() => {
-    void mutate();
-  }, [lookUnlocksTeams, mutate]);
 
   const remove = useCallback(
     (toRemove: {

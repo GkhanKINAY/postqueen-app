@@ -3,9 +3,9 @@
 // Adds a non-admin member to an organization on a development database, so the
 // screens that only a non-admin can see can be looked at.
 //
-//   node scripts/seed-dev-member.mjs --org <id> --dry
-//   node scripts/seed-dev-member.mjs --org <id>
-//   node scripts/seed-dev-member.mjs --org <id> --revoke
+//   node scripts/dev-only/seed-dev-member.mjs --org <id> --dry
+//   node scripts/dev-only/seed-dev-member.mjs --org <id>
+//   node scripts/dev-only/seed-dev-member.mjs --org <id> --revoke
 //
 // What it unblocks: doc 03's `member_no_plan` — no subscription and not an
 // admin, which renders `BillingAdminRequiredComponent` instead of the checkout

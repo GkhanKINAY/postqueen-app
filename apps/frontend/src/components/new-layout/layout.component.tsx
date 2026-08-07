@@ -50,13 +50,6 @@ import {
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Tour, useTourStepKey } from '@gitroom/frontend/components/onboarding/tour';
-import {
-  DevBillingStageProvider,
-  useDevBillingStage,
-} from '@gitroom/frontend/components/billing/dev-billing-stage.provider';
-import { DevBillingStageSwitcher } from '@gitroom/frontend/components/billing/dev-billing-stage.switcher';
-import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
-import { isDevBillingStageEnabled } from '@gitroom/frontend/components/billing/dev-billing-stage';
 
 /** Quiet hairline between header action strip and identity. Spacing comes from the parent gap. */
 const HeaderDivider = () => (
@@ -279,16 +272,17 @@ const LayoutBody = ({
   children,
   overlay,
   mutate,
+  user,
 }: {
   children: ReactNode;
   overlay?: ReactNode;
   mutate: () => void;
+  // Same shape /user/self returns — ContextWrapper narrows it for the tree.
+  user: any;
 }) => {
   const { backendUrl, billingEnabled, isGeneral, aiEnabled } = useVariables();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { overriddenUser, finishTrialPreviewOpen, closeFinishTrialPreview } =
-    useDevBillingStage();
 
   // Without OPENAI_API_KEY the backend returns plain 503 JSON from /copilot/chat;
   // CopilotKit treats that as a Network CombinedError and Next overlays it on
@@ -315,14 +309,13 @@ const LayoutBody = ({
             content and parks Settings / Upgrade below the fold. */}
         <div className="flex h-dvh max-h-dvh w-full flex-col overflow-hidden text-newTextColor">
           <div className="shrink-0">
-            {overriddenUser?.admin ? <Impersonate /> : <div />}
+            {user?.admin ? <Impersonate /> : <div />}
           </div>
-          {isDevBillingStageEnabled() && <DevBillingStageSwitcher />}
-          {overriddenUser.tier === 'FREE' &&
+          {user?.tier === 'FREE' &&
           isGeneral &&
           billingEnabled &&
           !pathname.startsWith('/billing/lifetime') ? (
-            ['ADMIN', 'SUPERADMIN'].includes(overriddenUser?.role!) ? (
+            ['ADMIN', 'SUPERADMIN'].includes(user?.role!) ? (
               <FirstBillingComponent />
             ) : (
               <BillingAdminRequiredComponent />
@@ -339,15 +332,12 @@ const LayoutBody = ({
             </>
           )}
         </div>
-        {finishTrialPreviewOpen && (
-          <FinishTrial close={closeFinishTrialPreview} dryRun />
-        )}
       </CheckPayment>
     </MantineWrapper>
   );
 
   return (
-    <ContextWrapper user={overriddenUser}>
+    <ContextWrapper user={user}>
       <ViewportProvider>
         {aiEnabled ? (
           <CopilotKit
@@ -389,10 +379,8 @@ export const LayoutComponent = ({
   if (!user) return <LayoutSkeleton />;
 
   return (
-    <DevBillingStageProvider baseUser={user}>
-      <LayoutBody overlay={overlay} mutate={mutate}>
-        {children}
-      </LayoutBody>
-    </DevBillingStageProvider>
+    <LayoutBody overlay={overlay} mutate={mutate} user={user}>
+      {children}
+    </LayoutBody>
   );
 };

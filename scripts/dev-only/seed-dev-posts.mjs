@@ -4,10 +4,10 @@
 // cells, the posts panel, and Create Post / post cards can be judged for
 // truncation, wrapping and overflow.
 //
-//   node scripts/seed-dev-posts.mjs --org <id> --dry
-//   node scripts/seed-dev-posts.mjs --org <id>
-//   node scripts/seed-dev-posts.mjs --org <id> --reset
-//   node scripts/seed-dev-posts.mjs --org <id> --revoke
+//   node scripts/dev-only/seed-dev-posts.mjs --org <id> --dry
+//   node scripts/dev-only/seed-dev-posts.mjs --org <id>
+//   node scripts/dev-only/seed-dev-posts.mjs --org <id> --reset
+//   node scripts/dev-only/seed-dev-posts.mjs --org <id> --revoke
 //
 // `--org` is required. Channels: uses every non-disabled channel already on
 // the org (round-robin — LinkedIn, Mastodon, X, … if present). If the org has
@@ -264,8 +264,8 @@ async function main() {
   });
   if (!channels.length) {
     console.error(
-      'No channels on this organization. Run seed-dev-channel.mjs or ' +
-        'seed-dev-workspace.mjs first — posts need a channel to attach to.'
+      'No channels on this organization. Run scripts/dev-only/seed-dev-channel.mjs or ' +
+        'scripts/dev-only/seed-dev-workspace.mjs first — posts need a channel to attach to.'
     );
     process.exitCode = 2;
     return;
