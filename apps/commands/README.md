@@ -12,11 +12,8 @@ API moved and this command was never updated.
 Fixing that is an architecture pass (Temporal wiring + agent API), not a
 one-line patch.
 
-## Dev / ops scripts
+## Upstream merges
 
-One-off local and SaaS ops helpers live under `scripts/dev-only/` (see that
-folder’s README). They are **not** for production or self-host installs.
-
-After merging from upstream (`gitroomhq/postiz-app`), re-run `scripts/rebrand.sh`
-to restore PostQueen branding. That script is intentional fork tooling — not
-residue.
+After merging from upstream (`gitroomhq/postiz-app`), re-run
+`scripts/rebrand.sh` to restore PostQueen branding. That script is intentional
+fork tooling — not residue.
