@@ -1360,7 +1360,6 @@ signatures
 six_days
 six_digit_code
 size
-skip
 social_sets
 social_sets_count
 something_went_wrong

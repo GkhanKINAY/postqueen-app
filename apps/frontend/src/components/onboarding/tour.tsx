@@ -200,6 +200,27 @@ const DEMO_REVEAL_MS = 300;
 /** After the eight land, the ninth waits, then moves — the reschedule beat. */
 const DEMO_DROP_MS = 1100;
 
+/** Avatar for every tour demo channel (owner photo). */
+export const TOUR_DEMO_PICTURE = '/onboarding/gokhan.png';
+
+/**
+ * Channel display name per provider — matches the design’s CHANNELS handles
+ * (Gökhan KINAY / @thegokhankinay), not the post title.
+ */
+const demoChannelName = (provider: string): string => {
+  switch (provider) {
+    case 'linkedin':
+    case 'youtube':
+    case 'facebook':
+      return 'Gökhan KINAY';
+    case 'instagram':
+      return 'thegokhankinay';
+    default:
+      // x, bluesky, mastodon, discord, and the drag card
+      return '@thegokhankinay';
+  }
+};
+
 /** [day of the visible week, hour, provider icon, title key, body key] */
 const DEMO_ROWS: Array<[number, number, string, string, string]> = [
   [0, 7, 'x', 'tour_demo_1_title', 'tour_demo_1_body'],
@@ -216,6 +237,8 @@ export interface TourDemoPost {
   day: number;
   hour: number;
   provider: string;
+  /** Channel / account label on the calendar card. */
+  channelName: string;
   title: string;
   body: string;
 }
@@ -237,7 +260,8 @@ export const useTourDemo = (): TourDemoPost[] => {
 
   useEffect(() => {
     if (!stagger || revealed < DEMO_ROWS.length) {
-      if (!stagger) setDropped(false);
+      // Past the calendar step the design shows the post already rescheduled.
+      if (!stagger) setDropped(true);
       return;
     }
     const id = window.setTimeout(() => setDropped(true), DEMO_DROP_MS);
@@ -253,6 +277,7 @@ export const useTourDemo = (): TourDemoPost[] => {
     // Past calendar step: full queue immediately (posts-panel and later).
     if (!stagger) {
       setRevealed(DEMO_ROWS.length);
+      setDropped(true);
       return;
     }
     if (
@@ -302,37 +327,37 @@ export const useTourDemo = (): TourDemoPost[] => {
       tour_demo_2_title: t('tour_demo_2_title', 'Community update'),
       tour_demo_2_body: t(
         'tour_demo_2_body',
-        'Everything the team shipped this week.'
+        'Everything shipped for the community this week.'
       ),
       tour_demo_3_title: t('tour_demo_3_title', 'Weekly build thread'),
       tour_demo_3_body: t(
         'tour_demo_3_body',
-        'Every change that landed, in one thread.'
+        'Every change that landed this week, in one thread.'
       ),
       tour_demo_4_title: t('tour_demo_4_title', 'Weekend recap'),
       tour_demo_4_body: t(
         'tour_demo_4_body',
-        'Three things the team learned this week.'
+        'Three things we learned shipping on a real calendar.'
       ),
-      tour_demo_5_title: t('tour_demo_5_title', 'Customer story'),
+      tour_demo_5_title: t('tour_demo_5_title', 'Case study: Meridian'),
       tour_demo_5_body: t(
         'tour_demo_5_body',
-        'How one team plans a month in an afternoon.'
+        'Meridian cut publishing time by 62% with one calendar.'
       ),
       tour_demo_6_title: t('tour_demo_6_title', 'Sixty second demo'),
       tour_demo_6_body: t(
         'tour_demo_6_body',
-        'A minute with the new scheduler.'
+        'A minute with the new scheduler — write once, post everywhere.'
       ),
       tour_demo_7_title: t('tour_demo_7_title', 'AMA announcement'),
       tour_demo_7_body: t(
         'tour_demo_7_body',
-        'Ask the team anything about scheduling.'
+        'Ask anything about scheduling at scale.'
       ),
       tour_demo_8_title: t('tour_demo_8_title', 'Team spotlight'),
       tour_demo_8_body: t(
         'tour_demo_8_body',
-        'Meet the two people behind the calendar.'
+        'Meet the people behind the calendar.'
       ),
     };
     const shown = DEMO_ROWS.slice(0, revealed).map(
@@ -340,15 +365,19 @@ export const useTourDemo = (): TourDemoPost[] => {
         day,
         hour,
         provider,
+        channelName: demoChannelName(provider),
         title: copy[titleKey],
         body: copy[bodyKey],
       })
     );
+    // Ninth card: appears after the eight, then “drops” to an earlier hour —
+    // the design’s drag-to-reschedule beat (day 4, 09:00 → 07:00).
     if (revealed >= DEMO_ROWS.length) {
       shown.push({
         day: 4,
-        hour: dropped ? 10 : 11,
+        hour: dropped ? 7 : 9,
         provider: 'x',
+        channelName: demoChannelName('x'),
         title: t('tour_demo_drag_title', 'Feature drop'),
         body: t(
           'tour_demo_drag_body',
@@ -474,7 +503,8 @@ export const Tour: FC = () => {
   const finish = useCallback(
     (opts?: { leaveOnAddChannel?: boolean }) => {
       markSeen();
-      // Design Finish leaves Add Channel open; Skip / Esc / scrim just dismiss.
+      // Finish on the last step leaves Add Channel open (design). Esc still
+      // dismisses without forcing that route.
       if (opts?.leaveOnAddChannel) {
         router.push('/channels?add=1');
       } else {
@@ -607,9 +637,8 @@ export const Tour: FC = () => {
     };
   }, [current, onStepPage]);
 
-  // The design has no way out of the tour — `tourSkipDisplay` is computed and
-  // hardcoded to 'none'. An overlay that traps the whole app with no exit is
-  // not shippable, so Esc leaves and the card carries a real Skip.
+  // Design hides Skip (`tourSkipDisplay: 'none'`) so people walk the tour.
+  // Esc remains an accessibility escape that marks the tour seen.
   useEffect(() => {
     if (!running) return;
     const onKey = (e: KeyboardEvent) => {
@@ -622,7 +651,7 @@ export const Tour: FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [running, finish]);
 
-  // Scrim click = skip (not Finish → Add Channel).
+  // Scrim does not dismiss — accidental clicks must not skip the tutorial.
 
   useEffect(() => {
     if (!running) {
@@ -633,7 +662,7 @@ export const Tour: FC = () => {
     restoreFocus.current = document.activeElement;
   }, [running]);
 
-  // Focus lands on the card so Tab cycles Skip → Next and screen readers hear
+  // Focus lands on the card so Tab reaches Next/Finish and screen readers hear
   // the step when it changes.
   useEffect(() => {
     if (!running) return;
@@ -686,10 +715,7 @@ export const Tour: FC = () => {
           CSS animation beats an inline style, so the two cannot share the
           property — the scrim silently loses. */}
       {!spot && (
-        <div
-          className="absolute inset-0 bg-pqTourScrim"
-          onClick={() => finish()}
-        />
+        <div className="absolute inset-0 bg-pqTourScrim" aria-hidden="true" />
       )}
 
       {spot &&
@@ -724,7 +750,7 @@ export const Tour: FC = () => {
             key={i}
             className="absolute bg-pqTourScrim"
             style={style}
-            onClick={() => finish()}
+            aria-hidden="true"
           />
         ))}
 
@@ -809,14 +835,6 @@ export const Tour: FC = () => {
               />
             ))}
           </div>
-          <button
-            type="button"
-            data-tour-action="skip"
-            onClick={() => finish()}
-            className="rounded-pqSm px-[10px] py-[6px] text-[13px] text-pqMuted hover:text-pqText"
-          >
-            {t('skip', 'Skip')}
-          </button>
           <button
             type="button"
             data-tour-action="next"

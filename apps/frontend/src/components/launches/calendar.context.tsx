@@ -24,7 +24,7 @@ import useCookie from 'react-use-cookie';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
-import { useTourDemo } from '@gitroom/frontend/components/onboarding/tour';
+import { TOUR_DEMO_PICTURE, useTourDemo } from '@gitroom/frontend/components/onboarding/tour';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 extend(isoWeek);
 extend(weekOfYear);
@@ -650,25 +650,27 @@ export const CalendarWeekProvider: FC<{
 
   const mapTourDemo = useCallback(
     () =>
-      tourDemo.map(({ day, hour, provider, title, body }, index) => {
-        const publishDate = demoWeekStart.add(day, 'day').add(hour, 'hour');
-        const past = publishDate.isBefore(newDayjs());
-        return {
-          id: `pq-tour-demo-${index}`,
-          content: `<p>${title} — ${body}</p>`,
-          publishDate: publishDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
-          state: (past ? 'PUBLISHED' : 'QUEUE') as 'PUBLISHED' | 'QUEUE',
-          group: `pq-tour-demo-${index}`,
-          creationMethod: 'WEB' as const,
-          integration: {
-            id: `pq-tour-demo-integration-${index}`,
-            name: title,
-            picture: null,
-            providerIdentifier: provider,
-          },
-          tags: [],
-        };
-      }),
+      tourDemo.map(
+        ({ day, hour, provider, channelName, title, body }, index) => {
+          const publishDate = demoWeekStart.add(day, 'day').add(hour, 'hour');
+          const past = publishDate.isBefore(newDayjs());
+          return {
+            id: `pq-tour-demo-${index}`,
+            content: `<p>${title} — ${body}</p>`,
+            publishDate: publishDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
+            state: (past ? 'PUBLISHED' : 'QUEUE') as 'PUBLISHED' | 'QUEUE',
+            group: `pq-tour-demo-${index}`,
+            creationMethod: 'WEB' as const,
+            integration: {
+              id: `pq-tour-demo-integration-${index}`,
+              name: channelName,
+              picture: TOUR_DEMO_PICTURE,
+              providerIdentifier: provider,
+            },
+            tags: [],
+          };
+        }
+      ),
     [tourDemo, demoWeekStart]
   );
 
