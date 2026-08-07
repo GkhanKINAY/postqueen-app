@@ -266,7 +266,9 @@ export const CalendarWeekProvider: FC<{
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [displaySaved, setDisplaySaved] = useCookie('calendar-display', 'week');
-  const display = searchParams.get('display') || displaySaved;
+  // Bare `/launches` (login, `/`, bookmarks) must open week calendar — never
+  // the Posts list cookie. List only when the URL says `display=list`.
+  const display = searchParams.get('display') || 'week';
 
   // List view state
   const [listPage, setListPage] = useState(0);
@@ -571,13 +573,16 @@ export const CalendarWeekProvider: FC<{
   // Soft-open Settings/Connect keep this provider mounted under `/settings` or
   // `/connections` (no `display` query). Falling back to the cookie then flips
   // Calendar↔Posts — bail unless we are still on launches.
+  // When URL has no range, switching into week (e.g. login / bare /launches)
+  // must land on the *current* week — not a stale range left from list view.
   useEffect(() => {
     if (!pathname?.startsWith('/launches')) {
       return;
     }
 
     const fromUrl = searchParams.get('display');
-    const urlDisplay = (fromUrl || displaySaved) as typeof filters.display;
+    // No `display` in the URL = Calendar home (week), not the last Posts visit.
+    const urlDisplay = (fromUrl || 'week') as typeof filters.display;
     const urlStart = searchParams.get('startDate');
     const urlEnd = searchParams.get('endDate');
     const urlCustomer = searchParams.get('customer');
@@ -586,6 +591,9 @@ export const CalendarWeekProvider: FC<{
     // Rail navigations update the URL but not the cookie; keep them aligned.
     if (fromUrl && fromUrl !== displaySaved) {
       setDisplaySaved(fromUrl);
+    }
+    if (!fromUrl && displaySaved !== 'week') {
+      setDisplaySaved('week');
     }
 
     setFilters((prev) => {
@@ -602,7 +610,7 @@ export const CalendarWeekProvider: FC<{
       const range =
         urlStart && urlEnd
           ? { startDate: urlStart, endDate: urlEnd }
-          : urlDisplay !== prev.display
+          : urlDisplay !== prev.display || !fromUrl
           ? getDateRange(urlDisplay)
           : { startDate: prev.startDate, endDate: prev.endDate };
       return {

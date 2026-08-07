@@ -71,13 +71,21 @@ function LayoutContextInner(params: { children: ReactNode }) {
       if (response?.headers?.get('onboarding')) {
         // Design tour is the only first-run (old modal removed).
         window.location.href = isGeneral
-          ? '/launches?tour=true'
+          ? '/launches?display=week&tour=true'
           : '/analytics?tour=true';
         return true;
       }
 
       if (response?.headers?.get('reload')) {
-        window.location.reload();
+        // Login / register land on /auth*; reload would bounce through bare
+        // /launches and revive a stale Posts-list cookie. Always open Calendar.
+        if (window.location.pathname.startsWith('/auth')) {
+          window.location.href = isGeneral
+            ? `/launches?display=week&now=${Date.now()}`
+            : '/analytics';
+        } else {
+          window.location.reload();
+        }
         return true;
       }
 

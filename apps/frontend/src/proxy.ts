@@ -161,7 +161,9 @@ export async function proxy(request: NextRequest) {
     if (nextUrl.pathname === '/') {
       return NextResponse.redirect(
         new URL(
-          !!process.env.IS_GENERAL ? '/launches' : `/analytics`,
+          !!process.env.IS_GENERAL
+            ? `/launches?display=week&now=${Date.now()}`
+            : `/analytics`,
           nextUrl.href
         )
       );
