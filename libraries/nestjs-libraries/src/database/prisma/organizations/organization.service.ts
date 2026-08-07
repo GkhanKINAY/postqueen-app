@@ -106,9 +106,7 @@ export class OrganizationService {
     const tier =
       // @ts-ignore
       org?.subscription?.subscriptionTier ||
-      // A self-hosted install with no Stripe keys has every feature. AGENCY is
-      // the top tier that is still sold; ULTIMATE, which this used to name, is
-      // retired and only exists for subscriptions that already hold it.
+      // Self-host without Stripe: every feature via top sellable tier.
       (!process.env.STRIPE_PUBLISHABLE_KEY ? 'AGENCY' : 'FREE');
 
     if (!pricing[tier].team_members) {

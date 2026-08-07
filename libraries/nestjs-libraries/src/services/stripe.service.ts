@@ -263,11 +263,7 @@ export class StripeService {
     const products = await stripe.prices.list({
       active: true,
       expand: ['data.tiers', 'data.product'],
-      // Built from the tiers actually on sale rather than a hardcoded list.
-      // It asked for `standard_monthly` and `standard_yearly` until now —
-      // STANDARD was retired by the rename, so two of the four keys named a
-      // plan nobody can buy, and nothing noticed because this endpoint returns
-      // whatever it finds.
+      // Lookup keys for tiers still on sale (`!retired`).
       lookup_keys: Object.entries(pricing)
         .filter(([name, plan]) => name !== 'FREE' && !plan.retired)
         .flatMap(([name]) => [

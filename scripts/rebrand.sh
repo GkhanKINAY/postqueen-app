@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Idempotent Postiz -> PostQueen brand sweep. Re-run after every upstream merge.
 #
+# Kept on purpose: this fork continues to pull from gitroomhq/postiz-app.
+# One-shot SaaS migrate scripts are gone; this is the ongoing upstream-sync tool.
+#
 # NOT covered by this script (manual checklist after upstream merges):
 #   - libraries/react-shared-libraries/src/helpers/testomonials.tsx (keep emptied/PostQueen-only quotes)
 #   - apps/frontend/src/app/(app)/(preview)/p/[id]/page.tsx (upstream draws "postiz" via SVG paths)

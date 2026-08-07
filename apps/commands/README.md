@@ -1,6 +1,6 @@
 # apps/commands
 
-NestJS CLI task runner (`nestjs-command`). **Not used for launch ops.**
+NestJS CLI task runner (`nestjs-command`).
 
 ## Why it does not boot
 
@@ -10,15 +10,10 @@ calls `AgentGraphService.createGraph`, which no longer exists — the graph
 API moved and this command was never updated.
 
 Fixing that is an architecture pass (Temporal wiring + agent API), not a
-one-line patch. **Won't-fix for launch.**
+one-line patch.
 
-## What to run instead
+## Upstream merges
 
-One-off data jobs live as scripts under `scripts/`, for example:
-
-```bash
-# After deploy has pushed the schema (CREATOR / GROWTH / AGENCY on the enum):
-node scripts/migrate-tiers.mjs
-```
-
-See `docs/launch-ops.md` for the post-deploy checklist.
+After merging from upstream (`gitroomhq/postiz-app`), re-run
+`scripts/rebrand.sh` to restore PostQueen branding. That script is intentional
+fork tooling — not residue.

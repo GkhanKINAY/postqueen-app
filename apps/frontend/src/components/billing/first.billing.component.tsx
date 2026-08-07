@@ -657,8 +657,7 @@ export const FirstBillingComponent = () => {
   const user = useUser();
   const dub = useDubClickId();
   const [stripe, setStripe] = useState<null | Promise<Stripe>>(null);
-  // The entry tier. STANDARD is retired and no longer listed, so defaulting to
-  // it would open the paywall with nothing selected.
+  // Default paywall selection (entry sellable tier).
   const [tier, setTier] = useState('CREATOR');
   const [period, setPeriod] = useState('MONTHLY');
   // Owner: open with Lifetime selected when the founding window is available
