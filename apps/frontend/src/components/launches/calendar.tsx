@@ -60,7 +60,6 @@ import copy from 'copy-to-clipboard';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
-import { isClientDemoPost } from '@gitroom/frontend/components/launches/ui-demo-posts';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 
@@ -114,9 +113,13 @@ function displayPostState(
 }
 
 /**
- * Demo / tour seed posts look real but have no API backing. Match media's
+ * Tour seed posts look real but have no API backing. Match media's
  * read-only toast so actions don't silently no-op and look broken.
  */
+export function isClientDemoPost(id: string) {
+  return id.startsWith('pq-tour-demo-');
+}
+
 export const useDemoPostAction = () => {
   const t = useT();
   const toaster = useToaster();

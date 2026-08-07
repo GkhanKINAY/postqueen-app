@@ -7,12 +7,10 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { MainBillingComponent } from './main.billing.component';
-import { useDevBillingStageOptional } from '@gitroom/frontend/components/billing/dev-billing-stage.provider';
 
 export const BillingComponent = () => {
   const fetch = useFetch();
   const user = useUser();
-  const devBilling = useDevBillingStageOptional();
   const t = useT();
   // Both endpoints below are ADMIN-gated. The page is directly navigable, so
   // without this a regular member fired two 402s and sat on a spinner.
@@ -20,14 +18,12 @@ export const BillingComponent = () => {
   const load = useCallback(async (path: string) => {
     return await (await fetch(path)).json();
   }, []);
-  const { isLoading: isLoadingTier, data: tiers } = useSWR(
+  const { isLoading: isLoadingTiers, data: tiers } = useSWR(
     isOrgAdmin ? '/user/subscription/tiers' : null,
     load
   );
-  const devOverrideActive =
-    !!devBilling?.active && !!devBilling.subscriptionOverride;
   const { isLoading: isLoadingSubscription, data: subscription } = useSWR(
-    isOrgAdmin && !devOverrideActive ? '/user/subscription' : null,
+    isOrgAdmin ? '/user/subscription' : null,
     load
   );
   if (!isOrgAdmin) {
@@ -58,19 +54,15 @@ export const BillingComponent = () => {
       </div>
     );
   }
-  if (!devOverrideActive && (isLoadingSubscription || isLoadingTier)) {
+  if (isLoadingSubscription || isLoadingTiers) {
     return <LoadingComponent />;
   }
 
-  const subPayload = devOverrideActive
-    ? devBilling!.subscriptionOverride!
-    : subscription;
-
   return (
     <MainBillingComponent
-      sub={subPayload?.subscription}
-      discount={subPayload?.discount}
-      paymentFailed={subPayload?.paymentFailed}
+      sub={subscription?.subscription}
+      discount={subscription?.discount}
+      paymentFailed={subscription?.paymentFailed}
     />
   );
 };

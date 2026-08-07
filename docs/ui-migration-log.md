@@ -2327,7 +2327,7 @@ mistaken for a rendering bug later.
 
 ### A channel, and the channel detail seen for the first time
 
-`scripts/seed-dev-channel.mjs` writes one placeholder Mastodon channel (owner's
+`scripts/dev-only/seed-dev-channel.mjs` writes one placeholder Mastodon channel (owner's
 call). Its token is the literal `dev-seed-not-a-real-token` and its name is
 "Dev placeholder (not connected)", so it announces itself in the one place
 somebody will definitely look — the channel list. `--revoke` removes it and
@@ -2403,7 +2403,7 @@ been "fixed" into breakage by a confident pattern match.
 
 ### Six posts, and the calendar finally judged with something on it
 
-`scripts/seed-dev-posts.mjs` writes six posts — four QUEUE, two DRAFT — spread
+`scripts/dev-only/seed-dev-posts.mjs` writes six posts — four QUEUE, two DRAFT — spread
 across the working week at hours somebody would actually pick, so the grid is
 judged on a realistic distribution rather than six cards in one column. They
 attach to the placeholder channel, whose token is invalid, so none can publish.
@@ -2857,7 +2857,7 @@ charged — which is why the branch reads `isTrailing` rather than assuming.
 ### `member_no_plan`, the last state that could be reached
 
 It needed a second person in the organization, and there had only ever been one.
-`scripts/seed-dev-member.mjs` adds one with role `USER` — no password, an
+`scripts/dev-only/seed-dev-member.mjs` adds one with role `USER` — no password, an
 address on the reserved `.invalid` TLD, and a `--revoke` that takes both the
 membership and the user away. Its token was minted with the app's own
 `JWT_SECRET` so nothing about the session is special-cased.
@@ -2925,8 +2925,8 @@ it did not write:
 To clear everything, in this order:
 
 ```
-node scripts/seed-dev-posts.mjs   --org <id> --revoke
-node scripts/seed-dev-channel.mjs --org <id> --revoke
+node scripts/dev-only/seed-dev-posts.mjs   --org <id> --revoke
+node scripts/dev-only/seed-dev-channel.mjs --org <id> --revoke
 node scripts/grant-lifetime.mjs   --org <id> --revoke
 node scripts/stripe-test-fixtures.mjs --revoke      # archives, never deletes
 ```
@@ -3055,7 +3055,7 @@ may repeat; previously a second `--click` was silently dropped and typing always
 happened after every click, so the submit press landed before there was anything
 to submit and the modal simply stayed open.
 
-`scripts/dev-state.mjs` is new: it puts an organization into any (tier, trial,
+`scripts/dev-only/dev-state.mjs` is new: it puts an organization into any (tier, trial,
 lifetime) combination and `--reset` returns it. `seed-dev-channel.mjs` gained
 `--count N`, `--disable-over K` and `--revoke --keep N`. `seed-dev-org.mjs` is
 new and gives an account a second, empty workspace.
@@ -3754,8 +3754,10 @@ component file kept but unmounted — `/billing` is the design surface). **gates
   day chip) + Oldest/Newest; status segment removed from list (queue-only).
 - **See all N posts** / week day header → `openPostsForDay` → list + `listDay`.
 - **Queue panel** hidden when `display=list`.
-- **UI demo fixture** (`ui-demo-posts.ts`): design seed rows when the account is
-  empty in development (or `?uiDemo=1`). Soft method pills on list cards.
+- **UI demo fixture** (`ui-demo-posts.ts`): ~~design seed rows when the account is
+  empty in development (or `?uiDemo=1`).~~ **Closed 2026-08-07** — client uiDemo
+  fixtures removed; empty calendar stays empty. Tour `useTourDemo` /
+  `pq-tour-demo-*` still runs during onboarding. Soft method pills on list cards.
 
 ### Modal / popup fidelity (2026-08-05)
 
@@ -3864,10 +3866,8 @@ toolbar, search, dashed drop zone, or “ALL FILES N” card grid. Prototype
   brandFaint; paste wired to the same Uppy enqueue path as drop/browse.
 - Create Post **Insert media** picker: search + Upload, 6-col select grid,
   Cancel / Add selected media (44px) — design `libraryOpen`.
-- **UI demo fixtures** (`ui-demo-media.ts`): prototype `MEDIA` seed (v32-hero.png,
-  demo-60s.mp4, …) when the library is empty and UI demo is on (dev default or
-  `?uiDemo=1` / `localStorage pq-ui-demo`). Not persisted; not insertable into
-  real posts.
+- **UI demo fixtures** (`ui-demo-media.ts`): ~~prototype `MEDIA` seed~~ **Closed
+  2026-08-07** — removed; empty Media library stays empty. Tour demos unchanged.
 
 **Raises**
 - **Rename** appears in the design media menu; there is no rename API — omitted
@@ -3883,8 +3883,9 @@ i18n: Media keys already in baseline; tip still fails on concurrent sibling
 rename `add_api_key_for` → `top_title_add_api_key_for` (modals fidelity) — not
 `--update`'d here.
 
-**See dummy media:** empty library + frontend in development, or `/media?uiDemo=1`.
-Disable with `?uiDemo=0`.
+**See dummy media:** ~~empty library + frontend in development, or `/media?uiDemo=1`.
+Disable with `?uiDemo=0`.~~ **Closed 2026-08-07** — no client media fixtures;
+empty = empty.
 
 
 ## Parallel fidelity wave baseline (2026-08-05)
@@ -4220,7 +4221,7 @@ Fidelity: [`docs/ui-fidelity-audit/channels-reconnect.md`](docs/ui-fidelity-audi
 
 ### Dev workspace seed + Channels collapse / Copilot kebab (2026-08-05)
 
-**NOT FOR PRODUCTION.** `scripts/seed-dev-workspace.mjs` fills a local org
+**NOT FOR PRODUCTION.** `scripts/dev-only/seed-dev-workspace.mjs` fills a local org
 with marker `dev-seed-ws*` — 10 placeholder channels (fake token
 `dev-seed-not-a-real-token`), QUEUE/DRAFT/PUBLISHED posts, Redis analytics
 stubs for allowlist providers, webhook/signatures/sets/autopost, a HeyGen
@@ -4229,10 +4230,10 @@ Lifetime is separate: `node scripts/grant-lifetime.mjs --org <id>` when the
 org has no subscription.
 
 ```
-node scripts/seed-dev-workspace.mjs --email you@example.com
-node scripts/seed-dev-workspace.mjs --org <orgId>
-node scripts/seed-dev-workspace.mjs --email … --avatar /path/to/me.png
-node scripts/seed-dev-workspace.mjs --email … --revoke
+node scripts/dev-only/seed-dev-workspace.mjs --email you@example.com
+node scripts/dev-only/seed-dev-workspace.mjs --org <orgId>
+node scripts/dev-only/seed-dev-workspace.mjs --email … --avatar /path/to/me.png
+node scripts/dev-only/seed-dev-workspace.mjs --email … --revoke
 ```
 
 Avatar and seeded channel pictures share one file under `UPLOAD_DIRECTORY`,
@@ -4397,6 +4398,10 @@ secondary). Avoid `hover:bg-pqHover` as a full fill replace on solid
 **Tokens:** `--brandSoft` → `pqBrandSoft`; `--brandHover` → `pqBrandHover`.
 
 ### DEV billing stage switcher — REMOVED (2026-08-05 remaining pass)
+
+> **Closed 2026-08-07:** the 2026-08-05 note claimed deletion, but
+> `dev-billing-stage*.ts(x)` was re-landed for LOOK QA. Production / self-host
+> cleanup finally deletes the stack (see entry below). Do not restore.
 
 Temporary localhost billing-state switcher deleted:
 `dev-billing-stage*.ts(x)`, layout/billing/`FinishTrial` `dryRun` call sites.
@@ -4626,8 +4631,9 @@ overrides in local QA).
 - **Sets editor:** design uses in-sheet forms; repo still opens full-screen
   `AddEditModal` for set compose — capability preserved, chrome differs.
 - **Checkout screenshot matrix:** still owed on this install (`billingEnabled` +
-  Stripe keys); DEV billing switcher covers LOOK states only — Pay bar still hits
-  real Stripe when clicked.
+  Stripe keys). ~~DEV billing switcher covers LOOK states only~~ **Closed
+  2026-08-07** — DEV billing stack removed; use real Stripe/account fixtures.
+  Pay bar still hits real Stripe when clicked.
 
 **Checks:** `scripts/ui-migration-check.sh --update` — i18n/routes/gates/api
 baselines written; frontend types fail on pre-existing `agent.chat.tsx` narrow
@@ -4647,7 +4653,7 @@ type (unrelated). Stripe embed path not exercised in CI.
 
 **Cleanup:** DEV billing stage switcher removed (files + call sites + `dryRun`).
 Seed revoke attempted; use local `DATABASE_URL` on `:5432` when Postgres is up:
-`node scripts/seed-dev-workspace.mjs --email … --revoke`.
+`node scripts/dev-only/seed-dev-workspace.mjs --email … --revoke`.
 
 **Raises unchanged (documented, no fake WORK):** CREATOR $132; months-free vs
 coupon; Copilot draft-plan; Sets fullscreen modal; Media Rename; Streak Longest;
@@ -7107,7 +7113,8 @@ closed (now also from `GET /user/self`).
 - `invoice.*` exempt from `metadata.service` filter
 - Lifetime protects `modifySubscription` from Stripe plan webhooks
 - FinishTrial yearly/monthly amount via billing props or `/user/subscription` lookup
-- Dev billing stage is LOOK-only (`subscriptionOverride`); real SWR paths unchanged
+- ~~Dev billing stage is LOOK-only (`subscriptionOverride`); real SWR paths unchanged~~
+  **Closed 2026-08-07** — DEV billing stack removed from production chrome
 - Code redemption `POST /billing/lifetime` + 24h `lifetimeWindow` server enforcement
 - No raw SQL; Subscription model fields adequate
 
@@ -7375,7 +7382,7 @@ filenames the owner wanted gone.
 ### Files
 - `agents/page.tsx`, `agents/[id]/page.tsx`, `(provider)/layout.tsx`,
   `(extension)/layout.tsx`
-- `calendar.tsx`, `scripts/seed-dev-posts.mjs`, `scripts/seed-dev-workspace.mjs`
+- `calendar.tsx`, `scripts/dev-only/seed-dev-posts.mjs`, `scripts/dev-only/seed-dev-workspace.mjs`
 - `media.box.tsx`, `media.lightbox.tsx`
 - `docs/ui-migration-baseline/i18n.txt`, this log
 
@@ -7780,3 +7787,48 @@ gates 14 unchanged; i18n **1569 → 1574** (`billing_subscription_ended_on`,
 - `agent.chat.tsx`, en `translation.json`
 - `calendar.tsx`, `launches.component.tsx`
 - `.gitignore`, `apps/commands/README.md`, `docs/launch-ops.md`, this log
+
+---
+
+## Production / self-host DEV cleanup — 2026-08-07
+
+Production chrome cleaned for self-host and live deploy. DEV-only LOOK tools
+and client fixtures are gone; empty calendar / media stay empty.
+
+### Removed
+
+- **DEV billing stack:** `dev-billing-stage.ts` / `.provider.tsx` / `.switcher.tsx`
+  deleted. Unwired from layout (`Provider` / `Switcher` / FinishTrial `dryRun`),
+  `billing.component` `subscriptionOverride`, `teams.component` LOOK unlock,
+  `finish.trial` dryRun. Backend `POST /notifications/dev-test` removed.
+- **uiDemo fixtures:** `ui-demo-posts.ts` / `ui-demo-media.ts` deleted. Calendar
+  no longer merges `?uiDemo` / `pq-ui-demo` rows; Media library empty state is
+  empty. Tour `useTourDemo` / `pq-tour-demo-*` + `useDemoPostAction` kept.
+  Launch dummy API preview / `DummyCodeComponent`, Impersonate, Import Debug kept.
+
+### Quarantined
+
+`scripts/seed-dev-*.mjs` + `dev-state.mjs` → `scripts/dev-only/` with README
+(**NOT for production/self-host**; never auto-run). `grant-lifetime.mjs` stays
+at `scripts/` with its existing **NOT FOR PRODUCTION** header.
+
+### Closed contradictory notes
+
+Earlier log lines that said DEV billing was already removed (2026-08-05) or
+still covered LOOK, and uiDemo “still exists” fixture instructions, are marked
+closed above. Source of truth is this entry.
+
+### Checks
+
+`scripts/ui-migration-check.sh --update` PASS — types 0/0; api **155 → 154**
+(`/notifications/dev-test` dropped); i18n **1574 → 1572** (`ui_demo_media_*`
+removed; `ui_demo_post_readonly` kept for tour); routes 31; gates 14.
+
+### Files
+
+- `apps/frontend/.../billing/*`, `layout.component.tsx`, `teams.component.tsx`
+- `calendar.context.tsx`, `calendar.tsx`, `posts.panel.tsx`, `media.box.tsx`,
+  `media.lightbox.tsx`
+- `apps/backend/.../notifications.controller.ts`
+- `scripts/dev-only/*`, `scripts/grant-lifetime.mjs` (kept)
+- this log

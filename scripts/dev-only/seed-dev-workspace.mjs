@@ -4,16 +4,16 @@
 // (webhooks / signatures / sets / autopost / integrations) and the Copilot
 // channel column can be looked at with realistic inventory.
 //
-//   node scripts/seed-dev-workspace.mjs --email you@example.com
-//   node scripts/seed-dev-workspace.mjs --org <orgId>
-//   node scripts/seed-dev-workspace.mjs --email … --avatar /path/to/me.png
-//   node scripts/seed-dev-workspace.mjs --email … --revoke
+//   node scripts/dev-only/seed-dev-workspace.mjs --email you@example.com
+//   node scripts/dev-only/seed-dev-workspace.mjs --org <orgId>
+//   node scripts/dev-only/seed-dev-workspace.mjs --email … --avatar /path/to/me.png
+//   node scripts/dev-only/seed-dev-workspace.mjs --email … --revoke
 //
 // Avatar + every seeded channel picture use the same file copied into
 // UPLOAD_DIRECTORY and served at FRONTEND_URL/uploads/… (not Dicebear).
 // Without --avatar, generates a branded NW PNG (not public/no-picture.jpg)
 // so Media + channel thumbs are distinguishable in QA screenshots.
-//   node scripts/seed-dev-workspace.mjs --org <id> --dry
+//   node scripts/dev-only/seed-dev-workspace.mjs --org <id> --dry
 //
 // Marker prefix: `dev-seed-ws*`. `--revoke` removes only what this script
 // wrote (integrations, posts, settings rows, third-party, seeded notifications,
@@ -752,7 +752,7 @@ async function seed(org, user) {
   base.setHours(0, 0, 0, 0);
   // Short fixtures for a fresh workspace. For long multi-paragraph bodies
   // (calendar truncation / Create Post overflow QA), also run:
-  //   node scripts/seed-dev-posts.mjs --org <id> --reset
+  //   node scripts/dev-only/seed-dev-posts.mjs --org <id> --reset
   const postRows = [
     [1, 9, 30, 'QUEUE', 'Launch teaser', 'Something new is coming on Friday.'],
     [1, 14, 0, 'QUEUE', 'Community update', 'Notes from this week, in one place.'],

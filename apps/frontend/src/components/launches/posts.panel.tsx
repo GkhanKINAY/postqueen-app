@@ -13,10 +13,10 @@ import {
   DeletePost,
   Duplicate,
   EditPost,
+  isClientDemoPost,
   useDemoPostAction,
   usePostActions,
 } from '@gitroom/frontend/components/launches/calendar';
-import { isClientDemoPost } from '@gitroom/frontend/components/launches/ui-demo-posts';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useTourNeeds } from '@gitroom/frontend/components/onboarding/tour';

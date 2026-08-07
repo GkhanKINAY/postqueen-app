@@ -86,7 +86,6 @@
 /media/video-options
 /media/video/function
 /notifications
-/notifications/dev-test
 /notifications/list
 /notifications/read
 /oauth/authorize

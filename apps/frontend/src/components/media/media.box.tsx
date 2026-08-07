@@ -25,12 +25,7 @@ import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/dat
 import { ThirdPartyMediaLibrary } from '@gitroom/frontend/components/third-parties/third-party.media-library';
 import { Dashboard } from '@uppy/react';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { useSearchParams } from 'next/navigation';
 import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox';
-import {
-  isUiDemoEnabled,
-  UI_DEMO_MEDIA,
-} from '@gitroom/frontend/components/media/ui-demo-media';
 import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
@@ -45,12 +40,9 @@ const formatSize = (bytes: number) => {
 };
 
 type MediaRow = Media & {
-  uiDemo?: boolean;
   meta?: string;
   duration?: string;
   modified?: string;
-  kind?: 'image' | 'video';
-  thumbGradient?: string;
   fileSize?: number;
 };
 
@@ -112,34 +104,16 @@ const MediaThumb: FC<{ media: MediaRow; className?: string }> = ({
 }) => {
   const mediaDirectory = useMediaDirectory();
   const video = isVideoMedia(media);
-  // Demo videos are gradient tiles (sample URL is lightbox-only). Demo stills
-  // paint the same gradient under the data-URI so a failed load never shows a
-  // generic glyph.
-  if (media.uiDemo && video) {
-    return (
-      <div
-        className={clsx('h-full w-full', className)}
-        style={{ background: media.thumbGradient }}
-      />
-    );
-  }
   if (video) {
     return (
       <VideoFrame url={mediaDirectory.set(media.path)} />
     );
   }
   return (
-    <div
-      className={clsx('h-full w-full', className)}
-      style={
-        media.uiDemo && media.thumbGradient
-          ? { background: media.thumbGradient }
-          : undefined
-      }
-    >
+    <div className={clsx('h-full w-full', className)}>
       <img
         className="h-full w-full object-cover"
-        src={media.uiDemo ? media.path : mediaDirectory.set(media.path)}
+        src={mediaDirectory.set(media.path)}
         alt={media.originalName || media.name || 'media'}
       />
     </div>
@@ -167,7 +141,6 @@ export const MediaBox: FC<{
   // Standalone and unrestricted pickers use All/Images/Video. A `type` prop
   // from the composer locks the library to that media kind.
   const activeType = type ?? (tab === 'all' ? undefined : tab);
-  const searchParams = useSearchParams();
   const fetch = useFetch();
   const modals = useModals();
   const toaster = useToaster();
@@ -175,9 +148,9 @@ export const MediaBox: FC<{
   const uploaderRef = useRef<HTMLInputElement>(null);
   const mediaDirectory = useMediaDirectory();
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<
-    { id: string; path: string; uiDemo?: boolean }[]
-  >([]);
+  const [selected, setSelected] = useState<{ id: string; path: string }[]>(
+    []
+  );
   const attachedIds = useMemo(
     () => new Set((attachedMedia || []).map((m) => m.id)),
     [attachedMedia]
@@ -203,24 +176,9 @@ export const MediaBox: FC<{
     });
   }, [data, page, standalone]);
 
-  const [libraryEmpty, setLibraryEmpty] = useState(false);
-  useEffect(() => {
-    if (isLoading || page !== 0) return;
-    setLibraryEmpty((data?.results?.length ?? 0) === 0);
-  }, [isLoading, data, page]);
-
-  const useDemo =
-    !isLoading &&
-    (data?.results?.length ?? 0) === 0 &&
-    isUiDemoEnabled(searchParams.get('uiDemo')) &&
-    libraryEmpty;
-
   const sourceRows: MediaRow[] = useMemo(() => {
-    if (useDemo) {
-      return UI_DEMO_MEDIA as MediaRow[];
-    }
     return (standalone ? accumulated : data?.results || []) as MediaRow[];
-  }, [useDemo, standalone, accumulated, data]);
+  }, [standalone, accumulated, data]);
 
   const visibleMedia: MediaRow[] = useMemo(() => {
     return sourceRows.filter((f) => {
@@ -348,7 +306,7 @@ export const MediaBox: FC<{
       }
       setSelected([
         ...selected,
-        { id: media.id, path: media.path, uiDemo: media.uiDemo },
+        { id: media.id, path: media.path },
       ]);
     },
     [selected, standalone, toaster, t, attachedIds]
@@ -356,24 +314,12 @@ export const MediaBox: FC<{
 
   const addMedia = useCallback(async () => {
     if (standalone) return;
-    const real = selected.filter(
-      (s) => !s.uiDemo && !attachedIds.has(s.id)
-    );
-    if (real.length === 0 && selected.length > 0) {
-      toaster.show(
-        t(
-          'ui_demo_media_not_insertable',
-          'Demo media cannot be inserted into a post. Upload real files first.'
-        ),
-        'warning'
-      );
-      return;
-    }
+    const real = selected.filter((s) => !attachedIds.has(s.id));
     if (real.length === 0) return;
     setMedia(real);
     closeModal();
     modals.closeCurrent();
-  }, [selected, standalone, setMedia, modals, toaster, t, attachedIds, closeModal]);
+  }, [selected, standalone, setMedia, modals, attachedIds, closeModal]);
 
   const addToUpload = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -396,13 +342,6 @@ export const MediaBox: FC<{
     (media: MediaRow) => async (e?: React.MouseEvent) => {
       e?.stopPropagation();
       setMenuMedia(null);
-      if (media.uiDemo) {
-        toaster.show(
-          t('ui_demo_media_readonly', 'Demo media is read-only.'),
-          'warning'
-        );
-        return;
-      }
       if (
         !(await deleteDialog(
           t(
@@ -432,7 +371,7 @@ export const MediaBox: FC<{
 
   const downloadMedia = useCallback(
     (media: MediaRow) => () => {
-      const url = media.uiDemo ? media.path : mediaDirectory.set(media.path);
+      const url = mediaDirectory.set(media.path);
       window.open(url, '_blank', 'noopener,noreferrer');
     },
     [mediaDirectory]
@@ -442,13 +381,6 @@ export const MediaBox: FC<{
     (media: MediaRow) => (e?: React.MouseEvent) => {
       e?.stopPropagation();
       setMenuMedia(null);
-      if (media.uiDemo) {
-        toaster.show(
-          t('ui_demo_media_readonly', 'Demo media is read-only.'),
-          'warning'
-        );
-        return;
-      }
       modals.openModal({
         title: t('change_alt_text', 'Change alt text'),
         children: (close) => (
@@ -463,7 +395,7 @@ export const MediaBox: FC<{
         ),
       });
     },
-    [modals, t, toaster, mutate]
+    [modals, t, mutate]
   );
 
   const openMenu = useCallback(
@@ -480,15 +412,12 @@ export const MediaBox: FC<{
     [menuMedia, menuTriggerRef]
   );
 
-  const totalCount = useDemo
-    ? visibleMedia.length
-    : Math.max(
-        visibleMedia.length,
-        ((data?.pages || 1) - 1) * 18 + (data?.results?.length || 0)
-      );
+  const totalCount = Math.max(
+    visibleMedia.length,
+    ((data?.pages || 1) - 1) * 18 + (data?.results?.length || 0)
+  );
 
-  const hasMorePages =
-    !useDemo && standalone && page + 1 < (data?.pages || 0);
+  const hasMorePages = standalone && page + 1 < (data?.pages || 0);
 
   const brandUploadBtn = (size: 'page' | 'picker' = 'page') => (
     <button
@@ -630,7 +559,7 @@ export const MediaBox: FC<{
     </div>
   );
 
-  const showEmptyState = !isLoading && visibleMedia.length === 0 && !useDemo;
+  const showEmptyState = !isLoading && visibleMedia.length === 0;
 
   // --- Standalone /media page (design pagesVals isMedia) -------------------
   if (standalone) {
@@ -994,9 +923,7 @@ export const MediaBox: FC<{
             media={lightbox}
             onClose={() => setLightbox(null)}
             onDownload={downloadMedia(lightbox)}
-            onDelete={
-              lightbox.uiDemo ? undefined : () => deleteImage(lightbox)()
-            }
+            onDelete={() => deleteImage(lightbox)()}
           />
         )}
       </DropFiles>
@@ -1214,7 +1141,7 @@ export const MediaBox: FC<{
           </div>
         </div>
 
-        {(data?.pages || 0) > 1 && !useDemo && (
+        {(data?.pages || 0) > 1 && (
           <div className="shrink-0 pt-[4px]">
             <Pagination
               current={page}
@@ -1302,9 +1229,7 @@ export const MediaBox: FC<{
           media={lightbox}
           onClose={() => setLightbox(null)}
           onDownload={downloadMedia(lightbox)}
-          onDelete={
-            lightbox.uiDemo ? undefined : () => deleteImage(lightbox)()
-          }
+            onDelete={() => deleteImage(lightbox)()}
         />
       )}
     </div>
