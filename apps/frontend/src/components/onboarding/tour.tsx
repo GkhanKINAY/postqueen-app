@@ -108,9 +108,10 @@ interface Step extends StepMeta {
 
 /** Metadata only. `useSteps()` adds the copy. Matches prototype tourSteps(). */
 const STEPS: StepMeta[] = [
-  // Design keeps the Posts queue open while the calendar fills.
-  { key: 'cal-grid', path: '/launches', needs: 'posts-panel' },
-  { key: 'posts-panel', path: '/launches', needs: 'posts-panel' },
+  // Always land on week calendar — a leftover `calendar-display=list` cookie
+  // (or rail → Posts) would otherwise show the empty list and hide the demo.
+  { key: 'cal-grid', path: '/launches?display=week', needs: 'posts-panel' },
+  { key: 'posts-panel', path: '/launches?display=week', needs: 'posts-panel' },
   // Spotlight is the rail Connect button (still visible on /connections).
   { key: 'connect-pq', path: '/connections' },
   { key: 'connections-page', path: '/connections', dim: true },
@@ -536,8 +537,16 @@ export const Tour: FC = () => {
       stripTourQuery();
       return;
     }
+    // Existing sessions may still be on list view; force the calendar the
+    // tour talks about before the overlay measures.
+    if (pathname === '/launches' && query.get('display') !== 'week') {
+      const params = new URLSearchParams(query.toString());
+      params.set('display', 'week');
+      params.delete('listRange');
+      router.replace(`/launches?${params.toString()}`);
+    }
     start();
-  }, [query, start, stripTourQuery]);
+  }, [query, start, stripTourQuery, pathname, router]);
 
   // A step's path may carry a query — the settings tabs are deep-linked — so
   // "are we there yet" has to compare the params too, not just the pathname.
