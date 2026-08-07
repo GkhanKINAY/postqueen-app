@@ -44,6 +44,7 @@ import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
@@ -140,6 +141,27 @@ export const AgentChat: FC = () => {
  */
 const EmptyStateHero: FC = () => {
   const t = useT();
+  const { mobile } = useViewport();
+  // Agents park channels + chats as drawers below 760; desktop keeps side
+  // columns. Greeting copy must match the chrome the user actually sees.
+  const channelsHint = mobile
+    ? t(
+        'agent_hint_channels_drawer',
+        'Select the channels you want to use from the menu.'
+      )
+    : t(
+        'agent_hint_channels_left',
+        'Select the channels you want to use from the left menu.'
+      );
+  const chatsHint = mobile
+    ? t(
+        'agent_hint_chats_drawer',
+        'Open previous conversations from the menu.'
+      )
+    : t(
+        'agent_hint_chats_right',
+        'See previous conversations from the right menu.'
+      );
   return (
     <>
       <span className="flex h-[54px] w-[54px] items-center justify-center rounded-[16px] bg-pqBrandSoft text-pqFocused">
@@ -162,6 +184,10 @@ const EmptyStateHero: FC = () => {
             'agent_empty_sub',
             'Describe the idea. Copilot writes it per channel, makes the images and puts it on your calendar.'
           )}
+        </div>
+        <div className="mx-auto mt-[10px] max-w-[440px] text-[13px] leading-[1.55] text-pqSoft">
+          <div>{channelsHint}</div>
+          <div className="mt-[2px]">{chatsHint}</div>
         </div>
       </div>
       <Link

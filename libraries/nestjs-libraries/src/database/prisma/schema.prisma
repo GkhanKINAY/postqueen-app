@@ -15,6 +15,10 @@ model Organization {
   apiKey              String?
   paymentId           String?
   streakSince         DateTime?
+  /// Set when a paid subscription ends (cancel day / delete). Survives the
+  /// hard-deleted Subscription row so First Billing can show an honest end
+  /// date for paid-then-cancelled orgs instead of createdAt+trial.
+  subscriptionEndedAt DateTime?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   allowTrial          Boolean              @default(false)

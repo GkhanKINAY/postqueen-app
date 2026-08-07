@@ -783,9 +783,15 @@ export const FirstBillingComponent = () => {
     !data?.blocked;
 
   const trialEndedLabel = useMemo(() => {
-    const endsAt = trialWindow(user?.createdAt).endsAt;
-    return endsAt ? newDayjs(endsAt).format('D MMM, YYYY') : null;
-  }, [user?.createdAt]);
+    // Paid-then-cancelled: prefer org subscriptionEndedAt / cancel day over
+    // trialWindow(createdAt) so the amber strip is not "trial ended" on day 7
+    // when they actually paid for months. Missing both → dateless fallback.
+    const ended =
+      user?.subscriptionEndedAt || trialWindow(user?.createdAt).endsAt;
+    return ended ? newDayjs(ended).format('D MMM, YYYY') : null;
+  }, [user?.subscriptionEndedAt, user?.createdAt]);
+
+  const endedFromSubscription = !!user?.subscriptionEndedAt;
 
   const JoinOver = () => {
     return (
@@ -911,15 +917,22 @@ export const FirstBillingComponent = () => {
               />
             </svg>
             {/* Title only (pwLapsedTitle). pwLapsedBody exists in Vals but is
-                not in the prototype template — do not render it. Trial date
-                from trialWindow(createdAt); missing createdAt → dateless. */}
+                not in the prototype template — do not render it. Prefer
+                subscriptionEndedAt (paid cancel); else trialWindow(createdAt);
+                missing both → dateless. */}
             <span className="min-w-0 flex-1 font-[700] leading-[1.4]">
               {trialEndedLabel
-                ? t(
-                    'billing_trial_ended_on',
-                    'Your trial ended on {{date}}.',
-                    { date: trialEndedLabel }
-                  )
+                ? endedFromSubscription
+                  ? t(
+                      'billing_subscription_ended_on',
+                      'Your subscription ended on {{date}}.',
+                      { date: trialEndedLabel }
+                    )
+                  : t(
+                      'billing_trial_ended_on',
+                      'Your trial ended on {{date}}.',
+                      { date: trialEndedLabel }
+                    )
                 : t(
                     'billing_subscription_ended',
                     'Your subscription ended.'

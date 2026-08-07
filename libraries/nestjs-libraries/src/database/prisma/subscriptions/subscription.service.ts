@@ -54,6 +54,13 @@ export class SubscriptionService {
       return false;
     }
 
+    // Persist end date on the org before the Subscription row is hard-deleted
+    // — First Billing needs it for paid-then-cancelled copy.
+    await this._subscriptionRepository.recordSubscriptionEndedByCustomerId(
+      customerId,
+      current?.cancelAt ?? new Date()
+    );
+
     await this.modifySubscription(
       customerId,
       pricing.FREE.channel || 0,
@@ -66,6 +73,14 @@ export class SubscriptionService {
 
   /** Immediate revoke of a local subscription row (founding-member trial cancel). */
   async revokeLocalSubscription(organizationId: string) {
+    const current =
+      await this._subscriptionRepository.getSubscriptionByOrganizationId(
+        organizationId
+      );
+    await this._subscriptionRepository.recordSubscriptionEndedByOrganizationId(
+      organizationId,
+      current?.cancelAt ?? new Date()
+    );
     await this.modifySubscriptionByOrg(
       organizationId,
       pricing.FREE.channel || 0,

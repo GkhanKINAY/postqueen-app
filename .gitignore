@@ -66,6 +66,18 @@ Thumbs.db
 *.~*~
 *.tsbuildinfo
 
+# Accidental tsc emit next to sources (do not track compile residue).
+# Negate known checked-in JS entrypoints that are not TypeScript emit.
+/*.js
+/*.js.map
+apps/**/*.js
+apps/**/*.js.map
+libraries/**/*.js
+libraries/**/*.js.map
+!/jest.preset.js
+!apps/frontend/next.config.js
+!libraries/postqueen-wallets/lib/**/*.js
+
 # ignore Secrets folder
 .secrets/
 libraries/plugins/src/plugins.ts

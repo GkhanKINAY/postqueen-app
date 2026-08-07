@@ -414,9 +414,9 @@ export const LaunchesComponent = () => {
         )}
         {/* Design: queue panel beside calendar only. Posts (list) is full-bleed. */}
         <PostsPanelWhenCalendar />
-        <div className="bg-pqInner flex-1 flex-col flex p-[20px] gap-[12px]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]">
           <Filters />
-          <div className="flex-1 flex">
+          <div className="flex min-h-0 min-w-0 flex-1">
             <Calendar />
           </div>
         </div>

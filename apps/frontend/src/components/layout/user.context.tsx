@@ -22,6 +22,8 @@ export const UserContext = createContext<
       /** Deferred founding $49 still owed after the trial window closed. */
       lifetimePaymentPending?: boolean;
       streakSince: string | null;
+      /** Stripe cancel / subscription end day when known (lapsed paywall). */
+      subscriptionEndedAt?: string | Date | null;
     })
 >(undefined);
 export const ContextWrapper: FC<{
