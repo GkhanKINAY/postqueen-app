@@ -560,6 +560,11 @@ export const MediaBox: FC<{
           hidePauseResumeButton={true}
           hideCancelButton={true}
           hideProgressAfterFinish={true}
+          // Progress-only strip — library grid uses real media paths, not Uppy
+          // thumbs. Leaving ThumbnailGenerator on races with removeFile on
+          // complete and logs: "file was removed before a thumbnail could be
+          // generated, but not removed from the queue".
+          disableThumbnailGenerator={true}
         />
       </div>
     </div>
@@ -752,7 +757,7 @@ export const MediaBox: FC<{
 
                 {view === 'grid' && (
                   <div
-                    className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] items-start gap-x-[14px] gap-y-[18px]"
+                    className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] items-start gap-x-[14px] gap-y-[14px]"
                     data-pq="media-grid"
                   >
                     {visibleMedia.map((media) => {
@@ -762,7 +767,7 @@ export const MediaBox: FC<{
                         key={media.id}
                         data-ci="1"
                         onClick={openLightbox(media)}
-                        className="group flex cursor-pointer flex-col gap-[8px]"
+                        className="group flex cursor-pointer flex-col gap-0.5"
                       >
                         <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-[10px] bg-pqSettings outline outline-1 outline-pqBorder -outline-offset-1 transition-[outline-color] group-hover:outline-pqBrand">
                           <MediaThumb media={media} />
@@ -1051,19 +1056,26 @@ export const MediaBox: FC<{
 
       {uppyBar}
 
-      {/* Filters tight above gallery — owner.
-          Scroll only the grid (~2 rows + type/size captions). Pagination
-          stays outside so page controls stay visible without scrolling. */}
+          {/* Filters tight above gallery — owner.
+              Cap only when content exceeds ~2 rows (8 cells @ 4 cols). Shorter
+              pages size naturally with no inner scrollbar. Pagination stays
+              outside. Compact thumb→meta gap; overscroll contained. */}
       <div className="flex flex-col gap-[8px]">
         <div className="flex shrink-0 flex-wrap items-center gap-[10px]">
           {filterTabs}
         </div>
 
-        <div className="relative max-h-[min(280px,32vh)] overflow-y-auto p-[3px] pe-[4px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner">
+        <div
+          className={clsx(
+            'relative p-[3px] pe-[4px] overscroll-contain',
+            (isLoading || visibleMedia.length > 8) &&
+              'max-h-[min(264px,28vh)] overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
+          )}
+        >
           {isLoading && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-[14px] gap-y-[18px]">
-              {[...new Array(12)].map((_, i) => (
-                <div key={i} className="flex flex-col gap-[8px]">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-[14px] gap-y-[12px]">
+              {[...new Array(8)].map((_, i) => (
+                <div key={i} className="flex flex-col gap-0.5">
                   <div className="aspect-[4/3] animate-pulse rounded-[10px] bg-pqSettings" />
                   <div className="flex justify-between gap-[8px]">
                     <div className="h-[11px] w-[28%] animate-pulse rounded bg-pqSettings" />
@@ -1088,7 +1100,7 @@ export const MediaBox: FC<{
             </div>
           )}
           <div
-            className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] items-start gap-x-[14px] gap-y-[18px]"
+            className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] items-start gap-x-[14px] gap-y-[12px]"
             data-pq="media-library-grid"
           >
             {visibleMedia.map((media) => {
@@ -1103,7 +1115,7 @@ export const MediaBox: FC<{
                 <div
                   key={media.id}
                   onClick={addRemoveSelected(media)}
-                  className="group flex cursor-pointer flex-col gap-[8px]"
+                  className="group flex cursor-pointer flex-col gap-0.5"
                 >
                   <div
                     className={clsx(
