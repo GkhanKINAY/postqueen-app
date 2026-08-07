@@ -3,12 +3,12 @@
 // Drives a subscription through its whole life in Stripe **test mode**, and
 // replays each real event into this backend's own webhook route.
 //
-//   node scripts/stripe-test-drive.mjs --org <id> --start --tier CREATOR
-//   node scripts/stripe-test-drive.mjs --org <id> --cancel
-//   node scripts/stripe-test-drive.mjs --org <id> --reactivate
-//   node scripts/stripe-test-drive.mjs --org <id> --coupon SAVE20
-//   node scripts/stripe-test-drive.mjs --org <id> --end
-//   node scripts/stripe-test-drive.mjs --org <id> --show
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --start --tier CREATOR
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --cancel
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --reactivate
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --coupon SAVE20
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --end
+//   node scripts/dev-only/stripe-test-drive.mjs --org <id> --show
 //
 // Why replay rather than `stripe listen`: the CLI is not installed here, and a
 // hosted webhook cannot reach localhost anyway. The events are **real** — they

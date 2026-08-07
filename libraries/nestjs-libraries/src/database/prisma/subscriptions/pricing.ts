@@ -51,31 +51,14 @@ export const pricing: PricingInterface = {
     autoPost: false,
     generate_videos: 0,
   },
-  // --- the redesign's tiers ------------------------------------------------
-  //
-  // CREATOR / GROWTH / PRO / AGENCY replace STANDARD / TEAM / PRO / ULTIMATE.
-  // The capability sets are *identical* pair for pair — same channels, images,
-  // videos, webhooks, team access — so the rename is purely commercial. Only
-  // the prices move.
-  //
-  // The old keys are kept below at their **old prices** rather than aliased to
-  // these. An existing STANDARD subscriber pays $29 until they change plan;
-  // Stripe never reprices an existing subscription retroactively. Aliasing them
-  // here would show that customer "CREATOR — $20" while their card is charged
-  // $29, which is a lie in the UI. So old subscribers keep their old tier and
-  // their old number, and only new subscriptions use the tiers above.
-  //
-  // That also means the enum's "contract" phase — dropping the old values —
-  // may never be needed. Retiring them for new signups costs nothing; deleting
-  // them costs a data migration on live subscriptions.
+  // Current sellable tiers (CREATOR / GROWTH / PRO / AGENCY).
+  // Retired STANDARD / TEAM / ULTIMATE rows below keep old prices so any
+  // unmigrated subscription still resolves without lying about the charge.
   CREATOR: {
     current: 'CREATOR',
     label: 'Creator',
     month_price: 20,
-    // 6.6x the monthly where the other three are 8x. Doc 06 §B guessed this was
-    // a typo. It is not: 132 / 12 is exactly $11 a month, where 8x would be
-    // $13.33. The entry tier is deliberately sweetened *and* lands on a round
-    // per-month figure. Confirmed by the owner — leave it.
+    // Intentional: 6.6× monthly ($132/yr ≈ $11/mo), not 8× like the other tiers.
     year_price: 132,
     channel: 5,
     posts_per_month: 1000000,

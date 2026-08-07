@@ -134,9 +134,7 @@ export class UsersController {
       tier:
         // @ts-ignore
         organization?.subscription?.subscriptionTier ||
-        // Same fallback as `organization.service.ts`: no billing means every
-        // feature, and AGENCY is the top tier still on sale. ULTIMATE is
-        // retired and would name the user a plan that cannot be bought.
+        // Self-host / billing off: top sellable tier. Otherwise FREE.
         (!isBillingEnabled() ? 'AGENCY' : 'FREE'),
       // @ts-ignore
       role: organization?.users[0]?.role,

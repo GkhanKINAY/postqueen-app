@@ -16,7 +16,7 @@
 #   scripts/ui-migration-check.sh --update        rewrite the baseline
 #
 # Use --update only when a step is *meant* to change one of these lists (step 4
-# adds /channels, for example). Say so in docs/ui-migration-log.md when you do:
+# adds /channels, for example). Note the baseline update in the PR when you do:
 # an unexplained baseline update is the one way this guard can be defeated.
 
 set -uo pipefail

@@ -69,14 +69,14 @@ const useCommunity = () => {
 - Workflows activities parameters cannot be changed, as it will break the workflow, if we need to change the parameters, if we need to change the parameters, we need to create a new activity with the new parameters, and then create a new workflow that uses the new activity.
 - Code must always be generic, there can't be a way that a specific logic, let's say facebook or instagram, appear in a file that use a generic logic, instead, we need to edit the interface of the provider, add another function, and then generically call it from the generic code, and then implement the specific logic in the provider implementation. we can't have something like if(facebookProvider) {} inside a non facebook provider file.
 
-# UI migration (in progress)
+# UI redesign
 
-A visual redesign of `apps/frontend` is being applied step by step. The reference lives in
-`design/handoff/`. Read `design/handoff/README.md` before touching frontend code.
+A visual redesign of `apps/frontend` uses a local reference under `design/handoff/`.
+Read `design/handoff/README.md` before touching frontend visuals.
 
 **It is git-ignored on purpose** — this repository is public and the handoff contains an unreleased
-design and unannounced pricing. It is working material held locally; if it is missing from your
-checkout, ask for it rather than guessing. `docs/ui-migration-log.md` is the part that ships.
+design and unannounced pricing. If it is missing from your checkout, ask for it rather than guessing.
+See `docs/ui-migration-log.md` for the short public stub.
 
 ## The rule
 
@@ -92,22 +92,19 @@ implies behaviour the code doesn't have, **raise it — do not implement it sile
   its HTML.** Reproduce it with this repo's components, stores and Tailwind setup.
 - **It is ~800 KB — never read it whole.** Grep the named `*Vals()` method and read only that region
   plus its template block. Method index is in `design/handoff/README.md`.
-- **The prototype outranks the handoff's own markdown docs.** Those docs are stale in ~20 places;
-  the corrections table is in `docs/ui-migration-log.md`. Read the method, not the doc.
+- **The prototype outranks the handoff's own markdown docs** when they disagree — read the method,
+  not the doc.
 - All colour comes from the token layer in `apps/frontend/src/app/colors.scss`. No hex literals in
   components. Missing value → add a token.
 - Do not rewrite handlers, API calls or provider settings while restyling. Those were verified
   against source; "cleaning them up" is a regression. **Copy: visible labels and headings take the
-  design's text** (owner decision, 2026-08-05 fidelity pass) as `t()` keys with English fallbacks;
-  error/validation strings stay the repo's.
+  design's text** as `t()` keys with English fallbacks; error/validation strings stay the repo's.
 - **Never make a capability unreachable just because the design doesn't show it — but the rail
-  matches the design's inventory exactly** (owner decision, 2026-08-05; Settings nav
-  superseded 2026-08-05 fidelity campaign). Settings sub-nav matches the prototype
+  matches the design's inventory exactly.** Settings sub-nav matches the prototype
   (Workspace / More / Developers) — no Plugs or Affiliate rows. Plugs capability is
   Channels → Automations (+ `/plugs` as Auto-Plugs). Affiliate lives in the user menu.
-  Create Post is **not** in the header (design chrome inventory; owner 2026-08-05
-  fidelity) — Blank/AI split lives on the calendar toolbar; calendar cells and
-  Channels → New post also open compose.
+  Create Post is **not** in the header — Blank/AI split lives on the calendar toolbar; calendar
+  cells and Channels → New post also open compose.
 - Keep **i18n** (14 languages) and **RTL** (he, ar) working. The prototype has neither — it is
   hardcoded English, LTR only.
 - Theming is a **`.dark` / `.light` class on `<body>`** (`darkMode: 'class'`), not `data-theme` on
@@ -120,17 +117,11 @@ implies behaviour the code doesn't have, **raise it — do not implement it sile
 
 ## Every step must prove it broke nothing
 
-Run all four before opening a PR, and record the results in `docs/ui-migration-log.md`:
-
 ```
 scripts/ui-migration-check.sh
 ```
 
 Types clean, the API-path list unchanged, the i18n key list unchanged, the route list unchanged.
+If a change is meant to update a baseline list, run with `--update` and note it in the PR.
 Then screenshot the screen at 420 / 900 / 1440 in both themes and compare against the prototype
-served from `design/handoff/design/`.
-
-## Order of work
-
-`docs/ui-migration-log.md` tracks which step is done. Tokens land first, shell second. Do not start
-a screen step before both are merged. 
+served from `design/handoff/design/`. 

@@ -32,3 +32,8 @@ dist
 .git
 .github
 reports
+uploads
+uploads/**
+design/handoff
+docs/ui-shots
+.claude

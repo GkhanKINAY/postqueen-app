@@ -42,9 +42,7 @@ export class OrganizationRepository {
         subscription: {
           create: {
             totalChannels: 1000000,
-            // The only place a tier is *written* on org creation. AGENCY, not
-            // the retired ULTIMATE — both are 100 channels, so nothing about
-            // this organisation changes except the name of its plan.
+            // Self-host / no-billing bootstrap: top sellable tier (AGENCY).
             subscriptionTier: 'AGENCY',
             isLifetime: true,
             period: 'YEARLY',
@@ -267,15 +265,8 @@ export class OrganizationRepository {
         },
       });
 
-    // This used to name STANDARD outright. STANDARD is retired, so after the
-    // rename a CREATOR organisation — the entry plan that replaced it — walked
-    // straight through a gate meant to stop exactly that, and could invite team
-    // members it does not pay for.
-    //
-    // The tier it should block is whichever one is not sold with team members,
-    // so it reads that from `pricing` instead of naming a plan. An org with no
-    // subscription row at all is left alone, which is what naming STANDARD did
-    // and is the only reason FREE is not caught here.
+    // Block invites when the org's plan does not include team members.
+    // Orgs with no subscription row are left alone (FREE path).
     const subscribedTier =
       checkForSubscription?.subscription?.subscriptionTier;
     if (

@@ -3,9 +3,9 @@
 // Grants (or revokes) a lifetime subscription on a development database, so the
 // founding-member surfaces and the lifetime billing rules can actually be seen.
 //
-//   node scripts/grant-lifetime.mjs --org <id> --dry
-//   node scripts/grant-lifetime.mjs --org <id>
-//   node scripts/grant-lifetime.mjs --org <id> --revoke
+//   node scripts/dev-only/grant-lifetime.mjs --org <id> --dry
+//   node scripts/dev-only/grant-lifetime.mjs --org <id>
+//   node scripts/dev-only/grant-lifetime.mjs --org <id> --revoke
 //
 // Why this exists: with billing on and no subscription, a FREE tier replaces
 // the whole app shell with the checkout paywall on every route. Eight of the

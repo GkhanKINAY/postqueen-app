@@ -2,9 +2,9 @@
 //
 // Creates the Stripe prices the subscribe flow needs, in **test mode only**.
 //
-//   node scripts/stripe-test-fixtures.mjs --dry
-//   node scripts/stripe-test-fixtures.mjs
-//   node scripts/stripe-test-fixtures.mjs --revoke
+//   node scripts/dev-only/stripe-test-fixtures.mjs --dry
+//   node scripts/dev-only/stripe-test-fixtures.mjs
+//   node scripts/dev-only/stripe-test-fixtures.mjs --revoke
 //
 // Why this is needed at all: `stripe.service.ts:304` finds a price by matching
 // `p.nickname === body.billing + ' ' + body.period` — "CREATOR MONTHLY" and so

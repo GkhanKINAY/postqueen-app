@@ -24,7 +24,7 @@
 // dates so the worker does not spam failures.
 //
 // Lifetime entitlement is separate: if the org has no subscription, run
-//   node scripts/grant-lifetime.mjs --org <id>
+//   node scripts/dev-only/grant-lifetime.mjs --org <id>
 // (this script prints that hint; it does not grant on its own).
 //
 // NOT FOR PRODUCTION.
@@ -648,7 +648,7 @@ async function seed(org, user) {
   if (!sub) {
     console.log(
       `note: ${org.name} has no subscription. Billing may paywall screens.\n` +
-        `  node scripts/grant-lifetime.mjs --org ${org.id}`
+        `  node scripts/dev-only/grant-lifetime.mjs --org ${org.id}`
     );
   } else if (
     sub.totalChannels < CHANNELS.filter((c) => !c.disabled).length &&
