@@ -50,9 +50,8 @@ entry point at all — and every billing screen needs `billingEnabled`. `/billin
 login screen here — and has since before the migration, which is why three baselines filed the
 signup page under `billing-*.png` without anyone noticing.
 
-**Two decisions are waiting** in *Open questions* below, plus three things raised since. Nothing is
-blocked on any of them: each has a position taken in the meantime, and the two originals are about
-wording and a price, not code.
+**Two decisions were waiting** in *Open questions* — both closed as won't-fix for launch
+(2026-08-07 backlog clear). No open actionable Raise remains.
 
 ---
 
@@ -295,44 +294,42 @@ exercised — and this migration's whole discipline is that unexercised is not v
 
 ## Open questions for the owner
 
-Written down rather than asked, at the owner's instruction, so work could continue overnight. Four of
-the original six are now closed by decisions the owner gave; the two still open are both about
-wording and money, not code.
+Written down rather than asked, at the owner's instruction, so work could continue overnight.
+**Actionable open Raises: none** (2026-08-07 backlog clear). Pricing / product skips below are
+won't-fix for launch — see the close table at the end of this log and
+[`docs/launch-ops.md`](docs/launch-ops.md).
 
-### Still open
+### Closed as won't-fix (launch)
 
-**A. CREATOR yearly is \$132 — 6.6× the monthly, where every other tier is exactly 8×.** Doc 06 §B
-flags it as possibly a typo. The design's figure was taken as authoritative and is live in
-`pricing.ts`; if it was a typo the fix is one number. Nothing else depends on it.
+| Item | Disposition | Why |
+| --- | --- | --- |
+| Raise G · lifetime Agency/Creator → Pro backfill | won't-fix | Owner: no migrate at launch (data risk). New grants already land on Pro. |
+| CREATOR yearly \$132 | won't-fix | Intentional pricing (design figure); not a typo fix this pass. |
+| groupCell multi-channel merge | won't-fix | WORK keeps per-channel cells. |
+| Keyboard shortcuts unlock | won't-fix | Design row stays locked; no product unlock. |
+| Streak “Longest: N days” | won't-fix | No `streakBest` in schema. |
+| Copilot draft-plan card / AI-lock overlay | won't-fix | No `chatHasPlan` / product hook. |
+| In-sheet AI FAB | won't-fix | CopilotPopup is the shipping path. |
+| Media Rename | won't-fix | No rename API; alt text only. |
+| Trial-copy “N months free” vs coupon | won't-fix | Coupon is source of truth; honest copy stays. |
+| Composer / billing photo matrix | won't-fix | Manual fixture when `billingEnabled` + channel; not a code Raise. |
+| `apps/commands` boot | won't-fix | See README; `scripts/migrate-tiers.mjs` is the path. |
 
-**B. Trial copy the backend cannot honour.** The design writes "4 months free" where the repo's
-string is `billing_20_percent_off`. The discount is a Stripe coupon, so the copy has to match
-whatever the coupon actually is or customers are told something untrue. *Taken in the meantime:* the
-trial and discount surfaces are restyled, the strings stay the repo's.
+### Historical (superseded / fixed elsewhere)
 
-### Raised since, and waiting on you
+**A. CREATOR yearly is \$132** — won't-fix (table above).
 
-**C. `apps/commands` cannot boot, and predates this branch.** `agent.run.ts` calls
-`AgentGraphService.createGraph`, which no longer exists, so the app fails to build; and
-`CommandModule` imports no Temporal module, so `DatabaseModule`'s `NotificationService` cannot be
-injected. Nothing here touched it. It matters because a one-off job like the tier migration belongs
-there; `scripts/migrate-tiers.mjs` exists instead and says so.
+**B. Trial copy the backend cannot honour** — won't-fix (table above).
 
-**D. The agent's greeting still says "from the left menu" / "from the right menu".** True on desktop,
-no longer true on a phone, where both are drawers now. It is the agent's own copy and rewriting copy
-during a restyle is the thing this migration has refused to do everywhere else.
+**C. `apps/commands` cannot boot** — won't-fix; README + launch-ops.
 
-**E. The design's modal → inline connect pane** was declined while there was no Channels page.
-**Superseded (2026-08-05):** `/channels` landed in PR #9; the Channels page now opens Add Channel
-inline (same `AddProviderComponent` as the modal). Calendar no longer hosts a channel column.
+**D. Agent left/right menu greeting** — **fixed** (drawer-aware copy on empty state).
 
-**F. Create Post header vs calendar toolbar (2026-08-05).** Design header has no Create Post;
-`chromeVals` handlers are dead. Blank/AI split now sits on the calendar toolbar so the
-capability stays reachable. Confirm toolbar vs cells/Channels-only.
+**E. Modal → inline connect** — superseded (Channels page).
 
-**G. Lifetime ladder retired — no backfill (2026-08-07).** New founding grants always
-land on Pro. Accounts already on lifetime Agency/Creator (or other ladder outcomes)
-are left as-is. Confirm whether a one-off migrate to Pro is wanted.
+**F. Create Post header vs toolbar** — decided (toolbar / cells / Channels).
+
+**G. Lifetime ladder backfill** — won't-fix (table above).
 
 ### Closed
 
@@ -7717,8 +7714,8 @@ controls are visible without scrolling the sheet.
 further LOOK change this pass.
 
 **Intentional defer (launch):** CREATOR yearly **$132** stays; **Raise G**
-(lifetime backfill, cancel-date, groupCell, keyboard unlock, week @420 clip)
-deferred.
+(lifetime backfill) won't-fix. cancel-date / week @420 / agent copy addressed in
+backlog-clear pass.
 
 ### Checks
 
@@ -7731,3 +7728,55 @@ deferred.
 - `media.box.tsx`
 - `leave-settings.tsx` (verified)
 - this log
+
+---
+
+## Clear remaining backlog (safe close) — 2026-08-07
+
+Close launch Raises as won't-fix (or fix the safe ones). No Postiz PRs.
+Ops checklist: [`docs/launch-ops.md`](docs/launch-ops.md).
+
+### A — Safe fixes
+
+| ID | Change |
+| --- | --- |
+| A1 | Org `subscriptionEndedAt` set on subscription delete; `/user` returns it; First Billing prefers it over `trialWindow(createdAt)` (`billing_subscription_ended_on` vs trial copy). |
+| A2 | Agent empty-state drawer-aware channel/chats hints (mobile menu vs desktop left/right). `agent_welcome_message` en copy de-spatialized. |
+| A3 | Week calendar flex `min-w-0` / `min-h-0` + mobile `overflow-x-auto` so @420 scrolls instead of clipping. No Day force-switch. |
+| A4 | `.gitignore` ignores accidental `apps/**/*.js(.map)`, `libraries/**/*.js(.map)`, root `/*.js(.map)`; keeps tracked `next.config.js` + wallets lib. |
+| A5 | `apps/commands/README.md` — won't-fix boot; `migrate-tiers.mjs` is the path. |
+
+### C — Raise ledger (no open actionable Raise)
+
+| Item | Status | Reason |
+| --- | --- | --- |
+| Raise G backfill | won't-fix | Launch: no lifetime Agency/Creator → Pro migrate |
+| CREATOR \$132 | won't-fix | Intentional pricing |
+| groupCell | won't-fix | Per-channel cells are WORK |
+| Keyboard unlock | won't-fix | Design locked; no product unlock |
+| Streak Longest | won't-fix | No `streakBest` |
+| Draft-plan / AI FAB | won't-fix | No product hook |
+| Media Rename | won't-fix | No rename API |
+| Trial-copy vs coupon | won't-fix | Coupon is source of truth |
+| Photo matrix | won't-fix | Manual fixture, not code |
+| cancel-date (paid-then-cancelled) | **fixed** (A1) | |
+| Agent left/right | **fixed** (A2) | |
+| Week @420 clip | **fixed** (A3) | |
+| commands boot | won't-fix | README + script path |
+
+### Checks
+
+`scripts/ui-migration-check.sh --update` PASS — types 0/0; api 155; routes 31;
+gates 14 unchanged; i18n **1569 → 1574** (`billing_subscription_ended_on`,
+`agent_hint_channels_drawer`, `agent_hint_channels_left`,
+`agent_hint_chats_drawer`, `agent_hint_chats_right`). Schema:
+`Organization.subscriptionEndedAt` — deploy push then
+[`docs/launch-ops.md`](docs/launch-ops.md).
+
+### Files
+
+- `schema.prisma`, subscription service/repository, `users.controller.ts`
+- `first.billing.component.tsx`, `user.context.tsx`
+- `agent.chat.tsx`, en `translation.json`
+- `calendar.tsx`, `launches.component.tsx`
+- `.gitignore`, `apps/commands/README.md`, `docs/launch-ops.md`, this log

@@ -119,6 +119,32 @@ export class SubscriptionRepository {
     });
   }
 
+  /** Remember when access ended — Subscription row is hard-deleted next. */
+  recordSubscriptionEndedByCustomerId(customerId: string, endedAt: Date) {
+    return this._organization.model.organization.updateMany({
+      where: {
+        paymentId: customerId,
+      },
+      data: {
+        subscriptionEndedAt: endedAt,
+      },
+    });
+  }
+
+  recordSubscriptionEndedByOrganizationId(
+    organizationId: string,
+    endedAt: Date
+  ) {
+    return this._organization.model.organization.update({
+      where: {
+        id: organizationId,
+      },
+      data: {
+        subscriptionEndedAt: endedAt,
+      },
+    });
+  }
+
   updateCustomerId(organizationId: string, customerId: string) {
     return this._organization.model.organization.update({
       where: {
@@ -213,6 +239,8 @@ export class SubscriptionRepository {
       data: {
         isTrailing,
         allowTrial: false,
+        // New paid/lifetime row — clear the lapsed-paywall end date.
+        subscriptionEndedAt: null,
       },
     });
 

@@ -58,6 +58,10 @@ admin
 affiliate
 agent_empty_sub
 agent_empty_title
+agent_hint_channels_drawer
+agent_hint_channels_left
+agent_hint_chats_drawer
+agent_hint_chats_right
 agent_mcp_card_sub
 agent_mcp_card_title
 agent_name
@@ -247,6 +251,7 @@ billing_resubscribe_to_plan
 billing_see_the_power
 billing_subscription
 billing_subscription_ended
+billing_subscription_ended_on
 billing_switch
 billing_switch_to_yearly
 billing_then

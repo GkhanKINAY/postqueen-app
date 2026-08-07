@@ -150,6 +150,16 @@ export class UsersController {
       lifetimePaymentPending,
       allowTrial: organization?.allowTrial,
       streakSince: organization?.streakSince || null,
+      // Paid-then-cancelled: Subscription row is hard-deleted, so cancel day
+      // lives on the org. Active cancel-at-period-end still has cancelAt on
+      // the subscription include when present.
+      // @ts-ignore
+      subscriptionEndedAt:
+        // @ts-ignore
+        organization?.subscriptionEndedAt ||
+        // @ts-ignore
+        organization?.subscription?.cancelAt ||
+        null,
       publicApi:
         // @ts-ignore
         organization?.users[0]?.role === 'SUPERADMIN' ||

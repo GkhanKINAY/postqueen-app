@@ -471,8 +471,8 @@ export const WeekView = () => {
   }, [i18next.resolvedLanguage, startDate]);
 
   return (
-    <div className="relative flex flex-1 flex-col text-pqText">
-      <div className="relative flex-1">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col text-pqText">
+      <div className="relative min-h-0 min-w-0 flex-1">
         {/* A floor on the day columns rather than `minmax(0, 1fr)` is what stops
             them collapsing into each other at phone widths — below seven
             readable columns the grid scrolls sideways instead of overlapping its
@@ -482,13 +482,17 @@ export const WeekView = () => {
             columns no longer fit, so the week silently lost a day off the right
             edge. 84px still fits a card and only bites below ~650px.
             The hour column is 72px, not 62px, because a 12-hour locale writes
-            "12:00 AM" there and 62px wrapped it onto two lines. */}
+            "12:00 AM" there and 62px wrapped it onto two lines.
+            Parent flex chain uses min-w-0 so this absolute scroller can overflow-x
+            at phone widths instead of clipping the 7th day. */}
         <div
           data-tour="cal-grid"
           ref={setScrollerRef}
           className={clsx(
-            'absolute inset-0 grid content-start bg-pqInner [grid-template-columns:72px_repeat(7,_minmax(84px,_1fr))] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner',
-            mobile ? 'overflow-x-scroll overflow-y-auto' : 'overflow-auto'
+            'absolute inset-0 grid min-w-0 content-start bg-pqInner [grid-template-columns:72px_repeat(7,_minmax(84px,_1fr))] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner',
+            mobile
+              ? 'overflow-x-auto overflow-y-auto overscroll-x-contain'
+              : 'overflow-auto'
           )}
         >
           {/* Opaque bg + z above grid hatch: past cells scroll under this row;
