@@ -16,3 +16,7 @@ one-line patch.
 
 One-off local and SaaS ops helpers live under `scripts/dev-only/` (see that
 folder’s README). They are **not** for production or self-host installs.
+
+After merging from upstream (`gitroomhq/postiz-app`), re-run `scripts/rebrand.sh`
+to restore PostQueen branding. That script is intentional fork tooling — not
+residue.
