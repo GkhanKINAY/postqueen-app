@@ -30,7 +30,7 @@ import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
 import { Dashboard } from '@uppy/react';
@@ -247,7 +247,7 @@ export const EditorWrapper: FC<{
     [internal, items]
   );
 
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
 
   const changeValue = useCallback(
     (index: number) => (value: string) => {
@@ -379,7 +379,7 @@ export const EditorWrapper: FC<{
           'bg-pqSettings rounded-[12px]'
       )}
     >
-      {aiEnabled && (
+      {aiOk && (
         <EditorCopilotBindings
           contents={items.map((p) => p.content)}
           setValue={setValue}

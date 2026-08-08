@@ -16,7 +16,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 export const SignaturesComponent: FC<{
@@ -307,7 +307,7 @@ const AddOrRemoveSignature: FC<{
   );
 
   const t = useT();
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
   const autoAdd = !!useWatch({ control: form.control, name: 'autoAdd' });
   const signatureFieldClass = clsx(
     '!min-h-28 !max-h-56 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent placeholder:text-pqSoft w-full resize-none border-0'
@@ -318,7 +318,7 @@ const AddOrRemoveSignature: FC<{
       <form onSubmit={form.handleSubmit(callBack)}>
         <div className="relative flex flex-1 flex-col gap-[16px] pt-0">
           <div className="relative overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
-            {aiEnabled ? (
+            {aiOk ? (
               <CopilotTextarea
                 disableBranding={true}
                 className={signatureFieldClass}

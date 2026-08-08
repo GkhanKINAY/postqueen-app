@@ -7,7 +7,7 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useStateCallback } from '@gitroom/react/helpers/use.state.callback';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 
 const PickPlatformCopilotBindings: FC<{
   isMain: boolean;
@@ -179,7 +179,7 @@ export const PickPlatforms: FC<{
     setSelectedAccounts(newIntegrations, () => {});
     onChange(newIntegrations, () => {});
   };
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
   if (hide) {
     return null;
   }
@@ -187,7 +187,7 @@ export const PickPlatforms: FC<{
     <div
       className={clsx('flex select-none', props.singleSelect && 'gap-[10px]')}
     >
-      {aiEnabled && (
+      {aiOk && (
         <PickPlatformCopilotBindings
           isMain={isMain}
           integrations={integrations}

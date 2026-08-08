@@ -7,6 +7,13 @@ import { Request } from 'express';
  * the posting endpoint: not to ration a paid resource, but because each request
  * can carry up to the maximum upload size, and an authenticated account with no
  * limit at all could hold a server's worth of disk and bandwidth open.
+ *
+ * Matched against `req.path`, never `req.url`. `req.url` carries the query
+ * string, and these were substring tests, so `POST /auth/login?x=/public/v1/posts`
+ * entered the throttler — a route with no AuthMiddleware, where `getTracker`
+ * below then read `.id` off an undefined `req.org` and answered 500. Anyone
+ * could trigger it, unauthenticated, at will. `permissions.guard.ts` had the
+ * identical bug and reads `request.path` now.
  */
 const UPLOAD_ROUTES = [
   '/media/upload-server',
@@ -14,17 +21,18 @@ const UPLOAD_ROUTES = [
   '/public/v1/upload',
 ];
 
-const isUpload = (url: string) => UPLOAD_ROUTES.some((r) => url.includes(r));
+const isUpload = (path: string) =>
+  UPLOAD_ROUTES.some((r) => path.startsWith(r));
 
 @Injectable()
 export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   public override async canActivate(
     context: ExecutionContext
   ): Promise<boolean> {
-    const { url, method } = context.switchToHttp().getRequest<Request>();
+    const { path, method } = context.switchToHttp().getRequest<Request>();
     if (
       method === 'POST' &&
-      (url.includes('/public/v1/posts') || isUpload(url))
+      (path.startsWith('/public/v1/posts') || isUpload(path))
     ) {
       return super.canActivate(context);
     }
@@ -37,12 +45,23 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   ): Promise<string> {
     // Separate counters per concern, so a burst of uploads cannot exhaust the
     // allowance for publishing posts, or the other way round.
-    const bucket = isUpload(req.url)
+    const bucket = isUpload(req.path)
       ? 'uploads'
-      : req.url.indexOf('/posts') > -1
+      : req.path.indexOf('/posts') > -1
       ? 'posts'
       : 'other';
 
-    return req.org.id + '_' + bucket;
+    // Every route the guard above lets through sits behind AuthMiddleware, so
+    // `req.org` is always there today and the fallback never runs. It exists so
+    // that adding an unauthenticated route to that list is a rate limit that
+    // keys on something else, rather than a 500.
+    //
+    // The class name notwithstanding, this has never read a forwarded IP and
+    // still does not: nothing calls `app.set('trust proxy')`, and turning that
+    // on so `req.ips` populates would also let a client pick its own
+    // X-Forwarded-For, which is a worse bucket than the socket address.
+    const org = req.org?.id;
+
+    return (org || 'ip:' + req.ip) + '_' + bucket;
   }
 }
