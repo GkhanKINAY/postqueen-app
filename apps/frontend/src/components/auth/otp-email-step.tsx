@@ -9,10 +9,14 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { TurnstileWidget } from '@gitroom/frontend/components/auth/turnstile.widget';
 
 /**
- * Passwordless email-code step. Rendered as the AuthShell `emailStep` when
- * PASSWORDLESS_LOGIN is on. Sign-in and sign-up collapse into one action:
- * enter email -> receive a 6-digit code -> verify. The backend creates the
- * account on first verify, so both the login and register pages reuse this.
+ * Passwordless email-code step, rendered as the AuthShell `emailStep`. Enter
+ * email -> receive a 6-digit code -> verify. The backend creates the account on
+ * first verify, so sign-in and sign-up collapse into one action here.
+ *
+ * Two flags reach it. PASSWORDLESS_LOGIN replaces the password form outright on
+ * both the login and register pages. EMAIL_CODE_LOGIN instead offers it as a
+ * second way in from the sign-in screen alone, with the password form still
+ * there. Either way this component behaves the same; only who renders it moves.
  *
  * On a successful verify the shared fetch interceptor (layout.context) reads
  * the auth/onboarding/reload headers and redirects, so there is nothing to do

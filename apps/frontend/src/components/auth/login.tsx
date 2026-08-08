@@ -27,7 +27,10 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [notActivated, setNotActivated] = useState(false);
   const [step, setStep] = useState<AuthStep>('method');
-  const { billingEnabled, passwordlessLogin } = useVariables();
+  // Chosen from the password step, so it only ever matters once `step` is
+  // 'email'. Going back to the method step clears it.
+  const [withCode, setWithCode] = useState(false);
+  const { billingEnabled, passwordlessLogin, emailCodeLogin } = useVariables();
   const resolver = useMemo(() => {
     return classValidatorResolver(LoginUserDto);
   }, []);
@@ -56,6 +59,42 @@ export function Login() {
           onBack={() => setStep('method')}
           extraProviders={billingEnabled ? <WalletProvider /> : undefined}
           emailStep={<OtpEmailStep submitLabel={t('sign_in_1', 'Sign in')} />}
+        />
+      </div>
+    );
+  }
+  // OtpEmailStep brings its own <form>, so this cannot render inside the
+  // password form further down: nested forms are invalid markup and the inner
+  // submit never fires. Hence the early return, the same shape the passwordless
+  // branch above uses.
+  if (withCode) {
+    return (
+      <div className="flex-1 flex">
+        <AuthShell
+          title={t('sign_in', 'Sign In')}
+          subtitle={subtitle}
+          step={step}
+          onContinueEmail={() => setStep('email')}
+          onBack={() => {
+            setWithCode(false);
+            setStep('method');
+          }}
+          extraProviders={billingEnabled ? <WalletProvider /> : undefined}
+          emailStep={
+            <div className="flex flex-col gap-[12px]">
+              <OtpEmailStep submitLabel={t('sign_in_1', 'Sign in')} />
+              <button
+                type="button"
+                onClick={() => setWithCode(false)}
+                className="underline hover:font-bold cursor-pointer text-textItemBlur text-[13px]"
+              >
+                {t(
+                  'sign_in_with_password_instead',
+                  'Sign in with a password instead'
+                )}
+              </button>
+            </div>
+          }
         />
       </div>
     );
@@ -137,14 +176,35 @@ export function Login() {
                   {t('sign_in_1', 'Sign in')}
                 </Button>
               </div>
-              <p className="text-center text-sm mt-[8px]">
-                <Link
-                  href="/auth/forgot"
-                  className="underline hover:font-bold cursor-pointer text-textItemBlur"
-                >
-                  {t('forgot_password', 'Forgot password')}
-                </Link>
-              </p>
+              {/* Two links share the row only when there are two. Without the
+                  code option the single link stays centred, exactly as before,
+                  so an install that does not opt in sees no change at all. */}
+              {emailCodeLogin ? (
+                <div className="flex items-center justify-between text-[13px] mt-[8px]">
+                  <Link
+                    href="/auth/forgot"
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('forgot_password', 'Forgot password')}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setWithCode(true)}
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('email_me_a_code', 'Email me a sign-in code')}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-sm mt-[8px]">
+                  <Link
+                    href="/auth/forgot"
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('forgot_password', 'Forgot password')}
+                  </Link>
+                </p>
+              )}
             </div>
           }
         />

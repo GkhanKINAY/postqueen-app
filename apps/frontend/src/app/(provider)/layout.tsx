@@ -50,6 +50,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           billingEnabled={isBillingEnabled()}
           aiEnabled={isAiEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
+          emailCodeLogin={process.env.EMAIL_CODE_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
           legalUrl={process.env.LEGAL_URL || ''}

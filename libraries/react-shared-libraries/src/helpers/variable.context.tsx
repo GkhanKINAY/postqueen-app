@@ -7,6 +7,12 @@ interface VariableContextInterface {
   /** OpenAI key present — CopilotKit and CopilotTextarea are safe to mount. */
   aiEnabled: boolean;
   passwordlessLogin: boolean;
+  /**
+   * Offer an emailed sign-in code as an alternative on the sign-in screen,
+   * next to the password. Unlike `passwordlessLogin` this adds a choice rather
+   * than replacing the password form, and it leaves sign-up alone.
+   */
+  emailCodeLogin: boolean;
   turnstileSiteKey: string;
   isChatBase: boolean;
   /** Chatbase bot this deployment owns; the SSO token is signed against it. */
@@ -68,6 +74,7 @@ const VariableContext = createContext({
   billingEnabled: false,
   aiEnabled: false,
   passwordlessLogin: false,
+  emailCodeLogin: false,
   turnstileSiteKey: '',
   isGeneral: true,
   genericOauth: false,
