@@ -30,6 +30,8 @@ import { Pagination } from '@gitroom/frontend/components/media/media.pagination'
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { Spinner } from '@gitroom/react/ui/spinner';
 import { createPortal } from 'react-dom';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
@@ -161,7 +163,11 @@ export const MediaBox: FC<{
     return (await fetch(`/media?${params.toString()}`)).json();
   }, [page, fetch]);
 
-  const { data, mutate, isLoading } = useSWR(`get-media-${page}`, loadMedia);
+  // The key carries the page, so without `keepPreviousData` every page click
+  // emptied the grid and unmounted the pager the click had just landed on.
+  const { data, mutate, isLoading } = useSWR(`get-media-${page}`, loadMedia, {
+    keepPreviousData: true,
+  });
 
   const sourceRows: MediaRow[] = useMemo(() => {
     return (data?.results || []) as MediaRow[];
@@ -411,8 +417,8 @@ export const MediaBox: FC<{
       )}
     >
       {loading ? (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="h-[16px] w-[16px] animate-spin rounded-full border-2 border-pqOnBrand border-t-transparent" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-pqOnBrand">
+          <Spinner width={16} height={16} />
         </div>
       ) : (
         <UploadArrowIcon />
@@ -552,9 +558,11 @@ export const MediaBox: FC<{
       >
         {fileInput}
         <div className="mx-auto flex w-full max-w-[980px] flex-col gap-[10px] pe-[14px]">
+          {/* Import first, Upload last (owner): the primary action holds the
+              trailing edge, which is also where the design ends this toolbar. */}
           <div className="flex flex-wrap items-center justify-end gap-[10px]">
+            <ThirdPartyMediaLibrary size="page" onImported={() => mutate()} />
             {brandUploadBtn('page')}
-            <ThirdPartyMediaLibrary onImported={() => mutate()} />
           </div>
 
           {uppyBar}
@@ -574,11 +582,11 @@ export const MediaBox: FC<{
               <span
                 className={clsx(
                   'grid h-[48px] w-[48px] place-items-center rounded-[15px] bg-pqBrand text-pqOnBrand shadow-pqE2',
-                  loading && 'animate-pulse'
+                  loading && 'pq-loop animate-pulse'
                 )}
               >
                 {loading ? (
-                  <div className="h-[22px] w-[22px] animate-spin rounded-full border-2 border-pqOnBrand border-t-transparent" />
+                  <Spinner width={22} height={22} />
                 ) : (
                   <svg viewBox="0 0 24 24" width="23" height="23" fill="none">
                     <path
@@ -646,12 +654,12 @@ export const MediaBox: FC<{
                 </div>
               ) : (
                 <>
-                {isLoading && page === 0 && (
+                {isLoading && !data && (
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-x-[14px] gap-y-[14px]">
                     {[...new Array(8)].map((_, i) => (
-                      <div
+                      <Skeleton
                         key={i}
-                        className="aspect-[4/3] animate-pulse rounded-[10px] bg-pqSettings"
+                        className="aspect-[4/3] rounded-[10px]"
                       />
                     ))}
                   </div>
@@ -913,8 +921,10 @@ export const MediaBox: FC<{
         <div className="min-w-0 flex-1 text-[12.5px] leading-[1.4] text-pqText">
           {t('select_or_upload_media', 'Select or upload media.')}
         </div>
+        {/* Same order as /media, so the pair does not trade places between
+            the page and this sheet. */}
+        <ThirdPartyMediaLibrary size="picker" onImported={() => mutate()} />
         {brandUploadBtn('picker')}
-        <ThirdPartyMediaLibrary onImported={() => mutate()} />
       </DropFiles>
 
       {uppyBar}
@@ -935,14 +945,14 @@ export const MediaBox: FC<{
               'max-h-[min(264px,28vh)] overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
           )}
         >
-          {isLoading && (
+          {isLoading && !data && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-[14px] gap-y-[12px]">
               {[...new Array(8)].map((_, i) => (
                 <div key={i} className="flex flex-col gap-0.5">
-                  <div className="aspect-[4/3] animate-pulse rounded-[10px] bg-pqSettings" />
+                  <Skeleton className="aspect-[4/3] rounded-[10px]" />
                   <div className="flex justify-between gap-[8px]">
-                    <div className="h-[11px] w-[28%] animate-pulse rounded bg-pqSettings" />
-                    <div className="h-[11px] w-[34%] animate-pulse rounded bg-pqSettings" />
+                    <Skeleton className="h-[11px] w-[28%] rounded" />
+                    <Skeleton className="h-[11px] w-[34%] rounded" />
                   </div>
                 </div>
               ))}

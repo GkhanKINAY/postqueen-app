@@ -9,6 +9,13 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { VideoFrame } from '@gitroom/react/helpers/video.frame';
 import { Pagination } from '@gitroom/frontend/components/media/media.component';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { EmptyState } from '@gitroom/react/ui/empty-state';
+import { Button } from '@gitroom/react/form/button';
+import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { ThirdPartyProviderCard } from '@gitroom/frontend/components/third-parties/third-party.card';
+import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
+import { Spinner } from '@gitroom/react/ui/spinner';
 
 const ThirdPartyMediaLibraryBrowser: FC<{
   integration: any;
@@ -24,13 +31,10 @@ const ThirdPartyMediaLibraryBrowser: FC<{
 
   const loadMedia = useCallback(async () => {
     return (
-      await fetch(
-        `/third-party/function/${integration.id}/listMedia`,
-        {
-          body: JSON.stringify({ page: page + 1 }),
-          method: 'POST',
-        }
-      )
+      await fetch(`/third-party/function/${integration.id}/listMedia`, {
+        body: JSON.stringify({ page: page + 1 }),
+        method: 'POST',
+      })
     ).json();
   }, [integration.id, page]);
 
@@ -41,6 +45,9 @@ const ThirdPartyMediaLibraryBrowser: FC<{
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateIfStale: false,
+      // `page` is in the key, so each page click is a new key and the grid
+      // would empty between pages without this.
+      keepPreviousData: true,
     }
   );
 
@@ -60,12 +67,29 @@ const ThirdPartyMediaLibraryBrowser: FC<{
     if (!selected.length) return;
     setImporting(true);
     try {
-      await fetch(`/third-party/${integration.id}/import`, {
+      const response = await fetch(`/third-party/${integration.id}/import`, {
         method: 'POST',
         body: JSON.stringify({
           items: selected.map((s) => ({ url: s.url, name: s.name })),
         }),
       });
+
+      // customFetch does not reject on a non-2xx, so the catch below only ever
+      // saw network errors: a 404 or 500 from the import still announced
+      // "Media imported successfully" and closed the modal.
+      if (!response.ok) {
+        const body = await response.json().catch(() => undefined);
+        if (!body?.cancelled) {
+          toaster.show(
+            typeof body?.message === 'string'
+              ? body.message
+              : t('media_import_failed', 'Failed to import media'),
+            'warning'
+          );
+        }
+        return;
+      }
+
       toaster.show(
         t('media_imported_successfully', 'Media imported successfully'),
         'success'
@@ -80,7 +104,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
     } finally {
       setImporting(false);
     }
-  }, [selected, integration.id]);
+  }, [selected, integration.id, fetch, toaster, t, onImported, modals]);
 
   return (
     <div className="flex flex-col gap-[16px] h-full">
@@ -90,22 +114,28 @@ const ThirdPartyMediaLibraryBrowser: FC<{
       </div>
       <div className="flex-1 relative">
         <div className="absolute left-0 top-0 w-full h-full overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner">
-          {isLoading && (
+          {/* Three branches that have to be exhaustive as well as exclusive.
+              `!data?.results?.length` rather than `!data`: with
+              `keepPreviousData` a page change hands back laggy data while
+              `isLoading` is true, so gating on `data` alone left
+              "loading, and what we're holding is empty" matching nothing at
+              all — a blank pane. */}
+          {isLoading && !data?.results?.length && (
             <div className="grid grid-cols-4 gap-[8px]">
               {[...new Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square bg-newSep rounded-[6px] animate-pulse"
-                />
+                <Skeleton key={i} className="aspect-square rounded-[6px]" />
               ))}
             </div>
           )}
-          {!isLoading && (!data?.results || !data.results.length) && (
+          {/* `!isLoading`, not `!!data`: the fetcher has no error branch, so a
+              rejected request leaves `data` undefined with `isLoading` false.
+              Gating on `data` there left the pane completely blank. */}
+          {!isLoading && !data?.results?.length && (
             <div className="flex items-center justify-center h-full text-textColor/60">
               {t('no_media_found', 'No media found')}
             </div>
           )}
-          {!isLoading && !!data?.results?.length && (
+          {!!data?.results?.length && (
             <div className="grid grid-cols-4 gap-[8px]">
               {data.results.map((item: any) => {
                 const isSelected = !!selected.find((s) => s.id === item.id);
@@ -118,9 +148,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
                     <div
                       className={clsx(
                         'w-full h-full border-[4px] rounded-[6px]',
-                        isSelected
-                          ? 'border-pqBrand'
-                          : 'border-transparent'
+                        isSelected ? 'border-pqBrand' : 'border-transparent'
                       )}
                     >
                       {item.type === 'video' ? (
@@ -151,11 +179,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
         </div>
       </div>
       {(data?.pages || 0) > 1 && (
-        <Pagination
-          current={page}
-          totalPages={data?.pages}
-          setPage={setPage}
-        />
+        <Pagination current={page} totalPages={data?.pages} setPage={setPage} />
       )}
       <div className="flex justify-end gap-[8px]">
         <button
@@ -169,9 +193,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
           disabled={!selected.length || importing}
           className="cursor-pointer text-white disabled:opacity-80 disabled:cursor-not-allowed h-[52px] px-[20px] items-center justify-center bg-pqBrand flex rounded-[10px] gap-[8px]"
         >
-          {importing && (
-            <div className="animate-spin h-[16px] w-[16px] border-2 border-white border-t-transparent rounded-full" />
-          )}
+          {importing && <Spinner width={16} height={16} />}
           {t('import_selected', 'Import Selected')} ({selected.length})
         </button>
       </div>
@@ -179,22 +201,67 @@ const ThirdPartyMediaLibraryBrowser: FC<{
   );
 };
 
+/**
+ * Media-library importer picker. Its own SWR rather than the button's: the
+ * modal's children are built once at open time, so data arriving later has to
+ * re-render from inside the modal. Same shape as the composer's Integrations
+ * picker (`third-party.media.tsx`) — the two are twins and used to drift.
+ */
+const useMediaLibraryThirdParties = () => {
+  const fetch = useFetch();
+
+  const loadThirdParties = useCallback(async () => {
+    const rows = await (await fetch('/third-party')).json();
+    // See the twin in `third-party.media.tsx`: an error body is not an array,
+    // and .filter() on it throws where SWR swallows it.
+    return Array.isArray(rows)
+      ? rows.filter((f: any) => f.position === 'media-library')
+      : [];
+  }, [fetch]);
+
+  return useSWR('third-party-media-library', loadThirdParties, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    revalidateOnMount: true,
+  });
+};
+
 const ThirdPartyMediaLibraryPicker: FC<{
-  integrations: any[];
+  closeModal: () => void;
   onImported: () => void;
-}> = ({ integrations, onImported }) => {
+}> = ({ closeModal, onImported }) => {
   const [selected, setSelected] = useState<any>(null);
   const t = useT();
+  const { data, isLoading } = useMediaLibraryThirdParties();
 
   if (selected) {
     return (
       <div className="flex flex-col h-full">
-        <div
-          className="cursor-pointer mb-[10px]"
+        {/* Channels-style boxed back — muted pill, not a faint text link. */}
+        <button
+          type="button"
           onClick={() => setSelected(null)}
+          className="mb-[10px] flex h-[28px] w-fit items-center gap-[5px] self-start rounded-[8px] bg-pqSettings pe-[10px] ps-[7px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
         >
-          {'<'} {t('back', 'Back')}
-        </div>
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            aria-hidden="true"
+            className="rtl:rotate-180"
+          >
+            <path
+              d="M15 6l-6 6 6 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {t('back', 'Back')}
+        </button>
         <ThirdPartyMediaLibraryBrowser
           integration={selected}
           onImported={onImported}
@@ -203,25 +270,46 @@ const ThirdPartyMediaLibraryPicker: FC<{
     );
   }
 
+  if (isLoading) {
+    return <LoadingComponent width={40} height={40} />;
+  }
+
+  if (!data?.length) {
+    return (
+      <EmptyState
+        title={t('no_integrations_yet', 'No Integrations Yet')}
+        description={t(
+          'no_media_library_integrations_description',
+          'Connect a tool like Reel.Farm to import videos straight into your library.'
+        )}
+        action={
+          <Button
+            onClick={() => {
+              closeModal();
+              // New tab on purpose: the media library often opens from inside
+              // the composer, which holds an unsaved draft.
+              window.open('/settings?tab=integrations', '_blank');
+            }}
+          >
+            {t('go_to_integrations', 'Go to integrations')}
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
-    <div className="grid grid-cols-4 gap-[10px] justify-items-center justify-center">
-      {integrations.map((p: any) => (
-        <div
+    <div className="grid gap-[12px] [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
+      {data.map((p: any) => (
+        <ThirdPartyProviderCard
           key={p.id}
-          onClick={() => setSelected(p)}
-          className="w-full h-full p-[20px] min-h-[100px] text-[14px] bg-newTableHeader hover:bg-newTableBorder rounded-[8px] transition-all text-textColor relative flex flex-col gap-[15px] cursor-pointer"
-        >
-          <div>
-            <img
-              className="w-[32px] h-[32px] rounded-full"
-              src={`/icons/third-party/${p.identifier}.png`}
-            />
-          </div>
-          <div className="whitespace-pre-wrap text-left text-lg">
-            {p.title}: {p.name}
-          </div>
-          <div className="whitespace-pre-wrap text-left">{p.description}</div>
-        </div>
+          provider={p}
+          // Not "Import" — the modal is already titled "Import From" and its
+          // trigger says Import. This opens the provider's library; the actual
+          // import is the "Import Selected" button on the next screen.
+          actionLabel={t('browse', 'Browse')}
+          onSelect={() => setSelected(p)}
+        />
       ))}
     </div>
   );
@@ -229,63 +317,70 @@ const ThirdPartyMediaLibraryPicker: FC<{
 
 export const ThirdPartyMediaLibrary: FC<{
   onImported: () => void;
-}> = ({ onImported }) => {
-  const fetch = useFetch();
+  /**
+   * Mirrors `brandUploadBtn` in media.box: this button always stands beside
+   * Upload, so it takes Upload's two sizes rather than a third one of its own.
+   * `page` is the design's 36px toolbar control on /media; `picker` is the
+   * taller 44px control inside the composer's Insert Media sheet.
+   */
+  size?: 'page' | 'picker';
+}> = ({ onImported, size = 'page' }) => {
   const t = useT();
   const modals = useModals();
-
-  const loadThirdParties = useCallback(async () => {
-    return (await (await fetch('/third-party')).json()).filter(
-      (f: any) => f.position === 'media-library'
-    );
-  }, []);
-
-  const { data, isLoading } = useSWR(
-    'third-party-media-library',
-    loadThirdParties,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      revalidateIfStale: false,
-      revalidateOnMount: true,
-    }
-  );
-
-  if (isLoading || !data?.length) {
-    return null;
-  }
+  const canOpen = useOpenGuard();
 
   return (
     <button
+      // Handle for the screenshot tool, like Insert Media's.
+      data-pq="import-from"
       onClick={() => {
+        if (!canOpen()) {
+          return;
+        }
         modals.openModal({
           title: t('import_from', 'Import From'),
           fullScreen: true,
           size: 'calc(100% - 80px)',
           height: 'calc(100% - 80px)',
-          children: () => (
+          children: (close) => (
             <ThirdPartyMediaLibraryPicker
-              integrations={data}
+              closeModal={close}
               onImported={onImported}
             />
           ),
         });
       }}
-      className="cursor-pointer bg-btnSimple changeColor flex gap-[8px] h-[44px] px-[18px] justify-center items-center rounded-[8px]"
+      // `changeColor` used to sit here. Its only rule is `.forceChange
+      // .changeColor` and `forceChange` is on nothing in this app any more, so
+      // it was styling exactly nothing. `bg-pqBtnSimple` is the same colour as
+      // the old `bg-btnSimple`, reached through the current token rather than
+      // the legacy `--new-*` alias kept alive only for unconverted screens.
+      className={clsx(
+        'flex shrink-0 cursor-pointer items-center justify-center bg-pqBtnSimple font-[600] text-pqText transition-colors hover:bg-pqHover',
+        size === 'picker'
+          ? 'h-[44px] gap-[8px] rounded-[8px] px-[18px] text-[14px]'
+          : 'h-[36px] gap-[7px] rounded-pqSm px-[14px] text-[13px]'
+      )}
     >
+      {/* 15px stroked, matching UploadArrowIcon and every other icon in this
+          toolbar. It was a 14px solid glyph, which read heavier than the
+          button beside it. */}
       <svg
-        width="14"
-        height="14"
+        width="15"
+        height="15"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <path
-          d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"
-          fill="currentColor"
+          d="M12 4v12M7.5 11.5 12 16l4.5-4.5M4 20h16"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
-      <div>{t('import', 'Import')}</div>
+      <span>{t('import', 'Import')}</span>
     </button>
   );
 };
