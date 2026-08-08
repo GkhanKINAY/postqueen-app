@@ -760,6 +760,7 @@ editing_a_specific_network
 editor
 email
 email_address
+email_me_a_code
 enable
 enable_channel
 end_free_trial
@@ -1351,6 +1352,7 @@ sign_in_1
 sign_in_subtitle
 sign_in_with
 sign_in_with_github
+sign_in_with_password_instead
 sign_out
 sign_up
 sign_up_subtitle

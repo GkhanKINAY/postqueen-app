@@ -9,10 +9,18 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { TurnstileWidget } from '@gitroom/frontend/components/auth/turnstile.widget';
 
 /**
- * Passwordless email-code step. Rendered as the AuthShell `emailStep` when
- * PASSWORDLESS_LOGIN is on. Sign-in and sign-up collapse into one action:
- * enter email -> receive a 6-digit code -> verify. The backend creates the
- * account on first verify, so both the login and register pages reuse this.
+ * Email-code step, rendered as the AuthShell `emailStep` on the sign-in screen
+ * when PASSWORDLESS_LOGIN is on. Enter email -> receive a 6-digit code ->
+ * verify.
+ *
+ * Sign-up does not use this. Making people wait on a mail round-trip at the
+ * moment they have just decided to try the product is the expensive place to
+ * spend it; signing in is rare, and is exactly when a password has been
+ * forgotten, so the same round-trip is nearly free there.
+ *
+ * The backend still creates the account on first verify, so an unknown address
+ * entered here does sign up. That is deliberate: it is the recovery path for
+ * accounts that have no password to begin with.
  *
  * On a successful verify the shared fetch interceptor (layout.context) reads
  * the auth/onboarding/reload headers and redirects, so there is nothing to do
