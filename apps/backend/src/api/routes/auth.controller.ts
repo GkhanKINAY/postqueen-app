@@ -26,6 +26,7 @@ import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
+import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 
 @ApiTags('Auth')
@@ -92,8 +93,13 @@ export class AuthController {
         getOrgFromCookie
       );
 
+      // A provider round-trip already proves the address, so only LOCAL
+      // sign-ups can need this. The provider check stays: requiring activation
+      // with nothing able to deliver the link would lock the account out.
       const activationRequired =
-        body.provider === 'LOCAL' && this._emailService.hasProvider();
+        body.provider === 'LOCAL' &&
+        isEmailActivationRequired() &&
+        this._emailService.hasProvider();
 
       if (activationRequired) {
         response.header('activate', 'true');

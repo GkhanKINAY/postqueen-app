@@ -14,6 +14,7 @@ import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
+import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
 
 @Injectable()
 export class AuthService {
@@ -211,12 +212,18 @@ export class AuthService {
             : false;
 
         const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
-        await this._emailService.sendEmail(
-          body.email,
-          'Activate your account',
-          `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`,
-          'top'
-        );
+        // The account is already activated when this install does not gate on
+        // it, so the link would point at a no-op. Sending it anyway told the
+        // user to do something that does not exist and spent sender reputation
+        // on an address nothing else needs to reach yet.
+        if (isEmailActivationRequired()) {
+          await this._emailService.sendEmail(
+            body.email,
+            'Activate your account',
+            `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`,
+            'top'
+          );
+        }
         return obj;
       }
 
