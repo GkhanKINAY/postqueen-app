@@ -111,8 +111,18 @@ export const getDateOrder = (): DateOrder => readDateOrder();
 /**
  * Time-only preference: AM/PM (12h) vs 24-hour.
  * Reads legacy `localStorage.isUS` (`US` | `GLOBAL`). Does not control date order.
+ *
+ * Named `is…`, not `use…`, because it is not a hook — it calls none, it is just a
+ * synchronous read. Under the `use` prefix `react-hooks/rules-of-hooks` treated
+ * every caller as a component and reported six violations that did not exist.
+ *
+ * Do not turn this into a real hook. Its callers are pattern builders invoked
+ * from inside ternaries and template literals in JSX (`calendar.tsx` after an
+ * early return, and in both branches of two conditionals) — as a hook those
+ * would become genuine hook-order bugs. If you need the value to repaint when
+ * the preference changes, subscribe with `useDateFormat()` instead.
  */
-export const use12HourClock = (): boolean => read12Hour();
+export const is12HourClock = (): boolean => read12Hour();
 
 export const setDateFormat = (order: DateOrder) => {
   localStorage.setItem('dateFormat', order);
@@ -129,13 +139,13 @@ export const datePattern = (): string =>
   getDateOrder() === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
 
 export const timePattern = (): string =>
-  use12HourClock() ? 'hh:mm A' : 'HH:mm';
+  is12HourClock() ? 'hh:mm A' : 'HH:mm';
 
 export const dateTimePattern = (): string =>
   `${datePattern()} ${timePattern()}`;
 
 export const dateTimeSecondsPattern = (): string =>
-  `${datePattern()} ${use12HourClock() ? 'hh:mm:ss A' : 'HH:mm:ss'}`;
+  `${datePattern()} ${is12HourClock() ? 'hh:mm:ss A' : 'HH:mm:ss'}`;
 
 export const longDatePattern = (): string =>
   getDateOrder() === 'MDY' ? 'dddd, MMMM D, YYYY' : 'dddd, D MMMM YYYY';
@@ -153,10 +163,10 @@ export const shortDatePattern = (): string =>
   getDateOrder() === 'MDY' ? 'MMM D, YYYY' : 'D MMM YYYY';
 
 export const mediumDateTimePattern = (): string =>
-  `${shortDatePattern()} ${use12HourClock() ? 'h:mm A' : 'HH:mm'}`;
+  `${shortDatePattern()} ${is12HourClock() ? 'h:mm A' : 'HH:mm'}`;
 
 export const longDateTimePattern = (): string =>
-  `${longDateNoWeekdayPattern()} ${use12HourClock() ? 'h:mm A' : 'HH:mm'}`;
+  `${longDateNoWeekdayPattern()} ${is12HourClock() ? 'h:mm A' : 'HH:mm'}`;
 
 /** Toast / panel style: `Mon · 3:00 PM` or `Mon · 15:00`. */
 export const shortWeekdayTimePattern = (): string =>

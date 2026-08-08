@@ -61,18 +61,8 @@ jobs:
       # `apps/frontend` as a matrix and passed `--config apps/<svc>/.eslintrc.json`
       # — files that no longer existed, and a flag ESLint 9 rejects for flat
       # config anyway. The root `eslint.config.mjs` now scopes rules per surface.
+      # `pnpm run lint` exits 0 as of this commit, so this gates for real. It
+      # carried `continue-on-error: true` for exactly one commit, while 18
+      # pre-existing errors were cleared.
       - name: Run ESLint
         run: pnpm run lint
-        # Deliberate and temporary, not an oversight.
-        #
-        # `pnpm run lint` currently exits 1 on 18 errors that predate this
-        # workflow: 8 `react-hooks/rules-of-hooks`, 8
-        # `@typescript-eslint/no-require-imports`, 2
-        # `@typescript-eslint/no-wrapper-object-types`. Without this flag every
-        # PR goes red from the first run, for problems nobody introduced.
-        #
-        # Remove it when `pnpm run lint` exits 0. That is the whole condition —
-        # the 18 are enumerated above, and none of them need a policy decision,
-        # only fixing. A lint job that cannot fail is one nobody notices has
-        # stopped working, so this should not outlive them.
-        continue-on-error: true

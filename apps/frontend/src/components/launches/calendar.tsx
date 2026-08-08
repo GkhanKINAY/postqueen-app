@@ -45,7 +45,7 @@ import { random } from 'lodash';
 import { extend } from 'dayjs';
 import {
   timePattern,
-  use12HourClock,
+  is12HourClock,
   useDateFormat,
 } from './helpers/date.format';
 import { useInterval } from '@mantine/hooks';
@@ -90,7 +90,7 @@ i18next.on('languageChanged', () => {
 updateDayjsLocale();
 
 const convertTimeFormatBasedOnLocality = (time: number) => {
-  if (use12HourClock()) {
+  if (is12HourClock()) {
     return `${time === 12 ? 12 : time % 12}:00 ${time >= 12 ? 'PM' : 'AM'}`;
   } else {
     return `${time}:00`;
