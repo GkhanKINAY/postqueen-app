@@ -2,8 +2,7 @@ import { createReadStream, mkdirSync, promises as fsp } from 'fs';
 import { tmpdir } from 'os';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { fromBuffer } = require('file-type');
+import { fromBuffer } from 'file-type';
 
 /**
  * An upload arrives in one of two shapes: held in memory, or spooled to disk.

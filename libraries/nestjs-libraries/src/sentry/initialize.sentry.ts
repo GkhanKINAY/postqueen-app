@@ -14,6 +14,8 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
   // to "no profiling" instead of "no server".
   let profiling: any = null;
   try {
+    // The `require` is the point of the comment above — it has to stay lazy.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     profiling = require('@sentry/profiling-node').nodeProfilingIntegration();
   } catch {
     profiling = null;
