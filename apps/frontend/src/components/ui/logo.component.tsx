@@ -1,8 +1,17 @@
 import clsx from 'clsx';
 
-/** major.minor from NEXT_PUBLIC_APP_VERSION (falls back to package 3.0.2 → v3.0). */
+/**
+ * major.minor from NEXT_PUBLIC_APP_VERSION, falling back to package.json.
+ *
+ * The leading `v` is stripped before splitting: the container build feeds this
+ * from the git tag, which is written `v3.3.0`, and without the strip `major`
+ * came out as "v3" and the label read "vv3.3".
+ */
 export const appVersionLabel = (() => {
-  const raw = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.2';
+  const raw = (process.env.NEXT_PUBLIC_APP_VERSION || '3.0.2').replace(
+    /^v/,
+    ''
+  );
   const [major, minor] = raw.split('.');
   return `v${major}.${minor ?? '0'}`;
 })();
