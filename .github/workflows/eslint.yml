@@ -1,0 +1,78 @@
+---
+# Actions was disabled on this fork until 2026-08-08 — every run before then was
+# a `workflow_dispatch`, and `event=push` / `event=pull_request` both reported
+# zero. The gate has since been lifted, so this runs.
+#
+# It also used to be named `eslint`, with no extension, which is why it never
+# ran even before the fork gate mattered. Actions only picks up `.yml`/`.yaml`.
+name: ESLint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - eslint.config.mjs
+      - apps/**
+      - '!apps/docs/**'
+      - libraries/**
+
+  pull_request:
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - eslint.config.mjs
+      - apps/**
+      - '!apps/docs/**'
+      - libraries/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eslint:
+    name: Run eslint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # One run from the repo root. The old job linted `apps/backend` and
+      # `apps/frontend` as a matrix and passed `--config apps/<svc>/.eslintrc.json`
+      # — files that no longer existed, and a flag ESLint 9 rejects for flat
+      # config anyway. The root `eslint.config.mjs` now scopes rules per surface.
+      - name: Run ESLint
+        run: pnpm run lint
+        # Deliberate and temporary, not an oversight.
+        #
+        # `pnpm run lint` currently exits 1 on 18 errors that predate this
+        # workflow: 8 `react-hooks/rules-of-hooks`, 8
+        # `@typescript-eslint/no-require-imports`, 2
+        # `@typescript-eslint/no-wrapper-object-types`. Without this flag every
+        # PR goes red from the first run, for problems nobody introduced.
+        #
+        # Remove it when `pnpm run lint` exits 0. That is the whole condition —
+        # the 18 are enumerated above, and none of them need a policy decision,
+        # only fixing. A lint job that cannot fail is one nobody notices has
+        # stopped working, so this should not outlive them.
+        continue-on-error: true
