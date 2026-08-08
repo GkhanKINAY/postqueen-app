@@ -10,6 +10,8 @@
 #   api     — the same set of backend endpoints is still called
 #   i18n    — no translation key was dropped, none was invented
 #   routes  — no page appeared or disappeared
+#   loops   — every indefinite animation is still switchable off for readers
+#             who ask for less motion (this list is meant to stay empty)
 #
 # Usage:
 #   scripts/ui-migration-check.sh                 compare against the baseline
@@ -20,6 +22,13 @@
 # an unexplained baseline update is the one way this guard can be defeated.
 
 set -uo pipefail
+
+# Every list here is `sort`ed, and sort order is locale-dependent. A Mac's
+# interactive default is en_US.UTF-8 and a CI runner's is C.UTF-8, which order
+# `-`, `_`, `[` and spaces differently — api.txt as committed is C-sorted and is
+# NOT valid en_US order, so without this the same tree diffs against itself
+# depending on who ran the check.
+export LC_ALL=C
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/apps/frontend/src"
@@ -111,10 +120,105 @@ collect_routes() {
     | sort > "$WORK/routes.txt"
 }
 
+collect_loops() {
+  # Indefinite animations that do not also carry `pq-loop`.
+  #
+  # global.scss says outright that this one cannot be enforced from the
+  # stylesheet — CSS cannot match on an animation name, so whether a spinner
+  # stops for `prefers-reduced-motion: reduce` is left to whoever writes the
+  # component. It was left to them for a while: seventeen looping elements had
+  # drifted off the convention, including the two spinners that sit behind
+  # every `<Button loading>` and every page loader in the app.
+  #
+  # The baseline is *empty*, and any entry is a regression.
+  #
+  # Two arms, because a loop reaches the screen two ways:
+  #
+  #   1. a Tailwind `animate-*` utility in a className
+  #   2. an inline `animation: … infinite`, which carries no utility at all —
+  #      ui/spinner.tsx is the whole app's spinner and is invisible to arm 1
+  #
+  # Arm 1 joins wrapped lines first. Prettier puts the utility on its own line
+  # inside `clsx(` more often than not — five of the twelve looping usages in
+  # the tree, 42%, are written that way, and a line-at-a-time grep reads none
+  # of them. That is the same blindness the note above collect_i18n describes.
+  #
+  # `motion-safe:` and `motion-reduce:` are Tailwind's own gate and count as
+  # compliant. The one-shot entrances (pqPop, pqFadeDown, pqIn, pqTip) are not
+  # loops and are deliberately outside the pattern — see global.scss.
+  #
+  # Loops this stylesheet applies by *selector* rather than by class can never
+  # match either arm, because the component's className has nothing in it:
+  # `.loading-shimmer:before`, the tour's `[data-tourconn] [data-conn-card]`
+  # glow, and Blueprint's three in the vendored polonto.css. All five are
+  # switched off by name in global.scss's reduced-motion block instead. If you
+  # add another, add it there — this collector will not catch it for you.
+  #
+  # Three known blind spots, all latent today and all checked:
+  #   - two looping utilities on one element: CSS only ever applies one
+  #     `animation`, so `pq-loop` genuinely gates whichever wins the cascade
+  #   - `className={cond ? …}` containing a `>`: the extract stops at the first
+  #     one. No live case
+  #   - brace nesting deeper than two levels inside a className: the collapse
+  #     silently gives up. All 506 blocks in the tree collapse today
+  #
+  # A comment that merely names one of these utilities is still a false
+  # positive outside a className — reword it rather than gating the code.
+  local anim='animate-(pulse|spin|bounce|ping|marquee[A-Za-z-]*|\[[A-Za-z0-9_-]+_|pq(Unlim|Tick|Ring|Glow|Spin|Btn[A-Za-z]+))'
+
+  # One file list, reused by both arms.
+  find "$SRC" "$ROOT/libraries" -type d -name node_modules -prune -o \
+    \( -name '*.ts' -o -name '*.tsx' \) -type f -print0 > "$WORK/loop-files"
+
+  {
+    # `//` comments are stripped before filtering, and only here. The collapse
+    # pulls a comment sitting inside a className onto the class line, so a
+    # `// TODO: pq-loop this` two lines above an ungated spinner would exempt
+    # it. Narrow enough not to repeat collect_i18n's mistake: this pass feeds
+    # the loop grep alone, never the i18n or api lists.
+    xargs -0 perl -0777 -pe '
+        s{(class[Nn]ame=\{(?:[^{}]|\{[^{}]*\})*\})}{ my $a = $1; $a =~ s{//[^\n]*}{}g; $a =~ s/\s+/ /g; $a }ges;
+        s/\(\s*\n\s*/(/g;
+      ' < "$WORK/loop-files" \
+      | grep -Eo "class[Nn]ame=[^>]*" \
+      | grep -E "$anim" \
+      | grep -Ev "motion-(safe|reduce):$anim" \
+      | grep -v 'pq-loop' \
+      | grep -Eo "$anim"
+
+    # Arm 2: inline `animation: … infinite`, which carries no `animate-` token
+    # for arm 1 to find. `ui/spinner.tsx` is the whole app's spinner and lives
+    # here.
+    #
+    # Comments come out first, and that is the whole trick: spinner.tsx's own
+    # doc comment explains the `pq-loop` hook in prose, and any check that just
+    # greps the file for the word exempts the one file this arm exists for.
+    # One perl pass rather than two greps per file — 690 files was 1380
+    # processes and 95% of this check's runtime.
+    xargs -0 perl -0777 -ne '
+        s{/\*.*?\*/}{}gs;
+        s{//[^\n]*}{}g;
+        next unless /animation(?:Name)?\s*:[^;{}]{0,160}infinite/s
+                 || /animationIterationCount\s*:\s*.{0,20}infinite/s;
+        next if /pq-loop/;
+        # index/substr, not s{^\Q$root\E/}: \Q escapes regex metacharacters but
+        # Perl still interpolates, so a clone path containing @ or $ would
+        # silently fail to strip and emit absolute paths into the baseline.
+        my $root = '"'"$ROOT"'"';
+        my $p = $ARGV;
+        $p = substr($p, length($root) + 1) if index($p, $root . "/") == 0;
+        print "inline-animation $p\n";
+      ' < "$WORK/loop-files"
+  } \
+    | sort | uniq -c | sed -E 's/^ *([0-9]+) +(.*)$/\2 \1/' \
+    | sort > "$WORK/loops.txt"
+}
+
 collect_api
 collect_i18n
 collect_routes
 collect_gates
+collect_loops
 
 # --- types ------------------------------------------------------------------
 
@@ -148,15 +252,29 @@ done
 FAILED=0
 [ "$TYPES_OK" -eq 1 ] || FAILED=1
 
-for name in api i18n routes gates; do
+for name in api i18n routes gates loops; do
   current="$WORK/$name.txt"
   baseline="$BASE/$name.txt"
   count="$(wc -l < "$current" | tr -d ' ')"
 
-  if [ "$UPDATE" -eq 1 ] || [ ! -f "$baseline" ]; then
+  if [ "$UPDATE" -eq 1 ]; then
     cp "$current" "$baseline"
     echo "› $name"
     echo "  baseline written — $count entries"
+    continue
+  fi
+
+  # A missing baseline used to be seeded here, silently and without failing.
+  # That is fine on a laptop and useless in CI: the workspace is thrown away
+  # every run, so an uncommitted baseline means the check writes it, prints
+  # "baseline written", and passes — for ever. `loops.txt` is the list where
+  # that bites hardest, because empty is also what "clean" looks like.
+  if [ ! -f "$baseline" ]; then
+    FAILED=1
+    echo "› $name"
+    echo "  FAIL — no baseline at ${baseline#$ROOT/}"
+    echo "  Generate it with --update and commit it; an absent file cannot"
+    echo "  guard anything."
     continue
   fi
 

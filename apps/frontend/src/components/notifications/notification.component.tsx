@@ -164,17 +164,21 @@ export const NotificationOpenComponent = forwardRef<
       <div className="flex max-h-[380px] flex-col overflow-y-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
         {isLoading && (
           <div className="flex flex-1 justify-center pt-12 text-pqText">
-            <ReactLoading type="spin" color="currentColor" width={36} height={36} />
+            <ReactLoading width={36} height={36} />
           </div>
         )}
-        {!isLoading && !data.notifications.length && (
+        {!isLoading && !data?.notifications?.length && (
           <div className="mt-[20px] flex flex-1 items-center justify-center p-[16px] text-center text-pqSoft">
             {t('no_notifications', 'No notifications')}
           </div>
         )}
+        {/* `data?.notifications?.length` three lines up is the safe form; this
+            one dereferenced straight through. `unreadCutoff` is set from any
+            truthy `data`, so a `{statusCode, message}` error body satisfied the
+            guard and `.map` threw. */}
         {!isLoading &&
           unreadCutoff !== null &&
-          data.notifications.map(
+          data?.notifications?.map(
             (notification: {
               id: string;
               createdAt: string;

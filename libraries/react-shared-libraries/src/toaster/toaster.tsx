@@ -134,6 +134,18 @@ function normalizeShow(
   };
 }
 
+/**
+ * Same toast, without the hook. The emitter is module-scoped, so anything
+ * outside React — a `window` event listener, a plain helper — had no way to
+ * reach it. Callers inside components should keep using `useToaster`.
+ */
+export const showToast = (
+  textOrOptions: string | (ToasterShowOptions & { text: string }),
+  typeOrOptions?: ToasterKind | ToasterShowOptions
+) => {
+  toaster.emit('show', normalizeShow(textOrOptions, typeOrOptions));
+};
+
 export const useToaster = () => {
   return {
     /**

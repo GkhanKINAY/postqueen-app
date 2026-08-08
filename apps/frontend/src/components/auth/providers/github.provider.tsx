@@ -1,13 +1,28 @@
 import { useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 export const GithubProvider = () => {
   const fetch = useFetch();
   const t = useT();
+  const toaster = useToaster();
+  // Same unchecked `.text()` → `location.href` shape as the Google button; see
+  // the comment there.
   const gotoLogin = useCallback(async () => {
-    const link = await (await fetch('/auth/oauth/GITHUB')).text();
-    window.location.href = link;
-  }, []);
+    try {
+      const response = await fetch('/auth/oauth/GITHUB');
+      const link = response.ok ? (await response.text()).trim() : '';
+      if (!link.startsWith('http')) {
+        throw new Error('Invalid OAuth link');
+      }
+      window.location.href = link;
+    } catch (e) {
+      toaster.show(
+        t('oauth_start_failed', 'Could not start sign-in, please try again'),
+        'warning'
+      );
+    }
+  }, [fetch, toaster, t]);
   return (
     <div
       onClick={gotoLogin}

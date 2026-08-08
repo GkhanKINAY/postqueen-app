@@ -8,11 +8,12 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import useSWR from 'swr';
 import { VideoWrapper } from '@gitroom/frontend/components/videos/video.render.component';
 import { FormProvider, useForm } from 'react-hook-form';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { VideoContextWrapper } from '@gitroom/frontend/components/videos/video.context.wrapper';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { createPortal } from 'react-dom';
+import { EmptyState } from '@gitroom/react/ui/empty-state';
+import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 
 export const Modal: FC<{
   close: () => void;
@@ -21,10 +22,12 @@ export const Modal: FC<{
   onChange: (params: { id: string; path: string }) => void;
 }> = (props) => {
   const { type, onChange, close, setLoading } = props;
+  const t = useT();
   const fetch = useFetch();
   const setLocked = useLaunchStore((state) => state.setLocked);
   const form = useForm();
   const [position, setPosition] = useState('vertical');
+  const [submitting, setSubmitting] = useState(false);
   const toaster = useToaster();
 
   const loadCredits = useCallback(async () => {
@@ -37,24 +40,78 @@ export const Modal: FC<{
 
   const { data } = useSWR('copilot-credits', loadCredits);
 
+  const fail = useCallback(
+    (body?: any) => {
+      // `cancelled` is the synthetic body customFetch returns when someone
+      // dismisses the billing dialog — their own choice, not a failure.
+      if (body?.cancelled) {
+        return;
+      }
+      toaster.show(
+        typeof body?.message === 'string'
+          ? body.message
+          : t(
+              'ai_generation_failed',
+              'AI generation failed, please try again later.'
+            ),
+        'warning'
+      );
+    },
+    [toaster, t]
+  );
+
+  // react-hook-form refuses to call the submit handler at all when the form is
+  // invalid, so a check inside it could never fire. This is where that toast
+  // belongs.
+  const onInvalid = useCallback(() => {
+    toaster.show(
+      t('please_fill_all_required_fields', 'Please fill all required fields'),
+      'warning'
+    );
+  }, [toaster, t]);
+
   const generate = useCallback(async () => {
-    await fetch(`/media/generate-video/${type.identifier}/allowed`);
+    // Two guards, because they cover different escapes. `submitting` blocks a
+    // second click on this button. `setLoading(true)` — the parent's state,
+    // raised *before* the round trip, not after — blocks reopening the modal
+    // from the toolbar: closing this one mid-request unmounts `submitting`
+    // along with it, and the toolbar button was live again while the first
+    // request was still in flight. Two generations, two credits.
+    if (submitting) {
+      return;
+    }
+    setSubmitting(true);
     setLoading(true);
+
+    const customParams = form.getValues();
+
+    // The allowed check is the trial/quota gate. Its answer used to be thrown
+    // away, so a 406 or 500 here still ran the generation request underneath.
+    // Inside the try: an offline reject here escaped into handleSubmit, which
+    // rethrows, leaving an unhandled rejection and no message on screen.
+    try {
+      const allowed = await fetch(
+        `/media/generate-video/${type.identifier}/allowed`
+      );
+      if (!allowed.ok) {
+        fail(await allowed.json().catch(() => undefined));
+        // Nothing has been generated, so hand both buttons back.
+        setSubmitting(false);
+        setLoading(false);
+        return;
+      }
+    } catch (e) {
+      fail();
+      setSubmitting(false);
+      setLoading(false);
+      return;
+    }
+
     close();
     setLocked(true);
 
-    const customParams = form.getValues();
-    if (!(await form.trigger())) {
-      // The modal is already closed and the editor locked by this point, so
-      // returning without clearing both leaves the whole composer disabled
-      // with no way back except reloading and losing the draft.
-      setLocked(false);
-      setLoading(false);
-      toaster.show('Please fill all required fields', 'warning');
-      return;
-    }
     try {
-      const image = await fetch(`/media/generate-video`, {
+      const response = await fetch(`/media/generate-video`, {
         method: 'POST',
         body: JSON.stringify({
           type: type.identifier,
@@ -63,24 +120,44 @@ export const Modal: FC<{
         }),
       });
 
-      if (image.status == 200 || image.status == 201) {
-        onChange(await image.json());
+      const video = await response.json();
+      if (response.ok && video?.id) {
+        onChange(video);
+      } else {
+        fail(video);
       }
-    } catch (e) {}
+    } catch (e) {
+      fail();
+    }
 
     setLocked(false);
     setLoading(false);
-  }, [type, position]);
+  }, [
+    submitting,
+    type,
+    position,
+    form,
+    fetch,
+    fail,
+    close,
+    onChange,
+    setLoading,
+    setLocked,
+  ]);
 
   return (
     // Start with an empty prompt — we no longer copy the post's text field.
     <VideoContextWrapper.Provider value={{ value: '' }}>
       <form
-        onSubmit={form.handleSubmit(generate)}
+        onSubmit={form.handleSubmit(generate, onInvalid)}
         className="flex flex-col gap-[10px]"
       >
         {createPortal(
-          <>{data?.credits || 0} credits left</>,
+          <>
+            {t('n_credits_left', '{{count}} credits left', {
+              count: data?.credits || 0,
+            })}
+          </>,
           document.querySelector('.top-title-content') ||
             document.createElement('div')
         )}
@@ -95,7 +172,7 @@ export const Modal: FC<{
                       onClick={() => setPosition('vertical')}
                       secondary={position === 'horizontal'}
                     >
-                      Vertical (Stories, Reels)
+                      {t('video_vertical', 'Vertical (Stories, Reels)')}
                     </Button>
                   </div>
                   <div className="flex-1 flex mt-[10px]">
@@ -104,7 +181,7 @@ export const Modal: FC<{
                       onClick={() => setPosition('horizontal')}
                       secondary={position === 'vertical'}
                     >
-                      Horizontal (Normal Post)
+                      {t('video_horizontal', 'Horizontal (Normal Post)')}
                     </Button>
                   </div>
                 </div>
@@ -112,8 +189,17 @@ export const Modal: FC<{
               </div>
             </div>
             <div className="flex">
-              <Button type="submit" className="flex-1">
-                Generate
+              {/* `loading` alone only sets pointer-events-none — the button
+                  stays focusable, keyboard-activatable and announced as
+                  enabled, and the click falls through to whatever is beneath
+                  it. `disabled` is what actually takes it out of play. */}
+              <Button
+                type="submit"
+                loading={submitting}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {t('generate', 'Generate')}
               </Button>
             </div>
           </div>
@@ -134,6 +220,21 @@ const AiVideoModal: FC<{
   const [type, setType] = useState<any | null>(
     list.length === 1 ? list[0] : null
   );
+
+  if (!list.length) {
+    return (
+      <EmptyState
+        title={t(
+          'video_providers_are_not_configured',
+          'Video providers are not configured'
+        )}
+        description={t(
+          'video_providers_not_configured_description',
+          'No video generation provider is set up on this installation. Ask your administrator to configure one.'
+        )}
+      />
+    );
+  }
 
   if (!type) {
     return (
@@ -165,19 +266,24 @@ export const AiVideo: FC<{
   // Ghost look for the agent composer's frame; the post composer keeps the
   // filled pill. Same modal, same gate.
   ghost?: boolean;
+  /** Ghost row measured itself too narrow for labels — icon only. */
+  compact?: boolean;
   onChange: (params: { id: string; path: string }) => void;
 }> = (props) => {
   const t = useT();
-  const { onChange, ghost } = props;
+  const { onChange, ghost, compact } = props;
   const [loading, setLoading] = useState(false);
   const fetch = useFetch();
   const modals = useModals();
-  const toaster = useToaster();
+  const canOpen = useOpenGuard();
 
   const loadVideoList = useCallback(async () => {
-    return (await (await fetch('/media/video-options')).json()).filter(
-      (f: any) => f.placement === 'text-to-image'
-    );
+    const options = await (await fetch('/media/video-options')).json();
+    // An error body is an object, not an array — calling .filter() on it threw
+    // inside the fetcher, where SWR swallows it.
+    return Array.isArray(options)
+      ? options.filter((f: any) => f.placement === 'text-to-image')
+      : [];
   }, []);
 
   const { isLoading, data } = useSWR('load-videos-ai', loadVideoList, {
@@ -189,65 +295,68 @@ export const AiVideo: FC<{
     keepPreviousData: true,
   });
 
-  // Always show when mounted (parent gates on tier.ai). Empty options used to
-  // return null and hide Generate video entirely when no provider keys exist.
-  const hasOptions = !!data?.length;
-  const unavailable = !isLoading && !hasOptions;
-
+  // Reads exactly like Generate image: always mounted (the parent gates on
+  // tier.ai) and always live. Dimming it when no provider key is configured
+  // only told people the button was broken; the modal says why instead.
   const openVideoModal = useCallback(() => {
-    if (loading || isLoading) {
-      return;
-    }
-    if (!hasOptions) {
-      toaster.show(
-        t(
-          'video_providers_are_not_configured',
-          'Video providers are not configured'
-        ),
-        'warning'
-      );
+    if (loading || isLoading || !canOpen()) {
       return;
     }
     modals.openModal({
-      title: <div className="top-title-content" />,
+      // A real title. This used to be the bare portal target below, which left
+      // the modal's 24px title row rendering nothing but its own height — a
+      // dead band above the content, most obvious on the empty state.
+      title: (
+        <div className="flex items-baseline gap-[10px]">
+          <span>{t('generate_video', 'Generate video')}</span>
+          {/* Credits slot: `Modal` portals "N credits left" in here once a
+              provider is picked, so it is empty (and invisible) until then. */}
+          <span className="top-title-content text-[13px] font-[500] text-pqMuted" />
+        </div>
+      ),
       children: (close) => (
         <AiVideoModal
-          list={data}
+          list={data || []}
           onChange={onChange}
           setLoading={setLoading}
           close={close}
         />
       ),
     });
-  }, [loading, isLoading, hasOptions, data, onChange, toaster, t, modals]);
+  }, [loading, isLoading, canOpen, data, onChange, modals, t]);
 
   return (
     <div className="relative">
       <div
+        // Handle for the screenshot tool, like Insert Media's — nothing else in
+        // the toolbar row is selectable by anything but its text.
+        data-pq="generate-video"
+        aria-label={t('generate_video', 'Generate video')}
+        title={t('generate_video', 'Generate video')}
         onClick={openVideoModal}
-        aria-disabled={unavailable || isLoading || loading}
+        // Only while the options request is in flight — `openVideoModal`
+        // returns early then, so without this the button looks live and does
+        // nothing. An unconfigured provider is NOT a disabled state: the modal
+        // opens and explains itself.
+        aria-busy={isLoading || undefined}
         className={clsx(
           'inline-flex h-[36px] items-center justify-center',
-          unavailable || isLoading
-            ? 'cursor-not-allowed opacity-50'
-            : 'cursor-pointer',
+          isLoading ? 'cursor-wait opacity-60' : 'cursor-pointer',
           ghost
-            ? clsx(
-                'rounded-[8px] px-[10px] text-pqSoft',
-                !unavailable &&
-                  !isLoading &&
-                  'hover:bg-pqBrandSoft hover:text-pqFocused'
-              )
+            ? 'rounded-[8px] px-[10px] text-pqSoft hover:bg-pqBrandSoft hover:text-pqFocused'
             : 'rounded-[8px] bg-pqBtnSimple px-[12px] text-pqText transition-colors hover:bg-pqHover'
         )}
       >
         {loading && (
           <div className="absolute start-[50%] -translate-x-[50%]">
-            <Loading height={30} width={30} type="spin" color="#fff" />
+            <Loading height={30} width={30} />
           </div>
         )}
         <div
-          className={clsx('flex gap-[5px] items-center', loading && 'invisible')}
+          className={clsx(
+            'flex gap-[5px] items-center',
+            loading && 'invisible'
+          )}
         >
           <div>
             <svg
@@ -277,7 +386,7 @@ export const AiVideo: FC<{
             className={clsx(
               'font-[600]',
               ghost
-                ? 'text-[12px] whitespace-nowrap'
+                ? clsx('text-[12px] whitespace-nowrap', compact && 'hidden')
                 : 'text-[12px] iconBreak:hidden block'
             )}
           >

@@ -34,9 +34,12 @@ export function Activate() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
+  // "Send Again" only appears once the cooldown has already run out, so
+  // re-arming it here made the user wait a second 60 seconds having sent
+  // nothing. The submit itself sets the cooldown when a mail actually goes out.
   const resetToForm = useCallback(() => {
     setStatus('idle');
-    setCooldown(COOLDOWN_SECONDS);
+    setCooldown(0);
   }, []);
 
   const onSubmit: SubmitHandler<ResendInputs> = async (data) => {

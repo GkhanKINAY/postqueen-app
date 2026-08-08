@@ -22,6 +22,8 @@ import { StripeTrust } from '@gitroom/frontend/components/billing/stripe-trust';
 import { CheckoutPayBarShell } from '@gitroom/frontend/components/billing/checkout-pay-bar';
 import { CouponChrome } from '@gitroom/frontend/components/billing/coupon-chrome';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { Spinner } from '@gitroom/react/ui/spinner';
 
 export const EmbeddedBilling: FC<{
   stripe: Promise<Stripe>;
@@ -121,16 +123,22 @@ export const EmbeddedBilling: FC<{
       {swapping ? (
         <div className="flex flex-col gap-[16px] py-[8px]">
           <div className="flex items-center gap-[12px] text-[15px] text-pqMuted">
-            <div className="size-[18px] shrink-0 animate-spin rounded-full border-2 border-pqLine border-t-pqBrand" />
+            <Spinner
+            width={18}
+            height={18}
+            color="var(--brand)"
+            trackColor="var(--line)"
+            className="shrink-0"
+          />
             {t(
               'billing_loading_payment_form',
               'Loading secure payment form…'
             )}
           </div>
           <div className="flex flex-col gap-[12px]">
-            <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
-            <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
-            <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
+            <Skeleton className="h-[44px] rounded-[11px]" />
+            <Skeleton className="h-[44px] rounded-[11px]" />
+            <Skeleton className="h-[44px] rounded-[11px]" />
           </div>
         </div>
       ) : (
@@ -225,16 +233,22 @@ const CheckoutSessionStatus: FC = () => {
     return (
       <div className="flex flex-col gap-[16px] py-[8px]">
         <div className="flex items-center gap-[12px] text-[15px] text-pqMuted">
-          <div className="size-[18px] shrink-0 animate-spin rounded-full border-2 border-pqLine border-t-pqBrand" />
+          <Spinner
+            width={18}
+            height={18}
+            color="var(--brand)"
+            trackColor="var(--line)"
+            className="shrink-0"
+          />
           {t(
             'billing_loading_payment_form',
             'Loading secure payment form…'
           )}
         </div>
         <div className="flex flex-col gap-[12px]">
-          <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
-          <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
-          <div className="h-[44px] animate-pulse rounded-[11px] bg-pqSettings" />
+          <Skeleton className="h-[44px] rounded-[11px]" />
+          <Skeleton className="h-[44px] rounded-[11px]" />
+          <Skeleton className="h-[44px] rounded-[11px]" />
         </div>
       </div>
     );

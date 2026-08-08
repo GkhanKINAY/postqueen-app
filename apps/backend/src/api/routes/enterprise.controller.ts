@@ -114,9 +114,14 @@ export class EnterpriseController {
         load.id
       );
       if (isTherePosts.length) {
-        for (const post of isTherePosts) {
-          this._postsService.deletePost(org.id, post.group).catch(() => {});
-        }
+        // Awaited: unawaited, deleteChannel below returned first and the posts
+        // were deleted afterwards or not at all — and deletePost is what
+        // terminates their Temporal workflows, so a straggler could still
+        // publish to a channel that is already gone.
+        await this._postsService.deletePostsByGroups(
+          org.id,
+          isTherePosts.map((post) => post.group)
+        );
       }
 
       await this._integrationService.deleteChannel(org.id, load.id);

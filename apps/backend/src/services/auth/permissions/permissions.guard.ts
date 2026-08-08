@@ -21,11 +21,27 @@ export class PoliciesGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest();
+    // Prefix match, not `indexOf`: a substring test also matched
+    // `/oauth/authorize`, which is authenticated. Nothing was exposed by that
+    // (approveOrDeny carries no @CheckPolicies) but the next policy added to a
+    // route with `/auth` anywhere in its path would have been skipped silently.
+    //
+    // The two `/integrations/*` entries are load-bearing, not oversights:
+    //   - `/integrations/social-connect` lives on NoAuthIntegrationsController,
+    //     which AuthMiddleware never runs for, so `request.org` is undefined and
+    //     evaluating a policy here would throw rather than deny.
+    //   - `/integrations/provider/:id/connect` finishes a connect whose row
+    //     ALREADY exists as `inBetweenSteps`, and the CHANNEL count includes it
+    //     (permissions.service.ts:84-94). Enforcing the limit here would 402 the
+    //     page-selection step for anyone connecting their last allowed channel.
+    // The real quota gap this leaves is at integration-creation time; see
+    // the launch plan — it needs enforcement inside the create path, excluding
+    // the row being created, not a guard change.
     if (
-      request.path.indexOf('/auth') > -1 ||
-      request.path.indexOf('/auth') > -1 ||
-      request.path.indexOf('/integrations/social-connect') > -1 ||
-      request.path.indexOf('/integrations/provider') > -1
+      request.path === '/auth' ||
+      request.path.startsWith('/auth/') ||
+      request.path.startsWith('/integrations/social-connect') ||
+      request.path.startsWith('/integrations/provider')
     ) {
       return true;
     }

@@ -24,6 +24,8 @@ import {
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
 function slimPost(post: any) {
@@ -299,7 +301,64 @@ export class PostActivity {
 
   @ActivityMethod()
   async changeState(id: string, state: State, err?: any, body?: any) {
+    // Read BEFORE the write: the post already being in ERROR is how we know
+    // this is a repeat. The generic-error branch in post.workflow v1.0.5 does
+    // not break out of its 5-iteration retry loop, and this activity itself
+    // retries 3 times, so one failed post could otherwise send 15 notifications
+    // and 15 emails. The workflow file is frozen, so it is deduped here.
+    const [before] =
+      state !== 'ERROR'
+        ? []
+        : await this._postService
+            .getPostsRecursively(id, true)
+            .catch(() => [] as any[]);
+
     await this._postService.changeState(id, state, err, body);
+
+    if (state !== 'ERROR' || before?.state === 'ERROR') {
+      return;
+    }
+
+    // The workflow notifies for the two pre-flight cases and for bad_body, and
+    // stays silent for everything else — provider 500s, media failures, a
+    // lapsed subscription. Those are the common ones, and the post just died
+    // without a word. Cover them here so no failure is silent, while skipping
+    // the reasons that already spoke.
+    const reason = extractPostErrorMessage(err);
+    const alreadyReported =
+      reason === 'Refresh channel needed' ||
+      reason === 'Channel disabled' ||
+      // Internal sentinels, not failures the user can act on. 'Already posted'
+      // is worse than noise: the workflow writes it when it re-runs over a post
+      // that already PUBLISHED, so it announces a failure that never happened.
+      reason === 'No Post' ||
+      reason === 'Already posted' ||
+      err?.cause?.type === 'bad_body';
+    if (alreadyReported) {
+      return;
+    }
+
+    try {
+      const post = before?.organizationId
+        ? before
+        : (await this._postService.getPostsRecursively(id, true))[0];
+      if (!post?.organizationId) {
+        return;
+      }
+      const channel = post.integration?.name || 'your channel';
+      await this._notificationService.inAppNotification(
+        post.organizationId,
+        `We couldn't publish your post to ${channel}`,
+        `We couldn't publish your post to ${channel}${
+          reason ? `: ${reason}` : ''
+        }. Open the post on your calendar to see the details.`,
+        true,
+        false,
+        'fail'
+      );
+    } catch (e) {
+      // Never let the notification take down the state change itself.
+    }
   }
 
   @ActivityMethod()
@@ -323,17 +382,41 @@ export class PostActivity {
       }
     );
 
-    const post = await this._postService.getPostByForWebhookId(postId);
+    const post = await this._postService.getPostByForWebhookId(
+      postId,
+      orgId,
+      integrationId
+    );
     await Promise.all(
       webhooks.map(async (webhook) => {
         try {
-          await fetch(webhook.url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(post),
-          });
+          // The DTO resolves DNS at save time only; a host that answers public
+          // then and private now would otherwise be reached here. Same
+          // dispatcher the rest of the outbound fetches use. The timeout is
+          // just as important — an endpoint that hangs used to hold this
+          // activity open in front of plugs and repeat-post scheduling.
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), 10000);
+          try {
+            await fetch(webhook.url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(post),
+              signal: ac.signal,
+              // Redirects are followed (the default). undici hands a manual
+              // 3xx straight back instead of the spec's opaque redirect, and
+              // nothing here inspects the response — so `manual` silently
+              // stopped delivering to every endpoint that normalises its URL
+              // (apex→www, trailing slash). The dispatcher below re-checks DNS
+              // on each hop, so following is still SSRF-safe.
+              // @ts-ignore — undici option, not in lib.dom fetch types
+              dispatcher: getSsrfSafeDispatcher(),
+            });
+          } finally {
+            clearTimeout(timer);
+          }
         } catch (e) {
           /**empty**/
         }

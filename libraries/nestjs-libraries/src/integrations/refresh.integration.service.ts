@@ -83,15 +83,13 @@ export class RefreshIntegrationService {
         integration.id
       );
 
+      // No disconnectChannel call here: it only writes the refreshNeeded flag
+      // set on the line above, and it notifies again — with an empty cause —
+      // so one failure produced two identical notifications and two emails.
       await this._integrationService.informAboutRefreshError(
         integration.organizationId,
         integration,
         cause
-      );
-
-      await this._integrationService.disconnectChannel(
-        integration.organizationId,
-        integration
       );
 
       return false;

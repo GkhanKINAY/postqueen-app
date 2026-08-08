@@ -32,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import {
   leaveSettingsFor,
   RouteOverlayScrim,
+  useRouteOverlayActive,
   type RouteOverlayMode,
 } from '@gitroom/frontend/components/layout/leave-settings';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
@@ -315,7 +316,14 @@ export const SettingsPopup: FC<{
       group: more,
       icon: 'integrations',
     });
-    if (user?.tier?.public_api && isGeneral && showLogout && isOrgAdmin) {
+    // API Keys and Developers are open to everyone, the way they now are in
+    // Connections — the two render the same components, and hiding them here
+    // while showing them there would put the same capability behind two
+    // different answers. Each section states its own limits: the key card masks
+    // a key the server will not hand a member, and Developers refuses to fetch
+    // rather than firing an admin-only endpoint. `showLogout` stays because it
+    // is about the onboarding URL, not about who is asking.
+    if (showLogout) {
       arr.push({
         tab: 'api',
         label: t('api_keys', 'API Keys'),
@@ -604,9 +612,9 @@ export const SettingsPopup: FC<{
               {tab === 'teams' && isGeneral && isOrgAdmin && (
                 <div>
                   {user?.tier?.team_members ? (
-                    <TeamsComponent onClose={onClose} />
+                    <TeamsComponent />
                   ) : (
-                    <TeamsUpgradeLock onClose={onClose} />
+                    <TeamsUpgradeLock />
                   )}
                 </div>
               )}
@@ -647,25 +655,17 @@ export const SettingsPopup: FC<{
                 </div>
               )}
 
-              {tab === 'api' &&
-                !!user?.tier?.public_api &&
-                isGeneral &&
-                showLogout &&
-                isOrgAdmin && (
-                  <div>
-                    <PublicApiKeysSection />
-                  </div>
-                )}
+              {tab === 'api' && showLogout && (
+                <div>
+                  <PublicApiKeysSection />
+                </div>
+              )}
 
-              {tab === 'developers' &&
-                !!user?.tier?.public_api &&
-                isGeneral &&
-                showLogout &&
-                isOrgAdmin && (
-                  <div>
-                    <PublicAppsSection />
-                  </div>
-                )}
+              {tab === 'developers' && showLogout && (
+                <div>
+                  <PublicAppsSection />
+                </div>
+              )}
 
               {tab === 'approved_apps' && (
                 <div>
@@ -701,6 +701,11 @@ export const SettingsPage = ({
   mode?: RouteOverlayMode;
 }) => {
   const router = useRouter();
+  // A `@modal` slot keeps its last active state across soft navigations, so
+  // pushing to a route with no intercept (Teams → "Upgrade plan" → /billing)
+  // leaves this overlay stranded over the new page — `default.tsx` only covers
+  // hard loads. Nothing else unmounts it.
+  const active = useRouteOverlayActive('settings');
   const back = useCallback(() => {
     if (window.history.length > 1) {
       router.back();
@@ -709,12 +714,18 @@ export const SettingsPage = ({
     }
   }, [router]);
   useEffect(() => {
+    // Hooks still run while the sheet is hidden — an unguarded listener would
+    // navigate back from whatever page stranded it.
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') back();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [back]);
+  }, [back, active]);
+  if (!active) {
+    return null;
+  }
   return (
     <RouteOverlayScrim mode={mode} kind="settings" onClose={back}>
       <SettingsPopup onClose={back} />

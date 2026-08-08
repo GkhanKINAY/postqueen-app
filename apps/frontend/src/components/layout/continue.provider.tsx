@@ -19,7 +19,7 @@ export const ContinueProvider: FC = () => {
   const added = searchParams.get('added');
   const continueId = searchParams.get('continue');
   const router = useRouter();
-  const { data: integrations } = useIntegrationList();
+  const { data: integrations, isLoading } = useIntegrationList();
   const refreshList = useCallback(() => {
     mutate('/integrations/list');
     const url = new URL(window.location.href);
@@ -36,7 +36,10 @@ export const ContinueProvider: FC = () => {
     );
   }, [added]);
 
-  if (!added || !continueId || !integrations) {
+  // `isLoading`, not `!integrations`: `useIntegrationList` supplies
+  // `fallbackData: []`, so the list is never falsy and that guard never fired —
+  // a deep-link with ?added=&continue= mounted the modal against an empty list.
+  if (!added || !continueId || isLoading) {
     return null;
   }
 

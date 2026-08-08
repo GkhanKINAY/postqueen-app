@@ -16,6 +16,7 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import utc from 'dayjs/plugin/utc';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
+import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekOfYear);
@@ -180,6 +181,10 @@ export class PostsRepository {
         releaseURL: true,
         releaseId: true,
         state: true,
+        // The ERROR badge tooltips render `post.error`; without it every
+        // failure in the product read "An error occurred while publishing this
+        // post" while the real provider message sat unused in the row.
+        error: true,
         intervalInDays: true,
         group: true,
         creationMethod: true,
@@ -322,6 +327,8 @@ export class PostsRepository {
           releaseURL: true,
           releaseId: true,
           state: true,
+          // See getPosts — the badge cannot explain itself without this.
+          error: true,
           intervalInDays: true,
           group: true,
           creationMethod: true,
@@ -454,9 +461,11 @@ export class PostsRepository {
       },
       data: {
         state,
-        ...(err
-          ? { error: typeof err === 'string' ? err : JSON.stringify(err) }
-          : {}),
+        // A readable line, not the serialized failure: this column is selected
+        // by the list queries and rendered into the error tooltip, so the raw
+        // object put a multi-KB blob with internal stack traces in front of
+        // every org member. The Errors row below still keeps the full object.
+        ...(err ? { error: extractPostErrorMessage(err) } : {}),
       },
       include: {
         integration: {
@@ -945,10 +954,29 @@ export class PostsRepository {
     });
   }
 
-  async getPostByForWebhookId(postId: string) {
+  async getPostByForWebhookId(
+    postId: string,
+    orgId: string,
+    integrationId: string
+  ) {
+    // The only caller is sendWebhooks, which is handed `postsResults[0].postId`
+    // — the id the PLATFORM returned, the same value updatePost stores in
+    // releaseId. Matching it against Post.id (a cuid) never hit, so every
+    // webhook delivery carried an empty array. Fall back to the primary key so
+    // a caller holding a real Post.id still resolves.
+    //
+    // `organizationId` and `integrationId` are NOT optional here. `releaseId`
+    // is whatever the platform handed back, and for Telegram / Lemmy /
+    // WordPress / Dev.to / VK that is a small per-account integer with no
+    // uniqueness constraint. Without the org filter two tenants on one install
+    // collide and each other's post content, release URL and channel name get
+    // POSTed to the wrong webhook endpoint; without the integration filter the
+    // same collision happens between two providers inside one org.
     return this._post.model.post.findMany({
       where: {
-        id: postId,
+        organizationId: orgId,
+        integrationId,
+        OR: [{ releaseId: postId }, { id: postId }],
         deletedAt: null,
         parentPostId: null,
       },

@@ -12,7 +12,10 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import {
+  AnalyticsCardsGhost,
+  PageContentSkeleton,
+} from '@gitroom/frontend/components/layout/loading';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
@@ -42,7 +45,6 @@ export const PlatformAnalytics = () => {
 
   const [selected, setSelected] = useState('');
   const [key, setKey] = useState(7);
-  const [refresh, setRefresh] = useState(false);
   const [collapseMenu, setCollapseMenu] = useCookie('collapseMenu', '0');
   const channelsCollapsed = !mobile && collapseMenu === '1';
   const autoCollapsed = useRef(false);
@@ -54,9 +56,20 @@ export const PlatformAnalytics = () => {
   const closeDetail = useCallback(() => setDetailOpen(false), []);
 
   const load = useCallback(async () => {
-    const int = (
-      await (await fetch('/integrations/list')).json()
-    ).integrations.filter((f: any) => {
+    // customFetch resolves on 4xx/5xx, so `.integrations` was undefined on an
+    // error body and `.filter` threw inside the fetcher. SWR swallowed that
+    // into `error`, `data` stayed at `fallbackData: []`, and the page told the
+    // user they had no channels at all. Throw so SWR reports a real error
+    // instead — the same guard `use.integration.list.tsx` carries.
+    const response = await fetch('/integrations/list');
+    if (!response.ok) {
+      throw new Error('Could not load channels');
+    }
+    const body = await response.json();
+    const integrations = Array.isArray(body?.integrations)
+      ? body.integrations
+      : [];
+    const int = integrations.filter((f: any) => {
       if (f.identifier === 'x' && disableXAnalytics) {
         return false;
       }
@@ -65,7 +78,7 @@ export const PlatformAnalytics = () => {
     return int.filter((f: any) => allowedIntegrations.includes(f.identifier));
   }, [fetch, disableXAnalytics]);
 
-  const { data, isLoading, mutate } = useSWR('analytics-list', load, {
+  const { data, isLoading, error, mutate } = useSWR('analytics-list', load, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -236,9 +249,33 @@ export const PlatformAnalytics = () => {
   }, [key, currentIntegration, options]);
 
   if (isLoading) {
+    return <PageContentSkeleton detail={<AnalyticsCardsGhost />} />;
+  }
+
+  // The fetcher throws on a bad response, but that only lands in SWR's `error`
+  // — `data` stays at `fallbackData: []`. Without reading it here the page still
+  // said "No analytics yet / Connect a channel" to someone who has channels and
+  // just hit a failing request.
+  if (error && !isLoading) {
     return (
-      <div className="bg-pqInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
-        <LoadingComponent />
+      <div className="flex flex-1 flex-col bg-pqInner">
+        <ChannelsPageEmpty
+          artClassName="w-[220px]"
+          title={t('analytics_load_failed', 'Could not load your channels')}
+          description={t(
+            'analytics_load_failed_hint',
+            'Something went wrong fetching your channels. Check your connection and try again.'
+          )}
+          action={
+            <button
+              type="button"
+              onClick={() => mutate()}
+              className="mt-[4px] h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+            >
+              {t('try_again', 'Try again')}
+            </button>
+          }
+        />
       </div>
     );
   }
@@ -394,10 +431,6 @@ export const PlatformAnalytics = () => {
                       );
                       return;
                     }
-                    setRefresh(true);
-                    setTimeout(() => {
-                      setRefresh(false);
-                    }, 10);
                     setSelected(integration.id);
                     setDetailOpen(true);
                   }}
@@ -528,11 +561,7 @@ export const PlatformAnalytics = () => {
                     <button
                       key={option.key}
                       type="button"
-                      onClick={() => {
-                        setRefresh(true);
-                        setKey(option.key);
-                        setTimeout(() => setRefresh(false), 0);
-                      }}
+                      onClick={() => setKey(option.key)}
                       className={clsx(
                         'h-[32px] rounded-[8px] px-[15px] text-[13.5px] transition-colors',
                         active
@@ -546,7 +575,12 @@ export const PlatformAnalytics = () => {
                 })}
               </div>
             </div>
-            {!!keys && !refresh && (
+            {/* No remount nonce. The channel and the range are both already in
+                `RenderAnalytics`'s SWR key and both already props, so React
+                re-renders and SWR re-keys on its own. Unmounting it dropped the
+                subscription, forced a refetch of warm keys, and guaranteed the
+                ghost painted — it caused the flash it looked like it avoided. */}
+            {!!keys && (
               <RenderAnalytics integration={currentIntegration} date={keys} />
             )}
           </div>

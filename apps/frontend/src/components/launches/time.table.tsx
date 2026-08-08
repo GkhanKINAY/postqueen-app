@@ -112,12 +112,24 @@ export const TimeTable: FC<{
   }, [currentTimes, timePattern]);
 
   const save = useCallback(async () => {
-    await fetch(`/integrations/${props.integration.id}/time`, {
+    const response = await fetch(`/integrations/${props.integration.id}/time`, {
       method: 'POST',
       body: JSON.stringify({
         time: currentTimes,
       }),
     });
+
+    // The response was never checked, so a rejected payload still closed the
+    // modal under a green "Settings updated" and the list snapped back on the
+    // next fetch.
+    if (!response.ok) {
+      toast.show(
+        t('settings_update_failed', 'Could not save the posting times'),
+        'warning'
+      );
+      return;
+    }
+
     mutate();
     toast.show(t('settings_updated', 'Settings updated'), 'success');
     modal.closeAll();
@@ -219,9 +231,22 @@ export const TimeTable: FC<{
 
       {/* Save Button */}
       <div className="mt-[24px]">
-        <Button type="button" className="w-full rounded-[8px]" onClick={save}>
+        {/* A channel with no slots contributes nothing to slot-based
+            scheduling, so the API rejects an empty list — say that here
+            instead of letting the request fail. */}
+        <Button
+          type="button"
+          className="w-full rounded-[8px]"
+          onClick={save}
+          disabled={!currentTimes.length}
+        >
           {t('save_changes', 'Save Changes')}
         </Button>
+        {!currentTimes.length && (
+          <p className="mt-[8px] text-[12.5px] text-pqMuted">
+            {t('time_slots_required', 'Add at least one time slot to save.')}
+          </p>
+        )}
       </div>
     </div>
   );

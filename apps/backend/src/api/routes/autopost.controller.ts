@@ -42,7 +42,7 @@ export class AutopostController {
     @Body() body: AutopostDto,
     @Param('id') id: string
   ) {
-    return this._autopostsService.createAutopost(org.id, body, id);
+    return this._autopostsService.updateAutopost(org.id, body, id);
   }
 
   @Delete('/:id')

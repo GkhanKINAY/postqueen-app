@@ -14,7 +14,7 @@ import { PlugsContext } from '@gitroom/frontend/components/plugs/plugs.context';
 import { Plug } from '@gitroom/frontend/components/plugs/plug';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import useCookie from 'react-use-cookie';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { PageContentSkeleton } from '@gitroom/frontend/components/layout/loading';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
 import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
@@ -102,11 +102,7 @@ export const Plugs = () => {
   }, [currentIntegration, plugList]);
 
   if (isLoading || plugLoading) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-pqInner p-[20px]">
-        <LoadingComponent />
-      </div>
-    );
+    return <PageContentSkeleton />;
   }
 
   if (!sortedIntegrations.length && !isLoading) {

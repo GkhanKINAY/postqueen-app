@@ -3,13 +3,30 @@
 import { useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 export const GoogleProvider = () => {
   const fetch = useFetch();
   const t = useT();
+  const toaster = useToaster();
+  // customFetch resolves on 4xx/5xx, so an unchecked `.text()` handed the Nest
+  // error JSON straight to `location.href` — the browser resolved it as a
+  // relative path and the user landed on a 404 with the login screen gone.
+  // `oauth.provider.tsx:15-19` already guards this way.
   const gotoLogin = useCallback(async () => {
-    const link = await (await fetch('/auth/oauth/GOOGLE')).text();
-    window.location.href = link;
-  }, []);
+    try {
+      const response = await fetch('/auth/oauth/GOOGLE');
+      const link = response.ok ? (await response.text()).trim() : '';
+      if (!link.startsWith('http')) {
+        throw new Error('Invalid OAuth link');
+      }
+      window.location.href = link;
+    } catch (e) {
+      toaster.show(
+        t('oauth_start_failed', 'Could not start sign-in, please try again'),
+        'warning'
+      );
+    }
+  }, [fetch, toaster, t]);
   return (
     <button
       type="button"

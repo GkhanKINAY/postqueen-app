@@ -21,6 +21,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
 import { useRouter } from 'next/navigation';
 import { leaveSettingsFor } from '@gitroom/frontend/components/layout/leave-settings';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 const roles = [
   {
     name: 'User',
@@ -56,17 +57,39 @@ export const AddMember: FC<{
   });
   const submit = useCallback(
     async (values: { email: string; role: string; sendEmail: boolean }) => {
-      const { url } = await (
-        await fetch('/settings/team', {
-          method: 'POST',
-          body: JSON.stringify(values),
-        })
-      ).json();
+      // The invite awaits sendEmail server-side, so an unconfigured mail
+      // provider gives a 500 — and customFetch resolves it. Unchecked, that
+      // reported "Invitation link sent" for an invite nobody received, and on
+      // the copy path put the literal string "undefined" on the clipboard.
+      const response = await fetch('/settings/team', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+
+      if (!response?.ok) {
+        toast.show(
+          t('team_invite_failed', 'Could not send the invitation, please try again'),
+          'warning'
+        );
+        return;
+      }
+
+      const { url } = await response.json().catch(() => ({} as any));
+
       if (values.sendEmail) {
         toast.show(t('invitation_link_sent', 'Invitation link sent'));
         onDone();
         return;
       }
+
+      if (!url) {
+        toast.show(
+          t('team_invite_failed', 'Could not send the invitation, please try again'),
+          'warning'
+        );
+        return;
+      }
+
       copy(url);
       toast.show(t('link_copied_to_clipboard', 'Link copied to clipboard'));
       onDone();
@@ -141,7 +164,7 @@ type TeamLoadResult =
   | { kind: 'ok'; users: TeamRow[] }
   | { kind: 'upgrade' };
 
-export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
+export const TeamsComponent: FC = () => {
   const fetch = useFetch();
   const user = useUser();
   const t = useT();
@@ -163,7 +186,7 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
     const body = await res.json();
     return { kind: 'ok', users: (body.users || []) as TeamRow[] };
   }, [fetch]);
-  const { data, mutate } = useSWR('/api/teams', loadTeam, {
+  const { data, isLoading, mutate } = useSWR('/api/teams', loadTeam, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -195,7 +218,7 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
   );
 
   if (data?.kind === 'upgrade') {
-    return <TeamsUpgradeLock onClose={onClose} />;
+    return <TeamsUpgradeLock />;
   }
 
   if (inviting) {
@@ -220,6 +243,31 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
   }
 
   const rows = data?.kind === 'ok' ? data.users : [];
+
+  // An empty roster and a roster in flight are the same `[]` here, so the
+  // member list waits for the fetch rather than offering "Invite member" to a
+  // workspace that already has a team.
+  if (isLoading) {
+    return (
+      <div className="mt-[18px] flex flex-col gap-[10px]">
+        <div className="overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[11px] border-b border-pqLine p-[13px_15px] last:border-b-0"
+            >
+              <Skeleton className="size-[30px] shrink-0 rounded-full" />
+              <div className="flex min-w-0 flex-1 flex-col gap-[6px]">
+                <Skeleton className="h-[13px] w-[46%]" />
+                <Skeleton className="h-[11px] w-[24%]" />
+              </div>
+              <Skeleton className="h-[28px] w-[64px] shrink-0 rounded-pqSm" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-[18px] flex flex-col gap-[10px]">
@@ -299,15 +347,17 @@ export const TeamsComponent: FC<{ onClose?: () => void }> = ({ onClose }) => {
  * owner path (keep tab discoverable). CTA matches design rail `upgradeCta`
  * ("Upgrade plan"); team seats unlock at Growth, so do not say "Upgrade to Pro".
  *
- * Settings is an intercepting `@modal/(.)settings` overlay — a bare Link to
- * `/billing` can leave the scrim stranded; `back()`+`push()` races. Use
- * `leaveSettingsFor` (single soft `router.push`).
+ * Settings is an intercepting `@modal/(.)settings` overlay. The sheet dismisses
+ * itself once the pathname leaves `/settings` (`useRouteOverlayActive`), so a
+ * single navigation is enough — do not also call the parent `onClose`, which is
+ * a history `back()` and would race the push. `replace` keeps the gated pane out
+ * of history: Back from `/billing` returns to the page from before Settings.
  */
-export const TeamsUpgradeLock: FC<{ onClose?: () => void }> = () => {
+export const TeamsUpgradeLock: FC = () => {
   const t = useT();
   const router = useRouter();
   const goBilling = useCallback(() => {
-    leaveSettingsFor('/billing', router);
+    leaveSettingsFor('/billing', router, { replace: true });
   }, [router]);
 
   return (

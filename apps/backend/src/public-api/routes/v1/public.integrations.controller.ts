@@ -432,10 +432,9 @@ export class PublicIntegrationsController {
       // Wait for these. Fired without await, deleteChannel returned first and
       // the posts were deleted afterwards or not at all, while the API had
       // already promised they would go with the channel.
-      const results = await Promise.allSettled(
-        isTherePosts.map((post) =>
-          this._postsService.deletePost(org.id, post.group)
-        )
+      const results = await this._postsService.deletePostsByGroups(
+        org.id,
+        isTherePosts.map((post) => post.group)
       );
 
       for (const result of results) {

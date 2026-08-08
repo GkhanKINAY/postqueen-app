@@ -24,7 +24,9 @@ export const PublicApiKeysSection: FC<{
     leaveSettingsFor('/connections', router);
   }, [router]);
 
-  if (!user || !user.publicApi) {
+  // The card handles a member's empty key itself now — it is where they are
+  // told the key exists and is an admin's to reveal.
+  if (!user) {
     return null;
   }
 

@@ -29,6 +29,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import {
   ChannelsListEmpty,
   ChannelsPageEmpty,
@@ -616,20 +617,46 @@ export const ChannelsComponent: FC = () => {
     return list.find((i: any) => i.id === selected) || list[0];
   }, [list, selected]);
 
+  // Returns null rather than throwing. `openAdd` runs from an effect when the
+  // account has no channels, so an unguarded reject here took the whole
+  // Channels page down on mount whenever the backend was unreachable —
+  // `customFetch` resolves 4xx/5xx but a dead backend rejects.
   const loadCatalog = useCallback(async () => {
     if (providerCatalog) return providerCatalog;
-    const data = await (await fetch('/integrations')).json();
-    setProviderCatalog(data);
-    return data;
+    try {
+      const response = await fetch('/integrations');
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+      if (!Array.isArray(data?.social)) {
+        return null;
+      }
+      setProviderCatalog(data);
+      return data;
+    } catch (e) {
+      return null;
+    }
   }, [fetch, providerCatalog]);
 
   const openAdd = useCallback(async () => {
-    await loadCatalog();
+    // Without a catalog the add pane renders an empty provider grid, so say why
+    // instead of opening it.
+    if (!(await loadCatalog())) {
+      toast.show(
+        t(
+          'add_channel_failed',
+          'Could not load the channel list, please try again'
+        ),
+        'warning'
+      );
+      return;
+    }
     setInviteAdd(false);
     setAddStepOpen(false);
     setAdding(true);
     setDetailOpen(true);
-  }, [loadCatalog]);
+  }, [loadCatalog, toast, t]);
 
   const closeDetail = useCallback(() => {
     setDetailOpen(false);
@@ -680,11 +707,44 @@ export const ChannelsComponent: FC = () => {
   ]);
 
   // Tour last step + Finish leave Add Channel open (design chAdd:'connect').
+  //
+  // `?add=1` is consumed and then dropped, the way `now=` is on the calendar.
+  // Left in place it reopened Add Channel on every refresh and every step back
+  // through history, and it permanently disabled the recovery above.
+  //
+  // The tour also has to be able to let go: it opens this pane for its last two
+  // steps, and Escape there used to leave somebody on /channels with a pane
+  // they never asked for. Zero channels is the exception — there Add Channel is
+  // the page's own empty state, not the tour's doing.
+  const tourOpenedAdd = useRef(false);
+  const addConsumed = useRef(false);
   useEffect(() => {
-    if (tourNeedsAdd || searchParams.get('add') === '1') {
+    // Once, by ref rather than by the URL: `replaceState` does not tell the
+    // router anything, so `searchParams` still reads `add=1` afterwards, and
+    // `openAdd`'s identity changes as soon as the catalog resolves — which
+    // re-ran this and reopened the pane over whatever the person had chosen.
+    const deepLinked = searchParams.get('add') === '1' && !addConsumed.current;
+    if (tourNeedsAdd || deepLinked) {
+      if (deepLinked) {
+        addConsumed.current = true;
+        const cleaned = new URLSearchParams(searchParams.toString());
+        cleaned.delete('add');
+        const q = cleaned.toString();
+        window.history.replaceState(
+          null,
+          '',
+          q ? `/channels?${q}` : '/channels'
+        );
+      }
+      tourOpenedAdd.current = tourNeedsAdd && !deepLinked;
       void openAdd();
+      return;
     }
-  }, [tourNeedsAdd, searchParams, openAdd]);
+    if (tourOpenedAdd.current) {
+      tourOpenedAdd.current = false;
+      if (list.length) closeDetail();
+    }
+  }, [tourNeedsAdd, searchParams, openAdd, closeDetail, list.length]);
 
   const afterConnect = useCallback(() => {
     mutate();
@@ -942,7 +1002,30 @@ export const ChannelsComponent: FC = () => {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
-          {!list.length && <ChannelsListEmpty />}
+          {/* `fallbackData: []` means an empty list is also what a load looks
+              like, so the empty art waits for the fetch to settle — otherwise
+              every cold load flashes "No channels yet" at people who have
+              channels. */}
+          {!listSettled
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-[10px] rounded-pqSm py-[7px] pe-[6px] ps-[9px]"
+                >
+                  <Skeleton className="size-[32px] shrink-0 rounded-full" />
+                  <Skeleton
+                    className={clsx(
+                      'h-[12px] group-[.sidebar]:hidden',
+                      i % 3 === 0
+                        ? 'w-[68%]'
+                        : i % 3 === 1
+                        ? 'w-[54%]'
+                        : 'w-[61%]'
+                    )}
+                  />
+                </div>
+              ))
+            : !list.length && <ChannelsListEmpty />}
           {list.map((integration: any) => (
             <div
               key={integration.id}
@@ -1027,7 +1110,35 @@ export const ChannelsComponent: FC = () => {
           className="relative flex min-h-0 flex-1 gap-[1px] bg-pqLine"
         >
           {listPane}
-          {!mobile && <div className="min-w-0 flex-1 bg-pqInner" aria-hidden />}
+          {/* Plugs and Analytics both ghost their detail pane while the rail
+              loads; without this Channels was the one channel-column page
+              whose right half stayed a blank panel. */}
+          {!mobile && (
+            <div
+              className="flex min-w-0 flex-1 flex-col bg-pqInner"
+              role="status"
+              aria-busy="true"
+              aria-label="Loading"
+            >
+              <div className="flex shrink-0 items-center gap-[12px] border-b border-pqLine p-[16px_18px]">
+                <Skeleton className="size-[38px] shrink-0 rounded-full" />
+                <div className="flex min-w-0 flex-col gap-[7px]">
+                  <Skeleton className="h-[14px] w-[160px]" />
+                  <Skeleton className="h-[11px] w-[104px]" />
+                </div>
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col gap-[12px] p-[18px]">
+                <div className="grid grid-cols-2 gap-[12px] tablet:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[78px] rounded-[12px]" />
+                  ))}
+                </div>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-[52px] w-full rounded-[12px]" />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </CalendarWeekProvider>
     );

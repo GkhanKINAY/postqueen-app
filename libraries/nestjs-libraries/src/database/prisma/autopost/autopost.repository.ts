@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
 
@@ -25,16 +25,36 @@ export class AutopostRepository {
     });
   }
 
-  deleteAutopost(orgId: string, id: string) {
-    return this._autoPost.model.autoPost.update({
+  // Prisma raises P2025 when the `where` matches nothing and nothing catches
+  // it, so an unknown or foreign id used to answer 500 instead of 404.
+  async deleteAutopost(orgId: string, id: string) {
+    const { count } = await this._autoPost.model.autoPost.updateMany({
       where: {
         id,
         organizationId: orgId,
+        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
       },
     });
+    if (!count) {
+      throw new NotFoundException('Autopost not found');
+    }
+    return { id };
+  }
+
+  // An update must update. createAutopost upserts, so a PUT with an id that
+  // does not resolve silently created a brand-new rule — and PUT carries no
+  // quota policy, so that was a free bypass.
+  async assertAutopostExists(orgId: string, id: string) {
+    const found = await this._autoPost.model.autoPost.findFirst({
+      where: { id, organizationId: orgId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!found) {
+      throw new NotFoundException('Autopost not found');
+    }
   }
 
   getAutopost(id: string) {
@@ -86,7 +106,10 @@ export class AutopostRepository {
         addPicture: body.addPicture,
         syncLast: body.syncLast,
         onSlot: body.onSlot,
-        lastUrl: body.lastUrl,
+        // The DTO marks lastUrl optional but the column is NOT NULL, so an
+        // omitted value used to fail the whole insert.
+        lastUrl: body.lastUrl || '',
+        autoPublish: body.autoPublish ?? false,
       },
       update: {
         url: body.url,
@@ -98,7 +121,16 @@ export class AutopostRepository {
         addPicture: body.addPicture,
         syncLast: body.syncLast,
         onSlot: body.onSlot,
-        lastUrl: body.lastUrl,
+        // Both are optional in the DTO, and on an UPDATE Prisma reads an
+        // omitted key as "leave the column alone" — which is the behaviour we
+        // need. Defaulting them here instead reset lastUrl to '' on every PUT,
+        // which reopens the `load.url === lastUrl` gate in startAutopost and
+        // republishes the item that just went out; and it silently switched
+        // auto-publish back off for any client that does not send the field.
+        ...(body.lastUrl !== undefined ? { lastUrl: body.lastUrl } : {}),
+        ...(body.autoPublish !== undefined
+          ? { autoPublish: body.autoPublish }
+          : {}),
       },
     });
 

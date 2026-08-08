@@ -14,6 +14,7 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import clsx from 'clsx';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 interface Organization {
   name: string;
@@ -142,9 +143,9 @@ export const OrganizationSelector: FC<{
           data-keepdrawer="1"
           aria-hidden="true"
         >
-          <span
+          <Skeleton
             data-sbl="1"
-            className="h-[12px] min-w-0 flex-1 animate-pulse rounded-pqSm bg-pqHover"
+            className="h-[12px] min-w-0 flex-1 rounded-pqSm"
           />
         </div>
       );
@@ -228,7 +229,11 @@ export const OrganizationSelector: FC<{
           {!asOpenSelect && (
             <div className="flex items-center">
               <svg
-                className={user?.tier.current === 'FREE' ? 'animate-bounce drop-shadow-glow': ''}
+                className={
+                  user?.tier.current === 'FREE'
+                    ? 'pq-loop animate-bounce drop-shadow-glow'
+                    : ''
+                }
                 width="24"
                 height="24"
                 viewBox="0 0 26 26"

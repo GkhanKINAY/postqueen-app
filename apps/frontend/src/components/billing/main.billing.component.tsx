@@ -78,7 +78,7 @@ export const Prorate: FC<{
   if (loading) {
     return (
       <div className="min-h-[17px] text-pqMuted">
-        <ReactLoading type="spin" color="currentColor" width={15} height={15} />
+        <ReactLoading width={15} height={15} />
       </div>
     );
   }
@@ -209,7 +209,18 @@ const BillingCancelDialog: FC<{
   const applyDiscount = useCallback(async () => {
     setLoading(true);
     try {
-      await fetch('/billing/apply-discount', { method: 'POST' });
+      // customFetch resolves on 4xx/5xx. Unchecked, a failed apply still told
+      // the user they had the coupon and closed the cancel flow as `applied` —
+      // so they got neither the discount nor the cancellation.
+      // `applyLifetimeRetention` just below already checks `res?.ok`.
+      const res = await fetch('/billing/apply-discount', { method: 'POST' });
+      if (!res?.ok) {
+        toaster.show(
+          t('something_went_wrong', 'Something went wrong'),
+          'warning'
+        );
+        return;
+      }
       toaster.show(
         t('discount_applied_successfully', '50% discount applied successfully')
       );
@@ -533,10 +544,28 @@ export const MainBillingComponent: FC<{
     }
     setSubscription(sub);
   }, [sub]);
+  // This is the recovery path behind the payment-failed banner, so it has to
+  // fail loudly. Unchecked, a 500 (no Stripe customer row, Stripe down) made
+  // `portal` undefined and navigated the user to `/undefined`.
   const updatePayment = useCallback(async () => {
-    const { portal } = await (await fetch('/billing/portal')).json();
+    const response = await fetch('/billing/portal');
+    const { portal } = response?.ok
+      ? await response.json().catch(() => ({} as any))
+      : ({} as any);
+
+    if (!portal) {
+      toast.show(
+        t(
+          'billing_portal_failed',
+          'We could not open the billing portal, please try again'
+        ),
+        'warning'
+      );
+      return;
+    }
+
     window.location.href = portal;
-  }, []);
+  }, [fetch, toast, t]);
   const currentPackage = useMemo(() => {
     if (!subscription) {
       return 'FREE';
@@ -677,23 +706,44 @@ export const MainBillingComponent: FC<{
       async () => {
         if (reactivate) {
           setLoading(true);
-          const { cancel_at } = await (
-            await fetch('/billing/cancel', {
-              method: 'POST',
-              body: JSON.stringify({
-                feedback: '',
-              }),
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            })
-          ).json();
+          // The cancel path below already guards on `cancel_at`; reactivate did
+          // not, so a failed call still claimed success.
+          const reactivateResponse = await fetch('/billing/cancel', {
+            method: 'POST',
+            body: JSON.stringify({
+              feedback: '',
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!reactivateResponse?.ok) {
+            setLoading(false);
+            toast.show(
+              t(
+                'subscription_reactivate_failed',
+                'We could not reactivate your subscription, please try again'
+              ),
+              'warning'
+            );
+            return;
+          }
+
+          const { cancel_at } = await reactivateResponse
+            .json()
+            .catch(() => ({} as any));
           setSubscription((subs) => ({
             ...subs!,
             cancelAt: cancel_at,
           }));
 
-          toast.show('Subscription reactivated successfully');
+          toast.show(
+            t(
+              'subscription_reactivated_successfully',
+              'Subscription reactivated successfully'
+            )
+          );
           setLoading(false);
           return;
         }
@@ -786,17 +836,37 @@ export const MainBillingComponent: FC<{
           return;
         }
         setLoading(true);
-        const { url, portal, blocked } = await (
-          await fetch('/billing/subscribe', {
-            method: 'POST',
-            body: JSON.stringify({
-              period: monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY',
-              utm,
-              billing,
-              ...(dub ? { dub } : {}),
-            }),
-          })
-        ).json();
+        const subscribeResponse = await fetch('/billing/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({
+            period: monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY',
+            utm,
+            billing,
+            ...(dub ? { dub } : {}),
+          }),
+        });
+
+        // customFetch resolves on 4xx/5xx, and a dismissed 402 dialog comes back
+        // as a synthetic 499. Either way all three fields below were `undefined`,
+        // which fell through to the optimistic `else` branch: a green "updated
+        // successfully", the plan card repainted to the new tier, and
+        // `mutate('/user/self', …, {revalidate: false})` stopping anything from
+        // correcting it — for a user who was never charged and never upgraded.
+        if (!subscribeResponse?.ok) {
+          setLoading(false);
+          toast.show(
+            t(
+              'subscription_update_failed',
+              'We could not update your subscription, please try again'
+            ),
+            'warning'
+          );
+          return;
+        }
+
+        const { url, portal, blocked } = await subscribeResponse
+          .json()
+          .catch(() => ({} as any));
         if (blocked) {
           setLoading(false);
           await deleteDialog(

@@ -25,22 +25,11 @@ import copy from 'copy-to-clipboard';
 import { capitalize } from 'lodash';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
+// Lives in helpers/ so the chrome can open this dialog without pulling this
+// module into every route's bundle. Only the dynamic edge points back here.
+import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 const resolver = classValidatorResolver(ApiKeyDto);
 
-export const useAddProvider = (update?: () => void, invite?: boolean) => {
-  const modal = useModals();
-  const fetch = useFetch();
-  return useCallback(async () => {
-    const data = await (await fetch('/integrations')).json();
-    modal.openModal({
-      title: 'Add Channel',
-      withCloseButton: true,
-      children: (
-        <AddProviderComponent invite={!!invite} update={update} {...data} />
-      ),
-    });
-  }, []);
-};
 export const AddProviderButton: FC<{
   update?: () => void;
 }> = (props) => {
@@ -535,7 +524,7 @@ const InviteLinkStep: FC<{
         <div className="flex h-[42px] items-center gap-[10px] rounded-[10px] bg-pqBg pe-[6px] ps-[14px] shadow-[inset_0_0_0_1px_var(--border)]">
           <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-pqMuted">
             {loading
-              ? t('loading', 'Loading…')
+              ? t('loading', 'Loading...')
               : url ||
                 t('invite_link_unavailable', 'Link unavailable')}
           </span>

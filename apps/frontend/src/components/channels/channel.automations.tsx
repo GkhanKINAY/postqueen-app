@@ -12,6 +12,7 @@ import {
 } from '@gitroom/frontend/components/plugs/plugs.context';
 import { PlugPop } from '@gitroom/frontend/components/plugs/plug';
 import { Slider } from '@gitroom/react/form/slider';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import clsx from 'clsx';
 
 /**
@@ -32,8 +33,14 @@ const ChannelPlugRow: FC<{
     organizationId: string;
     plugFunction: string;
   };
+  /**
+   * The row's `data` is picked out of the parent's list, so an absent row and a
+   * list that has not arrived look identical from here. Without this the row
+   * reports a live plug as "Off / Set up plug" on every open.
+   */
+  loading: boolean;
   mutate: () => void;
-}> = ({ plug, providerId, identifier, name, data, mutate }) => {
+}> = ({ plug, providerId, identifier, name, data, loading, mutate }) => {
   const t = useT();
   const fetch = useFetch();
   const modals = useModals();
@@ -92,15 +99,20 @@ const ChannelPlugRow: FC<{
         <span className="min-w-0 flex-1 truncate text-[13.5px] font-[600] text-pqText">
           {plug.title}
         </span>
-        <span
-          className={clsx(
-            'grid h-[20px] shrink-0 place-items-center rounded-full px-[8px] text-[11px] font-[600]',
-            isOn ? 'bg-pqOkSoft text-pqOk' : 'bg-pqSettings text-pqMuted'
-          )}
-        >
-          {isOn ? t('active', 'Active') : t('off', 'Off')}
-        </span>
-        {!!data && (
+        {loading ? (
+          <Skeleton className="h-[20px] w-[52px] shrink-0 rounded-full" />
+        ) : (
+          <span
+            className={clsx(
+              'grid h-[20px] shrink-0 place-items-center rounded-full px-[8px] text-[11px] font-[600]',
+              isOn ? 'bg-pqOkSoft text-pqOk' : 'bg-pqSettings text-pqMuted'
+            )}
+          >
+            {isOn ? t('active', 'Active') : t('off', 'Off')}
+          </span>
+        )}
+        {loading && <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />}
+        {!loading && !!data && (
           <div onClick={(e) => e.stopPropagation()}>
             <Slider
               value={activated ? 'on' : 'off'}
@@ -113,20 +125,22 @@ const ChannelPlugRow: FC<{
       <div className="text-[12.5px] leading-[1.55] text-pqMuted">
         {plug.description}
       </div>
-      <button
-        type="button"
-        onClick={openEdit}
-        className={clsx(
-          'h-[30px] self-start rounded-pqSm px-[12px] text-[12.5px] font-[600]',
-          data
-            ? 'bg-pqBtnSimple text-pqText hover:bg-pqHover'
-            : 'bg-pqBrand text-pqOnBrand'
-        )}
-      >
-        {data
-          ? t('edit', 'Edit')
-          : t('set_up_plug', 'Set up plug')}
-      </button>
+      {loading ? (
+        <Skeleton className="h-[30px] w-[104px] self-start rounded-pqSm" />
+      ) : (
+        <button
+          type="button"
+          onClick={openEdit}
+          className={clsx(
+            'h-[30px] self-start rounded-pqSm px-[12px] text-[12.5px] font-[600]',
+            data
+              ? 'bg-pqBtnSimple text-pqText hover:bg-pqHover'
+              : 'bg-pqBrand text-pqOnBrand'
+          )}
+        >
+          {data ? t('edit', 'Edit') : t('set_up_plug', 'Set up plug')}
+        </button>
+      )}
     </div>
   );
 };
@@ -155,10 +169,11 @@ export const ChannelAutomations: FC<{ integration: any }> = ({
     return (await fetch(`/integrations/${integration.id}/plugs`)).json();
   }, [fetch, integration.id]);
 
-  const { data: active, mutate } = useSWR(
-    match ? `plugs-${integration.id}` : null,
-    loadActive
-  );
+  const {
+    data: active,
+    isLoading: activeLoading,
+    mutate,
+  } = useSWR(match ? `plugs-${integration.id}` : null, loadActive);
 
   if (!match?.plugs?.length) {
     return null;
@@ -196,6 +211,7 @@ export const ChannelAutomations: FC<{ integration: any }> = ({
               data={active?.find(
                 (a: any) => a.plugFunction === plug.methodName
               )}
+              loading={activeLoading}
               mutate={mutate}
             />
           ))}

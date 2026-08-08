@@ -45,6 +45,8 @@ export const StatisticsModal: FC<{
       revalidateOnMount: true,
       refreshWhenHidden: false,
       refreshWhenOffline: false,
+      // `dateRange` is in the key, so the 7/30/90 picker makes a new key.
+      keepPreviousData: true,
     }
   );
 
@@ -71,7 +73,12 @@ export const StatisticsModal: FC<{
     });
   }, [analyticsData]);
 
-  const isLoading = isLoadingStatistics || isLoadingAnalytics;
+  // Only the first paint blocks. Changing the range re-keys the analytics
+  // query, and a combined flag would blank the statistics half too — whose own
+  // key never changed.
+  const isLoading =
+    (isLoadingStatistics && !statisticsData) ||
+    (isLoadingAnalytics && !analyticsData);
 
   return (
     <div className="relative min-h-[200px]">

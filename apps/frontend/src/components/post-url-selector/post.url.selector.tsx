@@ -114,8 +114,12 @@ export const PostSelector: FC<{
 
   return (
     <>
-      {!noModal ||
-        (data?.length > 0 && (
+      {/* Precedence bug: `{!noModal || (data?.length > 0 && <div/>)}`. No caller
+          passes `noModal`, so `!noModal` was always true, the `||`
+          short-circuited, and the expression evaluated to the boolean `true` —
+          which React renders as nothing. The whole modal was unreachable, and
+          `canonical.tsx` was left awaiting a promise that could never settle. */}
+      {(!noModal || data?.length > 0) && (
           <div
             className={
               !noModal
@@ -162,6 +166,14 @@ export const PostSelector: FC<{
                   </button>
                 </div>
               )}
+              {!noModal && !!data && data.length === 0 && (
+                <div className="mt-[10px] text-[14px] text-textColor/70">
+                  {t(
+                    'no_earlier_posts_to_link',
+                    'You have no earlier published posts to link to yet.'
+                  )}
+                </div>
+              )}
               {!!data && data.length > 0 && (
                 <div className="mt-[10px]">
                   <div className="flex flex-row flex-wrap gap-[10px]">
@@ -203,7 +215,7 @@ export const PostSelector: FC<{
               )}
             </div>
           </div>
-        ))}
+        )}
     </>
   );
 };

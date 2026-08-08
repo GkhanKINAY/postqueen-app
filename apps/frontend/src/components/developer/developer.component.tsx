@@ -8,8 +8,20 @@ import { useDecisionModal, useModals } from '@gitroom/frontend/components/layout
 import { MediaBox } from '@gitroom/frontend/components/media/media.component';
 import copy from 'copy-to-clipboard';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 
-const useOAuthApp = () => {
+/**
+ * `enabled: false` means no request at all, not a request we ignore.
+ *
+ * Every method on `/user/oauth-app` is ADMIN-guarded, and a 402 from here does
+ * not fail quietly: the global handler turns it into a "Payment Required → Move
+ * to billing" dialog, which tells a member to pay for what is actually a role.
+ * Worse, the 402 body is valid JSON, so `data` came back truthy-but-empty and
+ * the editor below rendered a phantom app with blank fields. Not asking is the
+ * fix for both — the same shape `billing.component.tsx` uses for its two
+ * admin-only endpoints.
+ */
+const useOAuthApp = (enabled: boolean) => {
   const fetch = useFetch();
   const load = useCallback(async () => {
     const res = await fetch('/user/oauth-app');
@@ -19,7 +31,7 @@ const useOAuthApp = () => {
     }
     return JSON.parse(text);
   }, []);
-  return useSWR('oauth-app', load, {
+  return useSWR(enabled ? 'oauth-app' : null, load, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -67,7 +79,9 @@ export const DeveloperComponent: FC = () => {
   const decision = useDecisionModal();
   const modals = useModals();
   const t = useT();
-  const { data: app, mutate } = useOAuthApp();
+  const user = useUser();
+  const isOrgAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
+  const { data: app, mutate } = useOAuthApp(isOrgAdmin);
   const [plaintextSecret, setPlaintextSecret] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -208,6 +222,40 @@ export const DeveloperComponent: FC = () => {
       toaster.show('Failed to delete app', 'warning');
     }
   }, [decision]);
+
+  // Same shape as `billing.component.tsx` — a member reached this pane on
+  // purpose and deserves a reason, not an empty box.
+  if (!isOrgAdmin) {
+    return (
+      <div className="mt-[4px] flex items-center justify-center rounded-[14px] bg-pqPop p-[44px_24px] shadow-[inset_0_0_0_1px_var(--border)]">
+        <div className="flex max-w-[440px] flex-col items-center gap-[14px] text-center">
+          <span className="grid size-[56px] place-items-center rounded-full bg-pqSettings text-pqSoft">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+              <path
+                d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <h3 className="m-0 font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText">
+            {t(
+              'oauth_app_admin_only_title',
+              'OAuth apps are managed by admins'
+            )}
+          </h3>
+          <p className="m-0 text-[13.5px] leading-[1.6] text-pqMuted">
+            {t(
+              'oauth_app_admin_only',
+              'One app belongs to the whole workspace, so only an admin can create or change it. Ask an admin of this workspace.'
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (app === undefined) {
     return null;

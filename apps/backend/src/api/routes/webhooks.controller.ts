@@ -16,6 +16,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import {
   OnlyURL, UpdateDto, WebhooksDto
 } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 @ApiTags('Webhooks')
@@ -42,7 +43,7 @@ export class WebhookController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: UpdateDto
   ) {
-    return this._webhooksService.createWebhook(org.id, body);
+    return this._webhooksService.updateWebhook(org.id, body);
   }
 
   @Delete('/:id')
@@ -57,11 +58,22 @@ export class WebhookController {
   async sendWebhook(@Body() body: any, @Query() query: OnlyURL) {
     // The whole point of this button is to prove the endpoint works, so report
     // what happened. It used to swallow every failure and answer send: true.
+    // Returning the real status makes this useful, but it also makes it a
+    // probe: an authenticated caller picks the URL and reads the result back.
+    // Pin DNS so it cannot be aimed at the private network, and cap it so it
+    // cannot be used to hold a request open. Redirects are followed, matching
+    // real delivery in post.activity — the dispatcher re-checks each hop, and
+    // reporting a 301 as a failure marks working endpoints broken.
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10000);
     try {
       const response = await fetch(query.url, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: { 'Content-Type': 'application/json' },
+        signal: ac.signal,
+        // @ts-ignore — undici option, not in lib.dom fetch types
+        dispatcher: getSsrfSafeDispatcher(),
       });
 
       return {
@@ -73,6 +85,8 @@ export class WebhookController {
         send: false,
         error: (err as Error)?.message || 'Could not reach the URL',
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

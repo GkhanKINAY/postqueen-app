@@ -23,11 +23,13 @@ import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/dat
 import {
   useTour,
   useTourNeeds,
+  useTourStepKey,
 } from '@gitroom/frontend/components/onboarding/tour';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 /**
  * The posts panel — the design's permanent column beside the calendar.
@@ -57,6 +59,7 @@ export const PostsPanel: FC = () => {
   const { mobile } = useViewport();
   const {
     listPosts,
+    listLoading,
     panelListState,
     setPanelListState,
     postsPanelOpen,
@@ -73,10 +76,18 @@ export const PostsPanel: FC = () => {
   // lives in a cookie for a year, and while it was collapsed that step pointed
   // at nothing. Rendering it open for the length of the step is enough; the
   // cookie is never written, so the panel goes back to collapsed by itself.
+  //
+  // On a phone this panel is a drawer with its own full-screen scrim, so
+  // forcing it open for the calendar step would cover the calendar that step is
+  // about. There it opens for its own step only.
+  const tourStepKey = useTourStepKey();
   const tourNeedsPanel = useTourNeeds('posts-panel');
+  const forcePanel = mobile
+    ? tourStepKey === 'posts-panel'
+    : tourNeedsPanel;
 
   useEffect(() => {
-    if (tourNeedsPanel) return;
+    if (forcePanel) return;
     if (mobile && postsPanelOpen && !autoCollapsed.current) {
       autoCollapsed.current = true;
       setPostsPanelOpen(false);
@@ -85,7 +96,7 @@ export const PostsPanel: FC = () => {
     if (!mobile) {
       autoCollapsed.current = false;
     }
-  }, [mobile, postsPanelOpen, setPostsPanelOpen, tourNeedsPanel]);
+  }, [mobile, postsPanelOpen, setPostsPanelOpen, forcePanel]);
 
   const tabs = useMemo(
     () =>
@@ -97,7 +108,7 @@ export const PostsPanel: FC = () => {
     [t]
   );
 
-  const showPanel = postsPanelOpen || tourNeedsPanel;
+  const showPanel = postsPanelOpen || forcePanel;
 
   type PostDragItem = {
     id: string;
@@ -274,7 +285,15 @@ export const PostsPanel: FC = () => {
               'bg-pqBrandSoft shadow-[inset_0_0_0_1px_var(--brand)]'
           )}
         >
-          {!listPosts.length && (
+          {/* An empty list and a list still in flight look identical from here,
+              so the empty state waits — otherwise the panel offers "Add your
+              first channel" to people who already have posts. */}
+          {listLoading &&
+            !listPosts.length &&
+            Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-[76px] w-full rounded-[10px]" />
+            ))}
+          {!listLoading && !listPosts.length && (
             <div
               data-tour="posts-empty"
               className="flex flex-1 flex-col items-center justify-center gap-[10px] px-[16px] py-[32px] text-center"
@@ -305,7 +324,7 @@ export const PostsPanel: FC = () => {
                     onClick={() => startTour()}
                     className="text-[12px] font-[500] text-pqMuted transition-colors hover:text-pqText"
                   >
-                    {t('take_the_tour', 'Take the tour')}
+                    {t('take_a_tour', 'Take a tour')}
                   </button>
                 </div>
               ) : (

@@ -405,8 +405,17 @@ export class NoAuthIntegrationsController {
       false,
       undefined,
       undefined,
-      AuthService.signJWT(
-        JSON.parse(Buffer.from(body.cookies, 'base64').toString())
+      // Encrypt, do not sign. A JWT payload is base64, not encryption, so every
+      // channel that had ever refreshed kept its provider session cookies
+      // readable in `customInstanceDetails` — a DB dump, replica or backup
+      // handed over working credentials. The connect path above (`:240-246`)
+      // already uses `fixedEncryption`; this is the same data.
+      //
+      // Backward compatible: `skool.provider.ts:37-51` tries `fixedDecryption`
+      // first and falls back to `verifyJWT`, so rows written the old way keep
+      // working and nobody has to reconnect.
+      AuthService.fixedEncryption(
+        Buffer.from(body.cookies, 'base64').toString()
       )
     );
 

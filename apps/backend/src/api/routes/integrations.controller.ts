@@ -417,9 +417,14 @@ export class IntegrationsController {
       id
     );
     if (isTherePosts.length) {
-      for (const post of isTherePosts) {
-        this._postService.deletePost(org.id, post.group).catch((err) => {});
-      }
+      // Wait for these. Fired without await, deleteChannel returned first and
+      // the posts were deleted afterwards or not at all — deletePost is also
+      // what terminates their Temporal workflows, so a straggler could still
+      // publish to a channel the user believes is gone.
+      await this._postService.deletePostsByGroups(
+        org.id,
+        isTherePosts.map((post) => post.group)
+      );
     }
 
     return this._integrationService.deleteChannel(org.id, id);

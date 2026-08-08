@@ -31,6 +31,15 @@ export class ThirdPartyManager {
       Reflect.getMetadata('third:party', ThirdPartyAbstract) || []
     ).find((p: any) => p.identifier === identifier);
 
+    // An unknown identifier used to spread `undefined` and then read
+    // `thirdParty.target` off it — a bare TypeError, so every downstream
+    // `if (!thirdParty) throw new HttpException('Invalid identifier', 400)`
+    // was dead code and the caller got a 500 instead. Same fix as
+    // `video.manager.ts:getVideoByName`.
+    if (!thirdParty) {
+      return undefined;
+    }
+
     return { ...thirdParty, instance: this._moduleRef.get(thirdParty.target) };
   }
 

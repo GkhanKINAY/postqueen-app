@@ -11,6 +11,7 @@ import clsx from 'clsx';
 import useCookie from 'react-use-cookie';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { HeaderActionSlot } from '@gitroom/frontend/components/new-layout/header-slot';
+import { NewPost } from '@gitroom/frontend/components/launches/new.post';
 
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -23,6 +24,7 @@ import { ShowLinkedinCompany } from '@gitroom/frontend/components/launches/helpe
 import { MediaSettingsLayout } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { Toaster } from '@gitroom/react/toaster/toaster';
 import { NotificationsLiveBridge } from '@gitroom/frontend/components/notifications/live.bridge';
+import { NetworkErrorBridge } from '@gitroom/frontend/components/layout/network-error.bridge';
 import { ShowPostSelector } from '@gitroom/frontend/components/post-url-selector/post.url.selector';
 import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscription';
 import { Support } from '@gitroom/frontend/components/layout/support';
@@ -50,22 +52,23 @@ import {
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Tour, useTourStepKey } from '@gitroom/frontend/components/onboarding/tour';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 /** Quiet hairline between header action strip and identity. Spacing comes from the parent gap. */
 const HeaderDivider = () => (
   <div className="h-[20px] w-[1px] shrink-0 bg-pqLine" aria-hidden="true" />
 );
 
-const Bone = ({ className }: { className?: string }) => (
-  <div
-    className={clsx('animate-pulse rounded-[8px] bg-pqHover', className)}
-    aria-hidden
-  />
-);
-
 /**
  * Chrome placeholder while `/user/self` resolves — rail + header + a
- * calendar-shaped content ghost so cold load does not flash an empty pane.
+ * deliberately shape-agnostic content ghost, so cold load neither flashes an
+ * empty pane nor promises a layout.
+ *
+ * It used to draw a posts panel and a 7×28 month grid. That is wrong on every
+ * route that is not the calendar, and wrong on the calendar too now that home
+ * opens on the week view — the pane it ghosted was never the pane that
+ * arrived. The chrome does not know the route's shape at this point, so it
+ * does not claim one.
  */
 const LayoutSkeleton = () => (
   <div
@@ -79,20 +82,20 @@ const LayoutSkeleton = () => (
         <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
           <CrownGlyph className="size-[18px] text-white" />
         </span>
-        <Bone className="h-[14px] w-[88px]" />
+        <Skeleton className="h-[14px] w-[88px]" />
       </div>
-      <Bone className="h-[14px] w-[96px]" />
+      <Skeleton className="h-[14px] w-[96px]" />
       <div className="flex-1" />
-      <Bone className="h-[26px] w-[72px] rounded-[8px]" />
-      <Bone className="size-[30px] rounded-[8px]" />
-      <Bone className="size-[30px] rounded-[8px]" />
-      <Bone className="size-[30px] rounded-full" />
+      <Skeleton className="h-[26px] w-[72px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-full" />
     </div>
 
     <div className="flex min-h-0 flex-1">
       <div className="flex w-[236px] shrink-0 flex-col border-e border-pqRailLine bg-pqRail">
         <div className="flex flex-col gap-[8px] border-b border-pqRailLine p-[10px_8px]">
-          <Bone className="h-[36px] w-full rounded-[10px]" />
+          <Skeleton className="h-[36px] w-full rounded-[10px]" />
         </div>
         <div className="flex flex-col gap-[2px] p-[8px]">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -100,8 +103,8 @@ const LayoutSkeleton = () => (
               key={i}
               className="flex h-[34px] items-center gap-[10px] rounded-pqSm px-[8px]"
             >
-              <Bone className="size-[18px] shrink-0 rounded-[5px]" />
-              <Bone
+              <Skeleton className="size-[18px] shrink-0 rounded-[5px]" />
+              <Skeleton
                 className={clsx(
                   'h-[12px]',
                   i === 0 ? 'w-[72%]' : i % 2 === 0 ? 'w-[58%]' : 'w-[64%]'
@@ -111,68 +114,21 @@ const LayoutSkeleton = () => (
           ))}
         </div>
         <div className="mt-auto flex flex-col gap-[8px] border-t border-pqRailLine p-[10px_8px]">
-          <Bone className="h-[40px] w-full rounded-[10px]" />
+          <Skeleton className="h-[40px] w-full rounded-[10px]" />
         </div>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 gap-[1px] bg-pqLine">
-        {/* Posts panel ghost */}
-        <div className="flex w-[280px] shrink-0 flex-col gap-[10px] bg-pqInner p-[14px_12px]">
-          <div className="flex items-center justify-between gap-[8px]">
-            <Bone className="h-[14px] w-[56px]" />
-            <Bone className="h-[26px] w-[88px] rounded-[7px]" />
-          </div>
-          <Bone className="h-[28px] w-full rounded-[8px]" />
-          <div className="mt-[4px] flex flex-col gap-[8px]">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex flex-col gap-[8px] rounded-[10px] bg-pqSettings p-[10px]"
-              >
-                <div className="flex items-center gap-[8px]">
-                  <Bone className="size-[22px] rounded-full" />
-                  <Bone className="h-[11px] w-[40%]" />
-                  <Bone className="ms-auto h-[11px] w-[28px]" />
-                </div>
-                <Bone className="h-[10px] w-[92%]" />
-                <Bone className="h-[10px] w-[68%]" />
-              </div>
-            ))}
-          </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[14px] bg-pqInner p-[16px_18px]">
+        <div className="flex items-center gap-[8px]">
+          <Skeleton className="h-[32px] w-[120px] rounded-[9px]" />
+          <Skeleton className="h-[32px] w-[88px] rounded-[9px]" />
+          <div className="flex-1" />
+          <Skeleton className="h-[32px] w-[110px] rounded-[9px]" />
         </div>
-
-        {/* Calendar / page ghost */}
-        <div className="flex min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[16px_18px]">
-          <div className="flex items-center gap-[8px]">
-            <Bone className="h-[32px] w-[120px] rounded-[9px]" />
-            <Bone className="h-[32px] w-[88px] rounded-[9px]" />
-            <div className="flex-1" />
-            <Bone className="h-[32px] w-[110px] rounded-[9px]" />
-          </div>
-          <div className="grid grid-cols-7 gap-[1px] overflow-hidden rounded-[12px] bg-pqLine">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div
-                key={`h-${i}`}
-                className="bg-pqInner px-[10px] py-[10px]"
-              >
-                <Bone className="h-[10px] w-[42%]" />
-              </div>
-            ))}
-            {Array.from({ length: 28 }).map((_, i) => (
-              <div
-                key={`c-${i}`}
-                className="flex min-h-[72px] flex-col gap-[6px] bg-pqInner p-[8px]"
-              >
-                <Bone className="h-[9px] w-[22%]" />
-                {i % 3 !== 0 && (
-                  <Bone className="mt-[4px] h-[28px] w-full rounded-[7px]" />
-                )}
-                {i % 5 === 0 && (
-                  <Bone className="h-[28px] w-[85%] rounded-[7px]" />
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[10px]">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-[64px] w-full rounded-[12px]" />
+          ))}
         </div>
       </div>
     </div>
@@ -243,12 +199,15 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
 
   // Tour steps that spotlight rail targets need the mobile drawer open —
   // otherwise `connect-pq` / `nav-channels` measure nothing off-screen.
+  //
+  // It follows the step rather than only opening: the drawer used to be opened
+  // and never closed, so it stayed over `/channels` for the last step and was
+  // still there after Finish. `useTourStepKey()` is null when the tour is not
+  // running, which is what closes it on the way out.
   const tourStep = useTourStepKey();
   useEffect(() => {
     if (!mobile) return;
-    if (tourStep === 'connect-pq' || tourStep === 'nav-channels') {
-      setDrawer(true);
-    }
+    setDrawer(tourStep === 'connect-pq' || tourStep === 'nav-channels');
   }, [mobile, tourStep]);
 
   // Lifetime / founding only — not ordinary trials (matches rail isFoundingRail).
@@ -316,8 +275,12 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
           </span>
         )}
 
-        {/* End cluster: Create Post → tools → identity. One hairline only. */}
+        {/* End cluster: Create Post → tools → identity. One hairline only.
+            Create Post is chrome, not a page action: it is the app's primary
+            verb and has to be reachable from every route, including before any
+            channel exists. The slot after it stays for page-level actions. */}
         <div className="flex shrink-0 items-center gap-[10px]">
+          <NewPost />
           <HeaderActionSlot />
           <div className="flex items-center gap-[4px] text-pqMuted">
             <StreakComponent />
@@ -386,6 +349,7 @@ const LayoutBody = ({
     <MantineWrapper>
       <ToolTip />
       <Toaster />
+      <NetworkErrorBridge />
       <NotificationsLiveBridge />
       <TrialTracker />
       <CheckPayment

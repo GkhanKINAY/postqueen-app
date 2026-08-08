@@ -9,26 +9,7 @@ import {
   useState,
 } from 'react';
 import { clsx } from 'clsx';
-const ReactLoading = ({ color = 'currentColor', width = 20, height = 20 }: { type?: string; color?: string; width?: number; height?: number }) => {
-  const size = Math.min(width, height);
-  const borderWidth = Math.max(2, Math.round(size / 8));
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        // Longhands only — mixing `border` shorthand with `borderTopColor`
-        // triggers React's "Updating a style property during rerender" overlay.
-        borderWidth,
-        borderStyle: 'solid',
-        borderColor: 'transparent',
-        borderTopColor: color,
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }}
-    />
-  );
-};
+import { Spinner } from '../ui/spinner';
 export const Button: FC<
   DetailedHTMLProps<
     ButtonHTMLAttributes<HTMLButtonElement>,
@@ -96,11 +77,7 @@ export const Button: FC<
     >
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <ReactLoading
-            type="spin"
-            width={height! / 2}
-            height={height! / 2}
-          />
+          <Spinner width={height! / 2} height={height! / 2} />
         </div>
       )}
       <div
