@@ -27,7 +27,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Slider } from '@gitroom/react/form/slider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { PlugsDetailGhost } from '@gitroom/frontend/components/layout/loading';
 export function convertBackRegex(s: string) {
   const matches = s.match(/\/(.*)\/([a-z]*)/);
@@ -42,7 +42,7 @@ export const TextArea: FC<{
   const form = useFormContext();
   const { onChange, onBlur, ...all } = form.register(props.name);
   const value = form.watch(props.name);
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
   const fieldClass = clsx(
     '!min-h-40 !max-h-80 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-hidden placeholder:text-pqSoft w-full resize-none border-0'
   );
@@ -50,7 +50,7 @@ export const TextArea: FC<{
     <>
       <textarea className="hidden" {...all}></textarea>
       <div className="overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
-        {aiEnabled ? (
+        {aiOk ? (
           <CopilotTextarea
             disableBranding={true}
             placeholder={props.placeHolder}

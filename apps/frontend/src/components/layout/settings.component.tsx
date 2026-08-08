@@ -291,10 +291,11 @@ export const SettingsPopup: FC<{
         icon: 'signatures',
       });
     }
-    // Auto Post stays in More for every paid tier (rail deep-link + Settings).
-    // Was hidden via `tier.autoPost` (false on CREATOR) — owner wants the row
-    // visible like Sets/Signatures; API create uses existing WEBHOOKS policy.
-    if (user?.tier.current !== 'FREE') {
+    // Reads the pricing flag rather than testing for FREE, because the backend
+    // policy now reads the same flag. Creator was given the capability so the
+    // row stays in More for every paid tier, which is what the owner asked for
+    // on 2026-08-08 when this condition was widened.
+    if (user?.tier?.autoPost) {
       arr.push({
         tab: 'autopost',
         label: t('auto_post', 'Auto Post'),
@@ -637,7 +638,7 @@ export const SettingsPopup: FC<{
                 </div>
               )}
 
-              {tab === 'autopost' && user?.tier.current !== 'FREE' && (
+              {tab === 'autopost' && !!user?.tier?.autoPost && (
                 <div>
                   <Autopost />
                 </div>

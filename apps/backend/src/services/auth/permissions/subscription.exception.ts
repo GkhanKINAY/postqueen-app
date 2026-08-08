@@ -62,5 +62,17 @@ const getErrorMessage = (error: {
         default:
           return 'Your subscription does not include team members. Please upgrade your subscription to invite your team.';
       }
+    case Sections.AUTOPOST:
+      switch (error.action) {
+        default:
+          return 'Your subscription does not include Auto Post. Please upgrade your subscription to post from a feed automatically.';
+      }
+    // Reached once /copilot/chat started carrying a policy. Every other AI
+    // route already threw this section and landed on the blank dialog.
+    case Sections.AI:
+      switch (error.action) {
+        default:
+          return 'Your subscription does not include AI features. Please upgrade your subscription to use them.';
+      }
   }
 };

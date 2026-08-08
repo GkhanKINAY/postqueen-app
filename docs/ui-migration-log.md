@@ -79,8 +79,8 @@ states*.
   `stars_per_day`, `repository`, `processing_stars`, and so on). They are still
   present in the fifteen locale JSONs; only the call sites are gone.
 
-`gates.txt` moved on two lines, and a gate count falling is exactly what that check
-exists to question, so both reasons are here:
+`gates.txt` moved on five lines, and a gate count falling is exactly what that check
+exists to question, so every reason is here:
 
 - **`tier.public_api` 4 → 0.** The `/connections` route no longer gates on
   `public_api && isGeneral && org admin`. That condition was inherited from the page
@@ -98,10 +98,86 @@ exists to question, so both reasons are here:
   webhook allowance a second time to enforce the limit before the create call rather
   than only when painting the quota line.
 
+The last three moved with the deferred-items pass below, all in the same direction —
+a pricing flag that nothing read becoming the thing that decides:
+
+- **`tier.autoPost` 1 → 2, `tier.current` 18 → 16.** The one occurrence in the
+  baseline was never a gate: it was the word `tier.autoPost` inside the comment above
+  `settings.component.tsx`'s Auto Post row, which `collect_gates` counts because it
+  reads comments on purpose. The two real call sites replace
+  `tier.current !== 'FREE'` on the nav row and the tab body. That comment has been
+  rewritten to stop naming the flag beside the code that uses it, which is the rule
+  the collector asks for in its own header.
+- **`tier.ai` 7 → 8.** One site, `useAiAvailable` in `layout/user.context.tsx`. Every
+  `<CopilotKit>` mount and every Copilot consumer now reads that one answer instead of
+  the bare `aiEnabled` env flag, so the provider and the components underneath it
+  cannot disagree about whether Copilot is available.
+- **`billingEnabled` 30 → 37.** Not seven new gates: it is the same rule written once,
+  and the identifier appears seven times across `aiAvailable`'s signature and body,
+  `useAiAvailable`, and the two provider call sites that pass it in.
+
+## Deferred-items pass
+
+The four items the launch-closing pass listed as *bilerek yapılmayacaklar*. Three are
+here; **ESLint 8→9 is not** — it was landed separately because it moves `pnpm-lock.yaml`.
+
+**The throttler answered 500 to anyone who asked.** `ThrottlerBehindProxyGuard` chose
+routes with `url.includes(...)`, and Express `req.url` carries the query string, so
+`POST /auth/login?x=/public/v1/posts` entered the throttler. That route has no
+`AuthMiddleware`, `getTracker` read `.id` off an undefined `req.org`, and the answer was
+a 500 — unauthenticated, repeatable, on any POST route. Matching moved to `req.path`
+with `startsWith`, and the tracker falls back to the socket address when there is no
+org. `permissions.guard.ts` had the identical `indexOf` bug and was fixed in the pass
+above; this is the same fix in the other guard.
+
+Second one on the same path: `ThrottlerStorageRedisService` calls `redis.call('eval')`,
+and without `REDIS_URL` `ioRedis` is the `MockRedis` in `redis.service.ts`, which
+implements `get`/`set`/`del` and nothing else. Every upload and every public-API post
+threw on an install that had not set one. The storage is now only passed when there is
+a real Redis; `@nestjs/throttler` falls back to its own per-process store, the same
+trade `AbuseGuardService` already makes. **The set of throttled routes did not change**,
+so nobody who works today starts seeing 429.
+
+**Auto Post was gated by the webhook quota.** `POST /autopost` carried
+`Sections.WEBHOOKS`, inherited from upstream, which counts webhook rows. It was wrong in
+both directions: an org that had used its webhook allowance could not create an autopost
+for an unrelated reason, and the `autoPost` pricing flag was read nowhere, so a tier
+marked `false` had the feature anyway. There is now a real `Sections.AUTOPOST` on create
+and update. Creator was given `autoPost: true` (owner, 2026-08-08) so the new gate takes
+nothing from anyone paying today; retired STANDARD matches. `POST /:id/active` is
+deliberately still open — switching a rule *off* must not require a subscription.
+
+**`/copilot/chat` was the one AI route with no policy**, so a FREE org got a working
+OpenAI runtime on our bill while `/copilot/agent`, `/copilot/list` and
+`/copilot/:thread/list` all answered 402. Adding the policy alone was what the earlier
+pass deferred, and rightly: CopilotKit speaks GraphQL through its own urql client, which
+never reaches the `customFetch` wrapper that turns a 402 into the Payment Required
+dialog, so the 402 surfaces as an unhandled `CombinedError`. The policy therefore lands
+together with a tier condition on all three `<CopilotKit>` mounts and all six consumers,
+through the single `useAiAvailable`. This also closes a live bug: `/copilot/agent`
+always carried the policy, so on a billing-enabled install a FREE user opening `/agents`
+already hit that error. `subscription.exception.ts` gained `AUTOPOST` and `AI` cases —
+its `switch` has no `default`, so a section without one renders a blank dialog, which is
+the bug the `ADMIN` case was added for.
+
 ## Known follow-ups
 
 Real, unforced, and deliberately left out of the pass above:
 
+- **A downgrade to FREE leaves autopost rows saying `active: true`.**
+  `integration.service.ts`'s `changeActiveCron` terminates the Temporal workflows but
+  never writes the column, so an org that lapses and re-subscribes sees its rules
+  marked On with nothing running behind them. `AutopostService.stopAll` was written
+  for exactly this and has never had a caller. Predates the autoPost gate and is
+  unchanged by it.
+- **`POST /autopost/:id/active` carries no policy.** Left open on purpose so that
+  switching a rule off never needs a subscription, which leaves switching one *on*
+  open too. Narrow today — it needs a rule that only a paid tier could have created,
+  and a lapsed org cannot reach Settings — but it is the one autopost route a tier
+  cannot refuse.
+- **`Sections.VIDEOS_PER_MONTH` has no branch in `permissions.service.ts`.** `check()`
+  is deny-by-default, so any route that names that section is refused outright. No
+  route names it today.
 - **Cold load of the calendar is two waves, not one.** `/integrations/list` and the
   `/posts` wave now overlap; `/user/self` still gates everything
   (`new-layout/layout.component.tsx`, `if (!user) return <LayoutSkeleton />`).
@@ -119,6 +195,94 @@ Real, unforced, and deliberately left out of the pass above:
 - The `loops` collector has three documented blind spots — two looping utilities on
   one element, `className` expressions containing `>`, and brace nesting deeper than
   two levels. All latent; see the comment above `collect_loops`.
+
+## Before the next release
+
+Everything above this line is merged to `main` but **not released** — production is on
+`v3.2.0`, which predates all of it. These are the things that have to be handled by
+whoever cuts the next version. None of them is a code change; they are all rollout
+order and environment.
+
+**1. `Post_releaseId_idx` takes a write lock on the busiest table.**
+`migrations/20260808200000_post_release_id_index/migration.sql` runs a plain
+`CREATE INDEX` on `Post`. The comment in the file explains correctly why
+`CONCURRENTLY` was not used — Prisma wraps a migration in a transaction and
+`CONCURRENTLY` cannot run inside one — but that does not make the lock cheap: every
+INSERT/UPDATE/DELETE on `Post` blocks for the length of the build. Run it by hand in a
+quiet window first:
+
+```sql
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "Post_releaseId_idx" ON "Post"("releaseId");
+```
+
+Then the deploy-time creation is a no-op. This applies on **both** schema paths — on the
+default `db push` path Prisma emits the same non-concurrent statement from
+`schema.prisma:449`.
+
+**2. Confirm which schema path production actually uses.** `prisma-apply` runs
+`db push --accept-data-loss` unless `PRISMA_MIGRATE` is truthy, in which case it runs
+`migrate deploy`. If the answer is `migrate deploy`, check first:
+
+```sql
+SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at;
+```
+
+There is no `migration_lock.toml` under `migrations/`, and until this pass `0_init` was
+the only migration in the tree — both of which point at a database that was built with
+`db push`. If `_prisma_migrations` does not contain `0_init`, `migrate deploy` will try
+to replay 1,344 lines of `CREATE TABLE` against a populated database and fail on the
+first `already exists`. `prisma migrate resolve --applied 0_init` is the fix, and it is
+not something to discover mid-deploy.
+
+**3. Deploy order — orchestrator first, then backend and frontend together.**
+
+- *Orchestrator before backend.* `autopost.service.ts` now starts `autoPostWorkflowV2`
+  with `TERMINATE_EXISTING`. If the backend goes first, the next time anyone saves or
+  toggles a rule, that rule's running v1 execution is terminated and replaced with a
+  workflow type the old worker has never heard of; the workflow task then fails and
+  retries forever. It recovers on its own once the orchestrator ships, and only rules a
+  user actually touches are affected — but the terminated v1 history does not come back.
+  `autoPostWorkflow` (v1) is still exported from `workflows/index.ts` purely so existing
+  executions can replay; do not remove it.
+- *Backend and frontend together, in both directions.* Backend-first gives every FREE
+  org an unhandled CopilotKit error, because `/copilot/chat` starts answering 402 and
+  CopilotKit's urql client never reaches the wrapper that turns a 402 into the Payment
+  Required dialog. Frontend-first is fine for Copilot but breaks the posting-times
+  table, whose empty-list rejection (`@ArrayNotEmpty`) needs the new frontend to avoid
+  reporting a false success. Simultaneous is the only clean answer.
+- If production runs the single `Dockerfile.dev` image, `pnpm run --parallel pm2` starts
+  backend and orchestrator from one artifact and the ordering question does not arise.
+  It only matters if they are separate deployables.
+
+**4. Environment, checked before the deploy rather than after.**
+
+- **`REDIS_URL`** must be set. The throttler now only uses Redis storage when it is,
+  and falls back to a per-process counter otherwise — with N backend instances the
+  effective limit becomes N × `API_LIMIT`.
+- **`SUPPORT_EMAIL`** defaults to `support@postqueen.ai`. Help → Contact support and
+  Help → Report a bug always render, so if this is unset your users' bug reports come
+  to us.
+- **`TRANSLOADIT_TEMPLATE`** is read by all three frontend layouts and appears nowhere
+  in `.env.example`. If Transloadit uploads are meant to work, it has to be set, and
+  the example file should gain it.
+- The video providers evaluate their keys **at import time** (`veo3.ts`,
+  `images.slides.ts`), so adding `KIEAI_API_KEY` or the Image-Text-Slides set needs a
+  backend restart, not a config reload. Image Text Slides is all-or-nothing across
+  `ELEVENSLABS_API_KEY` + `TRANSLOADIT_AUTH` + `TRANSLOADIT_SECRET` + `OPENAI_API_KEY` +
+  `FAL_KEY`.
+
+**5. Tell webhook customers their payload changed.** `getPostByForWebhookId` now matches
+on organization + integration + `releaseId`, so deliveries that used to arrive with an
+empty array now carry real post data. Receivers written against the empty array may
+choke on it.
+
+**6. CI still does not run.** Every Actions run in this repository's history is a
+`workflow_dispatch`; `event=push` and `event=pull_request` are both zero, and merging
+PR #19 into `main` produced no run either. The `Build` workflow — which is what would
+execute `scripts/ui-migration-check.sh` — has never once executed. The repository is a
+fork, and forks need the button on the Actions tab before automatic triggers fire.
+Until somebody presses it, **local verification is the only gate**, and the CI step
+added to `build.yml` is documentation rather than enforcement.
 
 ## Self-hosting
 

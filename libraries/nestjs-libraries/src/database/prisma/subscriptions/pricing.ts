@@ -71,7 +71,11 @@ export const pricing: PricingInterface = {
     image_generator: false,
     public_api: true,
     webhooks: 2,
-    autoPost: false,
+    // Every paid tier has Auto Post (owner, 2026-08-08). It read false here
+    // while nothing on the backend consulted the flag, so Creator had the
+    // feature anyway; the gate that now exists would have taken it away from
+    // customers using it today. Same reason on retired STANDARD below.
+    autoPost: true,
     generate_videos: 3,
   },
   GROWTH: {
@@ -160,7 +164,7 @@ export const pricing: PricingInterface = {
     image_generator: false,
     public_api: true,
     webhooks: 2,
-    autoPost: false,
+    autoPost: true,
     generate_videos: 3,
   },
   TEAM: {

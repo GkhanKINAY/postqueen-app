@@ -26,7 +26,7 @@ import { Slider } from '@gitroom/react/form/slider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useRouter } from 'next/navigation';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 export const Autopost: FC = () => {
   const fetch = useFetch();
@@ -468,7 +468,7 @@ export const AddOrEditWebhook: FC<{
   const { data, reload, onCancel } = props;
   const fetch = useFetch();
   const t = useT();
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
   const options = getOptions(t);
   const optionsChoose = getOptionsChoose(t);
   const postImmediately = getPostImmediately(t);
@@ -888,7 +888,7 @@ export const AddOrEditWebhook: FC<{
                     {t('post_content', 'Post content')}
                   </div>
                   <div className="overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
-                    {aiEnabled ? (
+                    {aiOk ? (
                       <CopilotTextarea
                         disableBranding={true}
                         className={clsx(

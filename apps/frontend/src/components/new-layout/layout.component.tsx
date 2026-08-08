@@ -29,7 +29,10 @@ import { ShowPostSelector } from '@gitroom/frontend/components/post-url-selector
 import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscription';
 import { Support } from '@gitroom/frontend/components/layout/support';
 import { ContinueProvider } from '@gitroom/frontend/components/layout/continue.provider';
-import { ContextWrapper } from '@gitroom/frontend/components/layout/user.context';
+import {
+  aiAvailable,
+  ContextWrapper,
+} from '@gitroom/frontend/components/layout/user.context';
 import { CopilotKit } from '@copilotkit/react-core';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { Impersonate } from '@gitroom/frontend/components/layout/impersonate';
@@ -342,9 +345,14 @@ const LayoutBody = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Without OPENAI_API_KEY the backend returns plain 503 JSON from /copilot/chat;
-  // CopilotKit treats that as a Network CombinedError and Next overlays it on
-  // every page. Skip the provider when AI is not configured.
+  // Two ways /copilot/chat refuses: no OPENAI_API_KEY is a plain 503, and a
+  // tier without AI is now a 402. CopilotKit reads either as a Network
+  // CombinedError and Next overlays it on every page, so skip the provider
+  // unless this account can actually use the route. Every consumer of the
+  // provider reads the same answer through useAiAvailable, which is what keeps
+  // a Copilot hook from mounting with nothing above it.
+  const aiOk = aiAvailable(user, aiEnabled, billingEnabled);
+
   const chrome = (
     <MantineWrapper>
       <ToolTip />
@@ -398,7 +406,7 @@ const LayoutBody = ({
   return (
     <ContextWrapper user={user}>
       <ViewportProvider>
-        {aiEnabled ? (
+        {aiOk ? (
           <CopilotKit
             credentials="include"
             runtimeUrl={backendUrl + '/copilot/chat'}

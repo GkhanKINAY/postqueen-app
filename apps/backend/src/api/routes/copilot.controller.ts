@@ -37,7 +37,15 @@ export class CopilotController {
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService
   ) {}
+  // The only route in this controller that carried no policy, so a FREE org
+  // got a working OpenAI runtime and we got the bill. Added together with the
+  // tier condition on the three <CopilotKit> mounts: CopilotKit talks GraphQL
+  // through its own urql client, which does not go through the customFetch
+  // wrapper that turns a 402 into the Payment Required dialog, so a 402 here
+  // surfaces as an unhandled CombinedError. Nobody who cannot pass this should
+  // be mounting the provider in the first place.
   @Post('/chat')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   chatAgent(@Req() req: Request, @Res() res: Response) {
     if (
       process.env.OPENAI_API_KEY === undefined ||

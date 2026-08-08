@@ -33,6 +33,7 @@ import {
   PropertiesContext,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { useParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import {
@@ -66,7 +67,8 @@ const selectableIntegrations = (
     : [];
 
 export const AgentChat: FC = () => {
-  const { backendUrl, aiEnabled } = useVariables();
+  const { backendUrl } = useVariables();
+  const aiOk = useAiAvailable();
   const params = useParams<{ id: string }>();
   const { properties } = useContext(PropertiesContext);
   const t = useT();
@@ -75,10 +77,12 @@ export const AgentChat: FC = () => {
     [properties]
   );
 
-  // Without an OpenAI key, do not mount CopilotKit — that remounts against a
-  // 503 `/copilot/agent` and brings back the Next CombinedError overlay. Show
-  // the same empty chrome as a static shell instead of a blocking takeover.
-  if (!aiEnabled) {
+  // Without an OpenAI key, or on a tier without AI, do not mount CopilotKit —
+  // that remounts against a `/copilot/agent` that answers 503 or 402 and brings
+  // back the Next CombinedError overlay. `/copilot/agent` has always carried
+  // the AI policy, so the tier half of this was already reachable. Show the
+  // same empty chrome as a static shell instead of a blocking takeover.
+  if (!aiOk) {
     return <UnconfiguredAgentShell />;
   }
 

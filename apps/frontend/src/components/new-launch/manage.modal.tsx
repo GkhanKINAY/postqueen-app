@@ -31,7 +31,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { capitalize } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { CopilotPopup } from '@copilotkit/react-ui';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
@@ -53,7 +53,7 @@ import { Spinner } from '@gitroom/react/ui/spinner';
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
   const fetch = useFetch();
-  const { aiEnabled } = useVariables();
+  const aiOk = useAiAvailable();
   const { mobile } = useViewport();
   const ref = useRef(null);
   const existingData = useExistingData();
@@ -879,8 +879,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           </div>
         </div>
       </div>
-      {/* CopilotKit only when AI configured — otherwise show discoverability shell. */}
-      {aiEnabled ? (
+      {/* Only when the provider above is mounted — same answer, same hook —
+          otherwise show the discoverability shell. */}
+      {aiOk ? (
         <CopilotPopup
           hitEscapeToClose={false}
           clickOutsideToClose={true}

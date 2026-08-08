@@ -27,8 +27,13 @@ export class AutopostController {
     return this._autopostsService.getAutoposts(org.id);
   }
 
+  // Was Sections.WEBHOOKS, which counts webhook rows. It got the answer wrong
+  // in both directions: an org that had used up its webhook quota could not
+  // create an autopost for a reason that has nothing to do with autopost, and
+  // an org whose tier said no autopost could create them until it reached two
+  // webhooks. The pricing flag was read nowhere.
   @Post('/')
-  @CheckPolicies([AuthorizationActions.Create, Sections.WEBHOOKS])
+  @CheckPolicies([AuthorizationActions.Create, Sections.AUTOPOST])
   async createAutopost(
     @GetOrgFromRequest() org: Organization,
     @Body() body: AutopostDto
@@ -37,6 +42,7 @@ export class AutopostController {
   }
 
   @Put('/:id')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AUTOPOST])
   async updateAutopost(
     @GetOrgFromRequest() org: Organization,
     @Body() body: AutopostDto,
@@ -53,6 +59,11 @@ export class AutopostController {
     return this._autopostsService.deleteAutopost(org.id, id);
   }
 
+  // Deliberately unguarded. Switching a rule *off* must not require a
+  // subscription, and switching one on needs a rule that already exists —
+  // which, now that every paid tier has autoPost, only a paid tier could have
+  // created. An org that lapsed to FREE has had its running workflows
+  // terminated by changeActiveCron already and cannot reach Settings at all.
   @Post('/:id/active')
   async changeActive(
     @GetOrgFromRequest() org: Organization,

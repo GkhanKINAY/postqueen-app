@@ -1,9 +1,9 @@
 allowTrial 45
-billingEnabled 29
+billingEnabled 36
 isTrailing 18
-tier.ai 7
-tier.autoPost 1
-tier.current 18
+tier.ai 8
+tier.autoPost 2
+tier.current 16
 tier.image_generator 2
 tier.month_price 3
 tier.team_members 2
