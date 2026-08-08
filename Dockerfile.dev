@@ -1,6 +1,9 @@
 FROM node:22.20-bookworm-slim
-ARG NEXT_PUBLIC_VERSION
-ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
+# Must be NEXT_PUBLIC_APP_VERSION, not NEXT_PUBLIC_VERSION. next.config.js bakes
+# the former into the bundle and every reader uses it; nothing has ever read the
+# latter, so the tag arrived here and went nowhere.
+ARG NEXT_PUBLIC_APP_VERSION
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     make \

@@ -50,12 +50,16 @@ jobs:
       - name: Build and Push Image
         env:
           CONTAINERVER: ${{ needs.build-containers-common.outputs.containerver }}
-          NEXT_PUBLIC_VERSION: ${{ github.ref_name }}
+          RAW_REF_NAME: ${{ github.ref_name }}
         run: |
+          # Tags are written `v3.3.0`; the app wants a bare semver, the same
+          # shape package.json gives when this is unset. Without the strip the
+          # logo splits on "." and renders "vv3.3".
+          APP_VERSION="${RAW_REF_NAME#v}"
           docker buildx build --platform linux/${{ matrix.arch }} \
             -f Dockerfile.dev \
             -t ghcr.io/gkhankinay/postqueen-app:${{ env.CONTAINERVER }}-${{ matrix.arch }} \
-            --build-arg NEXT_PUBLIC_VERSION=${{ env.NEXT_PUBLIC_VERSION }} \
+            --build-arg NEXT_PUBLIC_APP_VERSION="$APP_VERSION" \
             --pull \
             --no-cache \
             --provenance=false --sbom=false \
