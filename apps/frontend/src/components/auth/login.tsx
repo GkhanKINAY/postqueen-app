@@ -27,6 +27,9 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [notActivated, setNotActivated] = useState(false);
   const [step, setStep] = useState<AuthStep>('method');
+  // Chosen from the password step, so it only ever matters once `step` is
+  // 'email'. Going back to the method step clears it.
+  const [withCode, setWithCode] = useState(false);
   const { billingEnabled, passwordlessLogin } = useVariables();
   const resolver = useMemo(() => {
     return classValidatorResolver(LoginUserDto);
@@ -45,7 +48,10 @@ export function Login() {
     'sign_in_subtitle',
     'Welcome back. Sign in to get to your calendar.'
   );
-  if (passwordlessLogin) {
+  // The code step replaces the password step rather than sitting inside it:
+  // OtpEmailStep brings its own <form>, and nesting one form in another is
+  // invalid markup whose inner submit never fires. Hence the early return.
+  if (withCode) {
     return (
       <div className="flex-1 flex">
         <AuthShell
@@ -53,9 +59,26 @@ export function Login() {
           subtitle={subtitle}
           step={step}
           onContinueEmail={() => setStep('email')}
-          onBack={() => setStep('method')}
+          onBack={() => {
+            setWithCode(false);
+            setStep('method');
+          }}
           extraProviders={billingEnabled ? <WalletProvider /> : undefined}
-          emailStep={<OtpEmailStep submitLabel={t('sign_in_1', 'Sign in')} />}
+          emailStep={
+            <div className="flex flex-col gap-[12px]">
+              <OtpEmailStep submitLabel={t('sign_in_1', 'Sign in')} />
+              <button
+                type="button"
+                onClick={() => setWithCode(false)}
+                className="underline hover:font-bold cursor-pointer text-textItemBlur text-[13px]"
+              >
+                {t(
+                  'sign_in_with_password_instead',
+                  'Sign in with a password instead'
+                )}
+              </button>
+            </div>
+          }
         />
       </div>
     );
@@ -137,14 +160,35 @@ export function Login() {
                   {t('sign_in_1', 'Sign in')}
                 </Button>
               </div>
-              <p className="text-center text-sm mt-[8px]">
-                <Link
-                  href="/auth/forgot"
-                  className="underline hover:font-bold cursor-pointer text-textItemBlur"
-                >
-                  {t('forgot_password', 'Forgot password')}
-                </Link>
-              </p>
+              {/* Two links share the row only when there are two. Without the
+                  code option the single link stays centred, exactly as before,
+                  so an install that leaves the flag off sees no change here. */}
+              {passwordlessLogin ? (
+                <div className="flex items-center justify-between text-[13px] mt-[8px]">
+                  <Link
+                    href="/auth/forgot"
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('forgot_password', 'Forgot password')}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setWithCode(true)}
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('email_me_a_code', 'Email me a sign-in code')}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-sm mt-[8px]">
+                  <Link
+                    href="/auth/forgot"
+                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
+                  >
+                    {t('forgot_password', 'Forgot password')}
+                  </Link>
+                </p>
+              )}
             </div>
           }
         />

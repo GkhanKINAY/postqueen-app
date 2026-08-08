@@ -22,7 +22,6 @@ import {
   AuthShell,
   AuthStep,
 } from '@gitroom/frontend/components/auth/auth-shell';
-import { OtpEmailStep } from '@gitroom/frontend/components/auth/otp-email-step';
 const WalletProvider = dynamic(
   () => import('@gitroom/frontend/components/auth/providers/wallet.provider'),
   {
@@ -89,7 +88,7 @@ export function RegisterAfter({
   provider: string;
 }) {
   const t = useT();
-  const { billingEnabled, passwordlessLogin, legalUrl } = useVariables();
+  const { billingEnabled, legalUrl } = useVariables();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<AuthStep>('method');
   const router = useRouter();
@@ -231,24 +230,6 @@ export function RegisterAfter({
     'sign_up_subtitle',
     'Create your account and connect your first channel.'
   );
-
-  if (!isAfterProvider && passwordlessLogin) {
-    return (
-      <div className="flex-1 flex">
-        <AuthShell
-          title={t('sign_up', 'Sign Up')}
-          subtitle={subtitle}
-          step={step}
-          onContinueEmail={() => setStep('email')}
-          onBack={() => setStep('method')}
-          extraProviders={billingEnabled ? <WalletProvider /> : undefined}
-          emailStep={
-            <OtpEmailStep submitLabel={t('create_account', 'Create Account')} />
-          }
-        />
-      </div>
-    );
-  }
 
   return (
     <FormProvider {...form}>
