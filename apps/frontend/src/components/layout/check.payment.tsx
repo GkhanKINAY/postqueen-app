@@ -68,8 +68,8 @@ export const CheckPaymentInner: FC<{
   if (showLoader) {
     return (
       <div className="fixed bg-black/40 w-full h-full flex justify-center items-center z-[400]">
-        <div>
-          <Loading type="spin" color="#612AD5" height={250} width={250} />
+        <div className="text-pqBrand">
+          <Loading height={250} width={250} />
         </div>
       </div>
     );

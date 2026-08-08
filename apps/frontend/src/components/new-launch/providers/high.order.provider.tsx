@@ -157,6 +157,10 @@ export const withProvider = function <T extends object>(params: {
       getInternalPlugs,
       {
         revalidateOnReconnect: true,
+        // The channel identifier is the key, so switching channel tab inside
+        // the composer re-keys. Without this the internal-plugs block vanishes
+        // and the settings pane reflows on every tab change.
+        keepPreviousData: true,
       }
     );
 

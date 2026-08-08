@@ -24,7 +24,9 @@ export const PublicApiKeysSection: FC<{
     leaveSettingsFor('/connections', router);
   }, [router]);
 
-  if (!user || !user.publicApi) {
+  // The card handles a member's empty key itself now — it is where they are
+  // told the key exists and is an admin's to reveal.
+  if (!user) {
     return null;
   }
 
@@ -35,7 +37,7 @@ export const PublicApiKeysSection: FC<{
       {!embeddedInConnect && (
         <div className="flex items-center gap-[12px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
           <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-[600]">
+            <div className="text-[13.5px] font-[600] text-pqText">
               {t('connect_an_ai_agent', 'Connect an AI agent')}
             </div>
             <div className="mt-[3px] text-[12.5px] text-pqMuted">

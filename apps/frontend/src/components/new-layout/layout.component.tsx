@@ -11,6 +11,7 @@ import clsx from 'clsx';
 import useCookie from 'react-use-cookie';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { HeaderActionSlot } from '@gitroom/frontend/components/new-layout/header-slot';
+import { NewPost } from '@gitroom/frontend/components/launches/new.post';
 
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -23,6 +24,7 @@ import { ShowLinkedinCompany } from '@gitroom/frontend/components/launches/helpe
 import { MediaSettingsLayout } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { Toaster } from '@gitroom/react/toaster/toaster';
 import { NotificationsLiveBridge } from '@gitroom/frontend/components/notifications/live.bridge';
+import { NetworkErrorBridge } from '@gitroom/frontend/components/layout/network-error.bridge';
 import { ShowPostSelector } from '@gitroom/frontend/components/post-url-selector/post.url.selector';
 import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscription';
 import { Support } from '@gitroom/frontend/components/layout/support';
@@ -50,10 +52,87 @@ import {
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Tour, useTourStepKey } from '@gitroom/frontend/components/onboarding/tour';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 /** Quiet hairline between header action strip and identity. Spacing comes from the parent gap. */
 const HeaderDivider = () => (
   <div className="h-[20px] w-[1px] shrink-0 bg-pqLine" aria-hidden="true" />
+);
+
+/**
+ * Chrome placeholder while `/user/self` resolves — rail + header + a
+ * deliberately shape-agnostic content ghost, so cold load neither flashes an
+ * empty pane nor promises a layout.
+ *
+ * It used to draw a posts panel and a 7×28 month grid. That is wrong on every
+ * route that is not the calendar, and wrong on the calendar too now that home
+ * opens on the week view — the pane it ghosted was never the pane that
+ * arrived. The chrome does not know the route's shape at this point, so it
+ * does not claim one.
+ */
+const LayoutSkeleton = () => (
+  <div
+    className="flex h-dvh max-h-dvh w-full flex-col overflow-hidden text-pqText"
+    role="status"
+    aria-busy="true"
+    aria-label="Loading"
+  >
+    <div className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-pqRailLine bg-pqRail pe-[16px]">
+      <div className="flex h-[56px] w-[236px] shrink-0 items-center gap-[9px] border-e border-pqRailLine px-[12px]">
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
+          <CrownGlyph className="size-[18px] text-white" />
+        </span>
+        <Skeleton className="h-[14px] w-[88px]" />
+      </div>
+      <Skeleton className="h-[14px] w-[96px]" />
+      <div className="flex-1" />
+      <Skeleton className="h-[26px] w-[72px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-[8px]" />
+      <Skeleton className="size-[30px] rounded-full" />
+    </div>
+
+    <div className="flex min-h-0 flex-1">
+      <div className="flex w-[236px] shrink-0 flex-col border-e border-pqRailLine bg-pqRail">
+        <div className="flex flex-col gap-[8px] border-b border-pqRailLine p-[10px_8px]">
+          <Skeleton className="h-[36px] w-full rounded-[10px]" />
+        </div>
+        <div className="flex flex-col gap-[2px] p-[8px]">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex h-[34px] items-center gap-[10px] rounded-pqSm px-[8px]"
+            >
+              <Skeleton className="size-[18px] shrink-0 rounded-[5px]" />
+              <Skeleton
+                className={clsx(
+                  'h-[12px]',
+                  i === 0 ? 'w-[72%]' : i % 2 === 0 ? 'w-[58%]' : 'w-[64%]'
+                )}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto flex flex-col gap-[8px] border-t border-pqRailLine p-[10px_8px]">
+          <Skeleton className="h-[40px] w-full rounded-[10px]" />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[14px] bg-pqInner p-[16px_18px]">
+        <div className="flex items-center gap-[8px]">
+          <Skeleton className="h-[32px] w-[120px] rounded-[9px]" />
+          <Skeleton className="h-[32px] w-[88px] rounded-[9px]" />
+          <div className="flex-1" />
+          <Skeleton className="h-[32px] w-[110px] rounded-[9px]" />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-[10px]">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-[64px] w-full rounded-[12px]" />
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
 );
 
 /**
@@ -66,34 +145,6 @@ const HeaderDivider = () => (
 const HeaderIcon = ({ children }: { children: ReactNode }) => (
   <div className="grid size-[30px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText empty:hidden">
     {children}
-  </div>
-);
-
-/** Chrome placeholder shown while the user request is in flight. */
-const LayoutSkeleton = () => (
-  <div className="flex h-dvh max-h-dvh w-full flex-col overflow-hidden text-newTextColor">
-    <div className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-pqRailLine bg-pqRail pe-[16px]">
-      <div className="flex h-[56px] w-[236px] shrink-0 items-center gap-[9px] border-e border-pqRailLine px-[12px]">
-        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
-          <CrownGlyph className="size-[18px] text-white" />
-        </span>
-        <div className="h-[16px] w-[92px] animate-pulse rounded-[6px] bg-pqHover" />
-      </div>
-      <div className="h-[16px] w-[120px] animate-pulse rounded-[6px] bg-pqHover" />
-      <div className="flex-1" />
-      <div className="size-[30px] animate-pulse rounded-full bg-pqHover" />
-    </div>
-    <div className="flex min-h-0 flex-1">
-      <div className="flex w-[236px] shrink-0 flex-col gap-[2px] border-e border-pqRailLine bg-pqRail p-[8px]">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-[34px] animate-pulse rounded-pqSm bg-pqHover"
-          />
-        ))}
-      </div>
-      <div className="flex-1 bg-pqInner" />
-    </div>
   </div>
 );
 
@@ -148,12 +199,15 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
 
   // Tour steps that spotlight rail targets need the mobile drawer open —
   // otherwise `connect-pq` / `nav-channels` measure nothing off-screen.
+  //
+  // It follows the step rather than only opening: the drawer used to be opened
+  // and never closed, so it stayed over `/channels` for the last step and was
+  // still there after Finish. `useTourStepKey()` is null when the tour is not
+  // running, which is what closes it on the way out.
   const tourStep = useTourStepKey();
   useEffect(() => {
     if (!mobile) return;
-    if (tourStep === 'connect-pq' || tourStep === 'nav-channels') {
-      setDrawer(true);
-    }
+    setDrawer(tourStep === 'connect-pq' || tourStep === 'nav-channels');
   }, [mobile, tourStep]);
 
   // Lifetime / founding only — not ordinary trials (matches rail isFoundingRail).
@@ -221,8 +275,12 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
           </span>
         )}
 
-        {/* End cluster: Create Post → tools → identity. One hairline only. */}
+        {/* End cluster: Create Post → tools → identity. One hairline only.
+            Create Post is chrome, not a page action: it is the app's primary
+            verb and has to be reachable from every route, including before any
+            channel exists. The slot after it stays for page-level actions. */}
         <div className="flex shrink-0 items-center gap-[10px]">
+          <NewPost />
           <HeaderActionSlot />
           <div className="flex items-center gap-[4px] text-pqMuted">
             <StreakComponent />
@@ -291,6 +349,7 @@ const LayoutBody = ({
     <MantineWrapper>
       <ToolTip />
       <Toaster />
+      <NetworkErrorBridge />
       <NotificationsLiveBridge />
       <TrialTracker />
       <CheckPayment

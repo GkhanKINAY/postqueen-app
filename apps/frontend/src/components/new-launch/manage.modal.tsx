@@ -48,6 +48,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import NextLink from 'next/link';
 import { useClickOutside } from '@mantine/hooks';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+import { Spinner } from '@gitroom/react/ui/spinner';
 
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
@@ -205,13 +206,26 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       setLoading(false);
       return;
     }
-    await fetch(`/posts/${existingData.group}`, {
+    // customFetch resolves on 4xx/5xx, so an unchecked delete closed the editor
+    // and refreshed the calendar as if the post were gone — it was still there,
+    // and reappeared on the next load.
+    const response = await fetch(`/posts/${existingData.group}`, {
       method: 'DELETE',
     });
+
+    if (!response?.ok) {
+      setLoading(false);
+      toaster.show(
+        t('post_delete_failed', 'Could not delete this post, please try again'),
+        'warning'
+      );
+      return;
+    }
+
     mutate();
     modal.closeAll();
     return;
-  }, [existingData, mutate, modal]);
+  }, [existingData, mutate, modal, toaster, t]);
 
   const schedule = useCallback(
     (type: 'draft' | 'now' | 'schedule' | 'update') => async () => {
@@ -261,6 +275,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
       setLoading(true);
 
+      // Backstop for everything below. `schedule` is wired straight to onClick,
+      // so any throw was an unhandled rejection that left `loading` true — and
+      // with it every submit button disabled, trapping an unsaved post. The
+      // guards above handle the known cases; this catches the rest.
+      // `saved` marks the point after which the post exists server-side, so the
+      // catch can tell "failed" from "succeeded then stumbled".
+      let saved = false;
+      try {
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
@@ -295,12 +317,28 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       }));
 
       if (!dummy) {
-        const checkAllValid = await (
-          await fetch('/posts/valid', {
-            method: 'POST',
-            body: JSON.stringify({ type, posts }),
-          })
-        ).json();
+        const validResponse = await fetch('/posts/valid', {
+          method: 'POST',
+          body: JSON.stringify({ type, posts }),
+        });
+
+        // customFetch resolves on 4xx/5xx, so this used to hand a Nest error
+        // object to `.filter` below. That threw out of an un-caught click
+        // handler and left `loading` true forever — every submit button is
+        // disabled on it, so the user's unsaved post was sealed inside a modal
+        // with no close button.
+        const checkAllValid = validResponse.ok
+          ? await validResponse.json().catch(() => null)
+          : null;
+
+        if (!Array.isArray(checkAllValid)) {
+          setLoading(false);
+          toaster.show(
+            t('post_validation_failed', 'Could not check the post, please try again'),
+            'warning'
+          );
+          return;
+        }
 
         const focus = (id: string, where: 'fix' | 'preview') => {
           integrationById(id)?.ref?.current?.[where]?.();
@@ -373,21 +411,26 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       let shortLink = false;
 
       if (!dummy && shortlinkPreference !== 'NO') {
-        const shortLinkUrl = await (
-          await fetch('/posts/should-shortlink', {
-            method: 'POST',
-            body: JSON.stringify({
-              messages: allValues
-                // platforms that remove links won't keep shortlinks either
-                .filter(
-                  (p: any) => !integrationById(p.id)?.integration?.stripLinks
-                )
-                .flatMap((p: any) => p.values.flatMap((a: any) => a.content)),
-            }),
-          })
-        ).json();
+        const shortLinkResponse = await fetch('/posts/should-shortlink', {
+          method: 'POST',
+          body: JSON.stringify({
+            messages: allValues
+              // platforms that remove links won't keep shortlinks either
+              .filter(
+                (p: any) => !integrationById(p.id)?.integration?.stripLinks
+              )
+              .flatMap((p: any) => p.values.flatMap((a: any) => a.content)),
+          }),
+        });
 
-        if (shortLinkUrl.ask) {
+        // Same shape as `/posts/valid` above. Shortlinking is an optional
+        // nicety, so a failure here must not block the save — fall through
+        // with `ask: false` rather than stranding the post.
+        const shortLinkUrl = shortLinkResponse.ok
+          ? await shortLinkResponse.json().catch(() => ({}))
+          : {};
+
+        if (shortLinkUrl?.ask) {
           if (shortlinkPreference === 'YES') {
             // Automatically shortlink without asking
             shortLink = true;
@@ -460,6 +503,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           return;
         }
 
+        // Past this line the post exists on the server (or the set callback has
+        // been handed the data), so no later failure may be reported as one.
+        saved = true;
+
         if (!addEditSets) {
           mutate();
           if (type === 'draft') {
@@ -498,8 +545,40 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           modal.closeAll();
         }
       }
+      } catch (e) {
+        // Keep this reachable in the console / Sentry: before the try existed
+        // these were unhandled rejections, which at least got reported.
+        console.error(e);
+        setLoading(false);
+
+        // Everything from the toasts down runs AFTER the post is already saved.
+        // A throw there (mutate, date formatting) must not say "went wrong" and
+        // leave the composer open — the user would submit again and, because a
+        // new post mints a fresh `group`, get a duplicate.
+        if (saved) {
+          if (!addEditSets) {
+            modal.closeAll();
+          }
+          return;
+        }
+
+        toaster.show(
+          t('something_went_wrong', 'Something went wrong'),
+          'warning'
+        );
+      }
     },
-    [ref, repeater, tags, date, addEditSets, dummy, shortlinkPreferenceData]
+    [
+      ref,
+      repeater,
+      tags,
+      date,
+      addEditSets,
+      dummy,
+      shortlinkPreferenceData,
+      toaster,
+      t,
+    ]
   );
 
   return (
@@ -697,8 +776,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 className="relative flex h-[42px] cursor-pointer items-center justify-center rounded-[10px] bg-btnSimple px-[18px] text-[14px] font-[600] disabled:cursor-not-allowed"
               >
                 {loading && (
-                  <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]">
-                    <div className="h-[20px] w-[20px] animate-spin rounded-full border-4 border-textColor border-t-transparent" />
+                  <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-textColor">
+                    <Spinner width={20} height={20} />
                   </div>
                 )}
                 <div className={clsx(loading && 'invisible')}>
@@ -729,8 +808,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     className="btnSub relative flex h-[42px] min-w-[168px] items-center justify-center rounded-s-[10px] bg-pqBrand px-[18px] text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80"
                   >
                     {loading && (
-                      <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]">
-                        <div className="h-[20px] w-[20px] animate-spin rounded-full border-4 border-white border-t-transparent" />
+                      <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-white">
+                        <Spinner width={20} height={20} />
                       </div>
                     )}
                     <span className={clsx(loading && 'invisible')}>

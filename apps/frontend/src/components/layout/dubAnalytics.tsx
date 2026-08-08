@@ -16,6 +16,15 @@ export const useDubClickId = () => {
   const { dub } = useVariables();
   if (!dub) return undefined;
 
+  // The cookie is written by Dub's own script, and `react-use-cookie` reads it
+  // with `split('=')[1]` — so any value containing `=` (base64 padding) comes
+  // back truncated, and `decodeURIComponent` can throw on a split escape.
+  // This hook runs during render of the billing screens, and the repo has no
+  // route-level `error.tsx`, so an unguarded parse whitescreened the page.
   const dubCookie = getCookie('dub_partner_data', '{}');
-  return JSON.parse(dubCookie)?.clickId || undefined;
+  try {
+    return JSON.parse(dubCookie)?.clickId || undefined;
+  } catch (e) {
+    return undefined;
+  }
 };

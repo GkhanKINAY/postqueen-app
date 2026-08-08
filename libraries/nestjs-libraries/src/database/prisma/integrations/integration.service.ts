@@ -316,7 +316,43 @@ export class IntegrationService {
   }
 
   async disableIntegrations(org: string, totalChannels: number) {
-    return this._integrationRepository.disableIntegrations(org, totalChannels);
+    const disabled = await this._integrationRepository.disableIntegrations(
+      org,
+      totalChannels
+    );
+
+    // A downgrade used to switch channels off in silence: the first the user
+    // heard of it was their posts failing with "Channel disabled" on channels
+    // they never touched. Notified here so both callers in subscription.service
+    // are covered.
+    // Wrapped: the non-digest notification path has no error handling of its
+    // own, and both callers run inside the Stripe webhook. A throw here made
+    // modifySubscription bail before the subscription row was written (the
+    // customer pays, the plan never changes) and made deleteSubscription answer
+    // 500. The channels are already off; the email is not worth that.
+    if (disabled.length) {
+      try {
+        const names = disabled.map((c) => c.name).join(', ');
+        await this._notificationService.inAppNotification(
+          org,
+          `${disabled.length} channel${
+            disabled.length > 1 ? 's were' : ' was'
+          } switched off`,
+          `Your plan now allows fewer channels, so ${names} ${
+            disabled.length > 1 ? 'were' : 'was'
+          } switched off and will not publish. Upgrade, or remove another channel, to turn ${
+            disabled.length > 1 ? 'them' : 'it'
+          } back on.`,
+          true,
+          false,
+          'info'
+        );
+      } catch (err) {
+        console.error(`[integrations] downgrade notice failed for ${org}`, err);
+      }
+    }
+
+    return disabled;
   }
 
   async checkForDeletedOnceAndUpdate(org: string, page: string) {

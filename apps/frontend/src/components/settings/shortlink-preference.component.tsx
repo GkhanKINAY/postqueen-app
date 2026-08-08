@@ -6,6 +6,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 type ShortLinkPreference = 'ASK' | 'YES' | 'NO';
 
@@ -83,15 +84,16 @@ const ShortlinkPreferenceComponent = () => {
 
   if (isLoading) {
     return (
-      <div className="rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px]">
-        <div className="animate-pulse">{t('loading', 'Loading...')}</div>
+      <div className="flex flex-col gap-[10px] rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px]">
+        <Skeleton className="h-[13px] w-[38%]" />
+        <Skeleton className="h-[34px] w-full rounded-pqSm" />
       </div>
     );
   }
 
   return (
     <div className="rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px]">
-      <div className="text-[13.5px] font-[600]">
+      <div className="text-[13.5px] font-[600] text-pqText">
         {t('shortlink_settings', 'Shortlink Settings')}
       </div>
       <div className="text-[12.5px] text-pqMuted mt-[3px]">

@@ -16,11 +16,17 @@ const VEO3Settings: FC = () => {
   const { register, watch, setValue, formState } = useFormContext();
   const { value } = useVideo();
 
-  const media = register('media', {
+  // `images` is what the DTO validates and what `setValue` below writes
+  // (`videos/veo3/veo3.ts` — `Veo3Params.images`). This used to register,
+  // watch and read errors off `media` instead, so `value` never reflected the
+  // form: pick five images and the strip showed five while the request carried
+  // the three the filter below kept, and a dropped .mp4 stayed on screen after
+  // being discarded.
+  register('images', {
     value: [],
   });
 
-  const mediaValue = watch('media');
+  const mediaValue = watch('images');
 
   return (
     <div>
@@ -38,6 +44,10 @@ const VEO3Settings: FC = () => {
       <MultiMediaComponent
         allData={[]}
         dummy={true}
+        // This field lives inside the video-generation form, which the
+        // composer's own "Generate video" opened. Offering that button (and an
+        // Integrations modal on top of this modal) again here is a loop.
+        attachmentsOnly={true}
         text="Images"
         description="Images"
         name="images"
@@ -51,7 +61,7 @@ const VEO3Settings: FC = () => {
               .slice(0, 3)
           )
         }
-        error={formState?.errors?.media?.message}
+        error={formState?.errors?.images?.message}
       />
     </div>
   );

@@ -63,7 +63,10 @@ export const InformationComponent: FC<{
   text?: string;
 }> = ({ totalChars, totalAllowedChars, chars, isPicture, text }) => {
   const t = useT();
+  // `detailsOpen` pins the panel (click, for touch / keyboard); `hovered` is the
+  // design's `charPanel` flag, which is the only thing that opens it there.
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const { isGlobal, selectedIntegrations, internal, currentIntegration } =
     useLaunchStore(
       useShallow((state) => ({
@@ -142,6 +145,13 @@ export const InformationComponent: FC<{
     isPicture,
     chars,
     showStripLinkWarning,
+    // Read above, and listed here on purpose. Today they are covered by
+    // accident: `isInternal` depends on both and returns a fresh array every
+    // time, so it re-triggers this. The first person to memoize that empty
+    // array — an obvious-looking optimisation — would otherwise leave the
+    // validity pill a tab behind, with nothing to point at.
+    isGlobal,
+    selectedIntegrations,
   ]);
 
   const globalDisplayLimit = useMemo(() => {
@@ -171,13 +181,22 @@ export const InformationComponent: FC<{
 
   const hasDetails =
     (isGlobal && selectedIntegrations.length > 0) || !isValid;
-  // Invalid details must be reachable without hover (touch / keyboard).
-  const showDetails = hasDetails && (!isValid || detailsOpen);
+  /**
+   * Design `charPanelDisplay`: `charPanel && ((isGlobalTab && sel.length) || !charValid)`.
+   * It is hover-gated, with no bypass for the invalid case — an empty editor is
+   * invalid by definition, so keying visibility off `!isValid` pinned this panel
+   * open the moment the composer was opened and again on every channel select.
+   * The click toggle stays on top of hover so the panel is still reachable
+   * without a pointer.
+   */
+  const showDetails = hasDetails && (hovered || detailsOpen);
 
   return (
     <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={clsx(
-        'group relative flex h-[30px] items-center justify-center gap-[4px] rounded-[6px] px-[6px]',
+        'relative flex h-[30px] items-center justify-center gap-[4px] rounded-[6px] px-[6px]',
         isValid ? 'border border-newColColor' : 'bg-pqWarn'
       )}
     >
@@ -206,6 +225,9 @@ export const InformationComponent: FC<{
       {hasDetails && (
         <button
           type="button"
+          // Reports what is actually on screen. Keyboard users never set
+          // `hovered`, so for them this is exactly `detailsOpen`; for a pointer
+          // user it avoids announcing "collapsed" over a visibly open panel.
           aria-expanded={showDetails}
           aria-label={t('validation_details', 'Validation details')}
           onClick={() => setDetailsOpen((o) => !o)}
@@ -233,7 +255,11 @@ export const InformationComponent: FC<{
       {showDetails && (
         <div
           className={clsx(
-            'absolute bottom-[100%] end-0 z-[300] mb-[5px] flex flex-col rounded-[12px] bg-newBgColorInner p-[12px]',
+            // Nothing in here is clickable, but it is z-[300] and sits directly
+            // over the editor: without this it swallows clicks aimed at the text
+            // area, and the 5px gap between it and the pill lets a slow pointer
+            // trip the wrapper's mouseleave on the way up.
+            'pointer-events-none absolute bottom-[100%] end-0 z-[300] mb-[5px] flex flex-col rounded-[12px] bg-newBgColorInner p-[12px]',
             isValid ? 'border border-newColColor' : 'border border-pqWarn'
           )}
         >

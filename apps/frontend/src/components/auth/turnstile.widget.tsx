@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 interface TurnstileRenderOptions {
   sitekey: string;
@@ -27,19 +28,50 @@ const SCRIPT_ID = 'cf-turnstile-script';
 const SRC =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
-// Load the Cloudflare Turnstile script once, resolving when window.turnstile
-// is available.
-function ensureScript(): Promise<void> {
+/** How long to wait for challenges.cloudflare.com before giving up. */
+const SCRIPT_TIMEOUT_MS = 10000;
+
+// Load the Cloudflare Turnstile script once. Resolves true when
+// `window.turnstile` is available, false when it cannot be loaded.
+//
+// Every path used to resolve only on `load`: no `error` listener, no timeout,
+// and the SSR branch returned without settling at all. If the script is blocked
+// — ad blocker, corporate proxy, CSP, regional block — the promise never
+// settled, the widget never rendered, and "Send code" stayed disabled forever
+// with nothing on screen to explain it. That is the whole passwordless flow
+// dead for a real slice of users.
+function ensureScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window === 'undefined') return;
-    if (window.turnstile) return resolve();
+    if (typeof window === 'undefined') return resolve(false);
+    if (window.turnstile) return resolve(true);
+
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
+
+    const timer = setTimeout(() => finish(false), SCRIPT_TIMEOUT_MS);
+    const onLoad = () => {
+      clearTimeout(timer);
+      finish(!!window.turnstile);
+    };
+    const onError = () => {
+      clearTimeout(timer);
+      finish(false);
+    };
 
     const existing = document.getElementById(
       SCRIPT_ID
     ) as HTMLScriptElement | null;
     if (existing) {
-      if (window.turnstile) return resolve();
-      existing.addEventListener('load', () => resolve(), { once: true });
+      if (window.turnstile) {
+        clearTimeout(timer);
+        return finish(true);
+      }
+      existing.addEventListener('load', onLoad, { once: true });
+      existing.addEventListener('error', onError, { once: true });
       return;
     }
 
@@ -48,7 +80,8 @@ function ensureScript(): Promise<void> {
     script.src = SRC;
     script.async = true;
     script.defer = true;
-    script.addEventListener('load', () => resolve(), { once: true });
+    script.addEventListener('load', onLoad, { once: true });
+    script.addEventListener('error', onError, { once: true });
     document.head.appendChild(script);
   });
 }
@@ -68,12 +101,23 @@ export function TurnstileWidget({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     let cancelled = false;
 
-    ensureScript().then(() => {
-      if (cancelled || !ref.current || !window.turnstile) return;
+    ensureScript().then((ok) => {
+      if (cancelled) return;
+      if (!ok || !ref.current || !window.turnstile) {
+        // Say so rather than leaving an empty box next to a permanently
+        // disabled button. Deliberately NOT auto-enabling submit: when
+        // TURNSTILE_SECRET is set the server rejects a missing token anyway,
+        // and that rejection is far more opaque than this line.
+        setUnavailable(true);
+        return;
+      }
+      setUnavailable(false);
       widgetId.current = window.turnstile.render(ref.current, {
         sitekey: siteKey,
         theme: 'auto',
@@ -97,5 +141,17 @@ export function TurnstileWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey]);
 
-  return <div ref={ref} className="mt-[4px]" />;
+  return (
+    <div className="mt-[4px]">
+      <div ref={ref} />
+      {unavailable && (
+        <div className="text-[12.5px] leading-[1.5] text-pqWarn">
+          {t(
+            'captcha_unavailable',
+            'The captcha could not load — it may be blocked by your browser or network. Reload the page to try again.'
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -691,12 +691,38 @@ export class PostsService {
     return { error: true };
   }
 
+  /**
+   * Deleting a channel takes its posts with it. `getPostsForChannel` has no
+   * state filter, so that list is every group the channel ever had, and each
+   * deletePost above costs two queries plus a Temporal visibility search and a
+   * terminate per running workflow. Firing all of them at once exhausted the
+   * Prisma pool on busy channels while the HTTP request sat there, so they run
+   * a few at a time. Rejections are returned, not thrown: the channel delete
+   * must still happen.
+   */
+  async deletePostsByGroups(orgId: string, groups: string[]) {
+    const results: PromiseSettledResult<any>[] = [];
+    const chunkSize = 5;
+
+    for (let i = 0; i < groups.length; i += chunkSize) {
+      results.push(
+        ...(await Promise.allSettled(
+          groups
+            .slice(i, i + chunkSize)
+            .map((group) => this.deletePost(orgId, group))
+        ))
+      );
+    }
+
+    return results;
+  }
+
   async countPostsFromDay(orgId: string, date: Date) {
     return this._postRepository.countPostsFromDay(orgId, date);
   }
 
-  getPostByForWebhookId(id: string) {
-    return this._postRepository.getPostByForWebhookId(id);
+  getPostByForWebhookId(id: string, orgId: string, integrationId: string) {
+    return this._postRepository.getPostByForWebhookId(id, orgId, integrationId);
   }
 
   async startWorkflow(
@@ -1166,9 +1192,17 @@ export class PostsService {
       orgId,
       integrationId
     );
+    // getPostsCountsByDates returns `times.filter(...)`, so an empty `times`
+    // answers empty for every date and the recursion below walks forward one
+    // day at a time forever, one query per step. That is reachable from
+    // /posts/find-slot/:id with any id that is unknown, disabled, deleted or
+    // owned by another org — each request pins a connection and never answers.
+    // Fall back to the same slots the column defaults to (schema.prisma
+    // AutoPost/Integration postingTimes) so callers still get a sane time.
+    const times = findTimes.length ? findTimes : [120, 400, 700];
     return this.findFreeDateTimeRecursive(
       orgId,
-      findTimes,
+      times,
       dayjs.utc().startOf('day')
     );
   }
@@ -1185,7 +1219,11 @@ export class PostsService {
   private async findFreeDateTimeRecursive(
     orgId: string,
     times: number[],
-    date: dayjs.Dayjs
+    date: dayjs.Dayjs,
+    // Backstop: the empty-times case is guarded at the entry point, but this
+    // branch is also taken when every slot on a day is past or taken, so bound
+    // the walk rather than trust that it always terminates.
+    daysLeft = 365
   ): Promise<string> {
     const list = await this._postRepository.getPostsCountsByDates(
       orgId,
@@ -1194,7 +1232,15 @@ export class PostsService {
     );
 
     if (!list.length) {
-      return this.findFreeDateTimeRecursive(orgId, times, date.add(1, 'day'));
+      if (daysLeft <= 0) {
+        return date.clone().add(times[0] ?? 0, 'minutes').format('YYYY-MM-DDTHH:mm:00');
+      }
+      return this.findFreeDateTimeRecursive(
+        orgId,
+        times,
+        date.add(1, 'day'),
+        daysLeft - 1
+      );
     }
 
     const num = list.reduce<null | number>((prev, curr) => {

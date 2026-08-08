@@ -11,8 +11,13 @@ import {
 } from '@gitroom/frontend/components/ui/logo.component';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
-/** Calendar home: week view for the current ISO week (+ `now` to scroll Today). */
-function calendarHomeHref() {
+/**
+ * Calendar home: week view for the current ISO week (+ `now` to scroll Today).
+ *
+ * Shared with the rail's Calendar row so both entrances into the calendar land
+ * in the same place — see `top.menu.tsx`.
+ */
+export function calendarHomeHref() {
   const start = newDayjs().startOf('isoWeek').format('YYYY-MM-DD');
   const end = newDayjs().endOf('isoWeek').format('YYYY-MM-DD');
   // Unique `now` so a second click still re-centers even on the same week.

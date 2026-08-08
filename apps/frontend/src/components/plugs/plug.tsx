@@ -28,6 +28,7 @@ import { Slider } from '@gitroom/react/form/slider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { PlugsDetailGhost } from '@gitroom/frontend/components/layout/loading';
 export function convertBackRegex(s: string) {
   const matches = s.match(/\/(.*)\/([a-z]*)/);
   const pattern = matches?.[1] || '';
@@ -327,7 +328,7 @@ export const Plug = () => {
     [data]
   );
   if (isLoading) {
-    return null;
+    return <PlugsDetailGhost />;
   }
   return (
     <div className="mx-auto grid w-full max-w-[1000px] grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-[10px]">

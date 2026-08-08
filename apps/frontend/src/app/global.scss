@@ -25,6 +25,80 @@ body {
   color: var(--new-btn-text);
 }
 
+// Design's global scrollbar. This was in the prototype from the start and never
+// got ported: only the calendar cell's narrower 4px override made it across, so
+// every other scroll area — the Copilot channel column, the composer, the media
+// grid — fell back to the browser default, which is a fat light bar sitting on
+// a dark panel.
+//
+// The 10px track with a 3px transparent border and `background-clip: content-box`
+// is what makes the thumb read as a slim 4px pill inset from the edge; painting
+// a 4px-wide bar instead would sit flush against the content. Track stays
+// transparent so it disappears until there is something to drag.
+//
+// Cell-level rules (`[data-cell] &::-webkit-scrollbar`) are more specific and
+// still win where the design asks for something narrower.
+//
+// Scoped to `body` and below, not bare: `--scrollThumb` is declared by the
+// `.dark` / `.light` class, which sits on <body>, so <html> never sees it. A
+// bare selector would style the document scrollbar with an undefined var and
+// paint the thumb transparent — an invisible scrollbar is worse than an ugly
+// one. Everything that actually scrolls here is inside body.
+body::-webkit-scrollbar,
+body *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body::-webkit-scrollbar-track,
+body *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb,
+body *::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background: var(--scrollThumb);
+  background-clip: content-box;
+}
+
+// Firefox has no ::-webkit pseudo-elements; this is the same intent expressed
+// through the standard properties, off the same token.
+//
+// Gated, because Chromium 121+ treats the two families as mutually exclusive: an
+// element with a non-`auto` scrollbar-width or any scrollbar-color gets its
+// ::-webkit-scrollbar rules *ignored*. Applied unconditionally to `body *` this
+// silently killed the block above in Chrome — and worse, the calendar cell's
+// 4px lane further down, which has no standard-property counterpart and would
+// inherit `thin` from here.
+@supports not selector(::-webkit-scrollbar) {
+  body,
+  body * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollThumb) transparent;
+  }
+}
+
+// Design `[data-navscroll]::-webkit-scrollbar{width:0}` — the rail's nav lane
+// scrolls with no visible bar; collapsed the rail is 60px wide and a 10px track
+// would take a sixth of it. Keyed on `data-sb-scroll`, the hook the rail
+// already carries (rail.tsx) rather than adding a second attribute for the
+// same job.
+//
+// Both halves are unconditional, unlike the gated rule above, and that is
+// deliberate: here the two families agree. WebKit hides via `width: 0`, and
+// where the standard property wins instead (Chromium) `scrollbar-width: none`
+// hides it too. `scrollbar-width` does not inherit, so this stops at the lane.
+[data-sb-scroll]::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+[data-sb-scroll] {
+  scrollbar-width: none;
+}
+
 // Brand gradient for the logo tile. Mirrors the landing site's .crown-gradient
 // (postqueen.ai globals.css): brand-600 -> brand-500 -> pop-600. These are brand
 // values, not theme surfaces, so they are the same in light and dark.
@@ -111,6 +185,12 @@ body {
   &::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 4px;
+    // The global thumb insets itself with a 3px transparent border and clips to
+    // the content box. This lane is only 4px wide, so inheriting that would
+    // leave a negative content box and nothing to paint. Both are reset here
+    // rather than excluded up there, so this rule stays readable on its own.
+    border: 0;
+    background-clip: border-box;
   }
 }
 
@@ -1236,6 +1316,14 @@ html[dir='rtl'] .lbox {
   animation: pqglow 5.5s ease-in-out infinite;
 }
 
+// Tour calendar demo — the seeded posts arrive one at a time, so each one gets
+// the entrance `pqin` was written for. Done here rather than on the card
+// because the cards are the calendar's, and the calendar knows nothing about
+// the tour; `data-tourdemo` on the root is the same idiom as `data-tourconn`.
+[data-tourdemo='1'] [data-ci='1'] {
+  animation: pqin 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
 // The upgrade CTA's three stacked loops: the button's own halo, a blurred bloom
 // behind it, and a sheen crossing it.
 @keyframes pqbtnglow {
@@ -1282,8 +1370,31 @@ html[dir='rtl'] .lbox {
 // The one-shot entrances (pqpop, pqfadeDown, pqin, pqtip) are deliberately not
 // covered: removing them makes surfaces appear with no transition at all, which
 // reads as a glitch rather than as calm.
+// Three groups, because `pq-loop` on the element cannot reach all of them.
+//
+//  1. The class itself, plus its pseudo-elements — a loop can live on
+//     `::before` while the hook sits on the host.
+//  2. Loops this stylesheet applies by selector rather than by class. The
+//     component never carries `pq-loop` because the animation is not in its
+//     className at all: `.loading-shimmer:before` above, and the connector
+//     cards, which only glow while the tour is running them.
+//  3. Blueprint's, from the vendored polonto.css that `@use`s in at the top of
+//     this file. Third-party markup, so no class of ours will ever be on it.
 @media (prefers-reduced-motion: reduce) {
-  .pq-loop {
+  .pq-loop,
+  .pq-loop::before,
+  .pq-loop::after {
+    animation: none !important;
+  }
+
+  .loading-shimmer::before,
+  [data-tourconn='1'] [data-conn-card='1'] {
+    animation: none !important;
+  }
+
+  .bp5-progress-meter,
+  .bp5-skeleton,
+  .bp5-spinner-animation {
     animation: none !important;
   }
 }

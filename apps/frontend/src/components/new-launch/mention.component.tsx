@@ -3,6 +3,7 @@
 import React, { FC, useEffect, useImperativeHandle, useState } from 'react';
 import { computePosition, flip, shift } from '@floating-ui/dom';
 import { posToDOMRect, ReactRenderer } from '@tiptap/react';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 // Debounce utility for TipTap
 const debounce = <T extends any[]>(
@@ -27,6 +28,7 @@ const debounce = <T extends any[]>(
 };
 
 const MentionList: FC = (props: any) => {
+  const t = useT();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selectItem = (index: number) => {
@@ -86,7 +88,7 @@ const MentionList: FC = (props: any) => {
         </div>
       ) : props?.loading ? (
         <div className="flex items-center justify-center p-2 text-textItemBlur">
-          Loading...
+          {t('loading', 'Loading...')}
         </div>
       ) : props?.items ? (
         props.items.length === 0 ? (
@@ -110,7 +112,9 @@ const MentionList: FC = (props: any) => {
           ))
         )
       ) : (
-        <div className="p-2 text-textItemBlur text-center">Loading...</div>
+        <div className="p-2 text-textItemBlur text-center">
+          {t('loading', 'Loading...')}
+        </div>
       )}
     </div>
   );

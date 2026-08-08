@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/react/form/button';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 
 interface PerSocial {
@@ -80,6 +80,9 @@ const useStats = (params: {
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      // The key carries the date range, so each preset is a new key. Without
+      // this the whole page empties between presets.
+      keepPreviousData: true,
     }
   );
 };
@@ -220,8 +223,50 @@ export const AdminStatsComponent: FC = () => {
         </label>
       </div>
 
-      {isLoading ? (
-        <LoadingComponent />
+      {/* `isLoading` alone is not enough: SWR sets it on every key change even
+          with `keepPreviousData`, so the ghost would replace perfectly good
+          numbers on each range preset. */}
+      {isLoading && !data ? (
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label="Loading"
+          className="flex flex-col gap-[16px]"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="border border-newTableBorder rounded-[8px] p-[16px] bg-newBgColorInner"
+              >
+                <Skeleton className="h-[12px] w-[62%]" />
+                <Skeleton className="mt-[8px] h-[28px] w-[42%]" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-[12px]">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="border border-newTableBorder rounded-[8px] overflow-hidden"
+              >
+                <div className="grid grid-cols-[1fr_120px] gap-[12px] px-[12px] py-[10px] bg-newBgColorInner border-b border-newTableBorder">
+                  <Skeleton className="h-[11px] w-[68%]" />
+                  <Skeleton className="ms-auto h-[11px] w-[46%]" />
+                </div>
+                {Array.from({ length: 5 }).map((__, row) => (
+                  <div
+                    key={row}
+                    className="grid grid-cols-[1fr_120px] gap-[12px] px-[12px] py-[10px] border-b border-newTableBorder last:border-b-0"
+                  >
+                    <Skeleton className="h-[12px] w-[54%]" />
+                    <Skeleton className="ms-auto h-[12px] w-[38%]" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       ) : error || !data ? (
         <div className="text-red-400">Failed to load stats.</div>
       ) : (

@@ -583,6 +583,9 @@ const SwitchUser = () => {
     refreshWhenOffline: false,
     revalidateIfStale: false,
     refreshInterval: 0,
+    // The typed name is the key, so every keystroke is a new key. Without this
+    // the results list empties between characters.
+    keepPreviousData: true,
   });
 
   const mapData = useMemo(() => {
@@ -751,6 +754,9 @@ export const Impersonate = () => {
     refreshWhenOffline: false,
     revalidateIfStale: false,
     refreshInterval: 0,
+    // The typed name is the key, so every keystroke is a new key. Without this
+    // the results list empties between characters.
+    keepPreviousData: true,
   });
   const mapData = useMemo(() => {
     return data?.map(

@@ -5,9 +5,8 @@ export const metadata: Metadata = {
   title: 'Calendar',
 };
 
-// The app home is the Calendar (Launches), the primary scheduling workspace;
-// the Agent is one click away in the rail. proxy.ts already sends "/" to
-// /launches for general deployments — this keeps the fallback aligned.
+// The app home is the Calendar week view. Dates / “today” scroll are applied
+// client-side from `display=week` + optional `now` (same as the header logo).
 export default async function Page() {
-  return redirect('/launches');
+  return redirect(`/launches?display=week&now=${Date.now()}`);
 }

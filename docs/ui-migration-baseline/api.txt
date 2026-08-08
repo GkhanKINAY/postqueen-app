@@ -1,9 +1,6 @@
-/analytics
 /analytics-${integration
 /analytics/${integration.id}
 /analytics/post/${postId}
-/analytics/stars
-/analytics/trending
 /announcements
 /announcements/${id}
 /api/teams
@@ -39,9 +36,9 @@
 /billing/refund-charges
 /billing/subscribe
 /comments
-/comments/${children.id}
 /comments/${comment.id}
 /comments/${date.utc().format(
+/comments/${id}
 /copilot/${idToSet}/list
 /copilot/credits
 /copilot/list

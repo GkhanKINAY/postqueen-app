@@ -271,7 +271,7 @@ export const Component: FC<{
               </div>
               <div
                 className={clsx(
-                  'min-h-0 overflow-y-auto whitespace-pre-line',
+                  'min-h-0 overflow-y-auto whitespace-pre-line pe-[16px]',
                   !!modal.height && !!modal.size && 'flex flex-1 flex-col'
                 )}
               >

@@ -1,8 +1,8 @@
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { AnalyticsCardsGhost } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
@@ -144,27 +144,36 @@ export const RenderAnalytics: FC<{
   date: number;
 }> = (props) => {
   const { integration, date } = props;
-  const [loading, setLoading] = useState(true);
+  const t = useT();
   const fetch = useFetch();
 
   const load = useCallback(async () => {
-    setLoading(true);
-    const load = (
-      await fetch(`/analytics/${integration.id}?date=${date}`)
-    ).json();
-    setLoading(false);
-    return load;
+    return (await fetch(`/analytics/${integration.id}?date=${date}`)).json();
   }, [integration, date]);
 
-  const { data } = useSWR(`/analytics-${integration?.id}-${date}`, load, {
-    refreshInterval: 0,
-    refreshWhenHidden: false,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-    refreshWhenOffline: false,
-    revalidateOnMount: true,
-  });
+  // `isLoading` and not a flag set inside the fetcher: that flag flipped false
+  // before the unawaited `.json()` had parsed, and it flipped true again on
+  // every revalidation, so the whole grid was replaced by a ghost each refetch.
+  const { data, isLoading } = useSWR(
+    `/analytics-${integration?.id}-${date}`,
+    load,
+    {
+      refreshInterval: 0,
+      refreshWhenHidden: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      refreshWhenOffline: false,
+      revalidateOnMount: true,
+      // Deliberately NOT `keepPreviousData`. It is the right trade when a key
+      // varies by presentation — a page number, a range — but this key carries
+      // `integration.id`, the entity itself. With laggy data on, clicking a
+      // channel painted the previous channel's cards under the new channel's
+      // name and @handle (the header two components up reads
+      // `currentIntegration`, which switches immediately). Wrong numbers under
+      // the right name is worse than a ghost.
+    }
+  );
 
   const toast = useToaster();
 
@@ -192,8 +201,14 @@ export const RenderAnalytics: FC<{
     [fetch, toast]
   );
 
+  // One narrowing for the whole component. `customFetch` resolves a 4xx too, so
+  // `data` can be `{ message, statusCode }` — `.map` on that is a render crash,
+  // and guarding only the memo left the JSX below to do it anyway.
+  const rows: AnalyticsDataItem[] = Array.isArray(data) ? data : [];
+  const failed = !isLoading && !Array.isArray(data);
+
   const totals = useMemo(() => {
-    return data?.map((p: AnalyticsDataItem) => {
+    return rows.map((p: AnalyticsDataItem) => {
       const value =
         (p?.data.reduce(
           (acc: number, curr: { total: number }) => acc + Number(curr.total),
@@ -204,22 +219,32 @@ export const RenderAnalytics: FC<{
       }
       return new Intl.NumberFormat().format(Math.round(value));
     });
-  }, [data]);
+  }, [rows]);
 
-  if (loading) {
+  // Cards only — the channel rail and the range pills belong to the parent and
+  // are already on screen, so a ghost that redraws them doubles them up. A
+  // channel or range change is new content, so ghosting on it is correct.
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-[48px]">
-        <LoadingComponent />
+      <div role="status" aria-busy="true" aria-label={t('loading', 'Loading')}>
+        <AnalyticsCardsGhost pills={false} />
       </div>
     );
   }
 
+  // The request came back with something that is not a list — a 4xx body, or a
+  // rejection that left `data` undefined. Without this the pane rendered an
+  // empty grid and said nothing.
+  if (failed) {
+    return <EmptyState onRefresh={refreshChannel(integration)} />;
+  }
+
   return (
     <div className="grid grid-cols-1 gap-[13px] sm:grid-cols-2 lg:grid-cols-3">
-      {data?.length === 0 && (
+      {rows.length === 0 && (
         <EmptyState onRefresh={refreshChannel(integration)} />
       )}
-      {data?.map((item: AnalyticsDataItem, index: number) => (
+      {rows.map((item: AnalyticsDataItem, index: number) => (
         <AnalyticsCard
           key={`analytics-${index}`}
           item={item}

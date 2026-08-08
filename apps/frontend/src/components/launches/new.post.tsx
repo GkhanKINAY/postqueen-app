@@ -1,38 +1,88 @@
 import React, { useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useSWRConfig } from 'swr';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import dayjs from 'dayjs';
-import {
-  CalendarWeekProvider,
-  useCalendar,
-} from '@gitroom/frontend/components/launches/calendar.context';
+import { CalendarWeekProvider } from '@gitroom/frontend/components/launches/calendar.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { SetSelectionModal } from '@gitroom/frontend/components/launches/calendar';
-import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+import { useSets } from '@gitroom/frontend/components/launches/helpers/use.sets';
+import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useClickOutside } from '@mantine/hooks';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter } from 'next/navigation';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { GeneratorPopup } from '@gitroom/frontend/components/launches/generator/generator';
 import clsx from 'clsx';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
 /**
- * Create Post split control (Blank / AI). Portalled into the header via
- * `HeaderAction` from `launches.component.tsx` (owner: header placement).
- * Primary opens a blank compose; the chevron opens Blank / AI post (AI gated
- * the same way as Generator).
+ * The generator and the set picker are heavy and this control now renders on
+ * every route, so they load when a dialog is actually opened — the click
+ * already awaits `/posts/find-slot`, so the chunk arrives alongside a request
+ * that had to happen anyway.
+ *
+ * `AddEditModal` is deliberately NOT among them. It opens with
+ * `closeOnEscape: false`, `withCloseButton: false`, `closeOnClickOutside: false`
+ * and `fullScreen`, so anything that renders nothing in its place is an
+ * undismissable blank overlay — and a chunk that 404s (a tab left open across a
+ * deploy) makes that permanent, with a page reload as the only way out. The two
+ * below are safe to defer because their modals can all be closed.
+ */
+const GeneratorPopup = dynamic(
+  () =>
+    import('@gitroom/frontend/components/launches/generator/generator').then(
+      (mod) => mod.GeneratorPopup
+    ),
+  { ssr: false }
+);
+
+const SetSelectionModal = dynamic(
+  () =>
+    import('@gitroom/frontend/components/launches/calendar').then(
+      (mod) => mod.SetSelectionModal
+    ),
+  { ssr: false }
+);
+
+/**
+ * Create Post split control (Blank / AI), rendered by the chrome header on
+ * every route. Primary opens a blank compose; the chevron opens Blank / AI post
+ * (AI gated the same way as Generator).
+ *
+ * It deliberately does not read `useCalendar()` — that provider wraps the
+ * calendar page only, and this button outlives it. Channels and sets come from
+ * their own SWR hooks (same keys, so the cache is shared with the calendar),
+ * and the calendar is refreshed by key prefix instead of by context callback.
+ *
+ * With no channels connected the control stays visible and opens Add Channel:
+ * a first-run user has no other cue that posting is what this app does.
  */
 export const NewPost = () => {
   const fetch = useFetch();
   const modal = useModals();
-  const { integrations, reloadCalendarView, sets } = useCalendar();
+  const {
+    data: integrations = [],
+    mutate: mutateIntegrations,
+    isLoading,
+    error: integrationsError,
+  } = useIntegrationList();
+  const {
+    data: sets = [],
+    mutate: mutateSets,
+    isLoading: setsLoading,
+    error: setsError,
+  } = useSets();
+  const { mutate: globalMutate } = useSWRConfig();
   const t = useT();
+  const toaster = useToaster();
   const user = useUser();
   const router = useRouter();
   const { billingEnabled } = useVariables();
-  const all = useCalendar();
+  const addProvider = useAddProvider(mutateIntegrations);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useClickOutside(() => setMenuOpen(false));
   const { referenceRef, floatingRef } = useAnchoredPopover<
@@ -40,11 +90,104 @@ export const NewPost = () => {
     HTMLDivElement
   >(menuOpen, 'end');
 
+  // The calendar and list views key off `/posts-...` and `/posts-list-...`.
+  // Matching the prefix reaches both, and reaches them from pages where the
+  // calendar context is not mounted at all.
+  const reloadCalendarView = useCallback(() => {
+    globalMutate(
+      (key) => typeof key === 'string' && key.startsWith('/posts-')
+    );
+  }, [globalMutate]);
+
+  /**
+   * `useIntegrationList` carries `fallbackData: []`, so the first paint of any
+   * page looks channel-less. Resolve the list at click time rather than
+   * disabling the button on a value that is merely not back yet.
+   *
+   * Three answers, not two. `null` means "could not tell". The bound `mutate()`
+   * defaults to `throwOnError`, so an unguarded rejection would escape into the
+   * click handler and leave Create Post doing nothing at all; and reporting the
+   * failure as an empty account would push someone who has channels into the
+   * add-a-channel flow.
+   */
+  const resolveIntegrations = useCallback(async (): Promise<any[] | null> => {
+    // A non-empty list is always trustworthy. Empty is not: it is what the
+    // fallback reads before the first fetch lands, what a failed fetch leaves
+    // behind, and — since `revalidateOnFocus` and `revalidateIfStale` are both
+    // off on this key — what the cache still says after someone connects their
+    // first channel through the OAuth popup. Empty is also the answer that
+    // sends them into the connect flow, so it is the one answer worth
+    // confirming against the server before acting on it. The extra request only
+    // happens on an account that looks channel-less, where the dialog it guards
+    // is about to fetch `/integrations` anyway.
+    if (!isLoading && !integrationsError && integrations.length) {
+      return integrations;
+    }
+    try {
+      return (await mutateIntegrations()) ?? [];
+    } catch {
+      return null;
+    }
+  }, [isLoading, integrationsError, integrations, mutateIntegrations]);
+
+  /**
+   * Same race as the channel list, decided the same way. `/sets` has no
+   * `fallbackData`, so an in-flight fetch reads as "no sets" and the Select-a-Set
+   * step is skipped outright — silently, for someone who does have sets. The
+   * button paints on every route now, so it is reachable long before this
+   * resolves.
+   *
+   * Unlike channels, a failure resolves to `[]` rather than blocking: sets are a
+   * convenience, and refusing to open the composer because their fetch failed
+   * would be a worse trade than skipping the picker.
+   */
+  const resolveSets = useCallback(async (): Promise<any[]> => {
+    if (!setsLoading && !setsError) return sets;
+    try {
+      return (await mutateSets()) ?? [];
+    } catch {
+      return [];
+    }
+  }, [setsLoading, setsError, sets, mutateSets]);
+
   const createAPost = useCallback(async () => {
     setMenuOpen(false);
-    const date = (await (await fetch('/posts/find-slot')).json()).date;
+    const list = await resolveIntegrations();
+    if (list === null) {
+      toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+      return;
+    }
+    if (!list.length) {
+      // No channels: the composer renders nothing without one, so send the
+      // user where posting actually starts, without leaving the page.
+      await addProvider();
+      return;
+    }
 
-    const set: any = !sets.length
+    // Rejects outright when the backend is unreachable, and an undefined `date`
+    // would silently open the composer at "now" rather than the next free slot.
+    let date: string | undefined;
+    try {
+      const slotResponse = await fetch('/posts/find-slot');
+      if (!slotResponse.ok) {
+        throw new Error('find-slot failed');
+      }
+      date = (await slotResponse.json())?.date;
+    } catch (e) {
+      date = undefined;
+    }
+
+    if (!date) {
+      toaster.show(
+        t('create_post_failed', 'Could not start a new post, please try again'),
+        'warning'
+      );
+      return;
+    }
+
+    const setList = await resolveSets();
+
+    const set: any = !setList.length
       ? undefined
       : await new Promise((resolve) => {
           modal.openModal({
@@ -58,7 +201,7 @@ export const NewPost = () => {
             },
             children: (
               <SetSelectionModal
-                sets={sets}
+                sets={setList}
                 onSelect={(selectedSet) => {
                   resolve(selectedSet);
                   modal.closeAll();
@@ -87,23 +230,41 @@ export const NewPost = () => {
       },
       children: (
         <AddEditModal
-          allIntegrations={integrations.map((p) => ({
+          allIntegrations={list.map((p) => ({
             ...p,
           }))}
           {...(set?.content ? { set: JSON.parse(set.content) } : {})}
           reopenModal={createAPost}
           mutate={reloadCalendarView}
-          integrations={integrations}
+          integrations={list}
           date={dayjs.utc(date).local()}
         />
       ),
       size: '80%',
       title: ``,
     });
-  }, [fetch, integrations, modal, reloadCalendarView, sets, t]);
+  }, [
+    resolveIntegrations,
+    resolveSets,
+    addProvider,
+    fetch,
+    modal,
+    reloadCalendarView,
+    t,
+    toaster,
+  ]);
 
   const createAiPost = useCallback(async () => {
     setMenuOpen(false);
+    const list = await resolveIntegrations();
+    if (list === null) {
+      toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+      return;
+    }
+    if (!list.length) {
+      await addProvider();
+      return;
+    }
     if (!billingEnabled || !user?.tier?.ai) {
       if (
         await deleteDialog(
@@ -126,12 +287,21 @@ export const NewPost = () => {
       },
       size: 640,
       children: (
-        <CalendarWeekProvider {...all}>
+        <CalendarWeekProvider integrations={list}>
           <GeneratorPopup />
         </CalendarWeekProvider>
       ),
     });
-  }, [all, billingEnabled, modal, router, t, user?.tier?.ai]);
+  }, [
+    resolveIntegrations,
+    addProvider,
+    billingEnabled,
+    modal,
+    router,
+    t,
+    toaster,
+    user?.tier?.ai,
+  ]);
 
   const aiLocked = billingEnabled && !user?.tier?.ai;
 
@@ -164,7 +334,8 @@ export const NewPost = () => {
               strokeLinejoin="round"
             />
           </svg>
-          {t('create_new_post', 'Create Post')}
+          {/* Phones drop the word and keep the icon — same rule as Help/streak. */}
+          <span data-hdr-label="1">{t('create_new_post', 'Create Post')}</span>
         </button>
         <button
           type="button"
@@ -173,7 +344,12 @@ export const NewPost = () => {
           aria-label={t('create_post_options', 'Create post options')}
           onClick={() => setMenuOpen((open) => !open)}
           className={clsx(
-            'flex h-full w-[32px] items-center justify-center outline-none transition-colors hover:bg-black/10',
+            // Seam between the two halves of the split. `white/25` rather than
+            // `pqOnBrand/25`: that token is a bare `var()` with no
+            // `<alpha-value>`, so the opacity modifier would be dropped —
+            // and `--onBrand` is #ffffff in both themes anyway. `border-s`
+            // keeps the seam on the inner edge under RTL.
+            'flex h-full w-[32px] items-center justify-center border-s border-white/25 outline-none transition-colors hover:bg-black/10',
             menuOpen && 'bg-black/10'
           )}
         >

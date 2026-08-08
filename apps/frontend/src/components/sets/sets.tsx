@@ -10,11 +10,13 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useRouter } from 'next/navigation';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useSettingsTabChrome } from '@gitroom/frontend/components/settings/settings-tab-chrome.context';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 const SaveSetModal: FC<{
   postData: any;
@@ -63,14 +65,44 @@ export const Sets: FC = () => {
   const modal = useModals();
   const toaster = useToaster();
   const t = useT();
+  const router = useRouter();
 
-  const { isLoading, data: integrations } = useIntegrationList();
+  const {
+    isLoading,
+    error: integrationsError,
+    data: integrations,
+    mutate: mutateIntegrations,
+  } = useIntegrationList();
+
+  /**
+   * `useIntegrationList` carries `fallbackData: []`, so a cold page looks
+   * channel-less and a gate reading the flag is simply skipped while the list
+   * is in flight. Resolve at click time instead — same as `new.post.tsx`.
+   *
+   * Three answers, not two. `null` means "could not tell". A rejected
+   * revalidation must neither throw out of the click handler — the bound
+   * `mutate()` defaults to `throwOnError`, and an unhandled rejection leaves
+   * the button doing nothing at all — nor be reported as an empty account,
+   * which would send someone who has channels off to go connect one.
+   */
+  const resolveIntegrations = useCallback(async (): Promise<any[] | null> => {
+    if (!isLoading && !integrationsError) return integrations;
+    try {
+      return (await mutateIntegrations()) ?? [];
+    } catch {
+      return null;
+    }
+  }, [isLoading, integrationsError, integrations, mutateIntegrations]);
+
+  const openAddChannel = useCallback(() => {
+    router.push('/channels?add=1');
+  }, [router]);
 
   const list = useCallback(async () => {
     return (await fetch('/sets')).json();
   }, []);
 
-  const { data, mutate } = useSWR('sets', list, {
+  const { data, isLoading: setsLoading, mutate } = useSWR('sets', list, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -82,16 +114,48 @@ export const Sets: FC = () => {
   const { setChromePatch } = useSettingsTabChrome();
 
   useEffect(() => {
+    // Not while loading: `data?.length ?? 0` would publish "Social Sets (0)"
+    // into the pane header and then correct itself.
+    if (setsLoading) return;
     setChromePatch({
       title: t('social_sets_count', 'Social Sets ({{count}})', {
         count: data?.length ?? 0,
       }),
     });
     return () => setChromePatch(null);
-  }, [data?.length, setChromePatch, t]);
+  }, [data?.length, setsLoading, setChromePatch, t]);
 
   const addSet = useCallback(
-    (params?: { id?: string; name?: string; content?: string }) => () => {
+    (params?: { id?: string; name?: string; content?: string }) => async () => {
+      // A set is a saved selection of channels — with none connected the
+      // composer has nothing to show. Say why, then send them to connect one.
+      //
+      // Creating only. Editing an existing set must not be blocked on the
+      // channel list, the same short-circuit autopost already makes for its
+      // edit path — otherwise a failed list load sends you away from the set
+      // you were trying to open.
+      const list = await resolveIntegrations();
+      if (!params?.id) {
+        if (list === null) {
+          toaster.show(
+            t('something_went_wrong', 'Something went wrong'),
+            'warning'
+          );
+          return;
+        }
+        if (!list.length) {
+          toaster.show(
+            t(
+              'set_needs_channel',
+              'Connect a channel first — a social set is a saved selection of channels.'
+            ),
+            'warning'
+          );
+          openAddChannel();
+          return;
+        }
+      }
+      const channels = list ?? integrations;
       modal.openModal({
         id: 'add-edit-modal',
         closeOnClickOutside: false,
@@ -105,7 +169,7 @@ export const Sets: FC = () => {
         },
         children: (
           <AddEditModal
-            allIntegrations={integrations.map((p: any) => ({
+            allIntegrations={channels.map((p: any) => ({
               ...p,
             }))}
             {...(params?.id ? { set: JSON.parse(params.content) } : {})}
@@ -140,14 +204,23 @@ export const Sets: FC = () => {
             }}
             reopenModal={() => {}}
             mutate={() => {}}
-            integrations={integrations}
+            integrations={channels}
             date={newDayjs()}
           />
         ),
         title: ``,
       });
     },
-    [integrations]
+    [
+      resolveIntegrations,
+      integrations,
+      openAddChannel,
+      toaster,
+      t,
+      modal,
+      fetch,
+      mutate,
+    ]
   );
 
   const deleteSet = useCallback(
@@ -161,9 +234,24 @@ export const Sets: FC = () => {
           )
         )
       ) {
-        await fetch(`/sets/${data.id}`, {
-          method: 'DELETE',
-        });
+        // Same shape as the other delete paths: customFetch resolves on
+        // 4xx/5xx and rejects when the backend is down, so an unchecked call
+        // claimed success for a set that never went away.
+        let ok = false;
+        try {
+          ok = (await fetch(`/sets/${data.id}`, { method: 'DELETE' })).ok;
+        } catch (e) {
+          ok = false;
+        }
+
+        if (!ok) {
+          toaster.show(
+            t('set_delete_failed', 'Could not delete this set'),
+            'warning'
+          );
+          return;
+        }
+
         mutate();
         toaster.show(
           t('set_deleted_successfully', 'Set deleted successfully'),
@@ -176,9 +264,35 @@ export const Sets: FC = () => {
 
   return (
     <div className="flex flex-col">
-      {!!data?.length && (
+      {/* An empty list and a list in flight look the same from here, so the
+          rows wait for the fetch — otherwise the pane reads as empty and then
+          fills. The Add button stays live throughout; its channel check
+          resolves the list at click time. */}
+      {setsLoading && (
         <div className="mt-[18px] overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="flex items-center bg-pqTableHeader p-[10px_15px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+          <div className="flex items-center bg-pqTableHeader p-[10px_15px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqText">
+            <div className="flex-1">{t('name', 'Name')}</div>
+            <div className="w-[150px]">{t('actions', 'Actions')}</div>
+          </div>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center border-b border-pqLine p-[13px_15px] last:border-b-0"
+            >
+              <div className="flex-1">
+                <Skeleton className="h-[13px] w-[42%]" />
+              </div>
+              <div className="flex w-[150px] gap-[8px]">
+                <Skeleton className="h-[28px] w-[56px] rounded-pqSm" />
+                <Skeleton className="h-[28px] w-[56px] rounded-pqSm" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!setsLoading && !!data?.length && (
+        <div className="mt-[18px] overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+          <div className="flex items-center bg-pqTableHeader p-[10px_15px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqText">
             <div className="flex-1">{t('name', 'Name')}</div>
             <div className="w-[150px]">{t('actions', 'Actions')}</div>
           </div>
@@ -187,7 +301,7 @@ export const Sets: FC = () => {
               key={p.id}
               className="flex items-center border-t border-pqLine p-[11px_15px]"
             >
-              <div className="min-w-0 flex-1 truncate text-[13.5px] font-[500]">
+              <div className="min-w-0 flex-1 truncate text-[13.5px] font-[500] text-pqText">
                 {p.name}
               </div>
               <div className="flex w-[150px] gap-[8px]">

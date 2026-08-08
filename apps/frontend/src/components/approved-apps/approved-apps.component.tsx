@@ -38,10 +38,22 @@ export const ApprovedAppsComponent: FC = () => {
           )
         )
       ) {
+        // The catch below reads as handled but was unreachable for HTTP
+        // failures: customFetch RESOLVES on 4xx/5xx. So a rejected revoke —
+        // on an OAuth access grant, of all things — still said "Access revoked
+        // successfully". The `.ok` check is what actually makes this true; the
+        // catch now only covers a genuinely unreachable backend.
         try {
-          await fetch(`/user/approved-apps/${app.id}`, {
+          const response = await fetch(`/user/approved-apps/${app.id}`, {
             method: 'DELETE',
           });
+          if (!response.ok) {
+            toaster.show(
+              t('failed_to_revoke', 'Failed to revoke access'),
+              'warning'
+            );
+            return;
+          }
           toaster.show(
             t('access_revoked', 'Access revoked successfully'),
             'success'
@@ -84,7 +96,7 @@ export const ApprovedAppsComponent: FC = () => {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px] font-[700]">
+                <div className="truncate text-[14px] font-[700] text-pqText">
                   {app.oauthApp?.name}
                 </div>
                 {app.oauthApp?.description && (

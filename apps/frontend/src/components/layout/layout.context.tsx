@@ -5,6 +5,7 @@ import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { markTourPending } from '@gitroom/frontend/components/onboarding/tour';
 export default function LayoutContext(params: { children: ReactNode }) {
   if (params?.children) {
     // eslint-disable-next-line react/no-children-prop
@@ -58,6 +59,13 @@ function LayoutContextInner(params: { children: ReactNode }) {
         window.location.href = '/';
         return true;
       }
+      if (response?.headers?.get('onboarding')) {
+        // Write the first run down before anything navigates. The overlay is
+        // not mounted yet and may not be for a while — on a billing
+        // deployment the next screen is the paywall — so the header is the
+        // only moment this signal exists. `Tour` picks it up when it can.
+        markTourPending();
+      }
       const reloadOrOnboarding =
         response?.headers?.get('reload') ||
         response?.headers?.get('onboarding');
@@ -71,13 +79,21 @@ function LayoutContextInner(params: { children: ReactNode }) {
       if (response?.headers?.get('onboarding')) {
         // Design tour is the only first-run (old modal removed).
         window.location.href = isGeneral
-          ? '/launches?tour=true'
+          ? '/launches?display=week&tour=true'
           : '/analytics?tour=true';
         return true;
       }
 
       if (response?.headers?.get('reload')) {
-        window.location.reload();
+        // Login / register land on /auth*; reload would bounce through bare
+        // /launches and revive a stale Posts-list cookie. Always open Calendar.
+        if (window.location.pathname.startsWith('/auth')) {
+          window.location.href = isGeneral
+            ? `/launches?display=week&now=${Date.now()}`
+            : '/analytics';
+        } else {
+          window.location.reload();
+        }
         return true;
       }
 

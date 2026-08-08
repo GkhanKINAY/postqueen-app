@@ -11,6 +11,35 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
 import clsx from 'clsx';
 
+/**
+ * Why a member cannot see the workspace key, in one place.
+ *
+ * The server decides this, not the UI: `/user/self` returns an empty
+ * `publicApi` to anyone who is not an ADMIN, and rotate is policy-guarded. Three
+ * surfaces have to say so — the popup Reveal opens, that button's tooltip, and
+ * the note a connector's "How to connect" steps show where the key card would
+ * be — and one string is how they stay the same sentence.
+ */
+export const useApiKeyAdminOnly = () => {
+  const t = useT();
+  return {
+    title: t('api_key_admin_only_title', 'The API key is managed by admins'),
+    body: t(
+      'conn_api_key_admin_only',
+      'One key belongs to the whole workspace, so only an admin can reveal or rotate it. Ask an admin of this workspace when a connector asks you for credentials.'
+    ),
+  };
+};
+
+/**
+ * How long a key is, for the row that cannot show one.
+ *
+ * An admin's mask is drawn from the real value, so it is always the right
+ * width. A member has no value at all, and eight dots read like a short,
+ * flimsy secret rather than the 32 characters actually sitting on the server.
+ */
+const KEY_LENGTH = 32;
+
 const CopyButton = ({
   text,
   label,
@@ -60,6 +89,26 @@ export const ApiKeyCard: FC<{
   const [reveal, setReveal] = useState(false);
   const t = useT();
 
+  const adminOnly = useApiKeyAdminOnly();
+  /** An empty key is the server saying "not for you", not "no key exists". */
+  const canReveal = !!user?.publicApi;
+
+  /**
+   * Every action stays on screen for a member and says why when pressed.
+   *
+   * Hiding them would answer the question by omission, and leave somebody
+   * wondering whether the key can be rotated at all rather than knowing who to
+   * ask. The server refuses all three regardless of what this renders.
+   */
+  const explainAdminOnly = useCallback(() => {
+    void decision.open({
+      title: adminOnly.title,
+      description: adminOnly.body,
+      onlyApprove: true,
+      approveLabel: t('ok', 'OK'),
+    });
+  }, [decision, adminOnly, t]);
+
   const toggleReveal = useCallback(() => {
     setReveal((prev) => {
       const next = !prev;
@@ -89,7 +138,9 @@ export const ApiKeyCard: FC<{
     );
   }, [decision, fetch, mutate, onRevealChange, toaster, t]);
 
-  if (!user?.publicApi) {
+  // No early return on a missing key any more: the card is how a member is told
+  // the key exists and is not theirs to see. Only a missing user bails.
+  if (!user) {
     return null;
   }
 
@@ -128,7 +179,7 @@ export const ApiKeyCard: FC<{
           <div className="min-w-0">
             <div
               className={clsx(
-                'font-[600]',
+                'font-[600] text-pqText',
                 compact ? 'text-[13.5px]' : 'text-[14px]'
               )}
             >
@@ -162,21 +213,46 @@ export const ApiKeyCard: FC<{
         <code className="min-w-0 flex-1 truncate">
           {reveal
             ? user.publicApi
-            : `${'•'.repeat(Math.max(user.publicApi.length - 5, 8))}${user.publicApi.slice(-5)}`}
+            : canReveal
+            ? `${'•'.repeat(
+                Math.max(user.publicApi.length - 5, 8)
+              )}${user.publicApi.slice(-5)}`
+            : '•'.repeat(KEY_LENGTH)}
         </code>
       </div>
-      <div className="flex flex-wrap gap-[6px]">
+      {/* Every button is here for everyone. The tooltip says why on hover and
+          the popup says it again on click, off one string, so the two cannot
+          drift apart. */}
+      <div
+        className="flex flex-wrap gap-[6px]"
+        {...(canReveal
+          ? {}
+          : {
+              'data-tooltip-id': 'tooltip',
+              'data-tooltip-content': adminOnly.body,
+            })}
+      >
         <button
           type="button"
-          onClick={toggleReveal}
+          onClick={canReveal ? toggleReveal : explainAdminOnly}
           className="flex h-[30px] cursor-pointer items-center rounded-pqSm bg-pqSettings px-[11px] text-[12.5px] font-[500] text-pqText transition-colors hover:bg-pqHover"
         >
           {reveal ? t('hide', 'Hide') : t('reveal', 'Reveal')}
         </button>
-        <CopyButton text={user.publicApi} label={t('copy', 'Copy')} />
+        {canReveal ? (
+          <CopyButton text={user.publicApi} label={t('copy', 'Copy')} />
+        ) : (
+          <button
+            type="button"
+            onClick={explainAdminOnly}
+            className="flex h-[30px] cursor-pointer items-center rounded-pqSm bg-pqSettings px-[11px] text-[12.5px] font-[500] text-pqText transition-colors hover:bg-pqHover"
+          >
+            {t('copy', 'Copy')}
+          </button>
+        )}
         <button
           type="button"
-          onClick={rotateKey}
+          onClick={canReveal ? rotateKey : explainAdminOnly}
           className="flex h-[30px] cursor-pointer items-center rounded-pqSm bg-pqSettings px-[11px] text-[12.5px] font-[500] text-pqWarn transition-colors hover:bg-pqHover"
         >
           {t('rotate_key', 'Rotate key')}

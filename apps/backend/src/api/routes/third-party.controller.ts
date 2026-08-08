@@ -23,7 +23,7 @@ export class ThirdPartyController {
 
   constructor(
     private _thirdPartyManager: ThirdPartyManager,
-    private _mediaService: MediaService,
+    private _mediaService: MediaService
   ) {}
 
   @Get('/list')
@@ -33,23 +33,34 @@ export class ThirdPartyController {
 
   @Get('/')
   async getSavedThirdParty(@GetOrgFromRequest() organization: Organization) {
-    return Promise.all(
-      (
-        await this._thirdPartyManager.getAllThirdPartiesByOrganization(
-          organization.id
-        )
-      ).map((thirdParty) => {
-        const { description, fields, position, title, identifier } =
-          this._thirdPartyManager.getThirdPartyByName(thirdParty.identifier);
-        return {
+    const saved =
+      await this._thirdPartyManager.getAllThirdPartiesByOrganization(
+        organization.id
+      );
+
+    // A saved row whose provider is no longer in the build has no metadata to
+    // decorate with. Skip it rather than let one orphan take down the whole
+    // Settings → Integrations list.
+    return saved.flatMap((thirdParty) => {
+      const provider = this._thirdPartyManager.getThirdPartyByName(
+        thirdParty.identifier
+      );
+
+      if (!provider) {
+        return [];
+      }
+
+      const { description, fields, position, title } = provider;
+      return [
+        {
           ...thirdParty,
           title,
           position,
           fields,
           description,
-        };
-      })
-    );
+        },
+      ];
+    });
   }
 
   @Delete('/:id')
@@ -89,7 +100,11 @@ export class ThirdPartyController {
     );
 
     const file = await this.storage.uploadSimple(loadedData);
-    return this._mediaService.saveFile(organization.id, file.split('/').pop(), file);
+    return this._mediaService.saveFile(
+      organization.id,
+      file.split('/').pop(),
+      file
+    );
   }
 
   @Post('/function/:id/:functionName')

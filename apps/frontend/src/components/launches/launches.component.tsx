@@ -8,18 +8,9 @@ import {
   CalendarWeekProvider,
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
-
-/** Prototype hides the queue on the Posts (list) page. */
-const PostsPanelWhenCalendar = () => {
-  const { display } = useCalendar();
-  if (display === 'list') return null;
-  return <PostsPanel />;
-};
 import { Filters } from '@gitroom/frontend/components/launches/filters';
-import { NewPost } from '@gitroom/frontend/components/launches/new.post';
-import { HeaderAction } from '@gitroom/frontend/components/new-layout/header-slot';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import clsx from 'clsx';
 import { useUser } from '../layout/user.context';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
@@ -33,6 +24,135 @@ import { useDrag, useDrop } from 'react-dnd';
 import { DNDProvider } from '@gitroom/frontend/components/launches/helpers/dnd.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+
+/**
+ * Ghost for this page while the channel list resolves.
+ *
+ * It reads `display` and `postsPanelOpen` out of the calendar context rather
+ * than assuming, because all four displays reach this component and they do not
+ * share a shape: `list` has no queue panel at all and is full-bleed, and a
+ * collapsed panel is the 44px rail, not the 280px body. A skeleton that always
+ * drew the expanded panel and a 7-column grid snapped 236–280px sideways the
+ * moment the real page arrived — which is the whole failure a skeleton exists to
+ * avoid. Reading the context is only possible because the page mounts the
+ * provider around this, see the note on the return below.
+ *
+ * Both values come from cookies, so they are correct on the very first paint.
+ */
+const LaunchesSkeleton = () => {
+  const { display, postsPanelOpen } = useCalendar();
+  const isList = display === 'list';
+
+  return (
+    <>
+      {!isList &&
+        (postsPanelOpen ? (
+          <div
+            role="status"
+            aria-busy="true"
+            aria-label="Loading"
+            className="flex w-[280px] shrink-0 flex-col overflow-hidden bg-pqInner tablet:w-[236px] mobile:hidden"
+          >
+            <div className="flex shrink-0 flex-col gap-[12px] px-[14px] pb-[12px] pt-[16px]">
+              <div className="flex items-center gap-[8px]">
+                <Skeleton className="h-[15px] w-[54px]" />
+                <Skeleton className="ms-auto h-[28px] w-[96px] rounded-pqSm" />
+              </div>
+              <div className="flex shrink-0 gap-[2px] rounded-pqSm bg-pqSettings p-[2px]">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="h-[28px] min-w-0 flex-1 rounded-[6px]"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-[6px] px-[12px] pb-[14px]">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-[76px] w-full rounded-[10px]" />
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Collapsed: the rail is 44px with a single toggle button on it.
+          <div className="flex w-[44px] shrink-0 flex-col items-center bg-pqInner py-[16px] mobile:hidden">
+            <Skeleton className="size-[28px] rounded-pqSm" />
+          </div>
+        ))}
+
+      <div
+        {...(isList
+          ? { role: 'status', 'aria-busy': true, 'aria-label': 'Loading' }
+          : {})}
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]"
+      >
+        <div className="flex items-center gap-[8px]">
+          <Skeleton className="h-[32px] w-[132px] rounded-[9px]" />
+          <Skeleton className="h-[32px] w-[92px] rounded-[9px]" />
+          <div className="flex-1" />
+          <Skeleton className="h-[32px] w-[118px] rounded-[9px]" />
+        </div>
+        {isList ? (
+          // Posts: one scrolling column of rows, no grid.
+          <div className="flex min-h-0 flex-1 flex-col gap-[10px]">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[68px] w-full rounded-[12px]" />
+            ))}
+          </div>
+        ) : (
+          // Week, month and day are all seven columns wide; the rows stay
+          // blocks rather than day cells so none of the three is contradicted.
+          <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-[auto_1fr] gap-[8px]">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={`h-${i}`} className="h-[12px] w-[62%]" />
+            ))}
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton
+                key={`c-${i}`}
+                className="min-h-[180px] w-full rounded-[12px]"
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+/** Prototype hides the queue on the Posts (list) page. */
+const PostsPanelWhenCalendar = () => {
+  const { display } = useCalendar();
+  if (display === 'list') return null;
+  return <PostsPanel />;
+};
+
+/**
+ * List view: Filters + posts scroll as one column (no inner-only scrollbar).
+ * Week/day/month keep Filters fixed and scroll inside the calendar grid.
+ */
+const LaunchesMainColumn = () => {
+  const { display } = useCalendar();
+  const isList = display === 'list';
+  return (
+    <div
+      className={clsx(
+        'flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]',
+        isList &&
+          'overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
+      )}
+    >
+      <Filters />
+      <div
+        className={clsx(
+          'flex min-w-0',
+          isList ? 'flex-col' : 'min-h-0 flex-1'
+        )}
+      >
+        <Calendar />
+      </div>
+    </div>
+  );
+};
 
 export const SVGLine = () => {
   return (
@@ -395,31 +515,36 @@ export const LaunchesComponent = () => {
       window.close();
     }
   }, []);
-  if (isLoading) {
-    return (
-      <div className="bg-pqInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
-        <LoadingComponent />
-      </div>
-    );
-  }
-
   // @ts-ignore
   return (
     <DNDProvider>
-      <CalendarWeekProvider integrations={sortedIntegrations}>
-        {sortedIntegrations.length > 0 && (
-          <HeaderAction>
-            <NewPost />
-          </HeaderAction>
+      {/* The skeleton renders *inside* the provider, not instead of it.
+          `CalendarWeekProvider`'s mount is what starts `/posts`,
+          `/posts/list` and `/signatures/default`, so returning early held that
+          wave behind `/integrations/list` and made the cold load two loading
+          screens instead of one. (`/sets` was never gated — the chrome header's
+          `NewPost` calls `useSets()` on every route under the same key.)
+
+          It can mount this early because it never reads `integrations`:
+          the prop is declared, defaulted and handed straight to the context
+          value, and no fetcher, SWR key or filter in calendar.context.tsx
+          touches it. `sortedIntegrations` is already `[]` while loading, which
+          is the provider's own default anyway, and every consumer downstream
+          checks `?.length`. */}
+      <CalendarWeekProvider integrations={sortedIntegrations} ready={!isLoading}>
+        {isLoading ? (
+          <LaunchesSkeleton />
+        ) : (
+          <>
+            {/* Create Post lives in the chrome header (layout.component.tsx) so
+                it is present on every route and before the first channel
+                exists. */}
+            {/* Design: queue panel beside calendar only. Posts (list) is
+                full-bleed. */}
+            <PostsPanelWhenCalendar />
+            <LaunchesMainColumn />
+          </>
         )}
-        {/* Design: queue panel beside calendar only. Posts (list) is full-bleed. */}
-        <PostsPanelWhenCalendar />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]">
-          <Filters />
-          <div className="flex min-h-0 min-w-0 flex-1">
-            <Calendar />
-          </div>
-        </div>
       </CalendarWeekProvider>
     </DNDProvider>
   );

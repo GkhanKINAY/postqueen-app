@@ -29,6 +29,7 @@ module.exports = {
         pqLine: 'var(--line)',
         pqBorder: 'var(--border)',
         pqBlockSeparator: 'var(--blockSeparator)',
+        pqSkeleton: 'var(--skeleton)',
         pqText: 'var(--text)',
         pqMuted: 'var(--muted)',
         pqSoft: 'var(--soft)',
@@ -298,8 +299,14 @@ module.exports = {
         pqToast: 'var(--e3), inset 0 0 0 1px var(--border)',
         // The lift under the calendar's current-day number.
         pqToday: 'var(--todayGlow)',
+        // The tour's drag ghost: brand hairline plus the lifted-card drop.
+        pqTourGhost: 'var(--tourGhost)',
+        // The tour's card: brand hairline, ambient drop, brand bloom.
+        pqTourCard: 'var(--tourCard)',
       },
       dropShadow: {
+        // The mouse pointer riding the tour's drag ghost.
+        pqCursor: 'var(--tourCursor)',
         glow: [
           '0 0 6px rgba(250,204,21,0.6)',
           '0 0 12px rgba(250,204,21,0.5)',

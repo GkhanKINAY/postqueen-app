@@ -54,6 +54,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           frontEndUrl={process.env.FRONTEND_URL!}
           legalUrl={process.env.LEGAL_URL || ''}
           affiliateUrl={process.env.AFFILIATE_URL || ''}
+          supportEmail={process.env.SUPPORT_EMAIL || 'support@postqueen.ai'}
+          changelogUrl={process.env.CHANGELOG_URL || ''}
+          communityUrl={process.env.COMMUNITY_URL || ''}
           isGeneral={!!process.env.IS_GENERAL}
           genericOauth={!!process.env.POSTQUEEN_GENERIC_OAUTH}
           oauthLogoUrl={process.env.NEXT_PUBLIC_POSTQUEEN_OAUTH_LOGO_URL!}

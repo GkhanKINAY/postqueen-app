@@ -238,20 +238,34 @@ export const ShowAllProviders = forwardRef((props, ref) => {
     }
   }, [current]);
 
+  /**
+   * The optional chain has to sit on `.current`, not on `p.ref`: the store hands
+   * out a `createRef()` per selection, so `p.ref` is always truthy and `?.` there
+   * guards nothing. `.current` is null whenever no provider component filled it —
+   * which includes any channel whose identifier is missing from `Providers` and
+   * falls through to `Empty`, a function component that never takes a ref.
+   *
+   * That matters because `manage.modal.tsx` awaits `getAllValues()` between
+   * `setLoading(true)` and `setLoading(false)` with no catch: one throw here and
+   * the submit button stays disabled and spinning until the composer is closed
+   * and reopened.
+   */
   useImperativeHandle(ref, () => ({
     checkAllValid: async () => {
       return Promise.all(
-        selectedIntegrations.map(async (p) => await p.ref?.current.isValid())
+        selectedIntegrations.map(async (p) => await p.ref?.current?.isValid?.())
       );
     },
     getAllValues: async () => {
       return Promise.all(
-        selectedIntegrations.map(async (p) => await p.ref?.current.getValues())
+        selectedIntegrations.map(
+          async (p) => await p.ref?.current?.getValues?.()
+        )
       );
     },
     triggerAll: () => {
       return selectedIntegrations.map(
-        async (p) => await p.ref?.current.trigger()
+        async (p) => await p.ref?.current?.trigger?.()
       );
     },
   }));
@@ -260,7 +274,10 @@ export const ShowAllProviders = forwardRef((props, ref) => {
   const showChips = isGlobal && selectedIntegrations.length > 1;
 
   return (
-    <div className="flex w-full flex-1 flex-col">
+    // `data-preview-root` scopes the two `<style>` rules below. They are plain
+    // document-global CSS, and `[data-preview-channel]` on its own would reach
+    // any future surface that reuses the attribute.
+    <div data-preview-root="1" className="flex w-full flex-1 flex-col">
       {selectedIntegrations.length === 0 ? (
         <div className="rounded-[14px] bg-pqInner px-[24px] py-[48px] text-center text-[13.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
           {t(
@@ -346,7 +363,7 @@ export const ShowAllProviders = forwardRef((props, ref) => {
             </div>
           )}
           {isGlobal && previewFocus && (
-            <style>{`[data-preview-channel]:not([data-preview-channel="${previewFocus}"]) { display: none !important; }`}</style>
+            <style>{`[data-preview-root] [data-preview-channel]:not([data-preview-channel="${previewFocus}"]) { display: none !important; }`}</style>
           )}
           {isGlobal && !previewHasContent && (
             <div className="rounded-[14px] bg-pqInner px-[24px] py-[48px] text-center text-[13.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
@@ -356,23 +373,34 @@ export const ShowAllProviders = forwardRef((props, ref) => {
               )}
             </div>
           )}
-          {!(isGlobal && !previewHasContent) &&
-            selectedIntegrations.map((integration) => {
-              const { component: ProviderComponent } = Providers.find(
-                (provider) =>
-                  provider.identifier === integration.integration.identifier
-              ) || {
-                component: Empty,
-              };
+          {/* Hidden, not unmounted. Each provider registers its own character
+              limit in a mount effect (high.order.provider `setChars`) and holds
+              that channel's settings form and imperative ref. Dropping them
+              while the global editor was empty left `chars` empty, so the
+              validation panel read `0/0` for every channel, and threw away
+              per-channel settings on the first keystroke. Same `<style>` idiom
+              as the previewFocus filter above; the cards render empty here
+              anyway — high.order.provider deliberately leaves the "Start
+              writing" hint to this parent in global mode. */}
+          {isGlobal && !previewHasContent && (
+            <style>{`[data-preview-root] [data-preview-channel] { display: none !important; }`}</style>
+          )}
+          {selectedIntegrations.map((integration) => {
+            const { component: ProviderComponent } = Providers.find(
+              (provider) =>
+                provider.identifier === integration.integration.identifier
+            ) || {
+              component: Empty,
+            };
 
-              return (
-                <ProviderComponent
-                  ref={integration.ref}
-                  key={integration.integration.id}
-                  id={integration.integration.id}
-                />
-              );
-            })}
+            return (
+              <ProviderComponent
+                ref={integration.ref}
+                key={integration.integration.id}
+                id={integration.integration.id}
+              />
+            );
+          })}
         </>
       )}
     </div>

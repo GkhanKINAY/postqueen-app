@@ -16,8 +16,14 @@ import { useUser } from '../layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useTourStepKey } from '@gitroom/frontend/components/onboarding/tour';
-import { ApiKeyCard } from '@gitroom/frontend/components/public-api/api-key-card';
+import {
+  useTourRunning,
+  useTourStepKey,
+} from '@gitroom/frontend/components/onboarding/tour';
+import {
+  ApiKeyCard,
+  useApiKeyAdminOnly,
+} from '@gitroom/frontend/components/public-api/api-key-card';
 import {
   PublicApiKeysSection,
   PublicAppsSection,
@@ -37,6 +43,7 @@ import {
 } from '@gitroom/frontend/components/public-api/connections.catalog';
 import {
   RouteOverlayScrim,
+  useRouteOverlayActive,
   type RouteOverlayMode,
 } from '@gitroom/frontend/components/layout/leave-settings';
 
@@ -151,6 +158,22 @@ const CodeBlock: FC<{
           />
         </svg>
       </button>
+    </div>
+  );
+};
+
+/**
+ * Shown wherever a command or URL would carry the API key and cannot.
+ *
+ * The callouts below interpolate the key into copyable text; for a member the
+ * server sends an empty one, so the line renders as a URL that stops at the
+ * slash. Better to say why than to hand somebody a command that cannot work.
+ */
+const ApiKeyMissingNote: FC = () => {
+  const adminOnly = useApiKeyAdminOnly();
+  return (
+    <div className="rounded-pqSm bg-pqBg p-[10px_12px] text-[12px] leading-[1.5] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
+      {adminOnly.body}
     </div>
   );
 };
@@ -279,16 +302,18 @@ const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
   const t = useT();
   const code = 'npx skills add GkhanKINAY/postqueen-agent';
   const keyCode = `export POSTQUEEN_API_KEY="${apiKey}"`;
-  const maskedKey = keyRevealed
-    ? keyCode
-    : keyCode.replace(
-        apiKey,
-        '*'.repeat(Math.min(apiKey.length || 8, 24))
-      );
+  // `!apiKey` is not just the empty case, it is the member case: the server
+  // withholds the key from non-admins. `''.replace` matches at position zero,
+  // so masking an absent key prepends the stars to the command instead of
+  // hiding anything.
+  const maskedKey =
+    keyRevealed || !apiKey
+      ? keyCode
+      : keyCode.replace(apiKey, '*'.repeat(Math.min(apiKey.length, 24)));
   return (
     <div className="mb-[16px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
       <div>
-        <div className="text-[14px] font-[600]">
+        <div className="text-[14px] font-[600] text-pqText">
           {t('conn_step_skill_install', 'Install the PostQueen skill')}
         </div>
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
@@ -300,7 +325,7 @@ const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
       </div>
       <CodeBlock code={code} label="Skill" />
       <div>
-        <div className="text-[13px] font-[600]">
+        <div className="text-[13px] font-[600] text-pqText">
           {t('conn_step_skill_key', 'Give it your API key')}
         </div>
         <CodeBlock
@@ -308,6 +333,7 @@ const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
           rawCode={keyCode}
           label="API key"
         />
+        {!apiKey && <ApiKeyMissingNote />}
       </div>
       <a
         href="https://docs.postqueen.ai/agents/skill-install"
@@ -328,16 +354,15 @@ const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
 }) => {
   const t = useT();
   const keyCode = `export POSTQUEEN_API_KEY="${apiKey}"`;
-  const maskedKey = keyRevealed
-    ? keyCode
-    : keyCode.replace(
-        apiKey,
-        '*'.repeat(Math.min(apiKey.length || 8, 24))
-      );
+  // See SkillInstallCallout — masking an absent key would prepend the stars.
+  const maskedKey =
+    keyRevealed || !apiKey
+      ? keyCode
+      : keyCode.replace(apiKey, '*'.repeat(Math.min(apiKey.length, 24)));
   return (
     <div className="mb-[16px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
       <div>
-        <div className="text-[14px] font-[600]">
+        <div className="text-[14px] font-[600] text-pqText">
           {t('conn_cli_callout_title', 'Set up the PostQueen CLI')}
         </div>
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
@@ -348,7 +373,7 @@ const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
         </div>
       </div>
       <div>
-        <div className="text-[13px] font-[600]">
+        <div className="text-[13px] font-[600] text-pqText">
           {t('conn_cli_step_install', 'Install it')}
         </div>
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
@@ -360,7 +385,7 @@ const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
         <CodeBlock code="npm install -g postqueen" label="Install" />
       </div>
       <div>
-        <div className="text-[13px] font-[600]">
+        <div className="text-[13px] font-[600] text-pqText">
           {t('conn_cli_step_login', 'Authenticate')}
         </div>
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
@@ -370,9 +395,10 @@ const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
           )}
         </div>
         <CodeBlock code={maskedKey} rawCode={keyCode} label="API key" />
+        {!apiKey && <ApiKeyMissingNote />}
       </div>
       <div>
-        <div className="text-[13px] font-[600]">
+        <div className="text-[13px] font-[600] text-pqText">
           {t('conn_cli_step_try', 'Try it')}
         </div>
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
@@ -409,7 +435,7 @@ const McpAuthCallout: FC<{ mcpUrl: string; mcpUrlWithKey: string; apiKey: string
       : text.split(apiKey).join('*'.repeat(Math.min(apiKey.length, 24)));
   return (
     <div className="mb-[16px] flex flex-col gap-[10px] rounded-pqMd bg-pqBrandFaint p-[14px_16px]">
-      <div className="text-[13.5px] font-[600]">
+      <div className="text-[13.5px] font-[600] text-pqText">
         {t('connect_mcp_auth_title', 'MCP URL & auth')}
       </div>
       <div className="text-[12.5px] leading-[1.55] text-pqMuted">
@@ -428,6 +454,7 @@ const McpAuthCallout: FC<{ mcpUrl: string; mcpUrlWithKey: string; apiKey: string
         rawCode={`${mcpUrl}\nAuthorization: Bearer ${apiKey}`}
         label="Bearer"
       />
+      {!apiKey && <ApiKeyMissingNote />}
     </div>
   );
 };
@@ -447,6 +474,7 @@ export const ConnectPanel: FC<{
   const searchParams = useSearchParams();
   const tourKey = useTourStepKey();
   const tourConn = tourKey === 'connections-page';
+
 
   const [nav, setNav] = useState<ConnectNavId>('ai-agents');
   const [picked, setPicked] = useState('');
@@ -729,9 +757,6 @@ export const ConnectPanel: FC<{
     [t]
   );
 
-  const showAgentList =
-    !!active && (nav === 'ai-agents' || nav === 'agent-skills') && !mobile;
-
   const renderDetail = (item: Connection) => {
     const prompts = item.prompts ?? fallbackPrompts;
     return (
@@ -757,7 +782,7 @@ export const ConnectPanel: FC<{
           <ConnIcon item={item} size="lg" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-[8px]">
-              <h2 className="text-[22px] font-[600] -tracking-[0.02em]">
+              <h2 className="text-[22px] font-[600] text-pqText -tracking-[0.02em]">
                 {item.name}
               </h2>
               {item.soon && (
@@ -805,6 +830,8 @@ export const ConnectPanel: FC<{
           <div className="text-[14px] leading-[1.7] text-pqMuted">{item.info}</div>
         )}
 
+        {/* One branch: the card answers for a key it may not show, and Reveal
+            is where a member is told why. */}
         {item.section !== 'media' && (
           <ApiKeyCard
             showWizard={false}
@@ -837,7 +864,7 @@ export const ConnectPanel: FC<{
         )}
 
         <div className="flex flex-col gap-[16px] rounded-[18px] bg-pqInner p-[22px] shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="text-[15px] font-[600]">
+          <div className="text-[15px] font-[600] text-pqText">
             {t('conn_how_to_connect', 'How to connect')}
           </div>
           {item.steps.map((step, index) => (
@@ -846,7 +873,7 @@ export const ConnectPanel: FC<{
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-[600]">{step.title}</div>
+                <div className="text-[14px] font-[600] text-pqText">{step.title}</div>
                 {!!step.detail && (
                   <div className="mt-[2px] text-[13.5px] leading-[1.6] text-pqMuted">
                     {step.detail}
@@ -874,6 +901,9 @@ export const ConnectPanel: FC<{
   };
 
   const renderHub = () => {
+    // The three Account sections render for everyone. Each one answers for its
+    // own rights: API Keys masks a key it may not show, Developers refuses to
+    // fetch, Approved Apps is per-user and ungated to begin with.
     if (nav === 'api-keys') {
       return (
         <div>
@@ -950,7 +980,7 @@ export const ConnectPanel: FC<{
                 <ConnIcon item={item} size="xs" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-[7px]">
-                    <span className="truncate text-[13.5px] font-[600]">
+                    <span className="truncate text-[13.5px] font-[600] text-pqText">
                       {item.name}
                     </span>
                     {item.soon && (
@@ -986,7 +1016,7 @@ export const ConnectPanel: FC<{
           <ConnIcon item={item} />
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="flex min-w-0 items-center gap-[7px]">
-              <span className="truncate text-[14px] font-[600] -tracking-[0.01em]">
+              <span className="truncate text-[14px] font-[600] text-pqText -tracking-[0.01em]">
                 {item.name}
               </span>
               {item.soon && (
@@ -1051,7 +1081,7 @@ export const ConnectPanel: FC<{
             ).map((strip) =>
               strip.items.length ? (
                 <div key={strip.key} className="flex flex-col gap-[8px]">
-                  <div className="text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqSoft">
+                  <div className="text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
                     {strip.label}
                   </div>
                   {hubGrid(strip.items)}
@@ -1079,7 +1109,7 @@ export const ConnectPanel: FC<{
         ? 'bg-pqBrand text-pqOnBrand'
         : activeChip && picked
           ? 'bg-pqBrandSoft text-pqFocused'
-          : 'bg-pqBtnSimple text-pqSoft hover:bg-pqHover hover:text-pqText'
+          : 'bg-pqBtnSimple text-pqMuted hover:bg-pqHover hover:text-pqText'
     );
 
   const leftNav = (
@@ -1100,7 +1130,7 @@ export const ConnectPanel: FC<{
         )}
       >
         {!mobile && (
-          <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqSoft">
+          <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
             {t('connect_nav_section', 'Connectors')}
           </div>
         )}
@@ -1237,7 +1267,7 @@ export const ConnectPanel: FC<{
         )}
       >
         {!mobile && (
-          <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqSoft">
+          <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
             {t('connect_nav_account', 'Account')}
           </div>
         )}
@@ -1298,7 +1328,7 @@ export const ConnectPanel: FC<{
       >
         {mobile && (
           <div className="flex items-center justify-between gap-[8px] p-[12px_14px_0]">
-            <div className="text-[15px] font-[600]">
+            <div className="text-[15px] font-[600] text-pqText">
               {t('connect_postqueen', 'Connect PostQueen')}
             </div>
             <button
@@ -1344,40 +1374,6 @@ export const ConnectPanel: FC<{
         )}
       </div>
 
-      {/* Optional inner agent list when detailing AI agents */}
-      {showAgentList && (
-        <div className="flex w-[180px] shrink-0 flex-col gap-[1px] overflow-y-auto border-e border-pqLine bg-pqSettings p-[10px_8px]">
-          <button
-            type="button"
-            onClick={clearPicked}
-            className="mb-[4px] px-[8px] text-start text-[11px] font-[600] text-pqSoft hover:text-pqText"
-          >
-            ←{' '}
-            {
-              hubTitles[
-                nav === 'agent-skills' ? 'agent-skills' : 'ai-agents'
-              ]?.title
-            }
-          </button>
-          {hubItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => selectItem(item.id)}
-              className={clsx(
-                'flex items-center gap-[8px] rounded-pqSm px-[8px] py-[7px] text-start text-[12.5px] transition-colors',
-                item.id === picked
-                  ? 'bg-[rgba(124,58,237,.15)] font-[600] text-pqFocused'
-                  : 'text-pqMuted hover:bg-pqHover hover:text-pqText'
-              )}
-            >
-              <ConnIcon item={item} size="xs" />
-              <span className="min-w-0 truncate">{item.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Right content */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <button
@@ -1405,7 +1401,20 @@ export const ConnectPanel: FC<{
 
 /**
  * /connections route — Settings-style scrim + Connect panel.
- * Gate matches the prior page: public_api + isGeneral + org admin.
+ *
+ * Open to everyone. The gate this used to carry (`public_api && isGeneral &&
+ * org admin`) was inherited from the page this replaced, and two thirds of it
+ * were wrong here: `public_api` is false on FREE, which is every unsubscribed
+ * account, and `isGeneral` is the hosted-SaaS flag — false on every self-host,
+ * which is the audience most likely to want MCP in the first place. Between
+ * them they hid the catalog from the people the product tour walks to it, and
+ * a connections page nobody can open is not a connections page.
+ *
+ * What is genuinely admin-only is the credential, and the server already says
+ * so: `/user/self` returns an empty `publicApi` to members and
+ * `POST /api-key/rotate` is policy-guarded. So members get the catalog and the
+ * install steps, and a line telling them where the key comes from — see
+ * `ConnectPanel`.
  *
  * `mode=intercept` — soft-open via `@modal/(.)connections`.
  * `mode=page` — hard URL; scrim portals to body (covers header).
@@ -1413,11 +1422,13 @@ export const ConnectPanel: FC<{
 export const ConnectPage: FC<{ mode?: RouteOverlayMode }> = ({
   mode = 'page',
 }) => {
-  const t = useT();
-  const user = useUser();
-  const { isGeneral } = useVariables();
   const router = useRouter();
-  const isOrgAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
+  // A `@modal` slot keeps its last active state across soft navigations, so a
+  // push to a route with no intercept (the tour: /connections → /channels)
+  // strands this overlay over the new page. `default.tsx` only covers hard
+  // loads, and nothing else ever unmounts it.
+  const active = useRouteOverlayActive('connect');
+  const tourRunning = useTourRunning();
 
   const back = useCallback(() => {
     if (window.history.length > 1) {
@@ -1428,27 +1439,20 @@ export const ConnectPage: FC<{ mode?: RouteOverlayMode }> = ({
   }, [router]);
 
   useEffect(() => {
+    // Hooks still run while the overlay is hidden — an unguarded listener would
+    // navigate back from whatever page stranded it. During the tour the key
+    // belongs to the tour, which has its own Escape and its own way of leaving;
+    // both firing ends the tour *and* walks back a page.
+    if (!active || tourRunning) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') back();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [back]);
+  }, [back, active, tourRunning]);
 
-  if (!user?.tier?.public_api || !isGeneral || !isOrgAdmin) {
-    return (
-      <RouteOverlayScrim mode={mode} kind="connect" onClose={back}>
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="w-[min(480px,100%)] rounded-[16px] bg-pqPop p-[24px] text-center text-[13px] text-pqMuted shadow-[var(--e3),0_0_0_1px_var(--border)]"
-        >
-          {t(
-            'connections_admin_only',
-            'Connections is available to workspace admins on plans with API access.'
-          )}
-        </div>
-      </RouteOverlayScrim>
-    );
+  if (!active) {
+    return null;
   }
 
   return (

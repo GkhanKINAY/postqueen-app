@@ -6,6 +6,13 @@ on:
   merge_group:
   pull_request:
 
+# `on: push` has no branch filter, and this job now runs two cold `tsc` passes
+# before the build. Without this, pushing three times to a branch keeps three
+# full runs alive; only the newest can still be interesting.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,6 +56,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      # The redesign's behaviour guard: types, the set of API endpoints called,
+      # the i18n key set, the route list, the feature gates, and whether every
+      # indefinite animation can still be switched off for prefers-reduced-motion.
+      # It compares against docs/ui-migration-baseline/ and fails on any drift.
+      # Before this it ran only when someone remembered to, which is to say
+      # never — see the header of the script.
+      - name: UI migration guard
+        run: scripts/ui-migration-check.sh
 
       - name: Build
         run: pnpm run build

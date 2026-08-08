@@ -18,6 +18,13 @@ export class WebhooksService {
     return this._webhooksRepository.createWebhook(orgId, body);
   }
 
+  // PUT goes through here so an id that does not resolve 404s instead of
+  // upserting a new row past the quota.
+  async updateWebhook(orgId: string, body: WebhooksDto) {
+    await this._webhooksRepository.assertWebhookExists(orgId, body.id);
+    return this._webhooksRepository.createWebhook(orgId, body);
+  }
+
   deleteWebhook(orgId: string, id: string) {
     return this._webhooksRepository.deleteWebhook(orgId, id);
   }

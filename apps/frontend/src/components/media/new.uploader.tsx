@@ -44,6 +44,7 @@ export function useUppyUploader(props: {
 }) {
   const setLocked = useLaunchStore((state) => state.setLocked);
   const toast = useToaster();
+  const t = useT();
   const {
     storageProvider,
     uploadViaServer,
@@ -199,6 +200,23 @@ export function useUppyUploader(props: {
       setLocked(false);
       props.onEnd();
       fileOrderIndex = 0;
+    });
+    // There was no `upload-error` listener at all. A failing upload-server
+    // (misconfigured storage, bad credentials, 500) fired this, nobody
+    // listened, then `complete` arrived with an empty `successful` list — and
+    // the success toast lives behind `uploaded > 0`, so the user saw a progress
+    // strip flash and then absolutely nothing. Uppy's own inline error is no
+    // help either: onEnd collapses the container to h-0 with pointer-events
+    // none, hiding it the moment it would appear.
+    uppy2.on('upload-error', (file, error, response) => {
+      const status = (response as any)?.status;
+      toast.show(
+        t('media_upload_failed', 'Could not upload {name}').replace(
+          '{name}',
+          file?.name || t('the_file', 'the file')
+        ) + (status ? ` (HTTP ${status})` : ''),
+        'warning'
+      );
     });
     uppy2.on('upload-start', () => {
       props.onStart();

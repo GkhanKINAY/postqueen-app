@@ -24,7 +24,11 @@ import useCookie from 'react-use-cookie';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
-import { useTourDemo } from '@gitroom/frontend/components/onboarding/tour';
+import {
+  TOUR_DEMO_PICTURE,
+  useTourDemo,
+  useTourRunning,
+} from '@gitroom/frontend/components/onboarding/tour';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 extend(isoWeek);
 extend(weekOfYear);
@@ -162,6 +166,9 @@ export const CalendarContext = createContext({
       }[];
     }
   >,
+  // The posts panel reads `listPosts` in every display, so it needs the list
+  // request's own state — `loading` above follows whichever view is on screen.
+  listLoading: true,
   listPage: 0,
   listTotalPages: 0,
   listTotal: 0,
@@ -209,6 +216,9 @@ export interface Integrations {
   name: string;
   id: string;
   disabled?: boolean;
+  // Returned by `/integrations/list` and read by every channel picker; it was
+  // only ever reached through `any` casts, so the field was missing here.
+  refreshNeeded?: boolean;
   inBetweenSteps: boolean;
   editor: 'none' | 'normal' | 'markdown' | 'html';
   stripLinks?: boolean;
@@ -259,14 +269,24 @@ function getDateRange(display: string, referenceDate?: string) {
 export const CalendarWeekProvider: FC<{
   children: ReactNode;
   integrations: Integrations[];
-}> = ({ children, integrations }) => {
+  /**
+   * "The calendar grid is on screen." Only `launches.component.tsx` passes it,
+   * because only it mounts this provider around a skeleton — deliberately, so
+   * the posts wave is not held behind `/integrations/list`. The tour's demo
+   * choreography reaches into the grid's DOM, so it has to wait for that.
+   */
+  ready?: boolean;
+}> = ({ children, integrations, ready = true }) => {
   const fetch = useFetch();
   const [internalData, setInternalData] = useState([] as any[]);
   const [trendings] = useState<string[]>([]);
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [displaySaved, setDisplaySaved] = useCookie('calendar-display', 'week');
-  const display = searchParams.get('display') || displaySaved;
+  const tourRunning = useTourRunning();
+  // Bare `/launches` (login, `/`, bookmarks) must open week calendar — never
+  // the Posts list cookie. List only when the URL says `display=list`.
+  const display = searchParams.get('display') || 'week';
 
   // List view state
   const [listPage, setListPage] = useState(0);
@@ -389,27 +409,21 @@ export const CalendarWeekProvider: FC<{
     }).toString();
   }, [listPage, filters.customer, activeListState]);
 
-  // Reads every page up to the current one, not just the newest: the design's
-  // list grows downward under a "Show more" button, so the pages already on
-  // screen have to stay. Fetching the whole stack under one key also means an
-  // edit or delete revalidates everything shown instead of leaving a stale
-  // copy of an earlier page behind.
+  // One page at a time (Previous / page / Next) — same model as Insert media.
+  // Earlier "Show more" stacked every page under one key; edits then had to
+  // revalidate the whole stack. Single-page fetch keeps SWR and the UI simple.
   const loadListData = useCallback(async () => {
-    const pages = await Promise.all(
-      Array.from({ length: listPage + 1 }, async (_, page) => {
-        const pageParams = new URLSearchParams({
-          page: page.toString(),
-          limit: String(LIST_PAGE_SIZE),
-          customer: filters?.customer?.toString() || '',
-          state: activeListState,
-        }).toString();
-        const response = await fetch(`/posts/list?${pageParams}`);
-        return expandPostsList(await response.json());
-      })
-    );
+    const pageParams = new URLSearchParams({
+      page: listPage.toString(),
+      limit: String(LIST_PAGE_SIZE),
+      customer: filters?.customer?.toString() || '',
+      state: activeListState,
+    }).toString();
+    const response = await fetch(`/posts/list?${pageParams}`);
+    const data = expandPostsList(await response.json());
     return {
-      posts: pages.flatMap((page: any) => page?.posts || []),
-      total: pages[0]?.total || 0,
+      posts: data?.posts || [],
+      total: data?.total || 0,
     };
   }, [listPage, filters.customer, activeListState, fetch]);
 
@@ -432,16 +446,29 @@ export const CalendarWeekProvider: FC<{
         customer,
         state,
       });
-      const response = await fetch(`/posts/list?${params}`);
-      if (!response.ok) return false;
-      const data = await response.json();
-      return (data?.total || 0) > 0;
+      // Nobody asked for this — it only picks which tab opens first. A network
+      // reject here must not bubble: unhandled, it would surface as a toast
+      // from NetworkErrorBridge for a request the user never made. Falling back
+      // to `false` just leaves the default tab selected.
+      try {
+        const response = await fetch(`/posts/list?${params}`);
+        if (!response.ok) return false;
+        const data = await response.json();
+        return (data?.total || 0) > 0;
+      } catch {
+        return false;
+      }
     };
 
     (async () => {
-      let next: PanelListStateFilter = 'published';
+      // Nothing anywhere lands on Scheduled, not Posted: an account with no
+      // posts at all has never posted either, and "nothing published yet" is a
+      // worse first thing to say than "nothing scheduled yet". The tour's first
+      // queue step meets exactly this state.
+      let next: PanelListStateFilter = 'scheduled';
       if (await probe('scheduled')) next = 'scheduled';
       else if (await probe('draft')) next = 'draft';
+      else if (await probe('published')) next = 'published';
       if (cancelled || generation !== panelPinGeneration.current) return;
       pinnedPanelScope.current = scopeAtStart;
       setPanelListStateRaw(next);
@@ -466,6 +493,10 @@ export const CalendarWeekProvider: FC<{
       refreshWhenOffline: false,
       refreshWhenHidden: false,
       revalidateOnFocus: false,
+      // The key carries the range, so every arrow click is a new key. Without
+      // this `calendarData` goes undefined mid-navigation and anything reading
+      // it unmounts; the cells are blanked deliberately just below instead.
+      keepPreviousData: true,
     }
   );
 
@@ -571,21 +602,32 @@ export const CalendarWeekProvider: FC<{
   // Soft-open Settings/Connect keep this provider mounted under `/settings` or
   // `/connections` (no `display` query). Falling back to the cookie then flips
   // Calendar↔Posts — bail unless we are still on launches.
+  // When URL has no range, switching into week (e.g. login / bare /launches)
+  // must land on the *current* week — not a stale range left from list view.
   useEffect(() => {
     if (!pathname?.startsWith('/launches')) {
       return;
     }
 
     const fromUrl = searchParams.get('display');
-    const urlDisplay = (fromUrl || displaySaved) as typeof filters.display;
+    // No `display` in the URL = Calendar home (week), not the last Posts visit.
+    const urlDisplay = (fromUrl || 'week') as typeof filters.display;
     const urlStart = searchParams.get('startDate');
     const urlEnd = searchParams.get('endDate');
     const urlCustomer = searchParams.get('customer');
     const urlListDay = searchParams.get('listDay');
 
     // Rail navigations update the URL but not the cookie; keep them aligned.
-    if (fromUrl && fromUrl !== displaySaved) {
+    //
+    // Except while the tour is running: it pins `display=week` for its own two
+    // calendar steps, and writing that through would take somebody who lives on
+    // the Posts list and leave them on the week view for a year afterwards. The
+    // tour is supposed to outlive nothing.
+    if (fromUrl && fromUrl !== displaySaved && !tourRunning) {
       setDisplaySaved(fromUrl);
+    }
+    if (!fromUrl && displaySaved !== 'week') {
+      setDisplaySaved('week');
     }
 
     setFilters((prev) => {
@@ -602,7 +644,7 @@ export const CalendarWeekProvider: FC<{
       const range =
         urlStart && urlEnd
           ? { startDate: urlStart, endDate: urlEnd }
-          : urlDisplay !== prev.display
+          : urlDisplay !== prev.display || !fromUrl
           ? getDateRange(urlDisplay)
           : { startDate: prev.startDate, endDate: prev.endDate };
       return {
@@ -632,7 +674,14 @@ export const CalendarWeekProvider: FC<{
         q ? `/launches?${q}` : '/launches'
       );
     }
-  }, [pathname, searchParams, displaySaved, setDisplaySaved, requestScrollToNow]);
+  }, [
+    pathname,
+    searchParams,
+    displaySaved,
+    setDisplaySaved,
+    requestScrollToNow,
+    tourRunning,
+  ]);
 
   const realPosts = useMemo(
     () => calendarData?.posts || [],
@@ -641,7 +690,7 @@ export const CalendarWeekProvider: FC<{
   const rawListPosts = useMemo(() => listData?.posts || [], [listData?.posts]);
 
   // Tour stagger when the account is empty and the tour is running.
-  const tourDemo = useTourDemo();
+  const tourDemo = useTourDemo(ready);
 
   const demoWeekStart = useMemo(
     () => newDayjs(filters.startDate).startOf('isoWeek'),
@@ -650,25 +699,29 @@ export const CalendarWeekProvider: FC<{
 
   const mapTourDemo = useCallback(
     () =>
-      tourDemo.map(({ day, hour, provider, title, body }, index) => {
-        const publishDate = demoWeekStart.add(day, 'day').add(hour, 'hour');
-        const past = publishDate.isBefore(newDayjs());
-        return {
-          id: `pq-tour-demo-${index}`,
-          content: `<p>${title} — ${body}</p>`,
-          publishDate: publishDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
-          state: (past ? 'PUBLISHED' : 'QUEUE') as 'PUBLISHED' | 'QUEUE',
-          group: `pq-tour-demo-${index}`,
-          creationMethod: 'WEB' as const,
-          integration: {
-            id: `pq-tour-demo-integration-${index}`,
-            name: title,
-            picture: null,
-            providerIdentifier: provider,
-          },
-          tags: [],
-        };
-      }),
+      tourDemo.map(
+        ({ id, day, hour, provider, channelName, title, body }, index) => {
+          const publishDate = demoWeekStart.add(day, 'day').add(hour, 'hour');
+          const past = publishDate.isBefore(newDayjs());
+          return {
+            // The hook names the rows: the rescheduled one keeps one id across
+            // both hours so the drag ghost can find it on the way out.
+            id,
+            content: `<p>${title} — ${body}</p>`,
+            publishDate: publishDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
+            state: (past ? 'PUBLISHED' : 'QUEUE') as 'PUBLISHED' | 'QUEUE',
+            group: id,
+            creationMethod: 'WEB' as const,
+            integration: {
+              id: `pq-tour-demo-integration-${index}`,
+              name: channelName,
+              picture: TOUR_DEMO_PICTURE,
+              providerIdentifier: provider,
+            },
+            tags: [],
+          };
+        }
+      ),
     [tourDemo, demoWeekStart]
   );
 
@@ -828,6 +881,7 @@ export const CalendarWeekProvider: FC<{
         signature: sign,
         // List view specific
         listPosts,
+        listLoading: listIsLoading,
         listPage,
         listTotalPages,
         listTotal,

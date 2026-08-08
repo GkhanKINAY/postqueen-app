@@ -7,6 +7,7 @@ import { Slider } from '@gitroom/react/form/slider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 interface EmailNotifications {
   sendSuccessEmails: boolean;
@@ -119,10 +120,13 @@ const EmailNotificationsComponent = () => {
 
   if (isLoading) {
     return (
-      <div className="mt-[18px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="animate-pulse text-[13px] text-pqMuted">
-          {t('loading', 'Loading...')}
-        </div>
+      <div className="mt-[18px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-[12px]">
+            <Skeleton className="h-[13px] min-w-0 flex-1" />
+            <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />
+          </div>
+        ))}
       </div>
     );
   }

@@ -49,7 +49,6 @@ export class MediaService {
         async () => {
           if (generatePromptFirst) {
             prompt = await this._openAi.generatePromptForPicture(prompt);
-            console.log('Prompt:', prompt);
           }
           return this._openAi.generateImage(prompt);
         }
@@ -128,9 +127,7 @@ export class MediaService {
         );
       }
 
-      console.log(body.customParams);
       await video.instance.processAndValidate(body.customParams);
-      console.log('no err');
 
       return await this._subscriptionService.useCredit(
         org,

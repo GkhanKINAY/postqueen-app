@@ -1,11 +1,6 @@
 'use client';
 
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@gitroom/react/form/button';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
@@ -76,6 +71,13 @@ export const MultiMediaComponent: FC<{
   // Agent splits thumbs (above the textarea) from the toolbar (inside controls).
   // Post composer leaves this unset and renders both together.
   ghostPart?: 'thumbs' | 'toolbar' | 'all';
+  // Attach-only fields drop Integrations and the AI generators, leaving the
+  // media buttons. Set on media inputs that live *inside* a generator form —
+  // the VEO3 images field would otherwise offer "Generate video" and an
+  // Integrations modal stacked on the video modal it is already inside.
+  // (Those fields also pass `dummy`, which makes Design Media a no-op, so what
+  // remains there in practice is Insert media.)
+  attachmentsOnly?: boolean;
   allData: {
     content: string;
     id?: string;
@@ -118,12 +120,61 @@ export const MultiMediaComponent: FC<{
     dummy,
     ghost,
     ghostPart = 'all',
+    attachmentsOnly,
     toolBar,
     information,
     mediaNotAvailable,
   } = props;
   const showThumbs = !ghost || ghostPart === 'all' || ghostPart === 'thumbs';
   const showToolbar = !ghost || ghostPart === 'all' || ghostPart === 'toolbar';
+
+  // Ghost mode never hides a label, which was fine for four buttons and wraps
+  // with five. The constraint is the *column*, not the window — the agent
+  // composer is squeezed between two 264px rails, so it is ~564px wide at a
+  // 1440px viewport and widens the moment the chats rail is unpinned, with no
+  // viewport change at all. That rules out the `iconBreak`/`maxMedia` viewport
+  // queries the filled toolbar uses (untouched, they are right for it) and
+  // leaves measuring the row.
+  //
+  // What it measures is the width the labelled row *needs*, cached while the
+  // labels are still up, rather than a constant: five English labels want
+  // 635px and translations move that (`Görsel oluştur`, `Entegrasyonlar`…).
+  // Caching is also what stops the flip-flop — once compact, the buttons are
+  // narrow, so re-measuring them would say there is room, unhide the labels,
+  // and wrap again.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const naturalWidth = useRef(0);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const node = toolbarRef.current;
+    if (!ghost || !node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const measure = (available: number) => {
+      const row = node.firstElementChild;
+      if (!row) {
+        return;
+      }
+      setCompact((wasCompact) => {
+        if (!wasCompact) {
+          const kids = Array.from(row.children);
+          const gap = 6;
+          naturalWidth.current =
+            kids.reduce((sum, k) => sum + k.getBoundingClientRect().width, 0) +
+            gap * Math.max(0, kids.length - 1);
+        }
+        return available < naturalWidth.current;
+      });
+    };
+    const observer = new ResizeObserver(([entry]) =>
+      measure(entry.contentRect.width)
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ghost, showToolbar]);
+
+  // Non-ghost keeps its viewport breakpoints; ghost uses the measurement.
+  const hideLabel = ghost ? compact : undefined;
   const user = useUser();
   const modals = useModals();
   const t = useT();
@@ -132,6 +183,22 @@ export const MultiMediaComponent: FC<{
   }, [value]);
 
   const [currentMedia, setCurrentMedia] = useState(value);
+  // The attachment list, readable without re-creating `changeMedia`.
+  //
+  // `new-modal.tsx` builds a modal's children once, at open time, so whatever
+  // `changeMedia` the AI generators captured then is the one that runs when
+  // their request lands — minutes later. Closing over `currentMedia` meant that
+  // callback appended to the list as it was at click time: anything added with
+  // Insert media while the generation ran was wiped when it finished.
+  //
+  // Synced in an effect rather than during render: a render React throws away
+  // (transition, Offscreen, StrictMode's double invoke) would otherwise still
+  // publish its list to a callback that outlives it.
+  const currentMediaRef = useRef(currentMedia);
+  useEffect(() => {
+    currentMediaRef.current = currentMedia;
+  }, [currentMedia]);
+
   const mediaDirectory = useMediaDirectory();
   const changeMedia = useCallback(
     (
@@ -146,7 +213,7 @@ export const MultiMediaComponent: FC<{
           }[]
     ) => {
       const mediaArray = Array.isArray(m) ? m : [m];
-      const existing = currentMedia || [];
+      const existing = currentMediaRef.current || [];
       const seen = new Set(existing.map((x) => x.id));
       const additions = mediaArray.filter((x) => x?.id && !seen.has(x.id));
       if (additions.length === 0) {
@@ -161,7 +228,7 @@ export const MultiMediaComponent: FC<{
         },
       });
     },
-    [currentMedia, name, onChange]
+    [name, onChange]
   );
   const showModal = useCallback(() => {
     modals.openModal({
@@ -178,7 +245,7 @@ export const MultiMediaComponent: FC<{
         />
       ),
     });
-  }, [changeMedia, currentMedia, t]);
+  }, [changeMedia, currentMedia, modals, t]);
 
   const clearMedia = useCallback(
     (topIndex: number) => () => {
@@ -205,7 +272,10 @@ export const MultiMediaComponent: FC<{
         ),
       });
     }
-  }, [changeMedia, t]);
+    // `user` and `dummy` are read inside, and `changeMedia` no longer changes
+    // identity with the media list, so they have to be declared here or this
+    // callback keeps its first-render capture of the tier gate.
+  }, [changeMedia, user, dummy, modals, t]);
 
   if (ghost && ghostPart === 'thumbs' && !currentMedia?.length) {
     return null;
@@ -225,9 +295,7 @@ export const MultiMediaComponent: FC<{
           <div
             className={clsx(
               'flex',
-              ghost
-                ? 'flex-wrap gap-[7px] pb-[3px]'
-                : 'gap-[10px] px-[12px]'
+              ghost ? 'flex-wrap gap-[7px] pb-[3px]' : 'gap-[10px] px-[12px]'
             )}
           >
             {!!currentMedia && (
@@ -393,82 +461,114 @@ export const MultiMediaComponent: FC<{
           </div>
         )}
         {showToolbar && (
-        <div
-          className={clsx(
-            'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px] b1',
-            ghost
-              ? 'items-center'
-              : 'border-t border-pqLine px-[12px] py-[10px] text-pqText'
-          )}
-        >
-          {!mediaNotAvailable && (
-            <div className="flex flex-wrap items-center gap-[6px]">
-              <button
-                type="button"
-                // The media picker opens from here and nowhere else, so the
-                // screenshot tool needs a handle on it. The icons inside it had
-                // never been seen for exactly this reason.
-                data-pq="insert-media"
-                onClick={showModal}
-                className={clsx(
-                  'inline-flex h-[36px] cursor-pointer items-center justify-center gap-[8px] font-[600]',
-                  ghost
-                    ? 'rounded-[8px] px-[10px] text-[12px] text-pqSoft hover:bg-pqHover hover:text-pqText'
-                    : 'rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] text-pqText transition-colors hover:bg-pqHover'
-                )}
-              >
-                <InsertMediaIcon />
-                <span className={clsx(!ghost && 'maxMedia:hidden')}>
-                  {t('insert_media', 'Insert media')}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={designMedia}
-                className={clsx(
-                  'inline-flex h-[36px] cursor-pointer items-center justify-center gap-[6px] font-[600]',
-                  ghost
-                    ? 'rounded-[8px] px-[10px] text-[12px] text-pqSoft hover:bg-pqHover hover:text-pqText'
-                    : 'rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] text-pqText transition-colors hover:bg-pqHover'
-                )}
-              >
-                <DesignMediaIcon />
-                <span className={clsx(!ghost && 'iconBreak:hidden')}>
-                  {t('design_media', 'Design Media')}
-                </span>
-              </button>
+          <div
+            ref={toolbarRef}
+            className={clsx(
+              'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px] b1',
+              ghost
+                ? 'items-center'
+                : 'border-t border-pqLine px-[12px] py-[10px] text-pqText'
+            )}
+          >
+            {!mediaNotAvailable && (
+              <div className="flex flex-wrap items-center gap-[6px]">
+                <button
+                  type="button"
+                  // The media picker opens from here and nowhere else, so the
+                  // screenshot tool needs a handle on it. The icons inside it had
+                  // never been seen for exactly this reason.
+                  data-pq="insert-media"
+                  onClick={showModal}
+                  // Icon-only needs the name somewhere, or the row turns into
+                  // five unlabelled glyphs for a screen reader.
+                  aria-label={t('insert_media', 'Insert media')}
+                  title={t('insert_media', 'Insert media')}
+                  className={clsx(
+                    'inline-flex h-[36px] cursor-pointer items-center justify-center gap-[8px] font-[600]',
+                    ghost
+                      ? 'rounded-[8px] px-[10px] text-[12px] text-pqSoft hover:bg-pqHover hover:text-pqText'
+                      : 'rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] text-pqText transition-colors hover:bg-pqHover'
+                  )}
+                >
+                  <InsertMediaIcon />
+                  <span
+                    className={clsx(
+                      !ghost && 'maxMedia:hidden',
+                      hideLabel && 'hidden'
+                    )}
+                  >
+                    {t('insert_media', 'Insert media')}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={designMedia}
+                  aria-label={t('design_media', 'Design Media')}
+                  title={t('design_media', 'Design Media')}
+                  className={clsx(
+                    'inline-flex h-[36px] cursor-pointer items-center justify-center gap-[6px] font-[600]',
+                    ghost
+                      ? 'rounded-[8px] px-[10px] text-[12px] text-pqSoft hover:bg-pqHover hover:text-pqText'
+                      : 'rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] text-pqText transition-colors hover:bg-pqHover'
+                  )}
+                >
+                  <DesignMediaIcon />
+                  <span
+                    className={clsx(
+                      !ghost && 'iconBreak:hidden',
+                      hideLabel && 'hidden'
+                    )}
+                  >
+                    {t('design_media', 'Design Media')}
+                  </span>
+                </button>
 
-              <ThirdPartyMedia
-                ghost={ghost}
-                allData={allData}
-                onChange={changeMedia}
+                {!attachmentsOnly && (
+                  <>
+                    <ThirdPartyMedia
+                      ghost={ghost}
+                      compact={compact}
+                      allData={allData}
+                      onChange={changeMedia}
+                    />
+
+                    {!!user?.tier?.ai && (
+                      <>
+                        <AiImage
+                          ghost={ghost}
+                          compact={compact}
+                          value={text}
+                          onChange={changeMedia}
+                        />
+                        <AiVideo
+                          ghost={ghost}
+                          compact={compact}
+                          value={text}
+                          onChange={changeMedia}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            {!mediaNotAvailable && (!!toolBar || !!information) && (
+              <div
+                className="hidden h-[22px] w-px shrink-0 self-center bg-pqLine sm:block"
+                aria-hidden="true"
               />
-
-              {!!user?.tier?.ai && (
-                <>
-                  <AiImage ghost={ghost} value={text} onChange={changeMedia} />
-                  <AiVideo ghost={ghost} value={text} onChange={changeMedia} />
-                </>
-              )}
-            </div>
-          )}
-          {!mediaNotAvailable && (!!toolBar || !!information) && (
-            <div
-              className="hidden h-[22px] w-px shrink-0 self-center bg-pqLine sm:block"
-              aria-hidden="true"
-            />
-          )}
-          {!!toolBar && (
-            <div className="flex flex-wrap items-center gap-[6px]">
-              {toolBar}
-            </div>
-          )}
-          {information && (
-            <div className="ms-auto flex items-center gap-[4px]">
-              {information}
-            </div>
-          )}
-        </div>
+            )}
+            {!!toolBar && (
+              <div className="flex flex-wrap items-center gap-[6px]">
+                {toolBar}
+              </div>
+            )}
+            {information && (
+              <div className="ms-auto flex items-center gap-[4px]">
+                {information}
+              </div>
+            )}
+          </div>
         )}
       </div>
       {showToolbar && <div className="text-[12px] text-red-400">{error}</div>}

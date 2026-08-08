@@ -20,6 +20,9 @@
   .dark {
     --brandFaint: rgba(124, 58, 237, 0.08);
     --hatch: rgba(255, 255, 255, 0.035);
+    // Scrollbar thumb. Design's global rule (prototype `::-webkit-scrollbar`)
+    // — it inks the thumb only, over a transparent track.
+    --scrollThumb: rgba(255, 255, 255, 0.14);
     --bg: #0b0b0d;
     --inner: #131316;
     --line: rgba(255, 255, 255, 0.07);
@@ -30,6 +33,10 @@
     --colColor: #1f1f24;
     --btnSimple: #26262c;
     --blockSeparator: rgba(255, 255, 255, 0.07);
+    // Fill for loading placeholders. Not `--hover`: that is a 5% overlay, which
+    // composites to ~1.13:1 on `--inner` and reads as a smudge rather than as
+    // content. This is the `--border` step, the strongest neutral in the scale.
+    --skeleton: #26262c;
     --text: #ededf0;
     --muted: #9b9ba4;
     --soft: #6e6e78;
@@ -72,6 +79,23 @@
     // the app back so the spotlit target reads as lit, which a light scrim on a
     // light app cannot do.
     --tourScrim: rgba(2, 2, 6, 0.66);
+    // The card the tour's calendar demo drags. Brand hairline plus a much
+    // longer, softer drop than `--e3`: it has to read as lifted off the grid
+    // over the whole flight, not as another surface resting on it. Same in
+    // both themes — a card in the air casts the same shadow.
+    --tourGhost: 0 0 0 1px rgba(124, 58, 237, 0.85),
+      0 26px 44px -18px rgba(0, 0, 0, 0.9);
+    /** The pointer riding the ghost, over whatever it is passing. */
+    --tourCursor: 0 2px 5px rgba(0, 0, 0, 0.7);
+    // The tour's own card: brand hairline, ambient drop, brand bloom. Not the
+    // neutral border plus `--e3` it used to carry — a dark card outlined in a
+    // dark neutral, standing on a dark scrim, had nothing to separate it from
+    // the app behind (owner: "biraz kayboluyor"). Values are the design's.
+    --tourCard: 0 0 0 1px rgba(124, 58, 237, 0.55),
+      0 28px 60px -20px rgba(0, 0, 0, 0.9),
+      0 0 40px -12px rgba(124, 58, 237, 0.5);
+    /** Wash across the top of that card, layered as an image over `--pop`. */
+    --tourCardWash: rgba(124, 58, 237, 0.16);
     // Media lightbox — design `rgba(9,9,11,.86)` (covers rail; not the tour scrim).
     --mediaScrim: rgba(9, 9, 11, 0.86);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
@@ -160,6 +184,7 @@
   .light {
     --brandFaint: rgba(124, 58, 237, 0.05);
     --hatch: rgba(9, 9, 11, 0.05);
+    --scrollThumb: rgba(9, 9, 11, 0.16);
     --bg: #f1f1f4;
     --inner: #fbfbfc;
     --line: rgba(9, 9, 11, 0.07);
@@ -170,9 +195,12 @@
     --colColor: #e9e9ef;
     --btnSimple: #e6e6ec;
     --blockSeparator: rgba(9, 9, 11, 0.07);
+    // See the dark block: the `--border` step, not the `--hover` overlay.
+    --skeleton: #e4e4e9;
     --text: #18181b;
     --muted: #5f5f6b;
-    --soft: #8f8f9a;
+    // Darker than design #8f8f9a (~3.2:1 on white) so soft labels stay readable.
+    --soft: #6f6f7a;
     --focused: #6d28d9;
     --boxFocused: #f3eefe;
     --hover: rgba(9, 9, 11, 0.055);
@@ -198,12 +226,23 @@
     --tableBorder: #e4e4e9;
     --tableText: #5f5f6b;
     --tableTextFocused: #c026a3;
-    --menuDots: #8f8f9a;
+    --menuDots: #6f6f7a;
     --popup: rgba(9, 9, 11, 0.35);
     --aiLockScrim: rgba(250, 250, 252, 0.72);
     // Lighter than dark's 0.66 — the same opacity over a white app reads as
     // almost opaque and the spotlight stops looking like a spotlight.
     --tourScrim: rgba(2, 2, 6, 0.5);
+    // See the dark block: a lifted card casts the same shadow in either theme.
+    --tourGhost: 0 0 0 1px rgba(124, 58, 237, 0.85),
+      0 26px 44px -18px rgba(0, 0, 0, 0.9);
+    --tourCursor: 0 2px 5px rgba(0, 0, 0, 0.7);
+    // Hairline and bloom as in dark; the ambient drop follows the light scale
+    // (`--e3`) rather than the design's near-black, which reads as dirt here.
+    // The wash is lighter too — 16% brand over white tints the whole card.
+    --tourCard: 0 0 0 1px rgba(124, 58, 237, 0.55),
+      0 20px 46px -16px rgba(9, 9, 11, 0.3),
+      0 0 40px -12px rgba(124, 58, 237, 0.35);
+    --tourCardWash: rgba(124, 58, 237, 0.1);
     --mediaScrim: rgba(9, 9, 11, 0.86);
     --shadow: 0 1px 2px rgba(9, 9, 11, 0.06), 0 12px 28px -8px rgba(9, 9, 11, 0.16);
     --e1: 0 1px 2px rgba(9, 9, 11, 0.05);
@@ -399,9 +438,9 @@
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);
-    --color-gray: var(--soft);
+    --color-gray: var(--muted);
     --color-input: var(--new-table-header);
-    --color-input-text: var(--soft);
+    --color-input-text: var(--muted);
     --color-table-border: var(--new-table-border);
     --color-custom1: #324264;
     --color-custom2: #141c2c;
@@ -469,9 +508,9 @@
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);
-    --color-gray: var(--soft);
+    --color-gray: var(--muted);
     --color-input: var(--new-table-header);
-    --color-input-text: var(--soft);
+    --color-input-text: var(--muted);
     --color-table-border: var(--tableBorder);
     --color-custom1: #324264;
     --color-custom2: #f8f8f8;

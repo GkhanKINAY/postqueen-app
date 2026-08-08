@@ -103,8 +103,12 @@ implies behaviour the code doesn't have, **raise it — do not implement it sile
   matches the design's inventory exactly.** Settings sub-nav matches the prototype
   (Workspace / More / Developers) — no Plugs or Affiliate rows. Plugs capability is
   Channels → Automations (+ `/plugs` as Auto-Plugs). Affiliate lives in the user menu.
-  Create Post is **not** in the header — Blank/AI split lives on the calendar toolbar; calendar
-  cells and Channels → New post also open compose.
+  Create Post is the one exception to the chrome-inventory rule (owner, 2026-08-08): the
+  Blank/AI split lives **in the header on every route and is always visible**, including with
+  zero channels, where it opens Add Channel instead of the composer. It is rendered by
+  `new-layout/layout.component.tsx`, not portalled by the calendar page, and must not read
+  `useCalendar()` — that provider wraps the calendar only. Calendar cells and
+  Channels → New post still open compose too.
 - Keep **i18n** (14 languages) and **RTL** (he, ar) working. The prototype has neither — it is
   hardcoded English, LTR only.
 - Theming is a **`.dark` / `.light` class on `<body>`** (`darkMode: 'class'`), not `data-theme` on
@@ -121,7 +125,41 @@ implies behaviour the code doesn't have, **raise it — do not implement it sile
 scripts/ui-migration-check.sh
 ```
 
-Types clean, the API-path list unchanged, the i18n key list unchanged, the route list unchanged.
-If a change is meant to update a baseline list, run with `--update` and note it in the PR.
+Six checks, all compared against `docs/ui-migration-baseline/`: **types** (both apps),
+**api** (the set of endpoints called), **i18n** (the key set), **routes**, **gates** (the
+feature-gate call sites, counted), and **loops** (indefinite animations that cannot be
+switched off for `prefers-reduced-motion` — this one's baseline is empty and any entry is a
+regression).
+
+It runs in CI on every push, so this is not advice any more. If a change is *meant* to move a
+list, run with `--update`, commit the baseline, and say why in the PR and in
+`docs/ui-migration-log.md`. A baseline that is missing rather than merely different is a
+failure, not a fresh start — an uncommitted baseline would otherwise reseed itself on every
+CI run and guard nothing.
+
 Then screenshot the screen at 420 / 900 / 1440 in both themes and compare against the prototype
-served from `design/handoff/design/`. 
+served from `design/handoff/design/`.
+
+## Loading and empty states
+
+- **One bone, one spinner.** `Skeleton` from `@gitroom/react/ui/skeleton`, `Spinner` from
+  `@gitroom/react/ui/spinner`. Skeleton when the thing being waited on has a shape, spinner
+  when it does not. There were four of each before they were consolidated; do not start a
+  fifth.
+- **A ghost mirrors the markup it replaces.** If it cannot — a modal, a one-line message, a
+  table you have not shaped — use the spinner. A ghost of the wrong shape is worse than no
+  ghost: it promises a layout and then jumps.
+- **Every indefinite animation carries `pq-loop`**, or is switched off by name in the
+  `prefers-reduced-motion` block in `global.scss` when it is applied by selector rather than
+  by class. The `loops` check enforces this.
+- **An empty state waits for the fetch.** `useIntegrationList` carries `fallbackData: []`, so
+  "this account has no channels" and "the list has not arrived" are the same value. Gate the
+  empty state on `isLoading`, and for an action, resolve at click time the way
+  `launches/new.post.tsx` does rather than reading a flag that is merely not back yet.
+  `use.integration.list.tsx` throws on a non-ok response for the third case: `customFetch`
+  resolves 4xx/5xx, so without that a *server error* also reads as an empty account, and the
+  Add buttons send someone who has channels off to go connect one.
+- **On an SWR key that interpolates user state**, `keepPreviousData` *and* a gate of
+  `isLoading && !data` — `isLoading` alone fires on every key change, so the ghost replaces
+  perfectly good content on each click. Never `keepPreviousData` on a key carrying an
+  **entity** id: laggy data under a new entity's name is wrong data, not a stale view.

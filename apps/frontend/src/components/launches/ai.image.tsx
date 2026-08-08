@@ -7,6 +7,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 const list = [
   'Realistic',
   'Cartoon',
@@ -50,11 +51,10 @@ const AiImageModal: FC<{
     close();
     setLocked(true);
     try {
-      const image = await (
-        await fetch('/media/generate-image-with-prompt', {
-          method: 'POST',
-          body: JSON.stringify({
-            prompt: `
+      const response = await fetch('/media/generate-image-with-prompt', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: `
 <!-- description -->
 ${prompt}
 <!-- /description -->
@@ -64,16 +64,61 @@ ${style}
 <!-- /style -->
 
 `,
-          }),
-        })
-      ).json();
-      if (image) {
+        }),
+      });
+
+      // A failure still returns a JSON body ({ statusCode, message }), and it is
+      // truthy — handing it straight to onChange attached that error object to
+      // the post as if it were media, silently. Only a saved Media row counts.
+      const image = await response.json();
+      if (response.ok && image?.id) {
         onChange(image);
+      } else if (image === false) {
+        // Out of credits is the one failure the endpoint reports as 200 with a
+        // body of literal `false` (`media.controller.ts`), so it never carries a
+        // message and would otherwise read as a generic breakage.
+        toaster.show(
+          t(
+            'ai_credits_exhausted',
+            'You are out of AI credits for this month.'
+          ),
+          'warning'
+        );
+      } else if (!image?.cancelled) {
+        // `cancelled` is the synthetic body customFetch returns when someone
+        // dismisses the billing dialog — their own choice, not a failure.
+        toaster.show(
+          typeof image?.message === 'string'
+            ? image.message
+            : t(
+                'ai_generation_failed',
+                'AI generation failed, please try again later.'
+              ),
+          'warning'
+        );
       }
-    } catch (e) {}
+    } catch (e) {
+      toaster.show(
+        t(
+          'ai_generation_failed',
+          'AI generation failed, please try again later.'
+        ),
+        'warning'
+      );
+    }
     setLocked(false);
     setLoading(false);
-  }, [prompt, style, onChange]);
+  }, [
+    prompt,
+    style,
+    onChange,
+    fetch,
+    toaster,
+    t,
+    close,
+    setLoading,
+    setLocked,
+  ]);
 
   return (
     <div className="flex flex-col gap-[18px]">
@@ -83,10 +128,7 @@ ${style}
             {t('prompt', 'Prompt')}
           </div>
           <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
-            {t(
-              'ai_image_prompt_help',
-              'What should appear in the image?'
-            )}
+            {t('ai_image_prompt_help', 'What should appear in the image?')}
           </div>
         </div>
         <textarea
@@ -137,15 +179,18 @@ export const AiImage: FC<{
   // Ghost look for the agent composer's frame; the post composer keeps the
   // filled pill. Same modal, same gate.
   ghost?: boolean;
+  /** Ghost row measured itself too narrow for labels — icon only. */
+  compact?: boolean;
   onChange: (params: { id: string; path: string }) => void;
 }> = (props) => {
   const t = useT();
-  const { onChange, ghost } = props;
+  const { onChange, ghost, compact } = props;
   const [loading, setLoading] = useState(false);
   const modals = useModals();
+  const canOpen = useOpenGuard();
 
   const openImageModal = useCallback(() => {
-    if (loading) {
+    if (loading || !canOpen()) {
       return;
     }
     modals.openModal({
@@ -158,11 +203,15 @@ export const AiImage: FC<{
         />
       ),
     });
-  }, [loading, onChange]);
+  }, [loading, canOpen, onChange, modals, t]);
 
   return (
     <div className="relative">
       <div
+        // Handle for the screenshot tool, like Insert Media's.
+        data-pq="generate-image"
+        aria-label={t('generate_image', 'Generate image')}
+        title={t('generate_image', 'Generate image')}
         onClick={openImageModal}
         className={clsx(
           'inline-flex h-[36px] cursor-pointer items-center justify-center',
@@ -173,7 +222,7 @@ export const AiImage: FC<{
       >
         {loading && (
           <div className="absolute start-[50%] -translate-x-[50%]">
-            <Loading height={15} width={15} type="spin" color="#fff" />
+            <Loading height={15} width={15} />
           </div>
         )}
         <div
@@ -210,7 +259,7 @@ export const AiImage: FC<{
             className={clsx(
               'font-[600]',
               ghost
-                ? 'text-[12px] whitespace-nowrap'
+                ? clsx('text-[12px] whitespace-nowrap', compact && 'hidden')
                 : 'text-[12px] iconBreak:hidden block'
             )}
           >

@@ -57,6 +57,12 @@ export class AutopostDto {
   @IsDefined()
   generateContent: boolean;
 
+  // Optional so existing API clients keep working; the repository defaults it
+  // to false, which is the pre-existing draft-only behaviour.
+  @IsBoolean()
+  @IsOptional()
+  autoPublish: boolean;
+
   @IsArray()
   @Type(() => Integrations)
   @ValidateNested({ each: true })

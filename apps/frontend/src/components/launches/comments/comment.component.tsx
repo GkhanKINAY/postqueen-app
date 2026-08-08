@@ -10,6 +10,8 @@ import { Input } from '@gitroom/react/form/input';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
+import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const CommentBox: FC<{
   value?: string;
   type: 'textarea' | 'input';
@@ -148,6 +150,8 @@ export const CommentComponent: FC<{
   const [commentsList, setCommentsList] = useState<Comments[]>([]);
   const user = useUser();
   const fetch = useFetch();
+  const toaster = useToaster();
+  const t = useT();
   const { dateTimePattern } = useDateFormat();
   const load = useCallback(async () => {
     const data = await (
@@ -196,20 +200,43 @@ export const CommentComponent: FC<{
     },
     [commentsList, setCommentsList]
   );
+  // `commentsList` is plain `useState`, not SWR — there is no revalidation to
+  // put a wrongly-removed comment back. Dropping it from local state before
+  // knowing the delete succeeded meant a failed request looked like a success
+  // until a full page reload. Check first, remove second.
+  const deleteOnServer = useCallback(
+    async (id: string) => {
+      try {
+        return (await fetch(`/comments/${id}`, { method: 'DELETE' })).ok;
+      } catch (e) {
+        return false;
+      }
+    },
+    [fetch]
+  );
+
   const deleteComment = useCallback(
     (comment: Comments) => async () => {
-      await fetch(`/comments/${comment.id}`, {
-        method: 'DELETE',
-      });
+      if (!(await deleteOnServer(comment.id))) {
+        toaster.show(
+          t('comment_delete_failed', 'Could not delete this comment'),
+          'warning'
+        );
+        return;
+      }
       setCommentsList((list) => list.filter((item) => item.id !== comment.id));
     },
-    [commentsList, setCommentsList]
+    [deleteOnServer, setCommentsList, toaster, t]
   );
   const deleteChildrenComment = useCallback(
     (parent: Comments, children: Comments) => async () => {
-      await fetch(`/comments/${children.id}`, {
-        method: 'DELETE',
-      });
+      if (!(await deleteOnServer(children.id))) {
+        toaster.show(
+          t('comment_delete_failed', 'Could not delete this comment'),
+          'warning'
+        );
+        return;
+      }
       setCommentsList((list) =>
         list.map((item) => {
           if (item.id === parent.id) {
@@ -224,7 +251,7 @@ export const CommentComponent: FC<{
         })
       );
     },
-    [commentsList, setCommentsList]
+    [deleteOnServer, setCommentsList, toaster, t]
   );
   const addChildrenComment = useCallback(
     (comment: Comments) => async (content: string) => {

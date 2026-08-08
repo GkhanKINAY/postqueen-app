@@ -1,7 +1,8 @@
 'use client';
-import { FC, ReactNode, useMemo } from 'react';
+import { FC, MouseEvent, ReactNode, useCallback, useMemo } from 'react';
 import clsx from 'clsx';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useChromeLocation } from '@gitroom/frontend/components/layout/use-chrome-location';
 
 export const MenuItem: FC<{
@@ -10,9 +11,17 @@ export const MenuItem: FC<{
   path: string;
   collapsed?: boolean;
   onClick?: () => void;
+  /**
+   * Recomputes the destination on every click, for rows that carry a timestamp
+   * or a date range. The row stays a real `<Link>` on `path` — middle-click,
+   * open-in-new-tab and prefetch keep working — and only the plain click is
+   * intercepted, which is how the logo does it too.
+   */
+  hrefResolver?: () => string;
   /** Product-tour spotlight target (`data-tour`). */
   tourKey?: string;
-}> = ({ label, icon, path, collapsed, onClick, tourKey }) => {
+}> = ({ label, icon, path, collapsed, onClick, hrefResolver, tourKey }) => {
+  const router = useRouter();
   // Soft Settings/Connections overlays must not steal the rail highlight from
   // the page still mounted under the scrim.
   const { pathname: currentPath, searchParams } = useChromeLocation();
@@ -69,6 +78,20 @@ export const MenuItem: FC<{
     </>
   );
 
+  // Let modified clicks through to the browser — a resolved href is still a
+  // link, and stealing ⌘-click would cost the row its new-tab behaviour.
+  const onNavigate = useCallback(
+    (e: MouseEvent<HTMLAnchorElement>) => {
+      if (!hrefResolver) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+        return;
+      }
+      e.preventDefault();
+      router.push(hrefResolver());
+    },
+    [hrefResolver, router]
+  );
+
   // No tooltip in the collapsed rail: hovering it widens the rail and shows the
   // real label, so a tooltip would put the same word on screen twice. `title`
   // still carries the name for anything that cannot hover.
@@ -94,6 +117,7 @@ export const MenuItem: FC<{
       prefetch={true}
       href={path}
       title={label}
+      {...(hrefResolver ? { onClick: onNavigate } : {})}
       {...(path.indexOf('http') === 0 && { target: '_blank' })}
       className={className}
       {...(tourKey ? { 'data-tour': tourKey } : {})}

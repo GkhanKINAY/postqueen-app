@@ -1,4 +1,11 @@
-import { IsDefined, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  IsArray,
+  IsDefined,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsSafeWebhookUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 
@@ -24,6 +31,10 @@ export class WebhooksDto {
   })
   url: string;
 
+  // Without @IsArray/@ValidateNested the per-element `id` rule never runs and
+  // the repository maps over unvalidated input — AutopostDto already has both.
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => WebhooksIntegrationDto)
   @IsDefined()
   integrations: WebhooksIntegrationDto[];
@@ -58,6 +69,10 @@ export class UpdateDto {
   })
   url: string;
 
+  // Without @IsArray/@ValidateNested the per-element `id` rule never runs and
+  // the repository maps over unvalidated input — AutopostDto already has both.
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => WebhooksIntegrationDto)
   @IsDefined()
   integrations: WebhooksIntegrationDto[];

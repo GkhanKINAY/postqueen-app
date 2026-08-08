@@ -28,6 +28,8 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
+import { ChannelsListEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -128,7 +130,7 @@ export const AgentList: FC<{
 
   // Shared `/integrations/list` cache (array shape). Do not use the bare
   // `'integrations'` key — webhooks/autopost historically cached `{ integrations }`.
-  const { data, mutate } = useIntegrationList();
+  const { data, mutate, isLoading } = useIntegrationList();
 
   const openAddChannel = useCallback(() => {
     router.push('/channels?add=1');
@@ -345,6 +347,32 @@ export const AgentList: FC<{
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
+          {/* `fallbackData: []` makes a load look identical to an empty list,
+              so the empty art waits for the fetch — same reason as the
+              Channels rail and the posts panel. */}
+          {isLoading &&
+            Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-[10px] rounded-pqSm py-[7px] pe-[6px] ps-[9px]"
+              >
+                <Skeleton className="size-[32px] shrink-0 rounded-full" />
+                <Skeleton
+                  className={clsx(
+                    'h-[12px] group-[.sidebar]:hidden',
+                    i % 3 === 0 ? 'w-[68%]' : i % 3 === 1 ? 'w-[54%]' : 'w-[61%]'
+                  )}
+                />
+              </div>
+            ))}
+          {!isLoading && !sortedIntegrations.length && (
+            <ChannelsListEmpty
+              hint={t(
+                'agent_channels_list_empty_hint',
+                'Connect an account to draft and schedule with Copilot.'
+              )}
+            />
+          )}
           {sortedIntegrations.map((integration) => {
             const blocked = needsAttention(integration);
             const isSelected =
@@ -652,7 +680,7 @@ const Threads: FC = () => {
   }, []);
   const { id } = useParams<{ id: string }>();
 
-  const { data } = useSWR('threads', threads);
+  const { data, isLoading } = useSWR('threads', threads);
   const { mobile } = useViewport();
   const [collapseRail, setCollapseRail] = useCookie('agentRailCollapse', '0');
   // The pin toggle only means anything on desktop — in the mobile drawer
@@ -766,6 +794,34 @@ const Threads: FC = () => {
           collapsed && 'hidden group-hover/rail:flex'
         )}
       >
+        {isLoading &&
+          Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className={clsx(
+                'h-[30px] rounded-pqSm',
+                i % 3 === 0 ? 'w-[86%]' : i % 3 === 1 ? 'w-[68%]' : 'w-[77%]'
+              )}
+            />
+          ))}
+        {!isLoading && !data?.threads?.length && (
+          <div className="flex flex-col items-center gap-[8px] px-[8px] py-[28px] text-center">
+            <span className="grid size-[36px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                <path
+                  d="M9 6.5h11M9 12h11M9 17.5h7M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <div className="text-[12.5px] text-pqMuted">
+              {t('no_chats_yet', 'No chats yet')}
+            </div>
+          </div>
+        )}
         {data?.threads?.map((p: any) => (
           <Link
             className={clsx(

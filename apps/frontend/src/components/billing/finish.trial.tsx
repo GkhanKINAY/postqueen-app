@@ -21,7 +21,10 @@ const useFinishTrialSubscription = (enabled: boolean) => {
   return useSWR(enabled ? '/user/subscription' : null, load);
 };
 
-type FinishPhase = 'pending' | 'charged' | 'founder' | 'failed';
+type FinishPhase = 'pending' | 'charged' | 'founder' | 'failed' | 'stalled';
+
+/** ~60 seconds at the 2s poll interval. */
+const MAX_POLL_ATTEMPTS = 30;
 
 /**
  * End-trial overlay — LOOK from the prototype `finishTrialOpen` sheet
@@ -72,25 +75,55 @@ export const FinishTrial: FC<{
     return value % 1 === 0 ? `$${value}.00` : `$${value.toFixed(2)}`;
   }, [chargedAmount]);
 
-  const checkFinished = useCallback(async () => {
-    const body = await (await fetch('/billing/is-trial-finished')).json();
-    if (body?.captureBlocked) {
-      setPhase('failed');
-      return;
-    }
-    if (!body?.finished) {
-      await timer(2000);
-      return checkFinished();
-    }
-    setPhase(lifetime ? 'founder' : 'charged');
-  }, [fetch, lifetime]);
+  /**
+   * The poll had no ceiling. `billing.controller.ts:114` swallows every Stripe
+   * error and still answers `{finish:true, captureBlocked:false}`, so a Stripe
+   * hiccup leaves the org still flagged as trialing and `finished` false — and
+   * this recursed every 2s until the trial window closed on its own, which can
+   * be days of "Charging your card…" on screen. Same if the request fails.
+   *
+   * `stalled` is deliberately NOT `failed`: the charge may well have gone
+   * through, so the card-declined copy would be a lie in the other direction.
+   */
+  const checkFinished = useCallback(
+    async (attempt = 0) => {
+      let body: any;
+      try {
+        const response = await fetch('/billing/is-trial-finished');
+        body = response.ok ? await response.json() : null;
+      } catch (e) {
+        body = null;
+      }
+
+      if (body?.captureBlocked) {
+        setPhase('failed');
+        return;
+      }
+      if (!body?.finished) {
+        // ~60s at 2s intervals, then hand the screen back.
+        if (attempt >= MAX_POLL_ATTEMPTS) {
+          setPhase('stalled');
+          return;
+        }
+        await timer(2000);
+        return checkFinished(attempt + 1);
+      }
+      setPhase(lifetime ? 'founder' : 'charged');
+    },
+    [fetch, lifetime]
+  );
 
   const finishSubscription = useCallback(async () => {
-    const body = await (
-      await fetch('/billing/finish-trial', {
+    let body: any;
+    try {
+      const response = await fetch('/billing/finish-trial', {
         method: 'POST',
-      })
-    ).json();
+      });
+      body = response.ok ? await response.json() : null;
+    } catch (e) {
+      body = null;
+    }
+
     if (body?.captureBlocked) {
       setPhase('failed');
       return;
@@ -171,7 +204,7 @@ export const FinishTrial: FC<{
           >
             <div className="relative size-[64px]">
               <div className="absolute inset-0 rounded-full border-[3px] border-pqBorder" />
-              <div className="absolute inset-0 animate-[pqspin_0.9s_linear_infinite] rounded-full border-[3px] border-transparent border-t-pqBrand" />
+              <div className="pq-loop absolute inset-0 animate-[pqspin_0.9s_linear_infinite] rounded-full border-[3px] border-transparent border-t-pqBrand" />
             </div>
             <div className="flex flex-col gap-[5px]">
               <h3 className="m-0 font-display text-[19px] font-[600] -tracking-[0.015em] text-pqText">
@@ -187,6 +220,51 @@ export const FinishTrial: FC<{
           </div>
         )}
 
+        {phase === 'stalled' && (
+          <div
+            data-finish-trial="stalled"
+            className="flex w-full flex-col items-center gap-[18px] py-[8px]"
+          >
+            <span className="grid size-[56px] place-items-center rounded-full bg-pqAmberSoft text-pqAmber">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none">
+                <path
+                  d="M12 7v5l3 2M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <div className="flex flex-col gap-[5px]">
+              <h3 className="m-0 font-display text-[19px] font-[600] -tracking-[0.015em] text-pqText">
+                {t('ft_stalled_title', 'This is taking longer than usual')}
+              </h3>
+              <div className="text-[13.5px] leading-[1.6] text-pqMuted">
+                {t(
+                  'ft_stalled_body',
+                  'Your payment may still be going through. Check the billing page in a moment — you have not been charged twice.'
+                )}
+              </div>
+            </div>
+            <div className="flex w-full gap-[9px]">
+              <button
+                type="button"
+                onClick={backToBilling}
+                className="h-[42px] flex-1 rounded-[10px] bg-pqBrand text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+              >
+                {t('go_to_billing', 'Go to billing')}
+              </button>
+              <button
+                type="button"
+                onClick={close}
+                className="h-[42px] w-[104px] shrink-0 rounded-[10px] bg-transparent text-[13.5px] font-[600] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover hover:text-pqText"
+              >
+                {t('close', 'Close')}
+              </button>
+            </div>
+          </div>
+        )}
         {failed && (
           <div
             data-finish-trial="failed"

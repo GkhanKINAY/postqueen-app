@@ -452,13 +452,33 @@ export class IntegrationRepository {
     });
   }
 
-  updateIntegrationGroup(org: string, id: string, group: string) {
+  async updateIntegrationGroup(org: string, id: string, group: string) {
+    // The integration side is org-scoped, but `group` comes straight from the
+    // request body and used to be connected unchecked. Another org's Customer
+    // id therefore linked their row into this org — leaking its name back
+    // through `/integrations/list` and putting a foreign channel inside their
+    // customer grouping. `updateOnCustomerName` above resolves the customer
+    // with `orgId` for exactly this reason; do the same here.
+    const customer = !group
+      ? undefined
+      : await this._customers.model.customer.findFirst({
+          where: {
+            id: group,
+            orgId: org,
+            deletedAt: null,
+          },
+        });
+
+    if (group && !customer) {
+      throw new Error('Customer not found');
+    }
+
     return this._integration.model.integration.update({
       where: {
         id,
         organizationId: org,
       },
-      data: !group
+      data: !customer
         ? {
             customer: {
               disconnect: true,
@@ -467,7 +487,7 @@ export class IntegrationRepository {
         : {
             customer: {
               connect: {
-                id: group,
+                id: customer.id,
               },
             },
           },
@@ -557,6 +577,9 @@ export class IntegrationRepository {
     });
   }
 
+  // `totalChannels` is the EXCESS to switch off, not the cap (see the caller in
+  // subscription.service). Returns what it disabled so the caller can tell the
+  // user which channels went quiet.
   async disableIntegrations(org: string, totalChannels: number) {
     const getChannels = await this._integration.model.integration.findMany({
       where: {
@@ -564,9 +587,15 @@ export class IntegrationRepository {
         disabled: false,
         deletedAt: null,
       },
+      // Without an order this was whatever Postgres felt like returning, so a
+      // downgrade could switch off someone's oldest, most-used channel and
+      // keep one they connected yesterday. Newest first is the predictable,
+      // least-surprising rule.
+      orderBy: { createdAt: 'desc' },
       take: totalChannels,
       select: {
         id: true,
+        name: true,
       },
     });
 
@@ -580,6 +609,8 @@ export class IntegrationRepository {
         },
       });
     }
+
+    return getChannels;
   }
 
   getPlugsByIntegrationId(org: string, id: string) {

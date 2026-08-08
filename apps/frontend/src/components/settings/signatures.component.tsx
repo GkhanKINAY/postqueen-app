@@ -17,6 +17,7 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 export const SignaturesComponent: FC<{
   appendSignature?: (value: string) => void;
@@ -32,7 +33,7 @@ export const SignaturesComponent: FC<{
   const load = useCallback(async () => {
     return (await fetch('/signatures')).json();
   }, [fetch]);
-  const { data, mutate } = useSWR('signatures', load);
+  const { data, isLoading, mutate } = useSWR('signatures', load);
   const closeEditor = useCallback(() => setEditing(undefined), []);
 
   const openEditor = useCallback(
@@ -77,9 +78,24 @@ export const SignaturesComponent: FC<{
           )
         )
       ) {
-        await fetch(`/signatures/${row.id}`, {
-          method: 'DELETE',
-        });
+        // customFetch resolves on 4xx/5xx and rejects when the backend is
+        // unreachable — unchecked, both reported a successful delete for a row
+        // that is still there.
+        let ok = false;
+        try {
+          ok = (await fetch(`/signatures/${row.id}`, { method: 'DELETE' })).ok;
+        } catch (e) {
+          ok = false;
+        }
+
+        if (!ok) {
+          toaster.show(
+            t('signature_delete_failed', 'Could not delete this signature'),
+            'warning'
+          );
+          return;
+        }
+
         mutate();
         toaster.show(
           t('signature_deleted_successfully', 'Signature deleted successfully'),
@@ -131,7 +147,27 @@ export const SignaturesComponent: FC<{
           </div>
         </>
       )}
-      {!!data?.length && (
+      {/* An empty list and a list in flight look the same from here, so the
+          rows wait for the fetch — otherwise the pane reads as empty and then
+          fills. The Add button stays live throughout. */}
+      {isLoading && (
+        <div className="mt-[18px] overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[11px] border-b border-pqLine p-[13px_15px] last:border-b-0"
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-[6px]">
+                <Skeleton className="h-[13px] w-[54%]" />
+                <Skeleton className="h-[11px] w-[30%]" />
+              </div>
+              <Skeleton className="h-[28px] w-[56px] shrink-0 rounded-pqSm" />
+              <Skeleton className="h-[28px] w-[56px] shrink-0 rounded-pqSm" />
+            </div>
+          ))}
+        </div>
+      )}
+      {!isLoading && !!data?.length && (
         <div className="mt-[18px] overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
           {data?.map((p: any) => (
             <div
@@ -211,7 +247,10 @@ export const SignaturesComponent: FC<{
         onClick={openEditor()}
         className={clsx(
           'flex h-[34px] items-center gap-[6px] self-start rounded-pqSm bg-pqBrand ps-[11px] pe-[13px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover',
-          (data?.length || 0) > 0 ? 'mt-[13px]' : 'mt-[18px]'
+          // The ghost occupies the same slot as a populated list, so the
+          // tighter margin applies while loading too — otherwise the button
+          // shifts 5px the moment the data lands.
+          isLoading || (data?.length || 0) > 0 ? 'mt-[13px]' : 'mt-[18px]'
         )}
       >
         <svg

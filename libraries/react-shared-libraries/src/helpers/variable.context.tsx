@@ -35,6 +35,19 @@ interface VariableContextInterface {
    * built, so a client component could never see a runtime value.
    */
   affiliateUrl: string;
+  /**
+   * Inbox behind the Help menu's Contact support and Report a bug rows.
+   *
+   * Chatbase and Sentry are the richer paths, but both are optional and a
+   * deployment with neither still has to leave a way to reach a human — so
+   * this one has a default rather than hiding its rows when unset. Whoever
+   * runs the install should point it at their own inbox.
+   */
+  supportEmail: string;
+  /** Release notes, if this deployment publishes any. Unset hides the row. */
+  changelogUrl: string;
+  /** Community/chat invite, if one exists. Unset hides the row. */
+  communityUrl: string;
   plontoKey: string;
   storageProvider: 'local' | 'cloudflare';
   /**
@@ -86,6 +99,9 @@ const VariableContext = createContext({
   frontEndUrl: '',
   legalUrl: '',
   affiliateUrl: '',
+  supportEmail: 'support@postqueen.ai',
+  changelogUrl: '',
+  communityUrl: '',
   storageProvider: 'local',
   uploadViaServer: false,
   plontoKey: '',

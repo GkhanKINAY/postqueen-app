@@ -17,6 +17,10 @@ import './providers/heygen.provider';
 import { thirdPartyList } from '@gitroom/frontend/components/third-parties/third-party.wrapper';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { EmptyState } from '@gitroom/react/ui/empty-state';
+import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { ThirdPartyProviderCard } from '@gitroom/frontend/components/third-parties/third-party.card';
+import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 
 const ThirdPartyContext = createContext({
   id: '',
@@ -87,58 +91,35 @@ export const ThirdPartyPopup: FC<{
   return (
     <div className="flex flex-col gap-[16px] pt-[8px]">
       {!thirdParty && (
-        <div className="grid gap-[12px] [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+        <div className="grid gap-[12px] [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
           {thirdParties.map((p: any) => (
-            <div
-              key={p.identifier}
-              role="button"
-              tabIndex={0}
-              onClick={() => setThirdParty(p)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setThirdParty(p);
-                }
-              }}
-              className="flex cursor-pointer flex-col gap-[12px] rounded-pqLg bg-pqInner p-[16px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-            >
-              <img
-                className="size-[36px] rounded-pqSm object-contain"
-                src={`/icons/third-party/${p.identifier}.png`}
-                alt=""
-              />
-              <div className="flex min-w-0 flex-col gap-[4px]">
-                <div className="text-[15px] font-[600] text-pqText">
-                  {p.title}
-                  {p.name ? `: ${p.name}` : ''}
-                </div>
-                {!!p.description && (
-                  <div className="text-[12.5px] leading-[1.45] text-pqMuted">
-                    {p.description}
-                  </div>
-                )}
-              </div>
-              <Button
-                className="w-full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setThirdParty(p);
-                }}
-              >
-                {t('use', 'Use')}
-              </Button>
-            </div>
+            <ThirdPartyProviderCard
+              // `id`, not `identifier` — one org can connect two accounts on
+              // the same provider (`saveIntegration` upserts on internalId).
+              key={p.id}
+              provider={p}
+              actionLabel={t('use', 'Use')}
+              onSelect={() => setThirdParty(p)}
+            />
           ))}
         </div>
       )}
       {thirdParty && (
         <>
+          {/* Channels-style boxed back — muted pill, not a faint text link. */}
           <button
             type="button"
             onClick={() => setThirdParty(null)}
-            className="flex h-[32px] w-fit items-center gap-[6px] rounded-pqSm px-[8px] text-[12.5px] font-[600] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+            className="flex h-[28px] w-fit items-center gap-[5px] self-start rounded-[8px] bg-pqSettings pe-[10px] ps-[7px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              aria-hidden="true"
+              className="rtl:rotate-180"
+            >
               <path
                 d="M15 6l-6 6 6 6"
                 stroke="currentColor"
@@ -160,6 +141,92 @@ export const ThirdPartyPopup: FC<{
   );
 };
 
+/**
+ * The composer's Integrations picker.
+ *
+ * Its own SWR rather than the button's: the modal's children are built once at
+ * open time, so data arriving later has to re-render from inside the modal.
+ * The key is deliberately not the plain `third-party` that Settings uses — that
+ * one caches the unfiltered list, and sharing it handed this picker providers
+ * whose `position` is not `media`.
+ */
+const useMediaThirdParties = () => {
+  const fetch = useFetch();
+
+  const thirdParties = useCallback(async () => {
+    const rows = await (await fetch('/third-party')).json();
+    // An error body is an object, not an array — calling .filter() on it threw
+    // inside the fetcher, where SWR swallows it, and the picker then reported
+    // a 401/500 to the user as "No Integrations Yet".
+    return Array.isArray(rows)
+      ? rows.filter((f: any) => f.position === 'media')
+      : [];
+  }, [fetch]);
+
+  return useSWR('third-party-media', thirdParties, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    revalidateOnMount: true,
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+  });
+};
+
+const ThirdPartyMediaPicker: FC<{
+  closeModal: () => void;
+  onChange: (data: any) => void;
+  allData: {
+    content: string;
+    id?: string;
+    image?: Array<{
+      id: string;
+      path: string;
+    }>;
+  }[];
+}> = (props) => {
+  const { allData, onChange, closeModal } = props;
+  const t = useT();
+  const { data, isLoading } = useMediaThirdParties();
+
+  if (isLoading) {
+    return <LoadingComponent width={40} height={40} />;
+  }
+
+  if (!data?.length) {
+    return (
+      <EmptyState
+        title={t('no_integrations_yet', 'No Integrations Yet')}
+        description={t(
+          'no_integrations_yet_description',
+          'Connect a tool like HeyGen to generate media straight from the composer.'
+        )}
+        action={
+          <Button
+            onClick={() => {
+              closeModal();
+              // New tab on purpose: Create Post is itself a modal holding an
+              // unsaved draft, and navigating this tab to Settings loses it.
+              window.open('/settings?tab=integrations', '_blank');
+            }}
+          >
+            {t('go_to_integrations', 'Go to integrations')}
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <ThirdPartyPopup
+      thirdParties={data}
+      closeModal={closeModal}
+      allData={allData}
+      onChange={onChange}
+    />
+  );
+};
+
 export const ThirdPartyMedia: FC<{
   onChange: (data: any) => void;
   allData: {
@@ -172,37 +239,29 @@ export const ThirdPartyMedia: FC<{
   }[];
   /** Ghost look for the agent composer toolbar; Create Post keeps the filled chip. */
   ghost?: boolean;
+  /** Ghost row measured itself too narrow for labels — icon only. */
+  compact?: boolean;
 }> = (props) => {
-  const { allData, onChange, ghost } = props;
+  const { allData, onChange, ghost, compact } = props;
   const t = useT();
-  const fetch = useFetch();
   const modals = useModals();
+  const canOpen = useOpenGuard();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const thirdParties = useCallback(async () => {
-    return (await (await fetch('/third-party')).json()).filter(
-      (f: any) => f.position === 'media'
-    );
-  }, []);
-
-  const { data, isLoading } = useSWR('third-party', thirdParties, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateIfStale: false,
-    revalidateOnMount: true,
-    refreshWhenHidden: false,
-    refreshWhenOffline: false,
-  });
-
   const openIntegrations = useCallback(() => {
+    if (!canOpen()) {
+      return;
+    }
+    // `modalOpen` drives the button's active style only — the guard above is
+    // what prevents a double open, because a stuck flag here would just be a
+    // wrong highlight rather than a dead button.
     setModalOpen(true);
     modals.openModal({
       title: t('integrations', 'Integrations'),
       size: '80%',
       onClose: () => setModalOpen(false),
       children: (close) => (
-        <ThirdPartyPopup
-          thirdParties={data}
+        <ThirdPartyMediaPicker
           closeModal={() => {
             setModalOpen(false);
             close();
@@ -212,17 +271,18 @@ export const ThirdPartyMedia: FC<{
         />
       ),
     });
-  }, [allData, data, modals, onChange, t]);
-
-  if (isLoading || !data?.length) {
-    return null;
-  }
+  }, [allData, canOpen, modals, onChange, t]);
 
   return (
     <div className="relative group">
       <button
         type="button"
+        // Handle for the screenshot tool, like Insert Media's — nothing else in
+        // the toolbar row is selectable by anything but its text.
+        data-pq="integrations"
         onClick={openIntegrations}
+        aria-label={t('integrations', 'Integrations')}
+        title={t('integrations', 'Integrations')}
         className={clsx(
           'inline-flex h-[36px] cursor-pointer items-center justify-center gap-[6px] font-[600] transition-colors',
           ghost
@@ -245,7 +305,9 @@ export const ThirdPartyMedia: FC<{
             fill="currentColor"
           />
         </svg>
-        <span className="iconBreak:hidden">
+        <span
+          className={clsx(!ghost && 'iconBreak:hidden', compact && 'hidden')}
+        >
           {t('integrations', 'Integrations')}
         </span>
       </button>

@@ -6,9 +6,8 @@ tier.autoPost 1
 tier.current 18
 tier.image_generator 2
 tier.month_price 3
-tier.public_api 4
 tier.team_members 2
-tier.webhooks 4
+tier.webhooks 5
 tier.year_price 3
 trialLocked 6
 user.isLifetime 23

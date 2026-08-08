@@ -446,6 +446,7 @@ model Post {
   @@index([createdAt])
   @@index([updatedAt])
   @@index([releaseURL])
+  @@index([releaseId])
   @@index([integrationId])
 }
 
@@ -624,6 +625,9 @@ model AutoPost {
   addPicture      Boolean
   generateContent Boolean
   integrations    String
+  // false keeps the historical behaviour: feed items land in Drafts and a human
+  // publishes them. Existing rows must not start auto-publishing on upgrade.
+  autoPublish     Boolean      @default(false)
   deletedAt       DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

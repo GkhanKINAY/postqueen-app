@@ -30,22 +30,30 @@ export function ForgotReturn({ token }: { token: string }) {
   const fetchData = useFetch();
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
-    const { reset } = await (
-      await fetchData('/auth/forgot-return', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...data,
-        }),
-      })
-    ).json();
-    setState(true);
+    const response = await fetchData('/auth/forgot-return', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+      }),
+    });
+    const { reset } = response?.ok
+      ? await response.json().catch(() => ({} as any))
+      : ({} as any);
+
+    // `setState(true)` used to run BEFORE this check, which swapped the form
+    // out for the "we successfully reset your password" branch. The error was
+    // then attached to a `password` input that no longer existed, so an expired
+    // link told the user the reset had worked and they could not log in.
     if (!reset) {
+      setLoading(false);
       form.setError('password', {
         type: 'manual',
         message: t('password_reset_link_expired', 'Your password reset link has expired. Please try again.'),
       });
       return false;
     }
+
+    setState(true);
     setLoading(false);
   };
   return (

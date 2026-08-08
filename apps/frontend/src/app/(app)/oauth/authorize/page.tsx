@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
+import { Spinner } from '@gitroom/react/ui/spinner';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export default function OAuthAuthorizePage() {
+  const t = useT();
   const searchParams = useSearchParams();
   const fetch = useFetch();
   const [appInfo, setAppInfo] = useState<any>(null);
@@ -91,8 +94,13 @@ export default function OAuthAuthorizePage() {
           <div className="text-[16px] text-pqMuted">
             Please wait...
           </div>
-          <div className="mt-[32px] flex justify-center">
-            <div className="w-[48px] h-[48px] border-[3px] border-btnPrimary border-t-transparent rounded-full animate-spin" />
+          <div className="mt-[32px] flex justify-center text-btnPrimary">
+            <Spinner
+              width={48}
+              height={48}
+              borderWidth={3}
+              label={t('loading', 'Loading')}
+            />
           </div>
         </div>
       </div>

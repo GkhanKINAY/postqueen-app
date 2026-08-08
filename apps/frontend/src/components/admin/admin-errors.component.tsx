@@ -8,7 +8,7 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Button } from '@gitroom/react/form/button';
-import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 
 interface ErrorRow {
@@ -162,13 +162,19 @@ const useErrorsList = (params: {
     unknownFirst: params.unknownFirst ? 'true' : 'false',
   });
   const key = `/admin/errors?${query.toString()}`;
-  return useSWR<ErrorsResponse>(key, async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error('Failed to load errors');
-    }
-    return res.json();
-  });
+  // The key carries the page and every filter, so each click is a new key.
+  // Without this the table empties while the next page is in flight.
+  return useSWR<ErrorsResponse>(
+    key,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error('Failed to load errors');
+      }
+      return res.json();
+    },
+    { keepPreviousData: true }
+  );
 };
 
 export const AdminErrorsComponent: FC = () => {
@@ -323,8 +329,36 @@ export const AdminErrorsComponent: FC = () => {
         </Button>
       </div>
 
-      {isLoading ? (
-        <LoadingComponent />
+      {/* `isLoading` alone is not enough: SWR sets it on every key change even
+          with `keepPreviousData`, so the ghost would replace a perfectly good
+          table on each page click. */}
+      {isLoading && !data ? (
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label="Loading"
+          className="border border-newTableBorder rounded-[8px] overflow-hidden"
+        >
+          <div className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] bg-newBgColorInner border-b border-newTableBorder">
+            <Skeleton className="h-[11px] w-[52%]" />
+            <Skeleton className="h-[11px] w-[44%]" />
+            <Skeleton className="h-[11px] w-[48%]" />
+            <Skeleton className="h-[11px] w-[38%]" />
+            <Skeleton className="ms-auto h-[11px] w-[34%]" />
+          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[170px_120px_220px_1fr_220px] gap-[12px] px-[12px] py-[10px] border-b border-newTableBorder last:border-b-0"
+            >
+              <Skeleton className="h-[12px] w-[86%]" />
+              <Skeleton className="h-[12px] w-[62%]" />
+              <Skeleton className="h-[12px] w-[78%]" />
+              <Skeleton className="h-[12px] w-[94%]" />
+              <Skeleton className="ms-auto h-[26px] w-[132px] rounded-[7px]" />
+            </div>
+          ))}
+        </div>
       ) : error ? (
         <div className="text-red-400">Failed to load errors.</div>
       ) : !data || data.items.length === 0 ? (

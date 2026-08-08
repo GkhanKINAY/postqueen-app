@@ -36,7 +36,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useDrag, useDrop } from 'react-dnd';
 import { Integration, Post, State, Tags } from '@prisma/client';
-import { useAddProvider } from '@gitroom/frontend/components/launches/add.provider.component';
+import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -44,6 +44,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { random } from 'lodash';
 import { extend } from 'dayjs';
 import {
+  timePattern,
   use12HourClock,
   useDateFormat,
 } from './helpers/date.format';
@@ -58,10 +59,16 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import { postErrorText } from '@gitroom/helpers/utils/post.error.message';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
+import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
+import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
+import { useRouter } from 'next/navigation';
+import { useTour } from '@gitroom/frontend/components/onboarding/tour';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -154,10 +161,35 @@ export const usePostActions = (onMutate?: () => void) => {
         publishDate: loadPost.actualDate || loadPost.publishDate,
       };
 
-      const data = await (await fetch(`/posts/group/${post.group}`)).json();
-      const date = !isDuplicate
-        ? null
-        : (await (await fetch('/posts/find-slot')).json()).date;
+      // customFetch resolves on 4xx/5xx, so `data.posts[0]` threw out of this
+      // click handler as an unhandled rejection — clicking a post on the
+      // calendar simply did nothing, with no error anywhere.
+      const groupResponse = await fetch(`/posts/group/${post.group}`);
+      const data = groupResponse.ok
+        ? await groupResponse.json().catch(() => null)
+        : null;
+
+      if (!data?.posts?.length) {
+        toaster.show(
+          t('post_open_failed', 'Could not open this post, please try again'),
+          'warning'
+        );
+        return;
+      }
+
+      // find-slot is a convenience: it picks the next free slot for a duplicate.
+      // If it fails, fall through to the source post's own publish date via the
+      // `||` below — that is what the original code did, and refusing to open
+      // Duplicate over a failed slot lookup would be a step backwards.
+      let date: string | null = null;
+      if (isDuplicate) {
+        const slotResponse = await fetch('/posts/find-slot');
+        const slot = slotResponse.ok
+          ? await slotResponse.json().catch(() => null)
+          : null;
+        date = slot?.date ?? null;
+      }
+
       const publishDate = dayjs.utc(date || data.posts[0].publishDate).local();
       const ExistingData = !isDuplicate
         ? ExistingDataContextProvider
@@ -209,7 +241,7 @@ export const usePostActions = (onMutate?: () => void) => {
         title: ``,
       });
     },
-    [integrations, fetch, modal, mutate]
+    [integrations, fetch, modal, mutate, toaster, t]
   );
 
   const copyDebugJson = useCallback(
@@ -241,9 +273,20 @@ export const usePostActions = (onMutate?: () => void) => {
         return;
       }
 
-      await fetch(`/posts/${post.group}`, {
+      // customFetch resolves on 4xx/5xx — unchecked, a failed delete still
+      // showed the green "deleted successfully" and the row came back on the
+      // next revalidate.
+      const response = await fetch(`/posts/${post.group}`, {
         method: 'DELETE',
       });
+
+      if (!response?.ok) {
+        toaster.show(
+          t('post_delete_failed', 'Could not delete this post, please try again'),
+          'warning'
+        );
+        return;
+      }
 
       toaster.show(
         t('post_deleted_successfully', 'Post deleted successfully'),
@@ -299,17 +342,34 @@ export const usePostActions = (onMutate?: () => void) => {
 };
 
 /**
- * Opens week/day grids at 07:00 instead of midnight.
+ * The row to put at the top of the viewport when centring on now.
  *
- * Day rows are variable height — prefer `[data-cal-hour]="7"` (same as
+ * One hour *before* the current one, so the marker lands on the second visible
+ * row: you can see what just went out as well as what is coming, instead of the
+ * current hour sitting flush against the sticky header.
+ */
+const nowScrollHour = () => Math.max(0, newDayjs().hour() - 1);
+
+/** 07:00 — the design's opening row for a week that does not contain today. */
+const MORNING_HOUR = 7;
+
+/**
+ * Opens week/day grids on `hour` instead of midnight.
+ *
+ * Callers pass the current hour when today is on screen and `MORNING_HOUR`
+ * otherwise: a calendar that opens on the small hours shows an empty night, and
+ * one that opens on "now" for a week three months out is just as disorienting.
+ *
+ * Day rows are variable height — prefer `[data-cal-hour]` (same as
  * scroll-to-now). Week falls back to equal-row math when markers are absent.
  */
-const openAtMorning = (el: HTMLDivElement | null) => {
+const openInitialHour = (el: HTMLDivElement | null, hour: number) => {
   if (!el || el.dataset.scrolled === '1') return;
+  const clamped = Math.max(0, Math.min(23, hour));
   const apply = () => {
     if (el.scrollHeight <= el.clientHeight) return false;
     const target = el.querySelector(
-      '[data-cal-hour="7"]'
+      `[data-cal-hour="${clamped}"]`
     ) as HTMLElement | null;
     if (target) {
       const sticky = el.querySelector(
@@ -319,7 +379,7 @@ const openAtMorning = (el: HTMLDivElement | null) => {
         target.offsetTop - (sticky ? sticky.getBoundingClientRect().height : 0);
       el.scrollTop = Math.max(0, top);
     } else {
-      el.scrollTop = (el.scrollHeight / 24) * 7;
+      el.scrollTop = (el.scrollHeight / 24) * clamped;
     }
     el.dataset.scrolled = '1';
     return true;
@@ -372,18 +432,128 @@ const scrollScrollerToHour = (el: HTMLElement | null, hour: number) => {
   }
 };
 
+/**
+ * A 30s clock for the leaves that follow the minute hand, so the now marker is
+ * never more than half a minute stale.
+ *
+ * It deliberately lives in the leaves and nowhere higher. `WeekView` re-renders
+ * 168 `CalendarColumn`s and builds their `getDate` prop inline, so `memo`
+ * cannot stop that cascade — a ticker up there would rebuild the whole grid
+ * twice a minute. Every leaf below renders `null` unless it owns the current
+ * hour, which makes the subscription nearly free.
+ */
+const useMinuteTick = () => {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return tick;
+};
+
+/**
+ * The live clock, in the same vocabulary as the header's today pill — the grid
+ * already spends `--brand` + `--todayGlow` on "this is now".
+ *
+ * `dir="ltr"`: a clock reading is a left-to-right token even in an RTL layout,
+ * same reason the hour labels carry it.
+ */
+const NowChip = () => {
+  const t = useT();
+  // Both subscriptions are the point: the minute hand, and Date Metrics
+  // flipping the 12h/24h pattern under it.
+  useMinuteTick();
+  useDateFormat();
+  return (
+    <span
+      dir="ltr"
+      title={t('current_time', 'Current time')}
+      className="shrink-0 whitespace-nowrap rounded-[5px] bg-pqBrand px-[5px] py-[1px] text-[11px] font-[700] tabular-nums text-pqOnBrand shadow-pqToday"
+    >
+      {newDayjs().format(timePattern())}
+    </span>
+  );
+};
+
+/**
+ * The minute hand across today's week cell.
+ *
+ * Week cells are exactly 108px tall (`min-h`/`max-h` below), so a percentage
+ * top is minute-accurate without measuring anything. No dot on the leading
+ * edge: `[data-cell]` is `overflow: hidden`, so one would lose its top half in
+ * the first minutes of every hour. The bar carries the position and the gutter
+ * chip carries the reading.
+ */
+const NowLine: FC<{ hour: number }> = ({ hour }) => {
+  useMinuteTick();
+  const now = newDayjs();
+  if (now.hour() !== hour) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 z-[6] h-[2px] rounded-full bg-pqBrand shadow-pqToday"
+      style={{ top: `${(now.minute() / 60) * 100}%` }}
+    />
+  );
+};
+
+/**
+ * Week hour gutter: the current hour reads as a live clock instead of a static
+ * "17:00". `showNow` is false on weeks without today — the gutter is shared by
+ * all seven columns, so it must stay quiet when none of them is today.
+ */
+const WeekHourLabel: FC<{ hour: number; showNow: boolean }> = ({
+  hour,
+  showNow,
+}) => {
+  useMinuteTick();
+  if (showNow && newDayjs().hour() === hour) return <NowChip />;
+  return <>{convertTimeFormatBasedOnLocality(hour)}</>;
+};
+
+/**
+ * Is today inside the range currently on screen?
+ *
+ * Drives both the opening scroll position and whether the now marker is drawn
+ * at all — a week in September has no "now" to point at.
+ */
+const useRangeHasToday = (startDate: string, endDate?: string) =>
+  useMemo(() => {
+    const today = newDayjs();
+    return (
+      !today.isBefore(newDayjs(startDate), 'day') &&
+      !today.isAfter(newDayjs(endDate || startDate), 'day')
+    );
+  }, [startDate, endDate]);
+
+/**
+ * The hour a freshly mounted scroller should open on: the current one when
+ * today is on screen, otherwise the design's 07:00.
+ *
+ * Returned through a ref because `setScrollerRef` must stay dependency-free —
+ * giving that `useCallback` deps would detach and reattach the scroller on
+ * every re-render, and the ref callback is what fires the opening scroll.
+ */
+const useInitialHourRef = (hasToday: boolean) => {
+  const initialHourRef = useRef(MORNING_HOUR);
+  initialHourRef.current = hasToday ? nowScrollHour() : MORNING_HOUR;
+  return initialHourRef;
+};
+
 export const DayView = () => {
   const { startDate, scrollToNowToken } = useCalendar();
   const currentDay = newDayjs(startDate).startOf('day');
+  const isToday = useRangeHasToday(startDate);
+  const initialHourRef = useInitialHourRef(isToday);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const setScrollerRef = useCallback((el: HTMLDivElement | null) => {
     scrollerRef.current = el;
-    openAtMorning(el);
+    openInitialHour(el, initialHourRef.current);
   }, []);
 
   useEffect(() => {
     if (!scrollToNowToken) return;
-    scrollScrollerToHour(scrollerRef.current, newDayjs().hour());
+    scrollScrollerToHour(scrollerRef.current, nowScrollHour());
   }, [scrollToNowToken]);
 
   // Owner: Day matches Posts list LOOK (860 column, list cards, hour headers).
@@ -411,21 +581,24 @@ export const DayView = () => {
 };
 
 export const WeekView = () => {
-  const { startDate, openPostsForDay, scrollToNowToken } = useCalendar();
+  const { startDate, endDate, openPostsForDay, scrollToNowToken } =
+    useCalendar();
   const t = useT();
   const { mobile } = useViewport();
   // Subscribe so hour labels re-render when Date Metrics (12h/24h) changes.
   useDateFormat();
+  const weekHasToday = useRangeHasToday(startDate, endDate);
+  const initialHourRef = useInitialHourRef(weekHasToday);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [swipeHint, setSwipeHint] = useState(false);
   const setScrollerRef = useCallback((el: HTMLDivElement | null) => {
     scrollerRef.current = el;
-    openAtMorning(el);
+    openInitialHour(el, initialHourRef.current);
   }, []);
 
   useEffect(() => {
     if (!scrollToNowToken) return;
-    scrollScrollerToHour(scrollerRef.current, newDayjs().hour());
+    scrollScrollerToHour(scrollerRef.current, nowScrollHour());
   }, [scrollToNowToken]);
 
   // Phone week is wider than the viewport — bring today into view and surface
@@ -569,7 +742,7 @@ export const WeekView = () => {
                 dir="ltr"
                 className="flex min-h-[108px] -translate-y-[6px] items-start justify-end whitespace-nowrap border-e border-pqBorder px-[8px] pt-[11px] text-[11.5px] font-[500] text-pqMuted rtl:justify-start"
               >
-                {convertTimeFormatBasedOnLocality(hour)}
+                <WeekHourLabel hour={hour} showNow={weekHasToday} />
               </div>
               {localizedDays.map((day) => (
                 <CalendarColumn
@@ -680,13 +853,14 @@ export const ListView = () => {
   const user = useUser();
   const fetch = useFetch();
   const modal = useModals();
+  const router = useRouter();
+  const { start: startTour } = useTour();
   const { longDatePattern } = useDateFormat();
   const {
     loading,
     listPosts,
     listState,
     listPage,
-    listTotal,
     listTotalPages,
     setListPage,
     listSort,
@@ -696,6 +870,7 @@ export const ListView = () => {
     reloadCalendarView,
     sets,
   } = useCalendar();
+  const noChannels = !integrations?.length;
   const emptyMessage =
     listState === 'scheduled'
       ? t('no_upcoming_posts', 'No upcoming posts scheduled')
@@ -811,45 +986,74 @@ export const ListView = () => {
     );
   }, [listPosts, listSort]);
 
-  const showMore = useCallback(
-    () => setListPage(listPage + 1),
-    [listPage, setListPage]
-  );
-  const collapsePosts = useCallback(() => setListPage(0), [setListPage]);
-  const hasMore = listPage < listTotalPages - 1;
-  // Single interpolated key so RTL / non-English locales can reorder freely.
-  const shownLabel = t('showing_x_of_y', '{{shown}} of {{total}}')
-    .replace('{{shown}}', String(listPosts.length))
-    .replace('{{total}}', String(listTotal));
-
   if (loading && !listPosts.length) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-textColor">{t('loading', 'Loading...')}</div>
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Loading"
+        className="flex min-h-0 flex-1 flex-col gap-[10px]"
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-[68px] w-full rounded-[12px]" />
+        ))}
       </div>
     );
   }
 
   if (listPosts.length === 0) {
+    if (noChannels) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[26px] py-[80px] text-center">
+          <NoChannelsArt className="h-auto w-[220px]" />
+          <div className="flex max-w-[280px] flex-col gap-[6px]">
+            <div className="text-[18px] font-[600] text-pqText">
+              {t('no_channels', 'No channels yet')}
+            </div>
+            <div className="text-[13.5px] leading-[1.55] text-pqMuted text-balance">
+              {t(
+                'connect_an_account_posts_here',
+                'Connect an account and your scheduled posts show up\u00a0here.'
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/channels?add=1')}
+            className="mt-[2px] h-[36px] min-w-[200px] rounded-pqSm bg-pqBrand px-[18px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+          >
+            {t('add_your_first_channel', 'Add your first channel')}
+          </button>
+          <button
+            type="button"
+            onClick={() => startTour()}
+            className="text-[13px] font-[500] text-pqMuted transition-colors hover:text-pqText"
+          >
+            {t('take_a_tour', 'Take a tour')}
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-[20px] px-[26px] py-[80px] text-center">
-        <span className="grid size-[76px] place-items-center rounded-full bg-pqBrandFaint">
+      <div className="flex flex-1 flex-col items-center justify-center gap-[18px] px-[26px] py-[80px] text-center">
+        <span className="grid size-[88px] place-items-center rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.22)_0%,transparent_70%)]">
           <PostQueenLogo
-            tileClassName="size-[52px]"
-            glyphClassName="size-[28px]"
+            tileClassName="size-[56px] rounded-[16px] shadow-[0_14px_30px_-14px_rgba(124,58,237,.95)]"
+            glyphClassName="size-[30px]"
           />
         </span>
-        <div className="max-w-[360px]">
-          <div className="text-[15px] font-[600] text-pqText">{emptyMessage}</div>
-          <div className="mt-[8px] text-[13px] leading-[1.6] text-pqMuted">
+        <div className="flex max-w-[360px] flex-col gap-[6px]">
+          <div className="text-[18px] font-[600] text-pqText">{emptyMessage}</div>
+          <div className="text-[13.5px] leading-[1.55] text-pqMuted text-pretty">
             {emptySubtitle}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-[16px]">
+        <div className="flex flex-col items-center gap-[12px]">
           <button
             type="button"
             onClick={createPost}
-            className="h-[34px] min-w-[180px] rounded-pqSm bg-pqBrand px-[18px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+            className="h-[36px] min-w-[160px] rounded-pqSm bg-pqBrand px-[18px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
           >
             {t('create_new_post', 'Create Post')}
           </button>
@@ -868,90 +1072,46 @@ export const ListView = () => {
   }
 
   return (
-    <div className="relative flex flex-1 flex-col">
-      <div className="absolute inset-0 overflow-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner [scrollbar-gutter:stable]">
-        <div className="mx-auto flex w-full max-w-[860px] flex-col px-[4px] pb-[40px] pt-[4px]">
-          {groupedPosts.map(([dateKey, datePosts]) => (
-            <Fragment key={dateKey}>
-              <div className="flex items-center gap-[10px] pb-[9px] pt-[18px]">
-                <span className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft">
-                  {newDayjs(dateKey).format(longDatePattern())}
-                </span>
-                <span className="h-[1px] flex-1 bg-pqLine" aria-hidden="true" />
-                <span className="shrink-0 text-[11.5px] text-pqSoft">
-                  {datePosts.length}{' '}
-                  {datePosts.length === 1 ? t('post', 'Post') : t('posts', 'Posts')}
-                </span>
-              </div>
-              <div className="flex flex-col gap-[6px]">
-                {datePosts.map((post) => (
-                  <ListItem
-                    key={post.id}
-                    post={post}
-                    statistics={openStatistics(post.id)}
-                    missingRelease={openMissingRelease(post.id)}
-                    editPost={editPost(post, false)}
-                    duplicatePost={editPost(post, true)}
-                    copyDebugJson={
-                      user?.isSuperAdmin ? copyDebugJson(post) : undefined
-                    }
-                    deletePost={deletePost(post)}
-                  />
-                ))}
-              </div>
-            </Fragment>
-          ))}
-          {hasMore ? (
-            <div className="flex flex-col items-center gap-[8px] pb-[8px] pt-[22px]">
-              <button
-                type="button"
-                onClick={showMore}
-                className="flex h-[36px] items-center gap-[8px] rounded-pqSm bg-pqInner px-[18px] text-[13px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-              >
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
-                  <path
-                    d="m6 9 6 6 6-6"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {t('show_more_posts', 'Show more')}
-              </button>
-              <span className="text-[12px] text-pqSoft">{shownLabel}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-[10px] pb-[8px] pt-[22px]">
-              <span className="text-[12px] text-pqSoft">{shownLabel}</span>
-              {listPage > 0 && (
-                <button
-                  type="button"
-                  onClick={collapsePosts}
-                  className="flex h-[30px] items-center gap-[7px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover hover:text-pqText"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="14"
-                    height="14"
-                    fill="none"
-                    className="rotate-180"
-                  >
-                    <path
-                      d="m6 9 6 6 6-6"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  {t('collapse', 'Collapse')}
-                </button>
-              )}
-            </div>
-          )}
+    <div className="mx-auto flex w-full max-w-[860px] flex-col px-[4px] pb-[40px] pt-[4px]">
+      {groupedPosts.map(([dateKey, datePosts]) => (
+        <Fragment key={dateKey}>
+          <div className="flex items-center gap-[10px] pb-[9px] pt-[18px]">
+            <span className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft">
+              {newDayjs(dateKey).format(longDatePattern())}
+            </span>
+            <span className="h-[1px] flex-1 bg-pqLine" aria-hidden="true" />
+            <span className="shrink-0 text-[11.5px] text-pqSoft">
+              {datePosts.length}{' '}
+              {datePosts.length === 1 ? t('post', 'Post') : t('posts', 'Posts')}
+            </span>
+          </div>
+          <div className="flex flex-col gap-[6px]">
+            {datePosts.map((post) => (
+              <ListItem
+                key={post.id}
+                post={post}
+                statistics={openStatistics(post.id)}
+                missingRelease={openMissingRelease(post.id)}
+                editPost={editPost(post, false)}
+                duplicatePost={editPost(post, true)}
+                copyDebugJson={
+                  user?.isSuperAdmin ? copyDebugJson(post) : undefined
+                }
+                deletePost={deletePost(post)}
+              />
+            ))}
+          </div>
+        </Fragment>
+      ))}
+      {listTotalPages > 1 && (
+        <div className="pb-[8px] pt-[16px]">
+          <Pagination
+            current={listPage}
+            totalPages={listTotalPages}
+            setPage={setListPage}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -1146,13 +1306,33 @@ export const CalendarColumn: FC<{
         if (!item.interval) {
           changeDate(item.id, dropAt);
         }
-        const { status } = await fetch(`/posts/${item.id}/date`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            date: dropAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
-            action,
-          }),
-        });
+
+        // `changeDate` above already moved the card optimistically. Neither a
+        // non-2xx nor a network reject had a branch, so a failed reschedule
+        // left the post sitting at its new time on screen while the server
+        // still had the old one — until the next reload. Snap back instead.
+        let status = 0;
+        try {
+          ({ status } = await fetch(`/posts/${item.id}/date`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              date: dropAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
+              action,
+            }),
+          }));
+        } catch (e) {
+          status = 0;
+        }
+
+        if (status < 200 || status >= 300) {
+          toaster.show(
+            t('post_move_failed', 'Could not move this post, please try again'),
+            'warning'
+          );
+          reloadCalendarView();
+          return;
+        }
+
         if (status >= 200 && status < 300) {
           if (action === 'schedule') {
             toaster.show(
@@ -1287,6 +1467,9 @@ export const CalendarColumn: FC<{
     <div
       ref={drop as any}
       data-cell="1"
+      // The slot this cell owns, so anything outside the grid can find a cell
+      // by date without knowing the column order (design: `data-slot`).
+      data-cal-slot={getDate.format('YYYY-MM-DDTHH')}
       data-dayslot={isDay ? '1' : undefined}
       data-filled={postList.length ? '1' : '0'}
       data-past={isBeforeNow ? '1' : '0'}
@@ -1304,14 +1487,19 @@ export const CalendarColumn: FC<{
           : 'gap-[3px] border-b border-s border-pqLine p-[3px]',
         !isDay && display === 'month' && 'min-h-[126px]',
         !isDay && display === 'week' && 'min-h-[108px] max-h-[108px]',
-        !isDay && isToday && !isBeforeNow && 'bg-pqBrandFaint',
+        // Today keeps its wash all day, elapsed hours included. It used to stop
+        // at `!isBeforeNow`, so by late afternoon today's column had shed the
+        // tint hour by hour and read like any other day — on a Friday or a
+        // Saturday, at the far edge of the week, there was nothing left to find
+        // it by. `pq-hatch` is a background-image, so the past hours layer
+        // their hatch over the wash rather than replacing it.
+        !isDay && isToday && 'bg-pqBrandFaint',
         outOfMonth && 'bg-pqTableHeader',
         isBeforeNow
           ? clsx(!isDay && 'pq-hatch', 'cursor-not-allowed')
           : 'cursor-pointer',
         canDrop && 'shadow-[inset_0_0_0_2px_var(--brand)]',
-        isTarget && 'shadow-[inset_0_0_0_1px_var(--dropHint)]',
-        loading && 'animate-pulse'
+        isTarget && 'shadow-[inset_0_0_0_1px_var(--dropHint)]'
       )}
       onClick={
         isDay && !isBeforeNow
@@ -1321,6 +1509,9 @@ export const CalendarColumn: FC<{
           : undefined
       }
     >
+      {!isDay && display === 'week' && isToday && (
+        <NowLine hour={getDate.hour()} />
+      )}
       {display === 'month' && (
         <div className="flex items-center gap-[5px] px-[2px] pb-[1px] pt-[3px]">
           <span
@@ -1350,9 +1541,12 @@ export const CalendarColumn: FC<{
             isBeforeNow ? 'flex-1' : 'cursor-pointer'
           )}
         >
+          {/* One pulse, not two. The cell itself used to pulse as well, and
+              the two opacities multiplied into a much darker flicker that took
+              the date number with it. */}
           {loading && (
-            <div className="h-full w-full p-[5px] animate-pulse absolute left-0 top-0 z-[50]">
-              <div className="h-full w-full rounded-[10px] bg-pqSettings" />
+            <div className="absolute left-0 top-0 z-[50] h-full w-full p-[5px]">
+              <Skeleton className="h-full w-full rounded-[10px]" />
             </div>
           )}
           {list.map((post) => (
@@ -1610,6 +1804,7 @@ const CalendarItem: FC<{
         // @ts-ignore
         ref={dragRef}
         data-ci="1"
+        data-post-id={post.id}
         data-mpost="1"
         onClick={onEdit}
         className={clsx(
@@ -1665,6 +1860,7 @@ const CalendarItem: FC<{
         // @ts-ignore
         ref={dragRef}
         data-ci="1"
+        data-post-id={post.id}
         onClick={onEdit}
         className={clsx(
           'group relative z-[2] flex w-full max-w-[560px] min-w-0 shrink-0 cursor-pointer overflow-hidden rounded-[9px] bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border),var(--e1)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
@@ -1730,9 +1926,10 @@ const CalendarItem: FC<{
               <span
                 className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
                 data-tooltip-id="tooltip"
-                data-tooltip-content={
-                  post.error || 'An error occurred while publishing this post'
-                }
+                data-tooltip-content={postErrorText(
+                  post.error,
+                  'An error occurred while publishing this post'
+                )}
               >
                 !
               </span>
@@ -1784,6 +1981,7 @@ const CalendarItem: FC<{
       // @ts-ignore
       ref={dragRef}
       data-ci="1"
+      data-post-id={post.id}
       onClick={onEdit}
       className={clsx(
         // z-[2]: stay above empty-slot past label / hatch stacking if both ever coexist.
@@ -1841,9 +2039,10 @@ const CalendarItem: FC<{
             <span
               className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
               data-tooltip-id="tooltip"
-              data-tooltip-content={
-                post.error || 'An error occurred while publishing this post'
-              }
+              data-tooltip-content={postErrorText(
+                post.error,
+                'An error occurred while publishing this post'
+              )}
             >
               !
             </span>
@@ -2041,9 +2240,10 @@ const ListItem: FC<{
             <span
               className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
               data-tooltip-id="tooltip"
-              data-tooltip-content={
-                post.error || 'An error occurred while publishing this post'
-              }
+              data-tooltip-content={postErrorText(
+                post.error,
+                'An error occurred while publishing this post'
+              )}
             >
               !
             </span>
@@ -2201,17 +2401,18 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
       });
     }, [posts, getDate]);
 
-    const [hourTick, setHourTick] = useState(0);
+    // One clock for both the past/future split and the now marker below.
+    const hourTick = useMinuteTick();
     const isBeforeNow = useMemo(() => {
       return getDate
         .startOf('hour')
         .isBefore(newDayjs().startOf('hour').utc());
     }, [getDate, hourTick]);
 
-    useEffect(() => {
-      const id = window.setInterval(() => setHourTick((n) => n + 1), 60_000);
-      return () => window.clearInterval(id);
-    }, []);
+    const isNowHour = useMemo(() => {
+      const now = newDayjs();
+      return getDate.isSame(now, 'day') && getDate.hour() === now.hour();
+    }, [getDate, hourTick]);
 
     const [{ canDrop, isTarget }, drop] = useDrop(
       () => ({
@@ -2285,13 +2486,31 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
           if (!item.interval) {
             changeDate(item.id, getDate);
           }
-          const { status } = await fetch(`/posts/${item.id}/date`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              date: getDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
-              action,
-            }),
-          });
+
+          // Same optimistic move / no failure branch as the month-week cell
+          // above — see the comment there.
+          let status = 0;
+          try {
+            ({ status } = await fetch(`/posts/${item.id}/date`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                date: getDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
+                action,
+              }),
+            }));
+          } catch (e) {
+            status = 0;
+          }
+
+          if (status < 200 || status >= 300) {
+            toaster.show(
+              t('post_move_failed', 'Could not move this post, please try again'),
+              'warning'
+            );
+            reloadCalendarView();
+            return;
+          }
+
           if (status >= 200 && status < 300) {
             if (action === 'schedule') {
               toaster.show(
@@ -2427,18 +2646,31 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
         className={clsx(
           'min-w-0',
           canDrop && 'rounded-pqMd shadow-[inset_0_0_0_2px_var(--brand)]',
-          isTarget && 'rounded-pqMd shadow-[inset_0_0_0_1px_var(--dropHint)]',
-          loading && 'animate-pulse'
+          isTarget && 'rounded-pqMd shadow-[inset_0_0_0_1px_var(--dropHint)]'
         )}
       >
+        {/* Day has no grid rows to hang a marker in, but it already draws a
+            rule beside every hour label — so the current hour promotes that
+            rule to brand and swaps its static label for the live clock. Same
+            marker as the week grid, no extra layout. */}
         <div className="flex items-center gap-[10px] px-[2px] pb-[9px] pt-[18px]">
+          {isNowHour ? (
+            <NowChip />
+          ) : (
+            <span
+              dir="ltr"
+              className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft"
+            >
+              {convertTimeFormatBasedOnLocality(hour)}
+            </span>
+          )}
           <span
-            dir="ltr"
-            className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft"
-          >
-            {convertTimeFormatBasedOnLocality(hour)}
-          </span>
-          <span className="h-[1px] flex-1 bg-pqLine" aria-hidden="true" />
+            className={clsx(
+              'flex-1',
+              isNowHour ? 'h-[2px] rounded-full bg-pqBrand' : 'h-[1px] bg-pqLine'
+            )}
+            aria-hidden="true"
+          />
           {postList.length > 0 && (
             <span className="shrink-0 text-[11.5px] text-pqSoft">
               {postList.length}{' '}
@@ -2449,7 +2681,11 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
           )}
         </div>
         <div className="flex flex-col gap-[6px]">
-          {postList.map((post) => (
+          {/* A ghost row, not a pulsing slot: the posts are blanked while the
+              range loads, so the slot would otherwise pulse an "Add post"
+              button — and the hour label with it — for every hour of the day. */}
+          {loading && <Skeleton className="h-[44px] w-full rounded-pqMd" />}
+          {!loading && postList.map((post) => (
             <DayDraggableListItem
               key={post.id}
               post={post}
@@ -2463,7 +2699,7 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
               deletePost={deletePost(post)}
             />
           ))}
-          {postList.length === 0 && (
+          {!loading && postList.length === 0 && (
             <button
               type="button"
               disabled={isBeforeNow}

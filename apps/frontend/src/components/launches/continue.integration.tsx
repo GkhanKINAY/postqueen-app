@@ -11,6 +11,7 @@ import { continueProviderList } from '@gitroom/frontend/components/new-launch/pr
 import { IntegrationContext } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { Spinner } from '@gitroom/react/ui/spinner';
 
 interface TwoStepState {
   integrationId: string;
@@ -418,8 +419,13 @@ export const ContinueIntegration: FC<{
           {t('please_wait', 'Please wait while we connect your account...')}
         </div>
         {/* Loading spinner */}
-        <div className="mt-[32px] flex justify-center">
-          <div className="w-[48px] h-[48px] border-[3px] border-btnPrimary border-t-transparent rounded-full animate-spin" />
+        <div className="mt-[32px] flex justify-center text-btnPrimary">
+          <Spinner
+            width={48}
+            height={48}
+            borderWidth={3}
+            label={t('loading', 'Loading')}
+          />
         </div>
       </div>
     </div>

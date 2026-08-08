@@ -103,6 +103,36 @@ export function Login() {
         });
       }
       setLoading(false);
+      return;
+    }
+
+    // Only 400 was handled, so the abuse guard's 429 — and any 500 — left the
+    // button spinning forever with no message and no way back. Register already
+    // does this; the two forms disagreed.
+    if (!login.ok) {
+      const raw = await login.text().catch(() => '');
+      // 429/500 bodies are Nest JSON; showing `{"statusCode":429,…}` to someone
+      // who has just been rate-limited is worse than a generic sentence.
+      let message = '';
+      try {
+        const parsed = JSON.parse(raw);
+        message = Array.isArray(parsed?.message)
+          ? parsed.message[0]
+          : parsed?.message || '';
+      } catch {
+        message = raw;
+      }
+
+      form.setError('email', {
+        message:
+          message ||
+          t(
+            'login_failed_try_again',
+            'We could not sign you in, please try again'
+          ),
+      });
+      setLoading(false);
+      return;
     }
   };
   return (
