@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Organization, ShortLinkPreference, User } from '@prisma/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
+import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
 
 @Injectable()
 export class OrganizationService {
@@ -24,7 +25,10 @@ export class OrganizationService {
   ) {
     return this._organizationRepository.createOrgAndUser(
       body,
-      this._notificationsService.hasEmailProvider(),
+      // Must match the condition /auth/register answers with, or the row says
+      // the account needs activating while the response waves it through.
+      isEmailActivationRequired() &&
+        this._notificationsService.hasEmailProvider(),
       ip,
       userAgent
     );

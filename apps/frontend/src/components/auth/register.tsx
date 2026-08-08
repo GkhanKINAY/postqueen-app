@@ -124,10 +124,13 @@ export function RegisterAfter({
         if (response.status === 200) {
           fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
+            // Only the activation branch navigates from here. The other one
+            // carries `onboarding`, which the fetch wrapper has already acted
+            // on by the time this runs, so pushing a route on top of it raced
+            // the browser and could land a signed-in user back on the sign-in
+            // form holding a valid session.
             if (response.headers.get('activate') === 'true') {
               router.push('/auth/activate');
-            } else {
-              router.push('/auth/login');
             }
           });
         } else {
