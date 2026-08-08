@@ -14,7 +14,6 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { MenuItem } from '@gitroom/frontend/components/new-layout/menu-item';
 import {
@@ -53,7 +52,6 @@ export const Rail: FC<RailProps> = ({
   const t = useT();
   const user = useUser();
   const pathname = usePathname();
-  const { billingEnabled } = useVariables();
   const { mainMenu, moreMenu, secondMenu } = useMenuItem();
   const filter = useMenuFilter();
   const [shut, setShut] = useState<Record<string, boolean>>({});
@@ -132,7 +130,15 @@ export const Rail: FC<RailProps> = ({
   // (card, AGENCY) · Founding member (heart, lifetime / lifetime_trial). Billing
   // must be on; founding members keep the row — /billing is their lifetime
   // surface now (the old redirect away is gone).
-  const showUpgrade = !!billingEnabled;
+  //
+  // It also follows the Billing row's own rule instead of only `billingEnabled`,
+  // which is how it used to be the loudest thing in the rail for people who
+  // cannot buy anything: the row itself is `role: ['ADMIN','SUPERADMIN']`
+  // (`top.menu.tsx`), so a member saw an Upgrade button that led to the
+  // "Billing is managed by admins" screen. Same source of truth, one answer.
+  // `filter` already answers `requireBilling`, so it covers `billingEnabled` too.
+  const billing = secondMenu.find((f) => f.path === '/billing');
+  const showUpgrade = !!billing && filter(billing);
   const onBilling = pathname.indexOf('/billing') === 0;
   const isFoundingRail = !!user?.isLifetime;
   const isAgencyRail =
@@ -341,6 +347,7 @@ export const Rail: FC<RailProps> = ({
                     icon={item.icon}
                     collapsed={rc}
                     onClick={item.onClick}
+                    hrefResolver={item.hrefResolver}
                     tourKey={
                       item.path === '/channels' ? 'nav-channels' : undefined
                     }

@@ -4,6 +4,7 @@ import { FC, ReactNode, useCallback } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { calendarHomeHref } from '@gitroom/frontend/components/new-layout/logo';
 
 interface MenuItemInterface {
   name: string;
@@ -18,6 +19,12 @@ interface MenuItemInterface {
    */
   requireOrg?: boolean;
   onClick?: () => void;
+  /**
+   * Computes the href at click time instead of at render time, for rows whose
+   * destination depends on the clock. `path` is still what decides the active
+   * highlight and the page title, so it must stay a stable, matchable string.
+   */
+  hrefResolver?: () => string;
 }
 
 /**
@@ -71,6 +78,11 @@ export const useMenuItem = () => {
       // Explicit display so the cookie left by Posts cannot keep the list view
       // after the person clicks Calendar in the rail.
       path: '/launches?display=week',
+      // A static href made this row inert: clicking Calendar from the week view
+      // changed no query param, so nothing navigated and nothing re-centred.
+      // Resolving it per click carries a fresh `now`, which is what scrolls the
+      // grid back to the current hour — same contract as the logo.
+      hrefResolver: calendarHomeHref,
       requireOrg: true,
     },
     {
