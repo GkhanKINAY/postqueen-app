@@ -18,6 +18,7 @@ import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-c
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
 import { Integration } from '@prisma/client';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
+import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 
 const allowedIntegrations = [
   'facebook',
@@ -244,36 +245,24 @@ export const PlatformAnalytics = () => {
 
   if (!sortedIntegrations.length && !isLoading) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-pqInner px-[26px] py-[70px] text-center">
-        <span className="mb-[12px] grid h-[46px] w-[46px] place-items-center rounded-[14px] bg-pqSettings text-pqSoft">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-            <path
-              d="M4 19.5V4.5M4 19.5h16M8 16v-4M12.5 16V8M17 16v-6"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <div className="max-w-[420px] text-center">
-          <div className="text-[16px] font-[600] text-pqText">
-            {t('no_analytics_yet', 'No analytics yet')}
-          </div>
-          <div className="mt-[6px] text-[13px] leading-[1.6] text-pqMuted">
-            {t(
-              'analytics_empty_connect_hint',
-              'Connect a social channel to start collecting impressions, engagement and follower data. Supported: X, Instagram, LinkedIn Page, Facebook, TikTok, YouTube, Threads, Pinterest, GMB.'
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={openAddChannel}
-          className="mt-[12px] h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
-        >
-          {t('connect_a_channel', 'Connect a channel')}
-        </button>
+      <div className="flex flex-1 flex-col bg-pqInner">
+        <ChannelsPageEmpty
+          artClassName="w-[220px]"
+          title={t('no_analytics_yet', 'No analytics yet')}
+          description={t(
+            'analytics_empty_connect_hint',
+            'Connect a channel to collect impressions, engagement and followers. Supported: X, Instagram, LinkedIn, Facebook, TikTok, YouTube, Threads, Pinterest, GMB and more.'
+          )}
+          action={
+            <button
+              type="button"
+              onClick={openAddChannel}
+              className="mt-[4px] h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+            >
+              {t('connect_a_channel', 'Connect a channel')}
+            </button>
+          }
+        />
       </div>
     );
   }

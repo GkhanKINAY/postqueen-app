@@ -178,7 +178,7 @@ export const Sets: FC = () => {
     <div className="flex flex-col">
       {!!data?.length && (
         <div className="mt-[18px] overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="flex items-center bg-pqTableHeader p-[10px_15px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+          <div className="flex items-center bg-pqTableHeader p-[10px_15px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqText">
             <div className="flex-1">{t('name', 'Name')}</div>
             <div className="w-[150px]">{t('actions', 'Actions')}</div>
           </div>
@@ -187,7 +187,7 @@ export const Sets: FC = () => {
               key={p.id}
               className="flex items-center border-t border-pqLine p-[11px_15px]"
             >
-              <div className="min-w-0 flex-1 truncate text-[13.5px] font-[500]">
+              <div className="min-w-0 flex-1 truncate text-[13.5px] font-[500] text-pqText">
                 {p.name}
               </div>
               <div className="flex w-[150px] gap-[8px]">

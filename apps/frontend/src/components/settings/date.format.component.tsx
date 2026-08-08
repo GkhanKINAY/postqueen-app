@@ -26,7 +26,7 @@ const DateFormatComponent = () => {
   ];
   return (
     <div className="rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px] flex flex-col gap-[13px]">
-      <div className="text-[13.5px] font-[600]">
+      <div className="text-[13.5px] font-[600] text-pqText">
         {t('date_format', 'Date format')}
       </div>
       <div className="flex gap-[6px]">

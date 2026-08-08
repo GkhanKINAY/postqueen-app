@@ -128,7 +128,7 @@ export const ApiKeyCard: FC<{
           <div className="min-w-0">
             <div
               className={clsx(
-                'font-[600]',
+                'font-[600] text-pqText',
                 compact ? 'text-[13.5px]' : 'text-[14px]'
               )}
             >

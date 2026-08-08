@@ -391,27 +391,21 @@ export const CalendarWeekProvider: FC<{
     }).toString();
   }, [listPage, filters.customer, activeListState]);
 
-  // Reads every page up to the current one, not just the newest: the design's
-  // list grows downward under a "Show more" button, so the pages already on
-  // screen have to stay. Fetching the whole stack under one key also means an
-  // edit or delete revalidates everything shown instead of leaving a stale
-  // copy of an earlier page behind.
+  // One page at a time (Previous / page / Next) — same model as Insert media.
+  // Earlier "Show more" stacked every page under one key; edits then had to
+  // revalidate the whole stack. Single-page fetch keeps SWR and the UI simple.
   const loadListData = useCallback(async () => {
-    const pages = await Promise.all(
-      Array.from({ length: listPage + 1 }, async (_, page) => {
-        const pageParams = new URLSearchParams({
-          page: page.toString(),
-          limit: String(LIST_PAGE_SIZE),
-          customer: filters?.customer?.toString() || '',
-          state: activeListState,
-        }).toString();
-        const response = await fetch(`/posts/list?${pageParams}`);
-        return expandPostsList(await response.json());
-      })
-    );
+    const pageParams = new URLSearchParams({
+      page: listPage.toString(),
+      limit: String(LIST_PAGE_SIZE),
+      customer: filters?.customer?.toString() || '',
+      state: activeListState,
+    }).toString();
+    const response = await fetch(`/posts/list?${pageParams}`);
+    const data = expandPostsList(await response.json());
     return {
-      posts: pages.flatMap((page: any) => page?.posts || []),
-      total: pages[0]?.total || 0,
+      posts: data?.posts || [],
+      total: data?.total || 0,
     };
   }, [listPage, filters.customer, activeListState, fetch]);
 

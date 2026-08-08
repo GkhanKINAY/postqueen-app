@@ -51,11 +51,13 @@ add_team_member
 add_time_slot
 add_to_calendar
 add_webhook
+add_your_first_channel
 added_successfully
 adding_channel
 additional_settings
 admin
 affiliate
+agent_channels_list_empty_hint
 agent_empty_sub
 agent_empty_title
 agent_hint_channels_drawer
@@ -318,6 +320,7 @@ channel_lost_connection_banner
 channel_menu
 channel_settings
 channels
+channels_list_empty_hint
 chatgpt
 chats
 check_circles_above
@@ -342,7 +345,6 @@ client_id
 client_secret
 close
 code_sent_to
-collapse
 coming_soon
 comments
 company_voice_we_are_happy_to_announce
@@ -603,6 +605,7 @@ conn_zapier_step_out
 conn_zapier_step_out_detail
 connect
 connect_a_channel
+connect_an_account_posts_here
 connect_an_ai_agent
 connect_an_ai_agent_sub
 connect_categories
@@ -1098,6 +1101,7 @@ no_cancel
 no_channels
 no_channels_selected
 no_charges
+no_chats_yet
 no_content
 no_draft_posts
 no_drafts_yet
@@ -1340,12 +1344,7 @@ shortlink_urls_question
 shortlink_yes
 show_all_dates
 show_channels
-show_less
-show_more
-show_more_posts
 show_posts
-showing_x_of_y
-showing_x_of_y_files
 sign_in
 sign_in_1
 sign_in_subtitle
@@ -1405,6 +1404,7 @@ switch_user_failed
 switch_user_title
 tag_name
 tags
+take_the_tour
 team_members
 team_members_will_be_removed
 teams

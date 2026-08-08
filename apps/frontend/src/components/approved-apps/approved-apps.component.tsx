@@ -84,7 +84,7 @@ export const ApprovedAppsComponent: FC = () => {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px] font-[700]">
+                <div className="truncate text-[14px] font-[700] text-pqText">
                   {app.oauthApp?.name}
                 </div>
                 {app.oauthApp?.description && (

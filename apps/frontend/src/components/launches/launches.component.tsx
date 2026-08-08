@@ -8,13 +8,6 @@ import {
   CalendarWeekProvider,
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
-
-/** Prototype hides the queue on the Posts (list) page. */
-const PostsPanelWhenCalendar = () => {
-  const { display } = useCalendar();
-  if (display === 'list') return null;
-  return <PostsPanel />;
-};
 import { Filters } from '@gitroom/frontend/components/launches/filters';
 import { NewPost } from '@gitroom/frontend/components/launches/new.post';
 import { HeaderAction } from '@gitroom/frontend/components/new-layout/header-slot';
@@ -33,6 +26,41 @@ import { useDrag, useDrop } from 'react-dnd';
 import { DNDProvider } from '@gitroom/frontend/components/launches/helpers/dnd.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+
+/** Prototype hides the queue on the Posts (list) page. */
+const PostsPanelWhenCalendar = () => {
+  const { display } = useCalendar();
+  if (display === 'list') return null;
+  return <PostsPanel />;
+};
+
+/**
+ * List view: Filters + posts scroll as one column (no inner-only scrollbar).
+ * Week/day/month keep Filters fixed and scroll inside the calendar grid.
+ */
+const LaunchesMainColumn = () => {
+  const { display } = useCalendar();
+  const isList = display === 'list';
+  return (
+    <div
+      className={clsx(
+        'flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]',
+        isList &&
+          'overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
+      )}
+    >
+      <Filters />
+      <div
+        className={clsx(
+          'flex min-w-0',
+          isList ? 'flex-col' : 'min-h-0 flex-1'
+        )}
+      >
+        <Calendar />
+      </div>
+    </div>
+  );
+};
 
 export const SVGLine = () => {
   return (
@@ -414,12 +442,7 @@ export const LaunchesComponent = () => {
         )}
         {/* Design: queue panel beside calendar only. Posts (list) is full-bleed. */}
         <PostsPanelWhenCalendar />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]">
-          <Filters />
-          <div className="flex min-h-0 min-w-0 flex-1">
-            <Calendar />
-          </div>
-        </div>
+        <LaunchesMainColumn />
       </CalendarWeekProvider>
     </DNDProvider>
   );

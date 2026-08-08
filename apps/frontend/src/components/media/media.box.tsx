@@ -29,6 +29,7 @@ import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox
 import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
 import { createPortal } from 'react-dom';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
@@ -129,7 +130,6 @@ export const MediaBox: FC<{
   closeModal: () => void;
 }> = ({ type, standalone, setMedia, attachedMedia, closeModal }) => {
   const [page, setPage] = useState(0);
-  const [accumulated, setAccumulated] = useState<MediaRow[]>([]);
   const [tab, setTab] = useState<'all' | 'image' | 'video'>(type ?? 'all');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [lightbox, setLightbox] = useState<MediaRow | null>(null);
@@ -163,22 +163,9 @@ export const MediaBox: FC<{
 
   const { data, mutate, isLoading } = useSWR(`get-media-${page}`, loadMedia);
 
-  useEffect(() => {
-    if (!data?.results) return;
-    if (!standalone) {
-      setAccumulated(data.results);
-      return;
-    }
-    setAccumulated((prev) => {
-      if (page === 0) return data.results;
-      const ids = new Set(prev.map((p) => p.id));
-      return [...prev, ...data.results.filter((r: MediaRow) => !ids.has(r.id))];
-    });
-  }, [data, page, standalone]);
-
   const sourceRows: MediaRow[] = useMemo(() => {
-    return (standalone ? accumulated : data?.results || []) as MediaRow[];
-  }, [standalone, accumulated, data]);
+    return (data?.results || []) as MediaRow[];
+  }, [data]);
 
   const visibleMedia: MediaRow[] = useMemo(() => {
     return sourceRows.filter((f) => {
@@ -362,7 +349,6 @@ export const MediaBox: FC<{
       }
       setLightbox(null);
       setSelected((prev) => prev.filter((s) => s.id !== media.id));
-      setAccumulated((prev) => prev.filter((m) => m.id !== media.id));
       mutate();
       toaster.show(t('media_deleted', 'Media deleted'), 'success');
     },
@@ -411,13 +397,6 @@ export const MediaBox: FC<{
     },
     [menuMedia, menuTriggerRef]
   );
-
-  const totalCount = Math.max(
-    visibleMedia.length,
-    ((data?.pages || 1) - 1) * 18 + (data?.results?.length || 0)
-  );
-
-  const hasMorePages = standalone && page + 1 < (data?.pages || 0);
 
   const brandUploadBtn = (size: 'page' | 'picker' = 'page') => (
     <button
@@ -568,108 +547,102 @@ export const MediaBox: FC<{
         disabled={loading}
         noClick
         brandOverlay
-        className="relative flex min-h-0 flex-1 flex-col bg-pqInner px-[22px] pt-[8px] mobile:px-[14px]"
+        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[8px] pb-[28px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner mobile:px-[14px]"
         onDrop={dragAndDrop}
       >
         {fileInput}
-        <div className="mx-auto flex min-h-0 w-full max-w-[980px] flex-1 flex-col gap-[10px]">
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-[10px]">
+        <div className="mx-auto flex w-full max-w-[980px] flex-col gap-[10px] pe-[14px]">
+          <div className="flex flex-wrap items-center justify-end gap-[10px]">
             {brandUploadBtn('page')}
             <ThirdPartyMediaLibrary onImported={() => mutate()} />
           </div>
 
           {uppyBar}
 
-          <div className="min-h-0 flex-1 overflow-y-auto pe-[14px] pb-[28px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner">
-            {/* Drop zone + filters stay up even when the gallery is empty so
-                All/Images/Video is never a trap on a blank library. */}
-            <div className="flex flex-col gap-[10px]">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => uploaderRef.current?.click()}
+          {/* Drop zone + filters stay up even when the gallery is empty so
+              All/Images/Video is never a trap on a blank library. */}
+          <div className="flex flex-col gap-[10px]">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => uploaderRef.current?.click()}
+              className={clsx(
+                'flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-[10px] rounded-[16px] border-[1.5px] border-dashed bg-pqBrandFaint px-[20px] py-[26px] font-inherit transition-colors hover:border-pqBrand hover:bg-pqBrandSoft disabled:cursor-wait',
+                loading ? 'border-pqBrand bg-pqBrandSoft' : 'border-pqBorder'
+              )}
+            >
+              <span
                 className={clsx(
-                  'flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-[10px] rounded-[16px] border-[1.5px] border-dashed bg-pqBrandFaint px-[20px] py-[26px] font-inherit transition-colors hover:border-pqBrand hover:bg-pqBrandSoft disabled:cursor-wait',
-                  loading ? 'border-pqBrand bg-pqBrandSoft' : 'border-pqBorder'
+                  'grid h-[48px] w-[48px] place-items-center rounded-[15px] bg-pqBrand text-pqOnBrand shadow-pqE2',
+                  loading && 'animate-pulse'
                 )}
               >
-                <span
-                  className={clsx(
-                    'grid h-[48px] w-[48px] place-items-center rounded-[15px] bg-pqBrand text-pqOnBrand shadow-pqE2',
-                    loading && 'animate-pulse'
-                  )}
-                >
-                  {loading ? (
-                    <div className="h-[22px] w-[22px] animate-spin rounded-full border-2 border-pqOnBrand border-t-transparent" />
-                  ) : (
-                    <svg viewBox="0 0 24 24" width="23" height="23" fill="none">
-                      <path
-                        d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 20h16"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
+                {loading ? (
+                  <div className="h-[22px] w-[22px] animate-spin rounded-full border-2 border-pqOnBrand border-t-transparent" />
+                ) : (
+                  <svg viewBox="0 0 24 24" width="23" height="23" fill="none">
+                    <path
+                      d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 20h16"
+                      stroke="currentColor"
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              <span className="flex flex-col items-center gap-[4px]">
+                <span className="text-[15px] font-[600] text-pqText">
+                  {loading
+                    ? t('uploading_media', 'Uploading media…')
+                    : t(
+                        'drop_files_here_paste_or_browse',
+                        'Drop files here, paste or browse'
+                      )}
                 </span>
-                <span className="flex flex-col items-center gap-[4px]">
-                  <span className="text-[15px] font-[600] text-pqText">
-                    {loading
-                      ? t('uploading_media', 'Uploading media…')
-                      : t(
-                          'drop_files_here_paste_or_browse',
-                          'Drop files here, paste or browse'
-                        )}
-                  </span>
-                  <span className="text-[12.5px] text-pqMuted">
-                    {loading
-                      ? t(
-                          'upload_progress_keep_open',
-                          'Keep this window open until the upload finishes'
-                        )
-                      : t(
-                          'maximum_size_allowed_1gb_images_video',
-                          'Maximum size allowed is 1 GB · images and video'
-                        )}
-                  </span>
+                <span className="text-[12.5px] text-pqMuted">
+                  {loading
+                    ? t(
+                        'upload_progress_keep_open',
+                        'Keep this window open until the upload finishes'
+                      )
+                    : t(
+                        'maximum_size_allowed_1gb_images_video',
+                        'Maximum size allowed is 1 GB · images and video'
+                      )}
                 </span>
-              </button>
+              </span>
+            </button>
 
-              {/* Filters + view — under drop zone, above gallery (owner) */}
-              <div className="flex shrink-0 flex-wrap items-center gap-[10px]">
-                {standaloneFilterTabs}
-                <div className="min-w-0 flex-1" />
-                {viewToggle}
-              </div>
+            {/* Filters + view — under drop zone, above gallery (owner) */}
+            <div className="flex flex-wrap items-center gap-[10px]">
+              {standaloneFilterTabs}
+              <div className="min-w-0 flex-1" />
+              {viewToggle}
+            </div>
 
               {showEmptyState ? (
-                <div className="flex flex-col items-center gap-[11px] px-0 py-[48px] text-center">
-                  <span className="grid h-[46px] w-[46px] place-items-center rounded-[14px] bg-pqSettings text-pqSoft">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                      <path
-                        d="M4.5 4.5h15A1.5 1.5 0 0 1 21 6v12a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18V6a1.5 1.5 0 0 1 1.5-1.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      />
-                      <path
-                        d="M3.5 16.5 8 12l3.5 3 3-2.5L21 17"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <div className="text-[15px] font-[600] text-pqText">
-                    {t('nothing_here_yet', 'Nothing here yet')}
+                <div className="flex flex-col items-center gap-[14px] px-0 py-[48px] text-center">
+                  <NoChannelsArt className="h-auto w-[200px]" />
+                  <div className="flex max-w-[300px] flex-col gap-[6px]">
+                    <div className="text-[18px] font-[600] text-pqText">
+                      {t('nothing_here_yet', 'Nothing here yet')}
+                    </div>
+                    <div className="text-[13.5px] leading-[1.55] text-pqMuted text-balance">
+                      {t(
+                        'upload_images_or_video_or_drag',
+                        'Upload images or video, or drag files straight onto this page. Up\u00a0to 1 GB per upload.'
+                      )}
+                    </div>
                   </div>
-                  <div className="max-w-[360px] text-[13px] leading-[1.6] text-pqMuted">
-                    {t(
-                      'upload_images_or_video_or_drag',
-                      'Upload images or video, or drag files straight onto this page. Up to 1 GB per upload.'
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => uploaderRef.current?.click()}
+                    className="mt-[2px] h-[36px] rounded-pqSm bg-pqBrand px-[16px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover disabled:opacity-70"
+                  >
+                    {t('upload_media', 'Upload media')}
+                  </button>
                 </div>
               ) : (
                 <>
@@ -820,55 +793,18 @@ export const MediaBox: FC<{
                   </div>
                 )}
 
-                {hasMorePages && (
-                  <div className="flex flex-col items-center gap-[8px] px-0 pb-[4px] pt-[22px]">
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => p + 1)}
-                      className="flex h-[36px] items-center gap-[8px] rounded-pqSm bg-pqInner px-[18px] text-[13px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-                    >
-                      {t('show_more', 'Show more')}
-                    </button>
-                    <span className="text-[12px] text-pqSoft">
-                      {t(
-                        'showing_x_of_y_files',
-                        'Showing {{shown}} of {{total}} files',
-                        {
-                          shown: visibleMedia.length,
-                          total: totalCount,
-                        }
-                      )}
-                    </span>
-                  </div>
-                )}
-                {!hasMorePages && visibleMedia.length > 0 && page > 0 && (
-                  <div className="flex flex-col items-center gap-[9px] px-0 pb-[4px] pt-[20px]">
-                    <span className="text-[12px] text-pqSoft">
-                      {t(
-                        'showing_x_of_y_files',
-                        'Showing {{shown}} of {{total}} files',
-                        {
-                          shown: visibleMedia.length,
-                          total: totalCount,
-                        }
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPage(0);
-                        setAccumulated([]);
-                      }}
-                      className="flex h-[30px] items-center gap-[7px] rounded-pqSm bg-transparent px-[13px] text-[12.5px] font-[500] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover hover:text-pqText"
-                    >
-                      {t('show_less', 'Show less')}
-                    </button>
+                {(data?.pages || 0) > 1 && (
+                  <div className="px-0 pb-[4px] pt-[16px]">
+                    <Pagination
+                      current={page}
+                      totalPages={data.pages}
+                      setPage={setPage}
+                    />
                   </div>
                 )}
                 </>
               )}
             </div>
-          </div>
         </div>
 
         {menuMedia &&
@@ -1013,14 +949,23 @@ export const MediaBox: FC<{
             </div>
           )}
           {!isLoading && visibleMedia.length === 0 && (
-            <div className="flex flex-col items-center gap-[12px] py-[32px] text-center">
-              <div className="text-[15px] font-[600] text-pqText">
-                {t('nothing_here_yet', 'Nothing here yet')}
+            <div className="flex flex-col items-center gap-[14px] py-[32px] text-center">
+              <NoChannelsArt className="h-auto w-[160px]" />
+              <div className="flex max-w-[280px] flex-col gap-[6px]">
+                <div className="text-[15px] font-[600] text-pqText">
+                  {t('nothing_here_yet', 'Nothing here yet')}
+                </div>
+                <div className="text-[13px] leading-[1.55] text-pqMuted text-balance">
+                  {t(
+                    'upload_images_or_video_or_drag',
+                    'Upload images or video, or drag files straight onto this page. Up\u00a0to 1 GB per upload.'
+                  )}
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => uploaderRef.current?.click()}
-                className="h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand"
+                className="h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
               >
                 {t('upload_media', 'Upload media')}
               </button>

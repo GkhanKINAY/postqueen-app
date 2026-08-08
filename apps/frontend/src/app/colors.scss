@@ -172,7 +172,8 @@
     --blockSeparator: rgba(9, 9, 11, 0.07);
     --text: #18181b;
     --muted: #5f5f6b;
-    --soft: #8f8f9a;
+    // Darker than design #8f8f9a (~3.2:1 on white) so soft labels stay readable.
+    --soft: #6f6f7a;
     --focused: #6d28d9;
     --boxFocused: #f3eefe;
     --hover: rgba(9, 9, 11, 0.055);
@@ -198,7 +199,7 @@
     --tableBorder: #e4e4e9;
     --tableText: #5f5f6b;
     --tableTextFocused: #c026a3;
-    --menuDots: #8f8f9a;
+    --menuDots: #6f6f7a;
     --popup: rgba(9, 9, 11, 0.35);
     --aiLockScrim: rgba(250, 250, 252, 0.72);
     // Lighter than dark's 0.66 — the same opacity over a white app reads as
@@ -399,9 +400,9 @@
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);
-    --color-gray: var(--soft);
+    --color-gray: var(--muted);
     --color-input: var(--new-table-header);
-    --color-input-text: var(--soft);
+    --color-input-text: var(--muted);
     --color-table-border: var(--new-table-border);
     --color-custom1: #324264;
     --color-custom2: #141c2c;
@@ -469,9 +470,9 @@
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);
-    --color-gray: var(--soft);
+    --color-gray: var(--muted);
     --color-input: var(--new-table-header);
-    --color-input-text: var(--soft);
+    --color-input-text: var(--muted);
     --color-table-border: var(--tableBorder);
     --color-custom1: #324264;
     --color-custom2: #f8f8f8;

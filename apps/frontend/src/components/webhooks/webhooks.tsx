@@ -120,8 +120,8 @@ export const Webhooks: FC = () => {
                 </svg>
               </div>
               <div className="flex min-w-0 flex-1 flex-col">
-                <div className="truncate text-[13.5px] font-[600]">{p.name}</div>
-                <div className="mt-[2px] truncate font-mono text-[11.5px] text-pqSoft">
+                <div className="truncate text-[13.5px] font-[600] text-pqText">{p.name}</div>
+                <div className="mt-[2px] truncate font-mono text-[11.5px] text-pqMuted">
                   {p.url}
                 </div>
               </div>

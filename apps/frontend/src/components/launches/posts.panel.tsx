@@ -3,6 +3,7 @@
 import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
+import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import {
@@ -19,10 +20,14 @@ import {
 } from '@gitroom/frontend/components/launches/calendar';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
-import { useTourNeeds } from '@gitroom/frontend/components/onboarding/tour';
+import {
+  useTour,
+  useTourNeeds,
+} from '@gitroom/frontend/components/onboarding/tour';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
 
 /**
  * The posts panel — the design's permanent column beside the calendar.
@@ -47,6 +52,8 @@ export const PostsPanel: FC = () => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
+  const router = useRouter();
+  const { start: startTour } = useTour();
   const { mobile } = useViewport();
   const {
     listPosts,
@@ -56,9 +63,11 @@ export const PostsPanel: FC = () => {
     setPostsPanelOpen,
     posts,
     reloadCalendarView,
+    integrations,
   } = useCalendar();
   const autoCollapsed = useRef(false);
   const { editPost, deletePost } = usePostActions();
+  const noChannels = !integrations?.length;
 
   // The tour has a step about this panel. Collapsing it is a preference that
   // lives in a cookie for a year, and while it was collapsed that step pointed
@@ -199,7 +208,7 @@ export const PostsPanel: FC = () => {
           'flex flex-col overflow-hidden bg-pqInner',
           mobile
             ? 'fixed inset-y-0 start-0 z-[55] w-[min(330px,86vw)] shadow-menu'
-            : 'w-[300px] shrink-0 tablet:w-[248px]'
+            : 'w-[280px] shrink-0 tablet:w-[236px]'
         )}
       >
         <div className="flex shrink-0 flex-col gap-[12px] px-[14px] pb-[12px] pt-[16px]">
@@ -266,32 +275,68 @@ export const PostsPanel: FC = () => {
           )}
         >
           {!listPosts.length && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-[10px] px-[16px] py-[32px] text-center">
-              <span className="grid size-[40px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
-                  <path
-                    d="M9 6.5h11M9 12h11M9 17.5h7M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <div className="text-[13.5px] text-pqMuted">
-                {panelListState === 'draft'
-                  ? t('no_drafts_yet', 'No drafts yet')
-                  : panelListState === 'published'
-                  ? t('nothing_published_yet', 'Nothing published yet')
-                  : t('no_posts_yet', 'No posts yet')}
-              </div>
-              {(panelListState === 'draft' || (isOver && canDrop)) && (
-                <div className="max-w-[200px] text-[12px] text-pqSoft">
-                  {t(
-                    'drop_posts_here_to_move_to_drafts',
-                    'Drop a scheduled post here to move it to drafts'
-                  )}
+            <div
+              data-tour="posts-empty"
+              className="flex flex-1 flex-col items-center justify-center gap-[10px] px-[16px] py-[32px] text-center"
+            >
+              {noChannels ? (
+                <div className="flex w-full flex-col items-center gap-[12px] px-[4px]">
+                  <NoChannelsArt className="h-auto w-[160px]" />
+                  <div className="flex max-w-[200px] flex-col gap-[5px]">
+                    <div className="text-[14px] font-[600] text-pqText">
+                      {t('no_channels', 'No channels yet')}
+                    </div>
+                    <div className="text-[12.5px] leading-[1.5] text-pqMuted text-balance">
+                      {t(
+                        'connect_an_account_posts_here',
+                        'Connect an account and your scheduled posts show up\u00a0here.'
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/channels?add=1')}
+                    className="mt-[4px] flex h-[34px] w-full items-center justify-center gap-[7px] rounded-pqSm bg-pqBrand text-[12.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+                  >
+                    {t('add_your_first_channel', 'Add your first channel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startTour()}
+                    className="text-[12px] font-[500] text-pqMuted transition-colors hover:text-pqText"
+                  >
+                    {t('take_the_tour', 'Take the tour')}
+                  </button>
                 </div>
+              ) : (
+                <>
+                  <span className="grid size-[40px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                      <path
+                        d="M9 6.5h11M9 12h11M9 17.5h7M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <div className="text-[13.5px] text-pqMuted">
+                    {panelListState === 'draft'
+                      ? t('no_drafts_yet', 'No drafts yet')
+                      : panelListState === 'published'
+                      ? t('nothing_published_yet', 'Nothing published yet')
+                      : t('no_posts_yet', 'No posts yet')}
+                  </div>
+                  {(panelListState === 'draft' || (isOver && canDrop)) && (
+                    <div className="max-w-[200px] text-[12px] text-pqSoft">
+                      {t(
+                        'drop_posts_here_to_move_to_drafts',
+                        'Drop a scheduled post here to move it to drafts'
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

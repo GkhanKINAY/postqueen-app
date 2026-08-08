@@ -268,7 +268,7 @@ export const ThirdPartyComponent = () => {
                   </div>
                 </div>
               </div>
-              <div className="line-clamp-2 whitespace-pre-wrap text-start text-[13px] leading-[1.6] text-pqMuted">
+              <div className="line-clamp-2 whitespace-pre-wrap text-start text-[13px] leading-[1.6] text-pqMuted text-balance">
                 {provider.description}
               </div>
               <div className="mt-auto flex items-center gap-[8px] border-t border-pqLine pt-[13px]">
@@ -289,7 +289,7 @@ export const ThirdPartyComponent = () => {
                   <button
                     type="button"
                     onClick={disconnect(connection.id)}
-                    className="flex h-[31px] items-center rounded-[9px] bg-transparent px-[12px] text-[12.5px] font-[500] text-pqSoft transition-colors hover:text-pqWarn"
+                    className="flex h-[31px] items-center rounded-[9px] bg-transparent px-[12px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqWarn"
                   >
                     {t('disconnect', 'Disconnect')}
                   </button>

@@ -473,7 +473,7 @@ export const DeveloperComponent: FC = () => {
                 </div>
               )}
               <div>
-                <div className="text-[15px] font-[600]">{app.name}</div>
+                <div className="text-[15px] font-[600] text-pqText">{app.name}</div>
                 {app.description && (
                   <div className="text-pqMuted text-[13px]">
                     {app.description}
@@ -504,7 +504,7 @@ export const DeveloperComponent: FC = () => {
       {/* Credentials */}
       <div className="overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
         <div className="bg-pqInner px-[20px] py-[14px] border-b border-pqBorder">
-          <div className="text-[15px] font-[600]">
+          <div className="text-[15px] font-[600] text-pqText">
             {t('credentials', 'Credentials')}
           </div>
         </div>

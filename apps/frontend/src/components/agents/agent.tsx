@@ -28,6 +28,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
+import { ChannelsListEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -345,6 +346,14 @@ export const AgentList: FC<{
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
+          {!sortedIntegrations.length && (
+            <ChannelsListEmpty
+              hint={t(
+                'agent_channels_list_empty_hint',
+                'Connect an account to draft and schedule with Copilot.'
+              )}
+            />
+          )}
           {sortedIntegrations.map((integration) => {
             const blocked = needsAttention(integration);
             const isSelected =
@@ -766,6 +775,24 @@ const Threads: FC = () => {
           collapsed && 'hidden group-hover/rail:flex'
         )}
       >
+        {!data?.threads?.length && (
+          <div className="flex flex-col items-center gap-[8px] px-[8px] py-[28px] text-center">
+            <span className="grid size-[36px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                <path
+                  d="M9 6.5h11M9 12h11M9 17.5h7M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <div className="text-[12.5px] text-pqMuted">
+              {t('no_chats_yet', 'No chats yet')}
+            </div>
+          </div>
+        )}
         {data?.threads?.map((p: any) => (
           <Link
             className={clsx(

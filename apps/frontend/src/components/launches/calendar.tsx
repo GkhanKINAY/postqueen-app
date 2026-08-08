@@ -61,7 +61,11 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
+import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
+import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
+import { useRouter } from 'next/navigation';
+import { useTour } from '@gitroom/frontend/components/onboarding/tour';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -680,13 +684,14 @@ export const ListView = () => {
   const user = useUser();
   const fetch = useFetch();
   const modal = useModals();
+  const router = useRouter();
+  const { start: startTour } = useTour();
   const { longDatePattern } = useDateFormat();
   const {
     loading,
     listPosts,
     listState,
     listPage,
-    listTotal,
     listTotalPages,
     setListPage,
     listSort,
@@ -696,6 +701,7 @@ export const ListView = () => {
     reloadCalendarView,
     sets,
   } = useCalendar();
+  const noChannels = !integrations?.length;
   const emptyMessage =
     listState === 'scheduled'
       ? t('no_upcoming_posts', 'No upcoming posts scheduled')
@@ -811,17 +817,6 @@ export const ListView = () => {
     );
   }, [listPosts, listSort]);
 
-  const showMore = useCallback(
-    () => setListPage(listPage + 1),
-    [listPage, setListPage]
-  );
-  const collapsePosts = useCallback(() => setListPage(0), [setListPage]);
-  const hasMore = listPage < listTotalPages - 1;
-  // Single interpolated key so RTL / non-English locales can reorder freely.
-  const shownLabel = t('showing_x_of_y', '{{shown}} of {{total}}')
-    .replace('{{shown}}', String(listPosts.length))
-    .replace('{{total}}', String(listTotal));
-
   if (loading && !listPosts.length) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
@@ -831,25 +826,58 @@ export const ListView = () => {
   }
 
   if (listPosts.length === 0) {
+    if (noChannels) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-[14px] px-[26px] py-[80px] text-center">
+          <NoChannelsArt className="h-auto w-[220px]" />
+          <div className="flex max-w-[280px] flex-col gap-[6px]">
+            <div className="text-[18px] font-[600] text-pqText">
+              {t('no_channels', 'No channels yet')}
+            </div>
+            <div className="text-[13.5px] leading-[1.55] text-pqMuted text-balance">
+              {t(
+                'connect_an_account_posts_here',
+                'Connect an account and your scheduled posts show up\u00a0here.'
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/channels?add=1')}
+            className="mt-[2px] h-[36px] min-w-[200px] rounded-pqSm bg-pqBrand px-[18px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+          >
+            {t('add_your_first_channel', 'Add your first channel')}
+          </button>
+          <button
+            type="button"
+            onClick={() => startTour()}
+            className="text-[13px] font-[500] text-pqMuted transition-colors hover:text-pqText"
+          >
+            {t('take_the_tour', 'Take the tour')}
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-[20px] px-[26px] py-[80px] text-center">
-        <span className="grid size-[76px] place-items-center rounded-full bg-pqBrandFaint">
+      <div className="flex flex-1 flex-col items-center justify-center gap-[18px] px-[26px] py-[80px] text-center">
+        <span className="grid size-[88px] place-items-center rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.22)_0%,transparent_70%)]">
           <PostQueenLogo
-            tileClassName="size-[52px]"
-            glyphClassName="size-[28px]"
+            tileClassName="size-[56px] rounded-[16px] shadow-[0_14px_30px_-14px_rgba(124,58,237,.95)]"
+            glyphClassName="size-[30px]"
           />
         </span>
-        <div className="max-w-[360px]">
-          <div className="text-[15px] font-[600] text-pqText">{emptyMessage}</div>
-          <div className="mt-[8px] text-[13px] leading-[1.6] text-pqMuted">
+        <div className="flex max-w-[360px] flex-col gap-[6px]">
+          <div className="text-[18px] font-[600] text-pqText">{emptyMessage}</div>
+          <div className="text-[13.5px] leading-[1.55] text-pqMuted text-pretty">
             {emptySubtitle}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-[16px]">
+        <div className="flex flex-col items-center gap-[12px]">
           <button
             type="button"
             onClick={createPost}
-            className="h-[34px] min-w-[180px] rounded-pqSm bg-pqBrand px-[18px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+            className="h-[36px] min-w-[160px] rounded-pqSm bg-pqBrand px-[18px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
           >
             {t('create_new_post', 'Create Post')}
           </button>
@@ -868,90 +896,46 @@ export const ListView = () => {
   }
 
   return (
-    <div className="relative flex flex-1 flex-col">
-      <div className="absolute inset-0 overflow-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner [scrollbar-gutter:stable]">
-        <div className="mx-auto flex w-full max-w-[860px] flex-col px-[4px] pb-[40px] pt-[4px]">
-          {groupedPosts.map(([dateKey, datePosts]) => (
-            <Fragment key={dateKey}>
-              <div className="flex items-center gap-[10px] pb-[9px] pt-[18px]">
-                <span className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft">
-                  {newDayjs(dateKey).format(longDatePattern())}
-                </span>
-                <span className="h-[1px] flex-1 bg-pqLine" aria-hidden="true" />
-                <span className="shrink-0 text-[11.5px] text-pqSoft">
-                  {datePosts.length}{' '}
-                  {datePosts.length === 1 ? t('post', 'Post') : t('posts', 'Posts')}
-                </span>
-              </div>
-              <div className="flex flex-col gap-[6px]">
-                {datePosts.map((post) => (
-                  <ListItem
-                    key={post.id}
-                    post={post}
-                    statistics={openStatistics(post.id)}
-                    missingRelease={openMissingRelease(post.id)}
-                    editPost={editPost(post, false)}
-                    duplicatePost={editPost(post, true)}
-                    copyDebugJson={
-                      user?.isSuperAdmin ? copyDebugJson(post) : undefined
-                    }
-                    deletePost={deletePost(post)}
-                  />
-                ))}
-              </div>
-            </Fragment>
-          ))}
-          {hasMore ? (
-            <div className="flex flex-col items-center gap-[8px] pb-[8px] pt-[22px]">
-              <button
-                type="button"
-                onClick={showMore}
-                className="flex h-[36px] items-center gap-[8px] rounded-pqSm bg-pqInner px-[18px] text-[13px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-              >
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
-                  <path
-                    d="m6 9 6 6 6-6"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {t('show_more_posts', 'Show more')}
-              </button>
-              <span className="text-[12px] text-pqSoft">{shownLabel}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-[10px] pb-[8px] pt-[22px]">
-              <span className="text-[12px] text-pqSoft">{shownLabel}</span>
-              {listPage > 0 && (
-                <button
-                  type="button"
-                  onClick={collapsePosts}
-                  className="flex h-[30px] items-center gap-[7px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover hover:text-pqText"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="14"
-                    height="14"
-                    fill="none"
-                    className="rotate-180"
-                  >
-                    <path
-                      d="m6 9 6 6 6-6"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  {t('collapse', 'Collapse')}
-                </button>
-              )}
-            </div>
-          )}
+    <div className="mx-auto flex w-full max-w-[860px] flex-col px-[4px] pb-[40px] pt-[4px]">
+      {groupedPosts.map(([dateKey, datePosts]) => (
+        <Fragment key={dateKey}>
+          <div className="flex items-center gap-[10px] pb-[9px] pt-[18px]">
+            <span className="shrink-0 text-[11.5px] font-[600] uppercase tracking-[0.05em] text-pqSoft">
+              {newDayjs(dateKey).format(longDatePattern())}
+            </span>
+            <span className="h-[1px] flex-1 bg-pqLine" aria-hidden="true" />
+            <span className="shrink-0 text-[11.5px] text-pqSoft">
+              {datePosts.length}{' '}
+              {datePosts.length === 1 ? t('post', 'Post') : t('posts', 'Posts')}
+            </span>
+          </div>
+          <div className="flex flex-col gap-[6px]">
+            {datePosts.map((post) => (
+              <ListItem
+                key={post.id}
+                post={post}
+                statistics={openStatistics(post.id)}
+                missingRelease={openMissingRelease(post.id)}
+                editPost={editPost(post, false)}
+                duplicatePost={editPost(post, true)}
+                copyDebugJson={
+                  user?.isSuperAdmin ? copyDebugJson(post) : undefined
+                }
+                deletePost={deletePost(post)}
+              />
+            ))}
+          </div>
+        </Fragment>
+      ))}
+      {listTotalPages > 1 && (
+        <div className="pb-[8px] pt-[16px]">
+          <Pagination
+            current={listPage}
+            totalPages={listTotalPages}
+            setPage={setListPage}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 };

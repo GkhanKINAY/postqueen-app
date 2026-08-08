@@ -17,6 +17,7 @@ import useCookie from 'react-use-cookie';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
+import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 
 export const Plugs = () => {
   const fetch = useFetch();
@@ -109,37 +110,37 @@ export const Plugs = () => {
   }
 
   if (!sortedIntegrations.length && !isLoading) {
+    const hasAnyChannels = Array.isArray(data) && data.length > 0;
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-pqInner px-[22px] py-[70px] text-center">
-        <span className="mb-[11px] grid h-[46px] w-[46px] place-items-center rounded-[14px] bg-pqSettings text-pqSoft">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-            <path
-              d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <div className="max-w-[400px] text-center">
-          <div className="text-[15px] font-[600] text-pqText">
-            {t('no_plugs_for_these_channels', 'No plugs for these channels')}
-          </div>
-          <div className="mt-[6px] text-[13px] leading-[1.6] text-pqMuted">
-            {t(
-              'auto_plugs_supported_channels',
-              'Auto-plugs work on X, LinkedIn Page, Threads and Bluesky. Connect one of those to start.'
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={openAddChannel}
-          className="mt-[11px] h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
-        >
-          {t('connect_a_channel', 'Connect a channel')}
-        </button>
+      <div className="flex flex-1 flex-col bg-pqInner">
+        <ChannelsPageEmpty
+          artClassName="mb-[-4px]"
+          title={
+            hasAnyChannels
+              ? t('no_plugs_for_these_channels', 'No plugs for these channels')
+              : t('no_channels', 'No channels yet')
+          }
+          description={
+            hasAnyChannels
+              ? t(
+                  'auto_plugs_supported_channels',
+                  'Auto-plugs work on X, LinkedIn Page, Threads and Bluesky. Connect one of those to start.'
+                )
+              : t(
+                  'connect_your_accounts',
+                  'Connect your social accounts to start scheduling, publishing, and analyzing — all in one place.'
+                )
+          }
+          action={
+            <button
+              type="button"
+              onClick={openAddChannel}
+              className="mt-[4px] h-[34px] rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+            >
+              {t('connect_a_channel', 'Connect a channel')}
+            </button>
+          }
+        />
       </div>
     );
   }

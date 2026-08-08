@@ -55,7 +55,7 @@ export const PlanInvoicesComponent: FC = () => {
   return (
     <div data-plan-invoices="1" className="mt-[18px] flex flex-col gap-[10px]">
       <div className="flex flex-col gap-[6px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
           {t('current_plan', 'Current plan')}
         </div>
         <div className="font-display text-[24px] font-[600] -tracking-[0.015em]">

@@ -29,6 +29,10 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
+import {
+  ChannelsListEmpty,
+  ChannelsPageEmpty,
+} from '@gitroom/frontend/components/ui/no-channels-art';
 
 /**
  * Channels page — design's list + detail (or inline Add Channel pane).
@@ -938,6 +942,7 @@ export const ChannelsComponent: FC = () => {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
+          {!list.length && <ChannelsListEmpty />}
           {list.map((integration: any) => (
             <div
               key={integration.id}
@@ -1045,22 +1050,18 @@ export const ChannelsComponent: FC = () => {
             className="bg-pqInner px-[24px] pb-[40px] pt-[20px]"
           >
             {addContent || (
-              <div className="flex flex-1 flex-col items-center justify-center gap-[10px] p-[40px] text-center">
-                <div className="text-[18px] font-[600]">
-                  {t('no_channels', 'No channels yet')}
-                </div>
-                <div className="max-w-[380px] text-[13.5px] text-pqMuted">
-                  {t('connect_your_accounts')}
-                </div>
-                <button
-                  type="button"
-                  data-view="channel-connect"
-                  onClick={openAdd}
-                  className="mt-[6px] rounded-pqSm bg-pqBrand px-[16px] py-[9px] text-[13.5px] font-[600] text-pqOnBrand"
-                >
-                  {t('add_channel', 'Add Channel')}
-                </button>
-              </div>
+              <ChannelsPageEmpty
+                action={
+                  <button
+                    type="button"
+                    data-view="channel-connect"
+                    onClick={openAdd}
+                    className="mt-[6px] rounded-pqSm bg-pqBrand px-[16px] py-[9px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+                  >
+                    {t('add_channel', 'Add Channel')}
+                  </button>
+                }
+              />
             )}
           </TwoColumnDetailDrawer>
         </div>

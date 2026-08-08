@@ -514,7 +514,7 @@ export const SettingsPopup: FC<{
         <nav className="flex min-h-0 flex-1 flex-col gap-[16px] overflow-y-auto p-[0_8px_14px]">
           {visibleGroups.map(({ group, items }) => (
             <div key={group} className="flex flex-col gap-[1px]">
-              <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqSoft">
+              <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
                 {group}
               </div>
               {items.map(({ tab: tabKey, label, href, icon }) =>
@@ -588,7 +588,7 @@ export const SettingsPopup: FC<{
             />
           </svg>
         </button>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner p-[26px_28px_34px]">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner p-[26px_28px_34px] text-pqText">
           <SettingsTabChromeProvider key={tab}>
             <SettingsTabPane tabHeader={tabHeader}>
               {tab === 'global_settings' && (

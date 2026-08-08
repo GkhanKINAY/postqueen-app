@@ -56,6 +56,129 @@ const HeaderDivider = () => (
   <div className="h-[20px] w-[1px] shrink-0 bg-pqLine" aria-hidden="true" />
 );
 
+const Bone = ({ className }: { className?: string }) => (
+  <div
+    className={clsx('animate-pulse rounded-[8px] bg-pqHover', className)}
+    aria-hidden
+  />
+);
+
+/**
+ * Chrome placeholder while `/user/self` resolves — rail + header + a
+ * calendar-shaped content ghost so cold load does not flash an empty pane.
+ */
+const LayoutSkeleton = () => (
+  <div
+    className="flex h-dvh max-h-dvh w-full flex-col overflow-hidden text-pqText"
+    role="status"
+    aria-busy="true"
+    aria-label="Loading"
+  >
+    <div className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-pqRailLine bg-pqRail pe-[16px]">
+      <div className="flex h-[56px] w-[236px] shrink-0 items-center gap-[9px] border-e border-pqRailLine px-[12px]">
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
+          <CrownGlyph className="size-[18px] text-white" />
+        </span>
+        <Bone className="h-[14px] w-[88px]" />
+      </div>
+      <Bone className="h-[14px] w-[96px]" />
+      <div className="flex-1" />
+      <Bone className="h-[26px] w-[72px] rounded-[8px]" />
+      <Bone className="size-[30px] rounded-[8px]" />
+      <Bone className="size-[30px] rounded-[8px]" />
+      <Bone className="size-[30px] rounded-full" />
+    </div>
+
+    <div className="flex min-h-0 flex-1">
+      <div className="flex w-[236px] shrink-0 flex-col border-e border-pqRailLine bg-pqRail">
+        <div className="flex flex-col gap-[8px] border-b border-pqRailLine p-[10px_8px]">
+          <Bone className="h-[36px] w-full rounded-[10px]" />
+        </div>
+        <div className="flex flex-col gap-[2px] p-[8px]">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex h-[34px] items-center gap-[10px] rounded-pqSm px-[8px]"
+            >
+              <Bone className="size-[18px] shrink-0 rounded-[5px]" />
+              <Bone
+                className={clsx(
+                  'h-[12px]',
+                  i === 0 ? 'w-[72%]' : i % 2 === 0 ? 'w-[58%]' : 'w-[64%]'
+                )}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto flex flex-col gap-[8px] border-t border-pqRailLine p-[10px_8px]">
+          <Bone className="h-[40px] w-full rounded-[10px]" />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 gap-[1px] bg-pqLine">
+        {/* Posts panel ghost */}
+        <div className="flex w-[280px] shrink-0 flex-col gap-[10px] bg-pqInner p-[14px_12px]">
+          <div className="flex items-center justify-between gap-[8px]">
+            <Bone className="h-[14px] w-[56px]" />
+            <Bone className="h-[26px] w-[88px] rounded-[7px]" />
+          </div>
+          <Bone className="h-[28px] w-full rounded-[8px]" />
+          <div className="mt-[4px] flex flex-col gap-[8px]">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-[8px] rounded-[10px] bg-pqSettings p-[10px]"
+              >
+                <div className="flex items-center gap-[8px]">
+                  <Bone className="size-[22px] rounded-full" />
+                  <Bone className="h-[11px] w-[40%]" />
+                  <Bone className="ms-auto h-[11px] w-[28px]" />
+                </div>
+                <Bone className="h-[10px] w-[92%]" />
+                <Bone className="h-[10px] w-[68%]" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Calendar / page ghost */}
+        <div className="flex min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[16px_18px]">
+          <div className="flex items-center gap-[8px]">
+            <Bone className="h-[32px] w-[120px] rounded-[9px]" />
+            <Bone className="h-[32px] w-[88px] rounded-[9px]" />
+            <div className="flex-1" />
+            <Bone className="h-[32px] w-[110px] rounded-[9px]" />
+          </div>
+          <div className="grid grid-cols-7 gap-[1px] overflow-hidden rounded-[12px] bg-pqLine">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div
+                key={`h-${i}`}
+                className="bg-pqInner px-[10px] py-[10px]"
+              >
+                <Bone className="h-[10px] w-[42%]" />
+              </div>
+            ))}
+            {Array.from({ length: 28 }).map((_, i) => (
+              <div
+                key={`c-${i}`}
+                className="flex min-h-[72px] flex-col gap-[6px] bg-pqInner p-[8px]"
+              >
+                <Bone className="h-[9px] w-[22%]" />
+                {i % 3 !== 0 && (
+                  <Bone className="mt-[4px] h-[28px] w-full rounded-[7px]" />
+                )}
+                {i % 5 === 0 && (
+                  <Bone className="h-[28px] w-[85%] rounded-[7px]" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 /**
  * A uniform hit area for the header's icon controls, which arrive at three
  * different SVG sizes and with no padding of their own. The square is fixed, so
@@ -66,34 +189,6 @@ const HeaderDivider = () => (
 const HeaderIcon = ({ children }: { children: ReactNode }) => (
   <div className="grid size-[30px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText empty:hidden">
     {children}
-  </div>
-);
-
-/** Chrome placeholder shown while the user request is in flight. */
-const LayoutSkeleton = () => (
-  <div className="flex h-dvh max-h-dvh w-full flex-col overflow-hidden text-newTextColor">
-    <div className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-pqRailLine bg-pqRail pe-[16px]">
-      <div className="flex h-[56px] w-[236px] shrink-0 items-center gap-[9px] border-e border-pqRailLine px-[12px]">
-        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
-          <CrownGlyph className="size-[18px] text-white" />
-        </span>
-        <div className="h-[16px] w-[92px] animate-pulse rounded-[6px] bg-pqHover" />
-      </div>
-      <div className="h-[16px] w-[120px] animate-pulse rounded-[6px] bg-pqHover" />
-      <div className="flex-1" />
-      <div className="size-[30px] animate-pulse rounded-full bg-pqHover" />
-    </div>
-    <div className="flex min-h-0 flex-1">
-      <div className="flex w-[236px] shrink-0 flex-col gap-[2px] border-e border-pqRailLine bg-pqRail p-[8px]">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-[34px] animate-pulse rounded-pqSm bg-pqHover"
-          />
-        ))}
-      </div>
-      <div className="flex-1 bg-pqInner" />
-    </div>
   </div>
 );
 
