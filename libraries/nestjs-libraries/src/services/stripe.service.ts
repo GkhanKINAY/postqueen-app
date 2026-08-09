@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -46,6 +46,28 @@ export class StripeService {
     return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
   }
 
+  /**
+   * A $1 off-session authorization against the card, for trial signups.
+   *
+   * It no longer cancels anything. It used to: if the probe came back as
+   * anything other than `requires_capture`, or threw, it detached the card and
+   * called `subscriptions.cancel` on the subscription the customer had just
+   * completed Checkout for. Every new organization carries `allowTrial: true`
+   * until this webhook clears it, so that branch was on the path of the *first*
+   * subscription of every account.
+   *
+   * Three ways it fired on a perfectly good card: `off_session: true` throws
+   * `authentication_required` for any card that wants 3DS, which in an EU
+   * account is most of them; `currency: 'usd'` is hardcoded, and some issuers
+   * refuse a foreign-currency zero-value-style auth; and the detach used
+   * `paymentMethods.data[0].id` while the probe used `latestMethod.id`, so it
+   * could unlink a different card than the one that failed.
+   *
+   * Stripe Checkout has already validated and, where required, 3DS-verified the
+   * card before this event exists. A second off-session probe adds no signal
+   * worth a false positive that cancels a paid subscription, so the result is
+   * now advisory: logged, never acted on.
+   */
   async checkValidCard(
     event:
       | Stripe.CustomerSubscriptionCreatedEvent
@@ -82,7 +104,10 @@ export class StripeService {
     );
 
     if (!latestMethod.id) {
-      return false;
+      Logger.warn(
+        `[stripe] no payment method on customer ${event.data.object.customer}; granting anyway`
+      );
+      return true;
     }
 
     try {
@@ -96,24 +121,29 @@ export class StripeService {
         confirm: true, // Confirm the PaymentIntent
       });
 
-      if (paymentIntent.status !== 'requires_capture') {
-        console.error('Cant charge');
-        await stripe.paymentMethods.detach(paymentMethods.data[0].id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
-        return false;
+      if (paymentIntent.status === 'requires_capture') {
+        await stripe.paymentIntents.cancel(paymentIntent.id as string);
+      } else {
+        // Release the hold if one was placed. Without this a failed probe left
+        // a $1 authorization sitting on the card until it expired.
+        try {
+          await stripe.paymentIntents.cancel(paymentIntent.id as string);
+        } catch {
+          /* nothing to release */
+        }
+        Logger.warn(
+          `[stripe] card probe for ${event.data.object.customer} came back ${paymentIntent.status}; granting anyway`
+        );
       }
-
-      await stripe.paymentIntents.cancel(paymentIntent.id as string);
-      return true;
     } catch (err) {
-      try {
-        await stripe.paymentMethods.detach(paymentMethods.data[0].id);
-        await stripe.subscriptions.cancel(event.data.object.id as string);
-      } catch (err) {
-        /*dont do anything*/
-      }
-      return false;
+      Logger.warn(
+        `[stripe] card probe for ${event.data.object.customer} threw (${
+          (err as Error)?.message || err
+        }); granting anyway`
+      );
     }
+
+    return true;
   }
 
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
@@ -130,13 +160,31 @@ export class StripeService {
       uniqueId: string;
     };
 
-    try {
-      const check = await this.checkValidCard(event);
-      if (!check) {
-        return { ok: false };
-      }
-    } catch (err) {
-      return { ok: false };
+    // `pricing[billing]` used to be dereferenced unguarded a few lines down.
+    // `billing` comes from Stripe metadata, so a subscription created outside
+    // this app — in the Dashboard, say — that still carries our service tag
+    // threw a TypeError, which the webhook answered as 500 and Stripe then
+    // retried every few hours for three days. A retry cannot conjure the
+    // missing metadata, so this is acknowledged and dropped instead.
+    if (!pricing[billing]) {
+      Logger.warn(
+        `[stripe] subscription ${event.data.object.id} has no usable billing metadata (${billing}); ignoring`
+      );
+      return { ok: true, granted: false, reason: 'unknown tier' };
+    }
+
+    // `checkValidCard` now returns false for exactly one reason: the
+    // subscription is still `incomplete`, meaning Stripe has not taken the
+    // money yet and will send another event when it does. Answering 2xx there
+    // is right — there is nothing to retry.
+    //
+    // What must NOT happen is answering 2xx after failing to grant. Stripe
+    // treats any 2xx as delivered and never sends the event again, so a
+    // swallowed error here is a customer who paid and stayed on FREE with no
+    // second chance. Anything unexpected is rethrown so the webhook 500s and
+    // Stripe retries it for three days.
+    if (!(await this.checkValidCard(event))) {
+      return { ok: true, granted: false, reason: 'incomplete' };
     }
 
     return this._subscriptionService.createOrUpdateSubscription(
@@ -171,9 +219,42 @@ export class StripeService {
       uniqueId: string;
     };
 
-    const check = await this.checkValidCard(event);
-    if (!check) {
-      return { ok: false };
+    // Same guard as createSubscription — see the note there.
+    if (!pricing[billing]) {
+      Logger.warn(
+        `[stripe] subscription ${event.data.object.id} has no usable billing metadata (${billing}); ignoring`
+      );
+      return { ok: true, granted: false, reason: 'unknown tier' };
+    }
+
+    // Same reasoning as createSubscription: false here means `incomplete`, so
+    // nothing to grant and nothing to retry.
+    if (!(await this.checkValidCard(event))) {
+      return { ok: true, granted: false, reason: 'incomplete' };
+    }
+
+    // Only statuses that mean "this customer is currently entitled" write the
+    // paid tier. The gate used to be `status !== 'incomplete'`, which let
+    // `canceled`, `unpaid`, `incomplete_expired` and `paused` all through and
+    // wrote the full tier back with `deletedAt: null`.
+    //
+    // Two ways that paid for nothing. If the Stripe dunning setting is "mark
+    // unpaid" rather than "cancel", no `customer.subscription.deleted` is ever
+    // sent and the customer keeps the tier forever. And Stripe does not promise
+    // event ordering, so a `deleted` processed before a trailing `updated` had
+    // its row deleted and then recreated — permanently entitled, with no
+    // further events coming to correct it.
+    const ENTITLED: Stripe.Subscription.Status[] = [
+      'active',
+      'trialing',
+      'past_due', // still inside dunning; Stripe is retrying, not giving up
+    ];
+    if (!ENTITLED.includes(event.data.object.status)) {
+      return {
+        ok: true,
+        granted: false,
+        reason: `status ${event.data.object.status}`,
+      };
     }
 
     return this._subscriptionService.createOrUpdateSubscription(
@@ -294,6 +375,13 @@ export class StripeService {
     const priceData = pricing[body.billing];
     const allProducts = await stripe.products.list({
       active: true,
+      // Stripe defaults to 10 and sorts newest-first. The lifetime checkout
+      // mints a fresh Product on every purchase, so after a handful of
+      // founding-member sales the four tier products fall off page one, the
+      // find below misses, and this creates a duplicate CREATOR/GROWTH/PRO
+      // alongside the real one. Same unit_amount, so nobody is overcharged,
+      // but the catalog and every report built on it stop making sense.
+      limit: 100,
       expand: ['data.prices'],
     });
 
@@ -898,6 +986,13 @@ export class StripeService {
     const customer = await this.createOrGetCustomer(org!);
     const allProducts = await stripe.products.list({
       active: true,
+      // Stripe defaults to 10 and sorts newest-first. The lifetime checkout
+      // mints a fresh Product on every purchase, so after a handful of
+      // founding-member sales the four tier products fall off page one, the
+      // find below misses, and this creates a duplicate CREATOR/GROWTH/PRO
+      // alongside the real one. Same unit_amount, so nobody is overcharged,
+      // but the catalog and every report built on it stop making sense.
+      limit: 100,
       expand: ['data.prices'],
     });
 
@@ -971,6 +1066,13 @@ export class StripeService {
     const customer = await this.createOrGetCustomer(org!);
     const allProducts = await stripe.products.list({
       active: true,
+      // Stripe defaults to 10 and sorts newest-first. The lifetime checkout
+      // mints a fresh Product on every purchase, so after a handful of
+      // founding-member sales the four tier products fall off page one, the
+      // find below misses, and this creates a duplicate CREATOR/GROWTH/PRO
+      // alongside the real one. Same unit_amount, so nobody is overcharged,
+      // but the catalog and every report built on it stop making sense.
+      limit: 100,
       expand: ['data.prices'],
     });
 
@@ -1052,6 +1154,13 @@ export class StripeService {
           ...body,
           userId,
           id,
+          // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
+          // `ud` and no `uniqueId`, so the resulting subscription.updated
+          // carried `identifier: undefined` — Prisma reads undefined as "leave
+          // this column alone", so the row silently kept the previous
+          // identifier and `/billing/check/<new id>` could never resolve. The
+          // customer had already been invoiced by `always_invoice` below.
+          uniqueId,
           ud: uniqueId,
         },
         proration_behavior: 'always_invoice',

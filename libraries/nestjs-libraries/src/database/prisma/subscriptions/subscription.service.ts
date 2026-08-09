@@ -236,17 +236,21 @@ export class SubscriptionService {
     org?: string
   ) {
     if (!code) {
-      try {
-        const load = await this.modifySubscription(
-          customerId,
-          totalChannels,
-          billing
+      // Both of these used to `return {}`, which the webhook then answered as
+      // 2xx — so a customer could be charged, the row never written, and Stripe
+      // never retry, with nothing in the logs. `modifySubscription` returns
+      // false only when no organization matches the Stripe customer, and it
+      // throws on a database or Temporal failure. Neither is a reason to tell
+      // Stripe the event was handled; both want the retry.
+      const load = await this.modifySubscription(
+        customerId,
+        totalChannels,
+        billing
+      );
+      if (!load) {
+        throw new Error(
+          `No organization matches Stripe customer ${customerId}; refusing to acknowledge the webhook so Stripe retries`
         );
-        if (!load) {
-          return {};
-        }
-      } catch (e) {
-        return {};
       }
     }
     return this._subscriptionRepository.createOrUpdateSubscription(

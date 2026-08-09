@@ -912,6 +912,12 @@ export const MainBillingComponent: FC<{
             subscriptionTier: billing,
             cancelAt: null,
           }));
+          // Optimistic, but it must be checked. `revalidate: false` meant
+          // nothing ever corrected this: the tier here comes from the button
+          // that was pressed, not from the server, and the webhook that
+          // actually grants it can still decline. `always_invoice` has already
+          // charged the customer by this point, so "updated successfully" over
+          // a tier the backend never wrote is the worst of both.
           mutate(
             '/user/self',
             {
@@ -919,7 +925,7 @@ export const MainBillingComponent: FC<{
               tier: billing,
             },
             {
-              revalidate: false,
+              revalidate: true,
             }
           );
           toast.show('Subscription updated successfully');
