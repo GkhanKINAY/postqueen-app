@@ -11,7 +11,10 @@ export * from './post-workflows/post.workflow.v1.0.6';
 export * from './autopost.workflow';
 export * from './autopost.workflow.v2';
 export * from './digest.email.workflow';
+// v1 stays exported for the same reason as the two above: the singleton started
+// against it replays its own code until it is terminated by hand on deploy.
 export * from './missing.post.workflow';
+export * from './missing.post.workflow.v2';
 export * from './send.email.workflow';
 export * from './refresh.token.workflow';
 export * from './streak.workflow';
