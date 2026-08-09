@@ -29,13 +29,9 @@ const WalletProvider = dynamic(
     loading: () => <WalletUiProvider />,
   }
 );
-type Inputs = {
-  email: string;
-  password: string;
-  company: string;
-  providerToken: string;
-  provider: string;
-};
+// Same shape as the DTO the resolver validates, rather than a copy of it: the
+// copy had drifted to `provider: string` and no `datafast_visitor_id`.
+type Inputs = CreateOrgUserDto;
 export function Register() {
   const getQuery = useSearchParams();
   const fetch = useFetch();
@@ -105,7 +101,9 @@ export function RegisterAfter({
     resolver,
     defaultValues: {
       providerToken: token,
-      provider: provider,
+      // Read off the query string, so it is a bare string until the DTO says
+      // which providers exist.
+      provider: provider as Inputs['provider'],
     },
   });
   const fetchData = useFetch();

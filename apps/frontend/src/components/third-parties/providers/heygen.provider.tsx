@@ -5,7 +5,12 @@ import {
   useThirdPartySubmit,
 } from '@gitroom/frontend/components/third-parties/third-party.function';
 import { useThirdParty } from '@gitroom/frontend/components/third-parties/third-party.media';
-import { useForm, FormProvider, SubmitHandler } from 'react-hook-form';
+import {
+  useForm,
+  FormProvider,
+  SubmitHandler,
+  Resolver,
+} from 'react-hook-form';
 import { Textarea } from '@gitroom/react/form/textarea';
 import { Button } from '@gitroom/react/form/button';
 import { FC, useCallback, useState } from 'react';
@@ -103,6 +108,15 @@ const SelectVoiceComponent: FC<{
   );
 };
 
+type HeygenForm = {
+  voice: string;
+  avatar: string;
+  aspect_ratio: string;
+  captions: string;
+  selectedVoice: string;
+  type: string;
+};
+
 const HeygenProviderComponent = () => {
   const t = useT();
   const thirdParty = useThirdParty();
@@ -113,7 +127,7 @@ const HeygenProviderComponent = () => {
   const [hideVoiceGenerator, setHideVoiceGenerator] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
 
-  const form = useForm({
+  const form = useForm<HeygenForm>({
     values: {
       voice: '',
       avatar: '',
@@ -123,6 +137,11 @@ const HeygenProviderComponent = () => {
       type: '',
     },
     mode: 'all',
+    // The schema deliberately does not list `type`, which is set from the
+    // avatar picker rather than typed by anyone. @hookform/resolvers 5 infers
+    // the field names from the schema, so the form is typed from `HeygenForm`
+    // and the resolver is narrowed to it — otherwise `setValue('type', …)`
+    // stops being a legal field name.
     resolver: zodResolver(
       object({
         voice: string().min(20, 'Voice must be at least 20 characters long'),
@@ -131,7 +150,7 @@ const HeygenProviderComponent = () => {
         aspect_ratio: string().min(1, 'Aspect ratio is required'),
         captions: string().min(1, 'Captions is required'),
       })
-    ),
+    ) as unknown as Resolver<HeygenForm>,
   });
 
   const generateVoice = useCallback(async () => {
@@ -161,7 +180,7 @@ const HeygenProviderComponent = () => {
     setHideVoiceGenerator(true);
   }, [thirdParty, form, load, t]);
 
-  const submit: SubmitHandler<{ voice: string; avatar: string }> = useCallback(
+  const submit: SubmitHandler<HeygenForm> = useCallback(
     async (params) => {
       thirdParty.onChange(await send(params));
       thirdParty.close();
