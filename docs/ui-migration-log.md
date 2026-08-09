@@ -687,8 +687,16 @@ across 75 packages**, 17 of them direct. One was verified before acting on the
 number — GHSA-35jp-ww65-95wh, full MitM via prototype pollution in axios,
 affecting 1.0.0 to 1.16.0, and we were on 1.14.0.
 
-Most of it was a stale lockfile rather than versions anyone chose. Re-resolving
-inside the existing ranges closed **170**, moving no specifier in `package.json`
+**The lockfile refresh was reverted.** It closed 170 findings and broke the
+backend: `@mastra/core` moved 1.21 to 1.57 inside its own caret range, and with
+`zod-to-json-schema` at 3.25.2 the schema adapter calls a default export that is
+no longer there. The backend crashed at boot, in production, and was rolled back
+inside three minutes. Nobody was affected — there are no users yet — but the
+mistake was mine and it was avoidable: all three apps were built and
+typechecked, and none of them was *run*. A dependency change has to be booted,
+not compiled.
+
+What that attempt would have closed, for the record: **170**, moving no specifier in `package.json`
 — `pnpm update` wanted to rewrite 304 lines of them, which was reverted, because
 staying in step with upstream is what keeps cherry-picking cheap and the
 lockfile is the pin that matters.
