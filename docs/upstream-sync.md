@@ -101,15 +101,38 @@ into a container capped at 4 GB; the pending-post contract landed as v1.0.7; SSR
 protection reaches the axios paths; publishing an already-published post now
 needs an explicit opt-in.
 
+## Where the sync currently stands
+
+**Synced through `83271a3b` (2026-08-09).** Everything upstream had written by
+that commit is either in this tree or listed below with a reason.
+
+Skipped, deliberately:
+
+| Upstream | Why |
+|---|---|
+| `48bf76af` | Points the security policy at upstream's own advisory intake |
+| `3686d8ab` | Reflows two Bluesky expressions onto single lines so a `@ts-ignore` lands on the right one. We had already fixed the same error by narrowing the union once, which needs no suppression at all |
+
+Move the watermark every time a sync PR merges. It is the only cheap way to
+answer "are we current?" — see the trap below.
+
 ## Next time
 
 ```bash
 git fetch upstream
 git log --reverse --no-merges --format='%ad %h %s' --date=short \
-  $(git merge-base HEAD upstream/main)..upstream/main
+  <watermark>..upstream/main
 ```
 
-Anything already taken will have its hash in our history:
+**Do not use `main..upstream/main` to answer "what is missing".** Cherry-picking
+writes new hashes, so every commit ever taken keeps showing up as absent — that
+range read 44 the day after a sync that had left only two commits outstanding.
+`git cherry` and subject matching are both wrong here too, for the same reason
+in reverse: this fork renames and adapts what it takes, so an identical change
+shows as different. Six of the eight commits that "did not match" on 2026-08-09
+were present, one under a different filename and the rest reworded.
+
+Trust the watermark, and confirm a specific commit by looking for its hash:
 
 ```bash
 git log origin/main --format='%H%n%B' | grep <upstream-hash>
