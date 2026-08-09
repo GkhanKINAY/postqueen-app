@@ -131,7 +131,30 @@ export class ThirdPartyController {
       throw new HttpException('Invalid identifier', 400);
     }
 
-    return thirdPartyInstance?.instance?.[functionName](
+    // `functionName` comes straight off the URL and used to be applied to the
+    // provider instance with no check at all, so the route would call anything
+    // reachable on it — including inherited members — and hand the decrypted
+    // API key over as the first argument. `toString` merely returned a string;
+    // `constructor` and `__proto__` were a 500 with a stack trace. Nothing in
+    // the app asks for those, but the route had no way to say no.
+    //
+    // Resolved against the provider's own prototype rather than a hardcoded
+    // list, so a provider adding a method needs no change here and one
+    // inheriting a method from Object does not accidentally expose it.
+    const instance = thirdPartyInstance.instance as
+      | Record<string, unknown>
+      | undefined;
+    const callable = Object.getOwnPropertyNames(
+      Object.getPrototypeOf(instance || {})
+    ).filter(
+      (name) => name !== 'constructor' && typeof instance?.[name] === 'function'
+    );
+
+    if (!callable.includes(functionName)) {
+      throw new HttpException('Unknown function', 400);
+    }
+
+    return (instance![functionName] as (key: string, data: any) => unknown)(
       AuthService.fixedDecryption(thirdParty.apiKey),
       data
     );

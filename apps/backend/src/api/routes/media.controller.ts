@@ -183,7 +183,7 @@ export class MediaController {
     @Res() res: Response,
     @Param('endpoint') endpoint: string
   ) {
-    const upload = await handleR2Upload(endpoint, req, res);
+    const upload = await handleR2Upload(endpoint, req, res, org.id);
     if (endpoint !== 'complete-multipart-upload') {
       return upload;
     }
