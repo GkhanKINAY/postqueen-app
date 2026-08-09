@@ -275,7 +275,6 @@ module.exports = {
         // see the note in global.scss.
         pqUnlim: 'pqunlim 1.9s ease-in-out infinite',
         pqTick: 'pqtick 1.9s ease-in-out infinite',
-        pqRing: 'pqring 1.9s ease-in-out infinite',
         pqGlow: 'pqglow 5.5s ease-in-out infinite',
         pqBtnGlow: 'pqbtnglow 2.6s ease-in-out infinite',
         pqBtnBloom: 'pqbtnbloom 2.6s ease-in-out infinite',
