@@ -1,16 +1,20 @@
 # Vulnerabilities present and accepted for now, one "package GHSA-id" per line.
 #
 # Each needs a semver range moved — a change with its own risk — or has no
-# released fix: tar's is 7.x, a major; multer's is 2.x. This is a list to
-# shrink, and the check names entries that stop appearing so they can be
-# deleted.
+# released fix. What is left is almost entirely *transitive*: a dependency
+# pinning an old copy of something the root has already updated. lodash is the
+# clearest example — the root is on 4.18.1, which the advisory is fixed in, and
+# a 4.17.21 copy still arrives underneath something else. Those cannot be
+# closed from here; they close when the package holding them updates.
+#
+# This is a list to shrink, and the check names entries that stop appearing so
+# they can be deleted.
 #
 # Regenerated 2026-08-09 after pinning axios, undici, ws, dompurify, postcss,
 # Regenerated 2026-08-09 after clearing the cheap critical advisories.
-# Regenerated 2026-08-10 after the in-range refresh: 181 accepted findings down
-# to 71, none new. lodash is gone from this list — its advisory named 4.18.0,
-# which did not exist when the note above was written and does now, so the
-# caret finally resolves to a fixed version.
+# Regenerated 2026-08-10 after the in-range refresh: 181 down to 71, none new.
+# Regenerated 2026-08-10 after the major pass: 71 down to 43, none new. tar and
+# multer are gone — multer crossed to 2.x, which is what its advisory wanted.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
 @hono/node-server GHSA-frvp-7c67-39w9
 @langchain/community GHSA-gf3v-fwqg-4vh7
@@ -45,40 +49,12 @@ langsmith GHSA-v34v-rq6j-cj6p
 lodash GHSA-f23m-r3pf-42rh
 lodash GHSA-r5fr-rjxr-66jc
 lodash GHSA-xxjr-mmjv-4gpg
-multer GHSA-44fp-w29j-9vj5
-multer GHSA-4pg4-qvpc-4q3h
-multer GHSA-5528-5vmv-3xc2
-multer GHSA-72gw-mp4g-v24j
-multer GHSA-fjgf-rc76-4x9p
-multer GHSA-g5hg-p3ph-g8qg
-multer GHSA-v52c-386h-88mc
-multer GHSA-xf7r-hgr6-v32p
-music-metadata GHSA-v6c2-xwv6-8xf7
-nodemailer GHSA-268h-hp4c-crq3
-nodemailer GHSA-c7w3-x93f-qmm8
-nodemailer GHSA-p6gq-j5cr-w38f
-nodemailer GHSA-r7g4-qg5f-qqm2
-nodemailer GHSA-vvjj-xcjg-gr5g
-nodemailer GHSA-wqvq-jvpq-h66f
 prismjs GHSA-x7hr-w5r2-h6wg
 qs GHSA-6rw7-vpxm-498p
 qs GHSA-q8mj-m7cp-5q26
 quill GHSA-v3m3-f69x-jf25
 request GHSA-p8p7-x288-28g6
-sharp GHSA-f88m-g3jw-g9cj
 socket.io-parser GHSA-2m8v-j782-fhvr
 socket.io-parser GHSA-677m-j7p3-52f9
-tar GHSA-23hp-3jrh-7fpw
-tar GHSA-34x7-hfp2-rc4v
-tar GHSA-83g3-92jg-28cx
-tar GHSA-8qq5-rm4j-mr97
-tar GHSA-8x88-c5mf-7j5w
-tar GHSA-9ppj-qmqm-q256
-tar GHSA-gvwx-54wh-qm9j
-tar GHSA-qffp-2rhf-9h96
-tar GHSA-r292-9mhp-454m
-tar GHSA-r6q2-hw4h-h46w
-tar GHSA-vmf3-w455-68vh
-tar GHSA-w8wr-v893-vjvp
 tough-cookie GHSA-72xf-g2v4-qvf3
 uuid GHSA-w5hq-g745-h8pq

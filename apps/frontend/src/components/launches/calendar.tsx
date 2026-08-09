@@ -166,7 +166,7 @@ export const usePostActions = (onMutate?: () => void) => {
       // calendar simply did nothing, with no error anywhere.
       const groupResponse = await fetch(`/posts/group/${post.group}`);
       const data = groupResponse.ok
-        ? await groupResponse.json().catch(() => null)
+        ? await groupResponse.json().catch((): null => null)
         : null;
 
       if (!data?.posts?.length) {
@@ -185,7 +185,7 @@ export const usePostActions = (onMutate?: () => void) => {
       if (isDuplicate) {
         const slotResponse = await fetch('/posts/find-slot');
         const slot = slotResponse.ok
-          ? await slotResponse.json().catch(() => null)
+          ? await slotResponse.json().catch((): null => null)
           : null;
         date = slot?.date ?? null;
       }

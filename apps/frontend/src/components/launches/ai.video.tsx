@@ -94,7 +94,7 @@ export const Modal: FC<{
         `/media/generate-video/${type.identifier}/allowed`
       );
       if (!allowed.ok) {
-        fail(await allowed.json().catch(() => undefined));
+        fail(await allowed.json().catch((): undefined => undefined));
         // Nothing has been generated, so hand both buttons back.
         setSubmitting(false);
         setLoading(false);

@@ -278,7 +278,7 @@ export const CommentComponent: FC<{
                     id: user?.id!,
                   },
                   content,
-                  childrenComment: [],
+                  childrenComment: [] as Comments[],
                 },
               ],
             };

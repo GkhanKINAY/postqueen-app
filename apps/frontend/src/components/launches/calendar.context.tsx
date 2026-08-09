@@ -726,7 +726,7 @@ export const CalendarWeekProvider: FC<{
               picture: TOUR_DEMO_PICTURE,
               providerIdentifier: provider,
             },
-            tags: [],
+            tags: [] as { tag: Tags }[],
           };
         }
       ),
