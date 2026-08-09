@@ -19,8 +19,24 @@ export class EmailService {
     }
   }
 
+  /**
+   * Whether this installation can actually deliver mail.
+   *
+   * The from-address half matters as much as the provider. `sendEmail` below
+   * returns early when `EMAIL_FROM_ADDRESS` or `EMAIL_FROM_NAME` is missing, and
+   * both ship commented out in `.env.example` — so a provider set without them
+   * looked configured to every caller while delivering nothing. With
+   * `REQUIRE_EMAIL_ACTIVATION=true` that combination writes accounts
+   * `activated: false`, never sends the link, and answers `{success: true}` to
+   * every resend request: a permanent lockout with no error anywhere. Same
+   * shape locks out passwordless login when it is the only sign-in method.
+   */
   hasProvider() {
-    return !(this.emailService instanceof EmptyProvider);
+    return (
+      !(this.emailService instanceof EmptyProvider) &&
+      !!process.env.EMAIL_FROM_ADDRESS &&
+      !!process.env.EMAIL_FROM_NAME
+    );
   }
 
   selectProvider(provider: string) {

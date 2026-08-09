@@ -13,6 +13,27 @@ import {
   Sections,
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+
+/**
+ * Whether this video type is held back because the organization is still on
+ * trial.
+ *
+ * The `isBillingEnabled()` half is the part that was missing. Every new
+ * organization is written `isTrailing: true` for seven days
+ * (`organization.repository.ts`), and `auth.middleware.ts` derives the live flag
+ * from that without consulting billing — so on an install with no Stripe keys
+ * the first week of every account was told to "finish your trial" and sent to a
+ * billing page that cannot take money. There is no trial to finish when there
+ * is nothing to buy.
+ *
+ * `integration.service.ts`'s `assertConnectAllowed` is the same rule written
+ * correctly; this is that guard applied to video generation.
+ */
+const isTrialLocked = (
+  video: { trial?: boolean },
+  org: { isTrailing?: boolean }
+) => isBillingEnabled() && !video.trial && !!org.isTrailing;
 
 @Injectable()
 export class MediaService {
@@ -94,7 +115,7 @@ export class MediaService {
       throw new Error(`Video type ${type} not found`);
     }
 
-    if (!video.trial && org.isTrailing) {
+    if (isTrialLocked(video, org)) {
       throw new HttpException('This video is not available in trial mode', 406);
     }
 
@@ -120,7 +141,7 @@ export class MediaService {
         throw new Error(`Video type ${body.type} not found`);
       }
 
-      if (!video.trial && org.isTrailing) {
+      if (isTrialLocked(video, org)) {
         throw new HttpException(
           'This video is not available in trial mode',
           406

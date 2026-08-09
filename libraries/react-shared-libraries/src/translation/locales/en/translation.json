@@ -1065,5 +1065,7 @@
   "upgrade_to_plan": "Upgrade to {{plan}}",
   "downgrade_to_plan": "Downgrade to {{plan}}",
   "switch_to_yearly": "Switch to yearly",
-  "switch_to_monthly": "Switch to monthly"
+  "switch_to_monthly": "Switch to monthly",
+  "billing_not_configured_title": "Billing is not set up",
+  "billing_not_configured": "This installation has no payment provider configured, so there is nothing to subscribe to. Every feature is available without a plan."
 }

@@ -86,7 +86,18 @@ const OrderSummaryFallbackCard: FC<{
   tier: string;
   period: string;
   allowTrial: boolean;
-}> = ({ tier, period, allowTrial }) => {
+  /**
+   * Checkout failed rather than merely not having arrived yet.
+   *
+   * This card covers both, and the coupon box below says "enter it again once
+   * checkout is ready" — true while loading, a promise that will never be kept
+   * once the session has errored or been blocked. In that state there is no
+   * checkout coming and no coupon to apply to it, so the box is dropped
+   * entirely. The live checkout has a real, working coupon field
+   * (`CouponInput` in embedded.billing.tsx); this is only ever its stand-in.
+   */
+  checkoutUnavailable?: boolean;
+}> = ({ tier, period, allowTrial, checkoutUnavailable }) => {
   const t = useT();
   const plan = pricing[tier] || pricing.PRO;
   const amount =
@@ -124,7 +135,7 @@ const OrderSummaryFallbackCard: FC<{
           <span className="font-[600]">-${amount}</span>
         </div>
       )}
-      <CouponChrome />
+      {!checkoutUnavailable && <CouponChrome />}
       <div className="h-px bg-pqLine" />
       <div className="flex items-baseline justify-between gap-[16px]">
         <span className="text-[16px] font-[600]">
@@ -1263,6 +1274,10 @@ export const FirstBillingComponent = () => {
               tier={tier}
               period={period}
               allowTrial={!!user?.allowTrial}
+              checkoutUnavailable={
+                !isLoading &&
+                (!!embedFetchError || !!data?.blocked || !data?.client_secret)
+              }
             />
           ) : (
             <div id="pq-order-summary" className="flex flex-col empty:hidden" />
