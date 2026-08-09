@@ -285,6 +285,107 @@ real gap is that `processCron`'s return value is discarded by both callers, so
 the API answers "saved" either way; surfacing it needs a response-shape change
 and a frontend to match, which is its own change rather than a line in this one.
 
+## Payment path pass
+
+Billing went live with real Stripe keys, so the subscription lifecycle was
+audited from the position of the first real paying customer. What follows is
+what that found. `i18n.txt` gains two keys for the new "still processing" state.
+
+**`checkValidCard` cancelled the subscription the customer had just paid for.**
+It ran a $1 off-session, manual-capture authorization against the card, and on
+anything other than `requires_capture` — or on any thrown error — it detached
+the card and called `subscriptions.cancel` on that subscription. Every new
+organization carries `allowTrial: true` until this very webhook clears it, so
+that branch sat on the path of the *first* subscription of every account.
+
+Three ways it fired on a good card: `off_session: true` throws
+`authentication_required` for any card wanting 3DS, which in an EU account is
+most of them; `currency: 'usd'` is hardcoded; and the detach used
+`paymentMethods.data[0].id` while the probe used `latestMethod.id`, so it could
+unlink a different card than the one that failed. Checkout has already validated
+and 3DS-verified the card before this event exists, so the probe is now
+advisory: logged, never acted on, and the $1 hold is released either way.
+
+**Failing to grant answered Stripe 2xx, so it never tried again.** Two paths did
+this — `{ ok: false }` out of `createSubscription`/`updateSubscription`, and two
+`return {}` swallows in `createOrUpdateSubscription` that hid both "no
+organization matches this Stripe customer" and *any* thrown error. Stripe treats
+2xx as delivered. The result was a customer charged, no `Subscription` row, no
+retry, and nothing in the logs. Now the only 2xx-without-a-row is `incomplete`
+(Stripe has not taken the money and will send another event) and an unknown
+tier; everything else throws so the webhook 500s and Stripe retries for three
+days.
+
+**The customer was trapped behind an un-dismissable loader.** `check.payment.tsx`
+polled `/billing/check` once a second forever while the page sat blurred and
+`pointer-events-none`. `/billing/check` answers `0` for "still processing" and
+for "no row was written and never will be" alike, so either failure above pinned
+the customer there with no exit but editing the URL. There is a 60-attempt cap
+now, a failed poll counts as an attempt instead of breaking the recursion with
+an unhandled rejection, and the timeout hands the screen back with an honest
+message. Same shape as the cap `finish.trial.tsx` already had.
+
+**`customer.subscription.updated` wrote the paid tier for almost any status.**
+The gate was `status !== 'incomplete'`, which let `canceled`, `unpaid`,
+`incomplete_expired` and `paused` through with `deletedAt: null`. If the Stripe
+dunning setting is "mark unpaid" rather than "cancel", no `deleted` event is ever
+sent and the customer keeps the tier forever; and since Stripe does not promise
+event ordering, a `deleted` processed before a trailing `updated` had its row
+deleted and then recreated. Only `active`, `trialing` and `past_due` grant now.
+
+**`products.list` returned ten rows and the catalog is built to overflow that.**
+Three call sites, none passing `limit`, none paginating — while the lifetime
+checkout mints a brand-new Product on *every* purchase through inline
+`product_data`. A handful of founding-member sales pushes the four tier products
+off page one, the name lookup misses, and each subscribe creates a duplicate
+tier product and price. No overcharge, but the catalog and every report built on
+it stop meaning anything. `limit: 100` on all three, matching the other list
+calls in the file.
+
+**A plan change lost its identifier and claimed success anyway.** The update
+wrote `id` and `ud` into metadata but not `uniqueId`, which is the key both
+webhook handlers read — so the row kept its old identifier and
+`/billing/check/<new id>` could never resolve. Meanwhile the frontend wrote the
+new tier into the SWR cache with `revalidate: false`, so nothing ever corrected
+it, while `proration_behavior: 'always_invoice'` had already charged the
+customer. Metadata carries `uniqueId` now and the optimistic write revalidates.
+
+**A malformed event could 500 in a loop for three days.** `pricing[billing]` was
+dereferenced unguarded on metadata that a Dashboard-created subscription may not
+carry. Worse, the controller's `try/catch` could not catch it: `stripe()` was not
+`async` and the handlers were returned unawaited, so the rejection escaped Nest
+entirely. The handler is `async`, the returns are awaited, and an unknown tier is
+acknowledged and dropped rather than retried — a retry cannot conjure missing
+metadata.
+
+Finally, an unsigned request to `/stripe` returned 500 with a full stack trace,
+so every scanner hitting that URL looked like a crash and a real signing-key
+mismatch was indistinguishable from the noise. It is a 400 now.
+`STRIPE_SIGNING_KEY_CONNECT` is removed from `.env.example` — it was documented
+and read nowhere — and the remaining three keys gained notes about mode
+selection, since the key prefix is what picks test versus live.
+
+### Found and deliberately left
+
+- **Cancellation disables everything and nothing re-enables it.**
+  `pricing.FREE.channel` is 0, so a `customer.subscription.deleted` disables
+  every channel and terminates every autopost workflow. Nothing is deleted, but
+  there is no inverse: a returning customer re-enables each channel by hand, and
+  scheduled posts sit in `QUEUE` with a past date and never fire.
+- **`invoice.payment_failed` is classified as a success notification**, so a
+  customer who turned off success emails hears nothing about a failed renewal —
+  and it re-sends on every dunning attempt.
+- **`getUserById(undefined)` returns the first user in the table**, and invoice
+  events are exempt from the service-tag filter, so another integration's
+  invoice on the same Stripe account could attribute a purchase to the wrong
+  person. Harmless at one user.
+
+### One claim checked and rejected
+
+The audit flagged `expand: ['data.prices']` as an invalid expansion that would
+400 every subscribe against live keys. Tested against the live account before
+acting on it: **HTTP 200**. Checkout was never broken by it.
+
 ## Before the next release
 
 Everything above this line is merged to `main` but **not released** — production is on

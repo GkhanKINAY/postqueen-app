@@ -1,6 +1,7 @@
 import {
   Controller,
   HttpException,
+  HttpStatus,
   Post,
   RawBodyRequest,
   Req,
@@ -19,13 +20,25 @@ export class StripeController {
   ) {}
 
   @Post('/')
-  stripe(@Req() req: RawBodyRequest<Request>) {
-    const event = this._stripeService.validateRequest(
-      req.rawBody,
-      // @ts-ignore
-      req.headers['stripe-signature'],
-      process.env.STRIPE_SIGNING_KEY
-    );
+  async stripe(@Req() req: RawBodyRequest<Request>) {
+    let event: ReturnType<StripeService['validateRequest']>;
+    try {
+      event = this._stripeService.validateRequest(
+        req.rawBody,
+        // @ts-ignore
+        req.headers['stripe-signature'],
+        process.env.STRIPE_SIGNING_KEY
+      );
+    } catch (e) {
+      // A bad or missing signature is the caller's fault, not ours. This used
+      // to escape as a 500 with a full stack trace, so every scanner that POSTs
+      // to this URL filled the logs with what looks like a crash — and a real
+      // signing-key mismatch was indistinguishable from that noise.
+      throw new HttpException(
+        `Invalid Stripe signature: ${(e as Error)?.message}`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     // One Stripe account can serve several integrations, so ignore anything we
     // did not create.
@@ -87,19 +100,19 @@ export class StripeController {
           );
         }
         case 'invoice.payment_succeeded':
-          return this._stripeService.paymentSucceeded(event);
+          return await this._stripeService.paymentSucceeded(event);
         // A renewal that could not be charged. Unhandled until now, so the only
         // thing a customer with a dead card saw was nothing at all — until
         // Stripe gave up weeks later and cancelled the subscription, at which
         // point the app went to the paywall with no explanation.
         case 'invoice.payment_failed':
-          return this._stripeService.paymentFailed(event);
+          return await this._stripeService.paymentFailed(event);
         case 'customer.subscription.created':
-          return this._stripeService.createSubscription(event);
+          return await this._stripeService.createSubscription(event);
         case 'customer.subscription.updated':
-          return this._stripeService.updateSubscription(event);
+          return await this._stripeService.updateSubscription(event);
         case 'customer.subscription.deleted':
-          return this._stripeService.deleteSubscription(event);
+          return await this._stripeService.deleteSubscription(event);
         default:
           return { ok: true };
       }

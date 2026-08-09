@@ -4,6 +4,11 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+
+/** ~60 seconds at the 1s poll interval, matching FinishTrial's cap. */
+const MAX_POLL_ATTEMPTS = 60;
+
 export const CheckPayment: FC<{
   check: string;
   mutate: () => void;
@@ -24,6 +29,7 @@ export const CheckPaymentInner: FC<{
   const fetch = useFetch();
   const toaster = useToaster();
   const modal = useDecisionModal();
+  const t = useT();
 
   useEffect(() => {
     if (showLoader) {
@@ -39,13 +45,42 @@ export const CheckPaymentInner: FC<{
     }
   }, [showLoader]);
 
-  const checkSubscription = useCallback(async () => {
-    const { status } = await (
-      await fetch('/billing/check/' + props.check)
-    ).json();
+  const checkSubscription = useCallback(async (attempt = 0) => {
+    let status: number | undefined;
+    try {
+      const response = await fetch('/billing/check/' + props.check);
+      if (!response.ok) {
+        throw new Error(`check responded ${response.status}`);
+      }
+      ({ status } = await response.json());
+    } catch {
+      // A failed poll used to break the recursion with an unhandled rejection,
+      // which left the overlay up with nothing driving it. Treat it as "not
+      // resolved yet" and let the attempt cap decide when to stop.
+      status = 0;
+    }
     if (status === 0) {
+      // ~60s at 1s intervals, then hand the screen back. Without a cap this
+      // polled forever behind a blurred, pointer-events-none overlay, and
+      // `/billing/check` answers 0 for "no row was written and never will be"
+      // as well as for "still processing" — so a webhook that failed to grant
+      // trapped the customer with no way out but editing the URL.
+      if (attempt >= MAX_POLL_ATTEMPTS) {
+        setShowLoader(false);
+        modal.open({
+          title: t('billing_still_processing_title', 'Payment still processing'),
+          onlyApprove: true,
+          approveLabel: t('close', 'Close'),
+          description: t(
+            'billing_still_processing',
+            'Your payment is taking longer than usual to confirm. Your card has not been charged twice — if your plan does not appear in a few minutes, contact support and we will sort it out.'
+          ),
+        });
+        props.mutate();
+        return;
+      }
       await timer(1000);
-      return checkSubscription();
+      return checkSubscription(attempt + 1);
     }
     if (status === 1) {
       modal.open({
