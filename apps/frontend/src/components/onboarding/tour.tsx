@@ -345,11 +345,13 @@ const useSteps = (): Step[] => {
         // The design's line, verbatim. It had drifted into a description of
         // this panel's left nav, which reads as instructions for a screen
         // somebody is already looking at; naming the clients is the point.
-        // Every one of these is in `connections.catalog` — Windsurf under MCP —
-        // so the list promises nothing that is not there.
+        // Every one of these is in `connections.catalog`, which is the point:
+        // this list has to stay in step with the catalog or it promises a client
+        // the Connections screen cannot show. It named a retired one for a while,
+        // which is exactly the failure the comment was supposed to prevent.
         text: t(
           'tour_clients_text',
-          'Claude, ChatGPT, Cursor, Windsurf, Codex, n8n and every other MCP client.'
+          'Claude, ChatGPT, Cursor, Claude Code, Codex, n8n and every other MCP client.'
         ),
       },
       'nav-channels': {

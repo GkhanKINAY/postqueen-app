@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="410" height="124" viewBox="0 0 410 124" role="img" aria-label="Make.com: Call her from any scenario with the HTTP module and your key.">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f0e1d"/><stop offset="1" stop-color="#171331"/></linearGradient></defs>
   <rect x="1" y="1" width="408" height="122" rx="18" fill="url(#bg)" stroke="#2a2150" stroke-width="1.5"/>
-  <rect x="24" y="40" width="44" height="44" rx="10" fill="#b57bff"/>
-  <g transform="translate(46,62)" fill="none" stroke="#ffffff" stroke-width="2.2"><circle cx="-5" cy="-3" r="6.5"/><circle cx="5" cy="4" r="6.5"/></g>
+  <rect x="24" y="40" width="44" height="44" rx="10" fill="#e2e4e9" stroke="#c9ccd6" stroke-width="1"/>
+  <image x="32" y="48" width="28" height="28" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjNkQwMENDIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+TWFrZTwvdGl0bGU+PHBhdGggZD0iTTEzLjM4IDMuNDk4Yy0uMjcgMC0uNTExLjE5LS41NjYuNDY1TDkuODUgMTguOTg2YS41NzguNTc4IDAgMCAwIC40NTMuNjc4bDQuMDk1LjgyNmEuNTguNTggMCAwIDAgLjY4Mi0uNDU1bDIuOTYzLTE1LjAyMWEuNTc4LjU3OCAwIDAgMC0uNDUzLS42NzhsLTQuMDk2LS44MjZhLjU4OS41ODkgMCAwIDAtLjExMy0uMDEyem0tNS44NzYuMDk4YS41NzYuNTc2IDAgMCAwLS41MTYuMzE4TC4wNjIgMTcuNjk3YS41NzUuNTc1IDAgMCAwIC4yNTYuNzc0bDMuNzMzIDEuODc3YS41NzguNTc4IDAgMCAwIC43NzUtLjI1OGw2LjkyNi0xMy43ODFhLjU3Ny41NzcgMCAwIDAtLjI1Ni0uNzc2TDcuNzYyIDMuNjU4YS41NzEuNTcxIDAgMCAwLS4yNTgtLjA2MnptMTEuNzQuMTE1YS41NzYuNTc2IDAgMCAwLS41NzYuNTc2djE1LjQyNmMwIC4zMTguMjU4LjU3OC41NzYuNTc4aDQuMTc4YS41OC41OCAwIDAgMCAuNTc4LS41NzhWNC4yODdhLjU3OC41NzggMCAwIDAtLjU3OC0uNTc2WiIvPjwvc3ZnPg=="/>
   <rect x="292" y="14" width="102" height="20" rx="10" fill="#241d45" stroke="#2a2150" stroke-width="1"/>
   <text x="343" y="27.5" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="9.5" font-weight="600" letter-spacing="0.5" fill="#9c94c9">NATIVE APP SOON</text>
   <text x="90" y="42" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#ffffff">Make.com</text>

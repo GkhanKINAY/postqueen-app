@@ -759,7 +759,7 @@ export function buildConnectionsCatalog(
           id: 'claude-code',
           name: 'Claude Code',
           glyph: 'CC',
-          icon: '/icons/connections/claude.svg',
+          icon: '/icons/connections/claude-code.svg',
           kind: 'MCP',
           section: 'assistants',
           short: t(
@@ -950,170 +950,14 @@ export function buildConnectionsCatalog(
       label: t('conn_group_mcp_more', 'More MCP clients'),
       blurb: t(
         'conn_group_mcp_more_blurb',
-        'Streamable HTTP at your /mcp endpoint — 11 tools. Warp, Cline and Windsurf each have their own steps; anything else follows the same shape.'
+        'Streamable HTTP at your /mcp endpoint - 11 tools. Any client that can reach a remote MCP server follows the same shape.'
       ),
       items: [
-        {
-          id: 'warp',
-          name: 'Warp',
-          glyph: 'Wp',
-          icon: '/icons/connections/warp.svg',
-          kind: 'MCP',
-          section: 'mcp',
-          short: t(
-            'conn_warp_short',
-            'Paste the PostQueen MCP URL into Warp'
-          ),
-          intro: t(
-            'conn_warp_intro',
-            'Warp connects to remote MCP servers by URL. Choose Streamable HTTP or SSE Server, not CLI Server.'
-          ),
-          prompts: defaultPrompts,
-          docs: [
-            {
-              label: t('conn_docs_warp', 'Warp MCP setup'),
-              href: `${DOCS}/mcp/clients/other-clients#warp`,
-            },
-          ],
-          steps: [
-            {
-              title: t('conn_warp_step_open', 'Open MCP servers'),
-              detail: t(
-                'conn_warp_step_open_detail',
-                'Settings → Agents → MCP servers, or search Open MCP Servers in the Command Palette.'
-              ),
-            },
-            {
-              title: t('conn_warp_step_add', 'Add Streamable HTTP'),
-              detail: t(
-                'conn_warp_step_add_detail',
-                'Click + Add and choose Streamable HTTP or SSE Server (URL).'
-              ),
-              code: JSON.stringify(
-                { postqueen: { url: mcpUrlWithKey } },
-                null,
-                2
-              ),
-            },
-            {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_warp_verify',
-                'Start the server in the list. Warp should discover her 11 tools.'
-              ),
-            },
-          ],
-        },
-        {
-          id: 'cline',
-          name: 'Cline',
-          glyph: 'Cl',
-          icon: '/icons/connections/cline.svg',
-          kind: 'MCP',
-          section: 'mcp',
-          short: t(
-            'conn_cline_short',
-            'Add PostQueen as a remote MCP server'
-          ),
-          intro: t(
-            'conn_cline_intro',
-            'Cline supports remote servers over streamable HTTP with an explicit type field.'
-          ),
-          prompts: defaultPrompts,
-          docs: [
-            {
-              label: t('conn_docs_cline', 'Cline MCP setup'),
-              href: `${DOCS}/mcp/clients/other-clients#cline`,
-            },
-          ],
-          steps: [
-            {
-              title: t('conn_cline_step_panel', 'Open MCP Servers'),
-              detail: t(
-                'conn_cline_step_panel_detail',
-                'In the Cline panel, open the MCP Servers icon, then the Remote Servers tab.'
-              ),
-            },
-            {
-              title: t('conn_cline_step_add', 'Add the remote server'),
-              detail: t(
-                'conn_cline_step_add_detail',
-                'Name: postqueen. Transport: Streamable HTTP. URL:'
-              ),
-              code: mcpUrlWithKey,
-            },
-            {
-              title: t('conn_cline_step_json', 'Or edit the config'),
-              code: JSON.stringify(
-                {
-                  mcpServers: {
-                    postqueen: {
-                      type: 'streamableHttp',
-                      url: mcpUrlWithKey,
-                      disabled: false,
-                      autoApprove: [],
-                    },
-                  },
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        },
-        {
-          id: 'windsurf',
-          name: 'Windsurf',
-          glyph: 'Ws',
-          icon: '/icons/connections/windsurf.svg',
-          kind: 'MCP',
-          section: 'mcp',
-          short: t(
-            'conn_windsurf_short',
-            'Point Cascade at the PostQueen MCP URL'
-          ),
-          intro: t(
-            'conn_windsurf_intro',
-            'Windsurf Cascade reads a remote MCP server URL from its config.'
-          ),
-          prompts: defaultPrompts,
-          docs: [
-            {
-              label: t('conn_docs_windsurf', 'Windsurf MCP setup'),
-              href: `${DOCS}/mcp/clients/other-clients#windsurf`,
-            },
-          ],
-          steps: [
-            {
-              title: t('conn_windsurf_step_config', 'Edit Cascade MCP config'),
-              detail: t(
-                'conn_windsurf_step_config_detail',
-                'Settings → Cascade → MCP Servers, or edit ~/.codeium/windsurf/mcp_config.json. Windsurf uses serverUrl, not url.'
-              ),
-              code: JSON.stringify(
-                {
-                  mcpServers: {
-                    postqueen: { serverUrl: mcpUrlWithKey },
-                  },
-                },
-                null,
-                2
-              ),
-            },
-            {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_windsurf_verify',
-                'Save, refresh the Cascade server list, then ask Cascade to list your PostQueen channels.'
-              ),
-            },
-          ],
-        },
         {
           id: 'other-mcp',
           name: t('conn_other_mcp_name', 'Any MCP client'),
           glyph: 'MCP',
-          icon: '/icons/connections/other-clients.svg',
+          icon: '/icons/connections/mcp.svg',
           kind: 'MCP',
           section: 'mcp',
           short: t(
@@ -1164,6 +1008,7 @@ export function buildConnectionsCatalog(
           id: 'n8n',
           name: 'n8n',
           glyph: 'n8',
+          icon: '/icons/connections/n8n.svg',
           kind: 'FLOW',
           section: 'automation',
           short: t(
@@ -1214,6 +1059,7 @@ export function buildConnectionsCatalog(
           id: 'zapier',
           name: 'Zapier',
           glyph: 'Zp',
+          icon: '/icons/connections/zapier.svg',
           kind: 'FLOW',
           section: 'automation',
           soon: true,
@@ -1275,6 +1121,7 @@ export function buildConnectionsCatalog(
           id: 'make',
           name: 'Make',
           glyph: 'Mk',
+          icon: '/icons/connections/make.svg',
           kind: 'FLOW',
           section: 'automation',
           soon: true,
