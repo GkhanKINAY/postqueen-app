@@ -238,8 +238,11 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
           accessToken,
           mediaGroup as any[],
           {
+            // Bot API 7.0 replaced `reply_to_message_id` with
+            // `reply_parameters`, and node-telegram-bot-api 1.x stopped
+            // accepting the old name. Same thread, new spelling.
             ...(replyToMessageId && i === 0
-              ? { reply_to_message_id: replyToMessageId }
+              ? { reply_parameters: { message_id: replyToMessageId } }
               : {}),
           }
         );
@@ -320,12 +323,21 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     try {
       const chatMember = await telegramBot.getChatMember(chatId, botId);
 
-      if (
-        chatMember.status === 'administrator' ||
-        chatMember.status === 'creator'
-      ) {
-        const permissions = chatMember.can_delete_messages;
-        return !!permissions; // Return true if bot can delete messages
+      // `ChatMember` is a union now and only its administrator arm carries
+      // `can_delete_messages`. It cannot be narrowed the usual way: the library
+      // types `status` as a bare `string` on every arm, so it is not a
+      // discriminant. Hence the explicit shape.
+      //
+      // The owner arm has no such field — the Bot API does not send one — so
+      // this has always answered false for a chat owner. Preserved rather than
+      // quietly changed here, but worth revisiting: an owner can always delete.
+      const member = chatMember as {
+        status: string;
+        can_delete_messages?: boolean;
+      };
+
+      if (member.status === 'administrator') {
+        return !!member.can_delete_messages;
       }
 
       return false;
