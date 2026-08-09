@@ -1008,6 +1008,7 @@ export function buildConnectionsCatalog(
           id: 'n8n',
           name: 'n8n',
           glyph: 'n8',
+          icon: '/icons/connections/n8n.svg',
           kind: 'FLOW',
           section: 'automation',
           short: t(
@@ -1058,6 +1059,7 @@ export function buildConnectionsCatalog(
           id: 'zapier',
           name: 'Zapier',
           glyph: 'Zp',
+          icon: '/icons/connections/zapier.svg',
           kind: 'FLOW',
           section: 'automation',
           soon: true,
@@ -1119,6 +1121,7 @@ export function buildConnectionsCatalog(
           id: 'make',
           name: 'Make',
           glyph: 'Mk',
+          icon: '/icons/connections/make.svg',
           kind: 'FLOW',
           section: 'automation',
           soon: true,
