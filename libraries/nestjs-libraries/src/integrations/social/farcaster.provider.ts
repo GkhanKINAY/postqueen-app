@@ -107,10 +107,13 @@ export class FarcasterProvider
 
     for (const channel of channels) {
       const data = await client.publishCast({
-        embeds:
-          firstPost?.media?.map((media) => ({
-            url: media.path,
-          })) || [],
+        // Cast because the SDK's generated `PostCastReqBodyEmbeds` demands
+        // `url`, `cast_id` *and* `castId` together. The Farcaster API accepts a
+        // url-only embed — it is an `anyOf` in their schema that the OpenAPI
+        // generator flattened into an all-required interface.
+        embeds: (firstPost?.media?.map((media) => ({
+          url: media.path,
+        })) || []) as any,
         signerUuid: accessToken,
         text: firstPost.message,
         ...(channel?.value?.id ? { channelId: channel?.value?.id } : {}),
@@ -149,10 +152,10 @@ export class FarcasterProvider
 
     for (const parentHash of parentIds) {
       const data = await client.publishCast({
-        embeds:
-          commentPost?.media?.map((media) => ({
-            url: media.path,
-          })) || [],
+        // Same cast as above: the generated type demands all three keys.
+        embeds: (commentPost?.media?.map((media) => ({
+          url: media.path,
+        })) || []) as any,
         signerUuid: accessToken,
         text: commentPost.message,
         parent: parentHash,

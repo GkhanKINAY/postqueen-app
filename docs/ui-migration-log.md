@@ -663,6 +663,37 @@ effect, and the baselines are contended across parallel sessions), the calendar'
 two-wave cold load (wants measurement first), and the `loops` collector's three
 documented blind spots.
 
+## Dependency vulnerabilities
+
+Nothing had ever scanned this project's dependencies. `pnpm audit` does not run
+here — it exhausts memory and is killed even with an 8 GB heap in a 10 GB
+container, so the failure was never a Node version problem, the graph is simply
+too large for it. Dependabot was off. The state was unknown, not clean.
+
+`osv-scanner` reads the lockfile directly and answers in seconds: **264 findings
+across 75 packages**, 17 of them direct. One was verified before acting on the
+number — GHSA-35jp-ww65-95wh, full MitM via prototype pollution in axios,
+affecting 1.0.0 to 1.16.0, and we were on 1.14.0.
+
+Most of it was a stale lockfile rather than versions anyone chose. Re-resolving
+inside the existing ranges closed **170**, moving no specifier in `package.json`
+— `pnpm update` wanted to rewrite 304 lines of them, which was reverted, because
+staying in step with upstream is what keeps cherry-picking cheap and the
+lockfile is the pin that matters.
+
+Three things broke, found by building rather than typechecking: the Neynar SDK
+tightened an embed type the Farcaster API does not actually require that way,
+and polotno 3.7 ships a re-export TypeScript cannot resolve through — pinned
+back to 3.0, since it carries no advisory and the bump was pure churn.
+
+**The scan is in CI now** (`dependency-scan.yml`), which is the part that lasts.
+It gates on findings that are *new* against `.github/osv-known.txt`: the 96 that
+remain each need a semver range moved and reviewed on its own, and several have
+no released fix at all. A check that failed on those would be permanently red,
+which is the same as no check. The script also reports accepted entries that
+have stopped appearing, so the list shrinks rather than becoming a place to
+sweep things.
+
 ## Upstream sync
 
 `gitroomhq/postiz-app`'s 42 post-fork commits, brought in over seven PRs (#38–#44).

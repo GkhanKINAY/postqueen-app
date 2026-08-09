@@ -1,0 +1,67 @@
+---
+# Scans the dependency tree for known vulnerabilities.
+#
+# `pnpm audit` cannot do this job here: it exhausts memory and is killed even
+# with an 8 GB heap in a 10 GB container, so nothing had ever scanned this
+# project's dependencies and 264 findings had accumulated unseen. osv-scanner
+# reads pnpm-lock.yaml directly, runs no JavaScript, and finishes in seconds.
+#
+# CodeQL (code-quality-analysis) scans code we wrote. This scans what we pulled
+# in. They are different questions and both need asking.
+name: "Dependency Scan"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - pnpm-lock.yaml
+      - package.json
+      - .github/workflows/dependency-scan.yml
+  pull_request:
+    paths:
+      - pnpm-lock.yaml
+      - package.json
+      - .github/workflows/dependency-scan.yml
+  schedule:
+    # Weekly, because a lockfile that has not changed can still become
+    # vulnerable the day an advisory is published against something in it.
+    - cron: '0 6 * * 1'
+
+jobs:
+  osv-scan:
+    name: Scan dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan the lockfile
+        # `|| true` and a separate gate below rather than letting the scanner's
+        # exit code fail the job: it exits non-zero for *any* finding, and 96
+        # are known and currently unfixable — several have no released fix at
+        # all (lodash's advisory names 4.18.0, which does not exist). Failing on
+        # those would make the check permanently red, which is the same as
+        # having no check.
+        run: |
+          docker run --rm -v "$PWD":/w -w /w \
+            ghcr.io/google/osv-scanner:latest \
+            scan source --lockfile=/w/pnpm-lock.yaml --format json \
+            > osv.json 2>/dev/null || true
+          test -s osv.json
+
+      - name: Compare against the known set
+        run: |
+          python3 .github/scripts/check-osv.py \
+            osv.json .github/osv-known.txt
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-report
+          path: osv.json
+          retention-days: 30
