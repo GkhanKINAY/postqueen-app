@@ -11,7 +11,7 @@ import { getPublicKey, Relay, finalizeEvent, SimplePool } from 'nostr-tools';
 
 import WebSocket from 'ws';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
 // @ts-ignore
 global.WebSocket = WebSocket;

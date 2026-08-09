@@ -3,7 +3,7 @@ import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/au
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
 import dayjs from 'dayjs';
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { AutoPost, Integration, Organization } from '@prisma/client';
+import { AutoPost, Integration, Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { BaseMessage } from '@langchain/core/messages';
 import striptags from 'striptags';
 import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';

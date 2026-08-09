@@ -11,7 +11,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { TumblrDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/tumblr.dto';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import FormDataUpload from 'form-data';
 import { lookup } from 'mime-types';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';

@@ -8,7 +8,7 @@ import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { Organization, ShortLinkPreference, User } from '@prisma/client';
+import { Organization, ShortLinkPreference, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
 

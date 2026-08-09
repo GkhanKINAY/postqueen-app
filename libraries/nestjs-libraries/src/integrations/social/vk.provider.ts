@@ -10,7 +10,7 @@ import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.ab
 import { createHash, randomBytes } from 'crypto';
 import FormDataNew from 'form-data';
 import mime from 'mime-types';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 export class VkProvider extends SocialAbstract implements SocialProvider {

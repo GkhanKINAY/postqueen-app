@@ -55,6 +55,10 @@ const eslintConfig = [
       // The design handoff prototype. Git-ignored, not ours, and one file in it
       // is ~800 KB.
       'design/**',
+      // The Prisma client. Since Prisma 7 this is TypeScript source generated
+      // into the tree rather than a package in node_modules, so it is inside
+      // every lint glob unless it is named here.
+      'libraries/nestjs-libraries/src/database/prisma/generated/**',
       // `tsc --build` output for the wallets package. It is committed rather
       // than gitignored, but it is still generated — 35 of the 46
       // `no-require-imports` errors on the first run came from this one file.

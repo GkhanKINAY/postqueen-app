@@ -23,7 +23,7 @@ import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.man
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
-import { Provider } from '@prisma/client';
+import { Provider } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import * as Sentry from '@sentry/nestjs';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';

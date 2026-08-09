@@ -12,7 +12,7 @@ import React, {
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
-import { Media } from '@prisma/client';
+import type { Media } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';

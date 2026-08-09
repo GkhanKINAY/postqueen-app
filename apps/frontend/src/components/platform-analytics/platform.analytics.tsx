@@ -19,7 +19,7 @@ import {
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
-import { Integration } from '@prisma/client';
+import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 

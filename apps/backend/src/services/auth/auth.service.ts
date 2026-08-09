@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomInt } from 'crypto';
-import { OtpPurpose, Provider, User } from '@prisma/client';
+import { OtpPurpose, Provider, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';

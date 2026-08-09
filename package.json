@@ -32,12 +32,12 @@
     "start:prod:frontend": "pnpm --filter ./apps/frontend run start",
     "dev:docker": "docker compose -f ./docker-compose.dev.yaml up -d",
     "commands:build:development": "pnpm --filter ./apps/commands run build",
-    "prisma-generate": "pnpm dlx prisma@6.5.0 generate --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma",
-    "prisma-db-push": "pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma",
-    "prisma-migrate-deploy": "pnpm dlx prisma@6.5.0 migrate deploy --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma",
+    "prisma-generate": "prisma generate",
+    "prisma-db-push": "prisma db push --accept-data-loss",
+    "prisma-migrate-deploy": "prisma migrate deploy",
     "prisma-apply": "case \"${PRISMA_MIGRATE:-}\" in '' | false | False | FALSE | 0) pnpm run prisma-db-push ;; *) pnpm run prisma-migrate-deploy ;; esac",
-    "prisma-db-pull": "pnpm dlx prisma@6.5.0 db pull --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma",
-    "prisma-reset": "cd ./libraries/nestjs-libraries/src/database/prisma && pnpm dlx prisma@6.5.0 db push --force-reset && pnpx prisma@6.5.0 db push",
+    "prisma-db-pull": "prisma db pull",
+    "prisma-reset": "prisma db push --force-reset && prisma db push",
     "docker-build": "./var/docker/docker-build.sh",
     "docker-create": "./var/docker/docker-create.sh",
     "postinstall": "pnpm run prisma-generate"
@@ -83,7 +83,8 @@
     "@neynar/react": "^1.2.22",
     "@pigment-css/react": "^0.0.30",
     "@postqueen/wallets": "workspace:*",
-    "@prisma/client": "6.5.0",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "7.9.1",
     "@sentry/nestjs": "^10.69.0",
     "@sentry/nextjs": "^10.69.0",
     "@sentry/profiling-node": "^10.69.0",
@@ -278,7 +279,7 @@
     "nodemon": "^3.1.14",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
-    "prisma": "6.5.0",
+    "prisma": "7.9.1",
     "react-refresh": "^0.18.0",
     "tsup": "^8.5.1",
     "typescript": "5.9.3",
@@ -306,7 +307,8 @@
       "postcss": "^8.5.23",
       "shell-quote": "^1.8.4",
       "protobufjs": "^7.5.5",
-      "handlebars": "^4.7.9"
+      "handlebars": "^4.7.9",
+      "pkg-types": "^2.3.1"
     },
     "onlyBuiltDependencies": [
       "bcrypt"

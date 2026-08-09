@@ -35,7 +35,7 @@ import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useDrag, useDrop } from 'react-dnd';
-import { Integration, Post, State, Tags } from '@prisma/client';
+import type { Integration, Post, State, Tags } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';

@@ -6,7 +6,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { Provider } from '@prisma/client';
+import type { Provider } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
 export class CreateOrgUserDto {
   @IsString()

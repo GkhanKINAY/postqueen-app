@@ -8,7 +8,7 @@ import {
   AbilityPolicy,
   CHECK_POLICIES_KEY,
 } from '@gitroom/backend/services/auth/permissions/permissions.ability';
-import { Organization } from '@prisma/client';
+import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Request } from 'express';
 import { SubscriptionException } from './permission.exception.class';
 

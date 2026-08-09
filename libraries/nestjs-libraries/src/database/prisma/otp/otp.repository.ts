@@ -1,6 +1,6 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { OtpPurpose } from '@prisma/client';
+import { OtpPurpose } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
 @Injectable()
 export class OtpRepository {

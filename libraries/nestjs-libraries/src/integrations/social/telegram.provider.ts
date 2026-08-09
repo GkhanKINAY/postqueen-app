@@ -10,7 +10,7 @@ import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.ab
 //@ts-ignore
 import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import striptags from 'striptags';
 
 const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
