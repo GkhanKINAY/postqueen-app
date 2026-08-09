@@ -74,7 +74,6 @@ apps/**/*.js
 apps/**/*.js.map
 libraries/**/*.js
 libraries/**/*.js.map
-!/jest.preset.js
 !apps/frontend/next.config.js
 !libraries/postqueen-wallets/lib/**/*.js
 
