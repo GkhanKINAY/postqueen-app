@@ -280,6 +280,10 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       await R2.send(
         new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
       );
+      // The object is gone, so the ownership record has nothing left to guard.
+      // The day-long expiry would clear it eventually; leaving it until then
+      // just makes the two stores disagree.
+      await forgetUploadOwner(key);
       return res.status(400).json({ message: 'Unsupported file type.' });
     }
     const expectedMime = ALLOWED_EXT_TO_MIME[safeExt];
@@ -303,6 +307,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       await R2.send(
         new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
       );
+      await forgetUploadOwner(key);
       return res
         .status(400)
         .json({ message: 'File contents do not match declared type.' });

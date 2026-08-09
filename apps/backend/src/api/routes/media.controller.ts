@@ -184,7 +184,14 @@ export class MediaController {
     @Param('endpoint') endpoint: string
   ) {
     const upload = await handleR2Upload(endpoint, req, res, org.id);
-    if (endpoint !== 'complete-multipart-upload') {
+
+    // `res.headersSent` because several branches inside the handler answer the
+    // request themselves and return the Response object — an unsupported file
+    // type, a body that does not match its declared type, and now a key this
+    // organization never created. Reading `.Location` off that answered a 403
+    // or 400 correctly and then threw a TypeError on top of it, which Nest
+    // turned into "Cannot set headers after they are sent".
+    if (endpoint !== 'complete-multipart-upload' || res.headersSent) {
       return upload;
     }
 
