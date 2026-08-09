@@ -85,6 +85,7 @@ export class AuthMiddleware implements NestMiddleware {
 
           setSentryUserContext({
             userId: user.id,
+            email: user.email,
             orgId: loadImpersonate.organization.id,
             paymentId: loadImpersonate.organization.paymentId,
           });
@@ -132,6 +133,7 @@ export class AuthMiddleware implements NestMiddleware {
 
       setSentryUserContext({
         userId: user.id,
+        email: user.email,
         orgId: setOrg.id,
         paymentId: setOrg.paymentId,
       });
