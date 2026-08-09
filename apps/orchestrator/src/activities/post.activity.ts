@@ -85,12 +85,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v106, matching posts.service.ts. The recovery sweep starting the old
+      // v107, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV106', {
+        .workflow.signalWithStart('postWorkflowV107', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -220,6 +220,26 @@ export class PostActivity {
 
   @ActivityMethod()
   async postSocial(integration: Integration, posts: Post[]) {
+    return this.postSocialInternal(integration, posts, false);
+  }
+
+  // Used by postWorkflowV107 and up: providers that implement `postPending`
+  // return a `pending` response the workflow resolves via checkPostStatus /
+  // finalizePost. Older workflow versions keep calling `postSocial` and get
+  // the old blocking behaviour.
+  @ActivityMethod()
+  async postSocialPending(integration: Integration, posts: Post[]) {
+    return this.postSocialInternal(integration, posts, true);
+  }
+
+  private async postSocialInternal(
+    integration: Integration,
+    posts: Post[],
+    allowPending: boolean
+  ) {
+    // `isBillingEnabled()` rather than upstream's bare STRIPE_SECRET_KEY: a
+    // secret key with no publishable key is a half-configured install, and
+    // treating it as "billing on" made the worker refuse every scheduled post.
     if (isBillingEnabled()) {
       const subscription = await this._subscriptionService.getSubscription(
         integration.organizationId
@@ -239,37 +259,47 @@ export class PostActivity {
       posts
     );
 
-    const postNow = await getIntegration.post(
-      integration.internalId,
-      integration.token,
-      await Promise.all(
-        (newPosts || []).map(async (p) => ({
-          id: p.id,
-          message: stripHtmlValidation(
-            getIntegration.editor,
-            p.content,
-            true,
-            false,
-            !/<\/?[a-z][\s\S]*>/i.test(p.content),
-            getIntegration.mentionFormat
-          ),
-          settings: JSON.parse(p.settings || '{}'),
-          media: await this._postService.updateMedia(
-            p.id,
-            JSON.parse(p.image || '[]'),
-            getIntegration?.convertToJPEG || false
-          ),
-        }))
-      ),
-      integration
+    const mappedPosts = await Promise.all(
+      (newPosts || []).map(async (p) => ({
+        id: p.id,
+        message: stripHtmlValidation(
+          getIntegration.editor,
+          p.content,
+          true,
+          false,
+          !/<\/?[a-z][\s\S]*>/i.test(p.content),
+          getIntegration.mentionFormat
+        ),
+        settings: JSON.parse(p.settings || '{}'),
+        media: await this._postService.updateMedia(
+          p.id,
+          JSON.parse(p.image || '[]'),
+          getIntegration?.convertToJPEG || false
+        ),
+      }))
     );
+
+
+    const postNow =
+      allowPending && getIntegration.postPending
+        ? await getIntegration.postPending(
+            integration.internalId,
+            integration.token,
+            mappedPosts,
+            integration
+          )
+        : await getIntegration.post(
+            integration.internalId,
+            integration.token,
+            mappedPosts,
+            integration
+          );
 
     // Everything past this point runs *after* the post is live on the
     // customer's timeline, so nothing here may fail the activity. Temporal
     // retries a failed activity, and a retry of this one publishes the post a
-    // second time — `postSocial` has no idempotency guard and never checks
-    // `releaseId` before calling the provider. A streak counter is not worth a
-    // duplicate post, so its failure is swallowed deliberately.
+    // second time. A streak counter is not worth a duplicate post, so its
+    // failure is swallowed deliberately.
     try {
       await this._temporalService.client
         .getRawClient()
@@ -293,6 +323,32 @@ export class PostActivity {
     }
 
     return postNow;
+  }
+
+  @ActivityMethod()
+  async checkPostStatus(integration: Integration, pendingData: any) {
+    const getIntegration = this._integrationManager.getSocialIntegration(
+      integration.providerIdentifier
+    );
+
+    return getIntegration.checkPostStatus(
+      integration.token,
+      pendingData,
+      integration
+    );
+  }
+
+  @ActivityMethod()
+  async finalizePost(integration: Integration, pendingData: any) {
+    const getIntegration = this._integrationManager.getSocialIntegration(
+      integration.providerIdentifier
+    );
+
+    return getIntegration.finalizePost(
+      integration.token,
+      pendingData,
+      integration
+    );
   }
 
   @ActivityMethod()
