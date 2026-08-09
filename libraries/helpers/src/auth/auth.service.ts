@@ -101,6 +101,31 @@ export class AuthService {
     return verify(token, process.env.JWT_SECRET!);
   }
 
+  /**
+   * Verify a token that must NOT be interchangeable with a session cookie.
+   *
+   * `signJWT` sets no audience, no issuer and no expiry, so every token this
+   * app signs with `JWT_SECRET` is accepted by every `verifyJWT` in it —
+   * including the session cookie, which is the whole User row signed with that
+   * same key. Any unauthenticated endpoint that treats "signed" as "authorized"
+   * therefore accepts a logged-in user's own cookie as its credential.
+   *
+   * Separating the key is what makes that structurally impossible rather than
+   * merely unlikely. Returns null instead of throwing when the secret is unset,
+   * so a caller can refuse the route outright on an install that never
+   * configured it.
+   */
+  static verifyJWTWithSecret(token: string, secret: string | undefined) {
+    if (!secret) {
+      return null;
+    }
+    try {
+      return verify(token, secret);
+    } catch {
+      return null;
+    }
+  }
+
   static fixedEncryption(value: string) {
     return encrypt_legacy_using_IV(value);
   }

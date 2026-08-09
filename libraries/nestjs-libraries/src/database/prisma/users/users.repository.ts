@@ -101,6 +101,16 @@ export class UsersRepository {
   }
 
   getUserById(id: string) {
+    // Prisma drops an `undefined` filter rather than matching nothing, so
+    // `where: { id: undefined }` is an unfiltered query that returns whichever
+    // user happens to be first. Callers reach this with metadata read straight
+    // off a Stripe event (`stripe.service.ts:661`, `:1197`), and invoice events
+    // are deliberately exempt from the service-tag filter — so an invoice from
+    // any other integration sharing the Stripe account could attribute a
+    // purchase to a stranger. Harmless at one user; not a property to keep.
+    if (!id) {
+      return null;
+    }
     return this._user.model.user.findFirst({
       where: {
         id,

@@ -1282,6 +1282,7 @@ privacy_policy
 profile_picture
 prompt
 provider
+provider_options_failed
 provider_unlocks_after_your_trial
 public_to_everyone
 publication_date

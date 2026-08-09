@@ -31,6 +31,7 @@ import {
 } from '@gitroom/frontend/components/layout/theme';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { isAiEnabled } from '@gitroom/helpers/utils/ai.enabled';
+import { isEmailEnabled } from '@gitroom/helpers/utils/email.enabled';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 function metadataBaseUrl(): URL {
@@ -124,6 +125,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           repositoryUrl={process.env.REPOSITORY_URL || ''}
           billingEnabled={isBillingEnabled()}
           aiEnabled={isAiEnabled()}
+          emailEnabled={isEmailEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}

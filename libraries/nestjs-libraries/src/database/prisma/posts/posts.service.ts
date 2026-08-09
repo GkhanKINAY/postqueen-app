@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   ValidationPipe,
 } from '@nestjs/common';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
@@ -760,7 +761,7 @@ export class PostsService {
     try {
       await this._temporalService.client
         .getRawClient()
-        ?.workflow.start('postWorkflowV105', {
+        ?.workflow.start('postWorkflowV106', {
           workflowId: `post_${postId}`,
           taskQueue: 'main',
           workflowIdConflictPolicy: 'TERMINATE_EXISTING',
@@ -782,7 +783,19 @@ export class PostsService {
             },
           ]),
         });
-    } catch (err) {}
+    } catch (err) {
+      // Rethrown, not swallowed. This used to be `catch (err) {}`, which made
+      // the failure unreportable *by construction*: `createPost` attaches a
+      // `.catch` that reports to Sentry and logs, and that handler could never
+      // run because this promise could never reject. An unreachable Temporal
+      // therefore looked exactly like a successful schedule — HTTP 200, a row
+      // in QUEUE, and nothing anywhere to say the post would never publish.
+      //
+      // The terminate sweep above keeps its empty catches on purpose: failing
+      // to find or kill a previous execution is normal, and the start below
+      // uses TERMINATE_EXISTING anyway.
+      throw err;
+    }
   }
 
   /**
@@ -1049,7 +1062,20 @@ export class PostsService {
         orgId,
         state
       );
-    } catch (err) {}
+    } catch (err) {
+      // The row has already moved to QUEUE, so a start failure here means a
+      // post the user believes is scheduled with nothing scheduled to publish
+      // it. Not fatal to the request — the hourly sweep can still pick it up
+      // while it is inside the two-day window — but it must not be invisible.
+      Sentry.captureException(err, {
+        tags: { area: 'post_workflow_start', path: 'changePostStatus' },
+        extra: { postId: id, orgId },
+      });
+      Logger.error(
+        `Could not start the publishing workflow for post ${id} after a status change`,
+        err as Error
+      );
+    }
 
     return { id, state };
   }
@@ -1061,6 +1087,22 @@ export class PostsService {
     action: 'schedule' | 'update' = 'schedule'
   ) {
     const getPostById = await this._postRepository.getPostById(id, orgId);
+
+    // A `schedule` here clears releaseId/releaseURL, puts the row back in QUEUE
+    // and starts the workflow — so on an already-published post it publishes the
+    // same content to the customer's audience a second time. `changePostStatus`
+    // right above refuses exactly this; `changeDate` did not, and the only thing
+    // standing in the way was a confirmation modal in the calendar. A stale tab,
+    // a double drop, or any direct API call went straight through, and if the
+    // new date was in the past the workflow slept zero and posted immediately.
+    //
+    // `update` is left alone: it moves the date without touching state, which is
+    // how a published post's record gets corrected.
+    if (action === 'schedule' && getPostById?.state === 'PUBLISHED') {
+      throw new BadRequestException(
+        'This post has already been published. Duplicate it instead of rescheduling.'
+      );
+    }
 
     // schedule: Set status to QUEUE and change date (reschedule the post)
     // update: Just change the date without changing the status
@@ -1084,7 +1126,18 @@ export class PostsService {
           orgId,
           'QUEUE'
         );
-      } catch (err) {}
+      } catch (err) {
+        // Same reasoning as changePostStatus: the row says QUEUE, so a failed
+        // start is a post nobody is going to publish. Report it.
+        Sentry.captureException(err, {
+          tags: { area: 'post_workflow_start', path: 'changeDate' },
+          extra: { postId: id, orgId },
+        });
+        Logger.error(
+          `Could not start the publishing workflow for post ${id} after a date change`,
+          err as Error
+        );
+      }
     }
 
     return newDate;

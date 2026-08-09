@@ -1069,5 +1069,7 @@
   "billing_not_configured_title": "Billing is not set up",
   "billing_not_configured": "This installation has no payment provider configured, so there is nothing to subscribe to. Every feature is available without a plan.",
   "billing_still_processing_title": "Payment still processing",
-  "billing_still_processing": "Your payment is taking longer than usual to confirm. Your card has not been charged twice — if your plan does not appear in a few minutes, contact support and we will sort it out."
+  "billing_still_processing": "Your payment is taking longer than usual to confirm. Your card has not been charged twice — if your plan does not appear in a few minutes, contact support and we will sort it out.",
+  "provider_options_failed": "We could not load the options for this channel.",
+  "try_again": "Try again"
 }

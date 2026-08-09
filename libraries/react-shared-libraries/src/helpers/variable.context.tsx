@@ -6,6 +6,13 @@ interface VariableContextInterface {
   billingEnabled: boolean;
   /** OpenAI key present — CopilotKit and CopilotTextarea are safe to mount. */
   aiEnabled: boolean;
+  /**
+   * Mail can actually be delivered. `/auth/forgot` always answers success so it
+   * cannot be used to discover which addresses are registered, which means the
+   * screen can never learn from the response that nothing was sent — so the
+   * offer has to be withheld up front instead.
+   */
+  emailEnabled: boolean;
   passwordlessLogin: boolean;
   turnstileSiteKey: string;
   isChatBase: boolean;
@@ -80,6 +87,7 @@ const VariableContext = createContext({
   stripeClient: '',
   billingEnabled: false,
   aiEnabled: false,
+  emailEnabled: false,
   passwordlessLogin: false,
   turnstileSiteKey: '',
   isGeneral: true,

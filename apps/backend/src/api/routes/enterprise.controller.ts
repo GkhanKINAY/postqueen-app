@@ -7,6 +7,26 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 
+/**
+ * White-label / reseller bootstrap. Unauthenticated by design: the caller is
+ * another system, not a browser session.
+ *
+ * Every route here used to authorize on `AuthService.verifyJWT`, which checks
+ * only that the blob is signed with `JWT_SECRET` — and the session cookie is
+ * exactly that: the whole User row signed with that same key, with no expiry,
+ * audience or purpose claim. `POST /enterprise/create-user` destructures
+ * `{id, name, saasName, email}`, three of which a session token carries, and
+ * answers with an organization on a **lifetime AGENCY subscription with a
+ * million channels plus its API key**. On a billing-enabled install that meant
+ * anyone who could register a free account could mint themselves an unlimited
+ * paid one by posting their own cookie back at this endpoint.
+ *
+ * Nothing in this repository calls these routes, and production had never
+ * received a request for one. They now require `ENTERPRISE_SECRET`, a key
+ * distinct from `JWT_SECRET`, so a session token is not merely rejected but
+ * structurally unusable here. Unset — which is every install that does not run
+ * a reseller integration — the routes refuse outright.
+ */
 @ApiTags('Enterprise')
 @Controller('/enterprise')
 export class EnterpriseController {
@@ -17,15 +37,28 @@ export class EnterpriseController {
     private _postsService: PostsService
   ) {}
 
+  private verifyEnterprise<T>(params: string): T | null {
+    return AuthService.verifyJWTWithSecret(
+      params,
+      process.env.ENTERPRISE_SECRET
+    ) as T | null;
+  }
+
   @Post('/create-user')
   async createUser(@Body('params') params: string) {
     try {
-      const { id, name, saasName, email } = AuthService.verifyJWT(params) as {
+      const payload = this.verifyEnterprise<{
         id: string;
         name: string;
         email: string;
         saasName: string;
-      };
+      }>(params);
+
+      if (!payload?.id) {
+        return { success: false };
+      }
+
+      const { id, name, saasName, email } = payload;
 
       try {
         return await this._organizationService.createMaxUser(
@@ -45,13 +78,13 @@ export class EnterpriseController {
   @Post('/url')
   async redirectParams(@Body('params') params: string) {
     try {
-      const load = AuthService.verifyJWT(params) as {
+      const load = this.verifyEnterprise<{
         redirectUrl: string;
         apiKey: string;
         refreshId?: string;
         provider: string;
         webhookUrl: string;
-      };
+      }>(params);
 
       if (!load || !load.redirectUrl || !load.apiKey || !load.provider) {
         return;
@@ -94,10 +127,10 @@ export class EnterpriseController {
   @Post('/delete-channel')
   async deleteChannel(@Body('params') params: string) {
     try {
-      const load = AuthService.verifyJWT(params) as {
+      const load = this.verifyEnterprise<{
         apiKey: string;
         id: string;
-      };
+      }>(params);
 
       if (!load || !load.apiKey || !load.id) {
         return { success: false };

@@ -90,9 +90,26 @@ export class OrganizationService {
   async inviteTeamMember(org: Organization, user: User, body: AddTeamMemberDto) {
     const timeLimit = dayjs().add(2, 'day').format('YYYY-MM-DD HH:mm:ss');
     const id = makeId(5);
+    // The three fields the invite actually needs, named rather than spread.
+    // `{ ...body }` copied whatever else the caller sent: the global
+    // ValidationPipe runs with `transform: true` and no `whitelist`, so
+    // undeclared keys survive into the DTO instance. This endpoint returns the
+    // signed URL in its response even when `sendEmail` is false, which turned
+    // it into a way for any org admin to obtain a token signed with
+    // `JWT_SECRET` carrying claims of their choosing — and several
+    // unauthenticated endpoints in this app authorize on nothing more than
+    // "signed with JWT_SECRET". `orgId` and `id` being written after the spread
+    // is what kept that from being cross-tenant; that is a narrow margin to
+    // rely on.
     const url =
       process.env.FRONTEND_URL +
-      `/?org=${AuthService.signJWT({ ...body, orgId: org.id, timeLimit, id })}`;
+      `/?org=${AuthService.signJWT({
+        email: body.email,
+        role: body.role,
+        orgId: org.id,
+        timeLimit,
+        id,
+      })}`;
     if (body.sendEmail) {
       const inviter = user.name
         ? `${user.name} (${user.email})`

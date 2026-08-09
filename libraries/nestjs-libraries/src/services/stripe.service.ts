@@ -662,7 +662,10 @@ export class StripeService {
 
     try {
       await stripe.customers.update(customer, {
-        email: user.email.indexOf('@') > -1 ? user.email : `${user.email}@no-reply.invalid`,
+        email:
+          (user?.email ?? '').indexOf('@') > -1
+            ? user!.email
+            : `${user?.email}@no-reply.invalid`,
         ...(body.dub
           ? {
               metadata: {
@@ -1228,11 +1231,20 @@ export class StripeService {
       return { ok: true };
     }
 
+    // `type` defaults to 'success', and sendEmailsToOrg then skips anyone with
+    // `sendSuccessEmails: false` — so a customer who had turned success emails
+    // off got no email at all about a failed renewal, and the in-app entry was
+    // styled as good news. 'info' is the right class: it is neither, and it is
+    // the one type the preference filter always lets through. Losing your
+    // subscription because a notice was filed as a success is not a preference
+    // anyone expressed.
     await this._notificationService.inAppNotification(
       org.id,
       'Payment failed',
       "We could not charge your card for PostQueen. Update your payment method from Billing and we'll try again — nothing is cancelled yet.",
-      true
+      true,
+      false,
+      'info'
     );
 
     return { ok: true };
