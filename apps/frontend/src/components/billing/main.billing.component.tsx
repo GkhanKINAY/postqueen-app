@@ -213,7 +213,14 @@ const BillingCancelDialog: FC<{
       // the user they had the coupon and closed the cancel flow as `applied` —
       // so they got neither the discount nor the cancellation.
       // `applyLifetimeRetention` just below already checks `res?.ok`.
-      const res = await fetch('/billing/apply-discount', { method: 'POST' });
+      //
+      // The HTTP status was not enough on its own: the endpoint answered 200
+      // with an empty body when it applied nothing (eligibility can change
+      // between the check and the apply). It now reports `{ ok }`, so read that
+      // rather than trusting the status.
+      const res = await (
+        await fetch('/billing/apply-discount', { method: 'POST' })
+      ).json();
       if (!res?.ok) {
         toaster.show(
           t('something_went_wrong', 'Something went wrong'),

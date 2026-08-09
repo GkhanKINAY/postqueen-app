@@ -226,6 +226,7 @@ billing_checkout
 billing_checkout_load_failed
 billing_checkout_unavailable
 billing_choose_plan
+billing_company_details
 billing_complete_payment_details
 billing_coupon_applied
 billing_coupon_expires
@@ -302,6 +303,7 @@ billing_subscription_ended
 billing_subscription_ended_on
 billing_switch
 billing_switch_to_yearly
+billing_tax
 billing_then
 billing_then_after_trial_short
 billing_trial_bar_loading

@@ -31,6 +31,243 @@ the check: an uncommitted one would reseed itself on every CI run and guard noth
 
 ## Log
 
+**Stripe finalize pass: what turning tax on broke, and what the webhook hardening
+got wrong.** A review of the pass below found real defects *in that pass*. They are
+listed here because the mistakes are more instructive than the fixes.
+
+*Tax had to be shown.* Prices are `tax_behavior: 'exclusive'`, so with a registration
+in place an EU customer's total went up while the order summary still listed only the
+plan price — a `$49.00` line above a `$60.76` total with nothing in between. The code's
+own comment beside the trial-credit line already argues the point: *"one number that
+contradicts the price above it reads as a mistake."* `PriceBreakdown` now renders
+`checkout.total.taxExclusive` **always, including at zero**, because `Tax $0.00` tells
+an American customer the tax was considered and does not apply, whereas an absent line
+next to a higher total reads as arithmetic gone wrong. Verified in a browser against a
+live Custom Checkout session, reading the exact field the component renders: EE consumer
+`Tax $11.76 / Due $60.76`, EU business with a VAT number `Tax $0.00 / Due $49.00`
+(reverse charge), US `Tax $0.00 / Due $49.00`. Tax is zero until Checkout knows the
+billing address — it cannot be computed without one — so the line comes alive as the
+address element is filled.
+
+*The founding charge collected no tax at all, on the path everyone takes.*
+`captureFoundingLifetimeIfDue` and `applyLifetimeRetentionOffer` charged through a bare
+`paymentIntents.create`, and **a PaymentIntent has no `automatic_tax`** — the parameter
+does not exist on it. While the account held no registration this was invisible, since
+everything computed to zero. With one, the same $49 product was taxed through Checkout
+and untaxed here, decided only by `deferCharge = isTrailing || allowTrial` — and every
+organization is created with both true, so essentially *every* founding purchase took
+the untaxed path. Both now bill through an Invoice, which also gives the customer the
+document that path never produced. Tested end to end: EE consumer pays $60.76 with an
+invoice PDF, a retry on the same idempotency key produces no second invoice, an
+unrelated pending invoice item is **not** swept in (`pending_invoice_items_behavior:
+'exclude'`), and a VAT-registered business is zero-rated at $49.00.
+
+That test caught a bug no type-check could: `invoices.create` without an explicit
+`currency` inherits the **account** default, which is EUR here, and Stripe then rejects
+a USD line item with *"You cannot combine currencies on a single invoice."* The old
+PaymentIntent set currency per charge, so nothing had ever surfaced the mismatch.
+
+*The webhook dedupe added below was wrong in three ways.*
+- `claimStripeEvent` caught **every** error and returned "already processed", which the
+  controller answered with 200. A momentary database problem therefore told Stripe the
+  event was delivered and it was never retried — the precise failure the dedupe was
+  written to prevent, now happening on the *first* delivery. Only `P2002` is caught now.
+- Two handlers `return`ed a promise without `await`ing it, so their rejections landed
+  outside the `try` and the claim was never released. Harmless before; with the dedupe
+  it stranded the event permanently. The switch now sits in an awaited inner function.
+- A claim that found an in-flight row answered 200, letting Stripe mark an event
+  delivered while the first attempt could still fail. It now 409s, and the row carries
+  `completedAt` so a claim can tell finished from in-progress and take over a crashed
+  attempt once it goes stale. Seven behaviours verified against real Postgres, including
+  that a non-`P2002` error propagates instead of masquerading as a duplicate.
+
+*Revoking was keyed by customer, and excluded the wrong thing.* `hasEntitlingSubscription`
+skipped the subscription that raised the event, which blinds it to that subscription's
+**live** status — the one status worth reading. Stripe promises no ordering, so a
+subscription that went `paused` then `active` can deliver `paused` last, and the
+exclusion would revoke a customer who is active right now. The exclusion is gone; both
+cases are answered by reading every subscription's current state. The terminal check
+also moved above the metadata and card guards: it used to fire a $1 off-session
+authorization against the card of the very customer being cut off, and a subscription
+with unusable metadata could never be revoked at all.
+
+*Two more revoke bugs.* `charge.dispute.created` also fires for retrieval requests and
+fraud warnings, where no money has moved — those suspended a paying customer and told
+them their bank had disputed a payment that was never disputed; `warning_*` statuses are
+now ignored. And the full-refund test compared `amount_refunded` to `amount`, which is
+wrong for a partially-captured charge; `charge.refunded` is Stripe's own flag. A refund
+that does revoke now says so, instead of silently taking the plan away.
+
+*100%-off codes granted nothing.* A fully discounted session completes as
+`no_payment_required`, which the new `payment_status === 'paid'` guard silently dropped —
+so a deliberate giveaway would have taken the customer to a success page and given them
+nothing. It is grantable now and logged, because a promotion code only exists if someone
+created it. Note Stripe scopes promotion codes to products, not to a session: a code
+meant for subscriptions can still be typed into the founding checkout.
+
+*Cancel-flow coupon bugs, found while auditing coupons end to end.*
+`POST /billing/apply-discount` 500'd whenever `STRIPE_DISCOUNT_ID` named a coupon that
+did not exist — and coupon ids are per-mode, so the id that works in test is absent in
+live, making this a guaranteed break on the first real cancel. `checkDiscount` now
+retrieves the coupon instead of merely checking the env var is non-empty. The endpoint
+also discarded its own result, answering 200 with an empty body when it had applied
+nothing; the dialog then told the customer *"50% discount applied successfully"* and
+closed as `applied`, so they got neither the discount nor the cancellation. It returns
+`{ ok }` now, like `apply-lifetime-retention` beside it. Both it and `check-discount`
+gained the `!customer` guard `getActiveDiscount` always had — without it an org that
+never reached checkout 500'd on the Billing screen. Separately,
+`findAutoApplyPromotionCode` never expanded `promotion.coupon`, so the coupon-level
+`autoapply` metadata and the `redeem_by` check were dead code. And the admin coupon
+stamped `metadata.service: 'gitroom'` — the last such literal in the repo, breaking the
+invariant documented on `SUBSCRIPTION_SERVICE_TAG` and hiding admin coupons from any
+report filtered on it.
+
+*The setup script certified the misconfiguration it exists to fix.* Its "already
+registered" check compared only `country_options[cc].type`, so an EE registration on the
+`standard` place-of-supply scheme — domestic sales only, the thing being corrected —
+reported `SKIP — already active`. It compares the scheme now. Its webhook update also
+sent `enabled_events` wholesale, silently unsubscribing anything else on that endpoint
+while reporting it had "added" events; it unions instead.
+
+*Still open, deliberately:* subscriptions created before the tax registration inherit
+`automatic_tax` from their birth and will keep proration-invoicing untaxed, with no
+repair path in code — those need fixing in Stripe one at a time. `getActiveDiscount`
+reports only `percent_off`, so admin `amount_off` coupons never show on the Billing
+banner. `prorate` and `getCouponInfo` now return tax-inclusive totals next to ex-VAT
+prices from `pricing.ts`, so two different bases sit on the same screen. And
+`charge.dispute.closed` is unhandled: winning a chargeback does not restore access.
+
+**Stripe: made the account and the webhook actually safe to sell through.** Billing
+correctness, no UI. `i18n`, `api`, `routes`, `gates` and `loops` are all unchanged —
+no new endpoint, page, key or gate. One additive Prisma migration:
+`20260809210000_stripe_event_dedupe`.
+
+*Tax was calculating nothing.* `automatic_tax` has been on all along, but the account
+held **zero tax registrations**, and Stripe will not charge tax where you are not
+registered — so every invoice, everywhere, carried $0.00 tax. The seller's own VAT
+number was also absent, which makes an EU B2B invoice invalid. Both are now set, and
+the registration uses the `small_seller` place-of-supply scheme, not `standard`:
+`standard` taxes only domestic sales, while under the EU's EUR 10 000/year threshold
+the seller's own rate applies **across the EU**. Verified with the Tax Calculations
+API on a $49 line: EE consumer 24%, DE consumer 24% (Estonian rate, the threshold
+regime), DE business with a VAT number `reverse_charge` 0%, US `not_collecting` 0%.
+**EU consumers now pay more than the listed price** — correct, and a visible change.
+
+*Entitlement could outlive payment, three ways.*
+- `updateSubscription` stopped re-granting on terminal statuses but never revoked, so
+  with Stripe's dunning set to "mark unpaid" — which sends no
+  `customer.subscription.deleted` — a customer kept a paid tier for free, permanently.
+  It now revokes on `unpaid` / `paused` / `incomplete_expired`.
+- `charge.dispute.created` and `charge.refunded` were not handled at all: a chargeback
+  cost the payment, the bank's fee, and the plan stayed on.
+- The lifetime grant fired on `checkout.session.completed` without checking
+  `payment_status`. The session sets `allow_promotion_codes`, so a 100%-off code
+  bought lifetime PRO for nothing.
+
+Every one of those revokes is keyed by **customer**, which is the trap: a terminal
+event for one subscription, or a refund of one old charge, would take the whole
+account down. The concrete case is ordinary — a card fails at signup, the customer
+retries on a working one, and ~23 hours later the abandoned attempt turns
+`incomplete_expired`. `hasEntitlingSubscription` gates all three, so nothing is
+revoked while Stripe still shows an active, trialing or past_due subscription. A
+founding member has no Stripe subscription, so it correctly reports false for them.
+
+*Webhooks were not idempotent.* Stripe redelivers on any non-2xx and may deliver twice
+regardless; a redelivered `invoice.payment_succeeded` fired the purchase conversion
+again (duplicated revenue in analytics and affiliate payouts) and a redelivered
+`invoice.payment_failed` re-notified the customer. `StripeEvent` keys on Stripe's own
+event id, so the insert **is** the check — proven under concurrency: of five
+simultaneous claims exactly one wins. The row is released again if the handler throws,
+so a genuine failure still gets Stripe's retry. The catch also logs now: it was
+throwing `new HttpException(e, 500)`, which serialises an Error to `{}` and which Nest
+does not log, so every webhook failure was a blank 500 with no record of the cause.
+
+*Smaller, same pass.* The off-session founding charge keyed idempotency on the org
+alone, so Stripe replayed a cached decline for 24 hours — a customer who fixed their
+card got the old refusal back all day; the key now includes the payment method. Its
+catch discarded the entire error, making a 3DS challenge indistinguishable from a dead
+card; it now logs the code and returns the PaymentIntent client secret, which is the
+only thing that can re-present an `authentication_required` charge on-session. The
+`apiVersion` is pinned (to the version the account and SDK already agree on, so nothing
+moves today) because this file reads shapes like
+`invoice.parent.subscription_details.subscription` that an SDK bump can change without
+a type error. `BillingSubscribeDto` no longer accepts the three retired tiers — a
+hand-made POST could buy one at its legacy price and mint that product in Stripe. The
+founding-member line item gained `tax_code` and `tax_behavior`; it was taxed as generic
+services, not SaaS.
+
+*One thing the code cannot enforce.* **Billing → Revenue recovery → Retries must be set
+to "Cancel the subscription"** after the final attempt. The retry window IS the grace
+period: `past_due` is deliberately entitled, and the app learns it is over from
+`customer.subscription.deleted`. The revoke above is a second line of defence, not a
+replacement. `scripts/stripe-setup.mjs` prints this, along with the customer-email and
+public-details settings Stripe keeps out of the API.
+
+*Checked and found fine, contrary to the audit that flagged it:* `allowTrial` is only
+ever written `false` (on subscription create) and `true` at org creation — nothing
+resets it, so trials are not repeatable. No change made.
+
+*Still open, deliberately:* the deferred founding charge records a `processing`
+PaymentIntent as settled to avoid double-charging, and `payment_intent.payment_failed`
+is not handled, so an async failure after that would leave lifetime granted. Rare for
+cards, and logged. Also unhandled: `trial_will_end`, `invoice.payment_action_required`,
+and any periodic reconciliation — a dropped webhook is still permanent divergence.
+
+**Optional company details in checkout.** Billing work, not a restyle, but it moved
+`i18n.txt` by exactly one key: `billing_company_details`, the heading over a new
+optional business name + tax ID row in the checkout form. Nothing was dropped and
+`api` / `routes` / `gates` / `loops` are all unchanged — no new endpoint, no new
+page, no new feature gate, no animation.
+
+Why it was missing: checkout collected a card and a billing address and nothing
+else. The name on a Stripe invoice was whatever the buyer typed into the
+**Organization** field at signup, copied to `customers.create({ name })` once and
+never refreshed. There was no legal entity name and no VAT number anywhere in the
+product — `tax_id_collection`, `custom_fields` and `invoice_creation` appeared zero
+times in the repo.
+
+It is Stripe's own **Tax ID Element**, not a field of ours, so no new component, no
+new token and no hex literal: the element inherits the `.Label` / `.Input` rules
+already set on `CheckoutProvider`'s `appearance`. The design does not show this row,
+which is fine here — Stripe draws it inside its own iframe, so there is no divergence
+from the design system to reconcile. Both fields are optional
+(`validation.*.required: 'never'`) and `visibility: 'auto'` hides the row entirely
+where the billing country has no supported tax ID type.
+
+Our `<h4>` sits outside Stripe's iframe, so when the element hides itself the
+heading would be left over nothing. It follows the element's own `visible` flag
+from `onChange` instead. The row is hidden **by class, never unmounted** —
+unmounting would stop the change events, and the row could then never come back
+when the customer picks a different country.
+
+The subscription checkout runs `ui_mode: 'custom'`, meaning we draw the form. So
+`tax_id_collection: { enabled: true }` on the session only *permits* collection;
+`TaxIdElement` in `embedded.billing.tsx` is what makes it visible. The hosted paths
+(`createCheckoutSession`, the lifetime `mode: 'payment'` session) draw it themselves
+and needed the server flag alone. `customer_update` gained `name: 'auto'` on all
+three — without it the entity name is collected and then dropped, and the invoice
+keeps showing the signup org name.
+
+Two consequences worth knowing before this ships:
+
+- **Reverse charge.** `automatic_tax` is on. A business customer entering a valid
+  EU/UK VAT is now zero-rated by Stripe Tax, so they pay *less*. Correct tax
+  behaviour, real revenue effect.
+- **`customer.name` is overwritten** with the typed entity name, so the customer
+  name in the Stripe dashboard stops being the signup organization name.
+
+Also fixed alongside: the founding-member `mode: 'payment'` session had no
+`invoice_creation`, so it produced a charge and no invoice object at all. A founding
+member who needed a company invoice had nothing to hand to their accountant. The
+**deferred** (`mode: 'setup'`) founding path is still open — `captureFoundingLifetimeIfDue`
+and `applyLifetimeRetentionOffer` create bare PaymentIntents and no invoice. Turning
+those into invoices is a larger, riskier change and was deliberately left out.
+
+Note for anyone testing: Stripe does not show this row to a customer that already
+has a tax ID saved. An invisible field is expected there, not a bug. And Stripe's
+invoice PDF is not a Turkish e-Arşiv/e-Fatura — this puts the entity name on the
+invoice, it does not discharge that obligation.
+
 **Autopost / Webhooks hardening pass.** Correctness work on the two features, not a
 restyle — but it moved `i18n.txt`, so the reason belongs here.
 

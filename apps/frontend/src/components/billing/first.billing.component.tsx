@@ -687,7 +687,11 @@ export const FirstBillingComponent = () => {
 
   useEffect(() => {
     if (stripeClient) {
-      setStripe(loadStripe(stripeClient));
+      // TaxIdElement (the optional company name + tax ID row in the checkout)
+      // is in public preview and does not mount without this beta flag.
+      setStripe(
+        loadStripe(stripeClient, { betas: ['custom_checkout_tax_id_1'] })
+      );
     }
   }, [stripeClient]);
 

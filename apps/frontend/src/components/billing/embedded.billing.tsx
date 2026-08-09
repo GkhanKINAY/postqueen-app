@@ -4,9 +4,11 @@ import { Stripe } from '@stripe/stripe-js';
 
 import { FC, ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import clsx from 'clsx';
 import {
   PaymentElement,
   BillingAddressElement,
+  TaxIdElement,
   CheckoutProvider,
   useCheckout,
 } from '@stripe/react-stripe-js/checkout';
@@ -401,6 +403,10 @@ const StripeInputs: FC<{
 }) => {
   const checkout = useCheckout();
   const t = useT();
+  // Stripe hides the tax ID fields itself where the billing country has no
+  // supported type, and our heading sits outside its iframe — so it would be
+  // left dangling over nothing. Drive it off the element's own `visible` flag.
+  const [taxIdVisible, setTaxIdVisible] = useState(true);
   return (
     <>
       {/* The session is created with automatic_tax and
@@ -414,6 +420,32 @@ const StripeInputs: FC<{
             : t('billing_billing_address', 'Billing Address')}
         </h4>
         <BillingAddressElement />
+      </div>
+      {/* Optional company identity, for buyers who need the invoice in a
+          business name. The session sets tax_id_collection; under ui_mode
+          'custom' that only permits collection, so the fields are drawn here.
+          Both are optional — leaving them blank still completes the payment.
+          Stripe hides the whole element where the billing country has no
+          supported tax ID type, and for a customer that already has one — then
+          hidden by class, never unmounted, because unmounting would stop the
+          change events and the row could not come back on a country change. */}
+      <div className={clsx('mt-[22px]', !taxIdVisible && 'hidden')}>
+        <h4 className="mb-[16px] text-[16px] font-[600]">
+          {checkout.type === 'loading'
+            ? ''
+            : t('billing_company_details', 'Company details (optional)')}
+        </h4>
+        <TaxIdElement
+          options={{
+            visibility: 'auto',
+            fields: { businessName: 'always' },
+            validation: {
+              businessName: { required: 'never' },
+              taxId: { required: 'never' },
+            },
+          }}
+          onChange={(e) => setTaxIdVisible(e.visible)}
+        />
       </div>
       <div className="mt-[22px]">
         <h4 className="mb-[16px] text-[16px] font-[600]">
@@ -492,6 +524,16 @@ const PriceBreakdownFallback: FC<{
         </div>
       )}
       {(showCoupon ?? true) && <CouponChrome />}
+      {/* Placeholder only. This card renders before there is a live session, so
+          the real figure is unknowable here — an em dash keeps the row in place
+          so the summary does not reflow when the live breakdown replaces it,
+          without inventing a number. */}
+      <div className="flex items-center justify-between gap-[16px]">
+        <span className="text-[15px] text-pqMuted">
+          {t('billing_tax', 'Tax')}
+        </span>
+        <span className="text-[15px] text-pqSoft">—</span>
+      </div>
       <div className="h-px bg-pqLine" />
       <div className="flex items-baseline justify-between gap-[16px]">
         <span className="text-[16px] font-[600]">
@@ -599,6 +641,14 @@ const PriceBreakdown: FC<{ coupon?: ReactNode }> = ({ coupon }) => {
   const unitAmount = lineItem?.unitAmount?.amount || '$0.00';
   const discountDisplay = hasDiscount ? discountAmounts[0] : null;
   const dueToday = checkout?.total?.total?.amount || '$0.00';
+  // Prices are tax-exclusive, so this is the amount added on top. Shown even
+  // when it is zero: "Tax $0.00" tells an American customer the tax was
+  // considered and does not apply to them, while no line at all next to a
+  // higher total reads as an arithmetic mistake — the same argument the trial
+  // credit line below is written for. It also drops to zero live when a
+  // business enters a valid VAT number and reverse charge applies, because
+  // `useCheckout` recomputes the whole session.
+  const taxAmount = checkout?.total?.taxExclusive?.amount || '$0.00';
   const nextBillingTotal = recurring?.dueNext?.total?.amount;
   const nextBillingDate = recurring?.trial?.trialEnd
     ? dayjs(recurring.trial.trialEnd * 1000).format(longDateNoWeekdayPattern())
@@ -657,6 +707,17 @@ const PriceBreakdown: FC<{ coupon?: ReactNode }> = ({ coupon }) => {
       )}
 
       {coupon}
+
+      {/* Tax */}
+      <div
+        data-tax-line="1"
+        className="flex items-center justify-between gap-[16px]"
+      >
+        <span className="text-[15px] text-pqMuted">
+          {t('billing_tax', 'Tax')}
+        </span>
+        <span className="text-[15px]">{taxAmount}</span>
+      </div>
 
       {/* Divider */}
       <div className="h-px bg-pqLine" />

@@ -137,6 +137,33 @@ model UsedCodes {
   @@index([code])
 }
 
+/// Stripe webhook events already processed, keyed by Stripe's own event id.
+///
+/// Stripe redelivers on any non-2xx and can deliver the same event more than
+/// once regardless, and none of the handlers were idempotent: a redelivered
+/// `invoice.payment_succeeded` fired the purchase conversion again (duplicated
+/// revenue in analytics and affiliate payouts) and a redelivered
+/// `invoice.payment_failed` sent the dunning notice again.
+///
+/// Two-phase on purpose. The row is claimed before the handler runs and stamped
+/// `completedAt` only once it succeeds; a handler that throws deletes its own
+/// row so Stripe's retry still works. A row that is claimed but never completed
+/// is a crash — the process died mid-handler — and is taken over once it is
+/// older than the staleness window, because otherwise that event could never be
+/// processed again.
+///
+/// A claim that finds an *in-flight* row must NOT answer 2xx: Stripe would mark
+/// the event delivered while the first attempt is still able to fail. It errors
+/// instead, so the retry comes back when the first attempt has resolved.
+model StripeEvent {
+  id          String    @id
+  type        String
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([createdAt])
+}
+
 model UserOrganization {
   id             String       @id @default(uuid())
   userId         String

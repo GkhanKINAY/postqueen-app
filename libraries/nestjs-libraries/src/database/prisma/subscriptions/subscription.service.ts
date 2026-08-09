@@ -41,6 +41,19 @@ export class SubscriptionService {
     return this._subscriptionRepository.createUsedCode(orgId, code);
   }
 
+  /** 'claimed' | 'duplicate' | 'in_flight' — see the repository for the rules. */
+  claimStripeEvent(id: string, type: string) {
+    return this._subscriptionRepository.claimStripeEvent(id, type);
+  }
+
+  completeStripeEvent(id: string) {
+    return this._subscriptionRepository.completeStripeEvent(id);
+  }
+
+  releaseStripeEvent(id: string) {
+    return this._subscriptionRepository.releaseStripeEvent(id);
+  }
+
   async deleteSubscription(customerId: string) {
     // A founding-member row is a local entitlement, not a mirror of a Stripe
     // subscription. Cancelling (or exhausting) a leftover Stripe sub must not
