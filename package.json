@@ -184,7 +184,6 @@
     "nestjs-real-ip": "^3.0.1",
     "nestjs-temporal-core": "^3.4.0",
     "next": "16.3.0",
-    "next-plausible": "^3.12.5",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^0.66.0",
     "nodemailer": "^9.0.5",
