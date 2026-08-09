@@ -8,6 +8,8 @@ import {
   useState,
 } from 'react';
 import copy from 'copy-to-clipboard';
+import useSWR from 'swr';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -463,11 +465,36 @@ const McpAuthCallout: FC<{ mcpUrl: string; mcpUrlWithKey: string; apiKey: string
  * Settings-scale dual-pane Connect PostQueen panel.
  * LOOK inspired by connectors catalogs; WORK and copy are PostQueen-only.
  */
+// Its own hook, as the repo requires of every SWR call. Same key and options as
+// `organization.selector` so the two share one cache entry rather than each
+// fetching the list.
+const useOrganizations = () => {
+  const fetch = useFetch();
+  const load = useCallback(async () => {
+    return await (await fetch('/user/organizations')).json();
+  }, [fetch]);
+
+  return useSWR('organizations', load, {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+    refreshWhenOffline: false,
+    refreshWhenHidden: false,
+    revalidateOnReconnect: false,
+  });
+};
+
 export const ConnectPanel: FC<{
   onClose?: () => void;
 }> = ({ onClose }) => {
   const t = useT();
   const user = useUser();
+  const { data: organizations } = useOrganizations();
+  const currentOrgName = useMemo(
+    () =>
+      organizations?.find((org: { id: string }) => org.id === user?.orgId)
+        ?.name,
+    [organizations, user?.orgId]
+  );
   const { backendUrl } = useVariables();
   const { mobile } = useViewport();
   const router = useRouter();
@@ -926,6 +953,12 @@ export const ConnectPanel: FC<{
         <div>
           <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
             {t('developers', 'Developers')}
+            {/* Upstream 6c1c5dd6: an OAuth app belongs to one organization, and
+                someone with the same email in two of them needs to see which
+                one they are about to create it in. */}
+            {!!currentOrgName && (
+              <span className="text-pqMuted"> / {currentOrgName}</span>
+            )}
           </h3>
           <div className="mt-[4px] text-[14px] text-pqMuted">
             {t(

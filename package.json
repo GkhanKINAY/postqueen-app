@@ -1,6 +1,6 @@
 {
   "name": "postqueen",
-  "version": "3.3.3",
+  "version": "3.4.0",
   "description": "",
   "main": "index.js",
   "license": "AGPL-3.0",
@@ -329,7 +329,8 @@
       "react": "19.2.4",
       "react-dom": "19.2.4",
       "@types/react": "19.1.8",
-      "@types/react-dom": "19.1.6"
+      "@types/react-dom": "19.1.6",
+      "polotno": "3.0.0"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
