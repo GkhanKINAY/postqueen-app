@@ -376,6 +376,44 @@ export class IntegrationService {
     return disabled;
   }
 
+  // Mirror of the above. `disableIntegrations` had no counterpart, so a customer
+  // who downgraded and later came back found their channels still off and had to
+  // switch each one on by hand — while team members, whose disable/enable pair is
+  // right above the channel branch in subscription.service, came back on their
+  // own. Only channels this system switched off are returned; see the comment on
+  // `autoDisabledAt` in the schema.
+  async enableAutoDisabledIntegrations(org: string, headroom: number) {
+    const enabled =
+      await this._integrationRepository.enableAutoDisabledIntegrations(
+        org,
+        headroom
+      );
+
+    // Same wrapping rationale as the downgrade notice: this runs inside the
+    // Stripe webhook, and the channels are already back regardless.
+    if (enabled.length) {
+      try {
+        const names = enabled.map((c) => c.name).join(', ');
+        await this._notificationService.inAppNotification(
+          org,
+          `${enabled.length} channel${
+            enabled.length > 1 ? 's are' : ' is'
+          } back on`,
+          `Your plan allows more channels again, so ${names} ${
+            enabled.length > 1 ? 'were' : 'was'
+          } switched back on and can publish.`,
+          true,
+          false,
+          'info'
+        );
+      } catch (err) {
+        console.error(`[integrations] upgrade notice failed for ${org}`, err);
+      }
+    }
+
+    return enabled;
+  }
+
   async checkForDeletedOnceAndUpdate(org: string, page: string) {
     return this._integrationRepository.checkForDeletedOnceAndUpdate(org, page);
   }

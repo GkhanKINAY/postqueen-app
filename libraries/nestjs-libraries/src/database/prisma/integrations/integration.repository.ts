@@ -515,6 +515,10 @@ export class IntegrationRepository {
     });
   }
 
+  // Both of these clear `autoDisabledAt`: the user touching the toggle is the
+  // signal that this row's state is now their decision, so a later upgrade
+  // must leave it alone. Clearing it on *disable* is the important half — that
+  // is someone switching a channel off on purpose, and it must not come back.
   async disableChannel(org: string, id: string) {
     await this._integration.model.integration.update({
       where: {
@@ -523,6 +527,7 @@ export class IntegrationRepository {
       },
       data: {
         disabled: true,
+        autoDisabledAt: null,
       },
     });
   }
@@ -535,6 +540,7 @@ export class IntegrationRepository {
       },
       data: {
         disabled: false,
+        autoDisabledAt: null,
       },
     });
   }
@@ -606,6 +612,51 @@ export class IntegrationRepository {
         },
         data: {
           disabled: true,
+          // Stamped so an upgrade can tell these apart from the channels the
+          // user switched off deliberately, and give back only these.
+          autoDisabledAt: new Date(),
+        },
+      });
+    }
+
+    return getChannels;
+  }
+
+  // The other half of `disableIntegrations`. `headroom` is how many channels
+  // the new plan has spare, not the cap. Oldest-disabled first, so the order
+  // channels come back in is the reverse of the order they went away — a
+  // downgrade takes the newest, an upgrade returns the ones lost longest ago.
+  async enableAutoDisabledIntegrations(org: string, headroom: number) {
+    if (headroom <= 0) {
+      return [];
+    }
+
+    const getChannels = await this._integration.model.integration.findMany({
+      where: {
+        organizationId: org,
+        disabled: true,
+        autoDisabledAt: { not: null },
+        deletedAt: null,
+        // A channel that needs reconnecting cannot publish anyway, and
+        // switching it on would only put a broken row in front of the user.
+        refreshNeeded: false,
+      },
+      orderBy: { autoDisabledAt: 'asc' },
+      take: headroom,
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    for (const channel of getChannels) {
+      await this._integration.model.integration.update({
+        where: {
+          id: channel.id,
+        },
+        data: {
+          disabled: false,
+          autoDisabledAt: null,
         },
       });
     }

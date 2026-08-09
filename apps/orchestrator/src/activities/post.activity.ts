@@ -27,6 +27,14 @@ import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 
+/**
+ * Written to `Post.error` when a scheduled post could not run because the org
+ * has no active subscription. Deliberately not 'No Post': that string is a
+ * silence sentinel, and it is what the frozen workflow writes for this case.
+ * Rendered into the calendar tooltip, so it reads as a sentence fragment.
+ */
+const LAPSED_SUBSCRIPTION = 'Subscription required';
+
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
 function slimPost(post: any) {
   if (!post) return post;
@@ -329,7 +337,38 @@ export class PostActivity {
             .getPostsRecursively(id, true)
             .catch(() => [] as any[]);
 
-    await this._postService.changeState(id, state, err, body);
+    // `getPost` and `getPostsList` return falsy both for a post that is gone
+    // and for an org whose subscription has lapsed, and the frozen workflow
+    // turns either into 'No Post' — which is on the silence list below. So a
+    // paying customer who let their plan expire lost every scheduled post
+    // without a word, and the hourly sweep never picked them up again because
+    // it only collects `QUEUE`. Ask the subscription rather than inferring it
+    // from the row: this only runs on the 'No Post' path, and guessing wrong
+    // either way is a lost post or a false alarm.
+    let reason = extractPostErrorMessage(err);
+    const lapsed =
+      state === 'ERROR' &&
+      reason === 'No Post' &&
+      !!before?.organizationId &&
+      isBillingEnabled() &&
+      !(await this._subscriptionService
+        .getSubscription(before.organizationId)
+        .catch(() => null));
+
+    if (lapsed) {
+      reason = LAPSED_SUBSCRIPTION;
+    }
+
+    // The post stays ERROR rather than going back to QUEUE on purpose. A post
+    // scheduled three weeks ago should not fire the moment someone resubscribes
+    // — it is stale, and publishing it unasked is worse than losing it. ERROR
+    // with an honest reason leaves it visible on the calendar to reschedule.
+    await this._postService.changeState(
+      id,
+      state,
+      lapsed ? reason : err,
+      body
+    );
 
     if (state !== 'ERROR' || before?.state === 'ERROR') {
       return;
@@ -340,7 +379,6 @@ export class PostActivity {
     // lapsed subscription. Those are the common ones, and the post just died
     // without a word. Cover them here so no failure is silent, while skipping
     // the reasons that already spoke.
-    const reason = extractPostErrorMessage(err);
     const alreadyReported =
       reason === 'Refresh channel needed' ||
       reason === 'Channel disabled' ||
@@ -364,13 +402,20 @@ export class PostActivity {
       const channel = post.integration?.name || 'your channel';
       await this._notificationService.inAppNotification(
         post.organizationId,
-        `We couldn't publish your post to ${channel}`,
-        `We couldn't publish your post to ${channel}${
-          reason ? `: ${reason}` : ''
-        }. Open the post on your calendar to see the details.`,
+        lapsed
+          ? `Your post to ${channel} was not published`
+          : `We couldn't publish your post to ${channel}`,
+        lapsed
+          ? // Not a failure of ours and not something retrying fixes, so it
+            // says what happened and what to do, and is classed like the
+            // reconnect-your-channel notice rather than a publish failure.
+            `Your post to ${channel} was not published because your subscription is no longer active. Renew it from Billing, then reschedule the post from your calendar.`
+          : `We couldn't publish your post to ${channel}${
+              reason ? `: ${reason}` : ''
+            }. Open the post on your calendar to see the details.`,
         true,
         false,
-        'fail'
+        lapsed ? 'info' : 'fail'
       );
     } catch (e) {
       // Never let the notification take down the state change itself.
