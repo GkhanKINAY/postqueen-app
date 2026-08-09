@@ -1,7 +1,7 @@
 allowTrial 45
-billingEnabled 36
+billingEnabled 39
 isTrailing 18
-tier.ai 8
+tier.ai 7
 tier.autoPost 2
 tier.current 16
 tier.image_generator 2

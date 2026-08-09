@@ -79,6 +79,7 @@ ai_lock_perk_chat
 ai_lock_perk_images
 ai_lock_perk_videos
 ai_lock_sub
+ai_not_configured_body
 ai_post
 all
 all_channels
@@ -236,6 +237,8 @@ billing_monthly
 billing_months_free
 billing_n_day_free_trial
 billing_no_risk_trial
+billing_not_configured
+billing_not_configured_title
 billing_on
 billing_once
 billing_once_and_keep_forever

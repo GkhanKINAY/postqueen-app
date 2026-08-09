@@ -101,12 +101,23 @@ const getServerSnapshot = (): DateFormatSnapshot => ({
   use12Hour: true,
 });
 
-if (canUseDom()) {
-  refreshSnapshot();
-}
+// Deliberately NOT refreshed at module load.
+//
+// This module is imported during hydration, so refreshing here moved the
+// snapshot to the browser's answer *before* React had replayed the server's
+// markup. The server renders MDY + 12-hour (it cannot know the visitor's
+// locale); the browser then read `navigator.language` and rendered DMY +
+// 24-hour, and React threw the server HTML away and repainted — a visible flash
+// of wrong dates and times on every page with a timestamp, for every user
+// outside en-US.
+//
+// Leaving the snapshot at the server default until `subscribe` runs (an effect,
+// so after hydration) makes the first client paint match the server exactly.
+// Every consumer of the values below also calls `useDateFormat()`, so they all
+// repaint on that first refresh.
 
 /** Date order preference (MM/DD/YYYY vs DD/MM/YYYY). Independent of time clock. */
-export const getDateOrder = (): DateOrder => readDateOrder();
+export const getDateOrder = (): DateOrder => snapshot.dateOrder;
 
 /**
  * Time-only preference: AM/PM (12h) vs 24-hour.
@@ -121,8 +132,11 @@ export const getDateOrder = (): DateOrder => readDateOrder();
  * early return, and in both branches of two conditionals) — as a hook those
  * would become genuine hook-order bugs. If you need the value to repaint when
  * the preference changes, subscribe with `useDateFormat()` instead.
+ *
+ * Reads the snapshot rather than the browser, so it agrees with what the server
+ * rendered until hydration has finished. See the note above `getDateOrder`.
  */
-export const is12HourClock = (): boolean => read12Hour();
+export const is12HourClock = (): boolean => snapshot.use12Hour;
 
 export const setDateFormat = (order: DateOrder) => {
   localStorage.setItem('dateFormat', order);

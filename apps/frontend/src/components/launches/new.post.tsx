@@ -10,7 +10,10 @@ import { useIntegrationList } from '@gitroom/frontend/components/launches/helper
 import { useSets } from '@gitroom/frontend/components/launches/helpers/use.sets';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useClickOutside } from '@mantine/hooks';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import {
+  useAiAvailable,
+  useUser,
+} from '@gitroom/frontend/components/layout/user.context';
 import { useRouter } from 'next/navigation';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -81,7 +84,8 @@ export const NewPost = () => {
   const toaster = useToaster();
   const user = useUser();
   const router = useRouter();
-  const { billingEnabled } = useVariables();
+  const { billingEnabled, aiEnabled } = useVariables();
+  const aiAvailable = useAiAvailable();
   const addProvider = useAddProvider(mutateIntegrations);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useClickOutside(() => setMenuOpen(false));
@@ -265,7 +269,28 @@ export const NewPost = () => {
       await addProvider();
       return;
     }
-    if (!billingEnabled || !user?.tier?.ai) {
+    // Two different refusals, and they used to be one. The old condition was
+    // `!billingEnabled || !user?.tier?.ai`, which on an install with billing
+    // switched off is *always* true: every user was told to upgrade and sent to
+    // /billing, a page the nav hides and that has no working checkout there.
+    // The same file already had it right two hundred lines down (`aiLocked`).
+    //
+    // No key on the installation is not something anyone can buy their way out
+    // of, so it gets a plain toast and no billing trip.
+    if (!aiEnabled) {
+      toaster.show(
+        t(
+          'ai_not_configured_body',
+          'AI features are not configured on this installation.'
+        ),
+        'warning'
+      );
+      return;
+    }
+    // Past that guard `useAiAvailable()` is false only when billing is on and
+    // this tier does not include AI — which is the one case where upgrading is
+    // genuinely the answer.
+    if (!aiAvailable) {
       if (
         await deleteDialog(
           t('upgrade_required', 'You need to upgrade to use this feature'),
@@ -295,14 +320,18 @@ export const NewPost = () => {
   }, [
     resolveIntegrations,
     addProvider,
-    billingEnabled,
+    aiEnabled,
+    aiAvailable,
     modal,
     router,
     t,
     toaster,
-    user?.tier?.ai,
   ]);
 
+  // The padlock means "your plan does not include this", so it stays a tier
+  // question. An installation with no OpenAI key is not a plan problem and gets
+  // the toast in createAiPost instead — a padlock there would invite an upgrade
+  // that changes nothing.
   const aiLocked = billingEnabled && !user?.tier?.ai;
 
   return (

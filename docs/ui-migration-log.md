@@ -196,6 +196,95 @@ Real, unforced, and deliberately left out of the pass above:
   one element, `className` expressions containing `>`, and brace nesting deeper than
   two levels. All latent; see the comment above `collect_loops`.
 
+## Config-off paths told the truth pass
+
+A launch-readiness audit of the running v3.3.0 install. The theme is one bug
+written six times: **a feature that is switched off at the installation level
+was reported to the user as a plan problem, a loading state, or a success.**
+
+`gates.txt` moves two lines and `i18n.txt` gains three keys:
+
+- **`billingEnabled` 36 → 39.** Three new reads, all guards being added rather
+  than removed: `billing.component.tsx`, `first.billing.component.tsx` and the
+  corrected condition in `new.post.tsx`.
+- **`tier.ai` 8 → 7.** `createAiPost` no longer decides on `user.tier.ai`
+  directly; it asks `useAiAvailable()`, which is the single rule. The padlock
+  (`aiLocked`) still reads the tier, because a padlock *is* a tier statement.
+- **i18n** gains `ai_not_configured_body` (the key already existed in five
+  locales and had never been called) plus `billing_not_configured_title` and
+  `billing_not_configured`, written into `en`. The other locales fall back, as
+  they do for the 300-odd keys already in that position — including
+  `billing_admin_only`, the sibling string on the same screen, which lives only
+  as an inline fallback.
+
+**"AI post" told everyone to upgrade.** `new.post.tsx` gated on
+`!billingEnabled || !user?.tier?.ai`. On an install with no Stripe keys the
+first clause is always true, so every user got "You need to upgrade" and a push
+to `/billing` — a page the nav hides and whose checkout cannot take money. The
+same file had the correct form two hundred lines below in `aiLocked`. Now: no
+OpenAI key gets a plain toast and no billing trip, and the upgrade dialog is
+reserved for the one case where upgrading is genuinely the answer.
+
+**Video generation demanded the end of a trial that did not exist.**
+`media.service.ts` checked `!video.trial && org.isTrailing` with no
+`isBillingEnabled()`. Every new organization is written `isTrailing: true` for
+seven days regardless of billing, so the first week of every account on a
+billing-off install was told to finish its trial and charge a card. The
+correctly-guarded twin was already in `integration.service.ts`.
+
+**Every non-US user hydrated a mismatch.** `date.format.tsx` refreshed its
+snapshot at module load, which runs before React replays the server markup. The
+server renders MDY + 12-hour (it cannot know the visitor's locale) and the
+browser immediately answered DMY + 24-hour, so React discarded the server HTML
+and repainted — a visible flash of wrong dates and times on anything with a
+timestamp. The `useSyncExternalStore` plumbing was already correct; the pattern
+builders were bypassing it. They read the snapshot now, and the module-load
+refresh is gone. Safe because all seven files that call them also subscribe via
+`useDateFormat()`.
+
+**A failed `/sets` fetch read as "no sets".** Neither fetcher checked
+`response.ok`, and `customFetch` resolves 4xx/5xx — so a server error parsed as
+data, `setsError` never populated, and `resolveSets` (which was written
+correctly) took the happy path. The composer skipped its Select-a-Set step
+silently for people who have sets. Both fetchers were fixed together because
+they share the `'sets'` SWR key and which one runs depends on mount order.
+
+**`/billing` was a storefront that could not take money.** No `billingEnabled`
+check on the page or on `POST /billing/subscribe`; the route is navigable even
+though the nav hides it, and pressing Purchase reached Stripe with the
+`sk_nothing` placeholder and returned 500. Both ends now say so plainly.
+
+**A downgrade left autopost rules reading "On".** `changeActiveCron` terminated
+the workflow and never wrote the row, so Settings drew a rule as active with
+nothing behind it, and a later re-upgrade restarted nothing. It writes the row
+now, and a Temporal failure is logged rather than swallowed by an empty `catch`.
+
+**Three sections could still render a blank Payment Required dialog.**
+`getErrorMessage` has a `default` arm at last. This bug has been found three
+times — `ADMIN`, then `AI` and `AUTOPOST` — each fixed by adding one more case,
+which left the next one waiting. `COMMUNITY_FEATURES`, `FEATURED` and
+`IMPORT_FROM_CHANNELS` were the uncovered ones.
+
+Two self-host traps closed while in the area. `hasProvider()` now also requires
+`EMAIL_FROM_ADDRESS`/`EMAIL_FROM_NAME`, without which `sendEmail` returns early
+while every caller believes mail works — with `REQUIRE_EMAIL_ACTIVATION=true`
+that is a permanent lockout with no error anywhere. And `UploadFactory` refuses
+`STORAGE_PROVIDER="local"` with no `UPLOAD_DIRECTORY` instead of writing to a
+literal `./undefined/` directory that reads back as a 500; the frontend now
+defaults to `local` the same way the backend always did.
+
+`version.txt` is deleted. It said `v3.0.2`, nothing read it, and it sat beside
+the `package.json` version that `d5550b7e` had just corrected to 3.3.0.
+
+### Looked at and deliberately left alone
+
+`autopost.service.ts`'s start-failure path also leaves a row `active: true`, and
+the comment there argues — reasonably — that switching a rule off behind the
+user's back on a transient Temporal blip is worse. That reasoning stands. The
+real gap is that `processCron`'s return value is discarded by both callers, so
+the API answers "saved" either way; surfacing it needs a response-shape change
+and a frontend to match, which is its own change rather than a line in this one.
+
 ## Before the next release
 
 Everything above this line is merged to `main` but **not released** — production is on

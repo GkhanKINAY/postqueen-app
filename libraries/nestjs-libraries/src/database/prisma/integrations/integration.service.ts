@@ -1,6 +1,7 @@
 import {
   forwardRef,
   HttpException,
+  Logger,
   HttpStatus,
   Inject,
   Injectable,
@@ -42,13 +43,33 @@ export class IntegrationService {
     private _temporalService: TemporalService
   ) {}
 
+  /**
+   * Stop every autopost rule for an organization that has lost the capability.
+   *
+   * Writes the row, not just the workflow. Terminating the execution alone left
+   * `active: true` in the database, so Settings kept drawing the rule as On with
+   * nothing behind it — and if the organization ever came back to a paid tier,
+   * nothing restarted it, because as far as the row was concerned it had never
+   * stopped.
+   *
+   * The terminate is still allowed to fail — a rule whose workflow is already
+   * gone is the normal case, not an error — but the row is written either way,
+   * and a genuine Temporal outage is now logged rather than swallowed whole.
+   */
   async changeActiveCron(orgId: string) {
     const data = await this._autopostsRepository.getAutoposts(orgId);
 
     for (const item of data.filter((f) => f.active)) {
       try {
         await this._temporalService.terminateWorkflow(`autopost-${item.id}`);
-      } catch (err) {}
+      } catch (err) {
+        Logger.warn(
+          `Could not terminate autopost-${item.id}: ${
+            (err as Error)?.message || err
+          }`
+        );
+      }
+      await this._autopostsRepository.changeActive(orgId, item.id, false);
     }
 
     return true;

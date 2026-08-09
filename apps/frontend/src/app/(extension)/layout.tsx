@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <VariableContextComponent
           language="en"
           storageProvider={
-            process.env.STORAGE_PROVIDER! as 'local' | 'cloudflare'
+            (process.env.STORAGE_PROVIDER || 'local') as 'local' | 'cloudflare'
           }
           uploadViaServer={process.env.UPLOAD_VIA_SERVER === 'true'}
           stripeClient=""

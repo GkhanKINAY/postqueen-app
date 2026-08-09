@@ -105,8 +105,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         className={clsx(fontClassName, mode, 'text-primary !bg-primary')}
       >
         <VariableContextComponent
+          // Same default the backend uses (`upload.factory.ts`). They used to
+          // disagree: unset, the backend picked local and the frontend passed
+          // `undefined` straight through to the uploader, which throws
+          // "Unsupported storage provider" during render and takes the media
+          // modal down with it.
           storageProvider={
-            process.env.STORAGE_PROVIDER! as 'local' | 'cloudflare'
+            (process.env.STORAGE_PROVIDER || 'local') as 'local' | 'cloudflare'
           }
           uploadViaServer={process.env.UPLOAD_VIA_SERVER === 'true'}
           environment={process.env.NODE_ENV!}

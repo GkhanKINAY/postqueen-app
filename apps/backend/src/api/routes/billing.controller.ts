@@ -21,6 +21,7 @@ import {
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -192,6 +193,17 @@ export class BillingController {
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    // Without a payment provider this reaches Stripe with the `sk_nothing`
+    // placeholder from stripe.service.ts and comes back as a 500 the caller
+    // cannot act on. Hiding the page in the nav is not a control — the route is
+    // navigable and this endpoint was reachable.
+    if (!isBillingEnabled()) {
+      throw new HttpException(
+        'Billing is not configured on this installation',
+        HttpStatus.NOT_IMPLEMENTED
+      );
+    }
+
     if (await this.assertNoOtherSubscribedAccount(user)) {
       return { blocked: true };
     }

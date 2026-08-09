@@ -74,5 +74,18 @@ const getErrorMessage = (error: {
         default:
           return 'Your subscription does not include AI features. Please upgrade your subscription to use them.';
       }
+    // Every section without a case above lands here instead of returning
+    // undefined, which the frontend rendered as an empty Payment Required
+    // dialog. That bug has now been found three separate times — ADMIN, then AI
+    // and AUTOPOST — each fixed by adding one more case, which left the next
+    // section to be added waiting to reproduce it. COMMUNITY_FEATURES, FEATURED
+    // and IMPORT_FROM_CHANNELS are the ones currently uncovered; they all have
+    // granting branches in permissions.service.ts, so they are reachable the
+    // moment a route names one.
+    //
+    // A generic message is worse copy than a specific case. It is much better
+    // than a blank modal, and it closes the class rather than one instance.
+    default:
+      return 'Your subscription does not include this feature. Please upgrade your subscription to use it.';
   }
 };

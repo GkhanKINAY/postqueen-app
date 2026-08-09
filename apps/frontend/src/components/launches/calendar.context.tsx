@@ -526,7 +526,15 @@ export const CalendarWeekProvider: FC<{
   }, []);
 
   const setList = useCallback(async () => {
-    return (await fetch('/sets')).json();
+    // Second fetcher on the same `'sets'` SWR key as `use.sets.tsx`. SWR
+    // de-dupes by key, so which of the two actually runs depends on mount
+    // order — they have to agree, which is why both got this guard together.
+    const response = await fetch('/sets');
+    if (!response.ok) {
+      throw new Error('Could not load sets');
+    }
+    const sets = await response.json();
+    return Array.isArray(sets) ? sets : [];
   }, []);
 
   const { data: sets, mutate } = useSWR('sets', setList, {

@@ -13,7 +13,17 @@ export const useSets = () => {
   const fetch = useFetch();
 
   const load = useCallback(async () => {
-    return (await fetch('/sets')).json();
+    // `customFetch` resolves 4xx/5xx instead of rejecting, so without this a
+    // server error parses as data and reads as "this account has no sets".
+    // `new.post.tsx` acts on that by skipping the Select-a-Set step entirely —
+    // silently, for someone who does have sets. Same hole and same fix as
+    // `use.integration.list.tsx`.
+    const response = await fetch('/sets');
+    if (!response.ok) {
+      throw new Error('Could not load sets');
+    }
+    const sets = await response.json();
+    return Array.isArray(sets) ? sets : [];
   }, [fetch]);
 
   // `any[]` on purpose: `SetSelectionModal` takes `any[]` and callers
