@@ -6,7 +6,7 @@
 # check names entries that stop appearing so they can be deleted.
 #
 # Regenerated 2026-08-09 after pinning axios, undici, ws, dompurify, postcss,
-# brace-expansion and form-data to single patched versions.
+# Regenerated 2026-08-09 after clearing the cheap critical advisories.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
 @babel/core GHSA-4x5r-pxfx-6jf8
 @babel/plugin-transform-modules-systemjs GHSA-fv7c-fp4j-7gwp
@@ -22,7 +22,6 @@
 @opentelemetry/exporter-prometheus GHSA-q7rr-3cgh-j5r3
 @opentelemetry/propagator-jaeger GHSA-45rx-2jwx-cxfr
 @opentelemetry/sdk-node GHSA-q7rr-3cgh-j5r3
-@protobufjs/utf8 GHSA-q6x5-8v7m-xcrf
 @tootallnate/once GHSA-vpq2-c234-7xj6
 ai GHSA-rwvc-j5jr-mgvh
 basic-ftp GHSA-6v7q-wjvx-w8wg
@@ -66,14 +65,6 @@ h3 GHSA-22cc-p3c6-wpvm
 h3 GHSA-4hxc-9384-m385
 h3 GHSA-72gr-qfp7-vwhw
 h3 GHSA-wr4h-v87w-p3r7
-handlebars GHSA-2qvq-rjwj-gvw9
-handlebars GHSA-2w6w-674q-4c4q
-handlebars GHSA-3mfm-83xf-c92r
-handlebars GHSA-442j-39wm-28r2
-handlebars GHSA-7rx3-28cr-v5wh
-handlebars GHSA-9cx6-37pm-9jff
-handlebars GHSA-xhpv-hc6g-r9c6
-handlebars GHSA-xjpj-3mr7-gcpf
 happy-dom GHSA-37j7-fg3j-429f
 happy-dom GHSA-6q6h-j7hj-3r64
 happy-dom GHSA-w4gp-fjgq-3q4g
@@ -166,26 +157,12 @@ picomatch GHSA-3v7f-55p6-f55p
 picomatch GHSA-c2c7-rcm5-vvqj
 piscina GHSA-x9g3-xrwr-cwfg
 prismjs GHSA-x7hr-w5r2-h6wg
-protobufjs GHSA-2pr8-phx7-x9h3
-protobufjs GHSA-66ff-xgx4-vchm
-protobufjs GHSA-685m-2w69-288q
-protobufjs GHSA-75px-5xx7-5xc7
-protobufjs GHSA-f38q-mgvj-vph7
-protobufjs GHSA-fx83-v9x8-x52w
-protobufjs GHSA-j3f2-48v5-ccww
-protobufjs GHSA-jggg-4jg4-v7c6
-protobufjs GHSA-jvwf-75h9-cwgg
-protobufjs GHSA-q6x5-8v7m-xcrf
-protobufjs GHSA-wcpc-wj8m-hjx6
-protobufjs GHSA-xq3m-2v4x-88gg
 qs GHSA-6rw7-vpxm-498p
 qs GHSA-q8mj-m7cp-5q26
 quill GHSA-v3m3-f69x-jf25
 request GHSA-p8p7-x288-28g6
 rollup GHSA-mw96-cpmx-2vgc
 sharp GHSA-f88m-g3jw-g9cj
-shell-quote GHSA-395f-4hp3-45gv
-shell-quote GHSA-w7jw-789q-3m8p
 socket.io-parser GHSA-2m8v-j782-fhvr
 socket.io-parser GHSA-677m-j7p3-52f9
 svgo GHSA-2p49-hgcm-8545
@@ -210,5 +187,4 @@ vite GHSA-4w7w-66w2-5vf9
 vite GHSA-fx2h-pf6j-xcff
 vite GHSA-p9ff-h696-f583
 vite GHSA-v6wh-96g9-6wx3
-vitest GHSA-5xrq-8626-4rwp
 yaml GHSA-48c2-rrv3-qjmp
