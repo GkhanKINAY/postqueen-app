@@ -663,6 +663,24 @@ effect, and the baselines are contended across parallel sessions), the calendar'
 two-wave cold load (wants measurement first), and the `loops` collector's three
 documented blind spots.
 
+## Upstream sync
+
+Bringing `gitroomhq/postiz-app`'s 42 post-fork commits in. The full reasoning per
+batch is in the PRs; two things belong here.
+
+**`i18n.txt` gained four keys** — `post_already_published_republish_warning`,
+`republish_at`, `republish_recurring_note`, `republish_the_post`. They are real
+new `t()` call sites in the calendar's drag handler: the confirmation now names
+the channel and the original publish date, and says so when the post recurs.
+Baseline updated deliberately.
+
+**Batch by date, not by theme.** The first attempt cut batches thematically and
+collided three times, because these 42 commits form a dependency chain — the
+pending-post contract is commit 12 and later commits patch the methods it
+introduces, so a themed batch kept pulling commits past their own foundations.
+Chronological order fixed it: the run after the switch landed ten of eleven
+commits with no conflict at all.
+
 ## Self-audit of the backlog-clearing pass
 
 The pass above was re-read against the code afterwards, on the principle that the

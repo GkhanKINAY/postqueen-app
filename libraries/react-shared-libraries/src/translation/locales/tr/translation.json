@@ -754,5 +754,12 @@
   "get_started": "Başlayın",
   "kick_select_channel": "Kanal Seç",
   "ai_not_configured_title": "AI yapılandırılmamış",
-  "ai_not_configured_body": "Bu kurulumda AI özellikleri yapılandırılmamış."
+  "ai_not_configured_body": "Bu kurulumda AI özellikleri yapılandırılmamış.",
+  "what_do_you_want_to_do": "Ne yapmak istiyorsunuz?",
+  "just_update_post_details": "Sadece gönderi detaylarını güncelle",
+  "reschedule_post": "Gönderiyi yeniden zamanla",
+  "republish_the_post": "Gönderiyi tekrar yayımla",
+  "post_already_published_republish_warning": "Bu gönderi zaten yayımlanmış. Tekrar yayımlamak, gönderiyi yeniden yayımlar",
+  "republish_at": "tarihinde/saatinde",
+  "republish_recurring_note": "Bu tekrar eden bir gönderi: yaptığınız değişiklikler bundan sonraki tüm tekrarlar için geçerli olacaktır."
 }

@@ -1249,6 +1249,7 @@ portal_row_sub_lifetime
 portal_row_title
 post
 post_already_published_drag
+post_already_published_republish_warning
 post_analytics
 post_as_images_carousel
 post_channel_missing
@@ -1318,6 +1319,9 @@ reorder_media
 repeat_post_every
 repeat_post_every_label
 report_a_bug
+republish_at
+republish_recurring_note
+republish_the_post
 request_account_deletion
 reschedule_post
 researching_your_content

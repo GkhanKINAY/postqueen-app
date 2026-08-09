@@ -5,7 +5,7 @@ checksums:
   ea62a503dab91e0107f1c8e1557d415b:
     calendar: f113fede755b1502d0a17ad5068ba005
     webhooks: 0329bc102d3ab3c73410d126e119de12
-    webhooks_are_a_way_to_get_notified_when_something_happens_in_postqueen_via_an_http_request: 4211764226f06bf96e627edb0f5f004a
+    webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request: 4211764226f06bf96e627edb0f5f004a
     name: 9368b5a047572b6051f334af5aa76819
     url: ca97457614226960d41dd18c3c29c86b
     edit: eee7f39ff90b18852afc1671f21fbaa9
@@ -42,12 +42,12 @@ checksums:
     connect: 8778ee245078a8be4a2ce855c8c56edc
     public_api: f02b394bb952777eb3e2432b3c78556b
     check_n8n: 2e6e406d2c46e83f52a80ef9bd810d10
-    use_postqueen_api_to_integrate_with_your_tools: ccb5f5cd99f7f087ae360f231ae07985
+    use_postiz_api_to_integrate_with_your_tools: ccb5f5cd99f7f087ae360f231ae07985
     read_how_to_use_it_over_the_documentation: 05ac49c5bb91da62103dbbf2f69ea50f
     reveal: 3f7302cc2e097266e447b3e18f1b9ab7
     copy_key: 8f4f13acec7abf7c3aa6e680b6da99f8
     mcp: 62c2c8e6703c9e5224e98294a53e1884
-    connect_your_mcp_client_to_postqueen_to_schedule_your_posts_faster: bb53d1093a6ab977f2eee0bbc7e0248c
+    connect_your_mcp_client_to_postiz_to_schedule_your_posts_faster: bb53d1093a6ab977f2eee0bbc7e0248c
     share_with_a_client: 8e27f69c841a9dda635f34fb1b38ad99
     post: 0beafa0cd18d45690b9b07104eb2c1b8
     comments: 502237cd1044491c48494aa60967a985
@@ -146,11 +146,12 @@ checksums:
     result: c08df923fb1753b5e6df453e28ed991d
     seller: 54eb787c0a33bc5d5d56f12608acb374
     buyer: 8892fc5ea068f27f8cc51dabd6ba57a2
+    discord_support: 6d0a6228a6783bff376fd579eccd43f8
     teams: b63448c05270497973ac4407047dae02
     webhooks_1: 0329bc102d3ab3c73410d126e119de12
     auto_post: e2dee9c337a4523a626829d6f169ae88
     logout_from: 7e997e00bfc49b02589c10138f5da75c
-    join_10000_entrepreneurs_who_use_postqueen: 3661c56dda210e631aff634117af31cc
+    join_10000_entrepreneurs_who_use_postiz: 3661c56dda210e631aff634117af31cc
     to_manage_all_your_social_media_channels: 155f69562b7a791691489f6c13f8ce50
     100_no_risk_trial: 4d8cf3bef45c64d898a678c8d2d7e32f
     pay_nothing_for_the_first_7_days: f85904a77eed00c8009f59b214e15ea1
@@ -313,6 +314,7 @@ checksums:
     forks: d692bdb4892481b1b4d9adf13b5b7ce0
     registration_is_disabled: eff7aff64ccfe6068849fe1a1212c0a0
     login_instead: 4e7a13b6c39065d8e093c554345ccd7c
+    gitroom: 6edccb5285794dba2f351f2fb1d2f803
     select_a_conversation_and_chat_away: 941ced71a44545919a489e4e7e8223d0
     adding_channel_redirecting_you: 397169979a6de32672e54cf01c9e7f24
     could_not_add_provider: 9326fd712ed969f76071f9d2debee931
@@ -431,7 +433,7 @@ checksums:
     label_when_post: f249f20f27d17dfc455a21c9e501da36
     label_autogenerate_content: a8eafda792174ddf5e50afc57ca680d0
     label_generate_picture: e3ecb483e82d6652317797df4fb3f83e
-    label_organization: 9e36d11fa82d1bd4563eef2abc4fcfba
+    label_company: 9e36d11fa82d1bd4563eef2abc4fcfba
     label_tag_color: 345f477064799625270f2d1ba49444f0
     label_select_board: e48a1d2044b2298b4ecbb48779754b44
     label_select_organization: 2a7834bd0f487b5e7cb2dac06c40bb2d
@@ -456,12 +458,12 @@ checksums:
     post_content_directly_to_tiktok: 2612250f75c43a3128016b99569c5fff
     upload_content_to_tiktok_without_posting: 6c3943e4d796b720933b90d250bd611c
     choose_upload_without_posting_description: 16c335a4607224a061a9f251ccdecfe0
-    faq_am_i_going_to_be_charged_by_postqueen: f4aad17d35bcaf45427216a432f23af3
-    faq_to_confirm_credit_card_information_postqueen_will_hold: ec475e644e3b5db2550c5bc06320b1cd
-    faq_can_i_trust_postqueen_gitroom: 9ee3c694bc392c339333047484d36003
-    faq_postqueen_gitroom_is_proudly_open_source: 17658906aec47f1557f84c71efadee03
+    faq_am_i_going_to_be_charged_by_postiz: f4aad17d35bcaf45427216a432f23af3
+    faq_to_confirm_credit_card_information_postiz_will_hold: ec475e644e3b5db2550c5bc06320b1cd
+    faq_can_i_trust_postiz_gitroom: 9ee3c694bc392c339333047484d36003
+    faq_postiz_gitroom_is_proudly_open_source: 17658906aec47f1557f84c71efadee03
     faq_what_are_channels: 22bc7aebd017e487d9a5ac8946a2a08d
-    faq_postqueen_gitroom_allows_you_to_schedule_posts: 287ddb6d7f14970e29aa6e2431bbe207
+    faq_postiz_gitroom_allows_you_to_schedule_posts: 287ddb6d7f14970e29aa6e2431bbe207
     faq_what_are_team_members: bb369e1b85f24dbc4519ce32d71953d6
     faq_if_you_have_a_team_with_multiple_members: ed9a422bfca288261c3959d0fd49f657
     faq_what_is_ai_auto_complete: 3ffc4a069c8e35e01e952375b3c401ba
@@ -512,7 +514,7 @@ checksums:
     billing_join_over: 6e1c237241ba00ddbb07fd603344c5c3
     billing_entrepreneurs_count: 1e90206cb8ea01d0a1084d3af1a4cbed
     billing_who_use: 63bdc59ef443e193eca87889e83ea07a
-    billing_postqueen_grow_social: 3cf5ab166df9cb65e17b9a039ccbbbad
+    billing_postiz_grow_social: 3cf5ab166df9cb65e17b9a039ccbbbad
     billing_no_risk_trial: 6e5c60d9ddf3affa8ba8870272f9f9ab
     billing_pay_nothing_7_days: 2db15615cad39981069b65e6a0852b18
     billing_cancel_anytime: 91355fdc2e1f62fcb28b1d74ed342a90
@@ -590,6 +592,7 @@ checksums:
     autopost_updated_successfully: eb9b6518aa38dd4011435fbd8358d570
     autopost_added_successfully: c83af96759f9baa9059984501ea33f73
     write_your_post_placeholder: 0f4d124dbef4685590d5a95af3b5df64
+    select_or_upload_pictures_max_5: af063197b75e970f03303afcce5bde63
     you_can_drag_drop_pictures: d41ac7a74ca936f4b388af721830f9d9
     you_dont_have_any_media_yet: 59257169efa001e5dc0a7bf67867f77e
     media_library: 2b05965bcc34712a764496206514c087
@@ -700,3 +703,42 @@ checksums:
     back: f541015a827e37cb3b1234e56bc2aa3c
     get_started: 1d5f030c4ec9c869e647ae060518b948
     kick_select_channel: 13fa95c439addeb6674e571e37c96b79
+    annual: 5d4f1c56f4e9e579ec9967ca68cc64ac
+    apply: 0f03e8e3752eb120bf8ea0b8f8f5d244
+    none: d163ad01ba50118a86047c8b73fbe922
+    no_go_back: f8e980b79b6f711240f4b5e6fcc1f6f3
+    apply_coupon: 9a016a02f2d4aca87f05adc4bc6847ab
+    apply_coupon_subtitle: 05875bab8b513599f15e0cce2c6f0a7b
+    apply_coupon_plan: 34b5f2fb456c10457b3b9bb2cc4e65b5
+    apply_coupon_period: e11ea2f87aed7b3546ecda10d5c44ead
+    apply_coupon_lifetime: 7497bc91074527a9581e72d25ec23f65
+    apply_coupon_applied: ccf9b4f0de47262b510a487084164de0
+    apply_coupon_off: 5506213b43515ef4bbae281d8bd77952
+    apply_coupon_months_total: 4a3cfe6c04a7c1dbb30e0fe2de3fe9fc
+    apply_coupon_months_left: e5b3cd8bd2dd414cdcfc4841f1852319
+    apply_coupon_forever: cab9ed28c6d3735b71c1593e3ec6f5c6
+    apply_coupon_once: 8850cb73dd454e158ec690be76248da0
+    apply_coupon_next_payment: ececc8280a8afceadaae55356fa502a0
+    apply_coupon_type: 05c7b6c0563f7d7652eec29b9e6aa8f8
+    apply_coupon_percentage: a3f8383e2d3a91e6c2eb6527c32224c0
+    apply_coupon_fixed_amount: cbdeaf8ae4ab1c9b14c8cfc50e972ca6
+    apply_coupon_value: 34b0eaa85808b15cbc4be94c64d0146b
+    apply_coupon_months: ea9b90197973d3827ad0803c24ff1704
+    apply_coupon_not_supported: 82a66cd587e53dc94f64a96924e439c4
+    apply_coupon_invalid_percentage: 30cb7721e6a0aa2d9c9d7f7e248b4d33
+    apply_coupon_invalid_amount: ca798a609518dc3b595e8b1d5ba17735
+    apply_coupon_invalid_months: 2588a8e621326f62ad74e2326c230571
+    apply_coupon_failed: ad086216c34702e4d44c86512e2952a2
+    apply_coupon_success: 8ac77166d813092acc04a8bd99f5e6f6
+    cancel_coupon_confirm: 42ec505aeed81903e444cf3c14cec222
+    yes_cancel_coupon: d5cbc873759d9040edceeb4643925a98
+    cancel_coupon_title: 6a02a23e494728ddb694f591be65900d
+    cancel_coupon_failed: 7bbb5c2646ba919b7df0879225eba918
+    cancel_coupon_success: ded654a3b6c5fdfe7bdd23e9b5ad711c
+    what_do_you_want_to_do: c2c352197ed13cee73ed85f9706b35de
+    just_update_post_details: fb0d9cba2fe76d06571fc30dc8db0f13
+    reschedule_post: 103d1943e23d4f71b22439a3b03885dd
+    republish_the_post: 6c16f02f8d70ced4cc6ccc1112968704
+    post_already_published_republish_warning: b552a207c31d6381fb831da005dac9ed
+    republish_at: 282cf74a2c63ff46388104f9853bfaf8
+    republish_recurring_note: e0eafbc730f5e8d5f9f5cb5aab48fe2d

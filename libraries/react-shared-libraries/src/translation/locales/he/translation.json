@@ -746,5 +746,12 @@
   "get_started": "התחלה",
   "kick_select_channel": "בחר ערוץ",
   "ai_not_configured_title": "AI is not configured",
-  "ai_not_configured_body": "AI features are not configured on this installation."
+  "ai_not_configured_body": "AI features are not configured on this installation.",
+  "what_do_you_want_to_do": "מה ברצונך לעשות?",
+  "just_update_post_details": "רק לעדכן את פרטי הפוסט",
+  "reschedule_post": "לתזמן מחדש את הפוסט",
+  "republish_the_post": "לפרסם מחדש את הפוסט",
+  "post_already_published_republish_warning": "הפוסט הזה כבר פורסם. פרסום מחדש יפרסם אותו שוב ב",
+  "republish_at": "בשעה",
+  "republish_recurring_note": "זהו פוסט חוזר: השינויים שלך יחולו על כל ההופעות העתידיות החל מעכשיו."
 }

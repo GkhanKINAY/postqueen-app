@@ -746,5 +746,12 @@
   "get_started": "Começar",
   "kick_select_channel": "Selecionar canal",
   "ai_not_configured_title": "AI is not configured",
-  "ai_not_configured_body": "AI features are not configured on this installation."
+  "ai_not_configured_body": "AI features are not configured on this installation.",
+  "what_do_you_want_to_do": "O que você deseja fazer?",
+  "just_update_post_details": "Apenas atualizar os detalhes da publicação",
+  "reschedule_post": "Reagendar a publicação",
+  "republish_the_post": "Republicar a publicação",
+  "post_already_published_republish_warning": "Esta publicação já foi publicada. Republicar irá publicá-la novamente em",
+  "republish_at": "em",
+  "republish_recurring_note": "Esta é uma publicação recorrente: suas alterações se aplicam a todas as futuras recorrências a partir de agora."
 }
