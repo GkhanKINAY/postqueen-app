@@ -325,6 +325,13 @@ model Integration {
   type                  String
   token                 String
   disabled              Boolean                @default(false)
+  /// Set when a plan change switched this channel off, cleared whenever the
+  /// user touches the toggle themselves. Without it "the system disabled this
+  /// because you downgraded" and "I turned this off on purpose" are the same
+  /// row, and an upgrade would switch someone's channel back on against their
+  /// wishes. Null on every existing row, which reads as "user's own choice" —
+  /// the safe default, since it only ever suppresses an automatic re-enable.
+  autoDisabledAt        DateTime?
   tokenExpiration       DateTime?
   refreshToken          String?
   profile               String?

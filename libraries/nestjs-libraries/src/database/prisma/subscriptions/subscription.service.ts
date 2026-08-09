@@ -105,6 +105,48 @@ export class SubscriptionService {
     );
   }
 
+  /**
+   * Brings the number of live channels in line with what the plan allows, in
+   * both directions.
+   *
+   * Only the disable half existed. A customer who downgraded had channels
+   * switched off and, on coming back, found them still off with no way through
+   * but the toggle on each one — while team members, disabled two branches
+   * further down, were re-enabled for them. Only channels a plan change turned
+   * off are given back; see `autoDisabledAt` in the schema for how that is told
+   * apart from the user's own choice.
+   *
+   * Autopost rules are deliberately not resumed the same way. Enabling a
+   * channel publishes nothing by itself; an autopost rule does, and quietly
+   * restarting unattended publishing after a gap in billing is not a surprise
+   * anyone wants. `changeActiveCron` switches them off on the way down and the
+   * user switches them back on.
+   */
+  private async syncChannelsToPlan(orgId: string, totalChannels: number) {
+    if (!orgId) {
+      return;
+    }
+
+    const live = (
+      await this._integrationService.getIntegrationsList(orgId)
+    ).filter((f) => !f.disabled);
+
+    if (live.length > totalChannels) {
+      await this._integrationService.disableIntegrations(
+        orgId,
+        live.length - totalChannels
+      );
+      return;
+    }
+
+    if (live.length < totalChannels) {
+      await this._integrationService.enableAutoDisabledIntegrations(
+        orgId,
+        totalChannels - live.length
+      );
+    }
+  }
+
   async modifySubscriptionByOrg(
     organizationId: string,
     totalChannels: number,
@@ -122,16 +164,7 @@ export class SubscriptionService {
     const from = pricing[getCurrentSubscription?.subscriptionTier || 'FREE'];
     const to = pricing[billing];
 
-    const currentTotalChannels = (
-      await this._integrationService.getIntegrationsList(organizationId)
-    ).filter((f) => !f.disabled);
-
-    if (currentTotalChannels.length > totalChannels) {
-      await this._integrationService.disableIntegrations(
-        organizationId,
-        currentTotalChannels.length - totalChannels
-      );
-    }
+    await this.syncChannelsToPlan(organizationId, totalChannels);
 
     if (from.team_members && !to.team_members) {
       await this._organizationService.disableOrEnableNonSuperAdminUsers(
@@ -183,18 +216,7 @@ export class SubscriptionService {
     const from = pricing[getCurrentSubscription?.subscriptionTier || 'FREE'];
     const to = pricing[billing];
 
-    const currentTotalChannels = (
-      await this._integrationService.getIntegrationsList(
-        getOrgByCustomerId?.id!
-      )
-    ).filter((f) => !f.disabled);
-
-    if (currentTotalChannels.length > totalChannels) {
-      await this._integrationService.disableIntegrations(
-        getOrgByCustomerId?.id!,
-        currentTotalChannels.length - totalChannels
-      );
-    }
+    await this.syncChannelsToPlan(getOrgByCustomerId?.id!, totalChannels);
 
     if (from.team_members && !to.team_members) {
       await this._organizationService.disableOrEnableNonSuperAdminUsers(
@@ -252,6 +274,13 @@ export class SubscriptionService {
           `No organization matches Stripe customer ${customerId}; refusing to acknowledge the webhook so Stripe retries`
         );
       }
+    } else if (org) {
+      // The redeemed-code and founding-purchase path skips modifySubscription
+      // entirely, so it skipped the channel sync with it: someone who lapsed
+      // and then bought a lifetime deal was left with every channel off. It
+      // takes the org id directly because there is no Stripe customer to look
+      // one up from.
+      await this.syncChannelsToPlan(org, totalChannels);
     }
     return this._subscriptionRepository.createOrUpdateSubscription(
       isTrailing,
