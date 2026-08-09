@@ -1,14 +1,12 @@
 # Vulnerabilities present and accepted for now, one "package GHSA-id" per line.
 #
-# This list is large because the lockfile refresh that would have cut it to 96
-# also stopped the backend booting, and was reverted (#53). The security work
-# comes back verified by starting the application rather than only compiling it.
+# Each needs a semver range moved — a change with its own risk — or has no
+# released fix: tar's is 7.x, a major; multer's is 2.x; lodash's advisory names
+# a version that its consumers do not accept. This is a list to shrink, and the
+# check names entries that stop appearing so they can be deleted.
 #
-# Each entry needs either a semver range moved — a change with its own risk,
-# reviewed on its own — or has no released fix. This is a list to shrink, and
-# the check reports entries that stop appearing so they can be deleted.
-#
-# Regenerated 2026-08-09 against the restored v3.4.0 lockfile.
+# Regenerated 2026-08-09 after pinning axios, undici, ws, dompurify, postcss,
+# brace-expansion and form-data to single patched versions.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
 @babel/core GHSA-4x5r-pxfx-6jf8
 @babel/plugin-transform-modules-systemjs GHSA-fv7c-fp4j-7gwp
@@ -27,34 +25,6 @@
 @protobufjs/utf8 GHSA-q6x5-8v7m-xcrf
 @tootallnate/once GHSA-vpq2-c234-7xj6
 ai GHSA-rwvc-j5jr-mgvh
-axios GHSA-35jp-ww65-95wh
-axios GHSA-3g43-6gmg-66jw
-axios GHSA-3p68-rc4w-qgx5
-axios GHSA-3w6x-2g7m-8v23
-axios GHSA-42h9-826w-cgv3
-axios GHSA-445q-vr5w-6q77
-axios GHSA-5c9x-8gcm-mpgx
-axios GHSA-62hf-57xw-28j9
-axios GHSA-6chq-wfr3-2hj9
-axios GHSA-777c-7fjr-54vf
-axios GHSA-7q8q-rj6j-mhjq
-axios GHSA-898c-q2cr-xwhg
-axios GHSA-fvcv-3m26-pcqx
-axios GHSA-hfxv-24rg-xrqf
-axios GHSA-j5f8-grm9-p9fc
-axios GHSA-jqh4-m9w3-8hp9
-axios GHSA-m7pr-hjqh-92cm
-axios GHSA-mmx7-hfxf-jppx
-axios GHSA-mwf2-3pr3-8698
-axios GHSA-p92q-9vqr-4j8v
-axios GHSA-pf86-5x62-jrwf
-axios GHSA-pmv8-rq9r-6j72
-axios GHSA-pmwg-cvhr-8vh7
-axios GHSA-q8qp-cvcw-x6jj
-axios GHSA-vf2m-468p-8v99
-axios GHSA-w9j2-pvgh-6h63
-axios GHSA-xhjh-pmcv-23jw
-axios GHSA-xx6v-rp6x-q39c
 basic-ftp GHSA-6v7q-wjvx-w8wg
 basic-ftp GHSA-chqc-8p9q-pq6q
 basic-ftp GHSA-rp42-5vxx-qpwr
@@ -62,23 +32,18 @@ basic-ftp GHSA-rpmf-866q-6p89
 body-parser GHSA-v422-hmwv-36x6
 brace-expansion GHSA-3jxr-9vmj-r5cp
 brace-expansion GHSA-f886-m6hf-6m8v
-brace-expansion GHSA-jxxr-4gwj-5jf2
 brace-expansion GHSA-mh99-v99m-4gvg
 brace-expansion GHSA-rgw5-rvv9-x895
 cross-spawn GHSA-3xgq-45jj-v275
 defu GHSA-737v-mqg7-c878
-dompurify GHSA-39q2-94rc-95cp
 dompurify GHSA-55q2-fjhq-7xh7
 dompurify GHSA-76mc-f452-cxcm
 dompurify GHSA-c2j3-45gr-mqc4
 dompurify GHSA-cmwh-pvxp-8882
-dompurify GHSA-crv5-9vww-q3g8
 dompurify GHSA-gvmj-g25r-r7wr
-dompurify GHSA-h7mw-gpvr-xq4m
 dompurify GHSA-hpcv-96wg-7vj8
 dompurify GHSA-r47g-fvhr-h676
 dompurify GHSA-rp9w-3fw7-7cwq
-dompurify GHSA-v9jr-rg53-9pgp
 dompurify GHSA-vxr8-fq34-vvx9
 dompurify GHSA-x4vx-rjvf-j5p4
 elliptic GHSA-848j-6mx2-7j84
@@ -96,8 +61,6 @@ file-type GHSA-5v7r-6r5c-r473
 file-type GHSA-j47w-4g3g-c36v
 flatted GHSA-25h7-pfq9-p65f
 flatted GHSA-rf6f-7fwh-wjgh
-follow-redirects GHSA-r4q5-vmmm-2653
-form-data GHSA-fjxv-7rqg-78g4
 form-data GHSA-hmw2-7cc7-3qxx
 h3 GHSA-22cc-p3c6-wpvm
 h3 GHSA-4hxc-9384-m385
@@ -202,10 +165,6 @@ path-to-regexp GHSA-j3q9-mxjg-w52f
 picomatch GHSA-3v7f-55p6-f55p
 picomatch GHSA-c2c7-rcm5-vvqj
 piscina GHSA-x9g3-xrwr-cwfg
-postcss GHSA-6g55-p6wh-862q
-postcss GHSA-fxqj-rqcc-2cmp
-postcss GHSA-qx2v-qp2m-jg93
-postcss GHSA-r28c-9q8g-f849
 prismjs GHSA-x7hr-w5r2-h6wg
 protobufjs GHSA-2pr8-phx7-x9h3
 protobufjs GHSA-66ff-xgx4-vchm
@@ -246,30 +205,10 @@ tar GHSA-r6q2-hw4h-h46w
 tar GHSA-vmf3-w455-68vh
 tar GHSA-w8wr-v893-vjvp
 tough-cookie GHSA-72xf-g2v4-qvf3
-undici GHSA-2mjp-6q6p-2qxm
-undici GHSA-35p6-xmwp-9g52
-undici GHSA-4992-7rv2-5pvq
-undici GHSA-4cwx-7wf7-3272
-undici GHSA-8xcm-r25x-g524
-undici GHSA-f269-vfmq-vjvj
-undici GHSA-g8m3-5g58-fq7m
-undici GHSA-hm92-r4w5-c3mj
-undici GHSA-jr45-8vmc-qm54
-undici GHSA-m8rv-5g2x-5cg5
-undici GHSA-p88m-4jfj-68fv
-undici GHSA-phc3-fgpg-7m6h
-undici GHSA-pr7r-676h-xcf6
-undici GHSA-v3r7-h72x-cjcm
-undici GHSA-v9p9-hfj2-hcw8
-undici GHSA-vmh5-mc38-953g
-undici GHSA-vrm6-8vpv-qv8q
-undici GHSA-vxpw-j846-p89q
 uuid GHSA-w5hq-g745-h8pq
 vite GHSA-4w7w-66w2-5vf9
 vite GHSA-fx2h-pf6j-xcff
 vite GHSA-p9ff-h696-f583
 vite GHSA-v6wh-96g9-6wx3
 vitest GHSA-5xrq-8626-4rwp
-ws GHSA-58qx-3vcg-4xpx
-ws GHSA-96hv-2xvq-fx4p
 yaml GHSA-48c2-rrv3-qjmp
