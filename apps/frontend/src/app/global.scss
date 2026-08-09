@@ -1188,7 +1188,7 @@ html[dir='rtl'] .lbox {
 // From design/handoff/tokens.css. Nothing uses these yet — they land with the
 // token layer so each later step only has to reference them.
 //
-// The looping ones (pqbtnglow, pqbtnbloom, pqbtnsheen, pqunlim, pqtick, pqring)
+// The looping ones (pqbtnglow, pqbtnbloom, pqbtnsheen, pqunlim, pqtick)
 // run forever by design. They are gated below: an indefinite animation is the
 // kind that triggers motion sickness, and the handoff asks for the gate but the
 // prototype never implemented it.
@@ -1270,20 +1270,6 @@ html[dir='rtl'] .lbox {
   50% {
     box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.22),
       0 0 12px rgba(124, 58, 237, 0.5);
-  }
-}
-
-// The tour's spotlight. The 9999px spread is what dims the rest of the screen,
-// so this ring is both the highlight and the scrim.
-@keyframes pqring {
-  0%,
-  100% {
-    box-shadow: 0 0 0 9999px rgba(2, 2, 6, 0.72), 0 0 0 2px var(--brand),
-      0 0 24px -6px rgba(124, 58, 237, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 9999px rgba(2, 2, 6, 0.72), 0 0 0 3px var(--brand),
-      0 0 48px -4px rgba(124, 58, 237, 1);
   }
 }
 

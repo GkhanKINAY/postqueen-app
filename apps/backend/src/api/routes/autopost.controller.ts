@@ -59,18 +59,16 @@ export class AutopostController {
     return this._autopostsService.deleteAutopost(org.id, id);
   }
 
-  // Deliberately unguarded. Switching a rule *off* must not require a
-  // subscription, and switching one on needs a rule that already exists —
-  // which, now that every paid tier has autoPost, only a paid tier could have
-  // created. An org that lapsed to FREE has had its running workflows
-  // terminated by changeActiveCron already and cannot reach Settings at all.
+  // No policy decorator on purpose: switching a rule *off* must never require a
+  // subscription, and a decorator cannot see which direction is being asked
+  // for. The tier check for switching one *on* lives in the service.
   @Post('/:id/active')
   async changeActive(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
     @Body('active') active: boolean
   ) {
-    return this._autopostsService.changeActive(org.id, id, active);
+    return this._autopostsService.changeActive(org, id, active);
   }
 
   @Post('/send')

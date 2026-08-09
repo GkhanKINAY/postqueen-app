@@ -164,17 +164,14 @@ the bug the `ADMIN` case was added for.
 
 Real, unforced, and deliberately left out of the pass above:
 
-- **A downgrade to FREE leaves autopost rows saying `active: true`.**
-  `integration.service.ts`'s `changeActiveCron` terminates the Temporal workflows but
-  never writes the column, so an org that lapses and re-subscribes sees its rules
-  marked On with nothing running behind them. `AutopostService.stopAll` was written
-  for exactly this and has never had a caller. Predates the autoPost gate and is
-  unchanged by it.
-- **`POST /autopost/:id/active` carries no policy.** Left open on purpose so that
-  switching a rule off never needs a subscription, which leaves switching one *on*
-  open too. Narrow today — it needs a rule that only a paid tier could have created,
-  and a lapsed org cannot reach Settings — but it is the one autopost route a tier
-  cannot refuse.
+- ~~**A downgrade to FREE leaves autopost rows saying `active: true`.**~~ Fixed in
+  `2667a7e2`: `changeActiveCron` writes the column now (`integration.service.ts:72`).
+  `AutopostService.stopAll` still has no caller.
+- ~~**`POST /autopost/:id/active` carries no policy.**~~ Fixed: the tier check now
+  sits in `AutopostService.changeActive`, on the `active: true` branch only, so
+  switching a rule off still needs nothing. The old reasoning — that a lapsed org
+  "cannot reach Settings" — did not hold: the route answers a session, and enabling
+  a rule starts an hourly Temporal workflow.
 - **`Sections.VIDEOS_PER_MONTH` has no branch in `permissions.service.ts`.** `check()`
   is deny-by-default, so any route that names that section is refused outright. No
   route names it today.
@@ -185,13 +182,10 @@ Real, unforced, and deliberately left out of the pass above:
   tokens, the `ui/no-channels-art.tsx` trio on the new ones, and locally-defined
   `EmptyState` components in `platform-analytics/render.analytics.tsx` and
   `agents/agent.chat.tsx`.
-- **`launches/helpers/use.sets.tsx`** has the non-ok hole that
-  `use.integration.list.tsx` just closed, but its `'sets'` SWR key has a second
-  fetcher in `launches/calendar.context.tsx`. Fix both together or neither.
-- **`auth/testimonial.component.tsx`** has zero importers.
-- **`pqRing`** (keyframe in `global.scss`, utility in `tailwind.config.cjs`) has zero
-  consumers. Its comment calls it the tour's spotlight; the tour cuts that hole with
-  four rects instead.
+- ~~**`launches/helpers/use.sets.tsx`** has the non-ok hole~~ — already closed, in
+  both fetchers (`use.sets.tsx:22`, `calendar.context.tsx:532`).
+- ~~**`auth/testimonial.component.tsx`** has zero importers.~~ Deleted.
+- ~~**`pqRing`** has zero consumers.~~ Keyframe and utility both removed.
 - The `loops` collector has three documented blind spots — two looping utilities on
   one element, `className` expressions containing `>`, and brace nesting deeper than
   two levels. All latent; see the comment above `collect_loops`.
@@ -603,13 +597,71 @@ on organization + integration + `releaseId`, so deliveries that used to arrive w
 empty array now carry real post data. Receivers written against the empty array may
 choke on it.
 
-**6. CI still does not run.** Every Actions run in this repository's history is a
-`workflow_dispatch`; `event=push` and `event=pull_request` are both zero, and merging
-PR #19 into `main` produced no run either. The `Build` workflow — which is what would
-execute `scripts/ui-migration-check.sh` — has never once executed. The repository is a
-fork, and forks need the button on the Actions tab before automatic triggers fire.
-Until somebody presses it, **local verification is the only gate**, and the CI step
-added to `build.yml` is documentation rather than enforcement.
+**6. ~~CI still does not run.~~** Resolved 2026-08-08 — the owner pressed the button on
+the Actions tab and `push` / `pull_request` runs fire normally now. Worth keeping the
+history: everything merged before that date went in unguarded, so a clean commit log
+from before it is not evidence anything was checked.
+
+## Backlog-clearing pass
+
+The follow-ups recorded above, worked through rather than carried into launch. Two
+releases: v3.3.2 (customer-facing) and v3.3.3 (isolation and cleanup).
+
+Every item was re-checked against the code before being worked on, and **three of the
+recorded ones had already been fixed** — `changeActiveCron` writes the autopost column
+(`2667a7e2`), the `use.sets` non-ok hole is closed in both fetchers, and the
+`Post_releaseId_idx` lock concern is moot (the index exists in production and `Post`
+holds no rows). Those entries are struck through above. A follow-up list that is not
+re-verified sends the next pass chasing work that is already done.
+
+**A lapsed subscription destroyed queued posts in silence.** `getPost` answers falsy for
+an org with no subscription exactly as it does for a deleted post, the frozen workflow
+turns either into `ERROR / 'No Post'`, and that string is on the silence list in
+`changeState`. The hourly sweep could not recover it either — it collects `QUEUE` only.
+`changeState` now asks the subscription on that path and writes `'Subscription
+required'`, which notifies. The post stays ERROR on purpose rather than returning to
+QUEUE: a post scheduled three weeks ago should not fire the moment someone resubscribes.
+
+**Channels came back on an upgrade.** `disableIntegrations` had no counterpart, so a
+returning customer found their channels dark. Needed `Integration.autoDisabledAt` to
+tell "the system took this away" from "I turned this off deliberately"; nulls on
+existing rows read as the user's own choice, which can only withhold an automatic
+re-enable and never cause one. Both directions run through one `syncChannelsToPlan`,
+which also covers the redeemed-code path that skips `modifySubscription` entirely.
+Autopost rules are deliberately **not** resumed: enabling a channel publishes nothing,
+an autopost rule does.
+
+**The recovery sweep died on the first failure it met.** `missingPostWorkflow` had no
+try/catch and no `continueAsNew`. `missing.post.workflow.v2.ts` follows
+`autoPostWorkflowV2`'s shape. The workflow id changes with it, because v1 never closes
+on its own — **the v1 singleton has to be terminated by hand after deploying**.
+
+`TEMPORAL_TLS=true` skipped registering the two custom search attributes, and both the
+start path and the terminate sweep address workflows through them, so a TLS install
+would silently schedule nothing. The early return is now a try/catch: an install that
+cannot register them logs and continues, one that can does.
+
+**Four places trusted the caller about ownership**: `third-party`'s `functionName`
+dispatch (now an allowlist resolved from the provider's own prototype), OAuth app
+`pictureId` (now `findOwnedMediaIds`, as post media already does), the five R2
+multipart endpoints (upload key bound to the org in Redis for a day), and local storage
+filenames off `Math.random` (now `makeId`). None was exploitable; all three of the first
+group matter from the second organization onwards.
+
+**`POST /autopost/:id/active`** now carries a tier check on the `active: true` branch
+only. The old note said a lapsed org "cannot reach Settings", but the route answers a
+session, and enabling a rule starts an hourly Temporal workflow.
+
+**`updateMedia` labelled every attachment `type: 'image'`**, videos included, and that
+value is what the publish payload carries: `gmb.provider` sends `mediaFormat: PHOTO` for
+anything not `'video'`, `telegram.provider` picks sendPhoto over sendVideo. Derived from
+the path now, because the `Media.type` column has never been written to and every row
+carries the default.
+
+Deliberately left: the four empty-state vocabularies (pure refactor, no user-visible
+effect, and the baselines are contended across parallel sessions), the calendar's
+two-wave cold load (wants measurement first), and the `loops` collector's three
+documented blind spots.
 
 ## Self-hosting
 

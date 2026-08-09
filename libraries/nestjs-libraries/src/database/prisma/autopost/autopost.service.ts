@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
 import dayjs from 'dayjs';
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { AutoPost, Integration } from '@prisma/client';
+import { AutoPost, Integration, Organization } from '@prisma/client';
 import { BaseMessage } from '@langchain/core/messages';
 import striptags from 'striptags';
 import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
@@ -15,6 +15,7 @@ import Parser from 'rss-parser';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import {
@@ -74,7 +75,9 @@ export class AutopostService {
   async stopAll(org: string) {
     const getAll = (await this.getAutoposts(org)).filter((f) => f.active);
     for (const autopost of getAll) {
-      await this.changeActive(org, autopost.id, false);
+      // Straight to setActive: this only ever switches rules off, and off is
+      // exactly the direction that must never require a subscription.
+      await this.setActive(org, autopost.id, false);
     }
   }
 
@@ -94,7 +97,34 @@ export class AutopostService {
     return data;
   }
 
-  async changeActive(orgId: string, id: string, active: boolean) {
+  async changeActive(org: Organization, id: string, active: boolean) {
+    // Switching a rule *off* must never need a subscription — that is the whole
+    // reason the route carries no policy decorator. Switching one *on* is a
+    // different act: it starts an hourly Temporal workflow. The route was left
+    // open on the reasoning that only a paid tier could have created the rule
+    // and a lapsed org "cannot reach Settings", but the endpoint is reachable
+    // with nothing more than a session, so a lapsed org could keep an hourly
+    // workflow running on a free account. Guarded here rather than by decorator
+    // because the decorator cannot see which direction is being asked for.
+    if (active) {
+      const tier =
+        // @ts-ignore
+        org?.subscription?.subscriptionTier ||
+        // Self-host without Stripe: every feature via top sellable tier.
+        (!process.env.STRIPE_PUBLISHABLE_KEY ? 'AGENCY' : 'FREE');
+
+      if (!pricing[tier].autoPost) {
+        throw new HttpException(
+          'The organization plan does not include autopost',
+          400
+        );
+      }
+    }
+
+    return this.setActive(org.id, id, active);
+  }
+
+  private async setActive(orgId: string, id: string, active: boolean) {
     const data = await this._autopostsRepository.changeActive(
       orgId,
       id,

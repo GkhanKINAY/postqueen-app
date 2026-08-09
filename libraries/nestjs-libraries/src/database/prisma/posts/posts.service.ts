@@ -376,7 +376,18 @@ export class PostsService {
                     (process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads') +
                     m.path
                   : m.path,
-              type: 'image',
+              // Was hardcoded 'image', videos included. This is the value the
+              // publish payload carries and providers branch on it: gmb sends
+              // `mediaFormat: PHOTO` for anything that is not 'video', telegram
+              // picks sendPhoto over sendVideo. So an uploaded mp4 went to
+              // those networks as a still.
+              //
+              // Read off the path rather than the row: Media has a `type`
+              // column, but nothing has ever written to it, so every row still
+              // carries the "image" default whatever was uploaded. mp4 is the
+              // only video the uploaders accept (ALLOWED_EXT_TO_MIME,
+              // LOCAL_STORAGE_ALLOWED_MIME).
+              type: hasExtension(m.path, 'mp4') ? 'video' : 'image',
               path:
                 m.path.indexOf('http') === -1
                   ? process.env.UPLOAD_DIRECTORY + m.path
