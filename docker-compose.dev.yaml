@@ -34,7 +34,8 @@ services:
     container_name: postqueen-pg-admin
     restart: always
     ports:
-      - 8081:80
+      # 8081 is the extension dev server (HOT_RELOAD_EXTENSION_VITE_PORT)
+      - 8085:80
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
