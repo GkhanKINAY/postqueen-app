@@ -21,6 +21,14 @@ interface Organization {
   id: string;
 }
 
+// Upstream shows the member's role beside each organization so someone with the
+// same email in two workspaces can tell them apart. Their markup hardcodes
+// `text-customColor18`, which is on the deprecated token list here, so the
+// label is shared and the colour comes from `text-pqSoft` like every other
+// muted string in this menu.
+const orgRoleLabel = (role: 'SUPERADMIN' | 'ADMIN' | 'USER') =>
+  role === 'SUPERADMIN' ? 'Super-Admin' : role === 'ADMIN' ? 'Admin' : 'User';
+
 const RailOrgChrome: FC<{
   name?: string;
   collapsed?: boolean;
@@ -187,7 +195,15 @@ export const OrganizationSelector: FC<{
                     isCurrent && 'bg-pqBoxFocused'
                   )}
                 >
-                  <span className="min-w-0 flex-1 truncate">{org.name}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {org.name}
+                    {!!(org as any).users?.[0]?.role && (
+                      <span className="text-pqSoft">
+                        {' '}
+                        ({orgRoleLabel((org as any).users[0].role)})
+                      </span>
+                    )}
+                  </span>
                   {isCurrent && (
                     <svg
                       viewBox="0 0 24 24"
@@ -227,7 +243,7 @@ export const OrganizationSelector: FC<{
             <div className="bg-btnPrimary !flex !relative max-w-[500px] mx-auto py-[12px] px-[12px]">Select Organization</div>
           )}
           {!asOpenSelect && (
-            <div className="flex items-center">
+            <div className="flex items-center gap-[6px]">
               <svg
                 className={
                   user?.tier.current === 'FREE'
@@ -245,20 +261,34 @@ export const OrganizationSelector: FC<{
                   fill="currentColor"
                 />
               </svg>
+              {!!current?.name && (
+                <div className="max-w-[240px] truncate">{current?.name}</div>
+              )}
             </div>
           )}
           {data?.length > 1 && (
             <div
               className={clsx(
-                'hidden py-[12px] px-[12px] group-hover:flex absolute top-[100%] end-0 bg-third border-tableBorder border gap-[12px] cursor-pointer flex-col',
+                'hidden py-[12px] px-[12px] group-hover:flex absolute top-[100%] end-0 w-max max-w-[400px] bg-third border-tableBorder border gap-[12px] cursor-pointer flex-col',
                 asOpenSelect ? '!flex !relative max-w-[500px] mx-auto mb-[10px]' : '',
               )}
             >
               {data?.map((org: Organization) => (
-                <div key={org.id} onClick={changeOrg(org)}>
+                <div
+                  key={org.id}
+                  onClick={changeOrg(org)}
+                  className="whitespace-nowrap truncate"
+                >
                   {org.name}
+                  {!!(org as any).users?.[0]?.role && (
+                    <span className="text-pqSoft">
+                      {' '}
+                      ({orgRoleLabel((org as any).users[0].role)})
+                    </span>
+                  )}
                 </div>
               ))}
+
             </div>
           )}
         </div>

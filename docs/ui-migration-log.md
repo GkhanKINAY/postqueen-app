@@ -674,6 +674,12 @@ new `t()` call sites in the calendar's drag handler: the confirmation now names
 the channel and the original publish date, and says so when the post recurs.
 Baseline updated deliberately.
 
+**`api.txt` gained three endpoints and `i18n.txt` thirty-nine keys**, all
+additions, none removed. The endpoints are the admin coupon tools
+(`/billing/coupon-info`, `/billing/apply-coupon`, `/billing/cancel-coupon`),
+superadmin-gated as upstream wrote them. The keys are that modal plus X's
+article format. Both baselines updated deliberately.
+
 **Batch by date, not by theme.** The first attempt cut batches thematically and
 collided three times, because these 42 commits form a dependency chain — the
 pending-post contract is commit 12 and later commits patch the methods it
