@@ -17,6 +17,7 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 import { timer } from '@gitroom/helpers/utils/timer';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { TypedSearchAttributes } from '@temporalio/common';
 import {
   organizationId,
@@ -24,7 +25,6 @@ import {
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
-import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 
 /**
@@ -490,55 +490,68 @@ export class PostActivity {
 
   @ActivityMethod()
   async sendWebhooks(postId: string, orgId: string, integrationId: string) {
-    const webhooks = (await this._webhookService.getWebhooks(orgId)).filter(
-      (f) => {
-        return (
-          f.integrations.length === 0 ||
-          f.integrations.some((i) => i.integration.id === integrationId)
-        );
-      }
-    );
-
-    const post = await this._postService.getPostByForWebhookId(
-      postId,
-      orgId,
-      integrationId
-    );
-    await Promise.all(
-      webhooks.map(async (webhook) => {
-        try {
-          // The DTO resolves DNS at save time only; a host that answers public
-          // then and private now would otherwise be reached here. Same
-          // dispatcher the rest of the outbound fetches use. The timeout is
-          // just as important — an endpoint that hangs used to hold this
-          // activity open in front of plugs and repeat-post scheduling.
-          const ac = new AbortController();
-          const timer = setTimeout(() => ac.abort(), 10000);
-          try {
-            await fetch(webhook.url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(post),
-              signal: ac.signal,
-              // Redirects are followed (the default). undici hands a manual
-              // 3xx straight back instead of the spec's opaque redirect, and
-              // nothing here inspects the response — so `manual` silently
-              // stopped delivering to every endpoint that normalises its URL
-              // (apex→www, trailing slash). The dispatcher below re-checks DNS
-              // on each hop, so following is still SSRF-safe.
-              // @ts-ignore — undici option, not in lib.dom fetch types
-              dispatcher: getSsrfSafeDispatcher(),
-            });
-          } finally {
-            clearTimeout(timer);
-          }
-        } catch (e) {
-          /**empty**/
+    // Webhooks are best-effort and run after the post already published, so a
+    // failure here must not fail the workflow — upstream 1e4c8dd5.
+    try {
+      const webhooks = (await this._webhookService.getWebhooks(orgId)).filter(
+        (f) => {
+          return (
+            f.integrations.length === 0 ||
+            f.integrations.some((i) => i.integration.id === integrationId)
+          );
         }
-      })
-    );
+      );
+
+      if (webhooks.length === 0) {
+        return;
+      }
+
+      // Three arguments, not upstream's one: the payload is scoped to the
+      // organization and integration that the delivery belongs to.
+      const post = await this._postService.getPostByForWebhookId(
+        postId,
+        orgId,
+        integrationId
+      );
+      await Promise.all(
+        webhooks.map(async (webhook) => {
+          try {
+            // The DTO resolves DNS at save time only; a host that answers
+            // public then and private now would otherwise be reached here.
+            // Same dispatcher the rest of the outbound fetches use. The
+            // timeout is just as important — an endpoint that hangs used to
+            // hold this activity open in front of plugs and repeat-post
+            // scheduling.
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), 10000);
+            try {
+              await fetch(webhook.url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(post),
+                signal: ac.signal,
+                // Redirects are followed (the default). undici hands a manual
+                // 3xx straight back instead of the spec's opaque redirect, and
+                // nothing here inspects the response — so `manual` silently
+                // stopped delivering to every endpoint that normalises its URL
+                // (apex→www, trailing slash). The dispatcher re-checks DNS on
+                // each hop, so following is still SSRF-safe.
+                // @ts-ignore — undici option, not in lib.dom fetch types
+                dispatcher: getSsrfSafeDispatcher(),
+              });
+            } finally {
+              clearTimeout(timer);
+            }
+          } catch (e) {
+            /**empty**/
+          }
+        })
+      );
+    } catch (err) {
+      /**empty**/
+    }
   }
   @ActivityMethod()
   async processPlug(data: {

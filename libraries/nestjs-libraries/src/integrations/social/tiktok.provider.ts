@@ -691,7 +691,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (path.indexOf('http') === 0) {
       const response = await fetch(path, {
         headers: { Range: `bytes=${start}-${end}` },
-      });
+        dispatcher: getSsrfSafeDispatcher(),
+      } as any);
 
       // A store that ignores Range (200 with the full file) or answers with an
       // error page would corrupt the upload at this offset.
