@@ -18,7 +18,7 @@ import {
   AssistantMessageProps,
   InputProps,
   UserMessageProps,
-} from '@copilotkit/react-ui/dist/components/chat/props';
+} from '@copilotkit/react-ui';
 import Link from 'next/link';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
