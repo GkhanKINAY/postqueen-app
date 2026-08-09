@@ -2,8 +2,6 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import 'multer';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import mime from 'mime-types';
-// @ts-ignore
-import { getExtension } from 'mime';
 import { IUploadProvider } from './upload.interface';
 import axios from 'axios';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
@@ -15,7 +13,7 @@ import {
   uploadBody,
   uploadLength,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
-import { fromBuffer } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 const ALLOWED_MIME_TYPES = new Set<string>([
   'image/jpeg',
@@ -99,7 +97,7 @@ class CloudflareStorage implements IUploadProvider {
       });
       body = Buffer.from(await loadImage.arrayBuffer());
     }
-    const detected = await fromBuffer(body);
+    const detected = await fileTypeFromBuffer(body);
     if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
       throw new Error('Unsupported file type.');
     }

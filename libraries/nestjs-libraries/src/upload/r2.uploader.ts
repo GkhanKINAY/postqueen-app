@@ -15,7 +15,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { r2Endpoint } from '@gitroom/nestjs-libraries/upload/r2.endpoint';
-import { fromBuffer } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {
@@ -152,7 +152,7 @@ export async function simpleUpload(
   originalFilename: string,
   _contentType: string
 ) {
-  const detected = await fromBuffer(data);
+  const detected = await fileTypeFromBuffer(data);
   if (!detected || !Object.values(ALLOWED_EXT_TO_MIME).includes(detected.mime)) {
     throw new Error('Unsupported file type.');
   }
@@ -301,7 +301,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const prefix = Buffer.concat(chunks);
-    const detected = await fromBuffer(prefix);
+    const detected = await fileTypeFromBuffer(prefix);
 
     if (!detected || detected.mime !== expectedMime) {
       await R2.send(

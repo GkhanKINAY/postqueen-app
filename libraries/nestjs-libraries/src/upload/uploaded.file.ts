@@ -2,7 +2,7 @@ import { createReadStream, mkdirSync, promises as fsp } from 'fs';
 import { tmpdir } from 'os';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { fromBuffer } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 /**
  * An upload arrives in one of two shapes: held in memory, or spooled to disk.
@@ -74,7 +74,7 @@ export async function detectUploadType(
   file: Express.Multer.File
 ): Promise<{ ext: string; mime: string } | undefined> {
   if (file?.buffer) {
-    return fromBuffer(file.buffer.subarray(0, SNIFF_BYTES));
+    return fileTypeFromBuffer(file.buffer.subarray(0, SNIFF_BYTES));
   }
 
   if (file?.path) {
@@ -82,7 +82,7 @@ export async function detectUploadType(
     try {
       const prefix = Buffer.alloc(SNIFF_BYTES);
       const { bytesRead } = await handle.read(prefix, 0, SNIFF_BYTES, 0);
-      return fromBuffer(prefix.subarray(0, bytesRead));
+      return fileTypeFromBuffer(prefix.subarray(0, bytesRead));
     } finally {
       await handle.close();
     }
