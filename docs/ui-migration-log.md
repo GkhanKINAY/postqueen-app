@@ -665,8 +665,10 @@ documented blind spots.
 
 ## Upstream sync
 
-Bringing `gitroomhq/postiz-app`'s 42 post-fork commits in. The full reasoning per
-batch is in the PRs; two things belong here.
+`gitroomhq/postiz-app`'s 42 post-fork commits, brought in over seven PRs (#38–#44).
+**41 taken, 1 skipped.** The per-batch reasoning is in the PRs and the process is
+written down in [`upstream-sync.md`](upstream-sync.md) so the next one is cheaper.
+Three things belong here.
 
 **`i18n.txt` gained four keys** — `post_already_published_republish_warning`,
 `republish_at`, `republish_recurring_note`, `republish_the_post`. They are real
