@@ -45,6 +45,11 @@ const getErrorMessage = (error: {
         default:
           return 'You have reached the maximum number of webhooks for your subscription. Please upgrade your subscription to add more webhooks.';
       }
+    case Sections.IMAGES_PER_MONTH:
+      switch (error.action) {
+        default:
+          return 'You have reached the maximum number of generated images for your subscription. Please upgrade your subscription to generate more images.';
+      }
     case Sections.VIDEOS_PER_MONTH:
       switch (error.action) {
         default:

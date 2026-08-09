@@ -68,7 +68,15 @@ export const pricing: PricingInterface = {
     community_features: false,
     featured: false,
     import_from_channels: true,
-    image_generator: false,
+    // True since 2026-08-09, and the false was hiding something the customer
+    // pays for. This flag is not the entitlement: `image_generation_count` is,
+    // and no backend check has ever consulted this one. All it does is decide
+    // whether the plan card prints the image line and whether the picture
+    // editor shows its generator panel. So Creator held 20 generations a month,
+    // reachable from the media library, the assistant and MCP, while both
+    // screens that could have mentioned them stayed quiet. Same reason on
+    // retired STANDARD below, which carries the same count.
+    image_generator: true,
     public_api: true,
     webhooks: 2,
     // Every paid tier has Auto Post (owner, 2026-08-08). It read false here
@@ -161,7 +169,9 @@ export const pricing: PricingInterface = {
     community_features: false,
     featured: false,
     import_from_channels: true,
-    image_generator: false,
+    // See CREATOR. Retired, but the subscribers still on this row hold the same
+    // 20 generations and had the same two screens hiding them.
+    image_generator: true,
     public_api: true,
     webhooks: 2,
     autoPost: true,
