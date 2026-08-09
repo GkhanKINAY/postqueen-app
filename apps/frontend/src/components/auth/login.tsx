@@ -30,7 +30,7 @@ export function Login() {
   // Chosen from the password step, so it only ever matters once `step` is
   // 'email'. Going back to the method step clears it.
   const [withCode, setWithCode] = useState(false);
-  const { billingEnabled, passwordlessLogin } = useVariables();
+  const { billingEnabled, passwordlessLogin, emailEnabled } = useVariables();
   const resolver = useMemo(() => {
     return classValidatorResolver(LoginUserDto);
   }, []);
@@ -192,8 +192,15 @@ export function Login() {
               </div>
               {/* Two links share the row only when there are two. Without the
                   code option the single link stays centred, exactly as before,
-                  so an install that leaves the flag off sees no change here. */}
-              {passwordlessLogin ? (
+                  so an install that leaves the flag off sees no change here.
+
+                  Both need mail. `/auth/forgot` always answers success — it
+                  must not reveal which addresses are registered — so the screen
+                  can never discover that nothing was sent, and an install with
+                  no mail provider would send people to a link that silently
+                  goes nowhere. `passwordlessLogin` is already refused by the
+                  backend without a provider; this makes the offer match. */}
+              {!emailEnabled ? null : passwordlessLogin ? (
                 <div className="flex items-center justify-between text-[13px] mt-[8px]">
                   <Link
                     href="/auth/forgot"

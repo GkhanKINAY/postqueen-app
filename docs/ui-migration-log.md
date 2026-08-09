@@ -386,6 +386,143 @@ The audit flagged `expand: ['data.prices']` as an invalid expansion that would
 400 every subscribe against live keys. Tested against the live account before
 acting on it: **HTTP 200**. Checkout was never broken by it.
 
+## Pre-launch sweep
+
+Two areas that had never been audited in this run: the publish path — the one
+thing the product exists to do — and tenant isolation. Both were worth opening.
+`i18n.txt` gains one key.
+
+### A session cookie could mint a free unlimited organization
+
+`POST /enterprise/create-user` is unauthenticated by design, and its only check
+was `AuthService.verifyJWT` — which verifies nothing but "signed with
+`JWT_SECRET`". The session cookie is exactly that: the whole User row signed
+with that key, with no expiry, audience or purpose claim. It carries `id`,
+`name` and `email`; the endpoint destructures `{id, name, saasName, email}` and
+answers with an organization on a **lifetime AGENCY subscription with a million
+channels, API key included**.
+
+So anyone who could register a free account could post their own cookie back at
+this endpoint and receive an unlimited paid one. Nothing in the repository calls
+these routes and production had never received a request for one — the four log
+lines mentioning `/enterprise` are Nest registering the paths at boot.
+
+All four reseller routes (`/enterprise/*` plus `/public/modify-subscription`,
+which disables an organization's channels, locks out its members and kills its
+autopost workflows) now verify against `ENTERPRISE_SECRET`, a key distinct from
+`JWT_SECRET`. A session token is not merely rejected there, it is structurally
+unusable. Unset — every install that does not run a reseller integration — the
+routes refuse outright.
+
+Three more from the same root cause, that "signed" was being read as
+"authorized":
+
+- **`forgotReturn` accepted any signed token with an `id`.** It checked
+  `dayjs(user.expires).isBefore(now)` without checking that `expires` was
+  *present*, and `dayjs(undefined)` is now, so `now.isBefore(now)` is false and a
+  token with no expiry sailed through. Combined with a session cookie that has
+  an `id` and never expires, any place one leaked was a permanent
+  account-takeover primitive. `getOrgFromCookie` had the identical hole on
+  `timeLimit`.
+- **`inviteTeamMember` spread the request body into a signed JWT.** The global
+  `ValidationPipe` runs with `transform: true` and no `whitelist`, so undeclared
+  keys survive into the DTO, and the endpoint returns the signed URL even when
+  `sendEmail` is false — a way for an org admin to obtain a `JWT_SECRET`-signed
+  token with claims of their choosing. It now names the three fields the invite
+  consumer actually reads.
+- **`POST /oauth/authorize` carried no policy.** `public.auth.middleware.ts`
+  resolves a `pos_` token and synthesises `role: 'SUPERADMIN'` for it, so a
+  plain member could approve a third-party app and walk out with full
+  organization rights across the public API and MCP — routing around the gate
+  that already withholds the raw API key from non-admins. Admin-only now.
+
+### The public share page returned drafts and provider settings
+
+`GET /public/posts/:id` spread every scalar column on Post, including `settings`
+(the per-provider JSON: subreddit, board, "post as" identity), `error`,
+`releaseId` and `organizationId` — and did not filter by state, so unpublished
+drafts were as public as published posts. The integration object beside it had
+been picked field by field for exactly this reason; the post had not. It is an
+allowlist now, filtered to `PUBLISHED`. There is no share toggle in the product,
+so a customer cannot turn this off and is not told it exists; post ids are cuid
+v1, which is not the unguessable token that design leans on.
+
+### The publish path could post the same thing up to fifteen times
+
+`post.workflow.v1.0.5.ts` retried on failure by falling out of its catch and
+letting the loop run `postSocial` again — five passes, each activity already
+retrying three times. There is no idempotency anywhere on that path: nothing
+reads `releaseId` before calling the provider and no idempotency key is passed.
+The errors that took that branch were provider 5xx, connection resets and read
+timeouts — precisely the cases where the post most likely *did* land. `updatePost`
+sat inside the same try, so a database blip while marking a successful post
+PUBLISHED also took it: the row went to ERROR and the post went out again.
+
+Workflows on `main` cannot be edited — running executions replay against the
+code they started with — so this is **`post.workflow.v1.0.6.ts`**, with v1.0.5
+still exported for anything mid-flight, and `posts.service.ts` starting the new
+one. Same shape as the `autoPostWorkflowV2` migration.
+
+Two more duplicate-publish paths closed in the activity, which is editable:
+`streakWorkflow.start` ran *after* the post was live with no guard, so any
+Temporal hiccup there failed the activity and Temporal retried it — publishing
+again. It is wrapped now, with a note that nothing past the provider call may
+fail the activity.
+
+### A failed schedule was unreportable by construction
+
+`startWorkflow` ended in `catch (err) {}`. `createPost` attaches a `.catch` that
+reports to Sentry and logs — and that handler could never run, because the
+promise could never reject. An unreachable Temporal therefore looked exactly
+like a successful schedule: HTTP 200, a row in QUEUE, and nothing anywhere
+saying the post would never publish. It rethrows now, and the two reschedule
+callers report instead of swallowing.
+
+### `changeDate` would republish a published post
+
+`changePostStatus` refuses to touch a PUBLISHED or ERROR post. `changeDate`,
+directly below it, cleared `releaseId`/`releaseURL`, put the row back in QUEUE
+and started the workflow — with no state check at all. The only thing in the way
+was a confirmation modal in the calendar, so a stale tab, a double drop or any
+direct API call published the same content to the audience a second time; if the
+new date was in the past the workflow slept zero and posted immediately.
+
+### Scheduled times were correct only because of one line in main.ts
+
+The frontend sends a naive wall-clock string in UTC and `posts.repository.ts`
+parsed it with bare `dayjs`, which is local-time parsing. It came out right only
+because `apps/backend/src/main.ts` pins `process.env.TZ = 'UTC'` — one line, in
+one of the two services that write posts. The orchestrator does not set it,
+which is why `autopost.service.ts` has to append a literal `'Z'`. Both parse
+sites use `dayjs.utc` now, so the result no longer depends on the host clock.
+
+### Found, verified, and left for a follow-up
+
+- **A cancelled or unsubscribed org loses its queued posts.** With billing on,
+  `getPostsList` returns `[]` for an org with no subscription, the workflow marks
+  the post `ERROR` with reason `No Post`, and that reason is on the
+  notification-suppression list — so the content is destroyed silently and the
+  hourly sweep will not retry it, because it only looks at `QUEUE`.
+- **`missingPostWorkflow` has no try/catch and no `continueAsNew`.** One failed
+  activity ends the only safety net in the product until someone restarts the
+  backend, and history growth terminates it after roughly eight months. Nothing
+  alerts either way.
+- **Search attributes are not registered when `TEMPORAL_TLS=true`**
+  (`temporal.register.ts:9-12`), and every start and every terminate-sweep uses
+  them. On a TLS install nothing schedules and nothing cancels, silently.
+- **The sweep's two-day window**, its blindness to channels that were
+  disabled/refreshNeeded during it, and the dead `poke` signal handler.
+- Partial threads mark the root ERROR while it is live; multi-channel creation is
+  not atomic; `updateMedia` labels every item `type: 'image'`, including videos.
+- Isolation medium-severity: OAuth app `pictureId` is an unchecked cross-org
+  foreign key; the R2 multipart handlers trust a client-supplied key; local
+  storage filenames come from `Math.random()`; `third-party` dispatches on an
+  unvalidated method name.
+
+The repository sweep for missing org scoping came back **clean** on everything
+reachable over HTTP. What is unscoped is worker-only and reached through
+already-scoped callers.
+
 ## Before the next release
 
 Everything above this line is merged to `main` but **not released** — production is on

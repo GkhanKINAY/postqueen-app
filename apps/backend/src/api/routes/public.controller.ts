@@ -55,11 +55,33 @@ export class PublicController {
     return this._agentGraphInsertService.newPost(body.text);
   }
 
+  /**
+   * The `/p/:id` share page. Unauthenticated by design — the id is the only
+   * credential — so what it returns has to be chosen, not spread.
+   *
+   * It used to `...p` every scalar column on Post: `settings` (the per-provider
+   * JSON, which carries the subreddit, the board, the "post as" identity),
+   * `error`, `releaseId`, `organizationId`, `submittedForOrganizationId`. The
+   * integration object right below was already picked field by field for
+   * exactly this reason; the post itself was not.
+   *
+   * It also returned DRAFTS. There is no share toggle in the product, so a
+   * customer cannot turn this off and is not told it exists — and post ids are
+   * cuid v1, whose randomness is `Math.random()` behind a predictable
+   * timestamp. Not brute-forceable over HTTP, but not the unguessable token the
+   * design leans on either. Unpublished work should not be one guessed id away.
+   */
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
-    return (await this._postsService.getPostsRecursively(id, true)).map(
-      ({ childrenPost, ...p }) => ({
-        ...p,
+    return (await this._postsService.getPostsRecursively(id, true))
+      .filter((p) => p.state === 'PUBLISHED')
+      .map((p) => ({
+        id: p.id,
+        content: p.content,
+        publishDate: p.publishDate,
+        releaseURL: p.releaseURL,
+        state: p.state,
+        image: p.image,
         ...(p.integration
           ? {
               integration: {
@@ -71,8 +93,7 @@ export class PublicController {
               },
             }
           : {}),
-      })
-    );
+      }));
   }
 
   @Get(`/posts/:id/comments`)
@@ -132,13 +153,27 @@ export class PublicController {
     });
   }
 
+  /**
+   * Reseller hook, in the same family as `/enterprise/*` and gated the same way.
+   *
+   * It is unauthenticated and it is destructive: `modifySubscriptionByOrg`
+   * disables the organization's channels, locks out its non-superadmin members
+   * and terminates its autopost workflows. Authorizing that on "signed with
+   * `JWT_SECRET`" is not enough — every token this app issues, including the
+   * session cookie, is signed with that key and declares no purpose. It now
+   * requires `ENTERPRISE_SECRET`, so a token minted for anything else cannot
+   * reach it, and an install without that variable refuses the route.
+   */
   @Post('/modify-subscription')
   async modifySubscription(@Body('params') params: string) {
     try {
-      const load = AuthService.verifyJWT(params) as {
+      const load = AuthService.verifyJWTWithSecret(
+        params,
+        process.env.ENTERPRISE_SECRET
+      ) as {
         orgId: string;
         billing: AnyTier;
-      };
+      } | null;
 
       if (!load || !load.orgId || !load.billing || !pricing[load.billing]) {
         return { success: false };

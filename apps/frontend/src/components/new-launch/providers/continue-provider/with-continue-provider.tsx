@@ -69,14 +69,16 @@ export function withContinueProvider<TItem, TSelection>(
       if (initialData) {
         return initialData;
       }
-      try {
-        return await call.get(endpoint);
-      } catch (e) {
-        // Handle error silently
-      }
+      // Deliberately not caught. Swallowing the error resolved the fetcher to
+      // `undefined`, which SWR reports as a *successful* empty result — so a
+      // provider that failed to load its options looked exactly like a provider
+      // with no options to offer, and `isLoading` went false either way. Letting
+      // it throw is what gives SWR an `error` to distinguish the two, the same
+      // rule CLAUDE.md sets out under "Loading and empty states".
+      return await call.get(endpoint);
     }, [initialData]);
 
-    const { data, isLoading } = useSWR(
+    const { data, isLoading, error, mutate } = useSWR(
       initialData ? null : swrKey,
       loadData,
       SWR_OPTIONS
@@ -104,6 +106,29 @@ export function withContinueProvider<TItem, TSelection>(
         ) || []
       );
     }, [resolvedData, existingId]);
+
+    // A failed load is not an empty account. Both used to render the same
+    // "nothing here" copy, which told someone whose options exist that they
+    // have none — and offered no way to find out otherwise.
+    if (!isLoading && error) {
+      return (
+        <div className="text-center flex flex-col justify-center items-center text-[18px] leading-[26px] h-[300px] gap-[12px]">
+          <span>
+            {t(
+              'provider_options_failed',
+              'We could not load the options for this channel.'
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => mutate()}
+            className="underline hover:font-bold cursor-pointer text-[15px]"
+          >
+            {t('try_again', 'Try again')}
+          </button>
+        </div>
+      );
+    }
 
     if (!isLoading && !resolvedData?.length) {
       return (

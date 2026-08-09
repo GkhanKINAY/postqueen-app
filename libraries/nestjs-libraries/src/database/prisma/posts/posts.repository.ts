@@ -526,7 +526,16 @@ export class PostsRepository {
         id,
       },
       data: {
-        publishDate: dayjs(date).toDate(),
+        // `dayjs.utc`, not `dayjs`. The frontend sends a naive wall-clock
+        // string in UTC ("2026-08-09T14:30:00", no offset), and bare `dayjs`
+        // parses that as *local* time. It came out right only because
+        // `apps/backend/src/main.ts` pins `process.env.TZ = 'UTC'` — one line,
+        // in one of the two services that write posts, holding up every
+        // scheduled time in the product. The orchestrator's main.ts does not
+        // set it, which is why `autopost.service.ts` has to append a literal
+        // 'Z'. Parsing explicitly makes the result independent of the host
+        // clock instead of a property of the deployment.
+        publishDate: dayjs.utc(date).toDate(),
         // schedule: always QUEUE (draft → scheduled when dropped on calendar)
         // update: don't change the state
         ...(action === 'schedule'
@@ -592,7 +601,7 @@ export class PostsRepository {
       }
 
       const updateData = (type: 'create' | 'update') => ({
-        publishDate: dayjs(date).toDate(),
+        publishDate: dayjs.utc(date).toDate(),
         integration: {
           connect: {
             id: body.integration.id,

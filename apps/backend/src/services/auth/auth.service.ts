@@ -264,6 +264,12 @@ export class AuthService {
 
     try {
       const getOrg: any = AuthChecker.verifyJWT(cookie);
+      // Presence first, for the same reason as `forgotReturn`: `dayjs(undefined)`
+      // is now, and `now.isBefore(now)` is false, so a token with no `timeLimit`
+      // passed the window check instead of failing it.
+      if (!getOrg?.orgId || !getOrg?.timeLimit) {
+        return false;
+      }
       if (dayjs(getOrg.timeLimit).isBefore(dayjs())) {
         return false;
       }
@@ -382,6 +388,22 @@ export class AuthService {
       id: string;
       expires: string;
     };
+
+    // `expires` has to be *present*, not just in the future. `dayjs(undefined)`
+    // is now, and `now.isBefore(now)` is false, so a token carrying no `expires`
+    // at all sailed straight through the check below.
+    //
+    // That matters because every token this app signs uses the same key and
+    // none of them declare a purpose — and the session cookie is the whole User
+    // row, which has an `id` and no `expires` and no expiry of its own. So any
+    // place a session token leaked (a log line, a Referer header, the plaintext
+    // `auth` response header under NOT_SECURED) it could be replayed here as a
+    // password reset, forever. The token being signed is not the same as the
+    // token being a reset token.
+    if (!user?.id || !user.expires) {
+      return false;
+    }
+
     if (dayjs(user.expires).isBefore(dayjs())) {
       return false;
     }

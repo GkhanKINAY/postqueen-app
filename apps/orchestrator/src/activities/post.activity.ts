@@ -77,9 +77,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
+      // v106, matching posts.service.ts. The recovery sweep starting the old
+      // version would have quietly reintroduced the duplicate-publish loop on
+      // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV105', {
+        .workflow.signalWithStart('postWorkflowV106', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -253,20 +256,33 @@ export class PostActivity {
       integration
     );
 
-    await this._temporalService.client
-      .getRawClient()
-      .workflow.start('streakWorkflow', {
-        args: [{ organizationId: integration.organizationId }],
-        workflowId: `streak_${integration.organizationId}`,
-        taskQueue: 'main',
-        workflowIdConflictPolicy: 'TERMINATE_EXISTING',
-        typedSearchAttributes: new TypedSearchAttributes([
-          {
-            key: organizationId,
-            value: integration.organizationId,
-          },
-        ]),
-      });
+    // Everything past this point runs *after* the post is live on the
+    // customer's timeline, so nothing here may fail the activity. Temporal
+    // retries a failed activity, and a retry of this one publishes the post a
+    // second time — `postSocial` has no idempotency guard and never checks
+    // `releaseId` before calling the provider. A streak counter is not worth a
+    // duplicate post, so its failure is swallowed deliberately.
+    try {
+      await this._temporalService.client
+        .getRawClient()
+        .workflow.start('streakWorkflow', {
+          args: [{ organizationId: integration.organizationId }],
+          workflowId: `streak_${integration.organizationId}`,
+          taskQueue: 'main',
+          workflowIdConflictPolicy: 'TERMINATE_EXISTING',
+          typedSearchAttributes: new TypedSearchAttributes([
+            {
+              key: organizationId,
+              value: integration.organizationId,
+            },
+          ]),
+        });
+    } catch (err) {
+      console.error(
+        `[postSocial] post ${newPosts?.[0]?.id} published, but the streak workflow could not start`,
+        err
+      );
+    }
 
     return postNow;
   }
