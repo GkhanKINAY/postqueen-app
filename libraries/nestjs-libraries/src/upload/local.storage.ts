@@ -11,6 +11,20 @@ import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/we
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
 import { fromBuffer } from 'file-type';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+
+/**
+ * Stored files are served from a public directory and the filename is the only
+ * thing guarding them, so it has to be unguessable.
+ *
+ * Both call sites built it from `Math.round(Math.random() * 16)`, which is
+ * weaker than the 32 characters suggest on two counts: V8's Math.random is
+ * xorshift128+, whose state can be recovered from a run of outputs, and
+ * rounding rather than flooring makes 0 and f appear half as often as the other
+ * fourteen digits. `makeId` is the CSPRNG-backed generator already used for API
+ * keys and OAuth secrets, over a 62-character alphabet.
+ */
+const uploadFilename = () => makeId(32);
 
 const LOCAL_STORAGE_ALLOWED_MIME = new Set<string>([
   'image/jpeg',
@@ -66,10 +80,7 @@ export class LocalStorage implements IUploadProvider {
     const dir = `${this.uploadDirectory}${innerPath}`;
     mkdirSync(dir, { recursive: true });
 
-    const randomName = Array(32)
-      .fill(null)
-      .map(() => Math.round(Math.random() * 16).toString(16))
-      .join('');
+    const randomName = uploadFilename();
 
     const filePath = `${dir}/${randomName}.${findExtension}`;
     const publicPath = `${innerPath}/${randomName}.${findExtension}`;
@@ -97,10 +108,7 @@ export class LocalStorage implements IUploadProvider {
       const dir = `${this.uploadDirectory}${innerPath}`;
       mkdirSync(dir, { recursive: true });
 
-      const randomName = Array(32)
-        .fill(null)
-        .map(() => Math.round(Math.random() * 16).toString(16))
-        .join('');
+      const randomName = uploadFilename();
 
       const filePath = `${dir}/${randomName}${safeExt}`;
       const publicPath = `${innerPath}/${randomName}${safeExt}`;

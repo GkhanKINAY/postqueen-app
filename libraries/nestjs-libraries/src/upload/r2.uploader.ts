@@ -16,6 +16,7 @@ import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { r2Endpoint } from '@gitroom/nestjs-libraries/upload/r2.endpoint';
 import { fromBuffer } from 'file-type';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -66,14 +67,72 @@ function generateRandomString() {
   return makeId(20);
 }
 
+/**
+ * Who owns an in-flight multipart upload.
+ *
+ * `create-multipart-upload` mints the key server-side, but the five endpoints
+ * that follow it read the key back out of the request body and passed it
+ * straight to R2. Nothing tied a key to the organization that started it, so
+ * the only thing standing between one tenant and another tenant's upload was
+ * not knowing the key — which is a secret, but it is the wrong kind of control
+ * to rely on, and it does nothing about a key that was never an upload of ours
+ * at all. `abort` and `list-parts` in particular would happily be pointed at an
+ * arbitrary object name.
+ *
+ * Recorded in Redis rather than a table because it is scratch state with a
+ * natural expiry, the same way the OAuth handshake keys are held. Without
+ * REDIS_URL `ioRedis` is an in-process map, which is still correct for a
+ * single-process install: the create and the follow-ups share the process.
+ */
+const OWNER_PREFIX = 'r2upload:';
+const OWNER_TTL_SECONDS = 24 * 60 * 60;
+
+const rememberUploadOwner = (key: string, orgId: string) =>
+  ioRedis.set(OWNER_PREFIX + key, orgId, 'EX', OWNER_TTL_SECONDS);
+
+const forgetUploadOwner = (key: string) => ioRedis.del(OWNER_PREFIX + key);
+
+async function ownsUpload(key: string, orgId: string) {
+  if (!key || !orgId) {
+    return false;
+  }
+
+  return (await ioRedis.get(OWNER_PREFIX + key)) === orgId;
+}
+
 export default async function handleR2Upload(
   endpoint: string,
   req: Request,
-  res: Response
+  res: Response,
+  orgId: string
 ) {
+  if (endpoint === 'create-multipart-upload') {
+    return createMultipartUpload(req, res, orgId);
+  }
+
+  // Every other endpoint acts on a key someone else minted, so it has to prove
+  // the key is one of theirs first. `prepare-upload-parts` nests it a level
+  // deeper than the rest.
+  const key =
+    endpoint === 'prepare-upload-parts'
+      ? req.body?.partData?.key
+      : req.body?.key;
+
   switch (endpoint) {
-    case 'create-multipart-upload':
-      return createMultipartUpload(req, res);
+    case 'prepare-upload-parts':
+    case 'complete-multipart-upload':
+    case 'list-parts':
+    case 'abort-multipart-upload':
+    case 'sign-part':
+      if (!(await ownsUpload(key, orgId))) {
+        return res.status(403).json({ message: 'Unknown upload.' });
+      }
+      break;
+    default:
+      return res.status(404).end();
+  }
+
+  switch (endpoint) {
     case 'prepare-upload-parts':
       return prepareUploadParts(req, res);
     case 'complete-multipart-upload':
@@ -114,7 +173,11 @@ export async function simpleUpload(
   return CLOUDFLARE_BUCKET_URL + '/' + randomFilename;
 }
 
-export async function createMultipartUpload(req: Request, res: Response) {
+export async function createMultipartUpload(
+  req: Request,
+  res: Response,
+  orgId: string
+) {
   const { file, fileHash } = req.body;
   const safeExt = normalizeExtension(file?.name || '');
   if (!safeExt) {
@@ -135,6 +198,11 @@ export async function createMultipartUpload(req: Request, res: Response) {
 
     const command = new CreateMultipartUploadCommand({ ...params });
     const response = await R2.send(command);
+
+    if (response.Key) {
+      await rememberUploadOwner(response.Key, orgId);
+    }
+
     return res.status(200).json({
       uploadId: response.UploadId,
       key: response.Key,
@@ -240,6 +308,9 @@ export async function completeMultipartUpload(req: Request, res: Response) {
         .json({ message: 'File contents do not match declared type.' });
     }
 
+    // The upload is finished, so the ownership record has done its job.
+    await forgetUploadOwner(key);
+
     response.Location =
       process.env.CLOUDFLARE_BUCKET_URL +
       '/' +
@@ -262,6 +333,8 @@ export async function abortMultipartUpload(req: Request, res: Response) {
     };
     const command = new AbortMultipartUploadCommand({ ...params });
     const response = await R2.send(command);
+
+    await forgetUploadOwner(key);
 
     return res.status(200).json(response);
   } catch (err) {

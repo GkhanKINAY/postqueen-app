@@ -4,10 +4,37 @@ import { CreateOAuthAppDto } from '@gitroom/nestjs-libraries/dtos/oauth/create-o
 import { UpdateOAuthAppDto } from '@gitroom/nestjs-libraries/dtos/oauth/update-oauth-app.dto';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 
 @Injectable()
 export class OAuthService {
-  constructor(private _oauthRepository: OAuthRepository) {}
+  constructor(
+    private _oauthRepository: OAuthRepository,
+    private _mediaService: MediaService
+  ) {}
+
+  /**
+   * `pictureId` is written to the OAuth app as a foreign key with nothing
+   * checking who owns the row, so any org could point its app's logo at another
+   * org's media. The app's name and logo are what a user sees on the consent
+   * screen, which makes a borrowed logo a phishing aid rather than only a
+   * privacy leak.
+   *
+   * Same guard, same helper, as the one on post media in `posts.service`.
+   */
+  private async assertOwnsPicture(orgId: string, pictureId?: string) {
+    if (!pictureId) {
+      return;
+    }
+
+    const owned = await this._mediaService.findOwnedMediaIds(orgId, [
+      pictureId,
+    ]);
+
+    if (!owned.length) {
+      throw new HttpException('Media not found', HttpStatus.NOT_FOUND);
+    }
+  }
 
   async getApp(orgId: string) {
     const app = await this._oauthRepository.getAppByOrgId(orgId);
@@ -24,6 +51,8 @@ export class OAuthService {
         HttpStatus.BAD_REQUEST
       );
     }
+
+    await this.assertOwnsPicture(orgId, dto.pictureId);
 
     const clientId = 'pca_' + makeId(32);
     const clientSecret = 'pcs_' + makeId(48);
@@ -42,6 +71,8 @@ export class OAuthService {
   }
 
   async updateApp(orgId: string, dto: UpdateOAuthAppDto) {
+    await this.assertOwnsPicture(orgId, dto.pictureId);
+
     return this._oauthRepository.updateApp(orgId, {
       ...(dto.name && { name: dto.name }),
       ...(dto.description !== undefined && { description: dto.description }),
