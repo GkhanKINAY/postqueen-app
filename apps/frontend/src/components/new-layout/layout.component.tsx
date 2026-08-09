@@ -45,6 +45,7 @@ import { FirstBillingComponent } from '@gitroom/frontend/components/billing/firs
 import { BillingAdminRequiredComponent } from '@gitroom/frontend/components/billing/billing.admin.required.component';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { CrownGlyph } from '@gitroom/frontend/components/ui/logo.component';
+import { setSentryUser } from '@gitroom/react/sentry/initialize.sentry.client';
 import { UserMenu } from '@gitroom/frontend/components/new-layout/user.menu';
 import { HelpMenu } from '@gitroom/frontend/components/new-layout/help.menu';
 import { Rail } from '@gitroom/frontend/components/new-layout/rail';
@@ -182,6 +183,14 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!mobile) setDrawer(false);
   }, [mobile]);
+
+  // Names the person behind a frontend error, and clears them on logout so the
+  // next session is not attributed to the last one. Inert until a DSN is set.
+  useEffect(() => {
+    setSentryUser(
+      user ? { id: user.id, email: user.email, orgId: user.orgId } : null
+    );
+  }, [user]);
 
   // Below 1180 there is not room for a 236px rail beside a page; collapse it,
   // and put it back only if this is the one that collapsed it.
