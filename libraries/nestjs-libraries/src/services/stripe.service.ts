@@ -21,7 +21,18 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
+/**
+ * Pinned on purpose. This file reads deep, version-sensitive shapes —
+ * `invoice.parent.subscription_details.subscription`, `discount.source.coupon` —
+ * that a Stripe API version bump can move without any type error, because the
+ * SDK types travel with the SDK. Unpinned, the version in force is whatever the
+ * installed SDK happens to default to, so `pnpm update stripe` silently becomes
+ * a billing change. This is the version the account and stripe@20.4.0 already
+ * agree on today, so pinning it changes nothing now and freezes the contract.
+ */
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
+  apiVersion: '2026-02-25.clover',
+});
 
 /**
  * Stamped on every subscription this app creates. The webhook uses it to ignore
@@ -30,6 +41,20 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing');
  * drift apart, subscription events are silently discarded and nothing errors.
  */
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
+
+/**
+ * Stripe subscription statuses that mean "this customer is entitled right now".
+ *
+ * `past_due` is in deliberately: Stripe is still retrying, and dunning is the
+ * grace period. Whether it ever ends is a Dashboard setting — with "mark unpaid"
+ * no `customer.subscription.deleted` is ever sent, which is why `updateSubscription`
+ * revokes on the terminal statuses itself rather than waiting for one.
+ */
+const ENTITLED_STATUSES: Stripe.Subscription.Status[] = [
+  'active',
+  'trialing',
+  'past_due',
+];
 
 @Injectable()
 export class StripeService {
@@ -44,6 +69,62 @@ export class StripeService {
   ) {}
   validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
     return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+  }
+
+  /**
+   * Whether this event may be processed now.
+   *
+   * Stripe redelivers on any non-2xx and may deliver twice regardless, and no
+   * handler here is naturally idempotent — a second `invoice.payment_succeeded`
+   * fires the purchase conversion again, a second `invoice.payment_failed`
+   * re-notifies the customer.
+   */
+  claimEvent(id: string, type: string) {
+    return this._subscriptionService.claimStripeEvent(id, type);
+  }
+
+  /** Stamp a claimed event as finished so redeliveries are dropped. */
+  completeEvent(id: string) {
+    return this._subscriptionService.completeStripeEvent(id);
+  }
+
+  /** Undo a claim so a failed handler still gets Stripe's retry. */
+  releaseEvent(id: string) {
+    return this._subscriptionService.releaseStripeEvent(id);
+  }
+
+  /**
+   * Whether Stripe still shows something entitling this customer.
+   *
+   * Every revoke path here is keyed by customer, not by the object that
+   * triggered it, so without this a terminal event for ONE subscription — or a
+   * refund of ONE old charge — takes the whole account down. The concrete case:
+   * a card fails at signup, the customer retries on a working one, and ~23 hours
+   * later the abandoned attempt turns `incomplete_expired` and cuts off somebody
+   * who has been paying ever since.
+   *
+   * A founding member has no Stripe subscription at all, so this correctly
+   * reports false for them — a disputed or refunded founding payment should
+   * revoke.
+   *
+   * Deliberately does NOT exclude the subscription that triggered the event.
+   * Excluding it looked right — "ignore the one that just died" — but it blinds
+   * the check to that subscription's *live* status, which is the only status
+   * worth reading. Stripe promises no event ordering, so a subscription that
+   * went `paused` and then `active` again can deliver `paused` last; excluding
+   * it would find nothing else entitling and revoke a customer who is, right
+   * now, active. Reading every subscription's current state answers both cases:
+   * the abandoned `incomplete_expired` attempt is skipped because the *other*
+   * subscription is live, and the out-of-order case is skipped because the
+   * subscription itself is.
+   */
+  private async hasEntitlingSubscription(customer: string) {
+    const all = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 100,
+    });
+    return all.data.some((s) => ENTITLED_STATUSES.includes(s.status));
   }
 
   /**
@@ -219,6 +300,47 @@ export class StripeService {
       uniqueId: string;
     };
 
+    // Terminal statuses are handled FIRST, before the metadata and card checks
+    // below. Both of those exist to decide what to *grant*, and neither has any
+    // bearing on taking access away — running them first meant a subscription
+    // with unusable metadata could never be revoked at all, and that every
+    // revoke fired a $1 off-session authorization against the card of the very
+    // customer being cut off.
+    //
+    // These three are terminal — Stripe has finished trying and is not coming
+    // back — and for `unpaid` and `paused` **no `customer.subscription.deleted`
+    // is ever sent**. Merely refusing to re-grant left whatever was already
+    // written in place, so the account kept its paid plan, for free, with no
+    // further event able to correct it.
+    //
+    // `canceled` is deliberately absent: it always arrives with a `deleted`
+    // event of its own, and revoking twice would race it.
+    const TERMINAL: Stripe.Subscription.Status[] = [
+      'unpaid',
+      'paused',
+      'incomplete_expired',
+    ];
+    if (TERMINAL.includes(event.data.object.status)) {
+      const customer = event.data.object.customer as string;
+
+      if (await this.hasEntitlingSubscription(customer)) {
+        return {
+          ok: true,
+          granted: false,
+          revoked: false,
+          reason: `status ${event.data.object.status}, another subscription is still active`,
+        };
+      }
+
+      await this._subscriptionService.deleteSubscription(customer);
+      return {
+        ok: true,
+        granted: false,
+        revoked: true,
+        reason: `status ${event.data.object.status}`,
+      };
+    }
+
     // Same guard as createSubscription — see the note there.
     if (!pricing[billing]) {
       Logger.warn(
@@ -233,23 +355,13 @@ export class StripeService {
       return { ok: true, granted: false, reason: 'incomplete' };
     }
 
-    // Only statuses that mean "this customer is currently entitled" write the
-    // paid tier. The gate used to be `status !== 'incomplete'`, which let
-    // `canceled`, `unpaid`, `incomplete_expired` and `paused` all through and
-    // wrote the full tier back with `deletedAt: null`.
-    //
-    // Two ways that paid for nothing. If the Stripe dunning setting is "mark
-    // unpaid" rather than "cancel", no `customer.subscription.deleted` is ever
-    // sent and the customer keeps the tier forever. And Stripe does not promise
-    // event ordering, so a `deleted` processed before a trailing `updated` had
-    // its row deleted and then recreated — permanently entitled, with no
-    // further events coming to correct it.
-    const ENTITLED: Stripe.Subscription.Status[] = [
-      'active',
-      'trialing',
-      'past_due', // still inside dunning; Stripe is retrying, not giving up
-    ];
-    if (!ENTITLED.includes(event.data.object.status)) {
+    // Only `ENTITLED_STATUSES` writes the paid tier. The gate used to be
+    // `status !== 'incomplete'`, which let `canceled`, `unpaid`,
+    // `incomplete_expired` and `paused` all through and wrote the full tier back
+    // with `deletedAt: null`. Stripe does not promise event ordering either, so
+    // a `deleted` processed before a trailing `updated` had its row deleted and
+    // then recreated — permanently entitled, with nothing left to correct it.
+    if (!ENTITLED_STATUSES.includes(event.data.object.status)) {
       return {
         ok: true,
         granted: false,
@@ -607,6 +719,11 @@ export class StripeService {
       const promotionCodes = await stripe.promotionCodes.list({
         active: true,
         limit: 100,
+        // Without this the coupon arrives as an id string, so the two checks
+        // below that read it — coupon-level `autoapply` metadata, and
+        // `redeem_by` — were dead code. Marking the *coupon* rather than the
+        // promotion code silently did nothing at all.
+        expand: ['data.promotion.coupon'],
       });
 
       const now = Math.floor(Date.now() / 1000);
@@ -694,7 +811,14 @@ export class StripeService {
       // Tax needs a location. The customer already exists, so customer_update
       // tells Checkout to write the collected billing address back to it.
       automatic_tax: { enabled: true },
-      customer_update: { address: 'auto' },
+      // Optional business identity for company invoices. Under ui_mode 'custom'
+      // this only permits collection — TaxIdElement in embedded.billing.tsx is
+      // what actually draws the fields. `required` is deliberately unset: the
+      // field stays optional, and the SDK forbids it under ui_mode 'custom'.
+      tax_id_collection: { enabled: true },
+      // Without name: 'auto' the legal entity name is collected and then
+      // dropped, so the invoice would keep showing the signup org name.
+      customer_update: { address: 'auto', name: 'auto' },
       billing_address_collection: 'required',
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
@@ -759,7 +883,10 @@ export class StripeService {
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
       automatic_tax: { enabled: true },
-      customer_update: { address: 'auto' },
+      // Hosted Checkout draws the business name / tax ID fields itself, so the
+      // server flag is the whole change on this path.
+      tax_id_collection: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
       billing_address_collection: 'required',
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
@@ -875,8 +1002,31 @@ export class StripeService {
     }
   }
 
-  async checkDiscount(customer: string) {
-    if (!process.env.STRIPE_DISCOUNT_ID) {
+  async checkDiscount(customer?: string | null) {
+    // `getActiveDiscount` has always guarded this; these two never did, and
+    // `strictNullChecks` is off so nothing caught it at compile time. An org
+    // that never reached checkout has no `paymentId`, and the resulting
+    // `subscriptions.list({ customer: null })` threw — a 500 on the Billing
+    // screen for the exact population least able to explain it.
+    if (!isBillingEnabled() || !customer || !process.env.STRIPE_DISCOUNT_ID) {
+      return false;
+    }
+
+    // The env var being non-empty says nothing about the coupon existing.
+    // Coupon ids are per-mode, so the id that works in test is absent in live —
+    // and without this the offer was shown, the customer accepted it, and the
+    // apply threw `resource_missing` into an unguarded controller.
+    try {
+      const coupon = await stripe.coupons.retrieve(
+        process.env.STRIPE_DISCOUNT_ID
+      );
+      if (!coupon?.valid) {
+        return false;
+      }
+    } catch (err) {
+      Logger.warn(
+        `[stripe] STRIPE_DISCOUNT_ID ${process.env.STRIPE_DISCOUNT_ID} does not resolve in this mode; retention offer disabled`
+      );
       return false;
     }
 
@@ -905,7 +1055,7 @@ export class StripeService {
     return true;
   }
 
-  async applyDiscount(customer: string) {
+  async applyDiscount(customer?: string | null) {
     const check = await this.checkDiscount(customer);
     if (!check) {
       return false;
@@ -1251,6 +1401,105 @@ export class StripeService {
   }
 
   /**
+   * A chargeback. The money is already gone and the bank has taken a fee on top,
+   * so access goes with it — until now a disputed charge cost the payment, the
+   * fee, and continued service.
+   *
+   * `revokeLocalSubscription` rather than `deleteSubscription` because the
+   * latter refuses to touch a founding-member row, and a disputed founding
+   * payment is exactly the case that most needs revoking.
+   */
+  async disputeCreated(event: Stripe.ChargeDisputeCreatedEvent) {
+    // A Dispute carries the charge, not the customer, so the charge has to be
+    // fetched to find out whose plan this is.
+    const dispute = event.data.object;
+
+    // Not every dispute event is a chargeback. Card networks send retrieval
+    // requests and fraud warnings through the same event with a `warning_`
+    // status and no money withdrawn — revoking on those suspends a customer who
+    // is still paying, and tells them their bank disputed a payment that was
+    // never disputed.
+    if (dispute.status?.startsWith('warning_')) {
+      return { ok: true, revoked: false, reason: dispute.status };
+    }
+
+    const chargeId =
+      typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+    if (!chargeId) {
+      return { ok: true };
+    }
+    const charge = await stripe.charges.retrieve(chargeId);
+    const customer = charge?.customer as string | null;
+    if (!customer) {
+      return { ok: true };
+    }
+
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org) {
+      return { ok: true };
+    }
+
+    // A dispute on an old charge must not cut off someone who is currently
+    // paying on a live subscription.
+    if (await this.hasEntitlingSubscription(customer)) {
+      return { ok: true, revoked: false, reason: 'still subscribed' };
+    }
+
+    await this._subscriptionService.revokeLocalSubscription(org.id);
+    await this._notificationService.inAppNotification(
+      org.id,
+      'Payment disputed',
+      'A payment for PostQueen was disputed with your bank, so your plan has been suspended. Contact support if this was not you.',
+      true,
+      false,
+      'info'
+    );
+
+    return { ok: true, revoked: true };
+  }
+
+  /**
+   * Only a FULL refund revokes. Partial refunds are a normal part of this
+   * system — the founding-member retention offer and prorated credits are both
+   * partial — and taking someone's plan away because they were given $5 back
+   * would be worse than the gap this closes.
+   */
+  async chargeRefunded(event: Stripe.ChargeRefundedEvent) {
+    const charge = event.data.object;
+    const customer = charge.customer as string | null;
+    // `charge.refunded` is Stripe's own "fully refunded" flag. Comparing
+    // `amount_refunded` against `amount` gets a partially-captured charge wrong:
+    // there the total that can be refunded is `amount_captured`, so a full
+    // refund of a partial capture would read as partial and never revoke.
+    if (!customer || !charge.refunded) {
+      return { ok: true, revoked: false };
+    }
+
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org) {
+      return { ok: true };
+    }
+
+    // Refunding one past invoice is not a reason to end a running subscription.
+    if (await this.hasEntitlingSubscription(customer)) {
+      return { ok: true, revoked: false, reason: 'still subscribed' };
+    }
+
+    await this._subscriptionService.revokeLocalSubscription(org.id);
+    // Told, not just done. A refund that silently takes the plan away reads as
+    // a bug to the person it happens to.
+    await this._notificationService.inAppNotification(
+      org.id,
+      'Payment refunded',
+      'Your PostQueen payment was refunded, so the plan it paid for has ended. Subscribe again any time from Billing.',
+      true,
+      false,
+      'info'
+    );
+    return { ok: true, revoked: true };
+  }
+
+  /**
    * Whether the most recent invoice on this customer failed to be paid.
    *
    * Read from Stripe rather than stored, for the same reason the active
@@ -1499,7 +1748,11 @@ export class StripeService {
       ...(body.months === 1
         ? { duration: 'once' }
         : { duration: 'repeating', duration_in_months: body.months }),
-      metadata: { service: 'gitroom', organizationId },
+      // Was the literal 'gitroom' — the last one in the repo, and a violation
+      // of the invariant documented on the constant itself. Nothing read it, so
+      // nothing broke, but it hid every admin-issued coupon from any report
+      // filtered on this tag.
+      metadata: { service: SUBSCRIPTION_SERVICE_TAG, organizationId },
     });
 
     await stripe.subscriptions.update(stripeSubscription.id, {
@@ -1721,7 +1974,11 @@ export class StripeService {
         payment_method_types: ['card'],
         ...urls,
         billing_address_collection: 'required',
-        customer_update: { address: 'auto' },
+        // Nothing is charged here, so there is no tax to reverse-charge; this
+        // only saves the entity name and tax ID onto the customer so the
+        // deferred path records the same identity as the other three.
+        tax_id_collection: { enabled: true },
+        customer_update: { address: 'auto', name: 'auto' },
         metadata: {
           service: SUBSCRIPTION_SERVICE_TAG,
           organizationId: organization.id,
@@ -1736,8 +1993,12 @@ export class StripeService {
       mode: 'payment',
       ...urls,
       automatic_tax: { enabled: true },
-      customer_update: { address: 'auto' },
+      tax_id_collection: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
       billing_address_collection: 'required',
+      // A payment-mode session leaves only a charge unless this is set, so a
+      // founding member who needs a company invoice had nothing to hand over.
+      invoice_creation: { enabled: true },
       allow_promotion_codes: true,
       metadata: {
         service: SUBSCRIPTION_SERVICE_TAG,
@@ -1749,10 +2010,16 @@ export class StripeService {
           price_data: {
             currency: 'usd',
             unit_amount: LIFETIME_PRICE * 100,
+            // Same treatment as every subscription price. Without these the $49
+            // was taxed as generic services under the account's default preset,
+            // not as SaaS, and the listed price silently became tax-inclusive or
+            // not depending on that preset rather than on this line.
+            tax_behavior: 'exclusive',
             product_data: {
               name: 'PostQueen — founding member',
               description:
                 'One payment. Your plan stays unlocked with nothing to renew.',
+              tax_code: 'txcd_10103001',
             },
           },
         },
@@ -1841,6 +2108,80 @@ export class StripeService {
     return hasDeferred && !alreadyPaid;
   }
 
+  /**
+   * Take a one-off payment off-session through an Invoice instead of a bare
+   * PaymentIntent.
+   *
+   * A PaymentIntent has no `automatic_tax` — the parameter does not exist on it
+   * — so anything charged that way collects zero tax and leaves the customer no
+   * document. That was invisible while the account held no tax registration and
+   * every calculation came to zero. With one in place it became a live
+   * under-collection on the founding-member path, and that is not a corner:
+   * `deferCharge` is true whenever the org is trialing or trial-eligible, and
+   * every new organization is created as both, so essentially every founding
+   * purchase is billed here rather than through the taxed Checkout Session.
+   *
+   * The item is attached to an invoice created with
+   * `pending_invoice_items_behavior: 'exclude'`. The default is to sweep every
+   * pending invoice item the customer has into this invoice, which would bill a
+   * founding member for unrelated amounts.
+   *
+   * Re-reads the invoice after creating it because an idempotent replay returns
+   * the original response body, not the current state — so a retry would see
+   * `draft` for an invoice that is already paid and try to finalize it again.
+   */
+  private async chargeOnceWithTax(opts: {
+    customer: string;
+    amountCents: number;
+    description: string;
+    metadata: Record<string, string>;
+    idempotencyKey: string;
+  }) {
+    const created = await stripe.invoices.create(
+      {
+        customer: opts.customer,
+        // Explicit, and load-bearing. Left out, the invoice takes the account's
+        // default currency — EUR on this account — while every amount in this
+        // codebase is USD, and Stripe rejects the item with "You cannot combine
+        // currencies on a single invoice". The old PaymentIntent set `currency`
+        // per charge, so nothing surfaced the mismatch until the charge moved
+        // onto an invoice.
+        currency: 'usd',
+        automatic_tax: { enabled: true },
+        collection_method: 'charge_automatically',
+        auto_advance: false,
+        pending_invoice_items_behavior: 'exclude',
+        description: opts.description,
+        metadata: opts.metadata,
+      },
+      { idempotencyKey: `${opts.idempotencyKey}-invoice` }
+    );
+
+    let invoice = await stripe.invoices.retrieve(created.id!);
+
+    if (invoice.status === 'draft') {
+      await stripe.invoiceItems.create(
+        {
+          customer: opts.customer,
+          invoice: invoice.id!,
+          amount: opts.amountCents,
+          currency: 'usd',
+          description: opts.description,
+          tax_behavior: 'exclusive',
+          tax_code: 'txcd_10103001',
+        },
+        { idempotencyKey: `${opts.idempotencyKey}-item` }
+      );
+      invoice = await stripe.invoices.finalizeInvoice(invoice.id!);
+    }
+
+    if (invoice.status === 'open') {
+      invoice = await stripe.invoices.pay(invoice.id!);
+    }
+
+    return invoice;
+  }
+
   async captureFoundingLifetimeIfDue(
     organizationId: string,
     opts: { force?: boolean } = {}
@@ -1874,39 +2215,67 @@ export class StripeService {
     }
 
     try {
-      const pi = await stripe.paymentIntents.create(
-        {
-          amount: LIFETIME_PRICE * 100,
-          currency: 'usd',
-          customer: org.paymentId,
-          payment_method: defaultPm,
-          off_session: true,
-          confirm: true,
-          description: 'PostQueen — founding member',
-          metadata: {
-            service: SUBSCRIPTION_SERVICE_TAG,
-            organizationId,
-            lifetime_charge: '1',
-          },
+      const invoice = await this.chargeOnceWithTax({
+        customer: org.paymentId,
+        amountCents: LIFETIME_PRICE * 100,
+        description: 'PostQueen — founding member',
+        metadata: {
+          service: SUBSCRIPTION_SERVICE_TAG,
+          organizationId,
+          lifetime_charge: '1',
         },
-        { idempotencyKey: `lifetime-charge-${organizationId}` }
-      );
+        // Keyed by payment method, not by org alone. Stripe replays a cached
+        // response — including a cached decline — for 24 hours, so an org-only
+        // key meant a customer who was declined, fixed their card, and tried
+        // again got the same decline played back at them for the rest of the
+        // day. Same card still dedupes, which is the double-charge this guards.
+        idempotencyKey: `lifetime-charge-${organizationId}-${defaultPm}`,
+      });
 
-      if (pi.status === 'succeeded' || pi.status === 'processing') {
+      if (invoice.status === 'paid') {
+        // The used code carries the invoice id now rather than a PaymentIntent
+        // id. Only the `lifetime-charge:` prefix is ever matched
+        // (`isDeferredFoundingFeeOwed`), so the change is transparent.
         const existing = await this._subscriptionService.getCode(
-          `lifetime-charge:${pi.id}`
+          `lifetime-charge:${invoice.id}`
         );
         if (!existing) {
           await this._subscriptionService.createUsedCode(
             organizationId,
-            `lifetime-charge:${pi.id}`
+            `lifetime-charge:${invoice.id}`
           );
         }
         return { charged: true };
       }
-      return { charged: false, status: pi.status };
+      return { charged: false, status: invoice.status ?? 'unknown' };
     } catch (err) {
-      return { charged: false, error: 'stripe_error' };
+      // This used to collapse every failure into the string 'stripe_error' with
+      // nothing logged, so an expired card, a hard decline and a 3DS challenge
+      // were indistinguishable — from the outside and from the logs. The
+      // authentication case matters most: it is recoverable, but only if the
+      // PaymentIntent's client secret survives long enough to re-present it
+      // on-session.
+      const e = err as Stripe.errors.StripeError;
+      // `raw` is the untyped payload Stripe echoed back; on an SCA decline it
+      // carries the PaymentIntent whose client secret can re-present the charge
+      // on-session. Nothing else in the error object can.
+      const raw = e?.raw as
+        | { payment_intent?: { client_secret?: string } }
+        | undefined;
+      Logger.error(
+        `[stripe] founding charge failed for org ${organizationId}: ` +
+          `${e?.code ?? e?.type ?? 'unknown'}${
+            e?.decline_code ? ` / ${e.decline_code}` : ''
+          } — ${e?.message ?? ''}`
+      );
+      return {
+        charged: false,
+        error: 'stripe_error',
+        code: e?.code,
+        declineCode: e?.decline_code,
+        requiresAction: e?.code === 'authentication_required',
+        clientSecret: raw?.payment_intent?.client_secret,
+      };
     }
   }
 
@@ -1919,6 +2288,10 @@ export class StripeService {
     ok: boolean;
     error?: 'not_eligible' | 'no_payment_method' | 'capture_failed' | 'stripe_error';
     status?: string;
+    /** Stripe's own decline/error code, so the cause is not lost. */
+    code?: string;
+    /** 3DS was demanded: recoverable, but only on-session. */
+    requiresAction?: boolean;
   }> {
     const org = await this._organizationService.getOrgById(organizationId);
     if (!org?.paymentId || !org.isTrailing) {
@@ -1957,28 +2330,25 @@ export class StripeService {
     }
 
     try {
-      const pi = await stripe.paymentIntents.create(
-        {
-          amount: Math.round(LIFETIME_RETENTION_PRICE * 100),
-          currency: 'usd',
-          customer: org.paymentId,
-          payment_method: defaultPm,
-          off_session: true,
-          confirm: true,
-          description: 'PostQueen — founding member (retention)',
-          metadata: {
-            service: SUBSCRIPTION_SERVICE_TAG,
-            organizationId,
-            lifetime_retention: '1',
-            lifetime_charge: '1',
-          },
+      const invoice = await this.chargeOnceWithTax({
+        customer: org.paymentId,
+        amountCents: Math.round(LIFETIME_RETENTION_PRICE * 100),
+        description: 'PostQueen — founding member (retention)',
+        metadata: {
+          service: SUBSCRIPTION_SERVICE_TAG,
+          organizationId,
+          lifetime_retention: '1',
+          lifetime_charge: '1',
         },
-        { idempotencyKey: `lifetime-retention-${organizationId}` }
-      );
+        // Same reasoning as the founding charge: an org-only key replays a
+        // cached decline for 24 hours, which on a save-the-customer flow means
+        // the save cannot be retried on a working card.
+        idempotencyKey: `lifetime-retention-${organizationId}-${defaultPm}`,
+      });
 
-      if (pi.status === 'succeeded' || pi.status === 'processing') {
-        const chargeCode = `lifetime-charge:${pi.id}`;
-        const retentionCode = `lifetime-retention:${pi.id}`;
+      if (invoice.status === 'paid') {
+        const chargeCode = `lifetime-charge:${invoice.id}`;
+        const retentionCode = `lifetime-retention:${invoice.id}`;
         if (!(await this._subscriptionService.getCode(chargeCode))) {
           await this._subscriptionService.createUsedCode(
             organizationId,
@@ -1994,9 +2364,28 @@ export class StripeService {
         await this._organizationService.endTrial(organizationId);
         return { ok: true };
       }
-      return { ok: false, error: 'capture_failed', status: pi.status };
+      return {
+        ok: false,
+        error: 'capture_failed',
+        status: invoice.status ?? 'unknown',
+      };
     } catch (err) {
-      return { ok: false, error: 'stripe_error' };
+      // See the founding charge above: swallowing this made a 3DS challenge
+      // look identical to a dead card, on the one flow whose entire purpose is
+      // to keep a customer who is already trying to leave.
+      const e = err as Stripe.errors.StripeError;
+      Logger.error(
+        `[stripe] retention charge failed for org ${organizationId}: ` +
+          `${e?.code ?? e?.type ?? 'unknown'}${
+            e?.decline_code ? ` / ${e.decline_code}` : ''
+          } — ${e?.message ?? ''}`
+      );
+      return {
+        ok: false,
+        error: 'stripe_error',
+        code: e?.code,
+        requiresAction: e?.code === 'authentication_required',
+      };
     }
   }
 

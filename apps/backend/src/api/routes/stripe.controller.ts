@@ -2,6 +2,7 @@ import {
   Controller,
   HttpException,
   HttpStatus,
+  Logger,
   Post,
   RawBodyRequest,
   Req,
@@ -47,22 +48,57 @@ export class StripeController {
     const service = event?.data?.object?.metadata?.service;
     const isOurs = service === SUBSCRIPTION_SERVICE_TAG;
 
-    // An invoice carries no `metadata.service` — that lives on the subscription
-    // it bills — so both invoice events have to be exempted from the check
-    // above or they are dropped before the switch ever sees them. That is why
-    // `payment_succeeded` was already listed here; `payment_failed` joins it
-    // for the same reason.
-    const INVOICE_EVENTS = ['invoice.payment_succeeded', 'invoice.payment_failed'];
+    // Some objects never carry `metadata.service`: an invoice's lives on the
+    // subscription it bills, and a charge's on nothing at all. Left to the check
+    // above they are dropped before the switch ever sees them, which is why the
+    // two invoice events were already exempt. The charge events join them for
+    // the same reason — a dispute has to revoke access, and it cannot if it is
+    // discarded here.
+    //
+    // Exempting them does mean events from another integration on the same
+    // account reach the switch. That is safe because every handler below
+    // resolves the customer to an organization first and returns when there is
+    // none: the org lookup, not this tag, is what actually scopes them.
+    const UNTAGGED_EVENTS = [
+      'invoice.payment_succeeded',
+      'invoice.payment_failed',
+      'charge.dispute.created',
+      'charge.refunded',
+    ];
 
-    if (!isOurs && !INVOICE_EVENTS.includes(event.type)) {
+    if (!isOurs && !UNTAGGED_EVENTS.includes(event.type)) {
       return { ok: true };
     }
 
-    try {
+    // Claimed before the switch so a redelivery cannot run a handler twice, and
+    // stamped complete only once one actually succeeds.
+    const claim = await this._stripeService.claimEvent(event.id, event.type);
+    if (claim === 'duplicate') {
+      return { ok: true, duplicate: true };
+    }
+    if (claim === 'in_flight') {
+      // Another attempt is still running. Answering 2xx here would tell Stripe
+      // the event was delivered while that attempt can still fail, and no
+      // redelivery would ever come. 409 keeps it in Stripe's retry schedule.
+      throw new HttpException(
+        `Stripe event ${event.id} is already being processed`,
+        HttpStatus.CONFLICT
+      );
+    }
+
+    // The switch lives in here so every `return` inside it is awaited by one
+    // place. Two cases used to `return` a promise without awaiting, which put
+    // their rejections outside the try below — so the release never ran and the
+    // claim stranded the event for good.
+    const handle = async () => {
       switch (event.type) {
         // Lifetime checkout: immediate `mode: 'payment'`, or deferred
         // `mode: 'setup'` (+ lifetime_deferred) that grants now and charges
         // $49 when the trial ends. Neither is a subscription event.
+        // Async methods complete the session before the money lands, so the
+        // grant has to wait for this second event. Both share a block because
+        // the `payment_status` check below is the whole difference between them.
+        case 'checkout.session.async_payment_succeeded':
         case 'checkout.session.completed': {
           // @ts-ignore — the session shape is narrower than Stripe.Event
           const session = event.data.object as any;
@@ -75,7 +111,7 @@ export class StripeController {
           ) {
             if (!organizationId) {
               throw new Error(
-                'checkout.session.completed setup lifetime missing organizationId'
+                `${event.type} setup lifetime missing organizationId`
               );
             }
             return this._stripeService.completeDeferredLifetimeSetup(
@@ -91,7 +127,30 @@ export class StripeController {
             // Nothing to grant it to. Loud rather than silent: a paid session
             // with no organization is a bug in whatever created it.
             throw new Error(
-              'checkout.session.completed with mode=payment and no organizationId'
+              `${event.type} with mode=payment and no organizationId`
+            );
+          }
+          // `completed` is not the same as settled. An async payment method
+          // completes the session as `unpaid` and settles later, and granting
+          // on that handed out lifetime PRO before the money landed —
+          // `async_payment_succeeded` above is the event that closes it
+          // properly.
+          //
+          // `no_payment_required` is the 100%-off case and IS grantable: a
+          // promotion code only exists because the owner created one, so a
+          // giveaway should work rather than silently give nothing. It is
+          // logged because it is also the shape a mis-scoped code would take —
+          // Stripe scopes promotion codes to products, not to this session, so
+          // a code meant for a subscription can be typed in here.
+          if (
+            session?.payment_status !== 'paid' &&
+            session?.payment_status !== 'no_payment_required'
+          ) {
+            return { ok: true, granted: false, reason: session?.payment_status };
+          }
+          if (session?.payment_status === 'no_payment_required') {
+            Logger.warn(
+              `[stripe] granting lifetime to org ${organizationId} on a fully discounted session (${session.id})`
             );
           }
           return this._stripeService.grantLifetimeFromPayment(
@@ -113,11 +172,53 @@ export class StripeController {
           return await this._stripeService.updateSubscription(event);
         case 'customer.subscription.deleted':
           return await this._stripeService.deleteSubscription(event);
+        // Money leaving again. Neither of these used to be handled, so a
+        // chargeback cost the payment, the bank's fee, and the plan stayed on.
+        case 'charge.dispute.created':
+          return await this._stripeService.disputeCreated(event);
+        case 'charge.refunded':
+          return await this._stripeService.chargeRefunded(event);
         default:
           return { ok: true };
       }
+    };
+
+    try {
+      const result = await handle();
+      await this._stripeService.completeEvent(event.id);
+      return result;
     } catch (e) {
-      throw new HttpException(e, 500);
+      // Log BEFORE releasing. The release is a database write, and the most
+      // likely reason the handler just failed is that the database is unhappy —
+      // so releasing first meant its own throw swallowed the original cause,
+      // which is the one thing this block exists to record.
+      //
+      // The 500 is what makes Stripe retry, and that part always worked. What
+      // did not: `new HttpException(e, 500)` serialises an Error to `{}`, and
+      // Nest does not log HttpExceptions, so every webhook failure was a blank
+      // 500 with no record anywhere of what broke.
+      Logger.error(
+        `[stripe] handler failed for ${event.type} (${event.id}): ${
+          (e as Error)?.message ?? e
+        }`,
+        (e as Error)?.stack
+      );
+      try {
+        // Hand the event back so Stripe's retry can have another go — the claim
+        // is only meant to stop duplicates of work that actually succeeded. If
+        // even this fails, the row goes stale and is taken over later.
+        await this._stripeService.releaseEvent(event.id);
+      } catch (releaseErr) {
+        Logger.error(
+          `[stripe] could not release ${event.id}: ${
+            (releaseErr as Error)?.message ?? releaseErr
+          }`
+        );
+      }
+      throw new HttpException(
+        `Stripe handler failed for ${event.type}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 }

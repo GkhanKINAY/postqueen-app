@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Logger, Param, Post, Req } from '@nestjs/common';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -64,7 +64,22 @@ export class BillingController {
 
   @Post('/apply-discount')
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
-    await this._stripeService.applyDiscount(org.paymentId);
+    // Returns the result, like `apply-lifetime-retention` right below. It used
+    // to `await` and discard it, so a 200 with an empty body meant both "the
+    // coupon is on" and "nothing was applied" — and the cancel dialog read the
+    // HTTP status alone, told the customer "50% discount applied successfully"
+    // and closed as `applied`. They got neither the discount nor the
+    // cancellation they came for.
+    try {
+      return { ok: await this._stripeService.applyDiscount(org.paymentId) };
+    } catch (err) {
+      Logger.error(
+        `[billing] apply-discount failed for org ${org.id}: ${
+          (err as Error)?.message ?? err
+        }`
+      );
+      return { ok: false };
+    }
   }
 
   @Post('/apply-lifetime-retention')

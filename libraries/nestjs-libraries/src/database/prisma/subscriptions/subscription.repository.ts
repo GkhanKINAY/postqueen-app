@@ -13,8 +13,78 @@ export class SubscriptionRepository {
     private readonly _organization: PrismaRepository<'organization'>,
     private readonly _user: PrismaRepository<'user'>,
     private readonly _credits: PrismaRepository<'credits'>,
-    private _usedCodes: PrismaRepository<'usedCodes'>
+    private _usedCodes: PrismaRepository<'usedCodes'>,
+    private _stripeEvent: PrismaRepository<'stripeEvent'>
   ) {}
+
+  /**
+   * Claim a Stripe event id for processing.
+   *
+   * `'claimed'` — go ahead. `'duplicate'` — already completed, drop it.
+   * `'in_flight'` — another attempt is still running; the caller must NOT
+   * answer 2xx, or Stripe marks the event delivered while that attempt can
+   * still fail.
+   *
+   * The insert is the check: the id is the primary key, so two concurrent
+   * deliveries race in the database rather than in a read-then-write both could
+   * pass. Only the unique-violation is caught — every other error is rethrown,
+   * because reporting a dead connection as "already processed" would answer 200
+   * to Stripe and lose the event for good.
+   */
+  async claimStripeEvent(
+    id: string,
+    type: string,
+    staleAfterMs = 5 * 60 * 1000
+  ): Promise<'claimed' | 'duplicate' | 'in_flight'> {
+    try {
+      await this._stripeEvent.model.stripeEvent.create({ data: { id, type } });
+      return 'claimed';
+    } catch (err) {
+      if ((err as { code?: string })?.code !== 'P2002') {
+        throw err;
+      }
+    }
+
+    const existing = await this._stripeEvent.model.stripeEvent.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      // Deleted between the insert and this read — a concurrent attempt failed
+      // and released it. Treat as in flight; the retry will claim it cleanly.
+      return 'in_flight';
+    }
+    if (existing.completedAt) {
+      return 'duplicate';
+    }
+
+    // Claimed but never completed: the process died mid-handler. Nothing else
+    // will ever finish it, so take it over once it is old enough that it cannot
+    // still be running. The updateMany is conditional on the row still being
+    // incomplete, so two retries cannot both take over.
+    if (Date.now() - existing.createdAt.getTime() < staleAfterMs) {
+      return 'in_flight';
+    }
+    const takeover = await this._stripeEvent.model.stripeEvent.updateMany({
+      where: { id, completedAt: null, createdAt: existing.createdAt },
+      data: { createdAt: new Date() },
+    });
+    return takeover.count === 1 ? 'claimed' : 'in_flight';
+  }
+
+  /** Stamp a claimed event as finished so redeliveries are dropped. */
+  completeStripeEvent(id: string) {
+    return this._stripeEvent.model.stripeEvent.updateMany({
+      where: { id },
+      data: { completedAt: new Date() },
+    });
+  }
+
+  /** Release a claimed event so Stripe's retry can process it again. */
+  releaseStripeEvent(id: string) {
+    return this._stripeEvent.model.stripeEvent.deleteMany({
+      where: { id, completedAt: null },
+    });
+  }
 
   getUserAccount(userId: string) {
     return this._user.model.user.findFirst({
