@@ -663,6 +663,18 @@ effect, and the baselines are contended across parallel sessions), the calendar'
 two-wave cold load (wants measurement first), and the `loops` collector's three
 documented blind spots.
 
+## i18n baseline after the agent-logo pass
+
+`i18n.txt` lost 22 keys — the `conn_*` strings for Warp, Windsurf and Cline. The
+branding pass (#50) deleted 165 lines of `connections.catalog.ts` along with
+those entries, so the `t()` call sites went with them; the baseline just was not
+updated in the same PR and left `main` red.
+
+Verified before updating rather than assuming: none of the removed keys has a
+call site left anywhere in `apps/frontend/src`. The drop is the intended
+consequence of deleting the catalog entries, which is exactly the case the check
+asks you to `--update` for.
+
 ## Dependency vulnerabilities
 
 Nothing had ever scanned this project's dependencies. `pnpm audit` does not run
