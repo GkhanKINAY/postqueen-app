@@ -772,14 +772,16 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       depth: 0,
     });
 
-    // @ts-ignore
-    const parentCid = parentThread.data.thread.post?.cid;
-    // @ts-ignore
-    const rootUri =
-      parentThread.data.thread.post?.record?.reply?.root?.uri || postId;
-    // @ts-ignore
-    const rootCid =
-      parentThread.data.thread.post?.record?.reply?.root?.cid || parentCid;
+    // `thread` is a union — ThreadViewPost, NotFoundPost, BlockedPost — and
+    // only the first has `post`. Narrowed once here rather than with a
+    // `@ts-ignore` per access: those suppress the *next line*, and these
+    // expressions wrap, so the error landed on the continuation line and was
+    // reported anyway.
+    const parentPost = (parentThread.data.thread as { post?: any })?.post;
+
+    const parentCid = parentPost?.cid;
+    const rootUri = parentPost?.record?.reply?.root?.uri || postId;
+    const rootCid = parentPost?.record?.reply?.root?.cid || parentCid;
 
     // @ts-ignore
     const { cid, uri, commit } = await agent.post({
