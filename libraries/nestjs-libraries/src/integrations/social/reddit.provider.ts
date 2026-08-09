@@ -14,6 +14,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { lookup } from 'mime-types';
 import axios from 'axios';
+import FormDataUpload from 'form-data';
 import WebSocket from 'ws';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { Integration } from '@prisma/client';
@@ -178,29 +179,32 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
       )
     ).json();
 
-    const { data } = await axios.get(path, {
-      responseType: 'arraybuffer',
-    });
+    // Stream the file into Reddit's S3 form instead of buffering it in memory.
+    // S3 requires the exact part length, which comes from a HEAD request.
+    const fileSize = await this.mediaSize(path, this.identifier);
+    const stream = await this.mediaStream(path, this.identifier);
 
     const upload = (fields as { name: string; value: string }[]).reduce(
       (acc, value) => {
         acc.append(value.name, value.value);
         return acc;
       },
-      new FormData()
+      new FormDataUpload()
     );
 
-    upload.append(
-      'file',
-      new Blob([Buffer.from(data)], { type: mimeType as string })
-    );
-
-    const d = await fetch('https:' + action, {
-      method: 'POST',
-      body: upload,
+    upload.append('file', stream, {
+      filename: path.split('/').pop(),
+      contentType: (mimeType as string) || 'application/octet-stream',
+      knownLength: fileSize,
     });
 
-    return [...(await d.text()).matchAll(/<Location>(.*?)<\/Location>/g)][0][1];
+    const d = await axios.post('https:' + action, upload, {
+      headers: upload.getHeaders(),
+    });
+
+    return [
+      ...(d.data as string).matchAll(/<Location>(.*?)<\/Location>/g),
+    ][0][1];
   }
 
   async post(

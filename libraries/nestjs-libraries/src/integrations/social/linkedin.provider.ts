@@ -263,12 +263,19 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     fileName: string,
     accessToken: string,
     personId: string,
-    picture: any,
+    // Either the media bytes (images / converted PDFs) or a `{ path }`
+    // descriptor for videos, which are streamed chunk-by-chunk from the source
+    // instead of being held in memory.
+    picture: Buffer | { path: string },
     type = 'personal' as 'company' | 'personal'
   ) {
     // Determine the appropriate endpoint based on file type
     const isVideo = hasExtension(fileName, 'mp4');
     const isPdf = hasExtension(fileName, 'pdf');
+
+    const fileSizeBytes = Buffer.isBuffer(picture)
+      ? picture.length
+      : await this.mediaSize(picture.path, this.identifier);
 
     let endpoint: string;
     if (isVideo) {
@@ -300,7 +307,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
                   : `urn:li:organization:${personId}`,
               ...(isVideo
                 ? {
-                    fileSizeBytes: picture.length,
+                    fileSizeBytes,
                     uploadCaptions: false,
                     uploadThumbnail: false,
                   }
@@ -318,7 +325,19 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     if (isVideo) {
       // Only the Videos API uses multipart chunked uploads. Each 2MB part is
       // PUT separately and the returned etags are passed to finalizeUpload.
-      for (let i = 0; i < picture.length; i += 1024 * 1024 * 2) {
+      // Each part is read on demand (mediaChunk) so only one 2MB chunk is ever
+      // resident in memory instead of the whole video.
+      const chunkSize = 1024 * 1024 * 2;
+      for (let i = 0; i < fileSizeBytes; i += chunkSize) {
+        const body = Buffer.isBuffer(picture)
+          ? picture.slice(i, i + chunkSize)
+          : await this.mediaChunk(
+              picture.path,
+              i,
+              Math.min(i + chunkSize, fileSizeBytes) - 1,
+              this.identifier
+            );
+
         const upload = await this.fetch(
           sendUrlRequest,
           {
@@ -329,7 +348,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/octet-stream',
             },
-            body: picture.slice(i, i + 1024 * 1024 * 2),
+            body,
           },
           'linkedin',
           0,
@@ -353,7 +372,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
             Authorization: `Bearer ${accessToken}`,
             ...(isPdf ? { 'Content-Type': 'application/pdf' } : {}),
           },
-          body: picture,
+          // Only videos arrive as a { path } descriptor; images and documents
+          // are always a Buffer.
+          body: picture as Buffer,
         },
         'linkedin',
         0,
@@ -577,55 +598,57 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     personId: string,
     type: 'company' | 'personal'
   ): Promise<Record<string, string[]>> {
-    const mediaUploads = await Promise.all(
-      postDetails.flatMap(
-        (post) =>
-          post.media?.map(async (media) => {
-            let mediaBuffer: Buffer;
+    // Media is uploaded sequentially on purpose: uploading everything with
+    // Promise.all holds every file in memory at the same time.
+    const mediaUploads: Record<string, string[]> = {};
+    for (const post of postDetails) {
+      for (const media of post.media || []) {
+        let mediaBuffer: Buffer | { path: string };
 
-            // Check if media has a buffer (from PDF conversion)
-            if (
-              media &&
-              typeof media === 'object' &&
-              'buffer' in media &&
-              Buffer.isBuffer(media.buffer)
-            ) {
-              mediaBuffer = (media as any).buffer;
-            } else {
-              mediaBuffer = await this.prepareMediaBuffer(media.path);
-            }
+        // Check if media has a buffer (from PDF conversion)
+        if (
+          media &&
+          typeof media === 'object' &&
+          'buffer' in media &&
+          Buffer.isBuffer(media.buffer)
+        ) {
+          mediaBuffer = (media as any).buffer;
+        } else if (hasExtension(media.path, 'mp4')) {
+          // Videos are never buffered: uploadPicture streams them from the
+          // source chunk-by-chunk.
+          mediaBuffer = { path: media.path };
+        } else {
+          mediaBuffer = await this.prepareMediaBuffer(media.path);
+        }
 
-            const uploadedMediaId = await this.uploadPicture(
-              media.path,
-              accessToken,
-              personId,
-              mediaBuffer,
-              type
-            );
+        const uploadedMediaId = await this.uploadPicture(
+          media.path,
+          accessToken,
+          personId,
+          mediaBuffer,
+          type
+        );
 
-            return {
-              id: uploadedMediaId,
-              postId: post.id,
-            };
-          }) || []
-      )
-    );
+        if (!uploadedMediaId) {
+          continue;
+        }
 
-    return mediaUploads.reduce((acc, upload) => {
-      if (!upload?.id) return acc;
+        mediaUploads[post.id] = mediaUploads[post.id] || [];
+        mediaUploads[post.id].push(uploadedMediaId);
+      }
+    }
 
-      acc[upload.postId] = acc[upload.postId] || [];
-      acc[upload.postId].push(upload.id);
-      return acc;
-    }, {} as Record<string, string[]>);
+    return mediaUploads;
   }
 
   private async prepareMediaBuffer(mediaUrl: string): Promise<Buffer> {
-    const isVideo = hasExtension(mediaUrl, 'mp4');
     const isGif = lookup(mediaUrl) === 'image/gif';
 
-    // GIFs and videos pass through untouched (sharp would break animation).
-    if (isVideo || isGif) {
+    // GIFs pass through untouched (sharp would break animation). Videos never
+    // reach this function - they are streamed by uploadPicture instead.
+    if (isGif) {
+      // Buffer.from keeps the return type a real Buffer regardless of what
+      // readOrFetch yields - uploadPicture branches on Buffer.isBuffer.
       return Buffer.from(await readOrFetch(mediaUrl));
     }
 
