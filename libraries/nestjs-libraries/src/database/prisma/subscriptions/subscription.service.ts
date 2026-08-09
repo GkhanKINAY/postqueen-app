@@ -127,24 +127,50 @@ export class SubscriptionService {
       return;
     }
 
-    const live = (
-      await this._integrationService.getIntegrationsList(orgId)
-    ).filter((f) => !f.disabled);
+    const live = await this.liveChannelCount(orgId);
 
-    if (live.length > totalChannels) {
+    if (live > totalChannels) {
       await this._integrationService.disableIntegrations(
         orgId,
-        live.length - totalChannels
+        live - totalChannels
       );
       return;
     }
 
-    if (live.length < totalChannels) {
-      await this._integrationService.enableAutoDisabledIntegrations(
-        orgId,
-        totalChannels - live.length
-      );
+    await this.restoreChannelsUpTo(orgId, totalChannels);
+  }
+
+  /**
+   * The give-back half on its own, for callers that must never take a channel
+   * away.
+   *
+   * Split out rather than reusing the two-way sync, which is what this was
+   * first written as and was wrong: the redeemed-code path below grants PRO,
+   * and a trialing organization reads as AGENCY, so a customer converting to a
+   * founding purchase with more than PRO's thirty live channels would have had
+   * the excess switched off. Nothing happened on that path before, so that
+   * would have been a loss introduced by the fix for the opposite problem.
+   */
+  private async restoreChannelsUpTo(orgId: string, totalChannels: number) {
+    if (!orgId) {
+      return;
     }
+
+    const live = await this.liveChannelCount(orgId);
+    if (live >= totalChannels) {
+      return;
+    }
+
+    await this._integrationService.enableAutoDisabledIntegrations(
+      orgId,
+      totalChannels - live
+    );
+  }
+
+  private async liveChannelCount(orgId: string) {
+    return (await this._integrationService.getIntegrationsList(orgId)).filter(
+      (f) => !f.disabled
+    ).length;
   }
 
   async modifySubscriptionByOrg(
@@ -280,7 +306,11 @@ export class SubscriptionService {
       // and then bought a lifetime deal was left with every channel off. It
       // takes the org id directly because there is no Stripe customer to look
       // one up from.
-      await this.syncChannelsToPlan(org, totalChannels);
+      //
+      // Restore only, never the two-way sync: this grant is always PRO, a
+      // trialing organization reads as AGENCY, and taking channels off someone
+      // at the moment they pay is not a trade worth making.
+      await this.restoreChannelsUpTo(org, totalChannels);
     }
     return this._subscriptionRepository.createOrUpdateSubscription(
       isTrailing,

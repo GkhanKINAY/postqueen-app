@@ -188,6 +188,11 @@ export class IntegrationRepository {
       data: {
         ...params,
         disabled: false,
+        // Reconnecting is the user putting the channel back into service, so
+        // the stamp goes with it. Otherwise a live row keeps a mark that says
+        // "the system switched this off", which is not true of anything the
+        // enable query looks at today but is a trap for whoever reads it next.
+        autoDisabledAt: null,
         deletedAt: null,
       },
     });

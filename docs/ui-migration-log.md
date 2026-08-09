@@ -663,6 +663,50 @@ effect, and the baselines are contended across parallel sessions), the calendar'
 two-wave cold load (wants measurement first), and the `loops` collector's three
 documented blind spots.
 
+## Self-audit of the backlog-clearing pass
+
+The pass above was re-read against the code afterwards, on the principle that the
+round which fixes ten things is the round most likely to break an eleventh. Three
+things came out of it, one of them a loss the fix itself would have caused.
+
+**The redeemed-code path could take channels away.** `syncChannelsToPlan` was
+wired into `createOrUpdateSubscription`'s code branch to *restore* channels after
+a lapse, but it is two-way. `grantLifetimeFromPayment` always grants PRO (thirty
+channels) and a trialing organization reads as AGENCY (a million), so a customer
+converting to a founding purchase with more than thirty live channels would have
+had the excess switched off — at the moment they paid, on a path where nothing
+happened before. The give-back half is now `restoreChannelsUpTo`, and that branch
+calls only it.
+
+**A refused multipart upload was post-processed anyway.** `media.controller`
+reads `.Location` off whatever `handleR2Upload` returns for
+`complete-multipart-upload`, and several branches inside answer the request
+themselves and return the Response — an unsupported extension, a body that does
+not match its type, and now a key the organization never created. That threw a
+TypeError on top of an already-sent 400 or 403. The two 400s predate this work;
+the 403 made it easier to reach. Guarded with `res.headersSent`.
+
+**Reconnecting a channel left the `autoDisabledAt` stamp on it**, so a live row
+could claim the system had switched it off. Harmless today because the enable
+query requires `disabled: true`, but it is exactly the kind of half-true
+invariant that misleads the next reader.
+
+What was checked and found correct is worth recording too, so the next pass does
+not re-derive it: the third-party allowlist resolves the real provider's methods
+(tested against the compiled `ReelFarmProvider` — `listMedia` in, `constructor`
+out); the request organization does carry `subscription`, and subscription
+deletion is a hard delete, so the autopost tier check reads FREE after a
+cancellation as intended; the orchestrator only calls `startAutopost`, so the
+`changeActive` signature change reaches nobody else; pm2 runs one process per app
+in fork mode, so the Redis upload-ownership map works even on an install without
+Redis; and `autoDisabledAt` never leaves the backend, because `/integrations/list`
+builds an explicit shape.
+
+One trade made knowingly: wrapping `TemporalRegister` in try/catch means a
+non-TLS install that cannot register its search attributes now logs instead of
+failing to boot. Quieter, but taking the whole application down was not the right
+answer to it.
+
 ## Self-hosting
 
 Self-hosters cloning a fresh empty database do not need any tier-migration
