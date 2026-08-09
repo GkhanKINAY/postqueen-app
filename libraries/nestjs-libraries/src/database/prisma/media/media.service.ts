@@ -58,12 +58,59 @@ export class MediaService {
     return this._mediaRepository.getMediaById(id);
   }
 
+  /**
+   * Generate a picture on our own OpenAI key, and charge a credit for it.
+   *
+   * The allowance check belongs here rather than in the controller, which is
+   * where it used to live alone. `POST /media/generate-image` was never the
+   * only caller: the MCP `generateImageTool` and the in-app assistant both
+   * reach this method directly, so an agent could generate past the plan's
+   * monthly count with nothing to stop it while the same request from the
+   * media library was refused. `generateVideo` below always checked in the
+   * service, which is why videos never had the hole.
+   *
+   * Putting a picture the customer already has into the library costs nothing
+   * and always did: the upload routes and `uploadFromUrlTool` never touch
+   * credits. The charge is for generating on our key, not for storing a file.
+   *
+   * TWO THINGS THAT LOOK WRONG AND ARE NOT
+   *
+   *   isBillingEnabled   with no Stripe keys an organization has no
+   *                      subscription, `checkCredits` reads that as FREE and
+   *                      returns zero, so a self-hosted install would refuse
+   *                      every generation it is entitled to make. The
+   *                      controller's copy of this check guards for the same
+   *                      reason.
+   *   throwing in `try`  the catch runs everything through `generationError`,
+   *                      which returns an HttpException untouched rather than
+   *                      wrapping it. That is why `generateVideo` throws from
+   *                      inside its own try as well.
+   *
+   * The controller keeps its own check on purpose. It answers `false` instead
+   * of throwing and `ai.image.tsx` reads that as "no image", so folding it into
+   * this one would turn a handled empty response into a 402 the picture flow
+   * does not expect.
+   */
   async generateImage(
     prompt: string,
     org: Organization,
     generatePromptFirst?: boolean
   ) {
     try {
+      if (isBillingEnabled()) {
+        const totalCredits = await this._subscriptionService.checkCredits(
+          org,
+          'ai_images'
+        );
+
+        if (totalCredits.credits <= 0) {
+          throw new SubscriptionException({
+            action: AuthorizationActions.Create,
+            section: Sections.IMAGES_PER_MONTH,
+          });
+        }
+      }
+
       const generating = await this._subscriptionService.useCredit(
         org,
         'ai_images',
