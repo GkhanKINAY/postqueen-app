@@ -15,10 +15,13 @@
 # Regenerated 2026-08-10 after the in-range refresh: 181 down to 71, none new.
 # Regenerated 2026-08-10 after the major pass: 71 down to 43, none new. tar and
 # multer are gone — multer crossed to 2.x, which is what its advisory wanted.
+# Regenerated 2026-08-10 after the audit pass: 43 down to 29, none new. Fourteen
+# entries had stopped appearing and were still being accepted, which is the one
+# way this file can make things worse than having no file — happy-dom and
+# langsmith left with the test stack and the langchain pins, qs / request /
+# tough-cookie / prismjs with the transitive trees that held them.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
 @hono/node-server GHSA-frvp-7c67-39w9
-@langchain/community GHSA-gf3v-fwqg-4vh7
-@langchain/community GHSA-mphv-75cg-56wg
 @opentelemetry/auto-instrumentations-node GHSA-q7rr-3cgh-j5r3
 @opentelemetry/core GHSA-8988-4f7v-96qf
 @opentelemetry/exporter-prometheus GHSA-q7rr-3cgh-j5r3
@@ -36,25 +39,13 @@ h3 GHSA-22cc-p3c6-wpvm
 h3 GHSA-4hxc-9384-m385
 h3 GHSA-72gr-qfp7-vwhw
 h3 GHSA-wr4h-v87w-p3r7
-happy-dom GHSA-37j7-fg3j-429f
-happy-dom GHSA-6q6h-j7hj-3r64
-happy-dom GHSA-w4gp-fjgq-3q4g
 image-size GHSA-5p2g-fcmc-qvqq
 image-size GHSA-w3rx-r6r6-pgpr
 jsondiffpatch GHSA-33vc-wfww-vjfv
-langsmith GHSA-3644-q5cj-c5c7
-langsmith GHSA-fw9q-39r9-c252
-langsmith GHSA-rr7j-v2q5-chgv
-langsmith GHSA-v34v-rq6j-cj6p
 lodash GHSA-f23m-r3pf-42rh
 lodash GHSA-r5fr-rjxr-66jc
 lodash GHSA-xxjr-mmjv-4gpg
-prismjs GHSA-x7hr-w5r2-h6wg
-qs GHSA-6rw7-vpxm-498p
-qs GHSA-q8mj-m7cp-5q26
 quill GHSA-v3m3-f69x-jf25
-request GHSA-p8p7-x288-28g6
 socket.io-parser GHSA-2m8v-j782-fhvr
 socket.io-parser GHSA-677m-j7p3-52f9
-tough-cookie GHSA-72xf-g2v4-qvf3
 uuid GHSA-w5hq-g745-h8pq
