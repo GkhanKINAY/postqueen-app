@@ -4,7 +4,6 @@ import Uppy, { BasePlugin, UploadResult, UppyFile } from '@uppy/core';
 // @ts-ignore
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { getUppyUploadPlugin } from '@gitroom/react/helpers/uppy.upload';
-import { Dashboard, FileInput, ProgressBar } from '@uppy/react';
 
 // Uppy styles
 import { useVariables } from '@gitroom/react/helpers/variable.context';

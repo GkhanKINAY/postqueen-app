@@ -33,7 +33,7 @@ import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
-import { Dashboard } from '@uppy/react';
+import { UppyProgress } from '@gitroom/react/helpers/uppy.progress';
 import Link from '@tiptap/extension-link';
 import NextLink from 'next/link';
 import SafeImage from '@gitroom/react/helpers/safe.image';
@@ -788,18 +788,7 @@ export const Editor: FC<{
             />
             <div className="w-full pointer-events-none">
               <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-pqInner uppyChange">
-                <Dashboard
-                  height={46}
-                  uppy={uppy}
-                  id={`prog-${num}`}
-                  showProgressDetails={true}
-                  hideUploadButton={true}
-                  hideRetryButton={true}
-                  hidePauseResumeButton={true}
-                  hideCancelButton={true}
-                  hideProgressAfterFinish={true}
-                  disableThumbnailGenerator={true}
-                />
+                <UppyProgress height={46} uppy={uppy} id={`prog-${num}`} />
               </div>
             </div>
             <div

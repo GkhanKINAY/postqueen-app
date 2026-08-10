@@ -1,6 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // The base sets Node10 resolution, which predates the `exports` field and
+    // so cannot find the types of any package that declares them there — Uppy
+    // 5 and @uppy/compressor 3 among them. Node10 resolves those to nothing,
+    // or worse to `any`. Turbopack already resolves this app the way a bundler
+    // does, so saying so here makes the compiler agree with the build instead
+    // of lagging several majors behind it.
+    //
+    // The backend keeps Node10: it emits CommonJS, and `bundler` is not valid
+    // with `module: commonjs`.
+    "moduleResolution": "bundler",
     "jsx": "preserve",
     "allowJs": true,
     "esModuleInterop": true,

@@ -23,7 +23,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { ThirdPartyMediaLibrary } from '@gitroom/frontend/components/third-parties/third-party.media-library';
-import { Dashboard } from '@uppy/react';
+import { UppyProgress } from '@gitroom/react/helpers/uppy.progress';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox';
 import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
@@ -464,21 +464,10 @@ export const MediaBox: FC<{
           loading && 'animate-pqFadeDown'
         )}
       >
-        <Dashboard
+        <UppyProgress
           height={40}
           uppy={uppy}
           id={`uploader-${standalone ? 'page' : 'picker'}`}
-          showProgressDetails={true}
-          hideUploadButton={true}
-          hideRetryButton={true}
-          hidePauseResumeButton={true}
-          hideCancelButton={true}
-          hideProgressAfterFinish={true}
-          // Progress-only strip — library grid uses real media paths, not Uppy
-          // thumbs. Leaving ThumbnailGenerator on races with removeFile on
-          // complete and logs: "file was removed before a thumbnail could be
-          // generated, but not removed from the queue".
-          disableThumbnailGenerator={true}
         />
       </div>
     </div>

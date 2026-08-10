@@ -1,7 +1,9 @@
 @use './colors.scss';
 @use './polonto.css';
-@use '@uppy/core/dist/style.css' as uppyCore;
-@use '@uppy/dashboard/dist/style.css' as uppyDashboard;
+// Uppy 5 publishes its stylesheets under `./css/` and declares them in
+// `exports`, so the old `dist/style.css` paths no longer resolve.
+@use '@uppy/core/css/style.css' as uppyCore;
+@use '@uppy/dashboard/css/style.css' as uppyDashboard;
 
 @tailwind base;
 @tailwind components;
