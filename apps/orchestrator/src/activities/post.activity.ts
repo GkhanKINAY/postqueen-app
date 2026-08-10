@@ -135,7 +135,12 @@ export class PostActivity {
       }
     }
     const post = await this._postService.getPostById(postId, orgId);
-    if (post.deletedAt) {
+    // `getPostById` returns null when the row is gone outright, or when it no
+    // longer belongs to this organization. That is the same answer as a soft
+    // delete for this activity's purposes — there is nothing to publish — but
+    // reading `deletedAt` off it threw instead, and a throwing activity is one
+    // Temporal retries forever rather than a workflow that finishes.
+    if (!post || post.deletedAt) {
       return false;
     }
 
