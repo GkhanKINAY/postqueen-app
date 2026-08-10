@@ -436,7 +436,15 @@ module.exports = {
   },
   plugins: [
     require('tailwind-scrollbar'),
-    require('tailwindcss-rtl'),
+    // `tailwindcss-rtl` used to be here. It generated nothing Tailwind does not
+    // generate itself: logical utilities — ms/me, ps/pe, start/end, text-start,
+    // rounded-s, border-s, float-start, clear-start — have been core since 3.3,
+    // and rendering the full set through the config with and without the plugin
+    // produced byte-identical output. Ninety files use those classes; all of
+    // them come from core.
+    //
+    // It also could not have survived Tailwind 4: it calls `variants('padding')`,
+    // an API removed in 3.0.
     function ({ addVariant }) {
       addVariant('child', '& > *');
       addVariant('child-hover', '& > *:hover');
