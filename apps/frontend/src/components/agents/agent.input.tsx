@@ -64,13 +64,17 @@ export const Input = ({
   const isInProgress = inProgress;
 
   const canSend = useMemo(() => {
-    const interruptEvent = copilotContext.langGraphInterruptAction?.event;
-    const interruptInProgress =
-      interruptEvent?.name === 'LangGraphInterruptEvent' &&
-      !interruptEvent?.response;
+    // CopilotKit 1.66 replaced the single `langGraphInterruptAction` with a
+    // per-thread queue. The question this asks is unchanged — is the agent
+    // waiting on the user to answer an interrupt — but an event is now pending
+    // by virtue of still being in the queue rather than by carrying no
+    // `response`.
+    const interruptInProgress = Object.values(
+      copilotContext.interruptEventQueue ?? {}
+    ).some((queued) => queued.length > 0);
 
     return !isInProgress && text.trim().length > 0 && !interruptInProgress;
-  }, [copilotContext.langGraphInterruptAction?.event, isInProgress, text]);
+  }, [copilotContext.interruptEventQueue, isInProgress, text]);
 
   const canStop = useMemo(() => {
     return isInProgress && !hideStopButton;

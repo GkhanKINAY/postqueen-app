@@ -13,7 +13,7 @@ import {
   CopilotRuntime,
   OpenAIAdapter,
   copilotRuntimeNodeHttpEndpoint,
-  copilotRuntimeNextJSAppRouterEndpoint,
+  copilotRuntimeNestEndpoint,
 } from '@copilotkit/runtime';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
@@ -106,7 +106,12 @@ export class CopilotController {
       agents,
     });
 
-    const copilotRuntimeHandler = copilotRuntimeNextJSAppRouterEndpoint({
+    // The Nest integration, not the Next.js App Router one this used to call.
+    // That was always the wrong endpoint for a Nest controller and only worked
+    // because its `handleRequest` happened to accept `(req, res)`; in 1.66 it
+    // takes a single App Router `Request` and returns a `Response`. The Nest
+    // export is the same runtime behind a handler shaped for this framework.
+    const copilotRuntimeHandler = copilotRuntimeNestEndpoint({
       endpoint: '/copilot/agent',
       runtime,
       // properties: req.body.variables.properties,
@@ -115,7 +120,7 @@ export class CopilotController {
       }),
     });
 
-    return copilotRuntimeHandler.handleRequest(req, res);
+    return copilotRuntimeHandler(req, res);
   }
 
   @Get('/credits')
