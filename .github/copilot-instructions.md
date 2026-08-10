@@ -2,22 +2,23 @@
 # Copilot Coding Agent Instructions for PostQueen
 
 ## Project Architecture
-- Monorepo managed by NX, with apps in `apps/` and shared code in `libraries/`.
-- Main services: `frontend` (Next.js), `backend` (NestJS), `cron`, `commands`, `extension`, `sdk`, and `workers`.
-- Data layer uses Prisma ORM (`libraries/nestjs-libraries/src/database/prisma/schema.prisma`) with PostgreSQL as the default database.
+- pnpm workspace (`pnpm-workspace.yaml`), with apps in `apps/` and shared code in `libraries/`. There is no NX.
+- Main services: `frontend` (Next.js), `backend` (NestJS), `orchestrator` (NestJS + Temporal, background jobs). Also `commands`, `extension` and `sdk`.
+- Data layer uses Prisma ORM (`libraries/nestjs-libraries/src/database/prisma/schema.prisma`) with PostgreSQL as the default database. Prisma 7: the generator is `prisma-client`, config lives in `prisma.config.ts`, and the client is generated — never commit it.
 - Redis (BullMQ) is used for queues and caching.
 - Email notifications via Resend.
 - Social login integrations (Instagram, Facebook) and Make.com/N8N integrations.
 
 ## Developer Workflows
-- Use Node.js 20.17.0 and pnpm 8+.
+- Use the Node version in `.nvmrc` (22.20.0) and pnpm 10.6.1 (`packageManager` in package.json). `engines` requires >=22.13.0 because `@mastra/*` does.
 - Install dependencies: `pnpm install`
 - Build all apps: `pnpm run build`
 - Run all apps in dev mode: `pnpm run dev`
-- Test: `pnpm test` (Jest, coverage enabled)
+- There is no unit test suite. What stands in for one is `scripts/ui-migration-check.sh` (types, API surface, i18n keys, routes, feature gates, reduced-motion loops — all diffed against `docs/ui-migration-baseline/`) and `scripts/boot-check.sh`, which starts a real Nest application context from each service's build output. A green build is not evidence on its own; boot-check exists because that mistake once took production down.
 - Individual app scripts are in each app's `package.json` (e.g., `pnpm --filter ./apps/backend run dev`).
-- Prisma DB commands: `pnpm run prisma-generate`, `pnpm run prisma-db-push`, `pnpm run prisma-reset`.
+- Prisma DB commands: `pnpm run prisma-generate`, `pnpm run prisma-db-push`, `pnpm run prisma-reset`. Run `pnpm run prisma-db-pull` after any `@mastra/*` upgrade — Mastra owns tables the schema does not describe, and `db push --accept-data-loss` (which is what containers run at start) will drop every one it has not been told about.
 - Docker: `docker compose -f ./docker-compose.dev.yaml up -d`
+- Start built apps with `pnpm run start:prod:backend` / `start:prod:frontend`, never bare `node main.js` / `next start` — the root `.env` is loaded by `dotenv -e ../../.env --` inside those scripts, and without it the frontend renders an endless skeleton.
 
 ## Conventions & Patterns
 - Use conventional commits (`feat:`, `fix:`, `chore:`).
@@ -37,7 +38,8 @@
 - `libraries/` — Shared code and modules
 - `docker-compose.dev.yaml` — Local development Docker setup
 - `.env` — Environment configuration
-- `jest.config.ts` — Test configuration
+- `prisma.config.ts` — Prisma 7 schema, migration and datasource settings (replaces the `--schema` flag)
+- `scripts/ui-migration-check.sh`, `scripts/boot-check.sh` — the two gates every change goes through
 - `pnpm-workspace.yaml` — Workspace package management
 - `README.md` — General project overview
 - `libraries/nestjs-libraries/src/database/prisma/schema.prisma` — Database schema

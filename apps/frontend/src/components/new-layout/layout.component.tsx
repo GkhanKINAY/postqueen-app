@@ -158,7 +158,7 @@ const MissingBackendUrlNotice = () => (
     <div className="max-w-[520px] text-[13.5px] leading-[1.5] text-pqMuted">
       NEXT_PUBLIC_BACKEND_URL is empty, so every request would go to
       “undefined/…”. The env file lives at the repository root and is loaded by
-      the start scripts — run <code>pnpm run dev</code> or{' '}
+      the start scripts. Run <code>pnpm run dev</code> or{' '}
       <code>pnpm run start:prod:frontend</code> rather than calling{' '}
       <code>next</code> directly.
     </div>

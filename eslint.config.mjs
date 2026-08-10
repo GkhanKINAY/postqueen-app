@@ -129,11 +129,9 @@ const eslintConfig = [
     // `.cjs` is CommonJS by definition, so `require` is the correct call there,
     // not a leftover. Hits `tailwind.config.cjs` and friends.
     //
-    // `jest.preset.js` is the same case wearing a `.js` extension: the root
-    // package has no `"type": "module"`, so Node parses it as CommonJS and it
-    // already uses `module.exports`. An `import` there is a runtime syntax
-    // error, not a modernisation.
-    files: ['**/*.cjs', 'jest.preset.js'],
+    // `jest.preset.js` used to be listed here for the same reason wearing a
+    // `.js` extension. The test stack was removed, and the file with it.
+    files: ['**/*.cjs'],
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 

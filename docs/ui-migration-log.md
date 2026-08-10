@@ -1075,3 +1075,53 @@ all class-scoped, so they stay unlayered and stay code-split.
 
 `sass` is gone. The stylesheets are `.css`, and the reformat commit is in
 `.git-blame-ignore-revs` — `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+### Audit pass over the upgrade
+
+A second pass over the whole change set, looking for what the first one missed.
+Five things it found.
+
+**The vendored Blueprint stylesheet had been dead since polotno 4.** polotno 3
+bundled Blueprint 5, and `polonto.css` was 397 KB of `.bp5-*` rules that styled
+its editor. polotno 4 moved to Blueprint 6, renamed the namespace to `bp6` and
+ships its own stylesheet, so every selector in that file stopped matching the
+moment the upgrade landed. It was still being imported into `global.css`, which
+is to say sent to every visitor on every page.
+
+It took three of our own rules down with it, quietly, because they pointed at
+the same namespace: the `z-index` that keeps polotno's popovers above the
+composer, the focus ring inside the editor, and the `prefers-reduced-motion`
+block that switches off Blueprint's three looping animations. That last one is
+worth noting — **the `loops` check cannot catch it.** A loop applied by selector
+never appears in any className, so there is nothing for the collector to read.
+All three are retargeted to `bp6` now.
+
+**Four different Node versions were in play**: `engines` said 22.12.0, CI said
+22.12.0, two extension workflows said 20, and the container ships 22.20. Mastra
+requires 22.13.0, so the declared floor was below what the tree actually needs.
+Everything is 22.20.0 now, with a `.nvmrc`, and `engines` says `>=22.13.0`.
+
+**The workspace packages were never part of the upgrade.** The root
+`pnpm outdated` does not descend into them; `pnpm -r outdated` does.
+`@postqueen/wallets` had three behind.
+
+**`@atproto/api` 0.20 still cannot land, but for a different reason than
+before.** 0.19 was held because `@atproto/lexicon` and `@atproto/syntax` were
+circular ESM. That is fixed. What is not fixed is that 0.20 reaches
+`multiformats/cid`, and `multiformats` 13 is ESM-only with no `require`
+condition in its exports map — so CommonJS cannot resolve the subpath at all,
+and only `multiformats` 9 has one. **The isolated `require()` test passed**,
+because the main entry does not pull that path; only booting the real
+application found it. This is the case `scripts/boot-check.sh` exists for.
+
+**TypeScript 7 is out and is not a dependency upgrade.** It removes
+`moduleResolution: node10`, which `tsconfig.base.json` uses and the backend and
+orchestrator depend on. Moving off it changes how every import in the monorepo
+resolves; the frontend only got to `bundler` as part of the Uppy 5 work. That is
+its own piece of work, not a version bump. Same for `@types/node` 26, which
+describes a runtime we do not run.
+
+One warning is left in the frontend build and is expected: Uppy's dashboard
+stylesheet carries an `@charset` rule, which is invalid anywhere but the first
+line of a file and is ignored once inlined. The rules after it were checked in
+the built bundle and are all present.
