@@ -142,7 +142,7 @@ importers:
         version: 3.177.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@neynar/react':
         specifier: ^1.2.22
-        version: 1.2.22(@farcaster/miniapp-sdk@0.2.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(swr@2.5.0(react@19.2.8))(typescript@5.9.3)
+        version: 1.2.22(@farcaster/miniapp-sdk@0.2.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(swr@2.4.1(react@19.2.8))(typescript@5.9.3)
       '@pigment-css/react':
         specifier: ^0.0.30
         version: 0.0.30(@types/react@19.2.18)(react@19.2.8)(typescript@5.9.3)
@@ -564,8 +564,8 @@ importers:
         specifier: 11.26.25
         version: 11.26.25
       swr:
-        specifier: ^2.5.0
-        version: 2.5.0(react@19.2.8)
+        specifier: 2.4.1
+        version: 2.4.1(react@19.2.8)
       tailwind-scrollbar:
         specifier: ^3.1.0
         version: 3.1.0(tailwindcss@3.4.17(ts-node@10.9.2(@swc/core@1.15.47(@swc/helpers@0.5.23))(@types/node@22.20.1)(typescript@5.9.3)))
@@ -16275,8 +16275,8 @@ packages:
   sweetalert2@11.26.25:
     resolution: {integrity: sha512-+hunCOJdJ6FLj04T9YSLvvZXRjsvIkTeTKP2e4VF8CaBias961BTnWiSFAy7F/CM5eq3QK2Rraoc5Gzftslvkg==}
 
-  swr@2.5.0:
-    resolution: {integrity: sha512-W0GomadRJe9OfzIoRX0kZHhDSaRRfdiOUeH6uazgR05SibBhDNwfdTbhAxmFtObvkf59fFymo22mooKukosvNA==}
+  swr@2.4.1:
+    resolution: {integrity: sha512-2CC6CiKQtEwaEeNiqWTAw9PGykW8SR5zZX8MZk6TeAvEAnVS7Visz8WzphqgtQ8v2xz/4Q5K+j+SeMaKXeeQIA==}
     peerDependencies:
       react: 19.2.8
 
@@ -17792,7 +17792,7 @@ snapshots:
       '@ai-sdk/provider-utils': 2.2.8(zod@4.4.3)
       '@ai-sdk/ui-utils': 1.2.11(zod@4.4.3)
       react: 19.2.8
-      swr: 2.5.0(react@19.2.8)
+      swr: 2.4.1(react@19.2.8)
       throttleit: 2.1.0
     optionalDependencies:
       zod: 4.4.3
@@ -21911,14 +21911,14 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@neynar/react@1.2.22(@farcaster/miniapp-sdk@0.2.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(swr@2.5.0(react@19.2.8))(typescript@5.9.3)':
+  '@neynar/react@1.2.22(@farcaster/miniapp-sdk@0.2.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(swr@2.4.1(react@19.2.8))(typescript@5.9.3)':
     dependencies:
       '@farcaster/miniapp-sdk': 0.2.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       hls.js: 1.6.17
       mipd: 0.0.7(typescript@5.9.3)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
-      swr: 2.5.0(react@19.2.8)
+      swr: 2.4.1(react@19.2.8)
     transitivePeerDependencies:
       - typescript
 
@@ -34962,7 +34962,7 @@ snapshots:
       react-window: 1.8.11(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       sortablejs: 1.15.7
       svg-round-corners: 0.4.3
-      swr: 2.5.0(react@19.2.8)
+      swr: 2.4.1(react@19.2.8)
       tinycolor2: 1.6.0
       use-image: 1.1.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     transitivePeerDependencies:
@@ -36979,7 +36979,7 @@ snapshots:
 
   sweetalert2@11.26.25: {}
 
-  swr@2.5.0(react@19.2.8):
+  swr@2.4.1(react@19.2.8):
     dependencies:
       dequal: 2.0.3
       react: 19.2.8

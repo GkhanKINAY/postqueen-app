@@ -27,6 +27,14 @@
 # This is the gate every dependency change has to pass before it is committed,
 # and the container image has to pass the same thing on the host before deploy
 # — see docs/upstream-sync.md for why "it built" stopped being good enough.
+#
+# One thing this cannot check for you: when you go on to take screenshots,
+# start the apps with `pnpm run start:prod:frontend` / `:backend`, never with a
+# bare `next start` or `node main.js`. The env file lives at the repository
+# root and only those scripts load it. Started without it, the backend dies
+# loudly (`PostgresStore: invalid config`) but the frontend does not — it shows
+# a skeleton for ever with an empty console, and you will spend the afternoon
+# reading the wrong diff.
 
 set -uo pipefail
 
