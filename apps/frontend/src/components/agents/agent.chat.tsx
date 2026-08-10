@@ -18,7 +18,7 @@ import {
   AssistantMessageProps,
   InputProps,
   UserMessageProps,
-} from '@copilotkit/react-ui/dist/components/chat/props';
+} from '@copilotkit/react-ui';
 import Link from 'next/link';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
@@ -535,21 +535,43 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
   return null;
 };
 
+/**
+ * CopilotKit 1.66 widened message content from a plain string to a list of
+ * typed parts — text, image, audio and more. Everything this app puts on the
+ * wire is still text, and the markers below (`Video:`, `Image:`,
+ * `[--Media--]`) are its own conventions inside that text, so the parts are
+ * folded back into one string. A non-text part contributes nothing rather than
+ * stringifying into `[object Object]`.
+ */
+const contentToText = (
+  content: UserMessageProps['message']['content']
+): string => {
+  if (typeof content === 'string') {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return '';
+  }
+  return content
+    .map((part) => (part.type === 'text' ? part.text : ''))
+    .join('');
+};
+
 const Message: FC<UserMessageProps> = (props) => {
   const convertContentToImagesAndVideo = useMemo(() => {
-    return (props.message?.content || '')
-      .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
+    return contentToText(props.message?.content)
+      .replace(/Video: (http.*mp4\n)/g, (match: string, p1: string) => {
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })
-      .replace(/Image: (http.*\n)/g, (match, p1) => {
+      .replace(/Image: (http.*\n)/g, (match: string, p1: string) => {
         return `<img src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full rounded-[8px]" />`;
       })
-      .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
+      .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match: string, p1: string) => {
         return `<div class="flex justify-center mt-[20px]">${p1}</div>`;
       })
       .replace(
         /(\[--integrations--\][\s\S]*?\[--integrations--\])/g,
-        (match, p1) => {
+        (match: string, p1: string) => {
           return ``;
         }
       );

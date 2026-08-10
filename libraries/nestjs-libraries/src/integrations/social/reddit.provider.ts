@@ -17,7 +17,7 @@ import {
 import { lookup } from 'mime-types';
 import FormDataUpload from 'form-data';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 // Travels through the workflow history between postPending, checkPostStatus

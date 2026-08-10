@@ -1,5 +1,5 @@
 import { createContext, FC, ReactNode, useContext } from 'react';
-import { Post } from '@prisma/client';
+import type { Post } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 const ExistingDataContext = createContext({
   integration: '',
   group: undefined as undefined | string,

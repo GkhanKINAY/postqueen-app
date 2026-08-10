@@ -1,6 +1,6 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
 export interface StatsParams {
   from: Date;

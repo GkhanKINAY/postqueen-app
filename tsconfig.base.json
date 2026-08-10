@@ -26,6 +26,10 @@
     "strict": true,
     "paths": {
       "@langchain/langgraph/prebuilt": ["node_modules/@langchain/langgraph/dist/prebuilt/index.d.ts"],
+      "file-type": ["node_modules/file-type/source/index.d.ts"],
+      "mime": ["node_modules/mime/dist/src/index.d.ts"],
+      "@casl/ability": ["node_modules/@casl/ability/dist/types/index.d.ts"],
+      "@atproto/api": ["node_modules/@atproto/api/dist/index.d.ts"],
       "@gitroom/backend/*": ["apps/backend/src/*"],
       "@gitroom/frontend/*": ["apps/frontend/src/*"],
       "@gitroom/helpers/*": ["libraries/helpers/src/*"],

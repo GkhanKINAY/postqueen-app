@@ -1,5 +1,5 @@
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
-import { User } from '@prisma/client';
+import { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Injectable } from '@nestjs/common';
 import {
   ServerEvent,

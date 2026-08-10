@@ -2,7 +2,7 @@
 
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { Integration } from '@prisma/client';
+import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Autocomplete } from '@mantine/core';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -60,7 +60,9 @@ export const CustomerModal: FC<{
               'h-[44px] rounded-[10px] border-0 bg-pqTableHeader px-[12px] text-[14px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]',
             dropdown:
               'bg-pqPop border border-pqBorder rounded-[10px] shadow-pqE2 overflow-hidden',
-            item: 'text-[14px] text-pqText hover:bg-pqHover data-[hovered]:bg-pqHover',
+            // `item` became `option` in Mantine 7; same element, same styling.
+            option:
+              'text-[14px] text-pqText hover:bg-pqHover data-[hovered]:bg-pqHover',
           }}
           label={t('select_customer_label', 'Select Customer')}
           placeholder={t('start_typing', 'Start typing...')}

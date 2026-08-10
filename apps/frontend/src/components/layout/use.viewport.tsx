@@ -88,7 +88,7 @@ export const ViewportProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const viewport = useMemo(() => measure(width), [width]);
 
-  // Also before paint: the `[data-mobile="1"] …` rules in global.scss hide
+  // Also before paint: the `[data-mobile="1"] …` rules in global.css hide
   // header labels, and doing it after paint would flash them too.
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;

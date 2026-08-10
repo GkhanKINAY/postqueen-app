@@ -78,7 +78,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
       // saw network errors: a 404 or 500 from the import still announced
       // "Media imported successfully" and closed the modal.
       if (!response.ok) {
-        const body = await response.json().catch(() => undefined);
+        const body = await response.json().catch((): undefined => undefined);
         if (!body?.cancelled) {
           toaster.show(
             typeof body?.message === 'string'

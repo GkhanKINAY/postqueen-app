@@ -35,7 +35,7 @@ import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useDrag, useDrop } from 'react-dnd';
-import { Integration, Post, State, Tags } from '@prisma/client';
+import type { Integration, Post, State, Tags } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -166,7 +166,7 @@ export const usePostActions = (onMutate?: () => void) => {
       // calendar simply did nothing, with no error anywhere.
       const groupResponse = await fetch(`/posts/group/${post.group}`);
       const data = groupResponse.ok
-        ? await groupResponse.json().catch(() => null)
+        ? await groupResponse.json().catch((): null => null)
         : null;
 
       if (!data?.posts?.length) {
@@ -185,7 +185,7 @@ export const usePostActions = (onMutate?: () => void) => {
       if (isDuplicate) {
         const slotResponse = await fetch('/posts/find-slot');
         const slot = slotResponse.ok
-          ? await slotResponse.json().catch(() => null)
+          ? await slotResponse.json().catch((): null => null)
           : null;
         date = slot?.date ?? null;
       }
@@ -1658,7 +1658,7 @@ export const CalendarColumn: FC<{
               )}
             >
               {/* Shown by the `[data-cell]:hover [data-cell-add]` rule in
-                  global.scss rather than by React, so moving the pointer
+                  global.css rather than by React, so moving the pointer
                   across the grid does not re-render it. */}
               <div
                 data-cell-add="1"

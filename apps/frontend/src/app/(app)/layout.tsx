@@ -1,16 +1,14 @@
 import { SentryComponent } from '@gitroom/frontend/components/layout/sentry.component';
 
 export const dynamic = 'force-dynamic';
-import '../global.scss';
+import '../global.css';
 import 'react-tooltip/dist/react-tooltip.css';
 import '@copilotkit/react-ui/styles.css';
 import LayoutContext from '@gitroom/frontend/components/layout/layout.context';
 import { Metadata } from 'next';
 import { ReactNode } from 'react';
-import PlausibleProvider from 'next-plausible';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
-import { Fragment } from 'react';
 import { PHProvider } from '@gitroom/react/helpers/posthog';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
 import { fontClassName } from '../fonts';
@@ -67,10 +65,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Domain reported to the analytics providers. Taken from this deployment rather
- * than hardcoded: with a fixed value, a self-hosted install that configured its
- * own Plausible or DataFast account reported its traffic under the vendor's
- * domain instead of its own.
+ * Domain reported to DataFast. Taken from this deployment rather than
+ * hardcoded: with a fixed value, a self-hosted install that configured its own
+ * DataFast account reported its traffic under the vendor's domain instead of
+ * its own.
  */
 function analyticsDomain(): string {
   try {
@@ -84,11 +82,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const language = cookieStore.get(cookieName)?.value || fallbackLng;
   const mode = resolveTheme(cookieStore.get(THEME_COOKIE)?.value);
-  // Only load Plausible when this deployment has actually configured it.
-  // Keying it off the Stripe key meant enabling billing silently started
-  // beaconing every visitor to plausible.io.
-  const plausibleDomain = process.env.PLAUSIBLE_DOMAIN || '';
-  const Plausible = plausibleDomain ? PlausibleProvider : Fragment;
   return (
     <html>
       <head>
@@ -170,17 +163,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <DubAnalytics />
             <FacebookComponent />
             <GoogleTagManagerComponent gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
-            <Plausible domain={plausibleDomain}>
-              <PHProvider
-                phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
-                host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
-              >
-                <LayoutContext>
-                  <UtmSaver />
-                  {children}
-                </LayoutContext>
-              </PHProvider>
-            </Plausible>
+            <PHProvider
+              phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
+              host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
+            >
+              <LayoutContext>
+                <UtmSaver />
+                {children}
+              </LayoutContext>
+            </PHProvider>
           </SentryComponent>
         </VariableContextComponent>
       </body>

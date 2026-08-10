@@ -1,27 +1,27 @@
-// ---------------------------------------------------------------------------
-// Redesign token layer
-//
-// Ported verbatim from design/handoff/tokens.css, with one translation: the
-// prototype themes with `:root[data-theme="dark"]`, this app themes with a
-// `.dark` / `.light` class on <body> (tailwind.config.cjs `darkMode: 'class'`,
-// set from the `mode` cookie). There are no `dark:` utilities anywhere in the
-// frontend — every colour resolves through these two blocks, so a token that is
-// declared in one and not the other renders as nothing rather than as a
-// fallback.
-//
-// Nothing consumes these yet. They are added ahead of the components so each
-// later step only has to move structure, and so this step can be verified by
-// the screenshots being unchanged.
-//
-// The `--new-*` and `--color-custom*` vocabulary below is the old one. It stays
-// until each screen is migrated off it.
-// ---------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------
+   Redesign token layer
+
+   Ported verbatim from design/handoff/tokens.css, with one translation: the
+   prototype themes with `:root[data-theme="dark"]`, this app themes with a
+   `.dark` / `.light` class on <body> (tailwind.config.cjs `darkMode: 'class'`,
+   set from the `mode` cookie). There are no `dark:` utilities anywhere in the
+   frontend — every colour resolves through these two blocks, so a token that is
+   declared in one and not the other renders as nothing rather than as a
+   fallback.
+
+   Nothing consumes these yet. They are added ahead of the components so each
+   later step only has to move structure, and so this step can be verified by
+   the screenshots being unchanged.
+
+   The `--new-*` and `--color-custom*` vocabulary below is the old one. It stays
+   until each screen is migrated off it.
+   --------------------------------------------------------------------------- */
 :root {
   .dark {
     --brandFaint: rgba(124, 58, 237, 0.08);
     --hatch: rgba(255, 255, 255, 0.035);
-    // Scrollbar thumb. Design's global rule (prototype `::-webkit-scrollbar`)
-    // — it inks the thumb only, over a transparent track.
+    /* Scrollbar thumb. Design's global rule (prototype `::-webkit-scrollbar`)
+       — it inks the thumb only, over a transparent track. */
     --scrollThumb: rgba(255, 255, 255, 0.14);
     --bg: #0b0b0d;
     --inner: #131316;
@@ -33,9 +33,9 @@
     --colColor: #1f1f24;
     --btnSimple: #26262c;
     --blockSeparator: rgba(255, 255, 255, 0.07);
-    // Fill for loading placeholders. Not `--hover`: that is a 5% overlay, which
-    // composites to ~1.13:1 on `--inner` and reads as a smudge rather than as
-    // content. This is the `--border` step, the strongest neutral in the scale.
+    /* Fill for loading placeholders. Not `--hover`: that is a 5% overlay, which
+       composites to ~1.13:1 on `--inner` and reads as a smudge rather than as
+       content. This is the `--border` step, the strongest neutral in the scale. */
     --skeleton: #26262c;
     --text: #ededf0;
     --muted: #9b9ba4;
@@ -48,22 +48,22 @@
     --upgradeHover: rgba(139, 92, 246, 0.16);
     --brand: #7c3aed;
     --brandHover: #8b5cf6;
-    // Text and icons sitting ON a brand-filled surface. `--upgradeFg` is not
-    // this: it is the rail's Upgrade label, drawn on the rail, and in the light
-    // theme it is #6d28d9 — which on #7c3aed is 1.36:1 and unreadable.
+    /* Text and icons sitting ON a brand-filled surface. `--upgradeFg` is not
+       this: it is the rail's Upgrade label, drawn on the rail, and in the light
+       theme it is #6d28d9 — which on #7c3aed is 1.36:1 and unreadable. */
     --onBrand: #ffffff;
     --brandSoft: rgba(124, 58, 237, 0.16);
     --pink: #e0189e;
     --navOn: rgba(255, 255, 255, 0.075);
-    // The rail's own two states. The prototype writes these as literals rather
-    // than tokens and uses the same value in both themes, so they are one pair
-    // here too. `--navRowHover` is laid over the row as an inset ring, never as
-    // a background, so it tints whatever the row already sits on.
+    /* The rail's own two states. The prototype writes these as literals rather
+       than tokens and uses the same value in both themes, so they are one pair
+       here too. `--navRowHover` is laid over the row as an inset ring, never as
+       a background, so it tints whatever the row already sits on. */
     --navActive: rgba(124, 58, 237, 0.15);
     --navRowHover: rgba(124, 58, 237, 0.1);
-    // Calendar grid. `--dropHint` marks every legal target while a post is in
-    // flight; the cell actually under the cursor takes a solid `--brand` ring.
-    // `--todayGlow` is the lift under the current day's number.
+    /* Calendar grid. `--dropHint` marks every legal target while a post is in
+       flight; the cell actually under the cursor takes a solid `--brand` ring.
+       `--todayGlow` is the lift under the current day's number. */
     --dropHint: rgba(124, 58, 237, 0.28);
     --todayGlow: 0 4px 12px -4px rgba(124, 58, 237, 0.7);
     --pop: #1b1b20;
@@ -75,28 +75,28 @@
     --menuDots: #6e6e78;
     --popup: rgba(0, 0, 0, 0.6);
     --aiLockScrim: rgba(12, 12, 15, 0.72);
-    // The product tour's scrim. It stays dark in both themes: it exists to push
-    // the app back so the spotlit target reads as lit, which a light scrim on a
-    // light app cannot do.
+    /* The product tour's scrim. It stays dark in both themes: it exists to push
+       the app back so the spotlit target reads as lit, which a light scrim on a
+       light app cannot do. */
     --tourScrim: rgba(2, 2, 6, 0.66);
-    // The card the tour's calendar demo drags. Brand hairline plus a much
-    // longer, softer drop than `--e3`: it has to read as lifted off the grid
-    // over the whole flight, not as another surface resting on it. Same in
-    // both themes — a card in the air casts the same shadow.
+    /* The card the tour's calendar demo drags. Brand hairline plus a much
+       longer, softer drop than `--e3`: it has to read as lifted off the grid
+       over the whole flight, not as another surface resting on it. Same in
+       both themes — a card in the air casts the same shadow. */
     --tourGhost: 0 0 0 1px rgba(124, 58, 237, 0.85),
       0 26px 44px -18px rgba(0, 0, 0, 0.9);
     /** The pointer riding the ghost, over whatever it is passing. */
     --tourCursor: 0 2px 5px rgba(0, 0, 0, 0.7);
-    // The tour's own card: brand hairline, ambient drop, brand bloom. Not the
-    // neutral border plus `--e3` it used to carry — a dark card outlined in a
-    // dark neutral, standing on a dark scrim, had nothing to separate it from
-    // the app behind (owner: "biraz kayboluyor"). Values are the design's.
+    /* The tour's own card: brand hairline, ambient drop, brand bloom. Not the
+       neutral border plus `--e3` it used to carry — a dark card outlined in a
+       dark neutral, standing on a dark scrim, had nothing to separate it from
+       the app behind (owner: "biraz kayboluyor"). Values are the design's. */
     --tourCard: 0 0 0 1px rgba(124, 58, 237, 0.55),
       0 28px 60px -20px rgba(0, 0, 0, 0.9),
       0 0 40px -12px rgba(124, 58, 237, 0.5);
     /** Wash across the top of that card, layered as an image over `--pop`. */
     --tourCardWash: rgba(124, 58, 237, 0.16);
-    // Media lightbox — design `rgba(9,9,11,.86)` (covers rail; not the tour scrim).
+    /* Media lightbox — design `rgba(9,9,11,.86)` (covers rail; not the tour scrim). */
     --mediaScrim: rgba(9, 9, 11, 0.86);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
     --e1: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -109,20 +109,20 @@
     --r-xl: 18px;
     --ok: #4ade80;
     --okSoft: rgba(74, 222, 128, 0.13);
-    // Soft fills and hairlines for the ok / warn roles, used by the billing
-    // strips. The design writes these as rgba literals; Tailwind cannot put an
-    // alpha modifier on a var() colour (`bg-pqWarn/15` generates no CSS at
-    // all), so they are tokens the way --okSoft already is.
+    /* Soft fills and hairlines for the ok / warn roles, used by the billing
+       strips. The design writes these as rgba literals; Tailwind cannot put an
+       alpha modifier on a var() colour (`bg-pqWarn/15` generates no CSS at
+       all), so they are tokens the way --okSoft already is. */
     --okLine: rgba(74, 222, 128, 0.26);
-    // Channels detail Published stat card (chDetailStats) — softer than
-    // --okSoft so the whole card reads green without matching the Connected pill.
+    /* Channels detail Published stat card (chDetailStats) — softer than
+       --okSoft so the whole card reads green without matching the Connected pill. */
     --okCard: rgba(74, 222, 128, 0.08);
     --okCardRing: rgba(74, 222, 128, 0.22);
     --warn: #f87171;
     --warnSoft: rgba(248, 113, 113, 0.13);
     --warnLine: rgba(248, 113, 113, 0.28);
-    // Destructive / payment-failed red — the billing payFail strip and its CTA
-    // use #ef4444 in the prototype, not --warn (which is softer in dark).
+    /* Destructive / payment-failed red — the billing payFail strip and its CTA
+       use #ef4444 in the prototype, not --warn (which is softer in dark). */
     --danger: #ef4444;
     --dangerSoft: rgba(239, 68, 68, 0.13);
     --dangerLine: rgba(239, 68, 68, 0.28);
@@ -131,9 +131,9 @@
     --unlimB: #fff;
     --avatarBg: #101014;
     --badgeRing: #101014;
-    // Lifetime / founding-member surfaces only.
-    // Solid washes — diagonal fades over black read as a dark band on the right
-    // (owner 2026-08-06: kill the “lifetime = dark mood” gradient).
+    /* Lifetime / founding-member surfaces only.
+       Solid washes — diagonal fades over black read as a dark band on the right
+       (owner 2026-08-06: kill the “lifetime = dark mood” gradient). */
     --ltCardOn: rgba(245, 158, 11, 0.14);
     --ltCardOff: rgba(245, 158, 11, 0.08);
     --ltSolid: #f59e0b;
@@ -147,13 +147,13 @@
     --ltText: rgba(255, 244, 228, 0.92);
     --ltLine: rgba(245, 158, 11, 0.18);
     --ltChipBg: rgba(245, 158, 11, 0.14);
-    // The outline drawn around lifetime surfaces (upsell strip, founding hero).
+    /* The outline drawn around lifetime surfaces (upsell strip, founding hero). */
     --ltSoft: rgba(245, 158, 11, 0.15);
     --ltOutline: rgba(245, 158, 11, 0.34);
     --ltTick: rgba(245, 158, 11, 0.85);
     --ltTickFg: #1a1205;
-    // Post previews. Themed rather than the platforms' brand hexes, so light
-    // mode works.
+    /* Post previews. Themed rather than the platforms' brand hexes, so light
+       mode works. */
     --linkedinBg: #1b1f23;
     --linkedinText: #c6c7c8;
     --linkedinBorder: #2e3438;
@@ -166,19 +166,19 @@
     --youtubeButton: #f1f1f1;
     --youtubeAction: #272727;
     --youtubeSvgBorder: #a0a0a0;
-    // Not in the handoff — two gaps the design leaves that we have to fill.
-    //
-    // The checkout's "subscription ended" notice paints an orange box and then
-    // reaches for --warn for its icon, which is red. Warning and expiry are
-    // different states and need different colours.
+    /* Not in the handoff — two gaps the design leaves that we have to fill.
+
+       The checkout's "subscription ended" notice paints an orange box and then
+       reaches for --warn for its icon, which is red. Warning and expiry are
+       different states and need different colours. */
     --amber: #fb923c;
     --amberSoft: rgba(251, 146, 60, 0.12);
     --amberLine: rgba(251, 146, 60, 0.28);
-    // Header streak flame — design chromeVals `#f97316` (distinct from --amber).
+    /* Header streak flame — design chromeVals `#f97316` (distinct from --amber). */
     --streak: #f97316;
     --streakSoft: rgba(249, 115, 22, 0.14);
-    // No input in the prototype has a focus state at all. One is needed before
-    // Stripe's PaymentElement can be themed to match, and for keyboard use.
+    /* No input in the prototype has a focus state at all. One is needed before
+       Stripe's PaymentElement can be themed to match, and for keyboard use. */
     --fieldRing: rgba(167, 139, 250, 0.4);
   }
   .light {
@@ -195,11 +195,11 @@
     --colColor: #e9e9ef;
     --btnSimple: #e6e6ec;
     --blockSeparator: rgba(9, 9, 11, 0.07);
-    // See the dark block: the `--border` step, not the `--hover` overlay.
+    /* See the dark block: the `--border` step, not the `--hover` overlay. */
     --skeleton: #e4e4e9;
     --text: #18181b;
     --muted: #5f5f6b;
-    // Darker than design #8f8f9a (~3.2:1 on white) so soft labels stay readable.
+    /* Darker than design #8f8f9a (~3.2:1 on white) so soft labels stay readable. */
     --soft: #6f6f7a;
     --focused: #6d28d9;
     --boxFocused: #f3eefe;
@@ -209,13 +209,13 @@
     --upgradeHover: rgba(124, 58, 237, 0.1);
     --brand: #7c3aed;
     --brandHover: #6d28d9;
-    // Brand is the same #7c3aed in both themes, so this is too — see the note
-    // in the dark block.
+    /* Brand is the same #7c3aed in both themes, so this is too — see the note
+       in the dark block. */
     --onBrand: #ffffff;
     --brandSoft: rgba(124, 58, 237, 0.1);
     --pink: #e0189e;
     --navOn: rgba(9, 9, 11, 0.055);
-    // Same values as in .dark — see the notes there.
+    /* Same values as in .dark — see the notes there. */
     --navActive: rgba(124, 58, 237, 0.15);
     --navRowHover: rgba(124, 58, 237, 0.1);
     --dropHint: rgba(124, 58, 237, 0.28);
@@ -229,16 +229,16 @@
     --menuDots: #6f6f7a;
     --popup: rgba(9, 9, 11, 0.35);
     --aiLockScrim: rgba(250, 250, 252, 0.72);
-    // Lighter than dark's 0.66 — the same opacity over a white app reads as
-    // almost opaque and the spotlight stops looking like a spotlight.
+    /* Lighter than dark's 0.66 — the same opacity over a white app reads as
+       almost opaque and the spotlight stops looking like a spotlight. */
     --tourScrim: rgba(2, 2, 6, 0.5);
-    // See the dark block: a lifted card casts the same shadow in either theme.
+    /* See the dark block: a lifted card casts the same shadow in either theme. */
     --tourGhost: 0 0 0 1px rgba(124, 58, 237, 0.85),
       0 26px 44px -18px rgba(0, 0, 0, 0.9);
     --tourCursor: 0 2px 5px rgba(0, 0, 0, 0.7);
-    // Hairline and bloom as in dark; the ambient drop follows the light scale
-    // (`--e3`) rather than the design's near-black, which reads as dirt here.
-    // The wash is lighter too — 16% brand over white tints the whole card.
+    /* Hairline and bloom as in dark; the ambient drop follows the light scale
+       (`--e3`) rather than the design's near-black, which reads as dirt here.
+       The wash is lighter too — 16% brand over white tints the whole card. */
     --tourCard: 0 0 0 1px rgba(124, 58, 237, 0.55),
       0 20px 46px -16px rgba(9, 9, 11, 0.3),
       0 0 40px -12px rgba(124, 58, 237, 0.35);
@@ -255,14 +255,14 @@
     --r-xl: 18px;
     --ok: #16a34a;
     --okSoft: rgba(21, 128, 61, 0.1);
-    // As in .dark, on the light theme's darker ok / warn bases.
+    /* As in .dark, on the light theme's darker ok / warn bases. */
     --okLine: rgba(21, 128, 61, 0.26);
     --okCard: rgba(21, 128, 61, 0.08);
     --okCardRing: rgba(21, 128, 61, 0.22);
     --warn: #dc2626;
     --warnSoft: rgba(220, 38, 38, 0.1);
     --warnLine: rgba(220, 38, 38, 0.28);
-    // Same #ef4444 base as dark — the prototype hardcodes it for payFail.
+    /* Same #ef4444 base as dark — the prototype hardcodes it for payFail. */
     --danger: #ef4444;
     --dangerSoft: rgba(239, 68, 68, 0.13);
     --dangerLine: rgba(239, 68, 68, 0.28);
@@ -284,8 +284,8 @@
     --ltText: #3b2606;
     --ltLine: rgba(217, 119, 6, 0.2);
     --ltChipBg: rgba(245, 158, 11, 0.15);
-    // The chip keeps the bright base even on light (like --ltChipBg above);
-    // the outline shifts to the darker base the light lt family uses.
+    /* The chip keeps the bright base even on light (like --ltChipBg above);
+       the outline shifts to the darker base the light lt family uses. */
     --ltSoft: rgba(245, 158, 11, 0.15);
     --ltOutline: rgba(217, 119, 6, 0.34);
     --ltTick: #d97706;
@@ -302,8 +302,8 @@
     --youtubeButton: #000000;
     --youtubeAction: #f1f1f1;
     --youtubeSvgBorder: #1a1a1a;
-    // Ours, as above. The amber reads darker here so it stays legible on the
-    // light surface it sits on.
+    /* Ours, as above. The amber reads darker here so it stays legible on the
+       light surface it sits on. */
     --amber: #b45309;
     --amberSoft: rgba(251, 146, 60, 0.12);
     --amberLine: rgba(251, 146, 60, 0.3);
@@ -313,42 +313,42 @@
   }
 }
 
-// The old vocabulary, now resolving to the redesign's tokens.
-//
-// Every name here is still declared, so the ~440 `bg-newBgColorInner`-style
-// usages across the frontend and libraries keep working untouched — they simply
-// render the new palette. Names are retired screen by screen in the steps that
-// follow, which is what lets those steps be about structure rather than colour.
-//
-// A few are deliberately left on their own values, marked below: composer and
-// preview surfaces with no counterpart in the redesign's token set. Step 5
-// restyles them properly rather than guessing now.
+/* The old vocabulary, now resolving to the redesign's tokens.
+
+   Every name here is still declared, so the ~440 `bg-newBgColorInner`-style
+   usages across the frontend and libraries keep working untouched — they simply
+   render the new palette. Names are retired screen by screen in the steps that
+   follow, which is what lets those steps be about structure rather than colour.
+
+   A few are deliberately left on their own values, marked below: composer and
+   preview surfaces with no counterpart in the redesign's token set. Step 5
+   restyles them properly rather than guessing now. */
 :root {
   .dark {
-    // The composer's global-lock scrim, used under `opacity-60`. Routing it
-    // through an already-transparent token would compound the alpha.
+    /* The composer's global-lock scrim, used under `opacity-60`. Routing it
+       through an already-transparent token would compound the alpha. */
     --new-back-drop: #000;
     --new-settings: var(--settings);
     --new-border: var(--border);
     --new-bgColor: var(--bg);
     --new-bgColorInner: var(--inner);
     --new-sep: var(--border);
-    // The background a page's 1px column gaps show through.
+    /* The background a page's 1px column gaps show through. */
     --new-bgLineColor: var(--line);
     --new-textItemFocused: var(--focused);
     --new-textItemBlur: var(--muted);
     --new-boxFocused: var(--boxFocused);
-    // Space-separated channels, not a hex: Tailwind consumes this as
-    // `rgb(var(--new-textColor) / <alpha-value>)`, so a hex here would silently
-    // kill every `text-newTextColor/70` in the app. This is --text in RGB.
+    /* Space-separated channels, not a hex: Tailwind consumes this as
+       `rgb(var(--new-textColor) / <alpha-value>)`, so a hex here would silently
+       kill every `text-newTextColor/70` in the app. This is --text in RGB. */
     --new-textColor: 237 237 240;
     --new-blockSeparator: var(--blockSeparator);
     --new-btn-simple: var(--btnSimple);
     --new-btn-text: var(--text);
     --new-btn-primary: var(--brand);
     --new-ai-btn: var(--pink);
-    // An overlay tint rather than the solid this used to be — the redesign's
-    // hover sits on top of whatever surface it lands on.
+    /* An overlay tint rather than the solid this used to be — the redesign's
+       hover sits on top of whatever surface it lands on. */
     --new-box-hover: var(--hover);
     --new-table-border: var(--tableBorder);
     --new-table-header: var(--tableHeader);
@@ -361,7 +361,7 @@
     --new-menu-hover: var(--text);
     --menu-shadow: var(--shadow);
     --popup-color: var(--popup);
-    // Preview frames — step 5.
+    /* Preview frames — step 5. */
     --border-preview: transparent;
     --preview-box-shadow: none;
     --linkedin-border: var(--linkedinBorder);
@@ -388,7 +388,7 @@
     --new-textItemFocused: var(--focused);
     --new-textItemBlur: var(--muted);
     --new-boxFocused: var(--boxFocused);
-    // --text in RGB channels; see the note in .dark.
+    /* --text in RGB channels; see the note in .dark. */
     --new-textColor: 24 24 27;
     --new-blockSeparator: var(--blockSeparator);
     --new-btn-simple: var(--btnSimple);
@@ -407,7 +407,7 @@
     --new-menu-hover: var(--text);
     --menu-shadow: var(--shadow);
     --popup-color: var(--popup);
-    // Preview frames — step 5.
+    /* Preview frames — step 5. */
     --border-preview: #f1f0f3;
     --preview-box-shadow: 0 386px 108px 0 rgba(38, 32, 64, 0),
       0 247px 99px 0 rgba(38, 32, 64, 0.01),
@@ -434,7 +434,7 @@
     --color-secondary: var(--pop);
     --color-text: var(--text);
     --color-third: var(--third);
-    --color-forth: var(--brand); // the shared Button uses bg-forth
+    --color-forth: var(--brand); /* the shared Button uses bg-forth */
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);
@@ -504,7 +504,7 @@
     --color-secondary: var(--pop);
     --color-text: var(--text);
     --color-third: var(--third);
-    --color-forth: var(--brand); // the shared Button uses bg-forth
+    --color-forth: var(--brand); /* the shared Button uses bg-forth */
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
     --color-seventh: var(--brandHover);

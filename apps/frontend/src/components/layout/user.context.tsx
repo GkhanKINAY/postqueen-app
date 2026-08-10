@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, FC, ReactNode, useContext } from 'react';
-import { User } from '@prisma/client';
+import type { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import {
   AnyTier,
   pricing,

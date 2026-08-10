@@ -1,190 +1,51 @@
 # Vulnerabilities present and accepted for now, one "package GHSA-id" per line.
 #
 # Each needs a semver range moved — a change with its own risk — or has no
-# released fix: tar's is 7.x, a major; multer's is 2.x; lodash's advisory names
-# a version that its consumers do not accept. This is a list to shrink, and the
-# check names entries that stop appearing so they can be deleted.
+# released fix. What is left is almost entirely *transitive*: a dependency
+# pinning an old copy of something the root has already updated. lodash is the
+# clearest example — the root is on 4.18.1, which the advisory is fixed in, and
+# a 4.17.21 copy still arrives underneath something else. Those cannot be
+# closed from here; they close when the package holding them updates.
+#
+# This is a list to shrink, and the check names entries that stop appearing so
+# they can be deleted.
 #
 # Regenerated 2026-08-09 after pinning axios, undici, ws, dompurify, postcss,
 # Regenerated 2026-08-09 after clearing the cheap critical advisories.
+# Regenerated 2026-08-10 after the in-range refresh: 181 down to 71, none new.
+# Regenerated 2026-08-10 after the major pass: 71 down to 43, none new. tar and
+# multer are gone — multer crossed to 2.x, which is what its advisory wanted.
+# Regenerated 2026-08-10 after the audit pass: 43 down to 29, none new. Fourteen
+# entries had stopped appearing and were still being accepted, which is the one
+# way this file can make things worse than having no file — happy-dom and
+# langsmith left with the test stack and the langchain pins, qs / request /
+# tough-cookie / prismjs with the transitive trees that held them.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
-@babel/core GHSA-4x5r-pxfx-6jf8
-@babel/plugin-transform-modules-systemjs GHSA-fv7c-fp4j-7gwp
-@grpc/grpc-js GHSA-5375-pq7m-f5r2
-@grpc/grpc-js GHSA-99f4-grh7-6pcq
-@hono/node-server GHSA-92pp-h63x-v22m
 @hono/node-server GHSA-frvp-7c67-39w9
-@langchain/community GHSA-gf3v-fwqg-4vh7
-@langchain/community GHSA-mphv-75cg-56wg
-@nestjs/core GHSA-36xv-jgw5-4q75
 @opentelemetry/auto-instrumentations-node GHSA-q7rr-3cgh-j5r3
 @opentelemetry/core GHSA-8988-4f7v-96qf
 @opentelemetry/exporter-prometheus GHSA-q7rr-3cgh-j5r3
 @opentelemetry/propagator-jaeger GHSA-45rx-2jwx-cxfr
 @opentelemetry/sdk-node GHSA-q7rr-3cgh-j5r3
-@tootallnate/once GHSA-vpq2-c234-7xj6
 ai GHSA-rwvc-j5jr-mgvh
-basic-ftp GHSA-6v7q-wjvx-w8wg
-basic-ftp GHSA-chqc-8p9q-pq6q
-basic-ftp GHSA-rp42-5vxx-qpwr
-basic-ftp GHSA-rpmf-866q-6p89
-body-parser GHSA-v422-hmwv-36x6
-brace-expansion GHSA-3jxr-9vmj-r5cp
-brace-expansion GHSA-f886-m6hf-6m8v
-brace-expansion GHSA-mh99-v99m-4gvg
-brace-expansion GHSA-rgw5-rvv9-x895
-cross-spawn GHSA-3xgq-45jj-v275
 defu GHSA-737v-mqg7-c878
-dompurify GHSA-55q2-fjhq-7xh7
-dompurify GHSA-76mc-f452-cxcm
-dompurify GHSA-c2j3-45gr-mqc4
-dompurify GHSA-cmwh-pvxp-8882
-dompurify GHSA-gvmj-g25r-r7wr
-dompurify GHSA-hpcv-96wg-7vj8
-dompurify GHSA-r47g-fvhr-h676
-dompurify GHSA-rp9w-3fw7-7cwq
-dompurify GHSA-vxr8-fq34-vvx9
-dompurify GHSA-x4vx-rjvf-j5p4
 elliptic GHSA-848j-6mx2-7j84
 esbuild GHSA-g7r4-m6w7-qqqr
-fast-uri GHSA-4c8g-83qw-93j6
-fast-uri GHSA-7p8r-x3mc-p8w7
-fast-uri GHSA-q3j6-qgpj-74h6
-fast-uri GHSA-v2hh-gcrm-f6hx
-fast-uri GHSA-v39h-62p7-jpjc
-fast-xml-builder GHSA-5wm8-gmm8-39j9
 fast-xml-parser GHSA-8gc5-j5rx-235r
 fast-xml-parser GHSA-gh4j-gqv2-49f6
 fast-xml-parser GHSA-jp2q-39xq-3w4g
 file-type GHSA-5v7r-6r5c-r473
-file-type GHSA-j47w-4g3g-c36v
-flatted GHSA-25h7-pfq9-p65f
-flatted GHSA-rf6f-7fwh-wjgh
-form-data GHSA-hmw2-7cc7-3qxx
 h3 GHSA-22cc-p3c6-wpvm
 h3 GHSA-4hxc-9384-m385
 h3 GHSA-72gr-qfp7-vwhw
 h3 GHSA-wr4h-v87w-p3r7
-happy-dom GHSA-37j7-fg3j-429f
-happy-dom GHSA-6q6h-j7hj-3r64
-happy-dom GHSA-w4gp-fjgq-3q4g
-hono GHSA-26pp-8wgv-hjvm
-hono GHSA-2gcr-mfcq-wcc3
-hono GHSA-3hrh-pfw6-9m5x
-hono GHSA-458j-xx4x-4375
-hono GHSA-54fx-42gc-7vw4
-hono GHSA-69xw-7hcm-h432
-hono GHSA-79qm-7rj5-m7r9
-hono GHSA-88fw-hqm2-52qc
-hono GHSA-8j4g-w8fx-2239
-hono GHSA-9vqf-7f2p-gf9v
-hono GHSA-f23p-vx2j-j53r
-hono GHSA-f577-qrjj-4474
-hono GHSA-hm8q-7f3q-5f36
-hono GHSA-hvrm-45r6-mjfj
-hono GHSA-j6c9-x7qj-28xf
-hono GHSA-p77w-8qqv-26rm
-hono GHSA-qp7p-654g-cw7p
-hono GHSA-r5rp-j6wh-rvv4
-hono GHSA-rv63-4mwf-qqc2
-hono GHSA-v8w9-8mx6-g223
-hono GHSA-w62v-xxxg-mg59
-hono GHSA-wgpf-jwqj-8h8p
-hono GHSA-wmmm-f939-6g9c
-hono GHSA-wwfh-h76j-fc44
-hono GHSA-xf4j-xp2r-rqqx
-hono GHSA-xgm2-5f3f-mvvc
-hono GHSA-xpcf-pg52-r92g
-hono GHSA-xrhx-7g5j-rcj5
 image-size GHSA-5p2g-fcmc-qvqq
 image-size GHSA-w3rx-r6r6-pgpr
-immutable GHSA-v56q-mh7h-f735
-immutable GHSA-xvcm-6775-5m9r
-ip-address GHSA-mwp4-54f8-5fhr
-ip-address GHSA-v2v4-37r5-5v8g
-js-cookie GHSA-qjx8-664m-686j
-js-yaml GHSA-52cp-r559-cp3m
-js-yaml GHSA-5p4m-2wfm-xmqj
-js-yaml GHSA-h67p-54hq-rp68
 jsondiffpatch GHSA-33vc-wfww-vjfv
-langsmith GHSA-3644-q5cj-c5c7
-langsmith GHSA-fw9q-39r9-c252
-langsmith GHSA-rr7j-v2q5-chgv
-langsmith GHSA-v34v-rq6j-cj6p
-linkify-it GHSA-22p9-wv53-3rq4
-linkify-it GHSA-v245-v573-v5vm
 lodash GHSA-f23m-r3pf-42rh
 lodash GHSA-r5fr-rjxr-66jc
 lodash GHSA-xxjr-mmjv-4gpg
-lodash-es GHSA-f23m-r3pf-42rh
-lodash-es GHSA-r5fr-rjxr-66jc
-markdown-it GHSA-6v5v-wf23-fmfq
-multer GHSA-3p4h-7m6x-2hcm
-multer GHSA-44fp-w29j-9vj5
-multer GHSA-4pg4-qvpc-4q3h
-multer GHSA-5528-5vmv-3xc2
-multer GHSA-72gw-mp4g-v24j
-multer GHSA-fjgf-rc76-4x9p
-multer GHSA-g5hg-p3ph-g8qg
-multer GHSA-v52c-386h-88mc
-multer GHSA-xf7r-hgr6-v32p
-music-metadata GHSA-v6c2-xwv6-8xf7
-nanoid GHSA-28wg-ghj8-5hjv
-nanoid GHSA-2v37-7h3g-55p8
-next GHSA-4633-3j49-mh5q
-next GHSA-4c39-4ccg-62r3
-next GHSA-68g3-v927-f742
-next GHSA-6gpp-xcg3-4w24
-next GHSA-89xv-2m56-2m9x
-next GHSA-955p-x3mx-jcvp
-next GHSA-m99w-x7hq-7vfj
-next GHSA-p9j2-gv94-2wf4
-next GHSA-q8wf-6r8g-63ch
-node-forge GHSA-2328-f5f3-gj25
-node-forge GHSA-5m6q-g25r-mvwx
-node-forge GHSA-ppp5-5v6c-4jwp
-node-forge GHSA-q67f-28xg-22rw
-nodemailer GHSA-268h-hp4c-crq3
-nodemailer GHSA-c7w3-x93f-qmm8
-nodemailer GHSA-p6gq-j5cr-w38f
-nodemailer GHSA-r7g4-qg5f-qqm2
-nodemailer GHSA-vvjj-xcjg-gr5g
-nodemailer GHSA-wqvq-jvpq-h66f
-path-to-regexp GHSA-27v5-c462-wpq7
-path-to-regexp GHSA-37ch-88jc-xwx2
-path-to-regexp GHSA-j3q9-mxjg-w52f
-picomatch GHSA-3v7f-55p6-f55p
-picomatch GHSA-c2c7-rcm5-vvqj
-piscina GHSA-x9g3-xrwr-cwfg
-prismjs GHSA-x7hr-w5r2-h6wg
-qs GHSA-6rw7-vpxm-498p
-qs GHSA-q8mj-m7cp-5q26
 quill GHSA-v3m3-f69x-jf25
-request GHSA-p8p7-x288-28g6
-rollup GHSA-mw96-cpmx-2vgc
-sharp GHSA-f88m-g3jw-g9cj
 socket.io-parser GHSA-2m8v-j782-fhvr
 socket.io-parser GHSA-677m-j7p3-52f9
-svgo GHSA-2p49-hgcm-8545
-sweetalert2 GHSA-457r-cqc8-9vj9
-sweetalert2 GHSA-8jh9-wqpf-q52c
-sweetalert2 GHSA-pg98-6v7f-2xfv
-tar GHSA-23hp-3jrh-7fpw
-tar GHSA-34x7-hfp2-rc4v
-tar GHSA-83g3-92jg-28cx
-tar GHSA-8qq5-rm4j-mr97
-tar GHSA-8x88-c5mf-7j5w
-tar GHSA-9ppj-qmqm-q256
-tar GHSA-gvwx-54wh-qm9j
-tar GHSA-qffp-2rhf-9h96
-tar GHSA-r292-9mhp-454m
-tar GHSA-r6q2-hw4h-h46w
-tar GHSA-vmf3-w455-68vh
-tar GHSA-w8wr-v893-vjvp
-tough-cookie GHSA-72xf-g2v4-qvf3
 uuid GHSA-w5hq-g745-h8pq
-vite GHSA-4w7w-66w2-5vf9
-vite GHSA-fx2h-pf6j-xcff
-vite GHSA-p9ff-h696-f583
-vite GHSA-v6wh-96g9-6wx3
-yaml GHSA-48c2-rrv3-qjmp

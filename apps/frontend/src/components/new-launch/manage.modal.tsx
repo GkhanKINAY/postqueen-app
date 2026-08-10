@@ -355,7 +355,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // disabled on it, so the user's unsaved post was sealed inside a modal
         // with no close button.
         const checkAllValid = validResponse.ok
-          ? await validResponse.json().catch(() => null)
+          ? await validResponse.json().catch((): null => null)
           : null;
 
         if (!Array.isArray(checkAllValid)) {

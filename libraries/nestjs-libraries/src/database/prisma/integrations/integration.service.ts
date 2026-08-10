@@ -12,7 +12,7 @@ import {
   AnalyticsData,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { Integration, Organization } from '@prisma/client';
+import { Integration, Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import dayjs from 'dayjs';
 import { timer } from '@gitroom/helpers/utils/timer';
