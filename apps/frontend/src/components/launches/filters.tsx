@@ -24,7 +24,7 @@ import { DatePicker as Calendar } from '@mantine/dates';
  * The day states the old `dayClassName` branched on, as the data attributes
  * Mantine 9 puts on each day. Same colours as that branch. The selected day is
  * absent on purpose: Mantine paints it with its primary colour, which
- * `global.scss` maps to `--brand`.
+ * `global.css` maps to `--brand`.
  */
 const DAY_CLASSNAMES = [
   'text-pqText hover:bg-pqHover',

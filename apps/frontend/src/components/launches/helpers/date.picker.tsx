@@ -17,7 +17,7 @@ import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anch
  * that branch, deliberately: this is a library migration, not a restyle.
  *
  * The selected day is missing on purpose — Mantine paints it with its primary
- * colour, which `global.scss` maps to `--brand`.
+ * colour, which `global.css` maps to `--brand`.
  */
 const DAY_CLASSNAMES = [
   'text-pqText hover:bg-pqHover',
@@ -92,7 +92,7 @@ export const DatePicker: FC<{
               // `dayClassName(date, modifiers)` is gone in 9. The same three
               // states are data attributes on the day now, so they are styled
               // rather than branched on — and the selected day is painted by
-              // Mantine's primary colour, which global.scss points at --brand.
+              // Mantine's primary colour, which global.css points at --brand.
               day: DAY_CLASSNAMES,
               calendarHeaderControl: 'text-pqText hover:bg-pqHover',
               calendarHeaderLevel: 'text-pqText hover:bg-pqHover',

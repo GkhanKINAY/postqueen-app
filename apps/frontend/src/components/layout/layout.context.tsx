@@ -157,7 +157,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
           `defaultColorScheme="auto"` keeps Mantine off the theme switch: this
           app carries its own `.dark` / `.light` class on <body> and every
           colour these components use is redirected to a pq token in
-          global.scss, so Mantine's own scheme must not fight it. */}
+          global.css, so Mantine's own scheme must not fight it. */}
       <MantineProvider defaultColorScheme="auto">
         {params?.children || <></>}
       </MantineProvider>

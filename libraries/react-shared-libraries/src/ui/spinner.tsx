@@ -16,7 +16,7 @@ import { clsx } from 'clsx';
  * `color` defaults to `currentColor` so it inherits from whatever it sits in,
  * which is what a button and a scrim both want. `pq-loop` is the hook
  * `prefers-reduced-motion` switches the animation off with — see the note in
- * apps/frontend/src/app/global.scss. A stylesheet `!important` outranks the
+ * apps/frontend/src/app/global.css. A stylesheet `!important` outranks the
  * non-important inline `animation` below, so the class works despite the
  * inline style.
  */

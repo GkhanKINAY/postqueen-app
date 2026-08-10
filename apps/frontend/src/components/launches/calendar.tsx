@@ -1658,7 +1658,7 @@ export const CalendarColumn: FC<{
               )}
             >
               {/* Shown by the `[data-cell]:hover [data-cell-add]` rule in
-                  global.scss rather than by React, so moving the pointer
+                  global.css rather than by React, so moving the pointer
                   across the grid does not re-render it. */}
               <div
                 data-cell-add="1"

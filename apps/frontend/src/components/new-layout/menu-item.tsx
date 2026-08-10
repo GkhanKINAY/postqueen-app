@@ -70,7 +70,7 @@ export const MenuItem: FC<{
         {icon}
       </span>
       {/* Always in the DOM, hidden by CSS when the rail is collapsed. The
-          collapsed rail expands on hover (see `[data-sb]` in global.scss) and a
+          collapsed rail expands on hover (see `[data-sb]` in global.css) and a
           label React has not rendered cannot appear on hover. */}
       <span data-sbl="1" className="min-w-0 flex-1 truncate">
         {label}
