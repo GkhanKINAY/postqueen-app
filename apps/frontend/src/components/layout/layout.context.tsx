@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useCallback } from 'react';
+import { MantineProvider } from '@mantine/core';
 import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
@@ -147,7 +148,19 @@ function LayoutContextInner(params: { children: ReactNode }) {
   );
   return (
     <FetchWrapperComponent baseUrl={backendUrl} afterRequest={afterRequest}>
-      {params?.children || <></>}
+      {/* Mantine 7 and later refuse to render their components outside a
+          provider — version 5 had no such requirement, which is why there was
+          none here. Only three components need it (the two calendar popovers
+          and the customer autocomplete) but the provider has to sit above all
+          of them, and this wraps the whole client tree.
+
+          `defaultColorScheme="auto"` keeps Mantine off the theme switch: this
+          app carries its own `.dark` / `.light` class on <body> and every
+          colour these components use is redirected to a pq token in
+          global.scss, so Mantine's own scheme must not fight it. */}
+      <MantineProvider defaultColorScheme="auto">
+        {params?.children || <></>}
+      </MantineProvider>
     </FetchWrapperComponent>
   );
 }

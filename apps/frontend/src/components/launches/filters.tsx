@@ -16,7 +16,21 @@ import {
   useDateFormat,
 } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
-import { Calendar } from '@mantine/dates';
+// Mantine 9's `Calendar` is the bare month grid with no value or onChange;
+// `DatePicker` is the controlled single-date picker these two popovers want.
+import { DatePicker as Calendar } from '@mantine/dates';
+
+/**
+ * The day states the old `dayClassName` branched on, as the data attributes
+ * Mantine 9 puts on each day. Same colours as that branch. The selected day is
+ * absent on purpose: Mantine paints it with its primary colour, which
+ * `global.scss` maps to `--brand`.
+ */
+const DAY_CLASSNAMES = [
+  'text-pqText hover:bg-pqHover',
+  'data-[weekend]:!text-pqSoft',
+  'data-[outside]:!text-pqSoft data-[outside]:opacity-50',
+].join(' ');
 
 // Helper function to get start and end dates based on display type
 function getDateRange(
@@ -315,7 +329,9 @@ export const Filters = () => {
   }, [calPickOpen]);
 
   const pickCalDay = useCallback(
-    (date: Date) => {
+    // `YYYY-MM-DD` from Mantine 9's picker, where 5 handed over a Date. It was
+    // formatted straight back to that string on the next line either way.
+    (date: string) => {
       const display = calendar.display as 'day' | 'week' | 'month';
       if (display !== 'day' && display !== 'week' && display !== 'month') {
         return;
@@ -403,7 +419,7 @@ export const Filters = () => {
   );
 
   const pickListDay = useCallback(
-    (date: Date) => {
+    (date: string) => {
       const next = newDayjs(date).format('YYYY-MM-DD');
       calendar.setListRange(`day:${next}` as ListRangeFilter);
       setPickDateOpen(false);
@@ -513,20 +529,12 @@ export const Filters = () => {
                   {calPickTitle}
                 </div>
                 <Calendar
-                  value={newDayjs(calendar.startDate).toDate()}
+                  value={newDayjs(calendar.startDate).format('YYYY-MM-DD')}
                   onChange={(d) => {
                     if (d) pickCalDay(d);
                   }}
-                  dayClassName={(_date, modifiers) => {
-                    if (modifiers.weekend) return '!text-pqSoft';
-                    if (modifiers.outside) return '!text-pqSoft opacity-50';
-                    if (modifiers.selected) {
-                      return '!bg-pqBrand !text-pqOnBrand !outline-none';
-                    }
-                    return '!text-pqText';
-                  }}
                   classNames={{
-                    day: 'hover:bg-pqHover',
+                    day: DAY_CLASSNAMES,
                     calendarHeaderControl: 'text-pqText hover:bg-pqHover',
                     calendarHeaderLevel: 'text-pqText hover:bg-pqHover',
                   }}
@@ -694,22 +702,14 @@ export const Filters = () => {
                   {t('pick_a_date', 'Pick a date…')}
                 </div>
                 <Calendar
-                  value={
-                    dayRangeDate ? dayRangeDate.toDate() : newDayjs().toDate()
-                  }
+                  value={(dayRangeDate ? dayRangeDate : newDayjs()).format(
+                    'YYYY-MM-DD'
+                  )}
                   onChange={(d) => {
                     if (d) pickListDay(d);
                   }}
-                  dayClassName={(_date, modifiers) => {
-                    if (modifiers.weekend) return '!text-pqSoft';
-                    if (modifiers.outside) return '!text-pqSoft opacity-50';
-                    if (modifiers.selected) {
-                      return '!bg-pqBrand !text-pqOnBrand !outline-none';
-                    }
-                    return '!text-pqText';
-                  }}
                   classNames={{
-                    day: 'hover:bg-pqHover',
+                    day: DAY_CLASSNAMES,
                     calendarHeaderControl: 'text-pqText hover:bg-pqHover',
                     calendarHeaderLevel: 'text-pqText hover:bg-pqHover',
                   }}

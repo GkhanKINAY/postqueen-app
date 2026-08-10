@@ -1,6 +1,8 @@
 import { FC, useCallback, useState } from 'react';
 import dayjs from 'dayjs';
-import { Calendar, TimeInput } from '@mantine/dates';
+// Aliased: this module exports its own `DatePicker`, which is the whole popover
+// below, not the month grid inside it.
+import { DatePicker as MantineDatePicker, TimeInput } from '@mantine/dates';
 import { useClickOutside } from '@mantine/hooks';
 import { Button } from '@gitroom/react/form/button';
 import { useDateFormat } from './date.format';
@@ -8,6 +10,20 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { CalendarIcon } from '@gitroom/frontend/components/ui/icons';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+
+/**
+ * The three day states the old `dayClassName` branched on, expressed against
+ * the data attributes Mantine 9 puts on each day. Colours are unchanged from
+ * that branch, deliberately: this is a library migration, not a restyle.
+ *
+ * The selected day is missing on purpose — Mantine paints it with its primary
+ * colour, which `global.scss` maps to `--brand`.
+ */
+const DAY_CLASSNAMES = [
+  'text-pqText hover:bg-pqHover',
+  'data-[weekend]:!text-customColor28',
+  'data-[outside]:!text-gray',
+].join(' ');
 
 export const DatePicker: FC<{
   date: dayjs.Dayjs;
@@ -30,17 +46,23 @@ export const DatePicker: FC<{
   const ref = useClickOutside<HTMLDivElement>(() => {
     setOpen(false);
   });
+  // Mantine 9 hands both of these back as strings — `YYYY-MM-DD` from the
+  // picker, `HH:mm` from the time input — where 5 passed a Date. The halves are
+  // still recombined exactly as before; only the parsing on the way in is gone.
   const changeDate = useCallback(
-    (type: 'date' | 'time') => (day: Date) => {
+    (type: 'date' | 'time') => (value: string | null) => {
+      if (!value) {
+        return;
+      }
       onChange(
         newDayjs(
           type === 'time'
-            ? date.format('YYYY-MM-DD') + ' ' + newDayjs(day).format('HH:mm:ss')
-            : newDayjs(day).format('YYYY-MM-DD') + ' ' + date.format('HH:mm:ss')
+            ? date.format('YYYY-MM-DD') + ' ' + value
+            : value + ' ' + date.format('HH:mm:ss')
         )
       );
     },
-    [date]
+    [date, onChange]
   );
   return (
     <div
@@ -63,36 +85,28 @@ export const DatePicker: FC<{
           onClick={(e) => e.stopPropagation()}
           className="animate-fadeIn z-[300] flex flex-col rounded-[16px] border border-pqBorder bg-pqPop p-[16px] text-pqText shadow-pqE2"
         >
-          <Calendar
+          <MantineDatePicker
             onChange={changeDate('date')}
-            value={date.toDate()}
-            dayClassName={(date, modifiers) => {
-              if (modifiers.weekend) {
-                return '!text-customColor28';
-              }
-              if (modifiers.outside) {
-                return '!text-gray';
-              }
-              if (modifiers.selected) {
-                return '!text-pqOnBrand !bg-pqBrand !outline-none';
-              }
-              return '!text-pqText';
-            }}
+            value={date.format('YYYY-MM-DD')}
             classNames={{
-              day: 'hover:bg-pqHover',
+              // `dayClassName(date, modifiers)` is gone in 9. The same three
+              // states are data attributes on the day now, so they are styled
+              // rather than branched on — and the selected day is painted by
+              // Mantine's primary colour, which global.scss points at --brand.
+              day: DAY_CLASSNAMES,
               calendarHeaderControl: 'text-pqText hover:bg-pqHover',
               calendarHeaderLevel: 'text-pqText hover:bg-pqHover',
             }}
           />
           <TimeInput
-            onChange={changeDate('time')}
+            onChange={(event) => changeDate('time')(event.currentTarget.value)}
             label="Pick time"
             classNames={{
               label: 'text-pqMuted py-[12px]',
               input:
                 'bg-pqTableHeader h-[40px] border-0 text-pqText rounded-[10px] outline-none shadow-[inset_0_0_0_1px_var(--border)]',
             }}
-            defaultValue={date.toDate()}
+            defaultValue={date.format('HH:mm')}
           />
           <Button className="mt-[12px]" onClick={changeShow}>
             {t('close', 'Close')}

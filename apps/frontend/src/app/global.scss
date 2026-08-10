@@ -4,6 +4,11 @@
 // `exports`, so the old `dist/style.css` paths no longer resolve.
 @use '@uppy/core/css/style.css' as uppyCore;
 @use '@uppy/dashboard/css/style.css' as uppyDashboard;
+// Mantine 5 shipped its styles through emotion at runtime; from 7 they are
+// real stylesheets that have to be imported, or every Mantine component
+// renders unstyled.
+@use '@mantine/core/styles.css' as mantineCore;
+@use '@mantine/dates/styles.css' as mantineDates;
 
 @tailwind base;
 @tailwind components;
@@ -559,6 +564,29 @@ body *:focus-visible {
 
 .trz {
   transform: translateZ(0);
+}
+
+// Mantine 7+ renders from its own CSS custom properties instead of the emotion
+// theme object version 5 used. Only three components are on screen — the two
+// calendar popovers and the customer autocomplete — and each one is already
+// wrapped in pq-token classes, so the surfaces they draw *themselves* are all
+// that is left to redirect. Without this the selected day and the focus ring
+// come out Mantine blue on a purple app.
+//
+// Scoped to `body` for the same reason the scrollbar rules are: the `.dark` /
+// `.light` class that declares these variables sits on <body>, so a bare
+// `:root` selector would resolve them to nothing.
+body {
+  --mantine-primary-color-filled: var(--brand);
+  --mantine-primary-color-filled-hover: var(--brandHover);
+  --mantine-primary-color-light: var(--brandSoft);
+  --mantine-primary-color-light-hover: var(--brandSoft);
+  --mantine-primary-color-contrast: var(--onBrand);
+  --mantine-color-body: transparent;
+  --mantine-color-text: var(--text);
+  --mantine-color-placeholder: var(--soft);
+  --mantine-color-default-border: var(--border);
+  --mantine-color-error: var(--pink);
 }
 
 .uppy-FileInput-container {
