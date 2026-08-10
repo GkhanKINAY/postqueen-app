@@ -150,7 +150,9 @@ collect_loops() {
   # Loops this stylesheet applies by *selector* rather than by class can never
   # match either arm, because the component's className has nothing in it:
   # `.loading-shimmer:before`, the tour's `[data-tourconn] [data-conn-card]`
-  # glow, and Blueprint's three in the vendored polonto.css. All five are
+  # glow, and Blueprint's three, which come from the stylesheet polotno ships
+  # (a vendored copy of Blueprint 5 lived here until polotno 4 renamed the
+  # namespace to `bp6` and made every one of its selectors dead). All five are
   # switched off by name in global.css's reduced-motion block instead. If you
   # add another, add it there — this collector will not catch it for you.
   #

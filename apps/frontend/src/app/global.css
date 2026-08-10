@@ -12,9 +12,13 @@
 /* Design tokens only, no rules to lose a cascade fight — left unlayered so the
    custom properties resolve for layered and unlayered CSS alike. */
 @import './colors.css';
-/* A vendored copy of Blueprint, which is what polotno's editor chrome is built
-   from: 3120 `.bp5-*` selectors. Vendor, despite living in this directory. */
-@import './polonto.css' layer(vendor);
+/* A vendored copy of Blueprint 5 used to be imported here — polotno 3 bundled
+   Blueprint 5, and 397 KB of `.bp5-*` rules styled its editor chrome. polotno 4
+   moved to Blueprint 6 and ships its own stylesheet, which `polonto.tsx`
+   imports, so every one of those selectors stopped matching anything. Deleted
+   rather than converted: it was a copy of a stylesheet the editor now brings
+   with it. The three rules of ours that pointed at it are retargeted to `bp6`
+   below. */
 /* Uppy 5 publishes its stylesheets under `./css/` and declares them in
    `exports`, so the old `dist/style.css` paths no longer resolve. */
 @import '@uppy/core/css/style.css' layer(vendor);
@@ -589,8 +593,19 @@ body *:focus-visible {
   color: black !important;
 }
 
-.bp5-portal {
+/* polotno renders its popovers and dropdowns into a Blueprint portal appended
+   to <body>, which arrives with a z-index far below the composer it opens over.
+   `bp5` until polotno 4 renamed the namespace. */
+.bp6-portal {
   z-index: 9999 !important;
+}
+
+/* Blueprint 6 draws no visible ring on focus inside the editor. This is the
+   outline Blueprint 5 shipped, kept because the editor is a keyboard surface
+   and losing it was not a decision anybody made. */
+.polonto :focus {
+  outline: rgba(45, 114, 210, 0.6) solid 2px;
+  outline-offset: 2px;
 }
 
 :empty + .existing-empty {
@@ -1433,8 +1448,11 @@ html[dir='rtl'] .lbox {
        component never carries `pq-loop` because the animation is not in its
        className at all: `.loading-shimmer:before` above, and the connector
        cards, which only glow while the tour is running them.
-    3. Blueprint's, from the vendored polonto.css that `@use`s in at the top of
-       this file. Third-party markup, so no class of ours will ever be on it. */
+    3. Blueprint's three, from the stylesheet polotno brings with it. Third-party
+       markup, so no class of ours will ever be on it. These read `bp5` until
+       polotno 4 renamed the namespace, at which point they silently stopped
+       matching — the `loops` check cannot catch that, because a loop applied by
+       selector never appears in any className for it to read. */
 @media (prefers-reduced-motion: reduce) {
   .pq-loop,
   .pq-loop::before,
@@ -1447,9 +1465,9 @@ html[dir='rtl'] .lbox {
     animation: none !important;
   }
 
-  .bp5-progress-meter,
-  .bp5-skeleton,
-  .bp5-spinner-animation {
+  .bp6-progress-meter,
+  .bp6-skeleton,
+  .bp6-spinner-animation {
     animation: none !important;
   }
 }
