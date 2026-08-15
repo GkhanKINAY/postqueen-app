@@ -15,6 +15,7 @@ tmp
 # this above the **/.env.* line would leave the example file ignored.
 !.env.example
 !**/.env.example
+.apple
 # dependencies
 node_modules
 # pnpm drops a store here when its configured one is on another filesystem.

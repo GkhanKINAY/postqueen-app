@@ -6,23 +6,26 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { GithubProvider } from '@gitroom/frontend/components/auth/providers/github.provider';
 import { OauthProvider } from '@gitroom/frontend/components/auth/providers/oauth.provider';
 import { GoogleProvider } from '@gitroom/frontend/components/auth/providers/google.provider';
+import { AppleProvider } from '@gitroom/frontend/components/auth/providers/apple.provider';
 import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 
 export type AuthStep = 'method' | 'email';
 
 /**
- * The provider buttons (Google / OIDC / GitHub / Farcaster / Wallet), rendered
- * with exactly the gating login.tsx and register.tsx used before — this only
- * moves the choice onto its own step. Wallet stays a per-form concern because
- * register lazy-loads it; callers pass it via `extraProviders`.
+ * The provider buttons (Google / Apple / OIDC / GitHub / Farcaster / Wallet),
+ * rendered with exactly the gating login.tsx and register.tsx used before —
+ * this only moves the choice onto its own step. Wallet stays a per-form concern
+ * because register lazy-loads it; callers pass it via `extraProviders`.
  */
 function Providers({ extraProviders }: { extraProviders?: ReactNode }) {
-  const { isGeneral, neynarClientId, genericOauth } = useVariables();
+  const { isGeneral, neynarClientId, appleClientId, genericOauth } =
+    useVariables();
   if (isGeneral && genericOauth) return <OauthProvider />;
   if (!isGeneral) return <GithubProvider />;
   return (
     <div className="gap-[8px] flex">
       <GoogleProvider />
+      {!!appleClientId && <AppleProvider />}
       {!!neynarClientId && <FarcasterProvider />}
       {extraProviders}
     </div>
