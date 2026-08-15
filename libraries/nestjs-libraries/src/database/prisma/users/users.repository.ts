@@ -3,6 +3,7 @@ import {
   PrismaTransaction,
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
@@ -73,6 +74,7 @@ export class UsersRepository {
   getImpersonateUser(name: string) {
     return this._user.model.user.findMany({
       where: {
+        deletedAt: null,
         OR: [
           {
             name: {
@@ -114,6 +116,7 @@ export class UsersRepository {
     return this._user.model.user.findFirst({
       where: {
         id,
+        deletedAt: null,
       },
       include: {
         // Surfaces the uploaded avatar on /user/self so the top-bar UserMenu
@@ -136,6 +139,7 @@ export class UsersRepository {
           mode: 'insensitive',
         },
         providerName: Provider.LOCAL,
+        deletedAt: null,
       },
       include: {
         picture: {
@@ -153,6 +157,7 @@ export class UsersRepository {
       where: {
         email,
         id: { not: excludeUserId },
+        deletedAt: null,
         organizations: {
           some: {
             role: Role.SUPERADMIN,
@@ -182,6 +187,44 @@ export class UsersRepository {
       where: {
         providerId,
         providerName: provider,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async deleteAccount(userId: string) {
+    const user = await this._user.model.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user || user.deletedAt) {
+      return;
+    }
+
+    const hash = (value: string) =>
+      createHash('md5').update(value).digest('hex');
+
+    // Hash the identifying fields instead of removing the row, the random
+    // suffix keeps [email, providerName] unique if the same email is deleted
+    // more than once
+    return this._user.model.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        email: `deleted_${hash(user.email.toLowerCase())}_${makeId(5)}`,
+        password: null,
+        name: user.name ? hash(user.name) : null,
+        lastName: user.lastName ? hash(user.lastName) : null,
+        providerId: user.providerId ? hash(user.providerId) : null,
+        bio: null,
+        ip: null,
+        agent: null,
+        account: null,
+        pictureId: null,
+        deletedAt: new Date(),
       },
     });
   }
