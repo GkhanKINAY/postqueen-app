@@ -9,6 +9,7 @@ import {
 import dayjs from 'dayjs';
 import {
   BadBody,
+  Disconnect,
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
@@ -34,7 +35,7 @@ export class TiktokBusinessProvider
 {
   identifier = 'tiktok-business';
   category = 'video' as const;
-  name = 'TikTok\n(Business)';
+  name = 'TikTok';
   isBetweenSteps = false;
   convertToJPEG = true;
   scopes = [
@@ -92,7 +93,7 @@ export class TiktokBusinessProvider
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'disconnect';
         value: string;
       }
     | undefined {
@@ -185,6 +186,17 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value: 'TikTok detected potential spam',
+      };
+    }
+
+    // Unlike the legacy app there is no migration target configured for this
+    // provider, so the cap stays a failed post (re-connecting cannot reset a
+    // daily quota) - if this app is ever migrated too, switch to 'disconnect'.
+    if (body.indexOf('reached_active_user_cap') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'TikTok daily user limit reached, please try again tomorrow',
       };
     }
 
@@ -325,6 +337,7 @@ export class TiktokBusinessProvider
         `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
         `&state=${state}` +
         `&response_type=code` +
+        `&disable_auto_auth=1` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
       codeVerifier: state,
       state,
@@ -398,7 +411,7 @@ export class TiktokBusinessProvider
         )
       ).json();
     } catch (err) {
-      if (err instanceof RefreshToken) {
+      if (err instanceof RefreshToken || err instanceof Disconnect) {
         throw err;
       }
 
@@ -416,6 +429,9 @@ export class TiktokBusinessProvider
       const handleError = this.handleErrors(asString);
       if (handleError?.type === 'refresh-token') {
         throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+      }
+      if (handleError?.type === 'disconnect') {
+        throw new Disconnect('tiktok-business', asString, '{}', handleError.value);
       }
       return { status: 'pending', pendingData };
     }
@@ -575,6 +591,14 @@ export class TiktokBusinessProvider
       const handleError = this.handleErrors(asString);
       if (handleError?.type === 'refresh-token') {
         throw new RefreshToken(
+          'tiktok-business',
+          asString,
+          JSON.stringify(body),
+          handleError.value
+        );
+      }
+      if (handleError?.type === 'disconnect') {
+        throw new Disconnect(
           'tiktok-business',
           asString,
           JSON.stringify(body),
