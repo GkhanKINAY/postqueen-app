@@ -69,20 +69,22 @@ const authenticatedController = [
 ];
 @Module({
   imports: [UploadModule],
-  controllers: [
-    RootController,
-    StripeController,
-    AuthController,
-    PublicController,
-    MonitorController,
-    EnterpriseController,
-    NoAuthIntegrationsController,
-    OAuthController,
-    // Deliberately outside authenticatedController: media URLs are fetched by
-    // the social networks' own servers, which carry no session.
-    UploadsController,
-    ...authenticatedController,
-  ],
+  controllers: process.env.MCP_ONLY
+    ? []
+    : [
+        RootController,
+        StripeController,
+        AuthController,
+        PublicController,
+        MonitorController,
+        EnterpriseController,
+        NoAuthIntegrationsController,
+        OAuthController,
+        // Deliberately outside authenticatedController: media URLs are fetched by
+        // the social networks' own servers, which carry no session.
+        UploadsController,
+        ...authenticatedController,
+      ],
   providers: [
     AuthService,
     StripeService,
