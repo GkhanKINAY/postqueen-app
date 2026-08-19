@@ -7,6 +7,18 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { extractBearerToken } from '@gitroom/nestjs-libraries/chat/oauth-types';
 
+const openAiOAuthClientId = () =>
+  process.env.OPENAI_OAUTH_CLIENT_ID?.trim();
+
+const enableOidcEmailClaims = () => Boolean(openAiOAuthClientId());
+
+const oauthScope = (clientId: string) =>
+  [
+    ...(clientId === openAiOAuthClientId() ? ['openid', 'email'] : []),
+    'mcp:read',
+    'mcp:write',
+  ].join(' ');
+
 @Injectable()
 export class OAuthService {
   constructor(
@@ -183,7 +195,7 @@ export class OAuthService {
       cus: paymentId,
       access_token: token,
       token_type: 'bearer',
-      scope: 'openid email mcp:read mcp:write',
+      scope: oauthScope(clientId),
     };
   }
 
@@ -193,6 +205,16 @@ export class OAuthService {
   }
 
   async getUserInfo(authorization?: string) {
+    if (!enableOidcEmailClaims()) {
+      throw new HttpException(
+        {
+          error: 'not_found',
+          error_description: 'OIDC email claims are not enabled',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
     const token = extractBearerToken(authorization);
     if (!token) {
       throw new HttpException(
@@ -209,14 +231,22 @@ export class OAuthService {
       );
     }
 
+    if (authorizationRecord.oauthApp.clientId !== openAiOAuthClientId()) {
+      throw new HttpException(
+        {
+          error: 'insufficient_scope',
+          error_description:
+            'This OAuth client is not authorized to access email claims',
+        },
+        HttpStatus.FORBIDDEN
+      );
+    }
+
     const { user } = authorizationRecord;
     return {
       sub: user.id,
       email: user.email,
       email_verified: user.activated,
-      ...(user.name || user.lastName
-        ? { name: [user.name, user.lastName].filter(Boolean).join(' ') }
-        : {}),
     };
   }
 
