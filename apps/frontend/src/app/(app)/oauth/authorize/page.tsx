@@ -19,6 +19,9 @@ export default function OAuthAuthorizePage() {
   const clientId = searchParams.get('client_id');
   const responseType = searchParams.get('response_type');
   const state = searchParams.get('state');
+  const redirectUri = searchParams.get('redirect_uri');
+  const codeChallenge = searchParams.get('code_challenge');
+  const codeChallengeMethod = searchParams.get('code_challenge_method');
 
   useEffect(() => {
     if (!clientId || !responseType) {
@@ -36,6 +39,11 @@ export default function OAuthAuthorizePage() {
       client_id: clientId,
       response_type: responseType,
       ...(state ? { state } : {}),
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
+      ...(codeChallenge ? { code_challenge: codeChallenge } : {}),
+      ...(codeChallengeMethod
+        ? { code_challenge_method: codeChallengeMethod }
+        : {}),
     });
 
     fetch(`/oauth/authorize?${params}`)
@@ -52,7 +60,7 @@ export default function OAuthAuthorizePage() {
         setError('Failed to validate OAuth request');
         setLoading(false);
       });
-  }, [clientId, responseType, state]);
+  }, [clientId, responseType, state, redirectUri, codeChallenge, codeChallengeMethod]);
 
   const handleAction = useCallback(
     async (action: 'approve' | 'deny') => {
@@ -65,6 +73,11 @@ export default function OAuthAuthorizePage() {
               client_id: clientId,
               state,
               action,
+              ...(redirectUri ? { redirect_uri: redirectUri } : {}),
+              ...(codeChallenge ? { code_challenge: codeChallenge } : {}),
+              ...(codeChallengeMethod
+                ? { code_challenge_method: codeChallengeMethod }
+                : {}),
             }),
           })
         ).json();
@@ -77,7 +90,7 @@ export default function OAuthAuthorizePage() {
         setSubmitting(false);
       }
     },
-    [clientId, state]
+    [clientId, state, redirectUri, codeChallenge, codeChallengeMethod]
   );
 
   if (loading) {
