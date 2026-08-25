@@ -12,10 +12,12 @@ import {
 import { lookup } from 'mime-types';
 import sharp from 'sharp';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
+import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   BadBody,
   RefreshToken,
   SocialAbstract,
+  stripQuery,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
@@ -518,6 +520,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     const totalBytes = await this.mediaSize(path, this.identifier);
     const mediaType = String(lookup(path) || 'video/mp4');
 
+    // twitter-api-v2 is not this.fetch, so these legs record their own
+    // heartbeat details - otherwise a stall here reports only the generic
+    // "x: publish" stage marker set by the activity.
+    setHeartbeatDetails(`x: upload initialize (${totalBytes} bytes)`);
     const init = await client.v2.post<{ data: { id: string } }>(
       'media/upload/initialize',
       {
@@ -533,6 +539,9 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     for (let i = 0; i < totalChunkCount; i++) {
       const start = i * chunkSize;
       const end = Math.min(start + chunkSize, totalBytes) - 1;
+      setHeartbeatDetails(
+        `x: upload append ${i + 1}/${totalChunkCount} media=${mediaId}`
+      );
       await client.v2.post(
         `media/upload/${mediaId}/append`,
         {
@@ -543,6 +552,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       );
     }
 
+    setHeartbeatDetails(`x: upload finalize media=${mediaId}`);
     const finalize = await client.v2.post<{
       data: {
         id: string;
@@ -579,6 +589,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   // loop lives in the post workflow (checkPostStatus) or, for the legacy
   // paths, in waitForMediaProcessing.
   private async mediaProcessingStatus(client: TwitterApi, mediaId: string) {
+    setHeartbeatDetails(`x: media status media=${mediaId}`);
     const status = await client.v2.get<{
       data: {
         processing_info?: {
@@ -653,6 +664,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     const processingIds: string[] = [];
     for (const p of postDetails) {
       for (const m of p?.media || []) {
+        setHeartbeatDetails(`x: upload media ${stripQuery(m.path)}`);
         const uploaded = await this.runInConcurrent(
           async () =>
             hasExtension(m.path, 'mp4')
