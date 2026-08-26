@@ -45,6 +45,10 @@ import {
 } from '@gitroom/frontend/components/billing/lifetime.deal';
 import { BillingFeatures } from '@gitroom/frontend/components/billing/first.billing.component';
 
+type SubscriptionWithPlatform = Subscription & {
+  platform?: 'web' | 'mobile';
+};
+
 export const Prorate: FC<{
   period: 'MONTHLY' | 'YEARLY';
   pack: PaidTier;
@@ -502,7 +506,7 @@ const BillingCancelDialog: FC<{
   );
 };
 export const MainBillingComponent: FC<{
-  sub?: Subscription;
+  sub?: SubscriptionWithPlatform;
   discount?: {
     percentOff: number;
     endsAt: string | null;
@@ -526,7 +530,7 @@ export const MainBillingComponent: FC<{
     !!queryParams.get('finishTrial')
   );
 
-  const [subscription, setSubscription] = useState<Subscription | undefined>(
+  const [subscription, setSubscription] = useState<SubscriptionWithPlatform | undefined>(
     sub
   );
   const [loading, setLoading] = useState<boolean>(false);
@@ -941,6 +945,31 @@ export const MainBillingComponent: FC<{
       },
     [monthlyOrYearly, subscription, user, utm, modal, mutate, fetch, toast, t, dub, track]
   );
+  // An organization subscribed through the mobile app's store is managed
+  // there: nothing on this page can change it, so say where to go instead.
+  if (subscription?.platform && subscription.platform !== 'web') {
+    return (
+      <div className="flex flex-col gap-[24px]">
+        <h2 className="font-display text-[26px] font-[600] -tracking-[0.02em] text-pqText">
+          {t('plans', 'Plans')}
+        </h2>
+        <div className="flex flex-col items-center gap-[8px] rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[24px] text-center">
+          <div className="text-[16px] font-[600] text-pqText">
+            {t('subscription_managed_by', 'Your subscription is managed by')}{' '}
+            <span className="capitalize">{subscription.provider}</span>
+          </div>
+          <div className="text-[13.5px] text-pqMuted">
+            {t(
+              'subscription_manage_on_platform',
+              'Please go to {{platform}} to manage it',
+              { platform: subscription.platform }
+            )}
+          </div>
+        </div>
+        <FAQComponent />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-[24px]">
       <div className="flex flex-wrap items-center gap-[16px]">
