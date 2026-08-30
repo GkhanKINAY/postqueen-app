@@ -778,15 +778,10 @@ export class StripeService extends PaymentProviderAbstract {
         customer,
         subscription: currentUserSubscription?.data?.[0]?.id,
         subscription_details: {
-          proration_behavior: 'create_prorations',
-          // `proration_date` used to be passed here as well. Stripe rejects the
-          // pair — "You cannot specify `proration_date` when
-          // `billing_cycle_anchor=now`" — so **every** call threw, the catch
-          // below swallowed it, and the plan cards told everyone that every
-          // upgrade cost "(Pay Today $0)". Anchoring to now already means the
-          // proration is calculated at this moment; the date was redundant as
-          // well as fatal.
-          billing_cycle_anchor: 'now',
+          // The same behaviour as the upgrade itself (the
+          // `subscriptions.update` further down), so the "Pay Today" figure on
+          // the plan cards is what will actually be charged.
+          proration_behavior: 'always_invoice',
           items: [
             {
               id: currentUserSubscription?.data?.[0]?.items?.data?.[0]?.id,
@@ -798,11 +793,14 @@ export class StripeService extends PaymentProviderAbstract {
       });
 
       return {
-        price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
+        price: price?.amount_due ? price?.amount_due / 100 : 0,
       };
     } catch (err) {
       // Kept, so a Stripe outage cannot take the Billing screen down with it —
       // but it is no longer hiding a permanent failure.
+      Logger.error(
+        `[stripe] proration preview failed: ${(err as Error)?.message ?? err}`
+      );
       return { price: 0 };
     }
   }
