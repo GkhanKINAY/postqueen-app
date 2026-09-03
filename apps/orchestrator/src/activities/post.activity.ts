@@ -125,12 +125,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v107, matching posts.service.ts. The recovery sweep starting an older
+      // v108, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV107', {
+        .workflow.signalWithStart('postWorkflowV108', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
