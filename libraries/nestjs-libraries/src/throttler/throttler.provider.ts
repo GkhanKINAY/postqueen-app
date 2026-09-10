@@ -1,4 +1,4 @@
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Request } from 'express';
 
@@ -24,6 +24,19 @@ const UPLOAD_ROUTES = [
 const isUpload = (path: string) =>
   UPLOAD_ROUTES.some((r) => path.startsWith(r));
 
+/**
+ * Hourly allowance for UPLOAD_ROUTES, per organization, kept apart from
+ * API_LIMIT. API_LIMIT rations public-API posting and the shipped compose file
+ * sets it to 30; the uploader has no file-count cap, so while uploads shared
+ * that number, choosing 40 files in the media library failed the last ten.
+ * UPLOAD_LIMIT, 300 unless set, still bounds what one account can push through
+ * the upload routes in an hour.
+ */
+const uploadLimit = () => {
+  const limit = Number(process.env.UPLOAD_LIMIT);
+  return Number.isInteger(limit) && limit > 0 ? limit : 300;
+};
+
 @Injectable()
 export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   public override async canActivate(
@@ -38,6 +51,20 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     }
 
     return true;
+  }
+
+  // The module configures a single throttler, sized by API_LIMIT. Uploads
+  // already count in their own bucket (getTracker below); this gives that
+  // bucket its own ceiling.
+  protected override async handleRequest(
+    requestProps: ThrottlerRequest
+  ): Promise<boolean> {
+    const { req } = this.getRequestResponse(requestProps.context);
+    return super.handleRequest(
+      isUpload(req.path)
+        ? { ...requestProps, limit: uploadLimit() }
+        : requestProps
+    );
   }
 
   protected override async getTracker(
