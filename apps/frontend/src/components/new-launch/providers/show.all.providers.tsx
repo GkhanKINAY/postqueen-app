@@ -98,6 +98,10 @@ export const Providers = [
     component: TiktokProvider,
   },
   {
+    identifier: 'tiktok-business',
+    component: TiktokProvider,
+  },
+  {
     identifier: 'pinterest',
     component: PinterestProvider,
   },
