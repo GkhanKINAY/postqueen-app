@@ -60,20 +60,27 @@ export const Prorate: FC<{
   const [loading, setLoading] = useState(false);
   const calculatePrice = useDebouncedCallback(async () => {
     setLoading(true);
-    setPrice(
-      (
-        await (
-          await fetch('/billing/prorate', {
-            method: 'POST',
-            body: JSON.stringify({
-              period,
-              billing: pack,
-            }),
-          })
-        ).json()
-      ).price
-    );
-    setLoading(false);
+    // A failed preview (Stripe unreachable, a customer Stripe no longer has)
+    // answers 4xx with an error body. Reading `.price` off that gave
+    // undefined, formatting it threw, and with no error boundary the whole app
+    // went blank. No number means no preview, not a crash.
+    try {
+      const response = await fetch('/billing/prorate', {
+        method: 'POST',
+        body: JSON.stringify({
+          period,
+          billing: pack,
+        }),
+      });
+      const body = response.ok
+        ? await response.json().catch(() => ({}))
+        : {};
+      setPrice(typeof body?.price === 'number' ? body.price : false);
+    } catch (err) {
+      setPrice(false);
+    } finally {
+      setLoading(false);
+    }
   }, 500);
   useEffect(() => {
     setPrice(false);
