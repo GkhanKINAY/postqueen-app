@@ -194,10 +194,19 @@ hundred times easier.
 
 ## Dependency versions
 
-Kept deliberately in step with upstream. At the August 2026 sync our
-`package.json` differed from theirs on **7 of 268 shared packages**, all of them
-the ESLint 9 upgrade. That is what makes cherry-picking cheap, and it is the
-reason `@prisma/client` stays on 6 — it is used in 104 files, and moving to 7
-alone would put us on a different API from every commit upstream writes next.
-Minor and patch upgrades are free; majors on low-usage packages are fine; the
-high-churn shared surface waits for upstream.
+No longer in step with upstream, on purpose. At the August 2026 sync our
+`package.json` differed from theirs on 7 of 268 shared packages, all of them
+the ESLint 9 upgrade, and this section argued for keeping it that way. #59
+(September 2026) moved every dependency that could go to latest instead,
+Prisma 7 included. Against `upstream/main` at `36d5fc7b` (2026-09-03) we differ
+on **185 of 232 shared packages**; `@prisma/client` is 7.9.1 here and 6.5.0
+there.
+
+The cost is paid at cherry-pick time:
+
+- Upstream commits import `@prisma/client`; rewrite each one to the generated
+  client, as the checklist above says. CI catches a missed one; local `tsc`
+  may not.
+- A picked commit that touches `package.json` or the lockfile conflicts more
+  often. Keep our version unless theirs is newer, then regenerate the lockfile
+  with `pnpm install`.
