@@ -25,7 +25,7 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only saves the media as a draft in the user inbox of the TikTok app, where the user must manually complete and publish it. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
     'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
     'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API has no privacy or music field for video posts, so those settings are discarded when the attachment is a video.',
-    'Media is pulled by TikTok from its URL, so the media must be uploaded to Postiz and the media domain must be a verified URL property of the TikTok Business app.',
+    'Media is pulled by TikTok from its URL, so the media must be uploaded to PostQueen and the media domain must be a verified URL property of the TikTok Business app.',
   ].join(' ')
 )
 export class TiktokBusinessProvider
@@ -33,6 +33,7 @@ export class TiktokBusinessProvider
   implements SocialProvider
 {
   identifier = 'tiktok-business';
+  category = 'video' as const;
   name = 'TikTok\n(Business)';
   isBetweenSteps = false;
   convertToJPEG = true;
