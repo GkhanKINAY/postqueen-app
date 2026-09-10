@@ -32,7 +32,7 @@ export class FoundingFeeActivity {
    */
   @ActivityMethod()
   async settleDueFoundingFees() {
-    const result = { checked: 0, charged: 0, blocked: 0 };
+    const result = { checked: 0, charged: 0, blocked: 0, waiting: 0 };
     if (!isBillingEnabled()) {
       return result;
     }
@@ -60,6 +60,12 @@ export class FoundingFeeActivity {
         const blocked =
           ('error' in capture && capture.error) ||
           ('status' in capture && capture.status);
+        // Declined before with the card still on file: nothing is attempted
+        // until the card changes, so there is nothing new to report each hour.
+        if (blocked === 'awaiting_payment_method') {
+          result.waiting++;
+          continue;
+        }
         if (blocked) {
           result.blocked++;
           Logger.warn(
