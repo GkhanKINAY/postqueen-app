@@ -66,16 +66,16 @@ export const startMcp = async (app: INestApplication) => {
   const server = new MCPServer(serverConfig);
 
   // The directory-facing servers don't register the agent - it would be
-  // exposed as an annotation-less catch-all ask_postiz tool, which the
+  // exposed as an annotation-less catch-all ask_postqueen tool, which the
   // ChatGPT and Claude directory reviews reject
   const oauthServer = new MCPServer({
-    name: 'Postiz MCP',
+    name: 'PostQueen MCP',
     version: '1.0.0',
     tools,
   });
 
   const claudeOauthServer = new MCPServer({
-    name: 'Postiz MCP',
+    name: 'PostQueen MCP',
     version: '1.0.0',
     tools: claudeTools,
   });
