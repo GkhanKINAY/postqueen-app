@@ -8,6 +8,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { setCookie } from '@gitroom/frontend/components/layout/layout.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Spinner } from '@gitroom/react/ui/spinner';
 
 const DeleteAccountComponent = () => {
   const t = useT();
@@ -54,13 +55,18 @@ const DeleteAccountComponent = () => {
     } finally {
       setLoading(false);
     }
-  }, [isSecured]);
+  }, [fetch, isSecured, t, toaster]);
 
   return (
-    <div className="my-[16px] mt-[16px] bg-sixth border-fifth border rounded-[4px] p-[24px] flex flex-col gap-[24px]">
+    <div className="rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px]">
       {loading && (
         <div className="text-textColor fixed start-0 top-0 bg-primary/80 z-[500] w-full h-full animate-fade flex flex-col items-center justify-center gap-[24px]">
-          <div className="w-[48px] h-[48px] border-[3px] border-forth border-t-transparent rounded-full animate-spin" />
+          <Spinner
+            width={48}
+            height={48}
+            borderWidth={3}
+            className="text-pqBrand"
+          />
           <div className="text-[20px] font-semibold">
             {t('deleting_your_account', 'Deleting your account...')}
           </div>
@@ -72,13 +78,15 @@ const DeleteAccountComponent = () => {
           </div>
         </div>
       )}
-      <div className="mt-[4px]">{t('delete_account', 'Delete Account')}</div>
-      <div className="flex items-center justify-between">
+      <div className="text-[13.5px] font-[600] text-pqText">
+        {t('delete_account', 'Delete Account')}
+      </div>
+      <div className="flex items-center justify-between gap-[16px] mt-[3px]">
         <div className="flex flex-col">
-          <div className="text-[14px]">
+          <div className="text-[12.5px] text-pqText">
             {t('delete_your_account', 'Delete your account')}
           </div>
-          <div className="text-[12px] text-textItemBlur">
+          <div className="text-[12.5px] text-pqMuted">
             {t(
               'delete_account_description',
               'Your account, organizations and channels will be deleted permanently'
@@ -86,7 +94,7 @@ const DeleteAccountComponent = () => {
           </div>
         </div>
         <Button
-          className="!bg-red-800"
+          className="!bg-pqDanger shrink-0"
           loading={loading}
           onClick={deleteAccount}
         >

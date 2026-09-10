@@ -6,6 +6,7 @@
 /api/teams
 /auth/activate
 /auth/oauth/${provider
+/auth/oauth/APPLE
 /auth/oauth/GENERIC
 /auth/oauth/GITHUB
 /auth/oauth/GOOGLE
@@ -141,6 +142,7 @@
 /user/approved-apps/${app.id}
 /user/change-org
 /user/chatbase-token
+/user/delete-account
 /user/email-notifications
 /user/impersonate
 /user/logout

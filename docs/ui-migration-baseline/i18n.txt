@@ -112,6 +112,7 @@ api_key_rotated
 api_keys
 api_keys_description
 app_name
+apple
 applies_to_every_post_on_this_channel
 apply
 apply_50_discount_3_months
@@ -687,6 +688,7 @@ connections
 contact_support
 continue_to
 continue_with
+continue_with_apple
 continue_with_email
 continue_with_google
 continue_without_set
@@ -703,6 +705,7 @@ could_not_add_member
 could_not_add_provider
 could_not_connect_platform
 could_not_connect_to_platform
+could_not_delete_account
 could_not_use_rss_feed
 create
 create_account
@@ -747,6 +750,7 @@ delay_comment_by
 delay_comment_help
 delete
 delete_account
+delete_account_confirm
 delete_account_description
 delete_announcement
 delete_announcement_confirm
@@ -757,6 +761,9 @@ delete_post
 delete_post_tooltip
 delete_posts_before_channel
 delete_tag
+delete_your_account
+deleting_your_account
+deleting_your_account_description
 describe_the_image_you_want_to_generate
 describe_what_your_app_does
 description
@@ -1010,6 +1017,7 @@ join_10000_entrepreneurs_who_use_postqueen
 just_update_post_details
 keep_my_plan
 keep_the_channel_but_stop_publishing_to_it
+label_add_random_music
 label_article_cover
 label_article_status
 label_article_status_draft
@@ -1511,9 +1519,20 @@ this_video_will_be_classified_brand_organic
 this_video_will_be_classified_branded_content
 this_week
 three_days
+tiktok_add_location
+tiktok_add_music
+tiktok_location_label
+tiktok_music_label
+tiktok_music_volume
+tiktok_no_location_found
+tiktok_no_music_found
+tiktok_random_music_only_for_photos
 tiktok_restriction_direct_video
 tiktok_restriction_upload_video
+tiktok_search_location
+tiktok_search_music
 tiktok_video_features
+tiktok_video_volume
 time_slots_required
 time_table_slots
 timezone
@@ -1654,6 +1673,7 @@ yes_close
 yes_close_it
 yes_delete
 yes_delete_it
+yes_delete_my_account
 yes_go_back_to_global_mode
 yes_logout
 yes_refund

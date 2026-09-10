@@ -977,6 +977,16 @@ introduces, so a themed batch kept pulling commits past their own foundations.
 Chronological order fixed it: the run after the switch landed ten of eleven
 commits with no conflict at all.
 
+**September 2026, second batch: `api.txt` gained two endpoints and `i18n.txt`
+twenty keys**, all additions. The endpoints are `/auth/oauth/APPLE` (Sign in
+with Apple, whose button only renders when `APPLE_CLIENT_ID` is set) and
+`/user/delete-account`. The keys are the delete-account card and its scrim,
+TikTok Business's music and location pickers, and the Apple button. Both
+baselines updated deliberately. The `loops` check earned its keep here:
+upstream's delete-account scrim spun a hand-rolled ring with no `pq-loop`, so
+it would have kept spinning for readers who asked for less motion. It uses the
+shared `Spinner` now, and that baseline stayed empty.
+
 ## Self-audit of the backlog-clearing pass
 
 The pass above was re-read against the code afterwards, on the principle that the

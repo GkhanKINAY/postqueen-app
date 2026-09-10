@@ -17,7 +17,7 @@ import {
 import { TikTokDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/tiktok.dto';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
@@ -585,7 +585,7 @@ export class TiktokBusinessProvider
   }
 
   // autoAddMusic picks a random commercial-library track instead of TikTok's
-  // auto_add_music flag, so the attached music is chosen by Postiz rather than
+  // auto_add_music flag, so the attached music is chosen by PostQueen rather than
   // silently by TikTok. Returns undefined when the trending list is empty or
   // unavailable - the photo body then falls back to auto_add_music.
   private async pickRandomMusicId(

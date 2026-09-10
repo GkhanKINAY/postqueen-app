@@ -388,7 +388,7 @@ export class UsersController {
       user.id
     );
 
-    if (process.env.STRIPE_PUBLISHABLE_KEY) {
+    if (isBillingEnabled()) {
       for (const org of ownedOrgs) {
         if (!org.paymentId) {
           continue;
