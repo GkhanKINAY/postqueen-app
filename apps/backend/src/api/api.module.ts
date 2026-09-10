@@ -3,8 +3,11 @@ import { AuthController } from '@gitroom/backend/api/routes/auth.controller';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
 import { UsersController } from '@gitroom/backend/api/routes/users.controller';
 import { AuthMiddleware } from '@gitroom/backend/services/auth/auth.middleware';
-import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { PaymentController } from '@gitroom/backend/api/routes/payment.controller';
+import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
+import { PaymentProviderManager } from '@gitroom/nestjs-libraries/services/payment/payment.provider.manager';
+import { RevenueCatProvider } from '@gitroom/nestjs-libraries/services/payment/providers/revenuecat.provider';
 import { AnalyticsController } from '@gitroom/backend/api/routes/analytics.controller';
 import { PoliciesGuard } from '@gitroom/backend/services/auth/permissions/permissions.guard';
 import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
@@ -45,6 +48,7 @@ import { AppleProvider } from '@gitroom/backend/services/auth/providers/apple.pr
 import { FarcasterProvider } from '@gitroom/backend/services/auth/providers/farcaster.provider';
 import { WalletProvider } from '@gitroom/backend/services/auth/providers/wallet.provider';
 import { OauthProvider } from '@gitroom/backend/services/auth/providers/oauth.provider';
+import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
 
 const authenticatedController = [
   UsersController,
@@ -73,6 +77,7 @@ const authenticatedController = [
     ? [RootController, OAuthController]
     : [
         RootController,
+        PaymentController,
         StripeController,
         AuthController,
         PublicController,
@@ -88,6 +93,9 @@ const authenticatedController = [
   providers: [
     AuthService,
     StripeService,
+    PaymentService,
+    PaymentProviderManager,
+    RevenueCatProvider,
     OpenaiService,
     ExtractContentService,
     AuthMiddleware,

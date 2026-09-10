@@ -992,6 +992,13 @@ shared `Spinner` now, and that baseline stayed empty.
 account?" entry, and the gate is the condition that shows it: FREE-tier users
 only, as upstream wrote it. Both baselines updated deliberately.
 
+**September 2026, fifth batch: `i18n.txt` gained two keys**,
+`subscription_managed_by` and `subscription_manage_on_platform`. They are
+the Billing page's state for an organization whose subscription was bought
+through the mobile app's store (RevenueCat): nothing on the page can change
+it, so the page says where to manage it instead. Baseline updated
+deliberately.
+
 ## Self-audit of the backlog-clearing pass
 
 The pass above was re-read against the code afterwards, on the principle that the

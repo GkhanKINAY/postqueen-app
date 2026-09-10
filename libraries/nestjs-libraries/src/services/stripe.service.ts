@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -20,6 +20,13 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
+import {
+  PaymentPlatform,
+  PaymentProvider,
+  PaymentProviderAbstract,
+} from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
+
+import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
 
 /**
  * Pinned on purpose. This file reads deep, version-sensitive shapes —
@@ -56,8 +63,10 @@ const ENTITLED_STATUSES: Stripe.Subscription.Status[] = [
   'past_due',
 ];
 
-@Injectable()
-export class StripeService {
+@PaymentProvider({ provider: STRIPE_PROVIDER })
+export class StripeService extends PaymentProviderAbstract {
+  platform: PaymentPlatform = 'web';
+
   constructor(
     private _subscriptionService: SubscriptionService,
     private _organizationService: OrganizationService,
@@ -66,9 +75,214 @@ export class StripeService {
     // For `paymentFailed` — a failed renewal has to reach the customer, and
     // this is the same service the cancellation email already goes through.
     private _notificationService: NotificationService
-  ) {}
+  ) {
+    super();
+  }
   validateRequest(rawBody: Buffer, signature: string, endpointSecret: string) {
     return stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+  }
+
+  /**
+   * Both webhook paths — /stripe, kept for dashboards still pointing at it, and
+   * /payment/stripe — come through here and `processWebhook`, so they behave
+   * identically.
+   */
+  validateWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | string[] | undefined>
+  ) {
+    try {
+      return this.validateRequest(
+        rawBody,
+        headers['stripe-signature'] as string,
+        process.env.STRIPE_SIGNING_KEY
+      );
+    } catch (e) {
+      // A bad or missing signature is the caller's fault, not ours. This used
+      // to escape as a 500 with a full stack trace, so every scanner that POSTs
+      // to this URL filled the logs with what looks like a crash — and a real
+      // signing-key mismatch was indistinguishable from that noise.
+      throw new HttpException(
+        `Invalid Stripe signature: ${(e as Error)?.message}`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  async processWebhook(event: Stripe.Event) {
+    // One Stripe account can serve several integrations, so ignore anything we
+    // did not create.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const service = event?.data?.object?.metadata?.service;
+    const isOurs = service === SUBSCRIPTION_SERVICE_TAG;
+
+    // Some objects never carry `metadata.service`: an invoice's lives on the
+    // subscription it bills, and a charge's on nothing at all. Left to the check
+    // above they are dropped before the switch ever sees them, which is why the
+    // two invoice events were already exempt. The charge events join them for
+    // the same reason — a dispute has to revoke access, and it cannot if it is
+    // discarded here.
+    //
+    // Exempting them does mean events from another integration on the same
+    // account reach the switch. That is safe because every handler below
+    // resolves the customer to an organization first and returns when there is
+    // none: the org lookup, not this tag, is what actually scopes them.
+    const UNTAGGED_EVENTS = [
+      'invoice.payment_succeeded',
+      'invoice.payment_failed',
+      'charge.dispute.created',
+      'charge.refunded',
+    ];
+
+    if (!isOurs && !UNTAGGED_EVENTS.includes(event.type)) {
+      return { ok: true };
+    }
+
+    // Claimed before the switch so a redelivery cannot run a handler twice, and
+    // stamped complete only once one actually succeeds.
+    const claim = await this.claimEvent(event.id, event.type);
+    if (claim === 'duplicate') {
+      return { ok: true, duplicate: true };
+    }
+    if (claim === 'in_flight') {
+      // Another attempt is still running. Answering 2xx here would tell Stripe
+      // the event was delivered while that attempt can still fail, and no
+      // redelivery would ever come. 409 keeps it in Stripe's retry schedule.
+      throw new HttpException(
+        `Stripe event ${event.id} is already being processed`,
+        HttpStatus.CONFLICT
+      );
+    }
+
+    // The switch lives in here so every `return` inside it is awaited by one
+    // place. Two cases used to `return` a promise without awaiting, which put
+    // their rejections outside the try below — so the release never ran and the
+    // claim stranded the event for good.
+    const handle = async () => {
+      switch (event.type) {
+        // Lifetime checkout: immediate `mode: 'payment'`, or deferred
+        // `mode: 'setup'` (+ lifetime_deferred) that grants now and charges
+        // $49 when the trial ends. Neither is a subscription event.
+        // Async methods complete the session before the money lands, so the
+        // grant has to wait for this second event. Both share a block because
+        // the `payment_status` check below is the whole difference between them.
+        case 'checkout.session.async_payment_succeeded':
+        case 'checkout.session.completed': {
+          // @ts-ignore — the session shape is narrower than Stripe.Event
+          const session = event.data.object as any;
+          const organizationId = session?.metadata?.organizationId;
+
+          // Deferred founding checkout: card on file, charge later.
+          if (
+            session?.mode === 'setup' &&
+            session?.metadata?.lifetime_deferred === '1'
+          ) {
+            if (!organizationId) {
+              throw new Error(
+                `${event.type} setup lifetime missing organizationId`
+              );
+            }
+            return this.completeDeferredLifetimeSetup(organizationId, session);
+          }
+
+          if (session?.mode !== 'payment') {
+            return { ok: true };
+          }
+          if (!organizationId) {
+            // Nothing to grant it to. Loud rather than silent: a paid session
+            // with no organization is a bug in whatever created it.
+            throw new Error(
+              `${event.type} with mode=payment and no organizationId`
+            );
+          }
+          // `completed` is not the same as settled. An async payment method
+          // completes the session as `unpaid` and settles later, and granting
+          // on that handed out lifetime PRO before the money landed —
+          // `async_payment_succeeded` above is the event that closes it
+          // properly.
+          //
+          // `no_payment_required` is the 100%-off case and IS grantable: a
+          // promotion code only exists because the owner created one, so a
+          // giveaway should work rather than silently give nothing. It is
+          // logged because it is also the shape a mis-scoped code would take —
+          // Stripe scopes promotion codes to products, not to this session, so
+          // a code meant for a subscription can be typed in here.
+          if (
+            session?.payment_status !== 'paid' &&
+            session?.payment_status !== 'no_payment_required'
+          ) {
+            return { ok: true, granted: false, reason: session?.payment_status };
+          }
+          if (session?.payment_status === 'no_payment_required') {
+            Logger.warn(
+              `[stripe] granting lifetime to org ${organizationId} on a fully discounted session (${session.id})`
+            );
+          }
+          return this.grantLifetimeFromPayment(organizationId, session.id);
+        }
+        case 'invoice.payment_succeeded':
+          return await this.paymentSucceeded(event);
+        // A renewal that could not be charged. Unhandled until now, so the only
+        // thing a customer with a dead card saw was nothing at all — until
+        // Stripe gave up weeks later and cancelled the subscription, at which
+        // point the app went to the paywall with no explanation.
+        case 'invoice.payment_failed':
+          return await this.paymentFailed(event);
+        case 'customer.subscription.created':
+          return await this.createSubscription(event);
+        case 'customer.subscription.updated':
+          return await this.updateSubscription(event);
+        case 'customer.subscription.deleted':
+          return await this.deleteSubscription(event);
+        // Money leaving again. Neither of these used to be handled, so a
+        // chargeback cost the payment, the bank's fee, and the plan stayed on.
+        case 'charge.dispute.created':
+          return await this.disputeCreated(event);
+        case 'charge.refunded':
+          return await this.chargeRefunded(event);
+        default:
+          return { ok: true };
+      }
+    };
+
+    try {
+      const result = await handle();
+      await this.completeEvent(event.id);
+      return result;
+    } catch (e) {
+      // Log BEFORE releasing. The release is a database write, and the most
+      // likely reason the handler just failed is that the database is unhappy —
+      // so releasing first meant its own throw swallowed the original cause,
+      // which is the one thing this block exists to record.
+      //
+      // The 500 is what makes Stripe retry, and that part always worked. What
+      // did not: `new HttpException(e, 500)` serialises an Error to `{}`, and
+      // Nest does not log HttpExceptions, so every webhook failure was a blank
+      // 500 with no record anywhere of what broke.
+      Logger.error(
+        `[stripe] handler failed for ${event.type} (${event.id}): ${
+          (e as Error)?.message ?? e
+        }`,
+        (e as Error)?.stack
+      );
+      try {
+        // Hand the event back so Stripe's retry can have another go — the claim
+        // is only meant to stop duplicates of work that actually succeeded. If
+        // even this fails, the row goes stale and is taken over later.
+        await this.releaseEvent(event.id);
+      } catch (releaseErr) {
+        Logger.error(
+          `[stripe] could not release ${event.id}: ${
+            (releaseErr as Error)?.message ?? releaseErr
+          }`
+        );
+      }
+      throw new HttpException(
+        `Stripe handler failed for ${event.type}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   /**
@@ -269,6 +483,7 @@ export class StripeService {
     }
 
     return this._subscriptionService.createOrUpdateSubscription(
+      STRIPE_PROVIDER,
       // This argument is the organization's trial flag, and it used to read
       // `status !== 'active'` — which is true of `past_due`, `unpaid`,
       // `incomplete` and `paused` as well as `trialing`. A test clock caught it:
@@ -332,7 +547,10 @@ export class StripeService {
         };
       }
 
-      await this._subscriptionService.deleteSubscription(customer);
+      await this._subscriptionService.deleteSubscription(
+        customer,
+        STRIPE_PROVIDER
+      );
       return {
         ok: true,
         granted: false,
@@ -370,6 +588,7 @@ export class StripeService {
     }
 
     return this._subscriptionService.createOrUpdateSubscription(
+      STRIPE_PROVIDER,
       event.data.object.status === 'trialing',
       uniqueId,
       event.data.object.customer as string,
@@ -382,7 +601,8 @@ export class StripeService {
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
     await this._subscriptionService.deleteSubscription(
-      event.data.object.customer as string
+      event.data.object.customer as string,
+      STRIPE_PROVIDER
     );
   }
 
@@ -558,15 +778,10 @@ export class StripeService {
         customer,
         subscription: currentUserSubscription?.data?.[0]?.id,
         subscription_details: {
-          proration_behavior: 'create_prorations',
-          // `proration_date` used to be passed here as well. Stripe rejects the
-          // pair — "You cannot specify `proration_date` when
-          // `billing_cycle_anchor=now`" — so **every** call threw, the catch
-          // below swallowed it, and the plan cards told everyone that every
-          // upgrade cost "(Pay Today $0)". Anchoring to now already means the
-          // proration is calculated at this moment; the date was redundant as
-          // well as fatal.
-          billing_cycle_anchor: 'now',
+          // The same behaviour as the upgrade itself (the
+          // `subscriptions.update` further down), so the "Pay Today" figure on
+          // the plan cards is what will actually be charged.
+          proration_behavior: 'always_invoice',
           items: [
             {
               id: currentUserSubscription?.data?.[0]?.items?.data?.[0]?.id,
@@ -578,11 +793,14 @@ export class StripeService {
       });
 
       return {
-        price: price?.amount_remaining ? price?.amount_remaining / 100 : 0,
+        price: price?.amount_due ? price?.amount_due / 100 : 0,
       };
     } catch (err) {
       // Kept, so a Stripe outage cannot take the Billing screen down with it —
       // but it is no longer hiding a permanent failure.
+      Logger.error(
+        `[stripe] proration preview failed: ${(err as Error)?.message ?? err}`
+      );
       return { price: 0 };
     }
   }
@@ -663,7 +881,10 @@ export class StripeService {
     if (hasFailedPayment) {
       // Payment already failed — cancel immediately and delete subscription
       await stripe.subscriptions.cancel(sub.id);
-      await this._subscriptionService.deleteSubscription(customer);
+      await this._subscriptionService.deleteSubscription(
+        customer,
+        STRIPE_PROVIDER
+      );
 
       return {
         id,
@@ -698,6 +919,9 @@ export class StripeService {
   }
 
   async cancelAllSubscriptions(organizationId: string) {
+    if (!isBillingEnabled()) {
+      return;
+    }
     // getOrgById must not filter deletedAt, this can run for an organization
     // that was already soft deleted by an account deletion
     const org = await this._organizationService.getOrgById(organizationId);
@@ -717,7 +941,10 @@ export class StripeService {
       await stripe.subscriptions.cancel(subscription.id);
     }
 
-    await this._subscriptionService.deleteSubscription(org.paymentId);
+    await this._subscriptionService.deleteSubscription(
+      org.paymentId,
+      STRIPE_PROVIDER
+    );
   }
 
   async getCustomerByOrganizationId(organizationId: string) {
@@ -933,6 +1160,11 @@ export class StripeService {
     return { url };
   }
 
+  async portalLink(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    return this.createBillingPortalLink(customer);
+  }
+
   /**
    * Ends a Stripe trial early, and says whether there was one.
    *
@@ -948,14 +1180,14 @@ export class StripeService {
    * throws, because "the API call failed" and "there was no trial" must not
    * look the same to whoever decides to clear somebody's trial flag.
    */
-  async finishTrial(paymentId: string) {
-    if (!paymentId) {
+  async finishTrial(organization: Organization) {
+    if (!organization?.paymentId) {
       return { ended: false };
     }
 
     const list = (
       await stripe.subscriptions.list({
-        customer: paymentId,
+        customer: organization.paymentId,
       })
     ).data.filter((f) => f.status === 'trialing');
 
@@ -1025,7 +1257,8 @@ export class StripeService {
     }
   }
 
-  async checkDiscount(customer?: string | null) {
+  async checkDiscount(organization: Organization) {
+    const customer = organization?.paymentId;
     // `getActiveDiscount` has always guarded this; these two never did, and
     // `strictNullChecks` is off so nothing caught it at compile time. An org
     // that never reached checkout has no `paymentId`, and the resulting
@@ -1078,8 +1311,9 @@ export class StripeService {
     return true;
   }
 
-  async applyDiscount(customer?: string | null) {
-    const check = await this.checkDiscount(customer);
+  async applyDiscount(organization: Organization) {
+    const customer = organization?.paymentId;
+    const check = await this.checkDiscount(organization);
     if (!check) {
       return false;
     }
@@ -1635,7 +1869,10 @@ export class StripeService {
     }
 
     await stripe.subscriptions.cancel(subscriptions[0].id);
-    await this._subscriptionService.deleteSubscription(customer);
+    await this._subscriptionService.deleteSubscription(
+      customer,
+      STRIPE_PROVIDER
+    );
 
     return { cancelled: true };
   }
@@ -1874,9 +2111,7 @@ export class StripeService {
             ? invoiceSubscription
             : invoiceSubscription?.id;
 
-        chargeSubscription = subscriptions.find(
-          (f) => f.id === subscriptionId
-        );
+        chargeSubscription = subscriptions.find((f) => f.id === subscriptionId);
 
         if (chargeSubscription) {
           lastCharge = charge;
@@ -1952,7 +2187,10 @@ export class StripeService {
     }
 
     if (preview.subscriptionIds.length) {
-      await this._subscriptionService.deleteSubscription(org?.paymentId!);
+      await this._subscriptionService.deleteSubscription(
+        org?.paymentId!,
+        STRIPE_PROVIDER
+      );
     }
 
     return {
@@ -2485,6 +2723,7 @@ export class StripeService {
     const findPricing = pricing[nextPackage];
 
     await this._subscriptionService.createOrUpdateSubscription(
+      STRIPE_PROVIDER,
       await this.stillTrialing(organizationId),
       makeId(10),
       organizationId,
@@ -2530,6 +2769,7 @@ export class StripeService {
       const findPricing = pricing[nextPackage];
 
       await this._subscriptionService.createOrUpdateSubscription(
+        STRIPE_PROVIDER,
         // Same rule as the paid grant above: redeeming a code does not cut a
         // running trial short.
         await this.stillTrialing(organizationId),

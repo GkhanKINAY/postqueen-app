@@ -13,6 +13,7 @@ import { sign } from 'jsonwebtoken';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
+import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { Response, Request } from 'express';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
@@ -46,6 +47,9 @@ import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 export class UsersController {
   constructor(
     private _subscriptionService: SubscriptionService,
+    private _paymentService: PaymentService,
+    // Stripe-only reads (the discount banner, a refused renewal, the
+    // founding fee) have no counterpart on other providers.
     private _stripeService: StripeService,
     private _authService: AuthService,
     private _orgService: OrganizationService,
@@ -242,7 +246,7 @@ export class UsersController {
       adminId
     );
 
-    await this._stripeService.syncCustomerEmailsAfterSwitch([kept, switched]);
+    await this._paymentService.syncCustomerEmailsAfterSwitch([kept, switched]);
 
     return { success: true };
   }
@@ -287,10 +291,9 @@ export class UsersController {
   @Get('/subscription')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async getSubscription(@GetOrgFromRequest() organization: Organization) {
-    const subscription =
-      await this._subscriptionService.getSubscriptionByOrganizationId(
-        organization.id
-      );
+    const subscription = await this._paymentService.getSubscription(
+      organization.id
+    );
 
     if (!subscription) {
       return { subscription: undefined };
@@ -310,7 +313,7 @@ export class UsersController {
   @Get('/subscription/tiers')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async tiers() {
-    return this._stripeService.getPackages();
+    return this._paymentService.getDefaultProvider('web').getPackages();
   }
 
   @Post('/join-org')
@@ -388,20 +391,15 @@ export class UsersController {
       user.id
     );
 
-    if (isBillingEnabled()) {
-      for (const org of ownedOrgs) {
-        if (!org.paymentId) {
-          continue;
-        }
-        try {
-          await this._stripeService.cancelAllSubscriptions(org.id);
-        } catch (err) {
-          console.log(err);
-          throw new HttpException(
-            'Could not cancel your subscription, please try again or contact support',
-            400
-          );
-        }
+    for (const org of ownedOrgs) {
+      try {
+        await this._paymentService.cancelAllSubscriptions(org.id);
+      } catch (err) {
+        console.log(err);
+        throw new HttpException(
+          'Could not cancel your subscription, please try again or contact support',
+          400
+        );
       }
     }
 
