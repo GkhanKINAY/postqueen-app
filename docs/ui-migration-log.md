@@ -987,6 +987,11 @@ upstream's delete-account scrim spun a hand-rolled ring with no `pq-loop`, so
 it would have kept spinning for readers who asked for less motion. It uses the
 shared `Spinner` now, and that baseline stayed empty.
 
+**September 2026, third batch: `i18n.txt` gained two keys and `gates.txt` one
+`tier.current` call site.** The keys are the FAQ's new "How can I delete my
+account?" entry, and the gate is the condition that shows it: FREE-tier users
+only, as upstream wrote it. Both baselines updated deliberately.
+
 ## Self-audit of the backlog-clearing pass
 
 The pass above was re-read against the code afterwards, on the principle that the

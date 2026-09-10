@@ -188,6 +188,11 @@ export class OAuthRepository {
         revokedAt: null,
       },
       include: {
+        oauthApp: {
+          select: {
+            clientId: true,
+          },
+        },
         organization: {
           include: {
             subscription: {
@@ -200,7 +205,11 @@ export class OAuthRepository {
           },
         },
         user: {
-          select: { id: true },
+          select: {
+            id: true,
+            email: true,
+            activated: true,
+          },
         },
       },
     });

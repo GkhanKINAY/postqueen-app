@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { Button } from '@gitroom/react/form/button';
@@ -9,8 +9,9 @@ import { setCookie } from '@gitroom/frontend/components/layout/layout.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Spinner } from '@gitroom/react/ui/spinner';
+import { TrashIcon } from '@gitroom/frontend/components/ui/icons';
 
-const DeleteAccountComponent = () => {
+const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
@@ -57,27 +58,40 @@ const DeleteAccountComponent = () => {
     }
   }, [fetch, isSecured, t, toaster]);
 
+  const loadingOverlay = loading && (
+    <div className="text-textColor fixed start-0 top-0 bg-primary/80 z-[500] w-full h-full animate-fade flex flex-col items-center justify-center gap-[24px]">
+      <Spinner width={48} height={48} borderWidth={3} className="text-pqBrand" />
+      <div className="text-[20px] font-semibold">
+        {t('deleting_your_account', 'Deleting your account...')}
+      </div>
+      <div className="text-[14px] text-textItemBlur">
+        {t(
+          'deleting_your_account_description',
+          'We are removing your channels and posts, this can take a while. Please don’t close this window.'
+        )}
+      </div>
+    </div>
+  );
+
+  if (isLink) {
+    return (
+      <>
+        {loadingOverlay}
+        <button
+          type="button"
+          className="cursor-pointer flex items-center gap-[8px] text-pqDanger hover:opacity-80 transition-opacity text-[14px]"
+          onClick={deleteAccount}
+        >
+          <TrashIcon size={16} />
+          <div>{t('delete_account', 'Delete Account')}</div>
+        </button>
+      </>
+    );
+  }
+
   return (
     <div className="rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)] p-[15px_16px]">
-      {loading && (
-        <div className="text-textColor fixed start-0 top-0 bg-primary/80 z-[500] w-full h-full animate-fade flex flex-col items-center justify-center gap-[24px]">
-          <Spinner
-            width={48}
-            height={48}
-            borderWidth={3}
-            className="text-pqBrand"
-          />
-          <div className="text-[20px] font-semibold">
-            {t('deleting_your_account', 'Deleting your account...')}
-          </div>
-          <div className="text-[14px] text-textItemBlur">
-            {t(
-              'deleting_your_account_description',
-              'We are removing your channels and posts, this can take a while. Please don’t close this window.'
-            )}
-          </div>
-        </div>
-      )}
+      {loadingOverlay}
       <div className="text-[13.5px] font-[600] text-pqText">
         {t('delete_account', 'Delete Account')}
       </div>

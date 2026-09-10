@@ -184,7 +184,7 @@
     "nestjs-command": "^3.1.5",
     "nestjs-real-ip": "^3.0.1",
     "nestjs-temporal-core": "^3.4.0",
-    "next": "16.3.0",
+    "next": "16.3.1",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^1.2.0",
     "nodemailer": "^9.0.5",
@@ -289,7 +289,7 @@
   },
   "pnpm": {
     "overrides": {
-      "next": "16.3.0",
+      "next": "16.3.1",
       "react": "19.2.8",
       "react-dom": "19.2.8",
       "@types/react": "19.2.18",
@@ -306,7 +306,8 @@
       "shell-quote": "^1.8.4",
       "protobufjs": "^7.5.5",
       "handlebars": "^4.7.9",
-      "pkg-types": "^2.3.1"
+      "pkg-types": "^2.3.1",
+      "fast-xml-parser": "^5.11.0"
     },
     "onlyBuiltDependencies": [
       "bcrypt"
