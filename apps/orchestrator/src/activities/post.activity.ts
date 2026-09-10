@@ -24,7 +24,10 @@ import {
   postId as postIdSearchParam,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import { withHeartbeat } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
+import {
+  setHeartbeatDetails,
+  withHeartbeat,
+} from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   BadBody,
   Disconnect,
@@ -65,6 +68,38 @@ function slimPost(post: any) {
     ...rest
   } = post;
   return rest;
+}
+
+// A genuinely missed occurrence (dead workflow) is only recovered by the
+// missing-posts sweep, which runs every hour - so anything later than the
+// sweep period plus retry margin is a stale anchor, not a missed publish.
+const REANCHOR_GRACE_MS = 2 * 60 * 60 * 1000;
+
+// A repeat post keeps its original anchor publishDate forever (updatePost only
+// flips the state, the calendar expands occurrences virtually). If the workflow
+// gets that raw past date, any (re)start - an accidental edit resetting the
+// state to QUEUE, or a missing-posts sweep poke - sleeps 0 and publishes
+// instantly, machine-gunning the channel. Roll the returned date forward to the
+// next occurrence on the anchor grid instead, so fresh starts wait for the next
+// real occurrence. Only for the initial QUEUE run: repeat chain children
+// (postNow) run against a PUBLISHED post and must keep publishing immediately.
+// Occurrences missed within the grace window still catch up and post.
+function reanchorInterval(post: any) {
+  if (!post?.intervalInDays || post.state !== State.QUEUE) {
+    return post;
+  }
+
+  const interval = post.intervalInDays * 24 * 60 * 60 * 1000;
+  const late = Date.now() - new Date(post.publishDate).getTime();
+  if (late <= REANCHOR_GRACE_MS) {
+    return post;
+  }
+
+  const next =
+    new Date(post.publishDate).getTime() +
+    Math.ceil(late / interval) * interval;
+
+  return { ...post, publishDate: new Date(next) };
 }
 
 @Injectable()
@@ -149,7 +184,7 @@ export class PostActivity {
       return false;
     }
 
-    return post;
+    return reanchorInterval(post);
   }
 
   @ActivityMethod()
@@ -172,7 +207,10 @@ export class PostActivity {
       return [];
     }
 
-    return getPosts.map(slimPost);
+    // only the root drives the pre-publish sleep and the repeat schedule,
+    // the rest are comments
+    const [root, ...comments] = getPosts.map(slimPost);
+    return [reanchorInterval(root), ...comments];
   }
 
   @ActivityMethod()
@@ -306,6 +344,11 @@ export class PostActivity {
     posts: Post[],
     allowPending: boolean
   ) {
+    // Stage markers: whatever ran last is what a timed-out activity reports.
+    // Providers that go through this.fetch overwrite these with the exact URL;
+    // the ones on their own HTTP client (x, youtube, bluesky) are still
+    // narrowed down to the step they hung on.
+    setHeartbeatDetails('subscription lookup');
     // `isBillingEnabled()` rather than upstream's bare STRIPE_SECRET_KEY: a
     // secret key with no publishable key is a half-configured install, and
     // treating it as "billing on" made the worker refuse every scheduled post.
@@ -323,11 +366,13 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
+    setHeartbeatDetails('update tags');
     const newPosts = await this._postService.updateTags(
       integration.organizationId,
       posts
     );
 
+    setHeartbeatDetails('resolve media');
     const mappedPosts = await Promise.all(
       (newPosts || []).map(async (p) => ({
         id: p.id,
@@ -348,7 +393,7 @@ export class PostActivity {
       }))
     );
 
-
+    setHeartbeatDetails(`${integration.providerIdentifier}: publish`);
     const postNow =
       allowPending && getIntegration.postPending
         ? await getIntegration.postPending(
@@ -369,6 +414,7 @@ export class PostActivity {
     // retries a failed activity, and a retry of this one publishes the post a
     // second time. A streak counter is not worth a duplicate post, so its
     // failure is swallowed deliberately.
+    setHeartbeatDetails(`${integration.providerIdentifier}: published, streak`);
     try {
       await this._temporalService.client
         .getRawClient()
