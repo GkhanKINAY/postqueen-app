@@ -101,9 +101,51 @@ into a container capped at 4 GB; the pending-post contract landed as v1.0.7; SSR
 protection reaches the axios paths; publishing an already-published post now
 needs an explicit opt-in.
 
+## September 2026: what happened
+
+**79 commits past the watermark: 53 taken, 8 already here or empty once
+adapted, 18 skipped.** Six PRs: #60, #61, #62, #64, #65 and the one that moved
+this watermark (#63 was a Next.js security hotfix raised during the sync).
+Every taken commit carries its upstream hash in the message.
+
+**Post workflow numbers now lag upstream's.** Our v1.0.7 is upstream's v1.0.6
+(the August collision above). Upstream then wrote v1.0.7 through v1.1.2 in a
+month. None of the intermediate ones ever ran here, and a workflow file on
+`main` can never change again, so none was taken: each commit that introduced
+one came in without the file, its export and its start-name bumps (three of
+them were nothing else, and are logged as empty). The final one, upstream's
+v1.1.2, is our **v1.0.8**: the same file with three lines changed, the
+generated Prisma import, the function name and the `startChild` that re-queues
+a repeat post. Next time, upstream's next post workflow becomes our v1.0.9 the
+same way. Take only the newest, adapt those three lines, and move both call
+sites (`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
+
+Lessons, in the order they cost time:
+
+- **A local typecheck can pass on an import that does not exist.** Upstream
+  still imports `@prisma/client`; this fork generates its client into
+  `database/prisma/generated`. A stale `@prisma/client` left in node_modules
+  kept `tsc` quiet, and CI, installing clean, failed. Grep every batch for
+  `from '@prisma/client'` before pushing.
+- **Schema changes need a migration here; upstream ships none.**
+  `PRISMA_MIGRATE=true` installs only apply `migrations/`. Generate each one
+  from the app root (the Prisma config is read from the working directory):
+  `pnpm exec prisma migrate diff --from-schema <previous> --to-schema <current> --script`.
+  It catches what a hand-written one misses: making a relation optional turns
+  its foreign key from ON DELETE RESTRICT into SET NULL.
+- **Upstream lands some commits twice**, through two branches. Same patch-id,
+  different hash; the second is logged as a duplicate, not taken twice.
+- **Upstream's hosted service shows up in their diffs**:
+  `claude.ai/directory/postiz`, `mcp.postiz.com`, their ChatGPT app listing,
+  `docs.postiz.com`. Taking them sends our users to their product.
+- **A fix of ours can be undone by a refactor of theirs.** When upstream moves
+  code into a new method (`validateVideoRequest`, the billing provider switch),
+  the check we had hardened in the old place arrives in its original form in
+  the new one. Resolving the conflict is not enough; re-apply the hardening.
+
 ## Where the sync currently stands
 
-**Synced through `83271a3b` (2026-08-09).** Everything upstream had written by
+**Synced through `c9382d98` (2026-09-03).** Everything upstream had written by
 that commit is either in this tree or listed below with a reason.
 
 Skipped, deliberately:
@@ -112,6 +154,15 @@ Skipped, deliberately:
 |---|---|
 | `48bf76af` | Points the security policy at upstream's own advisory intake |
 | `3686d8ab` | Reflows two Bluesky expressions onto single lines so a `@ts-ignore` lands on the right one. We had already fixed the same error by narrowing the union once, which needs no suppression at all |
+| `0b6dc6c5` | `GET /public/v1/users` returns id, name and email for any user by substring, behind a guard that only asks whether the calling organization has a superadmin *member*. A customer workspace our admin joined could enumerate every email address |
+| `d26c68dc` `74b01ada` | An "Add to Claude" button linking to upstream's own Claude directory listing |
+| `4f296fc0` `c9382d98` | Rework the onboarding modal this fork's redesign removed (agent setup lives under Connections), on upstream's hosted links and deprecated tokens |
+| `bade093d` `40c869b5` `04a157ab` `d2a7b50a` `a1b94565` | Upstream's contributor process: their PR template and their CLAUDE.md QA rules |
+| `d45c1c62` `59448d3b` `2db51c7f` `3c4cc6d7` `9c014364` `7e86a129` `b8427ba3` `ec162d2a` | Upstream's staging CI |
+
+Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
+(`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing
+for their hosted service.
 
 Move the watermark every time a sync PR merges. It is the only cheap way to
 answer "are we current?" — see the trap below.
