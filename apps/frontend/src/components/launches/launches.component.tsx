@@ -15,7 +15,7 @@ import clsx from 'clsx';
 import { useUser } from '../layout/user.context';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
 import { useSearchParams } from 'next/navigation';
-import { Integration } from '@prisma/client';
+import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';

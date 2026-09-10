@@ -154,7 +154,7 @@ export const EmbeddedBilling: FC<{
               // what reads them. Stripe's Elements run in a cross-origin
               // iframe: its appearance API takes literal colours and cannot
               // resolve a CSS variable from this document. Each value mirrors a
-              // token from colors.scss and must move with it. The others are
+              // token from colors.css and must move with it. The others are
               // brand marks — the Stripe wordmark and the card-network chips —
               // which are the one place a fixed colour is the correct one.
               appearance: {

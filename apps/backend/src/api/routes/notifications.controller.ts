@@ -4,7 +4,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
-import { Organization, User } from '@prisma/client';
+import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { ApiTags } from '@nestjs/swagger';

@@ -20,7 +20,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
-import { Integration } from '@prisma/client';
+import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';

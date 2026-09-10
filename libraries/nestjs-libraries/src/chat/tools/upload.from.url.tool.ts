@@ -8,7 +8,7 @@ import { getMaxSize } from '@gitroom/nestjs-libraries/upload/custom.upload.valid
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { Readable } from 'stream';
-import { fromBuffer } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 // Same allow-list as the public API /upload-from-url route.
 const ALLOWED_MIME = new Set<string>([
@@ -89,7 +89,7 @@ so the attachment passes the upload-domain validation. Returns the hosted media 
           }
 
           const buffer = Buffer.from(await response.arrayBuffer());
-          const detected = await fromBuffer(buffer);
+          const detected = await fileTypeFromBuffer(buffer);
           if (!detected || !ALLOWED_MIME.has(detected.mime)) {
             return { error: 'Unsupported file type.' };
           }

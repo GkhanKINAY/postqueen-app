@@ -12,7 +12,7 @@ import { clsx } from 'clsx';
  * ways (`pqHover`, `pqSettings`, `newSep`, `newBgLineColor`), so placeholders
  * changed shade from screen to screen. `pq-loop` is the hook
  * `prefers-reduced-motion` switches the pulse off with — see the note in
- * apps/frontend/src/app/global.scss.
+ * apps/frontend/src/app/global.css.
  *
  * Extra props are forwarded so a bone can still carry the `data-*` hooks its
  * surroundings key off — the rail's collapse CSS needs `data-sbl` on whatever

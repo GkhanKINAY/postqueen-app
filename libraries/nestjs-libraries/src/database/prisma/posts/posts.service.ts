@@ -16,7 +16,7 @@ import {
   From,
   CreationMethod,
   State,
-} from '@prisma/client';
+} from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { GetPostsListDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.list.dto';
 import { shuffle } from 'lodash';

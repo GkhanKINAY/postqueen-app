@@ -5,7 +5,7 @@ import {
   NotificationService,
   NotificationType,
 } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
-import { Integration, Post, State } from '@prisma/client';
+import { Integration, Post, State } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { AuthTokenDetails } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';

@@ -298,7 +298,7 @@ export const ModalManagerInner: FC = () => {
     const body = document.body;
     if (modalManager.length > 0) {
       // Overflow lock only — scrollbar gutter lives on `html` always
-      // (global.scss) so Create Post / any modal does not shift the chrome.
+      // (global.css) so Create Post / any modal does not shift the chrome.
       html.classList.add('pq-modal-open');
       body?.classList.add('overflow-hidden');
       // Settings is its own scrim route under `.blurMe` — blurring it under a

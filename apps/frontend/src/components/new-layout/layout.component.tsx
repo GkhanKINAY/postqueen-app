@@ -140,6 +140,32 @@ const LayoutSkeleton = () => (
 );
 
 /**
+ * Shown instead of the skeleton when the app has no backend URL, which only
+ * happens on a dev server started outside the project's own scripts. The
+ * symptom without this is a shell that stays in bones for ever: every request
+ * goes to `undefined/...`, so `/user/self` never resolves, nothing throws, and
+ * the console stays clean.
+ *
+ * Deliberately not translated. It is a developer diagnostic, never reached in
+ * production, and adding a key here would move the i18n set the migration
+ * guard watches.
+ */
+const MissingBackendUrlNotice = () => (
+  <div className="flex h-dvh flex-col items-center justify-center gap-[10px] p-[24px] text-center">
+    <div className="text-[16px] font-[600] text-pqText">
+      No backend URL configured
+    </div>
+    <div className="max-w-[520px] text-[13.5px] leading-[1.5] text-pqMuted">
+      NEXT_PUBLIC_BACKEND_URL is empty, so every request would go to
+      “undefined/…”. The env file lives at the repository root and is loaded by
+      the start scripts. Run <code>pnpm run dev</code> or{' '}
+      <code>pnpm run start:prod:frontend</code> rather than calling{' '}
+      <code>next</code> directly.
+    </div>
+  </div>
+);
+
+/**
  * A uniform hit area for the header's icon controls, which arrive at three
  * different SVG sizes and with no padding of their own. The square is fixed, so
  * anything wider than an icon (the streak counter, the Help pill) stays outside
@@ -439,6 +465,7 @@ export const LayoutComponent = ({
   overlay?: ReactNode;
 }) => {
   const fetch = useFetch();
+  const { backendUrl } = useVariables();
   const load = useCallback(async (path: string) => {
     return await (await fetch(path)).json();
   }, []);
@@ -449,6 +476,14 @@ export const LayoutComponent = ({
     refreshWhenOffline: false,
     refreshWhenHidden: false,
   });
+
+  // A dev server started without the env file has no backend URL, so every
+  // request goes to `undefined/...`, `/user/self` never answers, and the line
+  // below shows the skeleton for ever with nothing in the console. That cost
+  // hours once. Development only — production behaviour is untouched.
+  if (!backendUrl && process.env.NODE_ENV !== 'production') {
+    return <MissingBackendUrlNotice />;
+  }
 
   // While /user/self resolves, show the chrome skeleton instead of a blank
   // screen (this used to `return null`, flashing empty on every cold load).

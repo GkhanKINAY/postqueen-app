@@ -123,7 +123,7 @@ collect_routes() {
 collect_loops() {
   # Indefinite animations that do not also carry `pq-loop`.
   #
-  # global.scss says outright that this one cannot be enforced from the
+  # global.css says outright that this one cannot be enforced from the
   # stylesheet — CSS cannot match on an animation name, so whether a spinner
   # stops for `prefers-reduced-motion: reduce` is left to whoever writes the
   # component. It was left to them for a while: seventeen looping elements had
@@ -145,13 +145,15 @@ collect_loops() {
   #
   # `motion-safe:` and `motion-reduce:` are Tailwind's own gate and count as
   # compliant. The one-shot entrances (pqPop, pqFadeDown, pqIn, pqTip) are not
-  # loops and are deliberately outside the pattern — see global.scss.
+  # loops and are deliberately outside the pattern — see global.css.
   #
   # Loops this stylesheet applies by *selector* rather than by class can never
   # match either arm, because the component's className has nothing in it:
   # `.loading-shimmer:before`, the tour's `[data-tourconn] [data-conn-card]`
-  # glow, and Blueprint's three in the vendored polonto.css. All five are
-  # switched off by name in global.scss's reduced-motion block instead. If you
+  # glow, and Blueprint's three, which come from the stylesheet polotno ships
+  # (a vendored copy of Blueprint 5 lived here until polotno 4 renamed the
+  # namespace to `bp6` and made every one of its selectors dead). All five are
+  # switched off by name in global.css's reduced-motion block instead. If you
   # add another, add it there — this collector will not catch it for you.
   #
   # Three known blind spots, all latent today and all checked:

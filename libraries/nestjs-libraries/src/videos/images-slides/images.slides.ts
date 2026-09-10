@@ -6,7 +6,7 @@ import {
   VideoAbstract,
 } from '@gitroom/nestjs-libraries/videos/video.interface';
 import { chunk } from 'lodash';
-import Transloadit from 'transloadit';
+import { Transloadit } from 'transloadit';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { Readable } from 'stream';
 import { parseBuffer } from 'music-metadata';

@@ -80,7 +80,7 @@ export const StreakComponent: FC = () => {
         );
 
   // Design chrome always draws the streak chip. Hide only on phone via
-  // `[data-mobile="1"] [data-streak]` in global.scss.
+  // `[data-mobile="1"] [data-streak]` in global.css.
   // Raise: omit “Longest: N days” — no streakBest in schema.
   return (
     <div data-streak="1" className="relative shrink-0">

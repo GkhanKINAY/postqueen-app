@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { Injectable, Logger } from '@nestjs/common';
-import { Organization, User } from '@prisma/client';
+import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';

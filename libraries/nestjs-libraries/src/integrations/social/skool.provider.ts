@@ -9,7 +9,7 @@ import {
   SocialProvider,
 } from './social.integrations.interface';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { SkoolDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/skool.dto';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';

@@ -1025,3 +1025,103 @@ answer to it.
 
 Self-hosters cloning a fresh empty database do not need any tier-migration
 step — new installs only use CREATOR / GROWTH / PRO / AGENCY.
+
+## Dependency upgrade pass
+
+Every package that could go to latest did, ahead of launch, on the argument that
+upgrading gets riskier once there are users on it. 190 outdated became 17;
+vulnerabilities 242 became 43, none of them new. Sixteen packages are deliberately
+short of latest and each one's commit says why — Stripe stays on 20 during launch
+week, `@atproto/api` stops at 0.19.19 because 0.20 cannot be `require`d from CJS,
+`google-auth-library` matches what googleapis pins, ESLint stays on 9 because
+`eslint-plugin-react` has no release that survives 10.
+
+Two traps are worth carrying forward.
+
+**Prisma 7 needs its own deploy.** The generator is `prisma-client` now, emitting
+TypeScript rather than a prebuilt client, and the service passes a `PrismaPg`
+driver adapter. Run `migrate deploy` against staging before production.
+
+**`prisma db push --accept-data-loss` will drop Mastra's tables** unless the
+schema knows about them. Mastra 1.57 added eight the schema had never seen, and
+push would have deleted every one. `prisma db pull` first. Do this after *any*
+Mastra upgrade, not just this one.
+
+### Tailwind 4
+
+The migration itself was small — three of v4's four silent default changes have
+no surface in this repo, and `space-y`'s new selector reaches eight files, none of
+which turned out to care. `@config` keeps the JavaScript config, including its
+plugins, so `tailwind-scrollbar` and the `child` variants are untouched.
+
+Two things had to move out of the config. The six `raw` screens are
+`@custom-variant` declarations in `global.css` now, because v4's legacy-config
+bridge emits `@media (width >= (max-height: 800px))` for a `raw` value — not CSS.
+And `tailwindcss-rtl` came out after being proved redundant: rendering the full
+logical-utility set through this project's own config, with and without the
+plugin, produced identical output.
+
+The part that was not small is the cascade. **v4 puts every utility in
+`@layer utilities`, and unlayered CSS beats all layered CSS whatever the source
+order.** Under v3 the vendor stylesheets were plain rules above plain utilities
+and lost ties; under v4 they win every one. Mantine's `button { font: inherit }`
+was quietly overriding `text-[12px]` and `font-[600]` on every button in the app
+— visible only because one tab label was one character too wide for its box. The
+vendor imports now sit in a `vendor` layer between `base` and `components`.
+
+If you add a third-party stylesheet to `global.css`, import it
+`layer(vendor)`. The five imported from components instead were checked and are
+all class-scoped, so they stay unlayered and stay code-split.
+
+`sass` is gone. The stylesheets are `.css`, and the reformat commit is in
+`.git-blame-ignore-revs` — `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+### Audit pass over the upgrade
+
+A second pass over the whole change set, looking for what the first one missed.
+Five things it found.
+
+**The vendored Blueprint stylesheet had been dead since polotno 4.** polotno 3
+bundled Blueprint 5, and `polonto.css` was 397 KB of `.bp5-*` rules that styled
+its editor. polotno 4 moved to Blueprint 6, renamed the namespace to `bp6` and
+ships its own stylesheet, so every selector in that file stopped matching the
+moment the upgrade landed. It was still being imported into `global.css`, which
+is to say sent to every visitor on every page.
+
+It took three of our own rules down with it, quietly, because they pointed at
+the same namespace: the `z-index` that keeps polotno's popovers above the
+composer, the focus ring inside the editor, and the `prefers-reduced-motion`
+block that switches off Blueprint's three looping animations. That last one is
+worth noting — **the `loops` check cannot catch it.** A loop applied by selector
+never appears in any className, so there is nothing for the collector to read.
+All three are retargeted to `bp6` now.
+
+**Four different Node versions were in play**: `engines` said 22.12.0, CI said
+22.12.0, two extension workflows said 20, and the container ships 22.20. Mastra
+requires 22.13.0, so the declared floor was below what the tree actually needs.
+Everything is 22.20.0 now, with a `.nvmrc`, and `engines` says `>=22.13.0`.
+
+**The workspace packages were never part of the upgrade.** The root
+`pnpm outdated` does not descend into them; `pnpm -r outdated` does.
+`@postqueen/wallets` had three behind.
+
+**`@atproto/api` 0.20 still cannot land, but for a different reason than
+before.** 0.19 was held because `@atproto/lexicon` and `@atproto/syntax` were
+circular ESM. That is fixed. What is not fixed is that 0.20 reaches
+`multiformats/cid`, and `multiformats` 13 is ESM-only with no `require`
+condition in its exports map — so CommonJS cannot resolve the subpath at all,
+and only `multiformats` 9 has one. **The isolated `require()` test passed**,
+because the main entry does not pull that path; only booting the real
+application found it. This is the case `scripts/boot-check.sh` exists for.
+
+**TypeScript 7 is out and is not a dependency upgrade.** It removes
+`moduleResolution: node10`, which `tsconfig.base.json` uses and the backend and
+orchestrator depend on. Moving off it changes how every import in the monorepo
+resolves; the frontend only got to `bundler` as part of the Uppy 5 work. That is
+its own piece of work, not a version bump. Same for `@types/node` 26, which
+describes a runtime we do not run.
+
+One warning is left in the frontend build and is expected: Uppy's dashboard
+stylesheet carries an `@charset` rule, which is invalid anywhere but the first
+line of a file and is ignored once inlined. The rules after it were checked in
+the built bundle and are all present.

@@ -22,7 +22,7 @@ import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 /**
  * The design's feature tick: a 17×17 brand tile with a white check, 13px muted
  * label — and the "Unlimited channels" line lifted to `--focused`/600 with the
- * `pqunlim` glow (gated by `pq-loop` for prefers-reduced-motion, the global.scss
+ * `pqunlim` glow (gated by `pq-loop` for prefers-reduced-motion, the global.css
  * convention). One recipe for the plan cards and both lifetime package cards,
  * so the tick cannot drift between surfaces.
  */

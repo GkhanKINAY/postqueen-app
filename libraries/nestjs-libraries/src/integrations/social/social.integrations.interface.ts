@@ -1,4 +1,4 @@
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
 export interface ClientInformation {
   client_id: string;

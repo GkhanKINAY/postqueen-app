@@ -17,7 +17,7 @@ import {
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { Integration } from '@prisma/client';
+import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { PostPlug } from '@gitroom/helpers/decorators/post.plug';
 import { LinkedinDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/linkedin.dto';
 import imageToPDF from 'image-to-pdf';
@@ -382,7 +382,11 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/octet-stream',
             },
-            body,
+            // A Buffer is a perfectly good fetch body at runtime. The cast is
+            // for the type layer only: `BodyInit` wants an ArrayBufferView over
+            // a plain `ArrayBuffer`, and Node's Buffer is typed over
+            // `ArrayBufferLike`, which also admits SharedArrayBuffer.
+            body: body as unknown as BodyInit,
           },
           'linkedin',
           0,
@@ -407,8 +411,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
             ...(isPdf ? { 'Content-Type': 'application/pdf' } : {}),
           },
           // Only videos arrive as a { path } descriptor; images and documents
-          // are always a Buffer.
-          body: picture as Buffer,
+          // are always a Buffer. The second cast is the same ArrayBufferLike
+          // vs ArrayBuffer mismatch as above, not a runtime concern.
+          body: picture as unknown as BodyInit,
         },
         'linkedin',
         0,

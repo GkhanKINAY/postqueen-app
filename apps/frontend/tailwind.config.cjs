@@ -6,7 +6,7 @@ module.exports = {
     extend: {
       colors: {
         // --- redesign token layer -------------------------------------------
-        // Aliases for the tokens declared at the top of src/app/colors.scss.
+        // Aliases for the tokens declared at the top of src/app/colors.css.
         //
         // Every one is `pq`-prefixed. Two reasons: the design's own names would
         // shadow Tailwind's built-in palettes — `amber` alone is used as
@@ -259,7 +259,7 @@ module.exports = {
         newMessages: 'newMessages 1s ease-in-out 4s forwards',
         marqueeUp: 'marquee-up 100s linear infinite',
         marqueeDown: 'marquee-down 100s linear infinite',
-        // The redesign's motion. Keyframes live in src/app/global.scss rather
+        // The redesign's motion. Keyframes live in src/app/global.css rather
         // than in the `keyframes` block below, because several of them use
         // `var(--brand)` and reference the token layer directly.
         //
@@ -272,7 +272,7 @@ module.exports = {
         pqTip: 'pqtip 0.12s ease-out',
         // Indefinite loops. Anything using one of these must also carry the
         // `pq-loop` class, which is what prefers-reduced-motion switches off —
-        // see the note in global.scss.
+        // see the note in global.css.
         pqUnlim: 'pqunlim 1.9s ease-in-out infinite',
         pqTick: 'pqtick 1.9s ease-in-out infinite',
         pqGlow: 'pqglow 5.5s ease-in-out infinite',
@@ -409,25 +409,14 @@ module.exports = {
           },
         },
       }),
+      // The six `raw` screens that used to live here — mobile, tablet,
+      // iconBreak, maxMedia, minCustom, custom — are now `@custom-variant`
+      // declarations in `src/app/global.css`. Tailwind 4 reads a legacy config
+      // through `@config`, but its bridge mishandles `raw`: it wraps the query
+      // in a width comparison and emits `@media (width >= (max-height: 800px))`,
+      // which is not valid CSS and stops the build. The widths themselves are
+      // unchanged — 88 call sites depend on them.
       screens: {
-        mobile: {
-          raw: '(max-width: 1025px)',
-        },
-        tablet: {
-          raw: '(max-width: 1300px)',
-        },
-        iconBreak: {
-          raw: '(max-width: 1560px)',
-        },
-        maxMedia: {
-          raw: '(max-width: 1400px)',
-        },
-        minCustom: {
-          raw: '(min-height: 800px)',
-        },
-        custom: {
-          raw: '(max-height: 800px)',
-        },
         xs: {
           max: '401px',
         },
@@ -436,7 +425,15 @@ module.exports = {
   },
   plugins: [
     require('tailwind-scrollbar'),
-    require('tailwindcss-rtl'),
+    // `tailwindcss-rtl` used to be here. It generated nothing Tailwind does not
+    // generate itself: logical utilities — ms/me, ps/pe, start/end, text-start,
+    // rounded-s, border-s, float-start, clear-start — have been core since 3.3,
+    // and rendering the full set through the config with and without the plugin
+    // produced byte-identical output. Ninety files use those classes; all of
+    // them come from core.
+    //
+    // It also could not have survived Tailwind 4: it calls `variants('padding')`,
+    // an API removed in 3.0.
     function ({ addVariant }) {
       addVariant('child', '& > *');
       addVariant('child-hover', '& > *:hover');

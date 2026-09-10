@@ -20,8 +20,8 @@ We are using only pnpm, don't use any other dependency manager.
 Never install frontend components from npmjs, focus on writing native components.
 
 The project uses tailwind 3, before writing any component look at:
-- /apps/frontend/src/app/colors.scss
-- /apps/frontend/src/app/global.scss
+- /apps/frontend/src/app/colors.css
+- /apps/frontend/src/app/global.css
 - /apps/frontend/tailwind.config.cjs
 
 All the --color-custom* are deprecated, don't use them.
@@ -94,7 +94,7 @@ implies behaviour the code doesn't have, **raise it — do not implement it sile
   plus its template block. Method index is in `design/handoff/README.md`.
 - **The prototype outranks the handoff's own markdown docs** when they disagree — read the method,
   not the doc.
-- All colour comes from the token layer in `apps/frontend/src/app/colors.scss`. No hex literals in
+- All colour comes from the token layer in `apps/frontend/src/app/colors.css`. No hex literals in
   components. Missing value → add a token.
 - Do not rewrite handlers, API calls or provider settings while restyling. Those were verified
   against source; "cleaning them up" is a regression. **Copy: visible labels and headings take the
@@ -150,7 +150,7 @@ served from `design/handoff/design/`.
   table you have not shaped — use the spinner. A ghost of the wrong shape is worse than no
   ghost: it promises a layout and then jumps.
 - **Every indefinite animation carries `pq-loop`**, or is switched off by name in the
-  `prefers-reduced-motion` block in `global.scss` when it is applied by selector rather than
+  `prefers-reduced-motion` block in `global.css` when it is applied by selector rather than
   by class. The `loops` check enforces this.
 - **An empty state waits for the fetch.** `useIntegrationList` carries `fallbackData: []`, so
   "this account has no channels" and "the list has not arrived" are the same value. Gate the

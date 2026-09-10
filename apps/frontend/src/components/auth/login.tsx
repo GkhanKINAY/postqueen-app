@@ -16,12 +16,10 @@ import {
   AuthStep,
 } from '@gitroom/frontend/components/auth/auth-shell';
 import { OtpEmailStep } from '@gitroom/frontend/components/auth/otp-email-step';
-type Inputs = {
-  email: string;
-  password: string;
-  providerToken: '';
-  provider: 'LOCAL';
-};
+// The DTO the resolver validates against is the form's shape. Declaring a
+// second, near-identical type let the two drift — this one was missing
+// `datafast_visitor_id` — and @hookform/resolvers 5 checks that they agree.
+type Inputs = LoginUserDto;
 export function Login() {
   const t = useT();
   const [loading, setLoading] = useState(false);

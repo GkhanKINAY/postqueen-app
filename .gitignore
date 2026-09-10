@@ -74,7 +74,6 @@ apps/**/*.js
 apps/**/*.js.map
 libraries/**/*.js
 libraries/**/*.js.map
-!/jest.preset.js
 !apps/frontend/next.config.js
 !libraries/postqueen-wallets/lib/**/*.js
 
@@ -108,3 +107,7 @@ reports/
 # and scripts/ui-migration-check.sh for the regression gate.
 design/handoff/
 docs/ui-shots/
+
+# Prisma 7 generates TypeScript source rather than a package, so it lands in
+# the tree instead of node_modules. Rebuilt by postinstall.
+libraries/nestjs-libraries/src/database/prisma/generated/

@@ -15,7 +15,7 @@ export const modeEmitter = new EventEmitter();
 /**
  * The theme, and the two side effects that go with changing it: the cookie the
  * server reads on the next render, and the class on `<body>` that every token
- * in `colors.scss` resolves through.
+ * in `colors.css` resolves through.
  *
  * Extracted from the component because the redesign moves the control itself
  * into the user menu, while the FREE paywall header still renders the standalone

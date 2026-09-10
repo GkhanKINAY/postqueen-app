@@ -1402,7 +1402,7 @@ export const BillingFeatures: FC<{
     <div className="grid grid-cols-2 gap-x-[18px] gap-y-[10px] mobile:grid-cols-1">
       {features.map((feature) => {
         // The one row the design lets glow — carrying `pq-loop` so
-        // prefers-reduced-motion can switch the loop off (see global.scss).
+        // prefers-reduced-motion can switch the loop off (see global.css).
         const unlimited = feature.key === 'plan_unlimited_channels';
         return (
           <div
