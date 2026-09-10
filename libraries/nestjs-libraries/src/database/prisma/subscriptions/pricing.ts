@@ -68,7 +68,10 @@ export const pricing: PricingInterface = {
     community_features: false,
     featured: false,
     import_from_channels: true,
-    image_generator: false,
+    // `image_generation_count` above is the entitlement; this flag only decides
+    // whether the plan card lists it and whether the picture editor shows its
+    // generator panel. False hid 20 generations a month that Creator has.
+    image_generator: true,
     public_api: true,
     webhooks: 2,
     // Every paid tier has Auto Post (owner, 2026-08-08). It read false here
@@ -161,7 +164,8 @@ export const pricing: PricingInterface = {
     community_features: false,
     featured: false,
     import_from_channels: true,
-    image_generator: false,
+    // See CREATOR: the same 20 generations, hidden by the same flag.
+    image_generator: true,
     public_api: true,
     webhooks: 2,
     autoPost: true,
