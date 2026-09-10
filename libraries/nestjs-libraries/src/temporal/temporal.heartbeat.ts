@@ -18,7 +18,7 @@ const HEARTBEAT_INTERVAL = 15_000;
 // The value hangs off the per-activity Context instance rather than a module
 // or provider field: providers are singletons shared by every activity running
 // on the worker, so anything instance-scoped would report another post's URL.
-const DETAILS = Symbol.for('postiz.heartbeatDetails');
+const DETAILS = Symbol.for('postqueen.heartbeatDetails');
 
 const readDetails = (ctx: any) => ctx[DETAILS];
 
