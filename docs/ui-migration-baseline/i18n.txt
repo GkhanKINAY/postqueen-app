@@ -1469,6 +1469,8 @@ streak_emails_description
 style
 submolt
 subscription_does_not_include_team_members
+subscription_manage_on_platform
+subscription_managed_by
 subscription_reactivate_failed
 subscription_reactivated_successfully
 subscription_update_failed
