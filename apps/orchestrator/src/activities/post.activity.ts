@@ -24,6 +24,11 @@ import {
   postId as postIdSearchParam,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { withHeartbeat } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
+import {
+  BadBody,
+  Disconnect,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 
@@ -186,40 +191,48 @@ export class PostActivity {
     integration: Integration,
     posts: Post[]
   ) {
-    const getIntegration = this._integrationManager.getSocialIntegration(
-      integration.providerIdentifier
-    );
+    // the whole body runs under the workflow's heartbeatTimeout (media
+    // conversion and the platform call can both take minutes), so it
+    // heartbeats end to end - under older workflow versions that set no
+    // heartbeatTimeout this is a no-op
+    return withHeartbeat(() =>
+      this.handleDisconnect(integration, async () => {
+        const getIntegration = this._integrationManager.getSocialIntegration(
+          integration.providerIdentifier
+        );
 
-    const newPosts = await this._postService.updateTags(
-      integration.organizationId,
-      posts
-    );
+        const newPosts = await this._postService.updateTags(
+          integration.organizationId,
+          posts
+        );
 
-    return getIntegration.comment(
-      integration.internalId,
-      postId,
-      lastPostId,
-      integration.token,
-      await Promise.all(
-        (newPosts || []).map(async (p) => ({
-          id: p.id,
-          message: stripHtmlValidation(
-            getIntegration.editor,
-            p.content,
-            true,
-            false,
-            !/<\/?[a-z][\s\S]*>/i.test(p.content),
-            getIntegration.mentionFormat
+        return getIntegration.comment(
+          integration.internalId,
+          postId,
+          lastPostId,
+          integration.token,
+          await Promise.all(
+            (newPosts || []).map(async (p) => ({
+              id: p.id,
+              message: stripHtmlValidation(
+                getIntegration.editor,
+                p.content,
+                true,
+                false,
+                !/<\/?[a-z][\s\S]*>/i.test(p.content),
+                getIntegration.mentionFormat
+              ),
+              settings: JSON.parse(p.settings || '{}'),
+              media: await this._postService.updateMedia(
+                p.id,
+                JSON.parse(p.image || '[]'),
+                getIntegration?.convertToJPEG || false
+              ),
+            }))
           ),
-          settings: JSON.parse(p.settings || '{}'),
-          media: await this._postService.updateMedia(
-            p.id,
-            JSON.parse(p.image || '[]'),
-            getIntegration?.convertToJPEG || false
-          ),
-        }))
-      ),
-      integration
+          integration
+        );
+      })
     );
   }
 
@@ -237,7 +250,58 @@ export class PostActivity {
     return this.postSocialInternal(integration, posts, true);
   }
 
+  // A Disconnect error means the platform will keep rejecting this channel no
+  // matter how many token refreshes (e.g. TikTok's daily active user cap):
+  // mark the channel as needing a re-connect and notify the user, then rethrow
+  // as BadBody so every workflow version - frozen once on main - treats it as
+  // a terminal error without needing a new workflow.
+  private async handleDisconnect<T>(
+    integration: Integration,
+    func: () => Promise<T>
+  ): Promise<T> {
+    try {
+      return await func();
+    } catch (err) {
+      if (err instanceof Disconnect) {
+        try {
+          await this._integrationService.disconnectChannel(
+            integration.organizationId,
+            integration,
+            err.message
+          );
+        } catch (e) {
+          /**empty**/
+        }
+
+        throw new BadBody(
+          integration.providerIdentifier,
+          JSON.stringify({}),
+          Buffer.from('{}'),
+          err.message
+        );
+      }
+
+      throw err;
+    }
+  }
+
   private async postSocialInternal(
+    integration: Integration,
+    posts: Post[],
+    allowPending: boolean
+  ) {
+    // the whole body runs under the workflow's heartbeatTimeout (media
+    // conversion and the platform call can both take minutes), so it
+    // heartbeats end to end - under older workflow versions that set no
+    // heartbeatTimeout this is a no-op
+    return withHeartbeat(() =>
+      this.handleDisconnect(integration, () =>
+        this.postSocialBody(integration, posts, allowPending)
+      )
+    );
+  }
+
+  private async postSocialBody(
     integration: Integration,
     posts: Post[],
     allowPending: boolean
@@ -336,10 +400,8 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
-    return getIntegration.checkPostStatus(
-      integration.token,
-      pendingData,
-      integration
+    return this.handleDisconnect(integration, () =>
+      getIntegration.checkPostStatus(integration.token, pendingData, integration)
     );
   }
 
@@ -349,10 +411,10 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
-    return getIntegration.finalizePost(
-      integration.token,
-      pendingData,
-      integration
+    return withHeartbeat(() =>
+      this.handleDisconnect(integration, () =>
+        getIntegration.finalizePost(integration.token, pendingData, integration)
+      )
     );
   }
 

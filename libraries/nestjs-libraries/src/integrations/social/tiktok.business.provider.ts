@@ -9,6 +9,7 @@ import {
 import dayjs from 'dayjs';
 import {
   BadBody,
+  Disconnect,
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
@@ -18,13 +19,15 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
 @Rules(
   [
     'TikTok Business can have one video or one picture or multiple pictures (up to 35), it cannot be without an attachment.',
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only saves the media as a draft in the user inbox of the TikTok app, where the user must manually complete and publish it. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
     'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
-    'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API has no privacy or music field for video posts, so those settings are discarded when the attachment is a video.',
+    'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API has no privacy field for video posts, so those settings are discarded when the attachment is a video.',
+    'The music setting attaches a commercial music library track (found via the musicSearch function) to a video or photo post, and the location setting tags the post with a location (found via the locationSearch function). Both apply only with content_posting_method=DIRECT_POST. music.audio_volume / music.video_volume (0-100, default 50) apply to video posts only. For photos, autoAddMusic=yes attaches a RANDOM commercial music library track and overrides any music selection - use autoAddMusic=no when the user wants a specific track.',
     'Media is pulled by TikTok from its URL, so the media must be uploaded to PostQueen and the media domain must be a verified URL property of the TikTok Business app.',
   ].join(' ')
 )
@@ -34,7 +37,7 @@ export class TiktokBusinessProvider
 {
   identifier = 'tiktok-business';
   category = 'video' as const;
-  name = 'TikTok\n(Business)';
+  name = 'TikTok';
   isBetweenSteps = false;
   convertToJPEG = true;
   scopes = [
@@ -92,7 +95,7 @@ export class TiktokBusinessProvider
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'disconnect';
         value: string;
       }
     | undefined {
@@ -185,6 +188,17 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value: 'TikTok detected potential spam',
+      };
+    }
+
+    // Unlike the legacy app there is no migration target configured for this
+    // provider, so the cap stays a failed post (re-connecting cannot reset a
+    // daily quota) - if this app is ever migrated too, switch to 'disconnect'.
+    if (body.indexOf('reached_active_user_cap') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'TikTok daily user limit reached, please try again tomorrow',
       };
     }
 
@@ -282,9 +296,7 @@ export class TiktokBusinessProvider
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
-    const {
-      data: { access_token, refresh_token, open_id },
-    } = await (
+    const response = await (
       await fetch(`${this.baseUrl}/tt_user/oauth2/refresh_token/`, {
         method: 'POST',
         headers: {
@@ -298,6 +310,23 @@ export class TiktokBusinessProvider
         }),
       })
     ).json();
+
+    // OAuth failures also arrive as HTTP 200 with a non-zero code and no data -
+    // without this check the destructure below throws an unclassified TypeError.
+    if (response?.code !== 0 || !response?.data?.access_token) {
+      const asString = JSON.stringify(response);
+      const handleError = this.handleErrors(asString);
+      throw new BadBody(
+        'tiktok-business',
+        asString,
+        Buffer.from('{}'),
+        handleError?.value ||
+          response?.message ||
+          'Could not refresh the TikTok access token'
+      );
+    }
+
+    const { access_token, refresh_token, open_id } = response.data;
 
     const { display_name, profile_image, username } =
       await this.fetchUserInformation(access_token, open_id);
@@ -325,6 +354,7 @@ export class TiktokBusinessProvider
         `&redirect_uri=${encodeURIComponent(this.redirectUri())}` +
         `&state=${state}` +
         `&response_type=code` +
+        `&disable_auto_auth=1` +
         `&scope=${encodeURIComponent(this.scopes.join(','))}`,
       codeVerifier: state,
       state,
@@ -336,9 +366,7 @@ export class TiktokBusinessProvider
     codeVerifier: string;
     refresh?: string;
   }) {
-    const {
-      data: { access_token, refresh_token, scope, open_id },
-    } = await (
+    const response = await (
       await fetch(`${this.baseUrl}/tt_user/oauth2/token/`, {
         method: 'POST',
         headers: {
@@ -353,6 +381,24 @@ export class TiktokBusinessProvider
         }),
       })
     ).json();
+
+    // Same HTTP 200 + non-zero code envelope as the refresh call: an expired
+    // auth_code or mismatched redirect_uri must surface TikTok's reason instead
+    // of a TypeError on the destructure.
+    if (response?.code !== 0 || !response?.data?.access_token) {
+      const asString = JSON.stringify(response);
+      const handleError = this.handleErrors(asString);
+      throw new BadBody(
+        'tiktok-business',
+        asString,
+        Buffer.from('{}'),
+        handleError?.value ||
+          response?.message ||
+          'Could not authenticate the TikTok business account'
+      );
+    }
+
+    const { access_token, refresh_token, scope, open_id } = response.data;
 
     this.checkScopes(this.scopes, scope);
 
@@ -398,7 +444,7 @@ export class TiktokBusinessProvider
         )
       ).json();
     } catch (err) {
-      if (err instanceof RefreshToken) {
+      if (err instanceof RefreshToken || err instanceof Disconnect) {
         throw err;
       }
 
@@ -416,6 +462,9 @@ export class TiktokBusinessProvider
       const handleError = this.handleErrors(asString);
       if (handleError?.type === 'refresh-token') {
         throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+      }
+      if (handleError?.type === 'disconnect') {
+        throw new Disconnect('tiktok-business', asString, '{}', handleError.value);
       }
       return { status: 'pending', pendingData };
     }
@@ -504,13 +553,68 @@ export class TiktokBusinessProvider
               is_ai_generated: this.assetBoolean(
                 firstPost.settings.video_made_with_ai
               ),
+              ...(firstPost.settings.location?.id
+                ? {
+                    location_id: firstPost.settings.location.id,
+                    location_name: firstPost.settings.location.name,
+                  }
+                : {}),
+              // The API defaults both volumes to 0 (muted) - the TikTok app
+              // defaults to 50, so a selected track without explicit volumes
+              // follows the app behavior instead of publishing a silent post.
+              ...(firstPost.settings.music?.id
+                ? {
+                    music_sound_info: {
+                      music_sound_id: firstPost.settings.music.id,
+                      music_sound_volume:
+                        typeof firstPost.settings.music.audio_volume !==
+                        'undefined'
+                          ? +firstPost.settings.music.audio_volume
+                          : 50,
+                      video_original_sound_volume:
+                        typeof firstPost.settings.music.video_volume !==
+                        'undefined'
+                          ? +firstPost.settings.music.video_volume
+                          : 50,
+                    },
+                  }
+                : {}),
             }),
       },
     };
   }
 
-  private buildPhotoBody(businessId: string, firstPost: PostDetails<TikTokDto>) {
+  // autoAddMusic picks a random commercial-library track instead of TikTok's
+  // auto_add_music flag, so the attached music is chosen by PostQueen rather than
+  // silently by TikTok. Returns undefined when the trending list is empty or
+  // unavailable - the photo body then falls back to auto_add_music.
+  private async pickRandomMusicId(
+    accessToken: string,
+    businessId: string
+  ): Promise<string | undefined> {
+    const tracks = await this.musicSearch(accessToken, {}, businessId);
+    if (!tracks.length) {
+      return undefined;
+    }
+    return tracks[Math.floor(Math.random() * tracks.length)].id;
+  }
+
+  private async buildPhotoBody(
+    businessId: string,
+    firstPost: PostDetails<TikTokDto>,
+    accessToken: string
+  ) {
     const isDraft = this.contentPostingMethod(firstPost) === 'UPLOAD';
+
+    // Random music wins over an explicitly selected track: the UI hides the
+    // music selector while "add random music" is on, so a stale selection must
+    // not silently override it.
+    const musicId =
+      firstPost.settings.autoAddMusic === 'yes'
+        ? !isDraft
+          ? await this.pickRandomMusicId(accessToken, businessId)
+          : undefined
+        : firstPost.settings.music?.id;
 
     return {
       business_id: businessId,
@@ -533,7 +637,24 @@ export class TiktokBusinessProvider
               privacy_level:
                 firstPost.settings.privacy_level || 'PUBLIC_TO_EVERYONE',
               disable_comment: !this.assetBoolean(firstPost.settings.comment),
-              auto_add_music: firstPost.settings.autoAddMusic === 'yes',
+              // TikTok's own recommended-music flag is only a fallback for
+              // when no track could be picked from the trending list.
+              auto_add_music:
+                !musicId && firstPost.settings.autoAddMusic === 'yes',
+              ...(firstPost.settings.location?.id
+                ? {
+                    location_id: firstPost.settings.location.id,
+                    location_name: firstPost.settings.location.name,
+                  }
+                : {}),
+              // Unlike videos, the photo music_sound_info has no volume fields.
+              ...(musicId
+                ? {
+                    music_sound_info: {
+                      music_sound_id: musicId,
+                    },
+                  }
+                : {}),
             }),
       },
     };
@@ -549,7 +670,7 @@ export class TiktokBusinessProvider
     const isPhoto = !hasExtension(firstPost?.media?.[0]?.path, 'mp4');
 
     const body = isPhoto
-      ? this.buildPhotoBody(id, firstPost)
+      ? await this.buildPhotoBody(id, firstPost, accessToken)
       : this.buildVideoBody(id, firstPost);
 
     const publish = await (
@@ -575,6 +696,14 @@ export class TiktokBusinessProvider
       const handleError = this.handleErrors(asString);
       if (handleError?.type === 'refresh-token') {
         throw new RefreshToken(
+          'tiktok-business',
+          asString,
+          JSON.stringify(body),
+          handleError.value
+        );
+      }
+      if (handleError?.type === 'disconnect') {
+        throw new Disconnect(
           'tiktok-business',
           asString,
           JSON.stringify(body),
@@ -658,6 +787,119 @@ export class TiktokBusinessProvider
     );
   }
 
+  // The trending list has no text search parameter - genre / country / date
+  // range are the only filters - so the UI filters the returned list locally.
+  @Tool({
+    description:
+      'Load commercial music library tracks that can be attached to a post via the "music" setting',
+    dataSchema: [
+      {
+        key: 'genre',
+        type: 'string',
+        description:
+          'Genre to filter the tracks by (for example POP, ROCK, ELECTRONIC), leave empty for all genres',
+      },
+    ],
+  })
+  async musicSearch(
+    accessToken: string,
+    data: { genre?: string },
+    id: string
+  ) {
+    const music = await (
+      await this.fetch(
+        `${this.baseUrl}/discovery/cml/trending_list/?business_id=${encodeURIComponent(
+          id
+        )}${data?.genre ? `&genre=${encodeURIComponent(data.genre)}` : ''}`,
+        {
+          method: 'GET',
+          headers: {
+            'Access-Token': accessToken,
+          },
+        }
+      )
+    ).json();
+
+    // Errors arrive as HTTP 200 with a non-zero code, invisible to this.fetch:
+    // a token error must surface as RefreshToken so the function endpoint
+    // refreshes and retries, anything else just returns no tracks.
+    if (music?.code !== 0) {
+      const asString = JSON.stringify(music);
+      const handleError = this.handleErrors(asString);
+      if (handleError?.type === 'refresh-token') {
+        throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+      }
+      return [];
+    }
+
+    return (music?.data?.list || [])
+      .map((track: any) => ({
+        // music_sound_id only accepts a song_clip_id: the publish endpoints
+        // reject a commercial_music_id with the generic 51065 "Something is
+        // wrong" error (verified against the live API). Chart tracks sometimes
+        // have no full_duration_song_clip - their 30-day trending clip is the
+        // only publishable id (tracks with neither are filtered out below).
+        id:
+          track?.full_duration_song_clip?.song_clip_id ||
+          track?.trending_song_clip?.song_clip_id,
+        title: track?.commercial_music_name || '',
+        artist: track?.artist || '',
+        image: track?.thumbnail_url || '',
+        duration:
+          (track?.duration || track?.trending_song_clip?.duration || 0) * 1000,
+        previewUrl:
+          track?.preview_url || track?.trending_song_clip?.preview_url || '',
+      }))
+      .filter((track: { id?: string }) => track.id);
+  }
+
+  @Tool({
+    description:
+      'Search location tags that can be attached to a post via the "location" setting',
+    dataSchema: [
+      {
+        key: 'q',
+        type: 'string',
+        description: 'Search query for the location',
+      },
+    ],
+  })
+  async locationSearch(accessToken: string, data: { q: string }, id: string) {
+    if (!data?.q) {
+      return [];
+    }
+
+    const locations = await (
+      await this.fetch(
+        `${this.baseUrl}/business/publish/location/?business_id=${encodeURIComponent(
+          id
+        )}&search_query=${encodeURIComponent(data.q.slice(0, 100))}`,
+        {
+          method: 'GET',
+          headers: {
+            'Access-Token': accessToken,
+          },
+        }
+      )
+    ).json();
+
+    // Same HTTP 200 + non-zero code envelope as musicSearch.
+    if (locations?.code !== 0) {
+      const asString = JSON.stringify(locations);
+      const handleError = this.handleErrors(asString);
+      if (handleError?.type === 'refresh-token') {
+        throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+      }
+      return [];
+    }
+
+    return (locations?.data?.locations || []).map((location: any) => ({
+      id: location?.location_id,
+      name: location?.location_name || '',
+      address: location?.location_address || '',
+    }));
+  }
+
   private async loadVideoList(
     accessToken: string,
     businessId: string,
@@ -679,7 +921,26 @@ export class TiktokBusinessProvider
       )
     ).json();
 
+    // Same HTTP 200 + non-zero code envelope: a token error must surface as
+    // RefreshToken so the analytics/missing callers refresh and retry instead
+    // of silently showing empty data until the user reconnects.
+    this.throwIfTokenError(videoListData);
+
     return videoListData?.data?.videos;
+  }
+
+  private throwIfTokenError(body: { code?: number }) {
+    if (body?.code === 0) {
+      return;
+    }
+    const asString = JSON.stringify(body);
+    const handleError = this.handleErrors(asString);
+    if (handleError?.type === 'refresh-token') {
+      throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+    }
+    if (handleError?.type === 'disconnect') {
+      throw new Disconnect('tiktok-business', asString, '{}', handleError.value);
+    }
   }
 
   async analytics(
@@ -692,7 +953,7 @@ export class TiktokBusinessProvider
     try {
       // Real-time account stats (followers, following, likes, videos)
       const userStatsData = await (
-        await fetch(
+        await this.fetch(
           `${this.baseUrl}/business/get/?business_id=${encodeURIComponent(
             id
           )}&fields=${encodeURIComponent(
@@ -711,6 +972,8 @@ export class TiktokBusinessProvider
           }
         )
       ).json();
+
+      this.throwIfTokenError(userStatsData);
 
       const userStats = userStatsData?.data;
 
@@ -799,6 +1062,11 @@ export class TiktokBusinessProvider
 
       return result;
     } catch (err) {
+      // The callers catch RefreshToken and retry with a refreshed token -
+      // swallowing it here would leave the panel empty until a manual reconnect.
+      if (err instanceof RefreshToken || err instanceof Disconnect) {
+        throw err;
+      }
       console.error('Error fetching TikTok Business analytics:', err);
       return [];
     }
@@ -823,6 +1091,9 @@ export class TiktokBusinessProvider
         url: v.thumbnail_url,
       }));
     } catch (err) {
+      if (err instanceof RefreshToken || err instanceof Disconnect) {
+        throw err;
+      }
       console.error('Error fetching TikTok Business missing content:', err);
       return [];
     }
@@ -841,7 +1112,7 @@ export class TiktokBusinessProvider
     // post id first.
     if (postId.indexOf('_pub_url') > -1) {
       const post = await (
-        await fetch(
+        await this.fetch(
           `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
             integrationId
           )}&publish_id=${encodeURIComponent(postId)}`,
@@ -854,6 +1125,8 @@ export class TiktokBusinessProvider
         )
       ).json();
 
+      this.throwIfTokenError(post);
+
       if (!post?.data?.post_ids?.[0]) {
         return [];
       }
@@ -863,7 +1136,7 @@ export class TiktokBusinessProvider
 
     try {
       const videoQueryData = await (
-        await fetch(
+        await this.fetch(
           `${this.baseUrl}/business/video/list/?business_id=${encodeURIComponent(
             integrationId
           )}&fields=${encodeURIComponent(
@@ -879,6 +1152,8 @@ export class TiktokBusinessProvider
           }
         )
       ).json();
+
+      this.throwIfTokenError(videoQueryData);
 
       const video = videoQueryData?.data?.videos?.[0];
 
@@ -922,6 +1197,9 @@ export class TiktokBusinessProvider
 
       return result;
     } catch (err) {
+      if (err instanceof RefreshToken || err instanceof Disconnect) {
+        throw err;
+      }
       console.error('Error fetching TikTok Business post analytics:', err);
       return [];
     }

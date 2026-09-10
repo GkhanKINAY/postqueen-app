@@ -17,6 +17,7 @@ import {
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/facebook.provider';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
@@ -418,7 +419,7 @@ export class InstagramProvider
     const state = makeId(6);
     return {
       url:
-        'https://www.facebook.com/v20.0/dialog/oauth' +
+        `https://www.facebook.com/${META_GRAPH_API_VERSION}/dialog/oauth` +
         `?client_id=${process.env.FACEBOOK_APP_ID}` +
         `&redirect_uri=${encodeURIComponent(
           `${process.env.FRONTEND_URL}/integrations/social/instagram`
@@ -437,7 +438,7 @@ export class InstagramProvider
   }) {
     const getAccessToken = await (
       await fetch(
-        'https://graph.facebook.com/v20.0/oauth/access_token' +
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/oauth/access_token` +
           `?client_id=${process.env.FACEBOOK_APP_ID}` +
           `&redirect_uri=${encodeURIComponent(
             `${process.env.FRONTEND_URL}/integrations/social/instagram${
@@ -451,7 +452,7 @@ export class InstagramProvider
 
     const { access_token, expires_in, ...all } = await (
       await fetch(
-        'https://graph.facebook.com/v20.0/oauth/access_token' +
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/oauth/access_token` +
           '?grant_type=fb_exchange_token' +
           `&client_id=${process.env.FACEBOOK_APP_ID}` +
           `&client_secret=${process.env.FACEBOOK_APP_SECRET}` +
@@ -461,7 +462,7 @@ export class InstagramProvider
 
     const { data } = await (
       await fetch(
-        `https://graph.facebook.com/v20.0/me/permissions?access_token=${access_token}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/me/permissions?access_token=${access_token}`
       )
     ).json();
 
@@ -472,7 +473,7 @@ export class InstagramProvider
 
     const { id, name, picture } = await (
       await fetch(
-        `https://graph.facebook.com/v20.0/me?fields=id,name,picture&access_token=${access_token}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/me?fields=id,name,picture&access_token=${access_token}`
       )
     ).json();
 
@@ -510,7 +511,7 @@ export class InstagramProvider
 
     // Fetch pages the user explicitly shared during the OAuth dialog
     await fetchPaginated(
-      `https://graph.facebook.com/v20.0/me/accounts?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
+      `https://graph.facebook.com/${META_GRAPH_API_VERSION}/me/accounts?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
     );
 
     // Also fetch pages via Business Manager API to discover pages
@@ -518,7 +519,7 @@ export class InstagramProvider
     try {
       let bizUrl:
         | string
-        | undefined = `https://graph.facebook.com/v20.0/me/businesses?access_token=${accessToken}`;
+        | undefined = `https://graph.facebook.com/${META_GRAPH_API_VERSION}/me/businesses?access_token=${accessToken}`;
 
       while (bizUrl) {
         const bizResponse = await (await fetch(bizUrl)).json();
@@ -526,7 +527,7 @@ export class InstagramProvider
           for (const business of bizResponse.data) {
             try {
               await fetchPaginated(
-                `https://graph.facebook.com/v20.0/${business.id}/owned_pages?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
+                `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${business.id}/owned_pages?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
               );
             } catch {
               // Continue with other businesses
@@ -534,7 +535,7 @@ export class InstagramProvider
 
             try {
               await fetchPaginated(
-                `https://graph.facebook.com/v20.0/${business.id}/client_pages?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
+                `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${business.id}/client_pages?fields=id,instagram_business_account,username,name,picture.type(large)&limit=100&access_token=${accessToken}`
               );
             } catch {
               // Continue with other businesses
@@ -555,7 +556,7 @@ export class InstagramProvider
             pageId: p.id,
             ...(await (
               await fetch(
-                `https://graph.facebook.com/v20.0/${p.instagram_business_account.id}?fields=name,profile_picture_url&access_token=${accessToken}`
+                `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${p.instagram_business_account.id}?fields=name,profile_picture_url&access_token=${accessToken}`
               )
             ).json()),
             id: p.instagram_business_account.id,
@@ -578,13 +579,13 @@ export class InstagramProvider
     const [accessToken, userToken] = token.split('___');
     const { access_token, ...all } = await (
       await fetch(
-        `https://graph.facebook.com/v20.0/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.pageId}?fields=access_token,name,picture.type(large)&access_token=${accessToken}`
       )
     ).json();
 
     const { id, name, profile_picture_url, username } = await (
       await fetch(
-        `https://graph.facebook.com/v20.0/${data.id}?fields=username,name,profile_picture_url&access_token=${accessToken}`
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${data.id}?fields=username,name,profile_picture_url&access_token=${accessToken}`
       )
     ).json();
 
@@ -606,7 +607,7 @@ export class InstagramProvider
   ): Promise<string> {
     const { status_code, status } = await (
       await this.fetch(
-        `https://${type}/v20.0/${containerId}?access_token=${checkToken}&fields=status_code,status`,
+        `https://${type}/${META_GRAPH_API_VERSION}/${containerId}?access_token=${checkToken}&fields=status_code,status`,
         undefined,
         '',
         0,
@@ -637,7 +638,7 @@ export class InstagramProvider
     try {
       const { permalink } = await (
         await this.fetch(
-          `https://${type}/v20.0/${mediaId}?fields=permalink&access_token=${checkToken}`
+          `https://${type}/${META_GRAPH_API_VERSION}/${mediaId}?fields=permalink&access_token=${checkToken}`
         )
       ).json();
       return permalink;
@@ -724,7 +725,7 @@ export class InstagramProvider
 
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/v20.0/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}${audioConfiguration}&access_token=${accessToken}${caption}`,
+            `https://${type}/${META_GRAPH_API_VERSION}/${id}/media?${mediaType}${isCarousel}${collaborators}${trialParams}${audioConfiguration}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -856,7 +857,7 @@ export class InstagramProvider
 
         const { id: mediaId } = await (
           await this.fetch(
-            `https://${pendingData.type}/v20.0/${igId}/media_publish?creation_id=${mediaCreationId}&access_token=${accessToken}&field=id`,
+            `https://${pendingData.type}/${META_GRAPH_API_VERSION}/${igId}/media_publish?creation_id=${mediaCreationId}&access_token=${accessToken}&field=id`,
             {
               method: 'POST',
             }
@@ -885,7 +886,7 @@ export class InstagramProvider
       // re-running this is safe)
       const { id: containerId } = await (
         await this.fetch(
-          `https://${pendingData.type}/v20.0/${igId}/media?caption=${encodeURIComponent(
+          `https://${pendingData.type}/${META_GRAPH_API_VERSION}/${igId}/media?caption=${encodeURIComponent(
             pendingData.message || ''
           )}&media_type=CAROUSEL&children=${encodeURIComponent(
             pendingData.containers.join(',')
@@ -909,7 +910,7 @@ export class InstagramProvider
 
     const { id: mediaId } = await (
       await this.fetch(
-        `https://${pendingData.type}/v20.0/${igId}/media_publish?creation_id=${creationId}&access_token=${accessToken}&field=id`,
+        `https://${pendingData.type}/${META_GRAPH_API_VERSION}/${igId}/media_publish?creation_id=${creationId}&access_token=${accessToken}&field=id`,
         {
           method: 'POST',
         }
@@ -1006,7 +1007,7 @@ export class InstagramProvider
 
     const { id: commentId } = await (
       await this.fetch(
-        `https://${type}/v20.0/${postId}/comments?message=${encodeURIComponent(
+        `https://${type}/${META_GRAPH_API_VERSION}/${postId}/comments?message=${encodeURIComponent(
           commentPost.message
         )}&access_token=${accessToken}`,
         {
@@ -1018,7 +1019,7 @@ export class InstagramProvider
     // Get the permalink from the parent post
     const { permalink } = await (
       await this.fetch(
-        `https://${type}/v20.0/${postId}?fields=permalink&access_token=${
+        `https://${type}/${META_GRAPH_API_VERSION}/${postId}?fields=permalink&access_token=${
           userToken || accessToken
         }`
       )
@@ -1088,13 +1089,13 @@ export class InstagramProvider
 
     const { data, ...all } = await (
       await fetch(
-        `https://${type}/v21.0/${id}/insights?metric=follower_count,reach&access_token=${accessToken}&period=day&since=${since}&until=${until}`
+        `https://${type}/${META_GRAPH_API_VERSION}/${id}/insights?metric=follower_count,reach&access_token=${accessToken}&period=day&since=${since}&until=${until}`
       )
     ).json();
 
     const { data: data2, ...all2 } = await (
       await fetch(
-        `https://${type}/v21.0/${id}/insights?metric_type=total_value&metric=likes,views,comments,shares,saves,replies&access_token=${accessToken}&period=day&since=${since}&until=${until}`
+        `https://${type}/${META_GRAPH_API_VERSION}/${id}/insights?metric_type=total_value&metric=likes,views,comments,shares,saves,replies&access_token=${accessToken}&period=day&since=${since}&until=${until}`
       )
     ).json();
     const analytics = [];
@@ -1128,7 +1129,7 @@ export class InstagramProvider
 
   music(accessToken: string, data: { q: string }) {
     return this.fetch(
-      `https://graph.facebook.com/v20.0/music/search?q=${encodeURIComponent(
+      `https://graph.facebook.com/${META_GRAPH_API_VERSION}/music/search?q=${encodeURIComponent(
         data.q
       )}&access_token=${accessToken}`
     );
@@ -1163,7 +1164,7 @@ export class InstagramProvider
 
     const { audio } = await (
       await this.fetch(
-        `https://graph.facebook.com/v22.0/ig_audio?audio_type=${audioType}&user_id=${internalId}${
+        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/ig_audio?audio_type=${audioType}&user_id=${internalId}${
           data?.q ? `&search_query=${encodeURIComponent(data.q)}` : ''
         }&access_token=${userToken || accessToken}`
       )
@@ -1197,7 +1198,7 @@ export class InstagramProvider
       // Fetch media insights from Instagram Graph API
       const { data } = await (
         await fetch(
-          `https://${type}/v21.0/${postId}/insights?metric=views,reach,saved,likes,comments,shares&access_token=${accessToken}`
+          `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=views,reach,saved,likes,comments,shares&access_token=${accessToken}`
         )
       ).json();
 
