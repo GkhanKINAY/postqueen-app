@@ -2476,22 +2476,61 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     try {
-      const invoice = await this.chargeOnceWithTax({
-        customer: org.paymentId,
-        amountCents: LIFETIME_PRICE * 100,
-        description: 'PostQueen — founding member',
-        metadata: {
-          service: SUBSCRIPTION_SERVICE_TAG,
-          organizationId,
-          lifetime_charge: '1',
-        },
-        // Keyed by payment method, not by org alone. Stripe replays a cached
-        // response — including a cached decline — for 24 hours, so an org-only
-        // key meant a customer who was declined, fixed their card, and tried
-        // again got the same decline played back at them for the rest of the
-        // day. Same card still dedupes, which is the double-charge this guards.
-        idempotencyKey: `lifetime-charge-${organizationId}-${defaultPm}`,
-      });
+      // A founding invoice left open by an earlier attempt that was declined.
+      // Paying it again with the same card only repeats the decline, and since
+      // this also runs on a schedule it would repeat every hour, each failure
+      // emailing the customer through `invoice.payment_failed`. So an open one
+      // is retried only when the card on file has changed since the last
+      // attempt, or when the customer asks for it (`force`, from the "End free
+      // trial" button). A changed card pays the same invoice instead of opening
+      // another, so no declined invoice is left stranded beside a paid one.
+      const openInvoice = (
+        await stripe.invoices.list({
+          customer: org.paymentId,
+          status: 'open',
+          limit: 20,
+        })
+      ).data.find((i) => i.metadata?.lifetime_charge === '1');
+
+      let invoice: Stripe.Invoice;
+      if (openInvoice) {
+        // Invoices opened before this marker existed were attempted with the
+        // card on file at the time, which is the best record there is.
+        const lastAttemptPm = openInvoice.metadata?.last_attempt_pm || defaultPm;
+        if (lastAttemptPm === defaultPm && !opts.force) {
+          if (!openInvoice.metadata?.last_attempt_pm) {
+            await stripe.invoices.update(openInvoice.id!, {
+              metadata: { ...openInvoice.metadata, last_attempt_pm: defaultPm },
+            });
+          }
+          return { charged: false, status: 'awaiting_payment_method' };
+        }
+        await stripe.invoices.update(openInvoice.id!, {
+          metadata: { ...openInvoice.metadata, last_attempt_pm: defaultPm },
+        });
+        invoice = await stripe.invoices.pay(openInvoice.id!, {
+          payment_method: defaultPm,
+        });
+      } else {
+        invoice = await this.chargeOnceWithTax({
+          customer: org.paymentId,
+          amountCents: LIFETIME_PRICE * 100,
+          description: 'PostQueen — founding member',
+          metadata: {
+            service: SUBSCRIPTION_SERVICE_TAG,
+            organizationId,
+            lifetime_charge: '1',
+            last_attempt_pm: defaultPm,
+          },
+          // Keyed by payment method, not by org alone. Stripe replays a cached
+          // response — including a cached decline — for 24 hours, so an
+          // org-only key meant a customer who was declined, fixed their card,
+          // and tried again got the same decline played back at them for the
+          // rest of the day. Same card still dedupes, which is the
+          // double-charge this guards.
+          idempotencyKey: `lifetime-charge-${organizationId}-${defaultPm}`,
+        });
+      }
 
       if (invoice.status === 'paid') {
         // The used code carries the invoice id now rather than a PaymentIntent
