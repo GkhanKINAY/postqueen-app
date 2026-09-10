@@ -23,6 +23,19 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
       } catch (err) {
         // Already running is the normal case on every restart after the first.
       }
+
+      try {
+        // Takes the deferred founding fee once a trial has ended, instead of
+        // only when the customer next opens the app.
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('foundingFeeWorkflow', {
+            workflowId: 'founding-fee-sweep',
+            taskQueue: 'main',
+          });
+      } catch (err) {
+        // Already running, as above.
+      }
     }
   }
 }

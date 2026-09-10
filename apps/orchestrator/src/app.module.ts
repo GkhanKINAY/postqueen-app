@@ -7,19 +7,22 @@ import { AutopostActivity } from '@gitroom/orchestrator/activities/autopost.acti
 import { EmailActivity } from '@gitroom/orchestrator/activities/email.activity';
 import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrations.activity';
 import { VideoActivity } from '@gitroom/orchestrator/activities/video.activity';
+import { FoundingFeeActivity } from '@gitroom/orchestrator/activities/founding.fee.activity';
 import { VideoModule } from '@gitroom/nestjs-libraries/videos/video.module';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
 // Activity classes handed to the Temporal worker. AutopostActivity is the one
 // the autopost workflows call (`autoPost`); AutopostService, which was listed
 // here instead, carries no activity methods, so the worker never registered
-// `autoPost` and every autopost run failed at its first activity.
+// `autoPost` and every autopost run failed at its first activity. A class must
+// be in this list, not only in providers, for the worker to register it.
 const activities = [
   PostActivity,
   AutopostActivity,
   EmailActivity,
   IntegrationsActivity,
   VideoActivity,
+  FoundingFeeActivity,
 ];
 @Module({
   imports: [

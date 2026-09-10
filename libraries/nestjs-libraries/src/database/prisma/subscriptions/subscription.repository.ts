@@ -113,6 +113,19 @@ export class SubscriptionRepository {
     });
   }
 
+  // Organizations that bought the founding deal with the charge deferred to
+  // the end of their trial. Whether one still owes it is decided per
+  // organization by `StripeService.isDeferredFoundingFeeOwed`; this only
+  // narrows the search to the ones that could.
+  async getOrgIdsWithDeferredFoundingSetup() {
+    const rows = await this._usedCodes.model.usedCodes.findMany({
+      where: { code: { startsWith: 'lifetime-setup:' } },
+      select: { orgId: true },
+      distinct: ['orgId'],
+    });
+    return rows.map((row) => row.orgId);
+  }
+
   createUsedCode(orgId: string, code: string) {
     return this._usedCodes.model.usedCodes.create({
       data: { code, orgId },
