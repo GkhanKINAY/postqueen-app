@@ -2,10 +2,10 @@
 #
 # Each needs a semver range moved — a change with its own risk — or has no
 # released fix. What is left is almost entirely *transitive*: a dependency
-# pinning an old copy of something the root has already updated. lodash is the
-# clearest example — the root is on 4.18.1, which the advisory is fixed in, and
-# a 4.17.21 copy still arrives underneath something else. Those cannot be
-# closed from here; they close when the package holding them updates.
+# pinning an old copy of something the root cannot move on its own. The
+# OpenTelemetry entries are the clearest example — they arrive as a set pinned
+# together by the package that uses them, and overriding one piece of a set
+# breaks it. Those close when the package holding them updates.
 #
 # This is a list to shrink, and the check names entries that stop appearing so
 # they can be deleted.
@@ -20,32 +20,35 @@
 # way this file can make things worse than having no file — happy-dom and
 # langsmith left with the test stack and the langchain pins, qs / request /
 # tough-cookie / prismjs with the transitive trees that held them.
+# Regenerated 2026-09-11 after the September pass: 54 findings down to 19.
+# multer, nodemailer, sharp and the tiptap family moved within their majors;
+# same-major overrides closed fast-uri, hono, qs, svgo, mysql2, js-yaml 3 and 4,
+# defu, h3, socket.io-parser and the last lodash 4.17 copy. Fourteen entries
+# stopped appearing and are gone. Four new ones need a major the holder has not
+# taken, and are accepted below with the path that brings them in.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
-@hono/node-server GHSA-frvp-7c67-39w9
 @opentelemetry/auto-instrumentations-node GHSA-q7rr-3cgh-j5r3
 @opentelemetry/core GHSA-8988-4f7v-96qf
 @opentelemetry/exporter-prometheus GHSA-q7rr-3cgh-j5r3
 @opentelemetry/propagator-jaeger GHSA-45rx-2jwx-cxfr
 @opentelemetry/sdk-node GHSA-q7rr-3cgh-j5r3
 ai GHSA-rwvc-j5jr-mgvh
-defu GHSA-737v-mqg7-c878
+# query-string 7.1.3 pins decode-uri-component 0.2.2; the fix is 0.5, a line
+# query-string 7 does not accept.
+decode-uri-component GHSA-vcc3-ghjq-m6fr
+# Prisma 7.9.1's own config loader pins deepmerge-ts 7; the fix is 8.
+deepmerge-ts GHSA-ggr8-5vv4-36mx
 elliptic GHSA-848j-6mx2-7j84
 esbuild GHSA-g7r4-m6w7-qqqr
-fast-xml-parser GHSA-8gc5-j5rx-235r
-fast-xml-parser GHSA-gh4j-gqv2-49f6
-fast-xml-parser GHSA-jp2q-39xq-3w4g
 file-type GHSA-5v7r-6r5c-r473
-h3 GHSA-22cc-p3c6-wpvm
-h3 GHSA-4hxc-9384-m385
-h3 GHSA-72gr-qfp7-vwhw
-h3 GHSA-wr4h-v87w-p3r7
 image-size GHSA-5p2g-fcmc-qvqq
 image-size GHSA-w3rx-r6r6-pgpr
 jsondiffpatch GHSA-33vc-wfww-vjfv
-lodash GHSA-f23m-r3pf-42rh
-lodash GHSA-r5fr-rjxr-66jc
-lodash GHSA-xxjr-mmjv-4gpg
+# ai 4 (a peer of @mastra/core's chat package) pins jsondiffpatch 0.6; the
+# fix is 0.7, which ai 4 does not accept.
+jsondiffpatch GHSA-j4fx-xxwh-2485
 quill GHSA-v3m3-f69x-jf25
-socket.io-parser GHSA-2m8v-j782-fhvr
-socket.io-parser GHSA-677m-j7p3-52f9
+# @solana/web3.js 1.98 -> jayson 4 pins stream-json 1; the fix is 3. Reached
+# only by the wallet sign-in.
+stream-json GHSA-528h-pc64-c93x
 uuid GHSA-w5hq-g745-h8pq
