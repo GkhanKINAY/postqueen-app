@@ -37,6 +37,10 @@ export class SubscriptionService {
     return this._subscriptionRepository.getCodesByOrgId(orgId);
   }
 
+  getOrgIdsWithDeferredFoundingSetup() {
+    return this._subscriptionRepository.getOrgIdsWithDeferredFoundingSetup();
+  }
+
   createUsedCode(orgId: string, code: string) {
     return this._subscriptionRepository.createUsedCode(orgId, code);
   }
