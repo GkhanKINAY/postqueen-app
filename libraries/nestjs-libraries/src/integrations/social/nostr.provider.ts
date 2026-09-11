@@ -110,37 +110,39 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     return {};
   }
 
-  private async publish(pubkey: string, event: any) {
-    let id = '';
+  /**
+   * Sends a signed event to every relay in the list and says how many took it.
+   *
+   * This used to read the id back by subscribing to the author's kind-1 notes
+   * and taking the first one a relay returned, which is whatever that relay
+   * holds, not the note just sent: a new key got nothing (the post was saved as
+   * `primal.net/e/undefined`), and a key with history got an older note, so the
+   * post was linked to someone's previous one. The id never needed reading
+   * back; finalizeEvent computes it. And a publish no relay accepted was still
+   * reported as done. Relay.publish resolves when the relay answers OK and
+   * rejects on a refusal or a timeout, so that answer is what counts.
+   */
+  private async publish(event: { id: string }) {
+    let accepted = 0;
     for (const relay of list) {
       try {
         const relayInstance = await Relay.connect(relay);
-        const value = new Promise<any>((resolve) => {
-          relayInstance.subscribe([{ kinds: [1], authors: [pubkey] }], {
-            eoseTimeout: 6000,
-            onevent: (event) => {
-              resolve(event);
-            },
-            oneose: () => {
-              resolve({});
-            },
-            onclose: () => {
-              resolve({});
-            },
-          });
-        });
-
-        await relayInstance.publish(event);
-        const all = await value;
-        relayInstance.close();
-        // relayInstance.close();
-        id = id || all?.id;
+        try {
+          await relayInstance.publish(event as any);
+          accepted++;
+        } finally {
+          relayInstance.close();
+        }
       } catch (err) {
-        /**empty**/
+        // One relay being down or refusing is not a failed post.
       }
     }
 
-    return id;
+    if (!accepted) {
+      throw new Error('No Nostr relay accepted the note');
+    }
+
+    return event.id;
   }
 
   async authenticate(params: {
@@ -197,7 +199,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
       this.secretKeyBytes(password)
     );
 
-    const eventId = await this.publish(id, textEvent);
+    const eventId = await this.publish(textEvent);
 
     return [
       {
@@ -236,7 +238,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
       this.secretKeyBytes(password)
     );
 
-    const eventId = await this.publish(id, textEvent);
+    const eventId = await this.publish(textEvent);
 
     return [
       {
