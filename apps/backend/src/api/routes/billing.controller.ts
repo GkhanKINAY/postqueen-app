@@ -46,6 +46,21 @@ export class BillingController {
     return this._paymentService.getProviderForOrganization(org.id, 'web');
   }
 
+  // With billing off there is nothing to buy, manage or charge, and these
+  // routes would reach Stripe with the `sk_nothing` placeholder from
+  // stripe.service.ts: an error the caller cannot act on, or a 401 that signs
+  // them out. Hiding the pages in the nav is not a control — the routes are
+  // reachable. RevenueCat's /sync and /check/:id are left alone; that provider
+  // does not depend on the Stripe keys.
+  private assertBillingEnabled() {
+    if (!isBillingEnabled()) {
+      throw new HttpException(
+        'Billing is not configured on this installation',
+        HttpStatus.NOT_IMPLEMENTED
+      );
+    }
+  }
+
   private async assertNoOtherSubscribedAccount(user: User) {
     const other = await this._usersService.getUserWithActiveSubscriptionByEmail(
       user.email,
@@ -66,6 +81,9 @@ export class BillingController {
 
   @Get('/check-discount')
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return { offerCoupon: false };
+    }
     return {
       offerCoupon: !(await (await this.provider(org)).checkDiscount(org))
         ? false
@@ -75,6 +93,7 @@ export class BillingController {
 
   @Post('/apply-discount')
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
+    this.assertBillingEnabled();
     // Returns the result, like `apply-lifetime-retention` right below. It used
     // to `await` and discard it, so a 200 with an empty body meant both "the
     // coupon is on" and "nothing was applied" — and the cancel dialog read the
@@ -95,11 +114,13 @@ export class BillingController {
 
   @Post('/apply-lifetime-retention')
   async applyLifetimeRetention(@GetOrgFromRequest() org: Organization) {
+    this.assertBillingEnabled();
     return this._stripeService.applyLifetimeRetentionOffer(org.id);
   }
 
   @Post('/finish-trial')
   async finishTrial(@GetOrgFromRequest() org: Organization) {
+    this.assertBillingEnabled();
     // Two ways a trial ends, and the caller polls `is-trial-finished` until the
     // organization's flag clears either way.
     //
@@ -151,6 +172,11 @@ export class BillingController {
 
   @Get('/is-trial-finished')
   async isTrialFinished(@GetOrgFromRequest() org: Organization) {
+    // Billing off: there is no trial, so it is always over.
+    if (!isBillingEnabled()) {
+      return { finished: true, captureBlocked: false };
+    }
+
     // Lazy capture when the derived trial window has already closed (no
     // finish-trial click). force:false so we never charge mid-trial.
     //
@@ -199,6 +225,7 @@ export class BillingController {
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
+    this.assertBillingEnabled();
     if (await this.assertNoOtherSubscribedAccount(user)) {
       return { blocked: true };
     }
@@ -221,16 +248,7 @@ export class BillingController {
     @Body() body: BillingSubscribeDto,
     @Req() req: Request
   ) {
-    // Without a payment provider this reaches Stripe with the `sk_nothing`
-    // placeholder from stripe.service.ts and comes back as a 500 the caller
-    // cannot act on. Hiding the page in the nav is not a control — the route is
-    // navigable and this endpoint was reachable.
-    if (!isBillingEnabled()) {
-      throw new HttpException(
-        'Billing is not configured on this installation',
-        HttpStatus.NOT_IMPLEMENTED
-      );
-    }
+    this.assertBillingEnabled();
 
     if (await this.assertNoOtherSubscribedAccount(user)) {
       return { blocked: true };
@@ -270,6 +288,7 @@ export class BillingController {
   @Get('/portal')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
+    this.assertBillingEnabled();
     const { url } = await (await this.provider(org)).portalLink(org.id);
     return {
       portal: url,
@@ -278,6 +297,9 @@ export class BillingController {
 
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return null;
+    }
     return this._paymentService.getSubscription(org.id);
   }
 
@@ -288,6 +310,7 @@ export class BillingController {
     @GetUserFromRequest() user: User,
     @Body() body: { feedback: string }
   ) {
+    this.assertBillingEnabled();
     await this._notificationService.sendEmail(
       process.env.EMAIL_FROM_ADDRESS,
       'Subscription Cancelled',
@@ -304,6 +327,7 @@ export class BillingController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: BillingSubscribeDto
   ) {
+    this.assertBillingEnabled();
     return (await this.provider(org)).prorate(org.id, body);
   }
 
@@ -429,6 +453,7 @@ export class BillingController {
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization
   ) {
+    this.assertBillingEnabled();
     const sub =
       await this._subscriptionService.getSubscriptionByOrganizationId(org.id);
     // Paid founding member: no second purchase. Lifetime-on-trial already converted.
@@ -464,6 +489,7 @@ export class BillingController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: LifetimeDto
   ) {
+    this.assertBillingEnabled();
     // The founding-member offer closes 24 hours after registration, and the
     // screen draws a countdown to that moment. A countdown the server does not
     // enforce is decoration — the same lesson as the trial lock: the rule lives

@@ -296,6 +296,11 @@ export class UsersController {
   @Get('/subscription')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async getSubscription(@GetOrgFromRequest() organization: Organization) {
+    // Billing off: no subscription to report, whatever row is left.
+    if (!isBillingEnabled()) {
+      return { subscription: undefined };
+    }
+
     const subscription = await this._paymentService.getSubscription(
       organization.id
     );
