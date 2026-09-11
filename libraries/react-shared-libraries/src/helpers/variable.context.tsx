@@ -108,7 +108,7 @@ const VariableContext = createContext({
   frontEndUrl: '',
   legalUrl: '',
   affiliateUrl: '',
-  supportEmail: 'support@postqueen.ai',
+  supportEmail: '',
   changelogUrl: '',
   communityUrl: '',
   storageProvider: 'local',
