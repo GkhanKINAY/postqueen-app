@@ -399,6 +399,24 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.getChannelHealth(org);
   }
 
+  // A channel whose internalId still equals the account id never finished
+  // page selection, even if a token refresh flipped inBetweenSteps off
+  needsPageSelection(
+    integration: Pick<
+      Integration,
+      'inBetweenSteps' | 'internalId' | 'rootInternalId'
+    >,
+    provider: SocialProvider
+  ) {
+    return (
+      integration.inBetweenSteps ||
+      (provider.isBetweenSteps &&
+        !provider.pageIdMayEqualRootId &&
+        !!integration.rootInternalId &&
+        integration.internalId === integration.rootInternalId)
+    );
+  }
+
   getIntegrationForOrder(id: string, order: string, user: string, org: string) {
     return this._integrationRepository.getIntegrationForOrder(
       id,
@@ -1203,13 +1221,13 @@ export class IntegrationService implements OnModuleInit {
     if (!getIntegration) {
       throw new HttpException('Integration not found', HttpStatus.NOT_FOUND);
     }
-    if (!getIntegration.inBetweenSteps) {
-      throw new HttpException('Invalid request', HttpStatus.BAD_REQUEST);
-    }
-
     const provider = this._integrationManager.getSocialIntegration(
       getIntegration.providerIdentifier
     );
+
+    if (!this.needsPageSelection(getIntegration, provider)) {
+      throw new HttpException('Invalid request', HttpStatus.BAD_REQUEST);
+    }
 
     if (!provider.fetchPageInformation) {
       throw new HttpException(

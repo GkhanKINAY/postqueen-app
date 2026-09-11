@@ -444,6 +444,7 @@ export interface SocialProvider
    * the login that picks the pages). Unset means the provider cannot tell.
    */
   isPageId?: (internalId: string) => boolean;
+  pageIdMayEqualRootId?: boolean;
   scopes: string[];
   externalUrl?: (
     url: string,

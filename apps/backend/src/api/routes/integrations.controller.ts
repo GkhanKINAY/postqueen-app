@@ -143,7 +143,10 @@ export class IntegrationsController {
             canComment: !!findIntegration?.comment,
             picture: p.picture || '/no-picture.jpg',
             identifier: p.providerIdentifier,
-            inBetweenSteps: p.inBetweenSteps,
+            inBetweenSteps: this._integrationService.needsPageSelection(
+              p,
+              findIntegration
+            ),
             refreshNeeded: p.refreshNeeded,
             isCustomFields: !!findIntegration.customFields,
             ...(findIntegration.customFields
@@ -415,6 +418,24 @@ export class IntegrationsController {
       )
     ) {
       throw new BadRequestException('This function cannot be called');
+    }
+
+    // As checkAnalytics does: a token past its stored expiry is refreshed
+    // first, or the page listing fails on it and the picker shows nothing.
+    if (this._refreshIntegrationService.isExpired(getIntegration)) {
+      const data = await this._refreshIntegrationService.refresh(
+        getIntegration
+      );
+
+      if (!data) {
+        return false;
+      }
+
+      getIntegration.token = data.accessToken;
+
+      if (integrationProvider.refreshWait) {
+        await timer(10000);
+      }
     }
 
     // @ts-ignore
