@@ -12,6 +12,7 @@ import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import striptags from 'striptags';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
 // Added to support local storage posting
@@ -81,21 +82,52 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   }
 
   async getBotId(query: { id?: number; word: string }) {
-    // Added allowed_updates Ensure only necessary updates are fetched
-    const res = await telegramBot.getUpdates({
-      ...(query.id ? { offset: query.id } : {}),
-      allowed_updates: ['message', 'channel_post'],
-    });
-    //message.text is for groups, channel_post.text is for channels
-    const match = res.find(
-      (p) =>
-        (p?.message?.text === `/connect ${query.word}` &&
-          p?.message?.chat?.id) ||
-        (p?.channel_post?.text === `/connect ${query.word}` &&
-          p?.channel_post?.chat?.id)
-    );
+    // Every organization connecting a channel polls this same bot, and
+    // `offset` makes Telegram drop every update before it — for all of them.
+    // One organization further along could therefore delete another's
+    // `/connect` message before that one saw it, and its connection simply
+    // never completed. Whoever reads a `/connect` message now records it under
+    // the word it carries, and every poll looks there first.
+    const key = (word: string) => `telegram:connect:${word}`;
+    let found = await ioRedis.get(key(query.word));
+    let res: Awaited<ReturnType<typeof telegramBot.getUpdates>> = [];
+
+    if (!found) {
+      // Added allowed_updates Ensure only necessary updates are fetched
+      res = await telegramBot.getUpdates({
+        ...(query.id ? { offset: query.id } : {}),
+        allowed_updates: ['message', 'channel_post'],
+      });
+
+      for (const update of res) {
+        //message.text is for groups, channel_post.text is for channels
+        const message = update?.message || update?.channel_post;
+        const word = message?.text?.match(/^\/connect (\S+)$/)?.[1];
+        if (word && message?.chat?.id) {
+          await ioRedis.set(
+            key(word),
+            JSON.stringify({
+              chatId: message.chat.id,
+              messageId: message.message_id,
+            }),
+            'EX',
+            15 * 60
+          );
+        }
+      }
+
+      found = await ioRedis.get(key(query.word));
+    }
+
+    const match = found
+      ? (JSON.parse(found) as { chatId: number; messageId: number })
+      : undefined;
+    if (match) {
+      await ioRedis.del(key(query.word));
+    }
+
     // get correct chatId based on the channel type
-    const chatId = match?.message?.chat?.id || match?.channel_post?.chat?.id;
+    const chatId = match?.chatId;
 
     // prevents the code from running while chatId is still undefined to avoid the error 'ETELEGRAM: 400 Bad Request: chat_id is empty'. the code would still work eventually but console spam is not pretty
     if (chatId) {
@@ -104,8 +136,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       // check if the bot is an admin in the chat
       const isAdmin = await this.botIsAdmin(chatId, botId);
       // get the messageId of the message that triggered the connection
-      const connectMessageId =
-        match?.message?.message_id || match?.channel_post?.message_id;
+      const connectMessageId = match!.messageId;
 
       if (!isAdmin) {
         // alternatively you can replace this with a console.log if you do not want to inform the user of the bot's admin status

@@ -27,7 +27,44 @@ export class SubscriptionService {
     type = 'ai_images',
     func: () => Promise<T>
   ): Promise<T> {
-    return this._subscriptionRepository.useCredit(organization, type, func);
+    return this._subscriptionRepository.useCredit(
+      organization,
+      type,
+      func,
+      this.creditWindow(organization, type)
+    );
+  }
+
+  /**
+   * This month's allowance of `type` and the day the month started, or null
+   * when nothing is metered (billing off). Shared by the read (`checkCredits`)
+   * and the write (`useCredit`), so the two cannot count different months.
+   */
+  private creditWindow(organization: Organization, type: string) {
+    if (!isBillingEnabled()) {
+      return null;
+    }
+
+    // @ts-ignore
+    const tier = organization?.subscription?.subscriptionTier || 'FREE';
+
+    if (tier === 'FREE') {
+      return { limit: 0, from: dayjs() };
+    }
+
+    // @ts-ignore
+    let date = dayjs(organization.subscription.createdAt);
+    while (date.isBefore(dayjs())) {
+      date = date.add(1, 'month');
+    }
+
+    return {
+      limit:
+        type === 'ai_images'
+          ? pricing[tier].image_generation_count
+          : pricing[tier].generate_videos,
+      from: date.subtract(1, 'month'),
+    };
   }
 
   getCode(code: string) {
@@ -451,37 +488,23 @@ export class SubscriptionService {
     // which has no Subscription row, counted as FREE and got 0 credits, so every
     // video generation (dashboard, public API, MCP, the orchestrator) was refused
     // with a 402 asking it to upgrade.
-    if (!isBillingEnabled()) {
+    const window = this.creditWindow(organization, checkType);
+    if (!window) {
       return { credits: 1000000 };
     }
 
-    // @ts-ignore
-    const type = organization?.subscription?.subscriptionTier || 'FREE';
-
-    if (type === 'FREE') {
+    if (!window.limit) {
       return { credits: 0 };
     }
 
-    // @ts-ignore
-    let date = dayjs(organization.subscription.createdAt);
-    while (date.isBefore(dayjs())) {
-      date = date.add(1, 'month');
-    }
-
-    const checkFromMonth = date.subtract(1, 'month');
-    const imageGenerationCount =
-      checkType === 'ai_images'
-        ? pricing[type].image_generation_count
-        : pricing[type].generate_videos;
-
     const totalUse = await this._subscriptionRepository.getCreditsFrom(
       organization.id,
-      checkFromMonth,
+      window.from,
       checkType
     );
 
     return {
-      credits: imageGenerationCount - totalUse,
+      credits: window.limit - totalUse,
     };
   }
 

@@ -1,5 +1,9 @@
 import { initializeSentry } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
 initializeSentry('orchestrator', true);
+// The same line as the backend's main.ts. Scheduling code parses naive date
+// strings with a local-time parser, so it has to run in UTC; without this the
+// orchestrator ran in whatever TZ its container was given.
+process.env.TZ = 'UTC';
 import 'source-map-support/register';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
