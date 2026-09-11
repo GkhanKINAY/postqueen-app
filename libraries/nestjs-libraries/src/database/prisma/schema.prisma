@@ -126,6 +126,9 @@ model User {
   sendFailureEmails     Boolean              @default(true)
   sendStreakEmails      Boolean              @default(true)
   deletedAt             DateTime?
+  /// Sessions signed before this are refused. Set when the password changes,
+  /// so a reset ends every session that existed, not only the one in hand.
+  sessionsNotBefore     DateTime?
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")

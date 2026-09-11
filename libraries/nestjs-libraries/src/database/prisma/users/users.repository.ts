@@ -237,6 +237,10 @@ export class UsersRepository {
       },
       data: {
         password: AuthService.hashPassword(password),
+        // Every session signed before this second stops working (see the auth
+        // middleware), so a reset also locks out whoever else held one.
+        // Rounded down because a token's `iat` has one-second resolution.
+        sessionsNotBefore: new Date(Math.floor(Date.now() / 1000) * 1000),
       },
     });
   }

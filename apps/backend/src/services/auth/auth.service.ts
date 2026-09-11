@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { OtpPurpose, Provider, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
@@ -15,6 +15,24 @@ import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newslett
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
+
+// A session lasts as long as the cookie that carries it (one year, set in
+// auth.controller). Before this no token had an expiry at all, so a copied
+// session was good forever.
+const SESSION_LIFETIME = '365d';
+const ACTIVATION_LIFETIME = '7d';
+const RESET_LIFETIME = '20m';
+
+// Compared against when there is no password to compare with, so a login for
+// an unknown address costs the same bcrypt round as a wrong password and the
+// response time no longer says which addresses exist. Made on first use:
+// hashing at import would put a bcrypt round in every process's boot.
+let dummyPasswordHash: string | undefined;
+const passwordHashToCompare = (hash?: string | null) =>
+  hash ||
+  (dummyPasswordHash ??= AuthChecker.hashPassword(
+    randomBytes(16).toString('hex')
+  ));
 
 @Injectable()
 export class AuthService {
@@ -220,14 +238,22 @@ export class AuthService {
           await this._emailService.sendEmail(
             body.email,
             'Activate your account',
-            `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`,
+            `Click <a href="${this.activationLink(
+              create.users[0].user
+            )}">here</a> to activate your account`,
             'top'
           );
         }
         return obj;
       }
 
-      if (!user || !AuthChecker.comparePassword(body.password, user.password)) {
+      // Always one bcrypt round, whether or not the address exists: skipping
+      // it for an unknown address answered in ~1 ms instead of ~100 ms.
+      const passwordMatches = AuthChecker.comparePassword(
+        body.password,
+        passwordHashToCompare(user?.password)
+      );
+      if (!user?.password || !passwordMatches) {
         throw new Error('Invalid user name or password');
       }
 
@@ -371,10 +397,14 @@ export class AuthService {
       return false;
     }
 
-    const resetValues = AuthChecker.signJWT({
-      id: user.id,
-      expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
-    });
+    const resetValues = AuthChecker.signJWT(
+      {
+        id: user.id,
+        purpose: 'reset',
+        expires: dayjs().add(20, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
+      },
+      { expiresIn: RESET_LIFETIME }
+    );
 
     await this._notificationService.sendEmail(
       user.email,
@@ -384,17 +414,21 @@ export class AuthService {
   }
 
   forgotReturn(body: ForgotReturnPasswordDto) {
-    const user = AuthChecker.verifyJWT(body.token) as {
-      id: string;
-      expires: string;
-    };
+    let user: { id?: string; expires?: string; purpose?: string };
+    try {
+      user = AuthChecker.verifyJWT(body.token) as typeof user;
+    } catch {
+      // Expired (reset links now carry `exp`) or not ours: the same answer as
+      // a link past its 20 minutes, not a 500.
+      return false;
+    }
 
     // `expires` has to be *present*, not just in the future. `dayjs(undefined)`
     // is now, and `now.isBefore(now)` is false, so a token carrying no `expires`
     // at all sailed straight through the check below.
     //
-    // That matters because every token this app signs uses the same key and
-    // none of them declare a purpose — and the session cookie is the whole User
+    // That matters because every token this app signs uses the same key, a
+    // session declares no purpose, and the session cookie is the whole User
     // row, which has an `id` and no `expires` and no expiry of its own. So any
     // place a session token leaked (a log line, a Referer header, the plaintext
     // `auth` response header under NOT_SECURED) it could be replayed here as a
@@ -404,32 +438,58 @@ export class AuthService {
       return false;
     }
 
+    // A token minted for anything else is not a reset link. Links sent before
+    // `purpose` existed have none, and are at most 20 minutes old.
+    if (user.purpose && user.purpose !== 'reset') {
+      return false;
+    }
+
     if (dayjs(user.expires).isBefore(dayjs())) {
       return false;
     }
 
+    // Also ends every session signed before now (users.repository).
     return this._userService.updatePassword(user.id, body.password);
   }
 
   async activate(code: string, tracking: string) {
-    const user = AuthChecker.verifyJWT(code) as {
-      id: string;
-      activated: boolean;
-      email: string;
+    let token: {
+      id?: string;
+      email?: string;
+      activated?: boolean;
+      purpose?: string;
     };
-    if (user.id && !user.activated) {
-      const getUserAgain = await this._userService.getUserByEmail(user.email);
-      if (getUserAgain.activated) {
-        return false;
-      }
-      await this._userService.activateUser(user.id);
-      user.activated = true;
-      this._track('register', user.email, tracking).catch((err) => {});
-      await NewsletterService.register(user.email);
-      return this.jwt(user as any);
+    try {
+      token = AuthChecker.verifyJWT(code) as typeof token;
+    } catch {
+      // Expired, or not a token of ours. The page handles `{ can: false }`;
+      // a throw here was a 500.
+      return false;
     }
 
-    return false;
+    // `purpose: 'activate'` since activation links stopped being sessions.
+    // Links sent before that are the session token of an account that was not
+    // activated yet, so a token without a purpose is honoured only in that
+    // shape.
+    const isActivation =
+      token?.purpose === 'activate' ||
+      (!token?.purpose && token?.activated === false);
+    if (!token?.id || !isActivation) {
+      return false;
+    }
+
+    const user = await this._userService.getUserById(token.id);
+    if (!user || user.activated) {
+      return false;
+    }
+
+    await this._userService.activateUser(user.id);
+    user.activated = true;
+    this._track('register', user.email, tracking).catch((err) => {});
+    await NewsletterService.register(user.email);
+    // Signed from the row, not from the link, so none of the link's claims
+    // end up in the session.
+    return this.jwt(user);
   }
 
   async resendActivationEmail(email: string) {
@@ -443,12 +503,12 @@ export class AuthService {
       throw new Error('Account is already activated');
     }
 
-    const jwt = await this.jwt(user);
-
     await this._emailService.sendEmail(
       user.email,
       'Activate your account',
-      `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${jwt}">here</a> to activate your account`,
+      `Click <a href="${this.activationLink(
+        user
+      )}">here</a> to activate your account`,
       'top'
     );
 
@@ -494,10 +554,25 @@ export class AuthService {
     return { token };
   }
 
+  // The link used to be the session token itself, so the email carried a
+  // session. It holds only what `activate` needs, and a `purpose` the auth
+  // middleware refuses.
+  private activationLink(user: { id: string; email: string }) {
+    const token = AuthChecker.signJWT(
+      { id: user.id, email: user.email, purpose: 'activate' },
+      { expiresIn: ACTIVATION_LIFETIME }
+    );
+    return `${process.env.FRONTEND_URL}/auth/activate/${token}`;
+  }
+
   private async jwt(user: User) {
-    if (user.password) {
-      delete user.password;
+    // The row, never claims left over from a token it was read out of: `sign`
+    // refuses a payload that already has `exp` when `expiresIn` is given, and
+    // a `purpose` would make the middleware refuse the session issued here.
+    const session: Record<string, unknown> = { ...user };
+    for (const claim of ['password', 'iat', 'exp', 'purpose', 'expires']) {
+      delete session[claim];
     }
-    return AuthChecker.signJWT(user);
+    return AuthChecker.signJWT(session, { expiresIn: SESSION_LIFETIME });
   }
 }
