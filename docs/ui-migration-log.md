@@ -1072,6 +1072,17 @@ modal (`pre-condition.component.tsx`), and the global 406 "finish the trial"
 and 402 "move to billing" dialogs (`layout.context.tsx`, which answer the way a
 dismissed dialog does). No new i18n keys.
 
+**i18n +6 (connection panels point self-hosted tools at their own API).** The
+CLI, the skill, the SDK and the n8n node all default to the hosted API
+(`POSTQUEEN_API_URL` / the n8n credential's Host), and the panels only said to
+export the key, so a self-hoster following them sent it to the hosted service.
+When the instance is not on postqueen.ai (`needsApiUrl`), the skill and CLI
+callouts and the skill, CLI, SDK and n8n catalog steps now add the address:
+`conn_step_api_url(_detail)`, `conn_sdk_step_url(_detail)`,
+`conn_n8n_step_host(_detail)`. On the hosted service nothing new renders. The
+MCP and REST URLs are also made absolute (`absoluteApiUrl`), since behind the
+relative `/api` dev proxy they came out as paths nothing else could use.
+
 ## Dependency upgrade pass
 
 Every package that could go to latest did, ahead of launch, on the argument that

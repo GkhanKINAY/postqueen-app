@@ -136,6 +136,38 @@ export type ConnectionsCatalogContext = {
   apiKey?: string;
   /** If set, preferred over apiKey when building code strings. */
   apiKeyMasked?: string;
+  /**
+   * Set only when the CLI, the skill, the SDK and the n8n node have to be told
+   * where the API is: they all default to the hosted one.
+   */
+  apiUrl?: string;
+};
+
+/**
+ * The API base to paste into other programs, absolute even when the frontend
+ * reaches the backend through a relative path (the `/api` dev proxy).
+ */
+export const absoluteApiUrl = (backendUrl: string) => {
+  try {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    return new URL(backendUrl || '/api', origin).toString().replace(/\/$/, '');
+  } catch {
+    return backendUrl;
+  }
+};
+
+/**
+ * Whether the tools need POSTQUEEN_API_URL (or n8n's Host). They default to the
+ * hosted API, so an instance anywhere but postqueen.ai must say where it is, or
+ * the key it hands out is sent to the hosted service instead.
+ */
+export const needsApiUrl = (apiUrl: string) => {
+  try {
+    return !/(^|\.)postqueen\.ai$/.test(new URL(apiUrl).hostname);
+  } catch {
+    return true;
+  }
 };
 
 export const CONNECT_NAV_CONNECTORS: {
@@ -279,8 +311,20 @@ export function findConnection(
 export function buildConnectionsCatalog(
   ctx: ConnectionsCatalogContext
 ): Group[] {
-  const { t, backendUrl, mcpUrl } = ctx;
+  const { t, backendUrl, mcpUrl, apiUrl } = ctx;
   const apiKey = ctx.apiKeyMasked ?? ctx.apiKey ?? '';
+  const apiUrlStep: Step[] = apiUrl
+    ? [
+        {
+          title: t('conn_step_api_url', 'Point it at your server'),
+          detail: t(
+            'conn_step_api_url_detail',
+            'The skill, the CLI and the SDK call the hosted API unless told otherwise. Export this next to the key.'
+          ),
+          code: `export POSTQUEEN_API_URL="${apiUrl}"`,
+        },
+      ]
+    : [];
   const mcpUrlWithKey = `${mcpUrl}/${apiKey}`;
 
   const defaultPrompts = [
@@ -312,6 +356,7 @@ export function buildConnectionsCatalog(
       ),
       code: `export POSTQUEEN_API_KEY="${apiKey}"`,
     },
+    ...apiUrlStep,
   ];
 
   const mcpUrlStep = (verify: string, verifyCode?: string): Step[] => [
@@ -1043,6 +1088,18 @@ export function buildConnectionsCatalog(
               ),
               code: apiKey,
             },
+            ...(apiUrl
+              ? [
+                  {
+                    title: t('conn_n8n_step_host', 'Set the Host'),
+                    detail: t(
+                      'conn_n8n_step_host_detail',
+                      "In the same credential, replace the default Host with your server's API address."
+                    ),
+                    code: apiUrl,
+                  },
+                ]
+              : []),
             {
               title: t(
                 'conn_n8n_step_trigger',
@@ -1298,6 +1355,7 @@ export function buildConnectionsCatalog(
               ),
               code: `export POSTQUEEN_API_KEY="${apiKey}"`,
             },
+            ...apiUrlStep,
             {
               title: t('conn_cli_step_try', 'Try it'),
               detail: t(
@@ -1393,6 +1451,18 @@ export function buildConnectionsCatalog(
               ),
               code: `POSTQUEEN_API_KEY="${apiKey}"`,
             },
+            ...(apiUrl
+              ? [
+                  {
+                    title: t('conn_sdk_step_url', 'Point it at your server'),
+                    detail: t(
+                      'conn_sdk_step_url_detail',
+                      'The client calls the hosted API by default. Set this, or pass the URL as the second argument: new PostQueen(key, url).'
+                    ),
+                    code: `POSTQUEEN_API_URL="${apiUrl}"`,
+                  },
+                ]
+              : []),
           ],
         },
         {
