@@ -102,7 +102,12 @@ export class WordpressProvider
 
     // Normalize the domain - users often paste it with surrounding whitespace
     // or a trailing slash, which would otherwise build `https://site.com//wp-json/...`.
-    const domain = body.domain.trim().replace(/\/+$/, '');
+    // A loop rather than /\/+$/: that pattern backtracks quadratically on a
+    // long run of slashes that is not at the end.
+    let domain = body.domain.trim();
+    while (domain.endsWith('/')) {
+      domain = domain.slice(0, -1);
+    }
 
     const auth = Buffer.from(`${body.username}:${body.password}`).toString(
       'base64'
@@ -141,8 +146,12 @@ export class WordpressProvider
       } catch (err) {
         // Non-JSON error body (e.g. an HTML page from a security plugin).
       }
+      // The domain goes in as an argument, not into the format string, where a
+      // `%s` in it would be read as a directive.
       console.log(
-        `WordPress auth failed for ${domain} (HTTP ${response.status})`,
+        'WordPress auth failed for %s (HTTP %d)',
+        domain,
+        response.status,
         JSON.stringify({
           code: wpCode,
           message: wpMessage,
