@@ -34,9 +34,6 @@
 # @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
 # 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
-# The OTLP trace exporters (via langsmith and Sentry's optional peer) hold core
-# 2.0.1; the advisory is in the inbound baggage propagator, which they do not use.
-@opentelemetry/core GHSA-8988-4f7v-96qf
 # query-string 7.1.3 pins decode-uri-component 0.2.2; the fix is 0.5, a line
 # query-string 7 does not accept.
 decode-uri-component GHSA-vcc3-ghjq-m6fr
