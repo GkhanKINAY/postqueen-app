@@ -37,7 +37,9 @@ export class TiktokBusinessProvider
 {
   identifier = 'tiktok-business';
   category = 'video' as const;
-  name = 'TikTok';
+  // Add Channel lists both TikTok connections by this name; two cards reading
+  // "Tiktok" and "TikTok" gave no way to tell them apart.
+  name = 'TikTok Business';
   isBetweenSteps = false;
   convertToJPEG = true;
   scopes = [
