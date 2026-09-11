@@ -8,6 +8,8 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useFeatureSetupHint } from '@gitroom/frontend/components/media/feature.setup.hint';
 const list = [
   'Realistic',
   'Cartoon',
@@ -188,9 +190,21 @@ export const AiImage: FC<{
   const [loading, setLoading] = useState(false);
   const modals = useModals();
   const canOpen = useOpenGuard();
+  const { aiEnabled } = useVariables();
+  const setupHint = useFeatureSetupHint();
 
   const openImageModal = useCallback(() => {
     if (loading || !canOpen()) {
+      return;
+    }
+    // Only reachable on a self-hosted instance without a key; the hosted
+    // service does not render the button then.
+    if (!aiEnabled) {
+      setupHint(
+        t('generate_image', 'Generate image'),
+        'OPENAI_API_KEY',
+        'https://docs.postqueen.ai/configuration/reference'
+      );
       return;
     }
     modals.openModal({
@@ -203,7 +217,7 @@ export const AiImage: FC<{
         />
       ),
     });
-  }, [loading, canOpen, onChange, modals, t]);
+  }, [loading, canOpen, onChange, modals, t, aiEnabled, setupHint]);
 
   return (
     <div className="relative">

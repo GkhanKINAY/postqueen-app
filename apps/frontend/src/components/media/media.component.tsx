@@ -16,6 +16,8 @@ import { ReactSortable } from 'react-sortablejs';
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { AiVideo } from '@gitroom/frontend/components/launches/ai.video';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useFeatureSetupHint } from '@gitroom/frontend/components/media/feature.setup.hint';
 import {
   InsertMediaIcon,
   DesignMediaIcon,
@@ -178,6 +180,12 @@ export const MultiMediaComponent: FC<{
   const user = useUser();
   const modals = useModals();
   const t = useT();
+  const { billingEnabled, plontoKey, aiEnabled } = useVariables();
+  const setupHint = useFeatureSetupHint();
+  // The hosted service hides what it has no key for. A self-hosted instance
+  // keeps the button and explains how to switch it on (FeatureSetupHint).
+  const showDesign = !billingEnabled || !!plontoKey;
+  const showAiImage = !billingEnabled || aiEnabled;
   useEffect(() => {
     setCurrentMedia(value);
   }, [value]);
@@ -262,6 +270,14 @@ export const MultiMediaComponent: FC<{
   );
 
   const designMedia = useCallback(() => {
+    if (!plontoKey) {
+      setupHint(
+        t('design_media', 'Design Media'),
+        'NEXT_PUBLIC_POLOTNO',
+        'https://docs.postqueen.ai/configuration/polotno'
+      );
+      return;
+    }
     if (!!user?.tier?.ai && !dummy) {
       modals.openModal({
         askClose: false,
@@ -275,7 +291,7 @@ export const MultiMediaComponent: FC<{
     // `user` and `dummy` are read inside, and `changeMedia` no longer changes
     // identity with the media list, so they have to be declared here or this
     // callback keeps its first-render capture of the tier gate.
-  }, [changeMedia, user, dummy, modals, t]);
+  }, [changeMedia, user, dummy, modals, t, plontoKey, setupHint]);
 
   if (ghost && ghostPart === 'thumbs' && !currentMedia?.length) {
     return null;
@@ -500,6 +516,7 @@ export const MultiMediaComponent: FC<{
                     {t('insert_media', 'Insert media')}
                   </span>
                 </button>
+                {showDesign && (
                 <button
                   type="button"
                   onClick={designMedia}
@@ -522,6 +539,7 @@ export const MultiMediaComponent: FC<{
                     {t('design_media', 'Design Media')}
                   </span>
                 </button>
+                )}
 
                 {!attachmentsOnly && (
                   <>
@@ -534,12 +552,14 @@ export const MultiMediaComponent: FC<{
 
                     {!!user?.tier?.ai && (
                       <>
-                        <AiImage
-                          ghost={ghost}
-                          compact={compact}
-                          value={text}
-                          onChange={changeMedia}
-                        />
+                        {showAiImage && (
+                          <AiImage
+                            ghost={ghost}
+                            compact={compact}
+                            value={text}
+                            onChange={changeMedia}
+                          />
+                        )}
                         <AiVideo
                           ghost={ghost}
                           compact={compact}
@@ -600,6 +620,10 @@ export const MediaComponent: FC<{
 
   const { name, type, label, description, onChange, value, width, height } =
     props;
+  const { billingEnabled, plontoKey } = useVariables();
+  const setupHint = useFeatureSetupHint();
+  // Same rule as Design Media above.
+  const showDesign = !billingEnabled || !!plontoKey;
   const [currentMedia, setCurrentMedia] = useState(value);
   useEffect(() => {
     setCurrentMedia(value);
@@ -621,6 +645,14 @@ export const MediaComponent: FC<{
     [name, onChange]
   );
   const showDesignModal = useCallback(() => {
+    if (!plontoKey) {
+      setupHint(
+        t('media_editor', 'Media Editor'),
+        'NEXT_PUBLIC_POLOTNO',
+        'https://docs.postqueen.ai/configuration/polotno'
+      );
+      return;
+    }
     modals.openModal({
       title: t('media_editor', 'Media Editor'),
       askClose: false,
@@ -637,7 +669,7 @@ export const MediaComponent: FC<{
         />
       ),
     });
-  }, [t, width, height, changeMedia, modals]);
+  }, [t, width, height, changeMedia, modals, plontoKey, setupHint]);
   const showModal = useCallback(() => {
     modals.openModal({
       title: t('media_library', 'Media Library'),
@@ -679,9 +711,11 @@ export const MediaComponent: FC<{
       )}
       <div className="flex gap-[5px]">
         <Button onClick={showModal}>{t('select', 'Select')}</Button>
-        <Button onClick={showDesignModal} className="!bg-customColor45">
-          {t('editor', 'Editor')}
-        </Button>
+        {showDesign && (
+          <Button onClick={showDesignModal} className="!bg-customColor45">
+            {t('editor', 'Editor')}
+          </Button>
+        )}
         <Button secondary={true} onClick={clearMedia}>
           {t('clear', 'Clear')}
         </Button>
