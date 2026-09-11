@@ -89,7 +89,12 @@ export class IntegrationValidationTool implements AgentToolInterface {
 
         if (!integration) {
           return {
-            output: { rules: '', maxLength: 0, settings: {}, tools: [] },
+            output: {
+              rules: '',
+              maxLength: 0,
+              settings: {},
+              tools: [] as ReturnType<IntegrationManager['getAllTools']>[string],
+            },
           };
         }
 
