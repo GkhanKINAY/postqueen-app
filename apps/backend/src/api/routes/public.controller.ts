@@ -257,8 +257,16 @@ export class PublicController {
       throw new Error(`Upstream error: ${r.statusText}`);
     }
 
-    const type = r.headers.get('content-type') ?? 'application/octet-stream';
-    res.setHeader('Content-Type', type);
+    // This answers on the app's own origin, so whatever it serves is read as
+    // ours: only a video type goes out. Anything else (a CDN's
+    // application/octet-stream, or a page that merely ends in "mp4") is sent as
+    // video/mp4, which a player still plays and nothing ever executes.
+    const remoteType = (r.headers.get('content-type') || '').toLowerCase();
+    res.setHeader(
+      'Content-Type',
+      remoteType.startsWith('video/') ? remoteType : 'video/mp4'
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
 
     const contentRange = r.headers.get('content-range');
     if (contentRange) res.setHeader('Content-Range', contentRange);
