@@ -54,7 +54,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           frontEndUrl={process.env.FRONTEND_URL!}
           legalUrl={process.env.LEGAL_URL || ''}
           affiliateUrl={process.env.AFFILIATE_URL || ''}
-          supportEmail={process.env.SUPPORT_EMAIL || 'support@postqueen.ai'}
+          // Our support address only on the hosted service. A self-hosted instance
+          // leaves it empty unless SUPPORT_EMAIL is set, and the help menu hides the
+          // mail rows, instead of sending its users' reports to us.
+          supportEmail={
+            process.env.SUPPORT_EMAIL ||
+            (isBillingEnabled() ? 'support@postqueen.ai' : '')
+          }
           changelogUrl={process.env.CHANGELOG_URL || ''}
           communityUrl={process.env.COMMUNITY_URL || ''}
           isGeneral={!!process.env.IS_GENERAL}

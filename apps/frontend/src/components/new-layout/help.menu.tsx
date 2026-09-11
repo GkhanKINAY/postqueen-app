@@ -66,10 +66,13 @@ const ICON_COMMUNITY =
  * Checkout (`surface="checkout"`): no tour — there is nothing to tour from the
  * paywall. Same support and bug rows as the app menu.
  *
- * Contact support and Report a bug are always reachable. Chatbase and Sentry
- * are the richer paths, but both are optional per deployment and a menu whose
- * only working row is Documentation is not a help menu — so each falls back to
- * a pre-filled mail draft carrying the build and the page it was sent from.
+ * Contact support and Report a bug are reachable whenever there is somewhere
+ * to send them. Chatbase and Sentry are the richer paths, but both are
+ * optional per deployment and a menu whose only working row is Documentation
+ * is not a help menu — so each falls back to a pre-filled mail draft carrying
+ * the build and the page it was sent from. The draft needs a support address
+ * (SUPPORT_EMAIL, or ours on the hosted service); a self-hosted instance
+ * without one shows neither mail row rather than mailing its reports to us.
  */
 export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
   surface = 'app',
@@ -294,7 +297,8 @@ export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
                 t('contact_support', 'Contact support'),
                 'support'
               )
-            : mail(
+            : !!supportEmail &&
+              mail(
                 mailto(
                   t('support_mail_subject', 'PostQueen support'),
                   t(
@@ -319,6 +323,7 @@ export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
               {t('report_a_bug', 'Report a bug')}
             </button>
           ) : (
+            !!supportEmail &&
             mail(
               mailto(
                 t('bug_mail_subject', 'PostQueen bug report'),

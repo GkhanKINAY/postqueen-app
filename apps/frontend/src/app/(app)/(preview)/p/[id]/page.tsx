@@ -22,7 +22,7 @@ function formatProfileHandle(profile?: string | null) {
 function absoluteMediaUrl(path: string | undefined | null): string | undefined {
   if (!path) return undefined;
   if (/^https?:\/\//i.test(path)) return path;
-  const base = process.env.FRONTEND_URL || 'https://postqueen.com';
+  const base = process.env.FRONTEND_URL || 'http://localhost:4200';
   try {
     return new URL(path.startsWith('/') ? path : `/${path}`, base).toString();
   } catch {

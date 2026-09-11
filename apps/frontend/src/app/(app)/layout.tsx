@@ -39,7 +39,8 @@ function metadataBaseUrl(): URL {
   } catch {
     /* fall through */
   }
-  return new URL('https://postqueen.com');
+  // Only reached without a usable FRONTEND_URL. postqueen.com is not ours.
+  return new URL('http://localhost:4200');
 }
 
 export const metadata: Metadata = {
@@ -112,7 +113,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL!}
           plontoKey={process.env.NEXT_PUBLIC_POLOTNO!}
           stripeClient={process.env.STRIPE_PUBLISHABLE_KEY!}
-          isChatBase={!!process.env.CHATBASE_TOKEN}
+          // The widget needs both; a token alone loaded it with an empty bot id.
+          isChatBase={
+            !!process.env.CHATBASE_TOKEN && !!process.env.CHATBASE_BOT_ID
+          }
           chatbaseBotId={process.env.CHATBASE_BOT_ID || ''}
           onboardingVideoUrl={process.env.ONBOARDING_VIDEO_URL || ''}
           repositoryUrl={process.env.REPOSITORY_URL || ''}
@@ -124,7 +128,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           frontEndUrl={process.env.FRONTEND_URL!}
           legalUrl={process.env.LEGAL_URL || ''}
           affiliateUrl={process.env.AFFILIATE_URL || ''}
-          supportEmail={process.env.SUPPORT_EMAIL || 'support@postqueen.ai'}
+          // Our support address only on the hosted service. A self-hosted instance
+          // leaves it empty unless SUPPORT_EMAIL is set, and the help menu hides the
+          // mail rows, instead of sending its users' reports to us.
+          supportEmail={
+            process.env.SUPPORT_EMAIL ||
+            (isBillingEnabled() ? 'support@postqueen.ai' : '')
+          }
           changelogUrl={process.env.CHANGELOG_URL || ''}
           communityUrl={process.env.COMMUNITY_URL || ''}
           isGeneral={!!process.env.IS_GENERAL}
