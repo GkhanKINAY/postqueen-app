@@ -5,7 +5,7 @@ import {
   PendingCheckResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { ApplicationFailure } from '@temporalio/activity';
-import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
+import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   getSsrfSafeAxios,

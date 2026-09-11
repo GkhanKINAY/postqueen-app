@@ -8,7 +8,7 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import sharp from 'sharp';
 import { lookup } from 'mime-types';
-import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
+import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
