@@ -135,15 +135,20 @@ export class UsersController {
         ? 10000
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
-      tier:
-        // @ts-ignore
-        organization?.subscription?.subscriptionTier ||
-        // Self-host / billing off: top sellable tier. Otherwise FREE.
-        (!isBillingEnabled() ? 'AGENCY' : 'FREE'),
+      // Self-host / billing off: everything is open, so the top sellable tier,
+      // whatever Subscription row the database still holds. A row left from a
+      // time billing was on (or from testing) used to win here and put a paid
+      // tier's feature locks and the founding chip on an instance that sells
+      // nothing — the same reason totalChannels and isTrailing ignore it.
+      tier: !isBillingEnabled()
+        ? 'AGENCY'
+        : // @ts-ignore
+          organization?.subscription?.subscriptionTier || 'FREE',
       // @ts-ignore
       role: organization?.users[0]?.role,
-      // @ts-ignore
-      isLifetime: !!organization?.subscription?.isLifetime,
+      isLifetime:
+        // @ts-ignore
+        isBillingEnabled() && !!organization?.subscription?.isLifetime,
       admin: !!user.isSuperAdmin,
       impersonate: !!impersonate,
       isTrailing: !isBillingEnabled()
