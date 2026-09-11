@@ -66,10 +66,17 @@ export class AuthMiddleware implements NestMiddleware {
       // Verify the JWT signature only. Never trust authorization-relevant
       // claims (id, isSuperAdmin, activated) from the token body — always
       // re-resolve the user from the database using the id.
-      const payload = AuthService.verifyJWT(auth) as User | null;
+      const payload = AuthService.verifyJWT(auth) as
+        | (User & { purpose?: string; expires?: string; iat?: number })
+        | null;
       const orgHeader = req.cookies.showorg || req.headers.showorg;
 
-      if (!payload?.id) {
+      // Only a session authenticates. Reset and activation links are signed
+      // with the same key and carry a `purpose` (reset links from before that
+      // carry `expires`), and both used to pass here as a session that never
+      // expired — found in browser history or a mail scanner's log, pasted
+      // into the cookie.
+      if (!payload?.id || payload.purpose || payload.expires) {
         throw new HttpForbiddenException();
       }
 
@@ -80,6 +87,16 @@ export class AuthMiddleware implements NestMiddleware {
       }
 
       if (!user.activated) {
+        throw new HttpForbiddenException();
+      }
+
+      // Signed before the password last changed. A reset ends every session
+      // that existed, including one somebody else was holding. `iat` is in
+      // seconds; `sessionsNotBefore` is stored rounded down to one.
+      if (
+        user.sessionsNotBefore &&
+        (payload.iat ?? 0) * 1000 < new Date(user.sessionsNotBefore).getTime()
+      ) {
         throw new HttpForbiddenException();
       }
 

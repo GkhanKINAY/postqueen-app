@@ -327,7 +327,10 @@ export class OAuthService {
       if (
         !clientSecret ||
         !app.clientSecret ||
-        app.clientSecret !== AuthService.fixedEncryption(clientSecret)
+        !AuthService.safeEqual(
+          app.clientSecret,
+          AuthService.fixedEncryption(clientSecret)
+        )
       ) {
         throw new HttpException(
           { error: 'invalid_client' },
