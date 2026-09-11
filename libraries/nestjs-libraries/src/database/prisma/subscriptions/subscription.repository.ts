@@ -249,6 +249,24 @@ export class SubscriptionRepository {
     });
   }
 
+  /**
+   * Sets the organization's Stripe customer only while it has none, and says
+   * whether this call was the one that set it. Two first-time billing requests
+   * can race; whichever write lands first is the customer both end up using.
+   */
+  async setCustomerIdIfEmpty(organizationId: string, customerId: string) {
+    const { count } = await this._organization.model.organization.updateMany({
+      where: {
+        id: organizationId,
+        OR: [{ paymentId: null }, { paymentId: '' }],
+      },
+      data: {
+        paymentId: customerId,
+      },
+    });
+    return count > 0;
+  }
+
   async getSubscriptionByOrgId(orgId: string) {
     return this._subscription.model.subscription.findFirst({
       where: {

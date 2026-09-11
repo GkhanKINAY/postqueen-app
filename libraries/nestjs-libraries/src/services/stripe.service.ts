@@ -441,6 +441,72 @@ export class StripeService extends PaymentProviderAbstract {
     return true;
   }
 
+  /**
+   * Points the organization at the customer a subscription is on, when no
+   * organization holds that customer yet.
+   *
+   * Provisioning finds the organization by Stripe customer. A subscription on
+   * a customer its organization did not hold (two customers created for one
+   * organization, see createOrGetCustomer) matched nothing, the webhook failed
+   * for three days, and a trial that became a paid subscription stayed on FREE.
+   * The subscription carries the organization it was sold to, and older ones
+   * the user who bought it, so that finds it. The organization is repointed
+   * only when its current customer has no live subscription of its own, so a
+   * paying one is never stranded. Otherwise nothing changes and the webhook
+   * fails as before, which the host watchdog now reports.
+   */
+  private async adoptSubscriptionCustomer(subscription: Stripe.Subscription) {
+    const customer = subscription.customer as string;
+    if (await this._subscriptionService.getOrganizationByCustomerId(customer)) {
+      return;
+    }
+
+    const { organizationId, userId } = (subscription.metadata || {}) as {
+      organizationId?: string;
+      userId?: string;
+    };
+    let orgId = organizationId;
+    if (!orgId && userId) {
+      const orgs = await this._organizationService.getOrgsByUserId(userId);
+      if (orgs.length === 1) {
+        orgId = orgs[0].id;
+      }
+    }
+    if (!orgId) {
+      return;
+    }
+
+    const org = await this._organizationService.getOrgById(orgId);
+    if (!org || org.deletedAt) {
+      return;
+    }
+
+    if (org.paymentId && org.paymentId !== customer) {
+      const current = await stripe.subscriptions.list({
+        customer: org.paymentId,
+        status: 'all',
+        limit: 20,
+      });
+      if (
+        current.data.some(
+          (s) => !['canceled', 'incomplete_expired'].includes(s.status)
+        )
+      ) {
+        Logger.error(
+          `[stripe] subscription ${subscription.id} is on customer ${customer}, but organization ${orgId} already has a live subscription on ${org.paymentId}; not repointing`
+        );
+        return;
+      }
+    }
+
+    Logger.warn(
+      `[stripe] organization ${orgId} now uses customer ${customer} (was ${
+        org.paymentId || 'none'
+      }), the one subscription ${subscription.id} is on`
+    );
+    await this._subscriptionService.updateCustomerId(orgId, customer);
+  }
+
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
     const {
       uniqueId,
@@ -481,6 +547,8 @@ export class StripeService extends PaymentProviderAbstract {
     if (!(await this.checkValidCard(event))) {
       return { ok: true, granted: false, reason: 'incomplete' };
     }
+
+    await this.adoptSubscriptionCustomer(event.data.object);
 
     return this._subscriptionService.createOrUpdateSubscription(
       STRIPE_PROVIDER,
@@ -587,6 +655,8 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
+    await this.adoptSubscriptionCustomer(event.data.object);
+
     return this._subscriptionService.createOrUpdateSubscription(
       STRIPE_PROVIDER,
       event.data.object.status === 'trialing',
@@ -642,21 +712,44 @@ export class StripeService extends PaymentProviderAbstract {
     );
   }
 
+  /**
+   * The organization's Stripe customer, created on first use.
+   *
+   * Two requests for the same organization could create two customers: the
+   * billing page asks for a price preview while the checkout loads, and both
+   * saw no paymentId. The organization kept one and the subscription landed on
+   * the other, so no webhook could find its organization and a trial that
+   * turned into a paid subscription was never provisioned.
+   *
+   * The id is now written only while the organization has none, and every
+   * caller returns whatever is stored afterwards, so concurrent requests all
+   * check out on the same customer. The idempotency key (per organization, per
+   * minute, since Stripe refuses a reused key with different parameters) keeps
+   * the losing request from leaving a spare customer behind.
+   */
   async createOrGetCustomer(organization: Organization) {
     if (organization.paymentId) {
       return organization.paymentId;
     }
 
     const users = await this._organizationService.getTeam(organization.id);
-    const customer = await stripe.customers.create({
-      email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@no-reply.invalid`,
-      name: organization.name,
-    });
-    await this._subscriptionService.updateCustomerId(
+    const customer = await stripe.customers.create(
+      {
+        email: users.users[0].user.email.indexOf('@') > -1 ? users.users[0].user.email : `${users.users[0].user.email}@no-reply.invalid`,
+        name: organization.name,
+      },
+      {
+        idempotencyKey: `pq-customer-${organization.id}-${Math.floor(
+          Date.now() / 60000
+        )}`,
+      }
+    );
+    await this._subscriptionService.setCustomerIdIfEmpty(
       organization.id,
       customer.id
     );
-    return customer.id;
+    const stored = await this._organizationService.getOrgById(organization.id);
+    return stored?.paymentId || customer.id;
   }
 
   async getPackages() {
@@ -1023,7 +1116,8 @@ export class StripeService extends PaymentProviderAbstract {
     body: BillingSubscribeDto,
     price: string,
     userId: string,
-    allowTrial: boolean
+    allowTrial: boolean,
+    organizationId: string
   ) {
     const user = await this._userService.getUserById(userId);
 
@@ -1078,6 +1172,9 @@ export class StripeService extends PaymentProviderAbstract {
           userId,
           uniqueId,
           ud,
+          // Lets the webhook find the organization even when the customer is
+          // not the one it holds (see adoptSubscriptionCustomer).
+          organizationId,
         },
       },
       ...(body.datafast_session_id && body.datafast_visitor_id
@@ -1112,7 +1209,8 @@ export class StripeService extends PaymentProviderAbstract {
     body: BillingSubscribeDto,
     price: string,
     userId: string,
-    allowTrial: boolean
+    allowTrial: boolean,
+    organizationId: string
   ) {
     const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
 
@@ -1146,6 +1244,9 @@ export class StripeService extends PaymentProviderAbstract {
           userId,
           uniqueId,
           ud,
+          // Lets the webhook find the organization even when the customer is
+          // not the one it holds (see adoptSubscriptionCustomer).
+          organizationId,
         },
       },
       allow_promotion_codes: true,
@@ -1459,7 +1560,8 @@ export class StripeService extends PaymentProviderAbstract {
       body,
       findPrice!.id,
       userId,
-      allowTrial
+      allowTrial,
+      organizationId
     );
   }
 
@@ -1543,7 +1645,8 @@ export class StripeService extends PaymentProviderAbstract {
         body,
         findPrice!.id,
         userId,
-        allowTrial
+        allowTrial,
+        organizationId
       );
     }
 

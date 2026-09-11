@@ -151,6 +151,17 @@ export class SubscriptionService {
     );
   }
 
+  setCustomerIdIfEmpty(organizationId: string, customerId: string) {
+    return this._subscriptionRepository.setCustomerIdIfEmpty(
+      organizationId,
+      customerId
+    );
+  }
+
+  getOrganizationByCustomerId(customerId: string) {
+    return this._subscriptionRepository.getOrganizationByCustomerId(customerId);
+  }
+
   async checkSubscription(organizationId: string, subscriptionId: string) {
     return await this._subscriptionRepository.checkSubscription(
       organizationId,
