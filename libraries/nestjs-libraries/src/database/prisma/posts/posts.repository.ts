@@ -438,6 +438,46 @@ export class PostsRepository {
         state: 'PUBLISHED',
         releaseURL,
         releaseId: postId,
+        // The publish settled, so the run that claimed it lets go.
+        publishClaim: null,
+      },
+    });
+  }
+
+  /**
+   * The claim a publishing run takes before it acts on a post (post workflow
+   * v1.0.9). One conditional write, so two runs can never both hold it; the
+   * run that already holds it gets it again, which keeps retries safe.
+   *
+   * `anyState` is for repeat runs, which publish a post that is already
+   * PUBLISHED. Every other run needs it still in QUEUE — the re-check after the
+   * scheduling sleep that v1.0.8 never made.
+   */
+  async claimPost(id: string, claimant: string, anyState: boolean) {
+    const { count } = await this._post.model.post.updateMany({
+      where: {
+        id,
+        deletedAt: null,
+        OR: [{ publishClaim: null }, { publishClaim: claimant }],
+        ...(anyState ? {} : { state: 'QUEUE' as const }),
+      },
+      data: {
+        publishClaim: claimant,
+      },
+    });
+
+    return count > 0;
+  }
+
+  getPublishClaim(id: string) {
+    return this._post.model.post.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        state: true,
+        deletedAt: true,
+        publishClaim: true,
       },
     });
   }
@@ -467,6 +507,10 @@ export class PostsRepository {
         // object put a multi-KB blob with internal stack traces in front of
         // every org member. The Errors row below still keeps the full object.
         ...(err ? { error: extractPostErrorMessage(err) } : {}),
+        // A failure settles the publish too. Any other change leaves the
+        // claim alone: re-queueing a post mid-publish must not free it for a
+        // second run while the first may still reach the platform.
+        ...(state === 'ERROR' ? { publishClaim: null } : {}),
       },
       include: {
         integration: {

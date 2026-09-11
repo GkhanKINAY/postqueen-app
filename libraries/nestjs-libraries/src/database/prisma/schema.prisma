@@ -476,6 +476,10 @@ model Post {
   lastMessageId              String?
   intervalInDays             Int?
   error                      String?
+  /// "<workflowId>/<runId>" of the run publishing this post (post workflow
+  /// v1.0.9). Taken before the run acts on the post and released when the
+  /// publish settles, so no second run can publish it meanwhile.
+  publishClaim               String?
   createdAt                  DateTime                  @default(now())
   updatedAt                  DateTime                  @updatedAt
   deletedAt                  DateTime?
