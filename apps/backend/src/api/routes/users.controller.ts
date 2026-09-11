@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpException,
+  Logger,
   Post,
   Query,
   Req,
@@ -202,11 +203,22 @@ export class UsersController {
   async setImpersonate(
     @GetUserFromRequest() user: User,
     @Body('id') id: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) response: Response
   ) {
     if (!user.isSuperAdmin) {
       throw new HttpException('Unauthorized', 400);
     }
+
+    // The only record of who acted inside whose account. While impersonating,
+    // `user` is the account being impersonated, so the admin comes from the
+    // token. An empty id is "stop impersonating".
+    Logger.warn(
+      `admin ${this.getRequestUserId(req) || user.id} ${
+        id ? `started impersonating user-organization ${id}` : 'stopped impersonating'
+      }`,
+      'Impersonation'
+    );
 
     response.cookie('impersonate', id, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import {
   PrismaRepository,
   PrismaTransaction,
@@ -14,7 +14,8 @@ export class SubscriptionRepository {
     private readonly _user: PrismaRepository<'user'>,
     private readonly _credits: PrismaRepository<'credits'>,
     private _usedCodes: PrismaRepository<'usedCodes'>,
-    private _stripeEvent: PrismaRepository<'stripeEvent'>
+    private _stripeEvent: PrismaRepository<'stripeEvent'>,
+    private readonly _transaction: PrismaTransaction
   ) {}
 
   /**
@@ -414,14 +415,45 @@ export class SubscriptionRepository {
   async useCredit<T>(
     org: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: () => Promise<T>,
+    window?: { limit: number; from: dayjs.Dayjs } | null
   ) {
-    const data = await this._credits.model.credits.create({
-      data: {
-        organizationId: org.id,
-        credits: 1,
-        type,
-      },
+    // With an allowance, the count and the insert run under one lock per
+    // organization and type. They were two separate steps, so generations
+    // started together all saw the same last credit as free, and a month's
+    // cap could be passed by however many ran at once.
+    const data = await this._transaction.model.$transaction(async (tx) => {
+      if (window) {
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${`credits:${org.id}:${type}`}))`;
+
+        const used = await tx.credits.aggregate({
+          where: {
+            organizationId: org.id,
+            type,
+            createdAt: {
+              gte: window.from.toDate(),
+            },
+          },
+          _sum: {
+            credits: true,
+          },
+        });
+
+        if ((used._sum.credits || 0) >= window.limit) {
+          throw new HttpException(
+            'No credits left this month',
+            HttpStatus.PAYMENT_REQUIRED
+          );
+        }
+      }
+
+      return tx.credits.create({
+        data: {
+          organizationId: org.id,
+          credits: 1,
+          type,
+        },
+      });
     });
 
     try {

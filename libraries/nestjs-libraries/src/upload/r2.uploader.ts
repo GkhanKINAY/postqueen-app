@@ -31,6 +31,11 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
 };
 
+// What the browser gets when a storage call fails. It used to be the SDK's
+// error object itself (request ids, the bucket, the endpoint), which belongs in
+// the log, where it still goes.
+const UPLOAD_FAILED = { message: 'Upload failed.' };
+
 function normalizeExtension(filename: string): string | null {
   const ext = path.extname(filename || '').toLowerCase();
   return ALLOWED_EXT_TO_MIME[ext] ? ext : null;
@@ -237,7 +242,7 @@ export async function prepareUploadParts(req: Request, res: Response) {
       response.presignedUrls[part.number] = url;
     } catch (err) {
       console.log('Error', err);
-      return res.status(500).json(err);
+      return res.status(500).json(UPLOAD_FAILED);
     }
   }
 
@@ -259,7 +264,7 @@ export async function listParts(req: Request, res: Response) {
     return res.status(200).json(response['Parts']);
   } catch (err) {
     console.log('Error', err);
-    return res.status(500).json(err);
+    return res.status(500).json(UPLOAD_FAILED);
   }
 }
 
@@ -323,7 +328,7 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     return response;
   } catch (err) {
     console.log('Error', err);
-    return res.status(500).json(err);
+    return res.status(500).json(UPLOAD_FAILED);
   }
 }
 
@@ -344,7 +349,7 @@ export async function abortMultipartUpload(req: Request, res: Response) {
     return res.status(200).json(response);
   } catch (err) {
     console.log('Error', err);
-    return res.status(500).json(err);
+    return res.status(500).json(UPLOAD_FAILED);
   }
 }
 
