@@ -16,6 +16,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import {
@@ -107,11 +108,12 @@ export class AutopostService {
     // workflow running on a free account. Guarded here rather than by decorator
     // because the decorator cannot see which direction is being asked for.
     if (active) {
-      const tier =
-        // @ts-ignore
-        org?.subscription?.subscriptionTier ||
-        // Self-host without Stripe: every feature via top sellable tier.
-        (!process.env.STRIPE_PUBLISHABLE_KEY ? 'AGENCY' : 'FREE');
+      // Self-host without Stripe: every feature via the top sellable tier,
+      // whatever Subscription row is left. Same test as the rest of billing.
+      const tier = !isBillingEnabled()
+        ? 'AGENCY'
+        : // @ts-ignore
+          org?.subscription?.subscriptionTier || 'FREE';
 
       if (!pricing[tier].autoPost) {
         throw new HttpException(

@@ -23,9 +23,10 @@ export class PermissionsService {
     const subscription =
       await this._subscriptionService.getSubscriptionByOrganizationId(orgId);
 
-    const tier =
-      subscription?.subscriptionTier ||
-      (!isBillingEnabled() ? 'PRO' : 'FREE');
+    // Billing off: the top tier, whatever row is left (same rule as /user/self).
+    const tier = !isBillingEnabled()
+      ? 'AGENCY'
+      : subscription?.subscriptionTier || 'FREE';
 
     const { channel, ...all } = pricing[tier];
     return {

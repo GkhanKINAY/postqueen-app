@@ -131,8 +131,10 @@ export class UsersController {
     return {
       ...user,
       orgId: organization.id,
+      // Billing off: the top tier's own number, which the UI renders as
+      // "Unlimited" (10000 was shown as a literal 10000).
       totalChannels: !isBillingEnabled()
-        ? 10000
+        ? pricing.AGENCY.channel
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
       // Self-host / billing off: everything is open, so the top sellable tier,
@@ -155,18 +157,20 @@ export class UsersController {
         ? false
         : organization?.isTrailing,
       lifetimePaymentPending,
-      allowTrial: organization?.allowTrial,
+      // Billing off: no trial to offer and no subscription to have ended.
+      allowTrial: isBillingEnabled() && !!organization?.allowTrial,
       streakSince: organization?.streakSince || null,
       // Paid-then-cancelled: Subscription row is hard-deleted, so cancel day
       // lives on the org. Active cancel-at-period-end still has cancelAt on
       // the subscription include when present.
       // @ts-ignore
-      subscriptionEndedAt:
-        // @ts-ignore
-        organization?.subscriptionEndedAt ||
-        // @ts-ignore
-        organization?.subscription?.cancelAt ||
-        null,
+      subscriptionEndedAt: !isBillingEnabled()
+        ? null
+        : // @ts-ignore
+          organization?.subscriptionEndedAt ||
+          // @ts-ignore
+          organization?.subscription?.cancelAt ||
+          null,
       publicApi:
         // @ts-ignore
         organization?.users[0]?.role === 'SUPERADMIN' ||
