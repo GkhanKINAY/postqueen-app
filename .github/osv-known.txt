@@ -26,29 +26,42 @@
 # defu, h3, socket.io-parser and the last lodash 4.17 copy. Fourteen entries
 # stopped appearing and are gone. Four new ones need a major the holder has not
 # taken, and are accepted below with the path that brings them in.
+# Regenerated 2026-09-11 after pinning @mastra/client-js: 19 findings down to 12.
+# @ag-ui/mastra's client-js peer had resolved to 0.15, which pinned an old
+# @mastra/core and with it the whole OpenTelemetry 0.203 SDK set, ai 4 and
+# jsondiffpatch 0.6. Pinning client-js to the release that matches our core
+# dropped all of them.
+# @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
+# 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
-@opentelemetry/auto-instrumentations-node GHSA-q7rr-3cgh-j5r3
+# The OTLP trace exporters (via langsmith and Sentry's optional peer) hold core
+# 2.0.1; the advisory is in the inbound baggage propagator, which they do not use.
 @opentelemetry/core GHSA-8988-4f7v-96qf
-@opentelemetry/exporter-prometheus GHSA-q7rr-3cgh-j5r3
-@opentelemetry/propagator-jaeger GHSA-45rx-2jwx-cxfr
-@opentelemetry/sdk-node GHSA-q7rr-3cgh-j5r3
-ai GHSA-rwvc-j5jr-mgvh
 # query-string 7.1.3 pins decode-uri-component 0.2.2; the fix is 0.5, a line
 # query-string 7 does not accept.
 decode-uri-component GHSA-vcc3-ghjq-m6fr
 # Prisma 7.9.1's own config loader pins deepmerge-ts 7; the fix is 8.
 deepmerge-ts GHSA-ggr8-5vv4-36mx
+# Browser wallet adapters only (WalletConnect utils, crypto-browserify); no
+# released fix, and the server verifies wallet signatures with tweetnacl.
 elliptic GHSA-848j-6mx2-7j84
+# tsup 8.5 (the SDK build) wants esbuild 0.27; the advisory is in `esbuild
+# serve` on Windows, which nothing here runs.
 esbuild GHSA-g7r4-m6w7-qqqr
+# @langchain/community -> ibm-cloud-sdk-core pins file-type 16; nothing imports
+# @langchain/community, and our own upload paths use file-type 22.
 file-type GHSA-5v7r-6r5c-r473
+# @mastra/memory 1.26 pins image-size 1.2.1 and no release fixes it; only
+# observational memory and thread summaries call it, and neither is enabled.
 image-size GHSA-5p2g-fcmc-qvqq
 image-size GHSA-w3rx-r6r6-pgpr
-jsondiffpatch GHSA-33vc-wfww-vjfv
-# ai 4 (a peer of @mastra/core's chat package) pins jsondiffpatch 0.6; the
-# fix is 0.7, which ai 4 does not accept.
-jsondiffpatch GHSA-j4fx-xxwh-2485
+# polotno's editor holds quill 2.0.3, the latest; the issue is in Quill's HTML
+# export of the user's own design.
 quill GHSA-v3m3-f69x-jf25
 # @solana/web3.js 1.98 -> jayson 4 pins stream-json 1; the fix is 3. Reached
 # only by the wallet sign-in.
 stream-json GHSA-528h-pc64-c93x
+# Old copies held by wallet adapters, jayson, @copilotkit/runtime and
+# @langchain/classic; the advisory needs a caller-supplied buffer, which none of
+# them pass. Our own code uses uuid 14.
 uuid GHSA-w5hq-g745-h8pq

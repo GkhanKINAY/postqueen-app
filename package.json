@@ -66,6 +66,7 @@
     "@mantine/core": "^9.5.1",
     "@mantine/dates": "^9.5.1",
     "@mantine/hooks": "^9.5.1",
+    "@mastra/client-js": "1.38.0",
     "@mastra/core": "1.57.0",
     "@mastra/mcp": "1.15.1",
     "@mastra/memory": "1.26.0",
