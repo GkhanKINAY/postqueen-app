@@ -11,6 +11,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Organization, ShortLinkPreference, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class OrganizationService {
@@ -128,11 +129,12 @@ export class OrganizationService {
   }
 
   async addTeamMemberByEmail(org: Organization, body: AdminAddTeamMemberDto) {
-    const tier =
-      // @ts-ignore
-      org?.subscription?.subscriptionTier ||
-      // Self-host without Stripe: every feature via top sellable tier.
-      (!process.env.STRIPE_PUBLISHABLE_KEY ? 'AGENCY' : 'FREE');
+    // Self-host without Stripe: every feature via the top sellable tier,
+    // whatever Subscription row is left. Same test as the rest of billing.
+    const tier = !isBillingEnabled()
+      ? 'AGENCY'
+      : // @ts-ignore
+        org?.subscription?.subscriptionTier || 'FREE';
 
     if (!pricing[tier].team_members) {
       throw new HttpException(

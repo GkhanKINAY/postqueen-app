@@ -9,6 +9,7 @@ import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/excep
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { setSentryUserContext } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
 
 export const removeAuth = (res: Response) => {
@@ -79,9 +80,15 @@ export class AuthMiddleware implements NestMiddleware {
             loadImpersonate.organization.users.filter(
               (f) => f.userId === user.id
             );
+          // Billing off: no trial here either (the raw flag is passed as it
+          // was when billing is on).
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          req.org = loadImpersonate.organization;
+          req.org = {
+            ...loadImpersonate.organization,
+            isTrailing:
+              isBillingEnabled() && loadImpersonate.organization.isTrailing,
+          };
 
           setSentryUserContext({
             userId: user.id,
@@ -123,12 +130,17 @@ export class AuthMiddleware implements NestMiddleware {
       // "End free trial" button are still the only things that write it, and a
       // middleware that writes on every request is a middleware that writes a
       // great many times.
+      //
+      // Billing off: there is no trial to be in, whatever the row says (every
+      // organization is created with the flag set).
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       req.org = {
         ...setOrg,
         isTrailing:
-          !!setOrg.isTrailing && trialWindow(setOrg.createdAt).open,
+          isBillingEnabled() &&
+          !!setOrg.isTrailing &&
+          trialWindow(setOrg.createdAt).open,
       };
 
       setSentryUserContext({
