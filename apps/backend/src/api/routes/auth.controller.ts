@@ -148,7 +148,7 @@ export class AuthController {
         register: true,
       });
     } catch (e: any) {
-      response.status(400).send(e.message);
+      response.status(400).type('text/plain').send(e.message);
     }
   }
 
@@ -219,7 +219,7 @@ export class AuthController {
         login: true,
       });
     } catch (e: any) {
-      response.status(400).send(e.message);
+      response.status(400).type('text/plain').send(e.message);
     }
   }
 
@@ -269,7 +269,7 @@ export class AuthController {
     const state = `login-${makeId(16)}`;
     response.cookie('oauth_state', state, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-      ...(!process.env.NOT_SECURED
+      ...(areCookiesSecured()
         ? {
             secure: true,
             httpOnly: true,
@@ -435,7 +435,7 @@ export class AuthController {
       await this._authService.requestOtp(body.email, ip, body.captchaToken);
       return response.status(200).json({ sent: true });
     } catch (e: any) {
-      return response.status(400).send(e.message);
+      return response.status(400).type('text/plain').send(e.message);
     }
   }
 
@@ -467,7 +467,7 @@ export class AuthController {
 
       return response.status(200).json({ login: true, isNew });
     } catch (e: any) {
-      return response.status(400).send(e.message);
+      return response.status(400).type('text/plain').send(e.message);
     }
   }
 }

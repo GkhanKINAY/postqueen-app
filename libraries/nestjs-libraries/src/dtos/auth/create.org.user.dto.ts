@@ -1,12 +1,15 @@
 import {
   IsDefined,
   IsEmail,
+  IsEnum,
   IsString,
   MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import type { Provider } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
+// The enums module has no Prisma runtime behind it, so the browser can load it
+// too (the register form validates with this DTO).
+import { Provider } from '@gitroom/nestjs-libraries/database/prisma/generated/enums';
 
 export class CreateOrgUserDto {
   @IsString()
@@ -18,6 +21,7 @@ export class CreateOrgUserDto {
 
   @IsString()
   @IsDefined()
+  @IsEnum(Provider)
   provider: Provider;
 
   @IsString()
