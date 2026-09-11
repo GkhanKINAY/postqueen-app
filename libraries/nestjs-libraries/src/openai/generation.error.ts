@@ -24,8 +24,11 @@ export function generationError(err: any): HttpException {
     return err;
   }
 
-  const message: string =
-    err?.error?.message || err?.message || String(err || '');
+  // Capped before the patterns below run: a provider's error text is not ours to
+  // size, and matching is not free on a very long string.
+  const message: string = String(
+    err?.error?.message || err?.message || String(err || '')
+  ).slice(0, 4096);
 
   if (SAFETY_MESSAGE_REGEX.test(message)) {
     const categories = message.match(SAFETY_VIOLATIONS_REGEX)?.[1]?.trim();

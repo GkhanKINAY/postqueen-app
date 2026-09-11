@@ -135,8 +135,20 @@ export class IntegrationService {
     timezone?: number,
     customInstanceDetails?: string
   ) {
+    // Pictures already on Cloudflare Images are kept as they are. The host is
+    // compared as a hostname: a URL that merely contains the name somewhere is
+    // re-hosted like any other.
+    const onCloudflareImages = (() => {
+      try {
+        const host = new URL(picture || '').hostname;
+        return host === 'imagedelivery.net' || host.endsWith('.imagedelivery.net');
+      } catch {
+        return false;
+      }
+    })();
+
     const uploadedPicture = picture
-      ? picture?.indexOf('imagedelivery.net') > -1
+      ? onCloudflareImages
         ? picture
         : await this.storage.uploadSimple(picture).catch((err) => {
             console.log('Failed to upload profile picture:', picture, err);
