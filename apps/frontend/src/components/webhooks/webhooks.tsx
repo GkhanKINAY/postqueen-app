@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { SettingsPaneEditor } from '@gitroom/frontend/components/settings/settings-pane-editor';
 import { useSettingsTabChrome } from '@gitroom/frontend/components/settings/settings-tab-chrome.context';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 
 // Must match what a real delivery looks like, because people wire their
@@ -55,6 +56,7 @@ export const Webhooks: FC = () => {
   const toaster = useToaster();
   const t = useT();
   const user = useUser();
+  const { billingEnabled } = useVariables();
   const router = useRouter();
   const { setChromePatch } = useSettingsTabChrome();
   const [editing, setEditing] = useState<any | null | undefined>(undefined);
@@ -73,8 +75,9 @@ export const Webhooks: FC = () => {
   }, []);
   const { data, isLoading, error, mutate } = useSWR('webhooks', list);
   // `webhooks` on the tier object is a number, and 0 (FREE) must count as
-  // at-limit rather than "no limit configured".
-  const webhookLimit = user?.tier?.webhooks;
+  // at-limit rather than "no limit configured". Billing off: there is no plan,
+  // so no quota to count against or to print in the pane header.
+  const webhookLimit = billingEnabled ? user?.tier?.webhooks : undefined;
   const atLimit =
     typeof webhookLimit === 'number' &&
     !isLoading &&
@@ -137,7 +140,7 @@ export const Webhooks: FC = () => {
   }, [resolveIntegrations, router, toaster, t]);
 
   useEffect(() => {
-    const limit = user?.tier?.webhooks;
+    const limit = webhookLimit;
     if (!limit) return;
     // Not while loading: `data?.length ?? 0` would publish "Webhooks (0/N)"
     // into the pane header and then correct itself.
@@ -149,7 +152,7 @@ export const Webhooks: FC = () => {
       }),
     });
     return () => setChromePatch(null);
-  }, [data?.length, isLoading, setChromePatch, t, user?.tier?.webhooks]);
+  }, [data?.length, isLoading, setChromePatch, t, webhookLimit]);
 
   // A webhook scoped only to channels that have since gone is permanently
   // silent, and the row gave no hint of it. Note the join shape here is

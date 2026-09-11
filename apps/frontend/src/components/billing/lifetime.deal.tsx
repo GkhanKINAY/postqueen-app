@@ -18,6 +18,8 @@ import { useRouter } from 'next/navigation';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { BillingNotConfigured } from './billing.not.configured';
 
 /**
  * The design's feature tick: a 17×17 brand tile with a white check, 13px muted
@@ -585,6 +587,11 @@ export const LifetimeDeal = () => {
   const t = useT();
   const user = useUser();
   const router = useRouter();
+  const { billingEnabled } = useVariables();
+  // Billing off: no founding offer to show, and no founding state to be in.
+  if (!billingEnabled) {
+    return <BillingNotConfigured />;
+  }
   if (!user?.tier) {
     return null;
   }

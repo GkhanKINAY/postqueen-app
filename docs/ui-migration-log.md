@@ -1058,6 +1058,20 @@ that read, the skipped fetch and the hidden counter. The modal also gets its
 own SWR key (`copilot-credits-ai_videos`); it shared `copilot-credits` with the
 image generator, which caches its `ai_images` allowance there.
 
+**Gates `billingEnabled` 42 → 55, `tier.webhooks` 5 → 3 (no trial, founding or
+quota UI with billing off).** The backend already answers billing-off requests
+with the top tier, no lifetime flag and no trial; these are the matching guards
+on the screens that read them, so a stale value can never bring them back:
+the founding chip (`layout.component.tsx`) and the founding rail row
+(`rail.tsx`), `/billing/lifetime` (`lifetime.deal.tsx`, now the same
+"Billing is not set up" screen as `/billing`, moved to
+`billing.not.configured.tsx`), the webhook quota in the pane header and the
+"at its webhook limit" line (`webhooks.tsx`, both now read `webhookLimit`,
+which is why two `tier.webhooks` reads went), the `?precondition` trial-charge
+modal (`pre-condition.component.tsx`), and the global 406 "finish the trial"
+and 402 "move to billing" dialogs (`layout.context.tsx`, which answer the way a
+dismissed dialog does). No new i18n keys.
+
 ## Dependency upgrade pass
 
 Every package that could go to latest did, ahead of launch, on the argument that
