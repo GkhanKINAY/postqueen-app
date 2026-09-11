@@ -361,7 +361,10 @@ export class IntegrationService {
           integration.organizationId,
           integration.id
         );
-        return;
+        // One channel that cannot refresh must not stop the ones after it.
+        // This was a `return`, so a single revoked token ended the whole pass
+        // and every channel behind it was left to expire.
+        continue;
       }
 
       const { refreshToken, accessToken, expiresIn } = data;
