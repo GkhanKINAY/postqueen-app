@@ -1048,6 +1048,16 @@ answer to it.
 Self-hosters cloning a fresh empty database do not need any tier-migration
 step — new installs only use CREATOR / GROWTH / PRO / AGENCY.
 
+**Gates `billingEnabled` 39 → 42 (AI video modal).** With billing off,
+`checkCredits` now answers "unlimited" instead of 0 (it counted a self-hosted
+organization, which has no Subscription row, as FREE, so every video
+generation was refused with a 402). The video modal in `ai.video.tsx` follows
+the image generator's existing rule: with billing off it does not fetch the
+allowance and does not render "N credits left". The three new call sites are
+that read, the skipped fetch and the hidden counter. The modal also gets its
+own SWR key (`copilot-credits-ai_videos`); it shared `copilot-credits` with the
+image generator, which caches its `ai_images` allowance there.
+
 ## Dependency upgrade pass
 
 Every package that could go to latest did, ahead of launch, on the argument that

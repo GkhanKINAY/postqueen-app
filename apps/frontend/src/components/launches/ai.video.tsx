@@ -14,6 +14,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { createPortal } from 'react-dom';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 export const Modal: FC<{
   close: () => void;
@@ -29,8 +30,14 @@ export const Modal: FC<{
   const [position, setPosition] = useState('vertical');
   const [submitting, setSubmitting] = useState(false);
   const toaster = useToaster();
+  // Billing off: nothing is metered, so there is no allowance to fetch or show
+  // (the same rule as the image generator's credit counter).
+  const { billingEnabled } = useVariables();
 
   const loadCredits = useCallback(async () => {
+    if (!billingEnabled) {
+      return { credits: 1000000 };
+    }
     return (
       await fetch(`/copilot/credits?type=ai_videos`, {
         method: 'GET',
@@ -38,7 +45,9 @@ export const Modal: FC<{
     ).json();
   }, []);
 
-  const { data } = useSWR('copilot-credits', loadCredits);
+  // Its own key: the image generator caches its `ai_images` allowance under
+  // 'copilot-credits', and sharing it showed one number in place of the other.
+  const { data } = useSWR('copilot-credits-ai_videos', loadCredits);
 
   const fail = useCallback(
     (body?: any) => {
@@ -152,15 +161,16 @@ export const Modal: FC<{
         onSubmit={form.handleSubmit(generate, onInvalid)}
         className="flex flex-col gap-[10px]"
       >
-        {createPortal(
-          <>
-            {t('n_credits_left', '{{count}} credits left', {
-              count: data?.credits || 0,
-            })}
-          </>,
-          document.querySelector('.top-title-content') ||
-            document.createElement('div')
-        )}
+        {billingEnabled &&
+          createPortal(
+            <>
+              {t('n_credits_left', '{{count}} credits left', {
+                count: data?.credits || 0,
+              })}
+            </>,
+            document.querySelector('.top-title-content') ||
+              document.createElement('div')
+          )}
         <FormProvider {...form}>
           <div>
             <div className="relative h-[400px]">
