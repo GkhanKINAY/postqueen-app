@@ -6,6 +6,7 @@ import {
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
+import { sanitizePreviewHtml } from '@gitroom/helpers/utils/sanitize.post.content';
 import { Subreddit } from '@gitroom/frontend/components/new-launch/providers/reddit/subreddit';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { useFieldArray, useWatch } from 'react-hook-form';
@@ -37,7 +38,7 @@ const RenderRedditComponent: FC<{
     case 'self':
       return (
         <div
-          dangerouslySetInnerHTML={{ __html: firstPost?.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(firstPost?.content) }}
           style={{
             whiteSpace: 'pre-wrap',
             fontSize: '14px',
@@ -139,7 +140,7 @@ const RedditPreview: FC = (props) => {
                         {integration?.name}
                       </div>
                       <div
-                        dangerouslySetInnerHTML={{ __html: p.text }}
+                        dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(p.text) }}
                         style={{
                           whiteSpace: 'pre-wrap',
                         }}

@@ -3,6 +3,7 @@ import { useIntegration } from '@gitroom/frontend/components/launches/helpers/us
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import { sanitizePreviewHtml } from '@gitroom/helpers/utils/sanitize.post.content';
 import { textSlicer } from '@gitroom/helpers/utils/count.length';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 
@@ -142,7 +143,9 @@ export const YoutubePreview: FC<{
       </div>
       <div
         className="bg-youtubeBgAction rounded-[12px] p-[12px] text-[12px] font-[400] whitespace-pre-line"
-        dangerouslySetInnerHTML={{ __html: renderContent?.[0]?.text }}
+        dangerouslySetInnerHTML={{
+          __html: sanitizePreviewHtml(renderContent?.[0]?.text),
+        }}
       />
     </div>
   );
