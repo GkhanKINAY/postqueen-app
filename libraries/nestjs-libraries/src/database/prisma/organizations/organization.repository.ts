@@ -108,11 +108,16 @@ export class OrganizationRepository {
                 userId: true,
               },
             },
+            // The same fields `getOrgsByUserId` selects: this is what an
+            // impersonated request carries as `req.org`, and `/user/self`
+            // (cancelAt) and `checkCredits` (createdAt) read them from there.
             subscription: {
               select: {
                 subscriptionTier: true,
                 totalChannels: true,
                 isLifetime: true,
+                createdAt: true,
+                cancelAt: true,
               },
             },
           },
