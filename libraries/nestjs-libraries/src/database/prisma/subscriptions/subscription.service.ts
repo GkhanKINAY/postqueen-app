@@ -6,6 +6,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class SubscriptionService {
@@ -435,6 +436,14 @@ export class SubscriptionService {
   }
 
   async checkCredits(organization: Organization, checkType = 'ai_images') {
+    // Billing off: nothing is metered. Without this a self-hosted organization,
+    // which has no Subscription row, counted as FREE and got 0 credits, so every
+    // video generation (dashboard, public API, MCP, the orchestrator) was refused
+    // with a 402 asking it to upgrade.
+    if (!isBillingEnabled()) {
+      return { credits: 1000000 };
+    }
+
     // @ts-ignore
     const type = organization?.subscription?.subscriptionTier || 'FREE';
 
