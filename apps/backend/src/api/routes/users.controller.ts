@@ -356,9 +356,15 @@ export class UsersController {
 
   @Get('/organizations')
   async getOrgs(@GetUserFromRequest() user: User) {
-    return (await this._orgService.getOrgsByUserId(user.id)).filter(
-      (f) => !f.users[0].disabled
-    );
+    // The organization switcher needs an id, a name and the member's role, and
+    // that is all this returns. It used to hand back whole rows, so every
+    // member — a USER included — received the public API key and Stripe
+    // customer id of each organization they belong to, although /user/self
+    // shows the key to admins only and the key acts as the organization's
+    // super-admin on the public API.
+    return (await this._orgService.getOrgsByUserId(user.id))
+      .filter((f) => !f.users[0].disabled)
+      .map(({ id, name, users }) => ({ id, name, users }));
   }
 
   @Post('/change-org')
