@@ -553,6 +553,8 @@ conn_n8n_note
 conn_n8n_short
 conn_n8n_step_cred
 conn_n8n_step_cred_detail
+conn_n8n_step_host
+conn_n8n_step_host_detail
 conn_n8n_step_node
 conn_n8n_step_trigger
 conn_n8n_step_trigger_detail
@@ -605,10 +607,14 @@ conn_sdk_short
 conn_sdk_step_install
 conn_sdk_step_key
 conn_sdk_step_key_detail
+conn_sdk_step_url
+conn_sdk_step_url_detail
 conn_slack_chat_intro
 conn_slack_chat_short
 conn_soon
 conn_soon_short
+conn_step_api_url
+conn_step_api_url_detail
 conn_step_mcp_url
 conn_step_mcp_url_detail
 conn_step_skill_install

@@ -42,6 +42,8 @@ import {
   findConnection,
   type Connection,
   type ConnectNavId,
+  absoluteApiUrl,
+  needsApiUrl,
 } from '@gitroom/frontend/components/public-api/connections.catalog';
 import {
   RouteOverlayScrim,
@@ -297,10 +299,12 @@ const ExternalLinkIcon: FC<{ size?: number; className?: string }> = ({
   </svg>
 );
 
-const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
-  apiKey,
-  keyRevealed,
-}) => {
+const SkillInstallCallout: FC<{
+  apiKey: string;
+  keyRevealed: boolean;
+  /** Only when the tools must be told where the API is (see needsApiUrl). */
+  apiUrl?: string;
+}> = ({ apiKey, keyRevealed, apiUrl }) => {
   const t = useT();
   const code = 'npx skills add GkhanKINAY/postqueen-agent';
   const keyCode = `export POSTQUEEN_API_KEY="${apiKey}"`;
@@ -337,6 +341,23 @@ const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
         />
         {!apiKey && <ApiKeyMissingNote />}
       </div>
+      {!!apiUrl && (
+        <div>
+          <div className="text-[13px] font-[600] text-pqText">
+            {t('conn_step_api_url', 'Point it at your server')}
+          </div>
+          <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
+            {t(
+              'conn_step_api_url_detail',
+              'The skill, the CLI and the SDK call the hosted API unless told otherwise. Export this next to the key.'
+            )}
+          </div>
+          <CodeBlock
+            code={`export POSTQUEEN_API_URL="${apiUrl}"`}
+            label="API URL"
+          />
+        </div>
+      )}
       <a
         href="https://docs.postqueen.ai/agents/skill-install"
         target="_blank"
@@ -350,10 +371,12 @@ const SkillInstallCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
   );
 };
 
-const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
-  apiKey,
-  keyRevealed,
-}) => {
+const CliSetupCallout: FC<{
+  apiKey: string;
+  keyRevealed: boolean;
+  /** Only when the tools must be told where the API is (see needsApiUrl). */
+  apiUrl?: string;
+}> = ({ apiKey, keyRevealed, apiUrl }) => {
   const t = useT();
   const keyCode = `export POSTQUEEN_API_KEY="${apiKey}"`;
   // See SkillInstallCallout — masking an absent key would prepend the stars.
@@ -399,6 +422,23 @@ const CliSetupCallout: FC<{ apiKey: string; keyRevealed: boolean }> = ({
         <CodeBlock code={maskedKey} rawCode={keyCode} label="API key" />
         {!apiKey && <ApiKeyMissingNote />}
       </div>
+      {!!apiUrl && (
+        <div>
+          <div className="text-[13px] font-[600] text-pqText">
+            {t('conn_step_api_url', 'Point it at your server')}
+          </div>
+          <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
+            {t(
+              'conn_step_api_url_detail',
+              'The skill, the CLI and the SDK call the hosted API unless told otherwise. Export this next to the key.'
+            )}
+          </div>
+          <CodeBlock
+            code={`export POSTQUEEN_API_URL="${apiUrl}"`}
+            label="API URL"
+          />
+        </div>
+      )}
       <div>
         <div className="text-[13px] font-[600] text-pqText">
           {t('conn_cli_step_try', 'Try it')}
@@ -512,18 +552,25 @@ export const ConnectPanel: FC<{
   const [query, setQuery] = useState('');
 
   const apiKey = user?.publicApi || '';
-  const mcpUrl = `${backendUrl}/mcp`;
-  const mcpUrlWithKey = `${backendUrl}/mcp/${apiKey}`;
+  // Absolute even behind the relative dev proxy: these strings are pasted
+  // into other programs.
+  const apiUrl = useMemo(() => absoluteApiUrl(backendUrl), [backendUrl]);
+  // The CLI, SDK, skill and n8n node default to the hosted API; an instance
+  // anywhere else has to tell them where it is.
+  const customApiUrl = needsApiUrl(apiUrl) ? apiUrl : undefined;
+  const mcpUrl = `${apiUrl}/mcp`;
+  const mcpUrlWithKey = `${apiUrl}/mcp/${apiKey}`;
 
   const groups = useMemo(
     () =>
       buildConnectionsCatalog({
         t,
-        backendUrl,
+        backendUrl: apiUrl,
         mcpUrl,
         apiKey,
+        apiUrl: customApiUrl,
       }),
-    [t, backendUrl, mcpUrl, apiKey]
+    [t, apiUrl, mcpUrl, apiKey, customApiUrl]
   );
 
   const all = useMemo(() => groups.flatMap((g) => g.items), [groups]);
@@ -1082,10 +1129,18 @@ export const ConnectPanel: FC<{
         </div>
 
         {nav === 'agent-skills' && (
-          <SkillInstallCallout apiKey={apiKey} keyRevealed={keyRevealed} />
+          <SkillInstallCallout
+            apiKey={apiKey}
+            keyRevealed={keyRevealed}
+            apiUrl={customApiUrl}
+          />
         )}
         {nav === 'cli' && (
-          <CliSetupCallout apiKey={apiKey} keyRevealed={keyRevealed} />
+          <CliSetupCallout
+            apiKey={apiKey}
+            keyRevealed={keyRevealed}
+            apiUrl={customApiUrl}
+          />
         )}
         {nav === 'mcp' && (
           <McpAuthCallout
