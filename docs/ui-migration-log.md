@@ -1083,6 +1083,19 @@ callouts and the skill, CLI, SDK and n8n catalog steps now add the address:
 MCP and REST URLs are also made absolute (`absoluteApiUrl`), since behind the
 relative `/api` dev proxy they came out as paths nothing else could use.
 
+**Gates `billingEnabled` 55 → 60, i18n +3 (design editor and image generation
+follow the configured keys).** Design Media and the Editor button opened
+Polotno whatever `NEXT_PUBLIC_POLOTNO` said, and Generate image rendered with
+no `OPENAI_API_KEY`, so both were on screen and broken wherever the key was
+missing (the hosted service included). With billing on they now render only
+when the key is there. With billing off (self-hosted) they stay, and without
+the key a click opens `FeatureSetupHint` instead: admins get the variable to
+set and a docs link, members are told to ask an admin
+(`feature_setup_admin`, `feature_setup_docs`, `feature_setup_member`). The five
+new call sites are the two `useVariables()` reads in `media.component.tsx`,
+the two `showDesign` rules and `showAiImage`. AI video keeps `tier.ai`: its
+provider list is already filtered by key.
+
 ## Dependency upgrade pass
 
 Every package that could go to latest did, ahead of launch, on the argument that

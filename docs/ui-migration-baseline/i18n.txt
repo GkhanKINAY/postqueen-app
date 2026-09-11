@@ -848,6 +848,9 @@ faq_to_confirm_credit_card_information_postqueen_will_hold
 faq_what_are_channels
 faq_what_are_team_members
 farcaster
+feature_setup_admin
+feature_setup_docs
+feature_setup_member
 feedback
 feedback_placeholder_better
 feedback_thanks
