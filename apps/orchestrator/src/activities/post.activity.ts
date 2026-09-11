@@ -19,6 +19,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { TypedSearchAttributes } from '@temporalio/common';
+import { WorkflowNotFoundError } from '@temporalio/client';
 import {
   organizationId,
   postId as postIdSearchParam,
@@ -125,12 +126,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v108, matching posts.service.ts. The recovery sweep starting an older
+      // v109, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV108', {
+        .workflow.signalWithStart('postWorkflowV109', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -156,6 +157,55 @@ export class PostActivity {
             },
           ]),
         });
+    }
+  }
+
+  // Taken by post workflow v1.0.9 before it acts on a post: only the run that
+  // holds the claim publishes it or changes its state. `claimant` is
+  // "<workflowId>/<runId>". Retrying is safe, the holder gets it again.
+  @ActivityMethod()
+  async claimPost(
+    postId: string,
+    claimant: string,
+    postNow = false
+  ): Promise<'claimed' | 'gone' | 'not-queued' | 'busy' | 'orphaned'> {
+    if (await this._postService.claimPost(postId, claimant, postNow)) {
+      return 'claimed';
+    }
+
+    const post = await this._postService.getPublishClaim(postId);
+    if (!post || post.deletedAt) {
+      return 'gone';
+    }
+
+    // Published, failed or drafted in the meantime: nothing to publish.
+    if (!postNow && post.state !== 'QUEUE') {
+      return 'not-queued';
+    }
+
+    if (!post.publishClaim) {
+      // Neither condition that makes the write miss holds any more, so it
+      // lost a race with another write. The activity's own retry settles it.
+      throw new Error(`Could not claim post ${postId}`);
+    }
+
+    // Held by another run. Still going: leave the post to it. Gone — the
+    // usual way is an edit terminating it mid-publish — means nobody knows
+    // whether it reached the platform, which the workflow reports instead of
+    // publishing a second time.
+    const [workflowId, runId] = post.publishClaim.split('/');
+    try {
+      const { status } = await this._temporalService.client
+        .getRawClient()
+        .workflow.getHandle(workflowId, runId)
+        .describe();
+      return status.name === 'RUNNING' ? 'busy' : 'orphaned';
+    } catch (err) {
+      // Past the namespace's retention, so long finished.
+      if (err instanceof WorkflowNotFoundError) {
+        return 'orphaned';
+      }
+      throw err;
     }
   }
 
@@ -551,6 +601,10 @@ export class PostActivity {
     const alreadyReported =
       reason === 'Refresh channel needed' ||
       reason === 'Channel disabled' ||
+      // v1.0.9: the first is its own pre-flight case, the second goes out
+      // through the "couldn't confirm, check your account" notice.
+      reason === 'Channel setup not finished' ||
+      reason === 'A previous publish attempt was interrupted' ||
       // Internal sentinels, not failures the user can act on. 'Already posted'
       // is worse than noise: the workflow writes it when it re-runs over a post
       // that already PUBLISHED, so it announces a failure that never happened.

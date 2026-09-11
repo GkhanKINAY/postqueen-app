@@ -116,9 +116,17 @@ one came in without the file, its export and its start-name bumps (three of
 them were nothing else, and are logged as empty). The final one, upstream's
 v1.1.2, is our **v1.0.8**: the same file with three lines changed, the
 generated Prisma import, the function name and the `startChild` that re-queues
-a repeat post. Next time, upstream's next post workflow becomes our v1.0.9 the
-same way. Take only the newest, adapt those three lines, and move both call
-sites (`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
+a repeat post.
+
+**Our v1.0.9 is ours, not upstream's** (September, after this sync): v1.0.8
+plus a claim on the post before it is published (`claimPost`, `Post.publishClaim`),
+a failed comment marking the comment instead of the root post, no "Already
+posted" error on a run that finds the post already published, and a single
+failure for a channel whose setup was never finished. So upstream's next post
+workflow becomes our **v1.1.0**, not v1.0.9: take only the newest, adapt the
+three lines above, carry v1.0.9's changes into it (the header comment of
+`post.workflow.v1.0.9.ts` lists them), and move both call sites
+(`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
 
 Lessons, in the order they cost time:
 

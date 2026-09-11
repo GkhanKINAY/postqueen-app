@@ -83,6 +83,14 @@ export class PostsService {
     return this._postRepository.updatePost(id, postId, releaseURL);
   }
 
+  claimPost(id: string, claimant: string, anyState: boolean) {
+    return this._postRepository.claimPost(id, claimant, anyState);
+  }
+
+  getPublishClaim(id: string) {
+    return this._postRepository.getPublishClaim(id);
+  }
+
   async getMissingContent(
     orgId: string,
     postId: string,
@@ -771,7 +779,7 @@ export class PostsService {
     try {
       await this._temporalService.client
         .getRawClient()
-        ?.workflow.start('postWorkflowV108', {
+        ?.workflow.start('postWorkflowV109', {
           workflowId: `post_${postId}`,
           taskQueue: 'main',
           workflowIdConflictPolicy: 'TERMINATE_EXISTING',

@@ -3,12 +3,13 @@ export * from './post-workflows/post.workflow.v1.0.2';
 export * from './post-workflows/post.workflow.v1.0.3';
 export * from './post-workflows/post.workflow.v1.0.4';
 export * from './post-workflows/post.workflow.v1.0.5';
-// v1.0.5, v1.0.6 and v1.0.7 stay exported alongside v1.0.8: a workflow
-// replays against the code it started with, so removing any of them would
-// break every post already in flight against it.
+// v1.0.5 to v1.0.8 stay exported alongside v1.0.9: a workflow replays against
+// the code it started with, so removing any of them would break every post
+// already in flight against it.
 export * from './post-workflows/post.workflow.v1.0.6';
 export * from './post-workflows/post.workflow.v1.0.7';
 export * from './post-workflows/post.workflow.v1.0.8';
+export * from './post-workflows/post.workflow.v1.0.9';
 // v1 stays exported: running executions replay against the code they started
 // with, so removing it would break every autopost rule not yet migrated to v2.
 export * from './autopost.workflow';
