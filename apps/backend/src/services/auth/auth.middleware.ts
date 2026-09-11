@@ -28,6 +28,29 @@ export const removeAuth = (res: Response) => {
   res.header('logout', 'true');
 };
 
+/**
+ * The stored flag says a trial *started*; whether it is still running is
+ * derived from the registration date. Done here, once, because every consumer
+ * downstream reads `org.isTrailing` and none of them should have to know about
+ * the clock: the X lock, trial-only video, the trial banner and
+ * `/billing/is-trial-finished` all get the same answer.
+ *
+ * Read-only on purpose. The row is left alone — Stripe's webhook and the "End
+ * free trial" button are still the only things that write it, and a middleware
+ * that writes on every request is a middleware that writes a great many times.
+ *
+ * Both paths below go through this. Impersonation used to pass the raw flag,
+ * so support opening an account whose seven days ran out long ago saw a trial
+ * still running that the customer did not.
+ *
+ * Billing off: there is no trial to be in, whatever the row says (every
+ * organization is created with the flag set).
+ */
+const effectiveIsTrailing = (org: {
+  isTrailing?: boolean | null;
+  createdAt?: Date | string | null;
+}) => isBillingEnabled() && !!org.isTrailing && trialWindow(org.createdAt).open;
+
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(
@@ -80,14 +103,11 @@ export class AuthMiddleware implements NestMiddleware {
             loadImpersonate.organization.users.filter(
               (f) => f.userId === user.id
             );
-          // Billing off: no trial here either (the raw flag is passed as it
-          // was when billing is on).
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
           req.org = {
             ...loadImpersonate.organization,
-            isTrailing:
-              isBillingEnabled() && loadImpersonate.organization.isTrailing,
+            isTrailing: effectiveIsTrailing(loadImpersonate.organization),
           };
 
           setSentryUserContext({
@@ -120,27 +140,11 @@ export class AuthMiddleware implements NestMiddleware {
       // @ts-expect-error
       req.user = user;
 
-      // The stored flag says a trial *started*; whether it is still running is
-      // derived from the registration date. Done here, once, because every
-      // consumer downstream reads `org.isTrailing` and none of them should have
-      // to know about the clock: the X lock, trial-only video, the trial
-      // banner and `/billing/is-trial-finished` all get the same answer.
-      //
-      // Read-only on purpose. The row is left alone — Stripe's webhook and the
-      // "End free trial" button are still the only things that write it, and a
-      // middleware that writes on every request is a middleware that writes a
-      // great many times.
-      //
-      // Billing off: there is no trial to be in, whatever the row says (every
-      // organization is created with the flag set).
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       req.org = {
         ...setOrg,
-        isTrailing:
-          isBillingEnabled() &&
-          !!setOrg.isTrailing &&
-          trialWindow(setOrg.createdAt).open,
+        isTrailing: effectiveIsTrailing(setOrg),
       };
 
       setSentryUserContext({
