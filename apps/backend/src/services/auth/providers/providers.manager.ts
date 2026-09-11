@@ -14,8 +14,10 @@ export class AuthProviderManager {
       (m: any) => m.provider === provider
     );
 
+    // A fixed message: the provider name comes from the request body, and this
+    // error reaches the client.
     if (!found) {
-      throw new Error(`Auth provider ${provider} not found`);
+      throw new Error('Unknown auth provider');
     }
 
     return this._moduleRef.get(found.target, { strict: false });
