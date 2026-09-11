@@ -3,6 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Button } from '@gitroom/react/form/button';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 export const PreConditionComponentModal: FC = () => {
   const modal = useModals();
@@ -30,8 +31,10 @@ export const PreConditionComponentModal: FC = () => {
 export const PreConditionComponent: FC = () => {
   const modal = useModals();
   const query = useSearchParams();
+  const { billingEnabled } = useVariables();
   useEffect(() => {
-    if (query.get('precondition')) {
+    // It asks for a trial charge; with billing off there is none to make.
+    if (billingEnabled && query.get('precondition')) {
       modal.openModal({
         title: 'Suspicious activity detected',
         withCloseButton: true,

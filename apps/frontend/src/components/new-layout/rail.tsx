@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { MenuItem } from '@gitroom/frontend/components/new-layout/menu-item';
 import {
   useMenuFilter,
@@ -51,6 +52,7 @@ export const Rail: FC<RailProps> = ({
 }) => {
   const t = useT();
   const user = useUser();
+  const { billingEnabled } = useVariables();
   const pathname = usePathname();
   const { mainMenu, moreMenu, secondMenu } = useMenuItem();
   const filter = useMenuFilter();
@@ -140,7 +142,8 @@ export const Rail: FC<RailProps> = ({
   const billing = secondMenu.find((f) => f.path === '/billing');
   const showUpgrade = !!billing && filter(billing);
   const onBilling = pathname.indexOf('/billing') === 0;
-  const isFoundingRail = !!user?.isLifetime;
+  // Founding is a hosted-service state; with billing off there is none.
+  const isFoundingRail = billingEnabled && !!user?.isLifetime;
   const isAgencyRail =
     !isFoundingRail && user?.tier?.current === 'AGENCY';
   const upgradeLabel = isFoundingRail

@@ -25,7 +25,7 @@ export function setCookie(cname: string, cvalue: string, exdays: number) {
 }
 function LayoutContextInner(params: { children: ReactNode }) {
   const returnUrl = useReturnUrl();
-  const { backendUrl, isGeneral, isSecured } = useVariables();
+  const { backendUrl, isGeneral, isSecured, billingEnabled } = useVariables();
   const afterRequest = useCallback(
     async (url: string, options: RequestInit, response: Response) => {
       if (
@@ -107,6 +107,11 @@ function LayoutContextInner(params: { children: ReactNode }) {
         window.location.href = '/';
       }
       if (response.status === 406) {
+        // Billing off: there is no trial to finish. The server does not send
+        // this then, and the dialog must not appear if something does.
+        if (!billingEnabled) {
+          return false;
+        }
         if (
           await deleteDialog(
             'You are currently on trial, in order to use the feature you must finish the trial',
@@ -122,6 +127,11 @@ function LayoutContextInner(params: { children: ReactNode }) {
       }
 
       if (response.status === 402) {
+        // Billing off: there is nothing to move to. Hand the response back the
+        // way a dismissed dialog does.
+        if (!billingEnabled) {
+          return true;
+        }
         // Settings → Teams owns its upgrade UI (TeamsUpgradeLock). A GET
         // /settings/team 402 must not open the global Payment Required dialog —
         // that was the bug when the plan lacks team_members (or when a DEV

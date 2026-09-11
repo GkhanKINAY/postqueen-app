@@ -189,6 +189,7 @@ const HeaderIcon = ({ children }: { children: ReactNode }) => (
 const AppChrome = ({ children }: { children: ReactNode }) => {
   const t = useT();
   const user = useUser();
+  const { billingEnabled } = useVariables();
   const { mobile, tablet } = useViewport();
   // Same cookie idiom as the calendar's own collapsible column.
   const [railCookie, setRailCookie] = useCookie('railCollapsed', '0');
@@ -249,7 +250,8 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
   }, [mobile, tourStep]);
 
   // Lifetime / founding only — not ordinary trials (matches rail isFoundingRail).
-  const showFoundingChip = !mobile && !!user?.isLifetime;
+  // A hosted-service state: with billing off there is no founding to show.
+  const showFoundingChip = !mobile && billingEnabled && !!user?.isLifetime;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
