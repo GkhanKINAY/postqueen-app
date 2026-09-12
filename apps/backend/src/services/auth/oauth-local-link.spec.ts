@@ -220,3 +220,232 @@ describe('findExistingOauthUser', () => {
     assert.equal(found, null);
   });
 });
+
+type UserRow = {
+  id: string;
+  email: string;
+  providerName: string;
+  providerId: string;
+  activated: boolean;
+  deletedAt: null;
+};
+
+// Mirrors users.repository + auth.service: unique (email, providerName),
+// getUserByEmail is LOCAL-only, Google lookup prefers a linked LOCAL row.
+const makeUserTable = (seed: UserRow[] = []) => {
+  const rows: UserRow[] = seed.map((row) => ({ ...row }));
+  let seq = rows.length;
+
+  const store: OauthUserStore<UserRow> = {
+    getUserByEmail: async (email) =>
+      rows.find(
+        (row) =>
+          row.deletedAt === null &&
+          row.providerName === 'LOCAL' &&
+          row.email.toLowerCase() === email.toLowerCase()
+      ) ?? null,
+    getUserByProvider: async (providerId, provider) => {
+      if (provider === 'GOOGLE') {
+        const linkedLocal = rows.find(
+          (row) =>
+            row.deletedAt === null &&
+            row.providerName === 'LOCAL' &&
+            row.providerId === providerId
+        );
+        if (linkedLocal) {
+          return linkedLocal;
+        }
+      }
+      return (
+        rows.find(
+          (row) =>
+            row.deletedAt === null &&
+            row.providerName === provider &&
+            row.providerId === providerId
+        ) ?? null
+      );
+    },
+    attachProviderId: async (userId, providerId) => {
+      const row = rows.find(
+        (item) => item.id === userId && item.providerName === 'LOCAL'
+      );
+      if (row) {
+        row.providerId = providerId;
+      }
+    },
+    activateUser: async (id) => {
+      const row = rows.find((item) => item.id === id);
+      if (row) {
+        row.activated = true;
+      }
+    },
+  };
+
+  const insert = (
+    providerName: string,
+    email: string,
+    providerId: string
+  ): UserRow => {
+    if (
+      rows.some(
+        (row) =>
+          row.deletedAt === null &&
+          row.providerName === providerName &&
+          row.email.toLowerCase() === email.toLowerCase()
+      )
+    ) {
+      throw new Error(`unique (email, providerName): ${email}/${providerName}`);
+    }
+    seq += 1;
+    const row: UserRow = {
+      id: `user-${seq}`,
+      email,
+      providerName,
+      providerId,
+      activated: true,
+      deletedAt: null,
+    };
+    rows.push(row);
+    return row;
+  };
+
+  const anyProvider = (email: string) => {
+    const matches = rows.filter(
+      (row) =>
+        row.deletedAt === null &&
+        row.email.toLowerCase() === email.toLowerCase()
+    );
+    return (
+      matches.find((row) => row.providerName === 'LOCAL') ||
+      matches[0] ||
+      null
+    );
+  };
+
+  const googleSignIn = async (identity: { id: string; email: string }) => {
+    const existing = await findExistingOauthUser('GOOGLE', identity, store);
+    if (existing) {
+      return { user: existing, created: false };
+    }
+    return {
+      user: insert('GOOGLE', identity.email, identity.id),
+      created: true,
+    };
+  };
+
+  const otpSignIn = async (email: string) => {
+    const local = await store.getUserByEmail(email);
+    const user = existingAccountForEmail(local, local ?? anyProvider(email));
+    if (user) {
+      return { user, created: false };
+    }
+    return { user: insert('LOCAL', email, ''), created: true };
+  };
+
+  const passwordRegister = async (email: string) => {
+    const local = await store.getUserByEmail(email);
+    const any = existingAccountForEmail(local, local ?? anyProvider(email));
+    if (shouldBlockLocalRegister(any)) {
+      throw new Error('Email already exists');
+    }
+    return insert('LOCAL', email, '');
+  };
+
+  return { rows, store, googleSignIn, otpSignIn, passwordRegister, insert };
+};
+
+describe('one verified inbox is one User (table + unique constraint)', () => {
+  const google = { id: 'google-99', email: 'Gokhan@example.com' };
+
+  it('email then Google: same LOCAL row, Google id attached, no second org', async () => {
+    const db = makeUserTable();
+    const local = db.insert('LOCAL', 'gokhan@example.com', '');
+
+    const first = await db.googleSignIn(google);
+    const second = await db.googleSignIn(google);
+
+    assert.equal(first.created, false);
+    assert.equal(second.created, false);
+    assert.equal(first.user.id, local.id);
+    assert.equal(second.user.id, local.id);
+    assert.equal(first.user.providerName, 'LOCAL');
+    assert.equal(first.user.providerId, 'google-99');
+    assert.equal(db.rows.filter((row) => row.deletedAt === null).length, 1);
+  });
+
+  it('Google then Google: same GOOGLE row, no second org', async () => {
+    const db = makeUserTable();
+
+    const first = await db.googleSignIn(google);
+    const second = await db.googleSignIn(google);
+
+    assert.equal(first.created, true);
+    assert.equal(second.created, false);
+    assert.equal(second.user.id, first.user.id);
+    assert.equal(second.user.providerName, 'GOOGLE');
+    assert.equal(db.rows.length, 1);
+  });
+
+  it('leftover GOOGLE duplicate + LOCAL same email: Google login returns LOCAL', async () => {
+    const db = makeUserTable();
+    const local = db.insert('LOCAL', 'gokhan@example.com', '');
+    db.insert('GOOGLE', 'gokhan@example.com', 'google-99');
+
+    const signedIn = await db.googleSignIn(google);
+
+    assert.equal(signedIn.created, false);
+    assert.equal(signedIn.user.id, local.id);
+    assert.notEqual(signedIn.user.providerName, 'GOOGLE');
+    assert.equal(signedIn.user.providerName, 'LOCAL');
+    assert.equal(signedIn.user.providerId, 'google-99');
+  });
+
+  it('Google then OTP: signs into the GOOGLE user, does not create LOCAL', async () => {
+    const db = makeUserTable();
+    const googleUser = (await db.googleSignIn(google)).user;
+
+    const otp = await db.otpSignIn('gokhan@example.com');
+
+    assert.equal(otp.created, false);
+    assert.equal(otp.user.id, googleUser.id);
+    assert.equal(otp.user.providerName, 'GOOGLE');
+    assert.equal(db.rows.length, 1);
+  });
+
+  it('email then OTP then Google: still the same LOCAL user', async () => {
+    const db = makeUserTable();
+    const otp = await db.otpSignIn('gokhan@example.com');
+    const googleLogin = await db.googleSignIn(google);
+
+    assert.equal(otp.created, true);
+    assert.equal(googleLogin.created, false);
+    assert.equal(googleLogin.user.id, otp.user.id);
+    assert.equal(googleLogin.user.providerName, 'LOCAL');
+    assert.equal(googleLogin.user.providerId, 'google-99');
+    assert.equal(db.rows.length, 1);
+  });
+
+  it('password register after Google: Email already exists', async () => {
+    const db = makeUserTable();
+    await db.googleSignIn(google);
+
+    await assert.rejects(
+      () => db.passwordRegister('gokhan@example.com'),
+      /Email already exists/
+    );
+    assert.equal(db.rows.length, 1);
+  });
+
+  it('GitHub with the same email still registers a separate user', async () => {
+    const db = makeUserTable();
+    db.insert('LOCAL', 'gokhan@example.com', '');
+
+    const github = await findExistingOauthUser(
+      'GITHUB',
+      google,
+      db.store
+    );
+
+    assert.equal(github, null);
+  });
+});
