@@ -34,6 +34,7 @@ import {
   ChannelsListEmpty,
   ChannelsPageEmpty,
 } from '@gitroom/frontend/components/ui/no-channels-art';
+import { selectAddedIntegration } from '@gitroom/frontend/components/channels/select-added-integration';
 
 /**
  * Channels page — design's list + detail (or inline Add Channel pane).
@@ -264,10 +265,11 @@ type SettingsRow = {
  */
 const ChannelSettingsGroups: FC<{
   integration: any;
-  mutate: () => void;
+  mutate: () => void | Promise<unknown>;
   reconnect: () => void;
   openSlots: () => void;
-}> = ({ integration, mutate, reconnect, openSlots }) => {
+  onDeleted?: (id: string) => void;
+}> = ({ integration, mutate, reconnect, openSlots, onDeleted }) => {
   const t = useT();
   const fetch = useFetch();
   const modal = useModals();
@@ -363,38 +365,47 @@ const ChannelSettingsGroups: FC<{
     ) {
       return;
     }
-    const res = await fetch('/integrations', {
-      method: 'DELETE',
-      body: JSON.stringify({ id: integration.id }),
-    });
-    if (res.status === 406) {
-      toast.show(
-        t(
-          'delete_posts_before_channel',
-          'You have to delete all the posts associated with this channel before deleting it'
-        ),
-        'warning'
-      );
-      return;
-    }
-    if (
-      extensionId &&
-      typeof chrome !== 'undefined' &&
-      chrome?.runtime?.sendMessage
-    ) {
-      try {
-        chrome.runtime.sendMessage(
-          extensionId,
-          { type: 'REMOVE_REFRESH_TOKEN', integrationId: integration.id },
-          () => {}
+    try {
+      const res = await fetch('/integrations', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: integration.id }),
+      });
+      if (res.status === 406) {
+        toast.show(
+          t(
+            'delete_posts_before_channel',
+            'You have to delete all the posts associated with this channel before deleting it'
+          ),
+          'warning'
         );
-      } catch {
-        /* ignore */
+        return;
       }
+      if (
+        extensionId &&
+        typeof chrome !== 'undefined' &&
+        chrome?.runtime?.sendMessage
+      ) {
+        try {
+          chrome.runtime.sendMessage(
+            extensionId,
+            { type: 'REMOVE_REFRESH_TOKEN', integrationId: integration.id },
+            () => {}
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      toast.show(t('channel_deleted', 'Channel Deleted'), 'success');
+      onDeleted?.(integration.id);
+      await mutate();
+    } finally {
+      // Confirm overlay is a zustand modal. This row is not inside
+      // `CurrentModalContext`, so `closeCurrent` no-ops here. If anything
+      // after the toast throws (or close-by-id missed), unmount the leftover
+      // Are you sure? — the inline Add Channel pane is not a modal.
+      modal.closeAll();
     }
-    toast.show(t('channel_deleted', 'Channel Deleted'), 'success');
-    mutate();
-  }, [extensionId, fetch, integration.id, mutate, t, toast]);
+  }, [extensionId, fetch, integration.id, modal, mutate, onDeleted, t, toast]);
 
   const channelRows: SettingsRow[] = [
     {
@@ -589,6 +600,13 @@ export const ChannelsComponent: FC = () => {
   // Phone: list is full-bleed; detail / add opens as an off-canvas drawer.
   // Do not open just because the first channel was auto-selected.
   const [detailOpen, setDetailOpen] = useState(false);
+  // Empty-list auto-open vs an explicit Add Channel click. Recovery may close
+  // the pane the empty-state race opened; it must not close one the user asked
+  // for on a list that already had channels.
+  const openedAddForEmpty = useRef(false);
+  const addOpenGeneration = useRef(0);
+  const addedConsumed = useRef(false);
+  const focusedFromAdded = useRef(false);
 
   // Design `_autoSide`: collapse under 1180 on viewport transitions only.
   // `collapseMenu` must stay out of the deps — otherwise expanding on tablet
@@ -639,26 +657,81 @@ export const ChannelsComponent: FC = () => {
     }
   }, [fetch, providerCatalog]);
 
-  const openAdd = useCallback(async () => {
-    // Without a catalog the add pane renders an empty provider grid, so say why
-    // instead of opening it.
-    if (!(await loadCatalog())) {
-      toast.show(
-        t(
-          'add_channel_failed',
-          'Could not load the channel list, please try again'
-        ),
-        'warning'
-      );
-      return;
+  const openAdd = useCallback(
+    async (source: 'user' | 'empty' | 'tour' = 'user') => {
+      if (source === 'user' || source === 'tour') {
+        openedAddForEmpty.current = false;
+      } else {
+        openedAddForEmpty.current = true;
+      }
+      const generation = ++addOpenGeneration.current;
+      // Without a catalog the add pane renders an empty provider grid, so say
+      // why instead of opening it.
+      if (!(await loadCatalog())) {
+        toast.show(
+          t(
+            'add_channel_failed',
+            'Could not load the channel list, please try again'
+          ),
+          'warning'
+        );
+        return;
+      }
+      if (generation !== addOpenGeneration.current) {
+        return;
+      }
+      // List arrived (or OAuth `added=` focused a channel) while catalog
+      // loaded — do not overlay Add Channel on that return.
+      if (
+        source === 'empty' &&
+        (focusedFromAdded.current || !openedAddForEmpty.current)
+      ) {
+        return;
+      }
+      setInviteAdd(false);
+      setAddStepOpen(false);
+      setAdding(true);
+      setDetailOpen(true);
+    },
+    [loadCatalog, toast, t]
+  );
+
+  const openAddClicked = useCallback(() => {
+    void openAdd('user');
+  }, [openAdd]);
+
+  const stripChannelQuery = useCallback((keys: string[]) => {
+    const cleaned = new URLSearchParams(searchParams.toString());
+    for (const key of keys) {
+      cleaned.delete(key);
     }
+    const q = cleaned.toString();
+    window.history.replaceState(null, '', q ? `/channels?${q}` : '/channels');
+  }, [searchParams]);
+
+  const onChannelDeleted = useCallback(
+    (id: string) => {
+      // Last-channel delete must not keep the post-connect focus lock, or Add
+      // Channel never opens and a leftover confirm can sit on the empty rail.
+      focusedFromAdded.current = false;
+      addedConsumed.current = true;
+      setSelected((currentId) => (currentId === id ? '' : currentId));
+      stripChannelQuery(['added', 'msg']);
+    },
+    [stripChannelQuery]
+  );
+
+  const closeAddPane = useCallback(() => {
+    openedAddForEmpty.current = false;
+    addOpenGeneration.current += 1;
     setInviteAdd(false);
     setAddStepOpen(false);
-    setAdding(true);
-    setDetailOpen(true);
-  }, [loadCatalog, toast, t]);
+    setAdding(false);
+  }, []);
 
   const closeDetail = useCallback(() => {
+    openedAddForEmpty.current = false;
+    addOpenGeneration.current += 1;
     setDetailOpen(false);
     setInviteAdd(false);
     setAddStepOpen(false);
@@ -673,23 +746,57 @@ export const ChannelsComponent: FC = () => {
 
   // Design: zero channels → Add Channel open; otherwise first channel selected.
   // Never leave the right column on bare `bg-pqLine` (hairline gap color).
+  //
+  // OAuth success lands on `/channels?added=<provider>&msg=…`. That must focus
+  // the new row, not auto-open Add Channel — `fallbackData: []` used to settle
+  // empty, `openAdd()` loaded the catalog, and recovery only closed adding when
+  // the catalog was still missing, so the pane stayed up after the YouTube row
+  // appeared.
   useEffect(() => {
     if (!listSettled) return;
 
-    if (!list.length) {
-      void openAdd();
+    const addedProvider = searchParams.get('added');
+    const returningFromConnect = !!addedProvider && !addedConsumed.current;
+
+    if (returningFromConnect) {
+      if (!list.length) {
+        return;
+      }
+      const match = selectAddedIntegration(list, addedProvider);
+      addedConsumed.current = true;
+      focusedFromAdded.current = true;
+      closeAddPane();
+      if (match?.id) {
+        setSelected(match.id);
+      } else if (list[0]?.id) {
+        setSelected(list[0].id);
+      }
+      setDetailOpen(true);
+      const msg = searchParams.get('msg');
+      if (msg) {
+        toast.show(msg, 'success');
+      }
+      stripChannelQuery(['added', 'msg']);
       return;
     }
 
-    // Recover from fallbackData race: empty mount set adding without catalog.
+    if (!list.length) {
+      // Deleting the last channel (including the one we just focused from
+      // ?added=) is the empty state. Holding `focusedFromAdded` skipped Add
+      // Channel and left the delete confirm over an empty rail.
+      focusedFromAdded.current = false;
+      void openAdd('empty');
+      return;
+    }
+
     if (
       adding &&
-      !providerCatalog &&
+      openedAddForEmpty.current &&
       !tourNeedsAdd &&
-      searchParams.get('add') !== '1'
+      searchParams.get('add') !== '1' &&
+      !focusedFromAdded.current
     ) {
-      setAdding(false);
-      setAddStepOpen(false);
+      closeAddPane();
     }
 
     if (!selected && list[0]?.id) {
@@ -700,10 +807,12 @@ export const ChannelsComponent: FC = () => {
     list,
     selected,
     adding,
-    providerCatalog,
     tourNeedsAdd,
     searchParams,
     openAdd,
+    closeAddPane,
+    stripChannelQuery,
+    toast,
   ]);
 
   // Tour last step + Finish leave Add Channel open (design chAdd:'connect').
@@ -719,6 +828,14 @@ export const ChannelsComponent: FC = () => {
   const tourOpenedAdd = useRef(false);
   const addConsumed = useRef(false);
   useEffect(() => {
+    // A successful connect (`?added=`) focuses the new channel. Tour last-step
+    // `channel-add` and `?add=1` must not reopen Add Channel over that.
+    if (focusedFromAdded.current) {
+      return;
+    }
+    if (searchParams.get('added') && !addedConsumed.current) {
+      return;
+    }
     // Once, by ref rather than by the URL: `replaceState` does not tell the
     // router anything, so `searchParams` still reads `add=1` afterwards, and
     // `openAdd`'s identity changes as soon as the catalog resolves — which
@@ -727,27 +844,29 @@ export const ChannelsComponent: FC = () => {
     if (tourNeedsAdd || deepLinked) {
       if (deepLinked) {
         addConsumed.current = true;
-        const cleaned = new URLSearchParams(searchParams.toString());
-        cleaned.delete('add');
-        const q = cleaned.toString();
-        window.history.replaceState(
-          null,
-          '',
-          q ? `/channels?${q}` : '/channels'
-        );
+        stripChannelQuery(['add']);
       }
       tourOpenedAdd.current = tourNeedsAdd && !deepLinked;
-      void openAdd();
+      void openAdd('tour');
       return;
     }
     if (tourOpenedAdd.current) {
       tourOpenedAdd.current = false;
       if (list.length) closeDetail();
     }
-  }, [tourNeedsAdd, searchParams, openAdd, closeDetail, list.length]);
+  }, [
+    tourNeedsAdd,
+    searchParams,
+    openAdd,
+    closeDetail,
+    list.length,
+    stripChannelQuery,
+  ]);
 
   const afterConnect = useCallback(() => {
     mutate();
+    openedAddForEmpty.current = false;
+    addOpenGeneration.current += 1;
     setInviteAdd(false);
     setAddStepOpen(false);
     setAdding(false);
@@ -967,7 +1086,7 @@ export const ChannelsComponent: FC = () => {
               'data-tooltip-content': t('add_channel', 'Add Channel'),
               'aria-label': t('add_channel', 'Add Channel'),
             })}
-            onClick={openAdd}
+            onClick={openAddClicked}
             className={clsx(
               'flex h-[36px] items-center justify-center gap-[7px] rounded-[9px] text-[12.5px] font-[600] transition-colors',
               channelsCollapsed
@@ -1166,7 +1285,7 @@ export const ChannelsComponent: FC = () => {
                   <button
                     type="button"
                     data-view="channel-connect"
-                    onClick={openAdd}
+                    onClick={openAddClicked}
                     className="mt-[6px] rounded-pqSm bg-pqBrand px-[16px] py-[9px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
                   >
                     {t('add_channel', 'Add Channel')}
@@ -1399,6 +1518,7 @@ export const ChannelsComponent: FC = () => {
               mutate={mutate}
               reconnect={reconnect}
               openSlots={openSlots}
+              onDeleted={onChannelDeleted}
             />
           </div>
         </div>

@@ -90,6 +90,16 @@ export const useModals = () => {
     closeCurrent: () => {
       if (modalContext.id) {
         closeById(modalContext.id);
+        return;
+      }
+      // `removeLayout` (composer) and some confirms render without
+      // `CurrentModalContext`, so the id is empty and this used to no-op —
+      // delete-channel then toasted "Channel Deleted" with Are you sure?
+      // still on screen. Drop the top overlay instead of leaving it stuck.
+      const stack = useModalStore.getState().modalManager;
+      const top = stack[stack.length - 1];
+      if (top?.id) {
+        closeById(top.id);
       }
     },
   } satisfies ModalManagerInterface;
@@ -420,7 +430,6 @@ export const DecisionModal: FC<{
   onlyApprove,
   danger,
 }) => {
-  const { closeCurrent } = useModals();
   return (
     <div className="flex flex-col">
       <div className="max-w-[600px] whitespace-pre-line text-[14px] leading-[1.6] text-pqMuted">
@@ -429,10 +438,7 @@ export const DecisionModal: FC<{
       <div className="mt-[20px] flex gap-[10px]">
         <button
           type="button"
-          onClick={() => {
-            resolution(true);
-            closeCurrent();
-          }}
+          onClick={() => resolution(true)}
           className={clsx(
             'min-w-[112px] h-[46px] px-[24px] rounded-[12px] border-0 text-[14.5px] font-[600] text-pqOnBrand cursor-pointer transition-[filter] hover:brightness-110',
             danger ? 'bg-pqDanger' : 'bg-pqBrand'
@@ -443,10 +449,7 @@ export const DecisionModal: FC<{
         {!onlyApprove && (
           <button
             type="button"
-            onClick={() => {
-              resolution(false);
-              closeCurrent();
-            }}
+            onClick={() => resolution(false)}
             className="min-w-[112px] h-[46px] px-[24px] rounded-[12px] border-0 bg-pqBtnSimple text-[14.5px] font-[600] text-pqText cursor-pointer transition-shadow hover:shadow-[inset_0_0_0_999px_var(--hover)]"
           >
             {cancelLabel}
@@ -459,6 +462,59 @@ export const DecisionModal: FC<{
 
 export const decisionModalEmitter = new EventEmitter();
 
+type DecisionOpenParams = {
+  title?: string;
+  description?: any;
+  onlyApprove?: boolean;
+  approveLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  newRes?: (value: boolean) => void;
+};
+
+const openDecisionDialog = ({
+  title = 'Are you sure?',
+  description = 'Are you sure you want to close this modal?' as any,
+  onlyApprove = false,
+  approveLabel = 'Yes',
+  cancelLabel = 'No',
+  danger = false,
+  newRes,
+}: DecisionOpenParams = {}): Promise<boolean> => {
+  return new Promise<boolean>((res) => {
+    const id = makeId(20);
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      (newRes ?? res)(value);
+      // Close on a microtask so the same click cannot fall through onto the
+      // Delete row and open a second Are you sure? after this one unmounts.
+      queueMicrotask(() => {
+        useModalStore.getState().closeById(id);
+      });
+    };
+    useModalStore.getState().openModal({
+      id,
+      title,
+      askClose: false,
+      onClose: () => finish(false),
+      children: (
+        <DecisionModal
+          onlyApprove={onlyApprove}
+          danger={danger}
+          resolution={finish}
+          description={description}
+          approveLabel={approveLabel}
+          cancelLabel={cancelLabel}
+        />
+      ),
+    });
+  });
+};
+
 export const areYouSure = ({
   title = 'Are you sure?',
   description = 'Are you sure you want to close this modal?' as any,
@@ -466,58 +522,36 @@ export const areYouSure = ({
   cancelLabel = 'No',
   danger = false,
 } = {}): Promise<boolean> => {
-  return new Promise<boolean>((newRes) => {
-    decisionModalEmitter.emit('open', {
-      title,
-      description,
-      approveLabel,
-      cancelLabel,
-      danger,
-      newRes,
-    });
+  // Open through the store with a minted id. The emitter path used to stack
+  // a dialog per DecisionEverywhere mount, and confirm only closed the top
+  // copy — Channel Deleted toasted while Are you sure? stayed up.
+  return openDecisionDialog({
+    title,
+    description,
+    approveLabel,
+    cancelLabel,
+    danger,
   });
 };
 
 export const DecisionEverywhere: FC = () => {
-  const decision = useDecisionModal();
   useEffect(() => {
-    decisionModalEmitter.on('open', decision.open);
+    const open = (params: DecisionOpenParams) => {
+      void openDecisionDialog(params);
+    };
+    // Last writer wins. Nested wrappers and a missing cleanup used to stack
+    // listeners so one Are you sure? became N overlays; confirm only
+    // dismissed the top copy.
+    decisionModalEmitter.removeAllListeners('open');
+    decisionModalEmitter.on('open', open);
+    return () => {
+      decisionModalEmitter.off('open', open);
+    };
   }, []);
   return null;
 };
 
 export const useDecisionModal = () => {
-  const modals = useModals();
-  const open = useCallback(
-    ({
-      title = 'Are you sure?',
-      description = 'Are you sure you want to close this modal?' as any,
-      onlyApprove = false,
-      approveLabel = 'Yes',
-      cancelLabel = 'No',
-      danger = false,
-      newRes = undefined as any,
-    } = {}) => {
-      return new Promise<boolean>((res) => {
-        modals.openModal({
-          title,
-          askClose: false,
-          onClose: () => res(false),
-          children: (
-            <DecisionModal
-              onlyApprove={onlyApprove}
-              danger={danger}
-              resolution={(value) => (newRes ? newRes(value) : res(value))}
-              description={description}
-              approveLabel={approveLabel}
-              cancelLabel={cancelLabel}
-            />
-          ),
-        });
-      });
-    },
-    [modals]
-  );
-
+  const open = useCallback(openDecisionDialog, []);
   return { open };
 };
