@@ -46,3 +46,12 @@ describe('Channels detail handle contract', () => {
     assert.doesNotMatch(detailSource, /current\.name\?\.replace\(\/\^@\//);
   });
 });
+
+describe('Channels list handle contract', () => {
+  it('renders formatChannelHandle(integration.display) before the platform slug', () => {
+    assert.match(
+      detailSource,
+      /formatChannelHandle\(\s*integration\.display\s*\)\s*\|\|/,
+    );
+  });
+});

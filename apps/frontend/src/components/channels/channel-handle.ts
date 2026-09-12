@@ -1,6 +1,6 @@
 /**
- * Channel detail subtitle: the real handle from `/integrations/list`
- * (`display` = DB `profile`), not the display name.
+ * Channel list + detail subtitle: the real handle from `/integrations/list`
+ * (`display` = DB `profile`), not the platform slug or display name.
  */
 export function formatChannelHandle(display?: string | null): string {
   const raw = (display || '').trim();
