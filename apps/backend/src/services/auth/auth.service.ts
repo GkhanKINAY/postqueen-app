@@ -15,7 +15,11 @@ import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newslett
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
-import { findExistingOauthUser, shouldBlockLocalRegister } from '@gitroom/backend/services/auth/oauth-local-link';
+import {
+  existingAccountForEmail,
+  findExistingOauthUser,
+  shouldBlockLocalRegister,
+} from '@gitroom/backend/services/auth/oauth-local-link';
 
 // A session lasts as long as the cookie that carries it (one year, set in
 // auth.controller). Before this no token had an expiry at all, so a copied
@@ -140,12 +144,12 @@ export class AuthService {
 
     await this._otpService.consume(record.id);
 
-    let user: User | null = await this._userService.getUserByEmail(email);
+    const local = await this._userService.getUserByEmail(email);
+    let user: User | null = existingAccountForEmail(
+      local,
+      local ?? (await this._userService.getUserByEmailAnyProvider(email))
+    );
     let isNew = false;
-
-    if (!user) {
-      user = await this._userService.getUserByEmailAnyProvider(email);
-    }
 
     if (!user) {
       // Only the account-creation branch is gated; an existing user signing in
@@ -210,9 +214,10 @@ export class AuthService {
       }
       const user = await this._userService.getUserByEmail(body.email);
       if (body instanceof CreateOrgUserDto) {
-        const any = user
-          ? user
-          : await this._userService.getUserByEmailAnyProvider(body.email);
+        const any = existingAccountForEmail(
+          user,
+          user ?? (await this._userService.getUserByEmailAnyProvider(body.email))
+        );
         if (shouldBlockLocalRegister(any)) {
           throw new Error('Email already exists');
         }

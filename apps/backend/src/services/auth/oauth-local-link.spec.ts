@@ -40,16 +40,23 @@ describe('shouldAttachGoogleId', () => {
 });
 
 describe('existingAccountForEmail / shouldBlockLocalRegister', () => {
-  it('OTP prefers LOCAL then any other provider, and never creates a second user', () => {
+  const googleOnly = {
+    id: 'google-user',
+    providerName: 'GOOGLE',
+    activated: true,
+  };
+
+  it('OTP prefers LOCAL when both exist, and never creates a second user', () => {
     const local = localUser();
-    const googleOnly = {
-      id: 'google-user',
-      providerName: 'GOOGLE',
-      activated: true,
-    };
     assert.equal(existingAccountForEmail(local, googleOnly), local);
+  });
+
+  it('OTP when only GOOGLE user exists → that user, no new LOCAL', () => {
     assert.equal(existingAccountForEmail(null, googleOnly), googleOnly);
     assert.equal(existingAccountForEmail(null, null), null);
+  });
+
+  it('password register when GOOGLE user exists → Email already exists', () => {
     assert.equal(shouldBlockLocalRegister(googleOnly), true);
     assert.equal(shouldBlockLocalRegister(null), false);
   });
@@ -104,6 +111,24 @@ describe('findExistingOauthUser', () => {
 
     const found = await findExistingOauthUser('GOOGLE', identity, users);
     assert.equal(found, googleUser);
+  });
+
+  it('Google then Google after a prior link: LOCAL that already holds the Google id, no second org', async () => {
+    const linkedLocal = localUser({ providerId: 'google-99' });
+    const users: OauthUserStore = {
+      getUserByProvider: async () => linkedLocal,
+      getUserByEmail: async () => null,
+      attachProviderId: async () => {
+        throw new Error('already attached');
+      },
+      activateUser: async () => {
+        throw new Error('must not activate');
+      },
+    };
+
+    const found = await findExistingOauthUser('GOOGLE', identity, users);
+    assert.equal(found, linkedLocal);
+    assert.equal((found as { providerName: string }).providerName, 'LOCAL');
   });
 
   it('GOOGLE duplicate already exists + LOCAL same email: LOCAL wins', async () => {
@@ -181,7 +206,7 @@ describe('findExistingOauthUser', () => {
     assert.equal(found, null);
   });
 
-  it('registers a new org when no LOCAL user has that email', async () => {
+  it('no LOCAL and no GOOGLE → null (caller registers)', async () => {
     const users: OauthUserStore = {
       getUserByProvider: async () => null,
       getUserByEmail: async () => null,
