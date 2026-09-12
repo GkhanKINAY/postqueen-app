@@ -265,10 +265,11 @@ type SettingsRow = {
  */
 const ChannelSettingsGroups: FC<{
   integration: any;
-  mutate: () => void;
+  mutate: () => void | Promise<unknown>;
   reconnect: () => void;
   openSlots: () => void;
-}> = ({ integration, mutate, reconnect, openSlots }) => {
+  onDeleted?: (id: string) => void;
+}> = ({ integration, mutate, reconnect, openSlots, onDeleted }) => {
   const t = useT();
   const fetch = useFetch();
   const modal = useModals();
@@ -364,38 +365,47 @@ const ChannelSettingsGroups: FC<{
     ) {
       return;
     }
-    const res = await fetch('/integrations', {
-      method: 'DELETE',
-      body: JSON.stringify({ id: integration.id }),
-    });
-    if (res.status === 406) {
-      toast.show(
-        t(
-          'delete_posts_before_channel',
-          'You have to delete all the posts associated with this channel before deleting it'
-        ),
-        'warning'
-      );
-      return;
-    }
-    if (
-      extensionId &&
-      typeof chrome !== 'undefined' &&
-      chrome?.runtime?.sendMessage
-    ) {
-      try {
-        chrome.runtime.sendMessage(
-          extensionId,
-          { type: 'REMOVE_REFRESH_TOKEN', integrationId: integration.id },
-          () => {}
+    try {
+      const res = await fetch('/integrations', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: integration.id }),
+      });
+      if (res.status === 406) {
+        toast.show(
+          t(
+            'delete_posts_before_channel',
+            'You have to delete all the posts associated with this channel before deleting it'
+          ),
+          'warning'
         );
-      } catch {
-        /* ignore */
+        return;
       }
+      if (
+        extensionId &&
+        typeof chrome !== 'undefined' &&
+        chrome?.runtime?.sendMessage
+      ) {
+        try {
+          chrome.runtime.sendMessage(
+            extensionId,
+            { type: 'REMOVE_REFRESH_TOKEN', integrationId: integration.id },
+            () => {}
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      toast.show(t('channel_deleted', 'Channel Deleted'), 'success');
+      onDeleted?.(integration.id);
+      await mutate();
+    } finally {
+      // Confirm overlay is a zustand modal. This row is not inside
+      // `CurrentModalContext`, so `closeCurrent` no-ops here. If anything
+      // after the toast throws (or close-by-id missed), unmount the leftover
+      // Are you sure? — the inline Add Channel pane is not a modal.
+      modal.closeAll();
     }
-    toast.show(t('channel_deleted', 'Channel Deleted'), 'success');
-    mutate();
-  }, [extensionId, fetch, integration.id, mutate, t, toast]);
+  }, [extensionId, fetch, integration.id, modal, mutate, onDeleted, t, toast]);
 
   const channelRows: SettingsRow[] = [
     {
@@ -699,6 +709,18 @@ export const ChannelsComponent: FC = () => {
     window.history.replaceState(null, '', q ? `/channels?${q}` : '/channels');
   }, [searchParams]);
 
+  const onChannelDeleted = useCallback(
+    (id: string) => {
+      // Last-channel delete must not keep the post-connect focus lock, or Add
+      // Channel never opens and a leftover confirm can sit on the empty rail.
+      focusedFromAdded.current = false;
+      addedConsumed.current = true;
+      setSelected((currentId) => (currentId === id ? '' : currentId));
+      stripChannelQuery(['added', 'msg']);
+    },
+    [stripChannelQuery]
+  );
+
   const closeAddPane = useCallback(() => {
     openedAddForEmpty.current = false;
     addOpenGeneration.current += 1;
@@ -759,9 +781,10 @@ export const ChannelsComponent: FC = () => {
     }
 
     if (!list.length) {
-      if (focusedFromAdded.current) {
-        return;
-      }
+      // Deleting the last channel (including the one we just focused from
+      // ?added=) is the empty state. Holding `focusedFromAdded` skipped Add
+      // Channel and left the delete confirm over an empty rail.
+      focusedFromAdded.current = false;
       void openAdd('empty');
       return;
     }
@@ -1495,6 +1518,7 @@ export const ChannelsComponent: FC = () => {
               mutate={mutate}
               reconnect={reconnect}
               openSlots={openSlots}
+              onDeleted={onChannelDeleted}
             />
           </div>
         </div>
