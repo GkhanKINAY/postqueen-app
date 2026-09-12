@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  existingAccountForEmail,
   findExistingOauthUser,
   shouldAttachGoogleId,
+  shouldBlockLocalRegister,
   shouldLinkGoogleToLocalEmail,
   type OauthUserStore,
 } from './oauth-local-link.ts';
@@ -37,38 +39,32 @@ describe('shouldAttachGoogleId', () => {
   });
 });
 
+describe('existingAccountForEmail / shouldBlockLocalRegister', () => {
+  it('OTP prefers LOCAL then any other provider, and never creates a second user', () => {
+    const local = localUser();
+    const googleOnly = {
+      id: 'google-user',
+      providerName: 'GOOGLE',
+      activated: true,
+    };
+    assert.equal(existingAccountForEmail(local, googleOnly), local);
+    assert.equal(existingAccountForEmail(null, googleOnly), googleOnly);
+    assert.equal(existingAccountForEmail(null, null), null);
+    assert.equal(shouldBlockLocalRegister(googleOnly), true);
+    assert.equal(shouldBlockLocalRegister(null), false);
+  });
+});
+
 describe('findExistingOauthUser', () => {
   const identity = { id: 'google-99', email: 'Gokhan@example.com' };
 
-  it('returns the provider user when getUserByProvider hits', async () => {
-    const googleUser = {
-      id: 'google-user',
-      activated: true,
-      providerName: 'GOOGLE',
-      providerId: 'google-99',
-    };
-    const users: OauthUserStore<typeof googleUser> = {
-      getUserByProvider: async () => googleUser,
-      getUserByEmail: async () => {
-        throw new Error('must not look up LOCAL');
-      },
-      attachProviderId: async () => {
-        throw new Error('must not attach');
-      },
-      activateUser: async () => {
-        throw new Error('must not activate');
-      },
-    };
-
-    const found = await findExistingOauthUser('GOOGLE', identity, users);
-    assert.equal(found, googleUser);
-  });
-
-  it('links an existing LOCAL user after a provider miss', async () => {
+  it('email then Google: LOCAL wins, providerId set, providerName stays LOCAL', async () => {
     const local = localUser();
     const attached: string[] = [];
     const users: OauthUserStore = {
-      getUserByProvider: async () => null,
+      getUserByProvider: async () => {
+        throw new Error('must not need provider lookup when LOCAL email hits');
+      },
       getUserByEmail: async (email) => {
         assert.equal(email, identity.email);
         return local;
@@ -86,6 +82,53 @@ describe('findExistingOauthUser', () => {
     assert.equal(found?.providerId, 'google-99');
     assert.deepEqual(attached, ['local-1:google-99']);
     assert.equal((found as { providerName: string }).providerName, 'LOCAL');
+  });
+
+  it('Google then Google: existing GOOGLE row is returned, no second org', async () => {
+    const googleUser = {
+      id: 'google-user',
+      activated: true,
+      providerName: 'GOOGLE',
+      providerId: 'google-99',
+    };
+    const users: OauthUserStore<typeof googleUser> = {
+      getUserByProvider: async () => googleUser,
+      getUserByEmail: async () => null,
+      attachProviderId: async () => {
+        throw new Error('must not attach');
+      },
+      activateUser: async () => {
+        throw new Error('must not activate');
+      },
+    };
+
+    const found = await findExistingOauthUser('GOOGLE', identity, users);
+    assert.equal(found, googleUser);
+  });
+
+  it('GOOGLE duplicate already exists + LOCAL same email: LOCAL wins', async () => {
+    const local = localUser();
+    const googleDup = {
+      id: 'google-dup',
+      activated: true,
+      providerName: 'GOOGLE',
+      providerId: 'google-99',
+    };
+    const attached: string[] = [];
+    const users: OauthUserStore = {
+      getUserByProvider: async () => googleDup,
+      getUserByEmail: async () => local,
+      attachProviderId: async (userId, providerId) => {
+        attached.push(`${userId}:${providerId}`);
+      },
+      activateUser: async () => undefined,
+    };
+
+    const found = await findExistingOauthUser('GOOGLE', identity, users);
+    assert.equal(found, local);
+    assert.notEqual(found, googleDup);
+    assert.equal(found?.providerId, 'google-99');
+    assert.deepEqual(attached, ['local-1:google-99']);
   });
 
   it('activates an unactivated LOCAL user when Google proves the inbox', async () => {
@@ -106,10 +149,12 @@ describe('findExistingOauthUser', () => {
     assert.equal(found?.activated, true);
   });
 
-  it('does not overwrite a different attached Google id', async () => {
+  it('does not overwrite a different attached Google id, still logs into LOCAL', async () => {
     const local = localUser({ providerId: 'other-google' });
     const users: OauthUserStore = {
-      getUserByProvider: async () => null,
+      getUserByProvider: async () => {
+        throw new Error('must not fall through to leftover GOOGLE');
+      },
       getUserByEmail: async () => local,
       attachProviderId: async () => {
         throw new Error('must not overwrite');

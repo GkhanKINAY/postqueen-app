@@ -15,7 +15,7 @@ import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newslett
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
-import { findExistingOauthUser } from '@gitroom/backend/services/auth/oauth-local-link';
+import { findExistingOauthUser, shouldBlockLocalRegister } from '@gitroom/backend/services/auth/oauth-local-link';
 
 // A session lasts as long as the cookie that carries it (one year, set in
 // auth.controller). Before this no token had an expiry at all, so a copied
@@ -144,6 +144,10 @@ export class AuthService {
     let isNew = false;
 
     if (!user) {
+      user = await this._userService.getUserByEmailAnyProvider(email);
+    }
+
+    if (!user) {
       // Only the account-creation branch is gated; an existing user signing in
       // never reaches it. Without this the flag was cosmetic — the signup page
       // said registration was closed while this route happily created accounts.
@@ -206,7 +210,10 @@ export class AuthService {
       }
       const user = await this._userService.getUserByEmail(body.email);
       if (body instanceof CreateOrgUserDto) {
-        if (user) {
+        const any = user
+          ? user
+          : await this._userService.getUserByEmailAnyProvider(body.email);
+        if (shouldBlockLocalRegister(any)) {
           throw new Error('Email already exists');
         }
 
