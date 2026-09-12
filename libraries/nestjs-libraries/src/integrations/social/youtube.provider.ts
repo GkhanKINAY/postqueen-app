@@ -361,6 +361,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   }
 
   async fetchPageInformation(accessToken: string, data: { id: string }) {
+    if (!data?.id) {
+      throw new Error('No YouTube channel was selected.');
+    }
+
     const { client, youtube } = clientAndYoutube();
     client.setCredentials({ access_token: accessToken });
     const youtubeClient = youtube(client);
@@ -374,7 +378,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       const channel = response.data.items?.[0];
 
       if (!channel) {
-        throw new Error('Channel not found');
+        throw new Error('YouTube could not find that channel. Select it again and save.');
       }
 
       return {

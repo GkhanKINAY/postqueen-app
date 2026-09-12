@@ -376,6 +376,8 @@ channel_id_copied
 channel_lost_connection_banner
 channel_menu
 channel_needs_reconnect
+channel_save_missing_session
+channel_save_network_error
 channel_settings
 channels
 channels_list_empty_hint
@@ -409,6 +411,7 @@ community
 company_voice_we_are_happy_to_announce
 compose_ai_unconfigured_tip
 configure_your_channel
+confirm_channel
 confirm_delete
 confirm_delete_tag
 confirm_refund
@@ -687,6 +690,7 @@ connect_open_integrations
 connect_post
 connect_postqueen
 connect_telegram
+connect_this_channel
 connect_your_accounts
 connect_your_repository
 connected
@@ -835,6 +839,7 @@ facebook_background_none
 facebook_background_note
 failed_to_resend
 failed_to_revoke
+failed_to_save_channel_configuration
 failure_emails
 failure_emails_description
 faq_am_i_going_to_be_charged_by_postqueen
@@ -1215,6 +1220,7 @@ off
 ok
 oldest
 one_selected
+only_option_to_connect
 open_auto_plugs
 open_billing_portal
 open_claim_page
@@ -1336,6 +1342,7 @@ range_90d
 re_authorise_with_the_platform
 reactivate_subscription
 read_the_docs
+ready_to_connect
 reconnect
 reconnect_before_new_post
 reconnect_channel
@@ -1488,6 +1495,7 @@ subtitle_analytics
 subtitle_billing
 subtitle_calendar
 subtitle_channels
+subtitle_connect_channel
 subtitle_connections
 subtitle_integrations
 subtitle_media

@@ -566,10 +566,29 @@ export class IntegrationService {
       );
     }
 
-    const getIntegrationInformation = await provider.fetchPageInformation(
-      getIntegration.token,
-      data
-    );
+    let getIntegrationInformation;
+    try {
+      getIntegrationInformation = await provider.fetchPageInformation(
+        getIntegration.token,
+        data
+      );
+    } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      throw new HttpException(
+        (err as Error)?.message ||
+          'Could not finish connecting this channel. Please try again.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (!getIntegrationInformation?.id) {
+      throw new HttpException(
+        'The provider did not return a channel to connect.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
 
     await this.checkForDeletedOnceAndUpdate(
       org,

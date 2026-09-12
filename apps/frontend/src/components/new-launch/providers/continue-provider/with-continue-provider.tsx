@@ -1,11 +1,15 @@
 'use client';
 
-import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import clsx from 'clsx';
 import { Button } from '@gitroom/react/form/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useCustomProviderFunction } from '@gitroom/frontend/components/launches/helpers/use.custom.provider.function';
+import {
+  continuePickerDensity,
+  filterContinuePickerItems,
+} from './continue-picker.density';
 
 const SWR_OPTIONS = {
   refreshWhenHidden: false,
@@ -42,6 +46,28 @@ export interface ContinueProviderConfig<TItem, TSelection> {
   getItemId: (item: TItem) => string;
 }
 
+function SelectedMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={clsx(
+        'grid place-items-center rounded-full bg-pqBrand text-pqOnBrand',
+        className
+      )}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
+        <path
+          d="M5 12.5l4.5 4.5L19 7.5"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
 export function withContinueProvider<TItem, TSelection>(
   config: ContinueProviderConfig<TItem, TSelection>
 ): FC<ContinueProviderProps> {
@@ -63,6 +89,7 @@ export function withContinueProvider<TItem, TSelection>(
     const call = useCustomProviderFunction();
     const t = useT();
     const [selection, setSelection] = useState<TSelection | null>(null);
+    const [search, setSearch] = useState('');
 
     const loadData = useCallback(async () => {
       // Skip fetch if initial data was provided
@@ -86,19 +113,6 @@ export function withContinueProvider<TItem, TSelection>(
 
     const resolvedData = initialData || data;
 
-    const handleSelect = useCallback(
-      (item: TItem) => () => {
-        setSelection(getSelectionValue(item));
-      },
-      []
-    );
-
-    const handleSave = useCallback(async () => {
-      if (selection) {
-        await onSave(transformSaveData(selection));
-      }
-    }, [onSave, selection]);
-
     const filteredData = useMemo(() => {
       return (
         (resolvedData as TItem[])?.filter(
@@ -107,12 +121,52 @@ export function withContinueProvider<TItem, TSelection>(
       );
     }, [resolvedData, existingId]);
 
+    const density = continuePickerDensity(filteredData.length);
+
+    const visibleData = useMemo(() => {
+      if (density !== 'list') {
+        return filteredData;
+      }
+      return filterContinuePickerItems(filteredData, search);
+    }, [density, filteredData, search]);
+
+    // One channel and a disabled Save looks like a selected card that does
+    // nothing. Pre-select the only option so Save is actually armed.
+    useEffect(() => {
+      if (selection || filteredData.length !== 1) {
+        return;
+      }
+      setSelection(getSelectionValue(filteredData[0]));
+    }, [filteredData, selection]);
+
+    const handleSelect = useCallback(
+      (item: TItem) => () => {
+        setSelection(getSelectionValue(item));
+      },
+      []
+    );
+
+    const handleSave = useCallback(async () => {
+      const chosen =
+        selection ??
+        (filteredData.length === 1
+          ? getSelectionValue(filteredData[0])
+          : null);
+      if (!chosen) {
+        return;
+      }
+      await onSave(transformSaveData(chosen));
+    }, [onSave, selection, filteredData]);
+
+    const saveEnabled =
+      !isSaving && (Boolean(selection) || filteredData.length === 1);
+
     // A failed load is not an empty account. Both used to render the same
     // "nothing here" copy, which told someone whose options exist that they
     // have none — and offered no way to find out otherwise.
     if (!isLoading && error) {
       return (
-        <div className="text-center flex flex-col justify-center items-center text-[18px] leading-[26px] h-[300px] gap-[12px]">
+        <div className="flex h-[240px] flex-col items-center justify-center gap-[12px] text-center text-[15px] leading-[24px] text-pqMuted">
           <span>
             {t(
               'provider_options_failed',
@@ -122,7 +176,7 @@ export function withContinueProvider<TItem, TSelection>(
           <button
             type="button"
             onClick={() => mutate()}
-            className="underline hover:font-bold cursor-pointer text-[15px]"
+            className="cursor-pointer text-[13.5px] font-[600] text-pqFocused underline hover:no-underline"
           >
             {t('try_again', 'Try again')}
           </button>
@@ -132,7 +186,7 @@ export function withContinueProvider<TItem, TSelection>(
 
     if (!isLoading && !resolvedData?.length) {
       return (
-        <div className="text-center flex flex-col justify-center items-center text-[18px] leading-[26px] h-[300px]">
+        <div className="flex h-[240px] flex-col items-center justify-center text-center text-[15px] leading-[24px] text-pqMuted">
           {emptyStateMessages.map((msg, index) => (
             <span key={msg.key}>
               {t(msg.key, msg.text)}
@@ -148,28 +202,173 @@ export function withContinueProvider<TItem, TSelection>(
       );
     }
 
+    const saveButton = (
+      <Button
+        disabled={!saveEnabled}
+        loading={isSaving}
+        onClick={handleSave}
+        size={density === 'confirm' ? 'lg' : 'md'}
+        className={density === 'confirm' ? 'w-full max-w-[320px]' : undefined}
+      >
+        {density === 'confirm'
+          ? t('connect_this_channel', 'Connect this channel')
+          : t('save', 'Save')}
+      </Button>
+    );
+
     return (
-      <div className="flex flex-col gap-[20px]">
-        <div>{t(titleKey, titleDefault)}</div>
-        <div className="grid grid-cols-3 justify-items-center select-none cursor-pointer gap-[10px]">
-          {filteredData.map((item) => (
-            <div
-              key={getItemId(item)}
-              className={clsx(
-                'flex flex-col w-full text-center gap-[10px] border border-input p-[10px] hover:bg-seventh rounded-[8px]',
-                isSelected(item, selection) && 'bg-seventh border-primary'
+      <div
+        className="flex flex-col gap-[16px]"
+        data-pq="continue-picker"
+        data-pq-density={density}
+      >
+        <div className="flex items-end justify-between gap-[12px]">
+          <div className="text-[12px] font-[600] uppercase tracking-[0.06em] text-pqMuted">
+            {density === 'confirm'
+              ? t('confirm_channel', 'Confirm channel')
+              : t(titleKey, titleDefault)}
+          </div>
+          {density !== 'confirm' && (
+            <div className="text-[11.5px] text-pqSoft">
+              {t('n_channels', '{count} channels').replace(
+                '{count}',
+                String(filteredData.length)
               )}
-              onClick={handleSelect(item)}
-            >
-              {renderItem(item, isSelected(item, selection))}
             </div>
-          ))}
+          )}
         </div>
-        <div>
-          <Button disabled={!selection || isSaving} loading={isSaving} onClick={handleSave}>
-            {t('save', 'Save')}
-          </Button>
-        </div>
+
+        {density === 'confirm' && filteredData[0] && (
+          <div className="flex flex-col items-center gap-[18px] rounded-pqLg bg-pqPop px-[24px] py-[28px] text-center shadow-[inset_0_0_0_1px_var(--border)]">
+            <span className="rounded-full bg-pqBrandSoft px-[10px] py-[3px] text-[11.5px] font-[600] text-pqFocused">
+              {t('ready_to_connect', 'Ready to connect')}
+            </span>
+            <div
+              className={clsx(
+                'flex flex-col items-center gap-[12px]',
+                '[&_img]:mx-auto [&_img]:!size-[88px] [&_img]:!max-w-none [&_img]:!rounded-full [&_img]:object-cover',
+                '[&_[data-avatar]]:!size-[88px]'
+              )}
+            >
+              {renderItem(filteredData[0], true)}
+            </div>
+            <p className="max-w-[380px] text-[13.5px] leading-[20px] text-pqMuted">
+              {t(
+                'only_option_to_connect',
+                'This is the only option on this account. Confirm to connect it.'
+              )}
+            </p>
+            {saveButton}
+          </div>
+        )}
+
+        {density === 'grid' && (
+          <>
+            <div
+              role="radiogroup"
+              aria-label={t(titleKey, titleDefault)}
+              className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-[10px]"
+            >
+              {visibleData.map((item) => {
+                const selected = isSelected(item, selection);
+                return (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    key={getItemId(item)}
+                    className={clsx(
+                      'relative flex min-h-[156px] cursor-pointer flex-col items-center justify-center gap-[10px] rounded-pqMd px-[14px] py-[18px] text-center transition-colors',
+                      '[&_img]:mx-auto [&_img]:!size-[56px] [&_img]:!max-w-none [&_img]:!rounded-full [&_img]:object-cover',
+                      '[&_[data-avatar]]:!size-[56px]',
+                      selected
+                        ? 'bg-pqNavActive shadow-[inset_0_0_0_1.5px_var(--brand)]'
+                        : 'shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover'
+                    )}
+                    onClick={handleSelect(item)}
+                  >
+                    {selected && (
+                      <SelectedMark className="absolute end-[10px] top-[10px] size-[22px]" />
+                    )}
+                    {renderItem(item, selected)}
+                  </button>
+                );
+              })}
+            </div>
+            <div>{saveButton}</div>
+          </>
+        )}
+
+        {density === 'list' && (
+          <>
+            <div className="relative">
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                aria-hidden="true"
+                className="pointer-events-none absolute start-[10px] top-[10px] text-pqSoft"
+              >
+                <path
+                  d="M17 17l4 4M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
+                placeholder={t('search_channels', 'Search channels…')}
+                className="h-[34px] w-full rounded-pqSm bg-pqPop pe-[11px] ps-[31px] text-[13px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] outline-none placeholder:text-pqSoft focus-visible:shadow-[inset_0_0_0_1px_var(--brand)]"
+              />
+            </div>
+            <div
+              role="radiogroup"
+              aria-label={t(titleKey, titleDefault)}
+              className="flex max-h-[360px] flex-col gap-[6px] overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner"
+            >
+              {!visibleData.length && (
+                <div className="px-[8px] py-[16px] text-[13.5px] text-pqSoft">
+                  {t('no_channels_match', 'No channels match that search.')}
+                </div>
+              )}
+              {visibleData.map((item) => {
+                const selected = isSelected(item, selection);
+                return (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    key={getItemId(item)}
+                    className={clsx(
+                      'flex w-full cursor-pointer items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] text-start transition-colors',
+                      '[&_img]:!size-[40px] [&_img]:!max-w-none [&_img]:!shrink-0 [&_img]:!rounded-full [&_img]:object-cover',
+                      '[&_[data-avatar]]:!size-[40px] [&>span]:min-w-0 [&>span]:flex-1',
+                      selected
+                        ? 'bg-pqNavActive shadow-[inset_0_0_0_1.5px_var(--brand)]'
+                        : 'shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover'
+                    )}
+                    onClick={handleSelect(item)}
+                  >
+                    {renderItem(item, selected)}
+                    {selected && (
+                      <SelectedMark className="ms-auto size-[20px] shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div>{saveButton}</div>
+          </>
+        )}
       </div>
     );
   };
