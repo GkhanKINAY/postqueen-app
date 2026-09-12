@@ -34,6 +34,7 @@ import {
   ChannelsListEmpty,
   ChannelsPageEmpty,
 } from '@gitroom/frontend/components/ui/no-channels-art';
+import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { selectAddedIntegration } from '@gitroom/frontend/components/channels/select-added-integration';
 
 /**
@@ -634,6 +635,8 @@ export const ChannelsComponent: FC = () => {
   const current = useMemo(() => {
     return list.find((i: any) => i.id === selected) || list[0];
   }, [list, selected]);
+
+  const channelHandle = formatChannelHandle(current?.display);
 
   // Returns null rather than throwing. `openAdd` runs from an effect when the
   // account has no channels, so an unguarded reject here took the whole
@@ -1378,12 +1381,11 @@ export const ChannelsComponent: FC = () => {
                           'Channel disconnected, click to reconnect'
                         )}
                       </button>
-                    ) : (
-                      <span className="text-[13px] text-pqMuted">
-                        @
-                        {current.name?.replace(/^@/, '') || current.identifier}
+                    ) : channelHandle ? (
+                      <span className="truncate text-[13px] text-pqMuted">
+                        {channelHandle}
                       </span>
-                    )}
+                    ) : null}
                     <span
                       className={clsx(
                         'flex h-[20px] items-center gap-[5px] rounded-full pe-[8px] ps-[7px] text-[11px] font-[600]',
