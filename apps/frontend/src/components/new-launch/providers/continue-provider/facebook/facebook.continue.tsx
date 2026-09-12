@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  ContinuePickerItem,
+  continuePickerInitial,
+  joinContinuePickerMeta,
+} from '../continue-picker-item';
 import { withContinueProvider } from '../with-continue-provider';
 
 interface FacebookItem {
@@ -17,7 +22,7 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
   endpoint: 'pages',
   swrKey: 'load-facebook-pages',
   titleKey: 'select_page',
-  titleDefault: 'Select Page:',
+  titleDefault: 'Select Page',
   emptyStateMessages: [
     {
       key: 'we_couldn_t_find_any_business_connected_to_the_selected_pages',
@@ -37,11 +42,11 @@ export const FacebookContinue = withContinueProvider<FacebookItem, string>({
   transformSaveData: (selection) => ({ page: selection }),
   isSelected: (item, selection) => selection === item.id,
   renderItem: (item) => (
-    <>
-      <div>
-        <img className="w-full" src={item.picture.data.url} alt="profile" />
-      </div>
-      <div>{item.name}</div>
-    </>
+    <ContinuePickerItem
+      pictureUrl={item.picture?.data?.url}
+      name={item.name}
+      meta={joinContinuePickerMeta(item.username)}
+      fallback={continuePickerInitial(item.name)}
+    />
   ),
 });

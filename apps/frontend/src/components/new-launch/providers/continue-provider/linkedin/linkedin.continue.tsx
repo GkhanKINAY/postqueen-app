@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  ContinuePickerItem,
+  continuePickerInitial,
+  joinContinuePickerMeta,
+} from '../continue-picker-item';
 import { withContinueProvider } from '../with-continue-provider';
 
 interface LinkedinItem {
@@ -22,7 +27,7 @@ export const LinkedinContinue = withContinueProvider<
   endpoint: 'companies',
   swrKey: 'load-linkedin-pages',
   titleKey: 'select_linkedin_page',
-  titleDefault: 'Select Linkedin Page:',
+  titleDefault: 'Select LinkedIn Page',
   emptyStateMessages: [
     {
       key: 'we_couldn_t_find_any_business_connected_to_your_linkedin_page',
@@ -38,11 +43,11 @@ export const LinkedinContinue = withContinueProvider<
   transformSaveData: (selection) => ({ page: selection.id }),
   isSelected: (item, selection) => selection?.id === item.id,
   renderItem: (item) => (
-    <>
-      <div>
-        <img className="w-full" src={item.picture} alt="profile" />
-      </div>
-      <div>{item.name}</div>
-    </>
+    <ContinuePickerItem
+      pictureUrl={item.picture}
+      name={item.name}
+      meta={joinContinuePickerMeta(item.username)}
+      fallback={continuePickerInitial(item.name)}
+    />
   ),
 });
