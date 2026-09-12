@@ -1207,3 +1207,14 @@ fix that landed on the same branch (`channel_save_missing_session`,
 `channel_save_network_error`, `failed_to_save_channel_configuration`,
 `subtitle_connect_channel`). Search reuses `search_channels` /
 `no_channels_match` / `n_channels`. The connect POST itself is unchanged.
+
+## Continue picker item chrome
+
+**i18n 0.** Same keys. The one-channel confirm caption no longer ends in
+`connect it.` — that last word was wrapping onto its own line at the 380px
+cap. Fallback for `only_option_to_connect` is now `This is the only option on
+this account. Confirm to connect.` Grid/list headings dropped their leftover
+colons (`select_page`, `select_linkedin_page`, `select_instagram_account`,
+`select_tumblr_blog`, `select_location`). Facebook, Instagram, LinkedIn, Google
+Business, and Tumblr now render the same avatar + name + meta item as YouTube,
+so the shared confirm/grid/list CSS can actually size them.

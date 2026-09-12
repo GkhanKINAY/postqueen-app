@@ -252,10 +252,10 @@ export function withContinueProvider<TItem, TSelection>(
             >
               {renderItem(filteredData[0], true)}
             </div>
-            <p className="max-w-[380px] text-[13.5px] leading-[20px] text-pqMuted">
+            <p className="max-w-[380px] text-pretty text-[13.5px] leading-[20px] text-pqMuted">
               {t(
                 'only_option_to_connect',
-                'This is the only option on this account. Confirm to connect it.'
+                'This is the only option on this account. Confirm to connect.'
               )}
             </p>
             {saveButton}
