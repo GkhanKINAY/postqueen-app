@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { HttpStatusCode } from 'axios';
 import { useRouter } from 'next/navigation';
 import { Redirect } from '@gitroom/frontend/components/layout/redirect';
@@ -12,6 +12,11 @@ import { IntegrationContext } from '@gitroom/frontend/components/launches/helper
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { Spinner } from '@gitroom/react/ui/spinner';
+import {
+  channelConnectBody,
+  channelConnectEndpoints,
+  shouldTryNextConnectEndpoint,
+} from '@gitroom/frontend/components/launches/channel-connect.request';
 
 interface TwoStepState {
   integrationId: string;
@@ -23,6 +28,17 @@ interface TwoStepState {
 interface SuccessState {
   message: string;
 }
+
+const oauthCallbackKeys = new Set([
+  'state',
+  'code',
+  'iss',
+  'scope',
+  'authuser',
+  'prompt',
+  'hd',
+  'session_state',
+]);
 
 export const ContinueIntegration: FC<{
   provider: string;
@@ -103,6 +119,9 @@ export const ContinueIntegration: FC<{
 
     return searchParams;
   }, []);
+
+  const oauthState =
+    typeof modifiedParams?.state === 'string' ? modifiedParams.state : '';
 
   useEffect(() => {
     (async () => {
@@ -217,42 +236,102 @@ export const ContinueIntegration: FC<{
       if (!twoStepState) return;
 
       setIsSaving(true);
+      setError(false);
+      setErrorMessage(null);
+
+      const endpoints = channelConnectEndpoints({
+        integrationId: twoStepState.integrationId,
+        logged,
+        state: oauthState,
+      });
+
+      if (!endpoints.length) {
+        setErrorMessage(
+          t(
+            'channel_save_missing_session',
+            'We could not finish connecting this channel. Go back to Channels and try again.'
+          )
+        );
+        setError(true);
+        setIsSaving(false);
+        return;
+      }
+
+      // Strip Google callback fields from the selection. `id` in that query
+      // (if Google ever sent one) would overwrite the YouTube channel id.
+      const selection =
+        data && typeof data === 'object' && !Array.isArray(data)
+          ? Object.fromEntries(
+              Object.entries(data).filter(
+                ([key]) => !oauthCallbackKeys.has(key)
+              )
+            )
+          : data;
+
+      const body = JSON.stringify(channelConnectBody(selection, oauthState));
 
       try {
-        // Use public or authenticated endpoint based on the flow
-        const endpoint = logged
-          ? `/integrations/provider/${twoStepState.integrationId}/connect`
-          : `/integrations/public/provider/${twoStepState.integrationId}/connect`;
+        let response: Response | undefined;
+        let lastMessage = '';
 
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          body: JSON.stringify({ ...modifiedParams, ...data }),
-        });
+        for (let i = 0; i < endpoints.length; i++) {
+          response = await fetch(endpoints[i], {
+            method: 'POST',
+            body,
+          });
 
-        if (
-          response.status !== HttpStatusCode.Ok &&
-          response.status !== HttpStatusCode.Created
-        ) {
+          if (
+            response.status === HttpStatusCode.Ok ||
+            response.status === HttpStatusCode.Created
+          ) {
+            navigateOrShow(
+              `/channels?added=${provider}&msg=Channel Added${
+                twoStepState.onboarding ? '&onboarding=true' : ''
+              }`,
+              twoStepState.returnURL,
+              'Channel Added'
+            );
+            return;
+          }
+
           const errorData = await response.json().catch(() => ({}));
-          setErrorMessage(
-            errorData.message || 'Failed to save channel configuration'
-          );
-          setError(true);
-          return;
+          lastMessage =
+            errorData.message ||
+            errorData.msg ||
+            t(
+              'failed_to_save_channel_configuration',
+              'Failed to save channel configuration'
+            );
+
+          const hasNext = i < endpoints.length - 1;
+          if (!hasNext || !shouldTryNextConnectEndpoint(response.status)) {
+            break;
+          }
         }
 
-        navigateOrShow(
-          `/launches?added=${provider}&msg=Channel Added${
-            twoStepState.onboarding ? '&onboarding=true' : ''
-          }`,
-          twoStepState.returnURL,
-          'Channel Added'
+        setErrorMessage(lastMessage || 'Failed to save channel configuration');
+        setError(true);
+      } catch {
+        setErrorMessage(
+          t(
+            'channel_save_network_error',
+            'Could not reach PostQueen to save this channel. Check your connection and try again.'
+          )
         );
+        setError(true);
       } finally {
         setIsSaving(false);
       }
     },
-    [twoStepState, fetch, modifiedParams, provider, navigateOrShow]
+    [
+      twoStepState,
+      fetch,
+      oauthState,
+      provider,
+      navigateOrShow,
+      logged,
+      t,
+    ]
   );
 
   const Provider = useMemo(() => {
@@ -275,168 +354,151 @@ export const ContinueIntegration: FC<{
     return names[provider] || provider;
   }, [provider]);
 
+  const pane = (children: ReactNode) => (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-pqInner text-pqText">
+      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-[18px] px-[24px] py-[28px]">
+        {children}
+      </div>
+    </div>
+  );
+
   // Success state for non-logged users without returnURL
   if (successState) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
-        {/* Background gradient decoration */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-pqBrand rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-pqPink rounded-full blur-[120px]" />
+    return pane(
+      <div className="flex flex-col items-center py-[48px] text-center">
+        <div className="mb-[24px] flex h-[80px] w-[80px] items-center justify-center rounded-full bg-pqOkSoft">
+          <svg
+            className="h-[40px] w-[40px] text-pqOk"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
         </div>
-
-        <div className="relative z-10 text-center">
-          <div className="w-[80px] h-[80px] mx-auto mb-[24px] rounded-full bg-green-500/20 flex items-center justify-center">
-            <svg
-              className="w-[40px] h-[40px] text-green-500"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <div className="text-[28px] font-semibold mb-[12px]">
-            {t('channel_connected', 'Channel Connected!')}
-          </div>
-          <div className="text-[16px] text-textItemBlur max-w-[400px]">
-            {successState.message ||
-              t(
-                'channel_connected_description',
-                `Your ${providerDisplayName} channel has been successfully connected. You can close this window now.`
-              )}
-          </div>
+        <div className="mb-[8px] text-[22px] font-[600] -tracking-[0.015em]">
+          {t('channel_connected', 'Channel Connected!')}
+        </div>
+        <div className="max-w-[400px] text-[13.5px] text-pqMuted">
+          {successState.message ||
+            t(
+              'channel_connected_description',
+              `Your ${providerDisplayName} channel has been successfully connected. You can close this window now.`
+            )}
         </div>
       </div>
     );
   }
 
-  // Show the two-step selection UI
+  // Show the two-step selection UI. Errors stay on this pane — the previous
+  // layout rendered `if (twoStepState)` before `if (error)`, so a failed Save
+  // set error state that never appeared. Console stayed clean; Save looked dead.
   if (twoStepState && Provider) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
-        {/* Background gradient decoration */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-pqBrand rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-pqPink rounded-full blur-[120px]" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 w-full max-w-[550px] mx-auto px-[20px]">
-          <div className="bg-newBgColorInner rounded-[16px] p-[32px] flex flex-col gap-[24px]">
-            <div className="flex flex-col gap-[8px] text-center">
-              <h1 className="text-[24px] font-semibold">
-                {t('configure_your_channel', 'Configure Your Channel')}
-              </h1>
-              <p className="text-[14px] text-textItemBlur">
-                {t(
-                  'select_the_page_or_account',
-                  `Select the ${providerDisplayName} page or account you want to connect.`
-                )}
-              </p>
-            </div>
-
-            <IntegrationContext.Provider
-              value={{
-                date: newDayjs(),
-                value: [],
-                allIntegrations: [],
-                integration: {
-                  editor: 'normal',
-                  additionalSettings: '',
-                  display: '',
-                  time: [{ time: 0 }],
-                  id: twoStepState.integrationId,
-                  type: '',
-                  name: '',
-                  picture: '',
-                  inBetweenSteps: true,
-                  changeNickName: false,
-                  changeProfilePicture: false,
-                  identifier: provider,
-                },
-              }}
-            >
-              <Provider
-                onSave={onSave}
-                existingId={[]}
-                initialData={twoStepState.pages}
-                isSaving={isSaving}
-              />
-            </IntegrationContext.Provider>
+    return pane(
+      <>
+        <div className="flex flex-col gap-[5px]">
+          <div className="text-[22px] font-[600] -tracking-[0.015em] text-pqText">
+            {t('configure_your_channel', 'Configure Your Channel')}
+          </div>
+          <div className="text-[13.5px] text-pqMuted">
+            {t(
+              'select_the_page_or_account',
+              `Select the ${providerDisplayName} page or account you want to connect.`
+            )}
           </div>
         </div>
-      </div>
+
+        {error && errorMessage && (
+          <div
+            role="alert"
+            className="rounded-pqMd bg-pqDangerSoft px-[14px] py-[12px] text-[13.5px] text-pqDanger shadow-[inset_0_0_0_1px_var(--dangerLine)]"
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        <IntegrationContext.Provider
+          value={{
+            date: newDayjs(),
+            value: [],
+            allIntegrations: [],
+            integration: {
+              editor: 'normal',
+              additionalSettings: '',
+              display: '',
+              time: [{ time: 0 }],
+              id: twoStepState.integrationId,
+              type: '',
+              name: '',
+              picture: '',
+              inBetweenSteps: true,
+              changeNickName: false,
+              changeProfilePicture: false,
+              identifier: provider,
+            },
+          }}
+        >
+          <Provider
+            onSave={onSave}
+            existingId={[]}
+            initialData={twoStepState.pages}
+            isSaving={isSaving}
+          />
+        </IntegrationContext.Provider>
+      </>
     );
   }
 
   if (error) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
-        {/* Background gradient decoration */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-pqBrand rounded-full blur-[120px]" />
-          <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-pqPink rounded-full blur-[120px]" />
+    return pane(
+      <div className="flex flex-col items-center py-[48px] text-center">
+        <div className="mb-[24px] flex h-[80px] w-[80px] items-center justify-center rounded-full bg-pqDangerSoft">
+          <svg
+            className="h-[40px] w-[40px] text-pqDanger"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
         </div>
-
-        <div className="relative z-10 text-center">
-          <div className="w-[80px] h-[80px] mx-auto mb-[24px] rounded-full bg-red-500/20 flex items-center justify-center">
-            <svg
-              className="w-[40px] h-[40px] text-red-500"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <div className="text-[28px] font-semibold mb-[12px]">
-            {t('could_not_add_provider', 'Could not add provider')}
-          </div>
-          <div className="text-[16px] text-textItemBlur max-w-[400px]">
-            {errorMessage ||
-              t(
-                'you_are_being_redirected_back',
-                'An error occurred. Please try again.'
-              )}
-          </div>
-          {logged && <Redirect url="/launches" delay={3000} />}
+        <div className="mb-[8px] text-[22px] font-[600] -tracking-[0.015em]">
+          {t('could_not_add_provider', 'Could not add provider')}
         </div>
+        <div className="max-w-[400px] text-[13.5px] text-pqMuted">
+          {errorMessage ||
+            t(
+              'you_are_being_redirected_back',
+              'An error occurred. Please try again.'
+            )}
+        </div>
+        {logged && <Redirect url="/channels" delay={3000} />}
       </div>
     );
   }
 
   // Loading state
-  return (
-    <div className="flex flex-1 items-center justify-center text-newTextColor relative overflow-hidden">
-      {/* Background gradient decoration */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-[20%] left-[10%] w-[300px] h-[300px] bg-pqBrand rounded-full blur-[120px]" />
-        <div className="absolute bottom-[20%] right-[10%] w-[250px] h-[250px] bg-pqPink rounded-full blur-[120px]" />
+  return pane(
+    <div className="flex flex-col items-center py-[48px] text-center">
+      <div className="mb-[8px] text-[22px] font-[600] -tracking-[0.015em]">
+        {t('adding_channel', 'Adding Channel')}
       </div>
-
-      <div className="relative z-10 text-center">
-        <div className="text-[28px] font-semibold mb-[12px]">
-          {t('adding_channel', 'Adding Channel')}
-        </div>
-        <div className="text-[16px] text-textItemBlur">
-          {t('please_wait', 'Please wait while we connect your account...')}
-        </div>
-        {/* Loading spinner */}
-        <div className="mt-[32px] flex justify-center text-btnPrimary">
-          <Spinner
-            width={48}
-            height={48}
-            borderWidth={3}
-            label={t('loading', 'Loading')}
-          />
-        </div>
+      <div className="text-[13.5px] text-pqMuted">
+        {t('please_wait', 'Please wait while we connect your account...')}
+      </div>
+      <div className="mt-[32px] flex justify-center text-btnPrimary">
+        <Spinner
+          width={48}
+          height={48}
+          borderWidth={3}
+          label={t('loading', 'Loading')}
+        />
       </div>
     </div>
   );

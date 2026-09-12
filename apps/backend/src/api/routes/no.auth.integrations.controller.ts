@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpException,
+  HttpStatus,
   Param,
   Post,
   UseFilters,
@@ -350,15 +351,18 @@ export class NoAuthIntegrationsController {
   @Post('/public/provider/:id/connect')
   async saveProviderPage(@Param('id') id: string, @Body() body: any) {
     if (!body.state) {
-      throw new Error('Invalid state');
+      throw new HttpException('Invalid state', HttpStatus.BAD_REQUEST);
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
     }
 
     const org = await this._organizationService.getOrgById(organization);
+    if (!org) {
+      throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
+    }
 
     return this._integrationService.saveProviderPage(org.id, id, body);
   }

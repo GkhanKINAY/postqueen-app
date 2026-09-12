@@ -11,6 +11,7 @@ const FALLBACK_TITLES: Record<string, string> = {
   '/connections': 'Connections',
   '/settings': 'Settings',
   '/billing': 'Billing',
+  '/integrations/social': 'Connect channel',
   '/admin/stats': 'Stats',
   '/admin/errors': 'Errors',
   '/err': 'Error',
@@ -60,6 +61,10 @@ export const Title = () => {
     '/connections': t(
       'subtitle_connections',
       'Connect Claude, ChatGPT, MCP clients and more'
+    ),
+    '/integrations/social': t(
+      'subtitle_connect_channel',
+      'Pick the account you want to attach'
     ),
   };
 

@@ -154,7 +154,14 @@ export class IntegrationRepository {
       (params.picture.indexOf(process.env.CLOUDFLARE_BUCKET_URL!) === -1 ||
         params.picture.indexOf(process.env.FRONTEND_URL!) === -1)
     ) {
-      params.picture = await this.storage.uploadSimple(params.picture);
+      // Same catch as createOrUpdateIntegration: a YouTube thumbnail that
+      // fails the SSRF/mime check used to 500 the whole Save, leaving the
+      // row stuck in inBetweenSteps with no message on the picker.
+      try {
+        params.picture = await this.storage.uploadSimple(params.picture);
+      } catch (err) {
+        console.log('Failed to upload profile picture:', params.picture, err);
+      }
     }
 
     const existing = await this._integration.model.integration.findUnique({
