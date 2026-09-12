@@ -1195,3 +1195,15 @@ One warning is left in the frontend build and is expected: Uppy's dashboard
 stylesheet carries an `@charset` rule, which is invalid anywhere but the first
 line of a file and is ignored once inlined. The rules after it were checked in
 the built bundle and are all present.
+
+## YouTube / two-step continue picker density
+
+**i18n +8 (channel connect copy, not a restyle of existing keys).** The OAuth
+callback picker now changes shape with how many options the provider returned:
+one option is a confirmation, a handful is a card grid, nine or more is a
+searchable list. New `t()` keys: `confirm_channel`, `connect_this_channel`,
+`ready_to_connect`, `only_option_to_connect`, plus four from the Save-path
+fix that landed on the same branch (`channel_save_missing_session`,
+`channel_save_network_error`, `failed_to_save_channel_configuration`,
+`subtitle_connect_channel`). Search reuses `search_channels` /
+`no_channels_match` / `n_channels`. The connect POST itself is unchanged.

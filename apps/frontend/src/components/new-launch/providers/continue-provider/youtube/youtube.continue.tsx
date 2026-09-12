@@ -48,11 +48,15 @@ export const YoutubeContinue = withContinueProvider<
     <>
       {item.picture?.data?.url ? (
         <img
+          data-avatar=""
           src={item.picture.data.url}
           alt=""
         />
       ) : (
-        <div className="flex size-[44px] shrink-0 items-center justify-center rounded-full bg-pqSettings text-pqMuted">
+        <div
+          data-avatar=""
+          className="flex size-[44px] shrink-0 items-center justify-center rounded-full bg-pqSettings text-pqMuted"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="22"
@@ -70,7 +74,7 @@ export const YoutubeContinue = withContinueProvider<
           </svg>
         </div>
       )}
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 max-w-full">
         <span className="block truncate text-[14px] font-[600] text-pqText">
           {item.name}
         </span>
