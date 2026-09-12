@@ -1214,7 +1214,8 @@ export const ChannelsComponent: FC = () => {
                 >
                   {needsAttention(integration)
                     ? t('needs_reconnect', 'Needs reconnect')
-                    : integration.identifier}
+                    : formatChannelHandle(integration.display) ||
+                      integration.identifier}
                 </span>
               </span>
             </div>
