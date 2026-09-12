@@ -56,7 +56,7 @@ export const YoutubeContinue = withContinueProvider<
         item.username || 'YouTube',
         item.subscriberCount
           ? `${parseInt(item.subscriberCount, 10).toLocaleString()} subscribers`
-          : undefined
+          : undefined,
       )}
       fallback={
         <svg

@@ -12,21 +12,21 @@ import {
 
 const itemSource = readFileSync(
   fileURLToPath(new URL('./continue-picker-item.tsx', import.meta.url)),
-  'utf8'
+  'utf8',
 );
 
 describe('joinContinuePickerMeta', () => {
   it('joins non-empty parts with a middle dot', () => {
     assert.equal(
       joinContinuePickerMeta('@studio', '12 subscribers', 'Primary'),
-      '@studio · 12 subscribers · Primary'
+      '@studio · 12 subscribers · Primary',
     );
   });
 
   it('drops empty, blank, and falsy parts', () => {
     assert.equal(
       joinContinuePickerMeta('', '  ', undefined, false, null, '@clips'),
-      '@clips'
+      '@clips',
     );
   });
 
@@ -64,7 +64,7 @@ describe('ContinuePickerItem contract', () => {
     assert.match(continuePickerItemClasses.text, /min-w-0 max-w-full/);
     assert.match(
       continuePickerItemClasses.name,
-      /text-\[14px\] font-\[600\] text-pqText/
+      /text-\[14px\] font-\[600\] text-pqText/,
     );
     assert.match(continuePickerItemClasses.meta, /text-\[12px\] text-pqMuted/);
   });

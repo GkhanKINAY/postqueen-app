@@ -59,7 +59,7 @@ export const TumblrContinue = withContinueProvider<
         item.followers
           ? `${item.followers.toLocaleString()} followers`
           : undefined,
-        item.primary ? 'Primary' : undefined
+        item.primary ? 'Primary' : undefined,
       )}
       fallback={continuePickerInitial(item.name)}
     />
