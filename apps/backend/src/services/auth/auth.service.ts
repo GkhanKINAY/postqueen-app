@@ -15,6 +15,11 @@ import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newslett
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
+import {
+  existingAccountForEmail,
+  findExistingOauthUser,
+  shouldBlockLocalRegister,
+} from '@gitroom/backend/services/auth/oauth-local-link';
 
 // A session lasts as long as the cookie that carries it (one year, set in
 // auth.controller). Before this no token had an expiry at all, so a copied
@@ -139,7 +144,11 @@ export class AuthService {
 
     await this._otpService.consume(record.id);
 
-    let user: User | null = await this._userService.getUserByEmail(email);
+    const local = await this._userService.getUserByEmail(email);
+    let user: User | null = existingAccountForEmail(
+      local,
+      local ?? (await this._userService.getUserByEmailAnyProvider(email))
+    );
     let isNew = false;
 
     if (!user) {
@@ -205,7 +214,11 @@ export class AuthService {
       }
       const user = await this._userService.getUserByEmail(body.email);
       if (body instanceof CreateOrgUserDto) {
-        if (user) {
+        const any = existingAccountForEmail(
+          user,
+          user ?? (await this._userService.getUserByEmailAnyProvider(body.email))
+        );
+        if (shouldBlockLocalRegister(any)) {
           throw new Error('Email already exists');
         }
 
@@ -311,6 +324,17 @@ export class AuthService {
     }
   }
 
+  private oauthUserStore() {
+    return {
+      getUserByProvider: (providerId: string, name: string) =>
+        this._userService.getUserByProvider(providerId, name as Provider),
+      getUserByEmail: (email: string) => this._userService.getUserByEmail(email),
+      attachProviderId: (userId: string, providerId: string) =>
+        this._userService.attachProviderId(userId, providerId),
+      activateUser: (id: string) => this._userService.activateUser(id),
+    };
+  }
+
   private async loginOrRegisterProvider(
     provider: Provider,
     body: CreateOrgUserDto,
@@ -324,9 +348,10 @@ export class AuthService {
       throw new Error('Invalid provider token');
     }
 
-    const user = await this._userService.getUserByProvider(
-      providerUser.id,
-      provider
+    const user = await findExistingOauthUser(
+      provider,
+      providerUser,
+      this.oauthUserStore()
     );
     if (user) {
       return user;
@@ -543,9 +568,10 @@ export class AuthService {
     if (!user) {
       throw new Error('Invalid user');
     }
-    const checkExists = await this._userService.getUserByProvider(
-      user.id,
-      provider as Provider
+    const checkExists = await findExistingOauthUser(
+      provider as Provider,
+      user,
+      this.oauthUserStore()
     );
     if (checkExists) {
       return { jwt: await this.jwt(checkExists) };

@@ -152,6 +152,31 @@ export class UsersRepository {
     });
   }
 
+  // Any sign-in method that has proved this inbox. LOCAL wins if both exist
+  // so Google-then-email does not create a second password user.
+  async getUserByEmailAnyProvider(email: string) {
+    const rows = await this._user.model.user.findMany({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
+        deletedAt: null,
+      },
+      include: {
+        picture: {
+          select: {
+            id: true,
+            path: true,
+          },
+        },
+      },
+    });
+    return (
+      rows.find((row) => row.providerName === Provider.LOCAL) || rows[0] || null
+    );
+  }
+
   getUserWithActiveSubscriptionByEmail(email: string, excludeUserId: string) {
     return this._user.model.user.findFirst({
       where: {
@@ -182,12 +207,40 @@ export class UsersRepository {
     });
   }
 
-  getUserByProvider(providerId: string, provider: Provider) {
+  async getUserByProvider(providerId: string, provider: Provider) {
+    // Google ids can live on a LOCAL row after we attach them so password
+    // login keeps working. Prefer that row over a leftover GOOGLE duplicate.
+    if (provider === Provider.GOOGLE) {
+      const linkedLocal = await this._user.model.user.findFirst({
+        where: {
+          providerId,
+          providerName: Provider.LOCAL,
+          deletedAt: null,
+        },
+      });
+      if (linkedLocal) {
+        return linkedLocal;
+      }
+    }
+
     return this._user.model.user.findFirst({
       where: {
         providerId,
         providerName: provider,
         deletedAt: null,
+      },
+    });
+  }
+
+  attachProviderId(userId: string, providerId: string) {
+    return this._user.model.user.updateMany({
+      where: {
+        id: userId,
+        providerName: Provider.LOCAL,
+        deletedAt: null,
+      },
+      data: {
+        providerId,
       },
     });
   }

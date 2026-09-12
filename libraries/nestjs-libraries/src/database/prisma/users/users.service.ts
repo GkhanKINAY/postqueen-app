@@ -22,6 +22,10 @@ export class UsersService {
     return this._usersRepository.getUserByEmail(email);
   }
 
+  getUserByEmailAnyProvider(email: string) {
+    return this._usersRepository.getUserByEmailAnyProvider(email);
+  }
+
   getUserById(id: string) {
     return this._usersRepository.getUserById(id);
   }
@@ -39,6 +43,10 @@ export class UsersService {
 
   getUserByProvider(providerId: string, provider: Provider) {
     return this._usersRepository.getUserByProvider(providerId, provider);
+  }
+
+  attachProviderId(userId: string, providerId: string) {
+    return this._usersRepository.attachProviderId(userId, providerId);
   }
 
   async switchUser(
