@@ -41,6 +41,10 @@ export class UsersService {
     return this._usersRepository.getUserByProvider(providerId, provider);
   }
 
+  attachProviderId(userId: string, providerId: string) {
+    return this._usersRepository.attachProviderId(userId, providerId);
+  }
+
   async switchUser(
     currentUserId: string,
     targetUserId: string,

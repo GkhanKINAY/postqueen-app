@@ -182,12 +182,40 @@ export class UsersRepository {
     });
   }
 
-  getUserByProvider(providerId: string, provider: Provider) {
+  async getUserByProvider(providerId: string, provider: Provider) {
+    // Google ids can live on a LOCAL row after we attach them so password
+    // login keeps working. Prefer that row over a leftover GOOGLE duplicate.
+    if (provider === Provider.GOOGLE) {
+      const linkedLocal = await this._user.model.user.findFirst({
+        where: {
+          providerId,
+          providerName: Provider.LOCAL,
+          deletedAt: null,
+        },
+      });
+      if (linkedLocal) {
+        return linkedLocal;
+      }
+    }
+
     return this._user.model.user.findFirst({
       where: {
         providerId,
         providerName: provider,
         deletedAt: null,
+      },
+    });
+  }
+
+  attachProviderId(userId: string, providerId: string) {
+    return this._user.model.user.updateMany({
+      where: {
+        id: userId,
+        providerName: Provider.LOCAL,
+        deletedAt: null,
+      },
+      data: {
+        providerId,
       },
     });
   }
