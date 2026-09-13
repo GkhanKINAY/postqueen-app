@@ -99,7 +99,7 @@ export const ProductShowcase = () => {
           <p className="text-[13px] text-white/60">
             {t(
               'auth_showcase_channels',
-              'One calendar for the 30+ channels you publish to.'
+              'One calendar for the 30 channels you publish to.'
             )}
           </p>
         </div>
