@@ -925,11 +925,14 @@ export const ChannelsComponent: FC = () => {
 
   const reconnect = useCallback(async () => {
     if (!current) return;
+    const params = new URLSearchParams({
+      refresh: String(current.internalId),
+      redirectUrl: '/channels',
+    });
     const { url } = await (
-      await fetch(
-        `/integrations/social/${current.identifier}?refresh=${current.internalId}`,
-        { method: 'GET' }
-      )
+      await fetch(`/integrations/social/${current.identifier}?${params}`, {
+        method: 'GET',
+      })
     ).json();
     if (!url) {
       toast.show(

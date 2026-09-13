@@ -1033,7 +1033,7 @@ export const Tour: FC = () => {
   useEffect(() => {
     if (urlStarted.current) return;
     // `?onboarding=` is also what the OAuth channel-connect return carries
-    // (`continue.integration.tsx`), and that lands on `/launches?added=…`.
+    // (`continue.integration.tsx`), and that lands on `/channels?added=…`.
     // Somebody who has just connected their first channel is being shown a
     // result, not asking to be walked through the app from step one.
     if (query.get('added')) return;

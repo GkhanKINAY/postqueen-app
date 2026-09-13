@@ -17,6 +17,7 @@ import {
   channelConnectEndpoints,
   shouldTryNextConnectEndpoint,
 } from '@gitroom/frontend/components/launches/channel-connect.request';
+import { oauthReturnPath } from '@gitroom/frontend/components/launches/oauth-return';
 
 interface TwoStepState {
   integrationId: string;
@@ -151,7 +152,7 @@ export const ContinueIntegration: FC<{
       if (data.status === HttpStatusCode.PreconditionFailed) {
         const { returnURL } = await data.json().catch(() => ({}));
         navigateOrShow(
-          `/launches?precondition=true`,
+          oauthReturnPath({ precondition: true }),
           returnURL,
           'Precondition failed'
         );
@@ -160,7 +161,7 @@ export const ContinueIntegration: FC<{
 
       if (data.status === HttpStatusCode.NotAcceptable) {
         const { msg, returnURL } = await data.json();
-        navigateOrShow(`/launches?msg=${msg}`, returnURL, msg);
+        navigateOrShow(oauthReturnPath({ msg }), returnURL, msg);
         return;
       }
 
@@ -222,9 +223,11 @@ export const ContinueIntegration: FC<{
       }
 
       navigateOrShow(
-        `/launches?added=${provider}&msg=Channel Updated${
-          onboarding ? '&onboarding=true' : ''
-        }`,
+        oauthReturnPath({
+          added: provider,
+          msg: 'Channel Updated',
+          onboarding,
+        }),
         returnURL,
         'Channel Updated'
       );
@@ -285,9 +288,11 @@ export const ContinueIntegration: FC<{
             response.status === HttpStatusCode.Created
           ) {
             navigateOrShow(
-              `/channels?added=${provider}&msg=Channel Added${
-                twoStepState.onboarding ? '&onboarding=true' : ''
-              }`,
+              oauthReturnPath({
+                added: provider,
+                msg: 'Channel Added',
+                onboarding: twoStepState.onboarding,
+              }),
               twoStepState.returnURL,
               'Channel Added'
             );
