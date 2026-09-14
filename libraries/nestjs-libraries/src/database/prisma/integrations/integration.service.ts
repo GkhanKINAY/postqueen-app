@@ -410,7 +410,7 @@ export class IntegrationService implements OnModuleInit {
   ) {
     return (
       integration.inBetweenSteps ||
-      (provider.isBetweenSteps &&
+      (provider?.isBetweenSteps &&
         !provider.pageIdMayEqualRootId &&
         !!integration.rootInternalId &&
         integration.internalId === integration.rootInternalId)
