@@ -1321,16 +1321,18 @@ html[dir='rtl'] .lbox {
   }
 }
 
-/* Toast entry. Paired with the -50% X translate the toast already carries, so
-   the keyframe has to restate it or the toast jumps left as it animates. */
+/* Toast entry. The toaster is pinned with `fixed` + `end`, not centered with
+   `left: 50%` / `translateX(-50%)`. Restating a -50% X translate here painted
+   the toast left-of-center for 0.24s, then it jumped to the corner when the
+   animation dropped and the transform cleared. Y-only, matching pqin. */
 @keyframes pqfadeDown {
   from {
     opacity: 0;
-    transform: translate(-50%, -16px);
+    transform: translateY(-16px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: none;
   }
 }
 

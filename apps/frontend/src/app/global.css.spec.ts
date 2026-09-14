@@ -18,3 +18,15 @@ describe('global pointer cursor', () => {
     assert.match(source, /:disabled[\s\S]*cursor:\s*not-allowed/);
   });
 });
+
+describe('pqfadeDown toast entry', () => {
+  it('drops on Y only — no leftover centered -50% X translate', () => {
+    const block = source.match(
+      /@keyframes pqfadeDown \{[\s\S]*?\n\}/,
+    );
+    assert.ok(block, 'pqfadeDown keyframes must exist');
+    assert.match(block[0], /translateY\(-16px\)/);
+    assert.doesNotMatch(block[0], /translate\(\s*-50%/);
+    assert.doesNotMatch(block[0], /translateX\(\s*-50%/);
+  });
+});
