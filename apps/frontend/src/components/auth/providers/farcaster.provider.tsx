@@ -25,7 +25,7 @@ export const FarcasterProvider = () => {
         );
         return;
       }
-      window.location.href = `/auth?provider=FARCASTER&code=${code}&state=${state}`;
+      window.location.href = `/auth?provider=FARCASTER&code=${encodeURIComponent(code)}&state=${state}`;
     },
     [fetch, toaster, t]
   );
