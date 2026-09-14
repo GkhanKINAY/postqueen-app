@@ -811,5 +811,21 @@
   "stop_repeating_confirm": "הוא לא יפורסם שוב. כל מה שכבר פורסם יישאר מפורסם.",
   "stop_repeating_done": "הפוסט הזה כבר לא חוזר",
   "stop_repeating_failed": "לא ניתן היה להפסיק את החזרה של הפוסט, נסו שוב",
-  "leave_workspace": "יציאה מסביבת העבודה"
+  "leave_workspace": "יציאה מסביבת העבודה",
+  "comment": "תגובה",
+  "reply": "השב",
+  "add_a_comment": "הוסף תגובה",
+  "add_a_comment_placeholder": "הוסף תגובה...",
+  "write_a_reply": "כתוב תגובה...",
+  "reviewer": "סוקר/ת",
+  "resolve": "סיים טיפול",
+  "reopen": "פתח מחדש",
+  "resolved": "טופל",
+  "collapse": "מזער",
+  "preview_comment_name_required": "נוכל לפרסם את ההערה שלך רק אם תספק את שמך.",
+  "preview_comment_your_name": "השם שלך",
+  "preview_comment_failed": "לא ניתן היה לפרסם את התגובה",
+  "preview_comment_detach_hint": "תגובות על טקסט נבחר מאבדות הדגשה אם הטקסט נערך מאוחר יותר.",
+  "preview_comment_text_changed": "הטקסט השתנה",
+  "preview_no_comments_yet": "עדיין אין תגובות. בחר טקסט בפוסט כדי להגיב עליו, או הוסף תגובה כללית."
 }
