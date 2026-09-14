@@ -1321,16 +1321,21 @@ html[dir='rtl'] .lbox {
   }
 }
 
-/* Toast entry. Paired with the -50% X translate the toast already carries, so
-   the keyframe has to restate it or the toast jumps left as it animates. */
+/* Toast entry. Fade + a slight drop, no X translate. The toaster used to be
+   centered (`start-1/2 -translate-x-1/2`), so this keyframe restated
+   `translate(-50%)` to keep that centering during the 0.24s run. The toast
+   then moved to `bottom` / `end` and dropped the X translate — leaving the
+   keyframe as the jump: first paint is 50% of the toast's width to the left,
+   then the animation ends (no `forwards`) and it snaps to the right edge.
+   `media.box` also uses this class on a left-aligned full-width bar. */
 @keyframes pqfadeDown {
   from {
     opacity: 0;
-    transform: translate(-50%, -16px);
+    transform: translateY(-16px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: none;
   }
 }
 

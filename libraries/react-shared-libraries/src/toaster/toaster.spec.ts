@@ -24,4 +24,10 @@ describe('Toaster success chrome', () => {
     assert.match(toaster, /toasterHref/);
     assert.match(toaster, /<a[\s\S]*href=\{toasterHref\}/);
   });
+
+  it('anchors bottom-end without a leftover centering translate', () => {
+    assert.match(toaster, /bottom-\[24px\] end-\[24px\]/);
+    assert.doesNotMatch(toaster, /start-\[50%\]/);
+    assert.doesNotMatch(toaster, /-translate-x-\[50%\]/);
+  });
 });
