@@ -8,7 +8,6 @@ import {
   lifetimeWindow,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { LifetimeDto } from '@gitroom/nestjs-libraries/dtos/billing/lifetime.dto';
 import { AdminApplyCouponDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.apply.coupon.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -289,7 +288,14 @@ export class BillingController {
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async modifyPayment(@GetOrgFromRequest() org: Organization) {
     this.assertBillingEnabled();
-    const { url } = await (await this.provider(org)).portalLink(org.id);
+    // Stripe Customer Portal is how web customers update the card, tax IDs,
+    // and download invoices — including founding members. Those entitlements
+    // are often a local `manual` subscription row (admin gift / impersonate),
+    // not a Stripe Price. Routing this through getProviderForOrganization
+    // throws "Payment provider manual not found" and the button looks dead.
+    // Mobile (RevenueCat) still has to manage billing in the store.
+    await this._paymentService.assertWebPortal(org.id);
+    const { url } = await this._stripeService.portalLink(org.id);
     return {
       portal: url,
     };
@@ -480,29 +486,6 @@ export class BillingController {
     }
 
     return this._stripeService.createLifetimeCheckout(org);
-  }
-
-  @Post('/lifetime')
-  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
-  async lifetime(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() org: Organization,
-    @Body() body: LifetimeDto
-  ) {
-    this.assertBillingEnabled();
-    // The founding-member offer closes 24 hours after registration, and the
-    // screen draws a countdown to that moment. A countdown the server does not
-    // enforce is decoration — the same lesson as the trial lock: the rule lives
-    // where the money moves, or it is not a rule. Both sides read
-    // `lifetimeWindow()` so they cannot drift.
-    if (!lifetimeWindow(user.createdAt).open) {
-      throw new HttpException(
-        { success: false, message: 'The founding-member offer has closed.' },
-        HttpStatus.GONE
-      );
-    }
-
-    return this._stripeService.lifetimeDeal(org.id, body.code);
   }
 
   @Post('/add-subscription')

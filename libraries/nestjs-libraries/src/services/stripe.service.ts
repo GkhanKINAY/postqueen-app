@@ -17,7 +17,6 @@ import {
   pricing,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -742,7 +741,7 @@ export class StripeService extends PaymentProviderAbstract {
    * the losing request from leaving a spare customer behind.
    */
   async createOrGetCustomer(organization: Organization) {
-    if (organization.paymentId) {
+    if (organization.paymentId?.startsWith('cus_')) {
       return organization.paymentId;
     }
 
@@ -758,12 +757,24 @@ export class StripeService extends PaymentProviderAbstract {
         )}`,
       }
     );
-    await this._subscriptionService.setCustomerIdIfEmpty(
-      organization.id,
-      customer.id
-    );
+    // Empty paymentId: first-writer-wins. A leftover user id (admin-granted
+    // lifetime used to store that instead of a Stripe customer) is not a
+    // customer — overwrite it so the portal has a real cus_ to open.
+    if (!organization.paymentId) {
+      await this._subscriptionService.setCustomerIdIfEmpty(
+        organization.id,
+        customer.id
+      );
+    } else {
+      await this._subscriptionService.updateCustomerId(
+        organization.id,
+        customer.id
+      );
+    }
     const stored = await this._organizationService.getOrgById(organization.id);
-    return stored?.paymentId || customer.id;
+    return stored?.paymentId?.startsWith('cus_')
+      ? stored.paymentId
+      : customer.id;
   }
 
   async getPackages() {
@@ -1060,9 +1071,52 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async createBillingPortalLink(customer: string) {
-    return stripe.billingPortal.sessions.create({
-      customer,
-      return_url: process.env['FRONTEND_URL'] + '/billing',
+    const return_url = process.env['FRONTEND_URL'] + '/billing';
+    try {
+      return await stripe.billingPortal.sessions.create({
+        customer,
+        return_url,
+      });
+    } catch (err) {
+      const message = String((err as { message?: string })?.message || '');
+      if (
+        !/portal has not been configured|No configuration provided/i.test(
+          message
+        )
+      ) {
+        throw err;
+      }
+      const configuration = await this.ensureBillingPortalConfiguration();
+      return stripe.billingPortal.sessions.create({
+        customer,
+        configuration: configuration.id,
+        return_url,
+      });
+    }
+  }
+
+  /**
+   * Invoice history + payment-method update. Used only when the account has
+   * no default Customer Portal configuration in Stripe yet.
+   */
+  private async ensureBillingPortalConfiguration() {
+    const existing = await stripe.billingPortal.configurations.list({
+      active: true,
+      limit: 1,
+    });
+    if (existing.data[0]) {
+      return existing.data[0];
+    }
+    return stripe.billingPortal.configurations.create({
+      business_profile: { headline: 'PostQueen' },
+      features: {
+        invoice_history: { enabled: true },
+        payment_method_update: { enabled: true },
+        customer_update: {
+          enabled: true,
+          allowed_updates: ['email', 'address', 'name', 'phone', 'tax_id'],
+        },
+      },
     });
   }
 
@@ -1276,7 +1330,17 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async portalLink(organizationId: string) {
-    const customer = await this.getCustomerByOrganizationId(organizationId);
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (!org) {
+      throw new HttpException(
+        'No billing customer on this organization.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    // Gifted founding members often have no Stripe customer yet (or a user id
+    // stuffed into paymentId). Create one so they can add a card and see
+    // invoice history — empty is fine; a 400 is not.
+    const customer = await this.createOrGetCustomer(org);
     return this.createBillingPortalLink(customer);
   }
 
@@ -2897,7 +2961,7 @@ export class StripeService extends PaymentProviderAbstract {
   /**
    * Whether this organization's free trial is still running.
    *
-   * Both lifetime grants below used to hardcode `false` here, which ended the
+   * The lifetime grant below used to hardcode `false` here, which ended the
    * trial the instant somebody bought the founding-member deal. The owner's
    * rule is the opposite: buying it leaves the trial running, and the person
    * becomes a founding member when it expires — or sooner, from the "End free
@@ -2909,19 +2973,14 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Grants a lifetime entitlement that was paid for rather than redeemed.
+   * Grants a lifetime entitlement that was paid for.
    *
-   * Deliberately the *same* effect as `lifetimeDeal` — same Pro grant, same
-   * `createOrUpdateSubscription` call — so there is one way to become a
-   * founding member and not two that can drift apart.
-   *
-   * `paymentRef` stands in for the redemption code. The repository derives
+   * `paymentRef` is stored as the used-code row. The repository derives
    * `isLifetime` from that argument being present, and using the Stripe session
    * id (or `lifetime-setup:…`) means the row records which checkout granted it.
    *
-   * Idempotent by the same route redemption is: a ref already stored as a used
-   * code is a webhook Stripe delivered twice, and it grants nothing the second
-   * time.
+   * Idempotent: a ref already stored as a used code is a webhook Stripe
+   * delivered twice, and it grants nothing the second time.
    */
   async grantLifetimeFromPayment(organizationId: string, paymentRef: string) {
     const existing = await this._subscriptionService.getCode(paymentRef);
@@ -2955,52 +3014,5 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     return { success: true, tier: nextPackage };
-  }
-
-  async lifetimeDeal(organizationId: string, code: string) {
-    const getCurrentSubscription =
-      await this._subscriptionService.getSubscriptionByOrganizationId(
-        organizationId
-      );
-    if (getCurrentSubscription && !getCurrentSubscription?.isLifetime) {
-      throw new Error('You already have a non lifetime subscription');
-    }
-
-    try {
-      const testCode = AuthService.fixedDecryption(code);
-      const findCode = await this._subscriptionService.getCode(testCode);
-      if (findCode) {
-        return {
-          success: false,
-        };
-      }
-
-      // Same grant as paid founding: always Pro (30 channels).
-      const nextPackage = LIFETIME_GRANT_TIER;
-      const findPricing = pricing[nextPackage];
-
-      await this._subscriptionService.createOrUpdateSubscription(
-        STRIPE_PROVIDER,
-        // Same rule as the paid grant above: redeeming a code does not cut a
-        // running trial short.
-        await this.stillTrialing(organizationId),
-        makeId(10),
-        organizationId,
-        findPricing.channel!,
-        nextPackage,
-        'MONTHLY',
-        null,
-        testCode,
-        organizationId
-      );
-      return {
-        success: true,
-      };
-    } catch (err) {
-      console.log(err);
-      return {
-        success: false,
-      };
-    }
   }
 }
