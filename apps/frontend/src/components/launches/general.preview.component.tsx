@@ -57,7 +57,7 @@ export const GeneralPreviewComponent: FC<{
   });
 
   return (
-    <div className={clsx('relative isolate w-full min-w-0 overflow-hidden p-[15px]')}>
+    <div className={clsx('relative isolate w-full min-w-0 overflow-hidden px-[16px] py-[14px]')}>
       <div className="relative flex w-full min-w-0 flex-col">
         {renderContent.map((value, index) => (
           <div

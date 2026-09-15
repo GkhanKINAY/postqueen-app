@@ -246,7 +246,7 @@ export const withProvider = function <T extends object>(params: {
         <FormProvider {...form}>
           <div
             className={clsx(
-              'relative isolate min-w-0 overflow-hidden rounded-[12px] border border-pqBorder bg-pqInner',
+              'relative isolate min-w-0 overflow-hidden rounded-[16px] border border-pqBorder bg-pqInner shadow-pqE1',
               // Global mode stacks every selected channel preview; per-channel
               // tab still shows only the active id. Filter chips hide via CSS
               // data attribute when parent marks the card filtered out.
@@ -255,14 +255,14 @@ export const withProvider = function <T extends object>(params: {
               // Postiz only renders the active channel, so their
               // `absolute left-0 top-0 w-full h-full` fills the pane on purpose.
               !current && !isGlobal && 'hidden',
-              isGlobal && 'mb-[16px] last:mb-0'
+              isGlobal && 'mb-[12px] last:mb-0'
             )}
             data-preview-channel={props.id}
           >
             {isGlobal && (
               <div
                 data-pq="preview-channel-label"
-                className="flex min-w-0 items-center gap-[8px] border-b border-pqLine px-[12px] py-[8px]"
+                className="flex min-w-0 items-center gap-[8px] border-b border-pqLine bg-pqSettings px-[14px] py-[10px]"
               >
                 <div className="relative shrink-0">
                   <SafeImage

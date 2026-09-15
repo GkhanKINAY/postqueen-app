@@ -56,12 +56,13 @@ describe('phone calendar and composer', () => {
   it('keeps the desktop composer as a centered card, not edge-to-edge', () => {
     assert.match(manage, /data-pq="composer-shell"/);
     assert.match(manage, /data-pq="composer-card"/);
-    assert.match(manage, /max-w-\[1400px\]/);
-    assert.match(manage, /h-\[calc\(100dvh-24px\)\]/);
-    assert.match(manage, /w-\[480px\] shrink-0/);
+    assert.match(manage, /data-pq="composer-preview"/);
+    assert.match(manage, /max-w-\[min\(1440px,calc\(100vw-48px\)\)\]/);
+    assert.match(manage, /h-\[calc\(100dvh-48px\)\]/);
+    assert.match(manage, /w-\[440px\] shrink-0 bg-pqBg/);
+    assert.match(manage, /p-\[24px\]/);
     assert.doesNotMatch(manage, /w-\[580px\]/);
     assert.doesNotMatch(manage, /max-w-\[840px\]/);
-    assert.doesNotMatch(manage, /max-w-\[1200px\]/);
     assert.doesNotMatch(manage, /p-\[40px\]/);
     const editor = readFileSync(
       fileURLToPath(
@@ -70,7 +71,7 @@ describe('phone calendar and composer', () => {
       'utf8',
     );
     assert.match(editor, /data-pq="composer-editor"/);
-    assert.match(editor, /min-h-\[180px\]/);
+    assert.match(editor, /min-h-\[160px\]/);
     assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
     assert.doesNotMatch(editor, /w-full h-\[46px\] bg-pqInner cursor-text/);
   });

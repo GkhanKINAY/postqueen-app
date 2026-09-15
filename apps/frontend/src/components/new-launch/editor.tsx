@@ -769,7 +769,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="relative z-[99] min-h-[180px] bg-pqInner px-[8px] pt-[8px]">
+            <div className="relative z-[99] min-h-[160px] bg-pqInner px-[8px] pt-[8px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}

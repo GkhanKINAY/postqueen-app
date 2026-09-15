@@ -283,13 +283,15 @@ export const ShowAllProviders = forwardRef((props, ref) => {
     // `data-preview-root` scopes the two `<style>` rules below. They are plain
     // document-global CSS, and `[data-preview-channel]` on its own would reach
     // any future surface that reuses the attribute.
-    <div data-preview-root="1" className="flex w-full min-w-0 flex-1 flex-col">
+    <div data-preview-root="1" className="flex min-h-full w-full min-w-0 flex-1 flex-col">
       {selectedIntegrations.length === 0 ? (
-        <div className="rounded-[14px] bg-pqInner px-[24px] py-[48px] text-center text-[13.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
-          {t(
-            'check_circles_above',
-            'Check the circles above to pick a channel'
-          )}
+        <div className="flex min-h-full flex-1 flex-col items-center justify-center px-[20px] py-[40px] text-center">
+          <div className="rounded-[16px] bg-pqInner px-[24px] py-[28px] text-[13.5px] leading-[1.5] text-pqMuted shadow-pqE1">
+            {t(
+              'check_circles_above',
+              'Check the circles above to pick a channel'
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -372,11 +374,13 @@ export const ShowAllProviders = forwardRef((props, ref) => {
             <style>{`[data-preview-root] [data-preview-channel]:not([data-preview-channel="${previewFocus}"]) { display: none !important; }`}</style>
           )}
           {isGlobal && !previewHasContent && (
-            <div className="rounded-[14px] bg-pqInner px-[24px] py-[48px] text-center text-[13.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
-              {t(
-                'start_writing_your_post',
-                'Start writing your post for a preview'
-              )}
+            <div className="flex min-h-full flex-1 flex-col items-center justify-center px-[20px] py-[40px] text-center">
+              <div className="rounded-[16px] bg-pqInner px-[24px] py-[28px] text-[13.5px] leading-[1.5] text-pqMuted shadow-pqE1">
+                {t(
+                  'start_writing_your_post',
+                  'Start writing your post for a preview'
+                )}
+              </div>
             </div>
           )}
           {/* Hidden, not unmounted. Each provider registers its own character

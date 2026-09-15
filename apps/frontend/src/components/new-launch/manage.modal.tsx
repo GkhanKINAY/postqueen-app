@@ -622,19 +622,20 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       data-pq="composer-shell"
       className={clsx(
         'relative flex h-full w-full flex-1',
-        touch ? 'p-0' : 'items-center justify-center p-[12px]'
+        touch ? 'p-0' : 'items-center justify-center p-[24px]'
       )}
     >
       <div
         data-pq="composer-card"
         className={clsx(
           'flex flex-col overflow-hidden bg-pqInner shadow-pq',
-          // removeLayout + fullScreen ignored the openModal max-w-[1400px]
-          // class. Desktop uses that 1400px window with a slim inset so it
-          // is not edge-to-edge. Phone/tablet stay full-bleed.
+          // Buffer/Sprout-style compose studio: large enough for a live
+          // preview rail, inset enough that the calendar stays in frame.
+          // Caps at 1440px; always keeps a 24px gutter. Phone/tablet stay
+          // full-bleed.
           touch
             ? 'h-full w-full min-h-0 flex-1 rounded-none'
-            : 'h-[calc(100dvh-24px)] w-full max-w-[1400px] rounded-[20px]'
+            : 'h-[calc(100dvh-48px)] w-full max-w-[min(1440px,calc(100vw-48px))] rounded-[24px]'
         )}
       >
         <div
@@ -651,7 +652,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               touch && composerPane !== 'edit' && 'hidden'
             )}
           >
-            <div className="flex h-[65px] items-center gap-[12px] rounded-ss-[20px] border-b border-pqLine bg-pqBg px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none">
+            <div className="flex h-[56px] items-center gap-[12px] rounded-ss-[24px] border-b border-pqLine bg-pqBg px-[24px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none">
               {existingData?.integration
                 ? t('edit_post_title', 'Edit Post')
                 : t('create_post_title', 'Create Post')}
@@ -698,13 +699,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 </div>
               )}
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-[16px]">
-              <div
-                className={clsx('relative min-h-0 flex-1', showSettings && 'hidden')}
-              >
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
+              <div className={clsx(showSettings && 'hidden')}>
                 <div
                   id="social-content"
-                  className="absolute inset-0 flex h-full w-full flex-col gap-[20px] overflow-x-hidden overflow-y-scroll pe-[8px] ps-[20px] pt-[20px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                  className="flex flex-col gap-[20px] pe-[8px] ps-[24px] pt-[20px]"
                 >
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
@@ -745,7 +744,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     </div>
                     <div
                       id="social-empty"
-                      className="pb-[16px]"
+                      className="pb-[8px]"
                     />
                   </div>
                 </div>
@@ -753,7 +752,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <div
                 id="wrapper-settings"
                 className={clsx(
-                  'select-none px-[20px] pb-[16px]',
+                  'select-none px-[24px] pb-[16px] pt-[8px]',
                   showSettings && 'flex min-h-0 flex-1 flex-col pt-[12px]',
                   current === 'global' && 'hidden'
                 )}
@@ -796,6 +795,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             </div>
           </div>
           <div
+            data-pq="composer-preview"
             className={clsx(
               'flex flex-col',
               touch
@@ -803,13 +803,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     'w-full min-h-0 flex-1',
                     composerPane !== 'preview' && 'hidden'
                   )
-                : 'w-[480px] shrink-0'
+                : 'w-[440px] shrink-0 bg-pqBg'
             )}
           >
             <div
               className={clsx(
-                'flex h-[65px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none',
-                !touch && 'rounded-se-[20px]'
+                'flex h-[56px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none',
+                !touch && 'rounded-se-[24px]'
               )}
             >
               <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
@@ -852,8 +852,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             </div>
             <div className="relative min-h-0 flex-1">
               <Scrollable
-                scrollClasses="!pe-[20px]"
-                className="absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                scrollClasses="!pe-[16px]"
+                className="absolute left-0 top-0 h-full w-full overflow-x-hidden overflow-y-scroll p-[16px] pe-[8px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqBg"
               >
                 <ShowAllProviders ref={ref} />
               </Scrollable>
