@@ -102,6 +102,8 @@ describe('phone calendar and composer', () => {
   it('keeps the composer footer from overlapping on phone and tablet', () => {
     assert.match(manage, /grid w-full grid-cols-2/);
     assert.match(manage, /t\('select_channels', 'Select channels'\)/);
+    assert.match(manage, /data-pq="composer-footer"/);
+    assert.match(manage, /data-pq="composer-publish"/);
     assert.match(manage, /max-\[1179px\]:!ml-0 max-\[1179px\]:w-full max-\[1179px\]:!flex-none/);
     const tags = readFileSync(
       fileURLToPath(new URL('./tags.component.tsx', import.meta.url)),
@@ -117,9 +119,10 @@ describe('phone calendar and composer', () => {
       ),
       'utf8',
     );
-    assert.match(tags, /touch \? t\('tags', 'Tags'\)/);
-    assert.match(repeat, /touch \? \(\s*repeat \?/);
-    assert.match(repeat, /aria-label=\{triggerLabel\}/);
+    assert.match(tags, /t\('tags', 'Tags'\)/);
+    assert.doesNotMatch(tags, /touch \? t\('tags', 'Tags'\)/);
+    assert.match(repeat, /aria-label=\{ariaLabel\}/);
+    assert.match(repeat, /t\('repeat_post_every', 'Repeat'\)/);
     assert.match(editor, /data-pq="composer-ai-hint"/);
     assert.match(editor, /flex min-w-0 items-center gap-\[8px\] overflow-hidden border-t border-pqLine/);
     assert.match(editor, /trailing=\{threadAction\}/);

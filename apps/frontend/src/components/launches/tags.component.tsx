@@ -169,7 +169,7 @@ export const TagsComponentInner: FC<{
     <div
       ref={ref}
       className={clsx(
-        'relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden rounded-[8px] border text-[15px] font-[600] select-none',
+        'relative flex h-[42px] min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover',
         isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
       )}
     >
@@ -178,9 +178,7 @@ export const TagsComponentInner: FC<{
         role="button"
         aria-label={
           tagValue.length === 0
-            ? touch
-              ? t('tags', 'Tags')
-              : t('add_new_tag', 'Add New Tag')
+            ? t('tags', 'Tags')
             : tagValue[0].name
         }
         onClick={() => setIsOpen(!isOpen)}
@@ -194,7 +192,7 @@ export const TagsComponentInner: FC<{
         </div>
         <div className="min-w-0 truncate whitespace-nowrap">
           {tagValue.length === 0 ? (
-            touch ? t('tags', 'Tags') : t('add_new_tag', 'Add New Tag')
+            t('tags', 'Tags')
           ) : (
             <>
               <div

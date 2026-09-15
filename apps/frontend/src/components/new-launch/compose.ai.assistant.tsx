@@ -27,9 +27,10 @@ const COPILOT_DESKTOP_PX = 640;
 
 const triggerClassName = (open: boolean) =>
   clsx(
-    'flex h-[42px] shrink-0 items-center gap-[8px] rounded-[10px] border-0 bg-btnSimple px-[16px] text-[14px] font-[600] text-pqText transition-colors hover:bg-pqHover',
-    open &&
-      'bg-pqBrandSoft shadow-[inset_0_0_0_1px_var(--focused)] hover:bg-pqBrandSoft'
+    'flex h-[42px] shrink-0 cursor-pointer items-center gap-[8px] whitespace-nowrap rounded-[10px] bg-pqBrandSoft px-[14px] text-[13px] font-[600] text-pqFocused transition-colors',
+    open
+      ? 'shadow-[inset_0_0_0_1px_var(--focused)] hover:bg-pqBrandSoft'
+      : 'hover:bg-pqBoxFocused'
   );
 
 const SparkleIcon: FC = () => (

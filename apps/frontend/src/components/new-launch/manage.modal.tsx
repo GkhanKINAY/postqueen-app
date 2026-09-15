@@ -883,12 +883,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           </div>
         </div>
         <div
+          data-pq="composer-footer"
           className={clsx(
-            'flex min-w-0 select-none border-t border-pqBorder pb-[max(12px,env(safe-area-inset-bottom))]',
+            'flex min-w-0 select-none border-t border-pqBorder bg-pqBg pb-[max(12px,env(safe-area-inset-bottom))]',
             'max-[1179px]:flex-col max-[1179px]:gap-[10px] max-[1179px]:overflow-x-hidden max-[1179px]:px-[16px] max-[1179px]:py-[12px]',
             touch
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] items-center overflow-x-auto overflow-y-hidden py-[20px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
+              : 'items-center overflow-x-auto overflow-y-hidden px-[20px] py-[12px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
           )}
         >
           <div
@@ -897,11 +898,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               'max-[1179px]:grid max-[1179px]:w-full max-[1179px]:grid-cols-2',
               touch
                 ? 'grid w-full grid-cols-2'
-                : 'flex flex-1 items-center ps-[20px] min-[1180px]:flex'
+                : 'flex flex-1 items-center gap-[8px] min-[1180px]:flex'
             )}
           >
             {!dummy && (
-              <div className={clsx('min-w-0', touch && 'w-full [&>*]:w-full')}>
+              <div
+                className={clsx(
+                  'min-w-0',
+                  touch ? 'w-full [&>*]:w-full' : 'shrink-0'
+                )}
+              >
                 <TagsComponent
                   name="tags"
                   label={t('tags', 'Tags')}
@@ -914,19 +920,29 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             )}
 
             {!dummy && (
-              <div className={clsx('min-w-0', touch && 'w-full [&>*]:w-full')}>
+              <div
+                className={clsx(
+                  'min-w-0',
+                  touch ? 'w-full [&>*]:w-full' : 'shrink-0'
+                )}
+              >
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
           </div>
           <div
+            data-pq="composer-publish"
             className={clsx(
               'flex min-w-0 items-center justify-end gap-[8px]',
               'max-[1179px]:w-full max-[1179px]:flex-col',
-              touch ? 'w-full flex-col' : 'shrink-0 pe-[20px]'
+              touch ? 'w-full flex-col' : 'shrink-0'
             )}
           >
             <ComposeAiAssistant />
+            <div
+              className="hidden h-[22px] w-px shrink-0 bg-pqLine min-[1180px]:block"
+              aria-hidden="true"
+            />
             {existingData?.integration && (
               <button
                 onClick={deletePost}
@@ -957,11 +973,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 }
                 onClick={schedule('draft')}
                 className={clsx(
-                  'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-btnSimple text-[14px] font-[600] disabled:cursor-not-allowed',
+                  'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-[10px] text-[13px] font-[600] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover hover:text-pqText disabled:cursor-not-allowed',
                   'max-[1179px]:h-[44px] max-[1179px]:min-w-0 max-[1179px]:flex-1 max-[1179px]:px-[12px]',
                   touch
                     ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                    : 'h-[42px] px-[18px]'
+                    : 'h-[42px] px-[16px]'
                 )}
               >
                 {loading && (

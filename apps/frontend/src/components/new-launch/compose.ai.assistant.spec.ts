@@ -40,7 +40,8 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /width="20"/);
     assert.match(assistant, /fill="currentColor"/);
     assert.match(assistant, /text-pqFocused/);
-    assert.match(assistant, /AI assistant/);
+    assert.match(assistant, /bg-pqBrandSoft/);
+    assert.match(assistant, /cursor-pointer/);
     assert.match(assistant, /var\(--focused\)/);
     assert.doesNotMatch(assistant, /var\(--brand\)/);
     assert.doesNotMatch(assistant, /text-pqBrand/);
