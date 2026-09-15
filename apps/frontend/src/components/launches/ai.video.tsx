@@ -394,12 +394,8 @@ export const AiVideo: FC<{
           </div>
           <div
             className={clsx(
-              'font-[600]',
-              clsx(
-                'text-[12px] whitespace-nowrap',
-                compact && 'hidden',
-                !ghost && 'iconBreak:hidden'
-              )
+              'whitespace-nowrap text-[12px] font-[600]',
+              compact && 'hidden'
             )}
           >
             {ghost

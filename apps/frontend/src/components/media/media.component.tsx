@@ -400,13 +400,13 @@ export const MultiMediaComponent: FC<{
             className={clsx(
               ghost
                 ? 'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px]'
-                : 'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[8px] border-t border-pqLine px-[10px] py-[6px] text-pqText'
+                : 'flex w-full items-center gap-x-[8px] border-t border-pqLine px-[10px] py-[6px] text-pqText'
             )}
           >
             {!mediaNotAvailable && (
               <div
                 ref={toolsRef}
-                className="flex min-w-0 flex-nowrap items-center gap-[6px] overflow-hidden"
+                className="flex min-w-0 flex-1 flex-nowrap items-center gap-[6px] overflow-hidden"
               >
                 <button
                   type="button"
@@ -427,12 +427,7 @@ export const MultiMediaComponent: FC<{
                   )}
                 >
                   <InsertMediaIcon />
-                  <span
-                    className={clsx(
-                      !ghost && 'maxMedia:hidden',
-                      hideLabel && 'hidden'
-                    )}
-                  >
+                  <span className={clsx(hideLabel && 'hidden')}>
                     {t('insert_media', 'Insert media')}
                   </span>
                 </button>
@@ -450,12 +445,7 @@ export const MultiMediaComponent: FC<{
                   )}
                 >
                   <DesignMediaIcon />
-                  <span
-                    className={clsx(
-                      !ghost && 'iconBreak:hidden',
-                      hideLabel && 'hidden'
-                    )}
-                  >
+                  <span className={clsx(hideLabel && 'hidden')}>
                     {t('design_media', 'Design Media')}
                   </span>
                 </button>
@@ -497,32 +487,24 @@ export const MultiMediaComponent: FC<{
                   />
                 )}
                 {!!toolBar && toolBar}
+                {trailing}
               </div>
             )}
             {!!toolBar && mediaNotAvailable && (
               <div
                 ref={toolsRef}
-                className="flex min-w-0 flex-nowrap items-center gap-[6px] overflow-hidden"
+                className="flex min-w-0 flex-1 flex-nowrap items-center gap-[6px] overflow-hidden"
               >
                 {toolBar}
+                {trailing}
               </div>
             )}
-            {(information || trailing) && (
+            {information && (
               <div
-                className={clsx(
-                  'flex h-[36px] shrink-0 items-center gap-[2px]',
-                  ghost && 'ms-auto'
-                )}
+                data-pq="composer-char-count"
+                className="ms-auto flex h-[36px] shrink-0 items-center"
               >
-                {trailing}
-                {information && (
-                  <div
-                    data-pq="composer-char-count"
-                    className="flex h-[32px] items-center"
-                  >
-                    {information}
-                  </div>
-                )}
+                {information}
               </div>
             )}
           </div>

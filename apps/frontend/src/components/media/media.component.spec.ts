@@ -17,12 +17,13 @@ describe('composer media hover actions', () => {
     assert.doesNotMatch(source, /overflow-hidden transition-\[box-shadow\]/);
     assert.match(source, /!ghost &&\s+!touch &&\s+'opacity-0/);
     assert.match(source, /data-pq="composer-toolbar"/);
-    assert.match(source, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(source, /flex w-full items-center gap-x-\[8px\]/);
     assert.match(source, /data-pq="composer-char-count"/);
-    assert.match(source, /flex min-w-0 flex-nowrap items-center gap-\[6px\] overflow-hidden/);
+    assert.match(source, /flex min-w-0 flex-1 flex-nowrap items-center gap-\[6px\] overflow-hidden/);
     assert.match(source, /trailing\?: React\.ReactNode/);
     assert.match(source, /const hideLabel = compact/);
     assert.match(source, /ghost \? toolbarRef\.current : toolsRef\.current/);
+    assert.doesNotMatch(source, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
   });
 
   it('drags from the whole thumb, not a four-dot grab handle', () => {
