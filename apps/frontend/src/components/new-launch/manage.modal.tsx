@@ -17,7 +17,10 @@ import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.cu
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
+import {
+  ComposeWhen,
+  ComposeWhenMode,
+} from '@gitroom/frontend/components/new-launch/compose.when';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
@@ -79,7 +82,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   });
 
-  const { addEditSets, mutate, customClose, dummy } = props;
+  const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
+  const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
+    existingData?.posts?.[0] ? 'date' : whenProp === 'next' ? 'next' : 'date'
+  );
 
   const {
     selectedIntegrations,
@@ -289,6 +295,26 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       // catch can tell "failed" from "succeeded then stumbled".
       let saved = false;
       try {
+      if (type === 'schedule' && whenMode === 'now') {
+        type = 'now';
+      }
+      let publishAt = date;
+      if (type === 'schedule' && whenMode === 'next') {
+        const slotResponse = await fetch('/posts/find-slot');
+        const slot = slotResponse.ok
+          ? (await slotResponse.json().catch(() => ({})))?.date
+          : undefined;
+        if (!slot) {
+          setLoading(false);
+          toaster.show(
+            t('create_post_failed', 'Could not start a new post, please try again'),
+            'warning'
+          );
+          return;
+        }
+        publishAt = dayjs.utc(slot).local();
+        setDate(publishAt);
+      }
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
@@ -472,7 +498,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         ...(repeater ? { inter: repeater } : {}),
         tags,
         shortLink,
-        date: date.utc().format('YYYY-MM-DDTHH:mm:ss'),
+        date: publishAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
         posts,
       };
 
@@ -597,6 +623,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       toaster,
       t,
       notifyOnPublish,
+      whenMode,
+      fetch,
+      setDate,
     ]
   );
 
@@ -875,10 +904,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <div className="mb-[4px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
                 {t('when_to_post', 'When to post')}
               </div>
-              <DatePicker
-                onChange={setDate}
+              <ComposeWhen
+                mode={whenMode}
                 date={date}
-                className="max-[1179px]:!ml-0 max-[1179px]:w-full max-[1179px]:!flex-none"
+                onMode={setWhenMode}
+                onChange={setDate}
               />
             </div>
             {!dummy && (
@@ -1008,6 +1038,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         ? t('select_channels', 'Select channels')
                         : dummy
                         ? t('create_output', 'Create output')
+                        : whenMode === 'now'
+                        ? t('post_now', 'Post Now')
                         : !existingData?.integration
                         ? t('add_to_calendar', 'Add to calendar')
                         : existingData?.posts?.[0]?.state === 'DRAFT'

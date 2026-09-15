@@ -242,6 +242,7 @@ export const NewPost = () => {
           reopenModal={createAPost}
           mutate={reloadCalendarView}
           integrations={list}
+          when="next"
           date={dayjs.utc(date).local()}
         />
       ),

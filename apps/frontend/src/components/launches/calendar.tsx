@@ -966,6 +966,7 @@ export const ListView = () => {
           reopenModal={createPost}
           mutate={reloadCalendarView}
           integrations={integrations}
+          when="next"
           date={dayjs.utc(date).local()}
         />
       ),

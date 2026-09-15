@@ -394,7 +394,7 @@ export const EditorWrapper: FC<{
             delay: 0,
             content: html,
             id: makeId(10),
-            media: [],
+            media: [] as { id: string; path: string; thumbnail?: string }[],
           },
         ];
         if (internal) {
