@@ -19,6 +19,10 @@ describe('composer media hover actions', () => {
     assert.match(source, /data-pq="composer-toolbar"/);
     assert.match(source, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
     assert.match(source, /data-pq="composer-char-count"/);
+    assert.match(source, /flex min-w-0 flex-nowrap items-center gap-\[6px\] overflow-hidden/);
+    assert.match(source, /trailing\?: React\.ReactNode/);
+    assert.match(source, /const hideLabel = compact/);
+    assert.match(source, /ghost \? toolbarRef\.current : toolsRef\.current/);
   });
 
   it('drags from the whole thumb, not a four-dot grab handle', () => {

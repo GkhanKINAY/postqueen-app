@@ -99,6 +99,9 @@ export const MultiMediaComponent: FC<{
   onClose?: () => void;
   toolBar?: React.ReactNode;
   information?: React.ReactNode;
+  // Quiet thread action that belongs on the same chrome row as the tools
+  // and character count — not a second CTA sitting in the well below.
+  trailing?: React.ReactNode;
   onChange: (event: {
     target: {
       name: string;
@@ -125,35 +128,30 @@ export const MultiMediaComponent: FC<{
     attachmentsOnly,
     toolBar,
     information,
+    trailing,
     mediaNotAvailable,
   } = props;
   const showThumbs = !ghost || ghostPart === 'all' || ghostPart === 'thumbs';
   const showToolbar = !ghost || ghostPart === 'all' || ghostPart === 'toolbar';
 
-  // Ghost mode never hides a label, which was fine for four buttons and wraps
-  // with five. The constraint is the *column*, not the window — the agent
-  // composer is squeezed between two 264px rails, so it is ~564px wide at a
-  // 1440px viewport and widens the moment the chats rail is unpinned, with no
-  // viewport change at all. That rules out the `iconBreak`/`maxMedia` viewport
-  // queries the filled toolbar uses (untouched, they are right for it) and
-  // leaves measuring the row.
-  //
-  // What it measures is the width the labelled row *needs*, cached while the
-  // labels are still up, rather than a constant: five English labels want
-  // 635px and translations move that (`Görsel oluştur`, `Entegrasyonlar`…).
-  // Caching is also what stops the flip-flop — once compact, the buttons are
-  // narrow, so re-measuring them would say there is room, unhide the labels,
-  // and wrap again.
+  // Labels hide from the *column*, not the window. Ghost sits between two
+  // 264px rails (~564px at 1440px); the post composer is a 1440px card with a
+  // 440px preview, so the filled toolbar is ~900px — still narrower than the
+  // `iconBreak`/`maxMedia` viewports those buttons also use. Measuring the
+  // tools row covers both. Cache the labelled width so compact doesn't
+  // flip-flop: once the buttons shrink, re-measuring them would say there is
+  // room, unhide the labels, and wrap again.
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
   const naturalWidth = useRef(0);
   const [compact, setCompact] = useState(false);
   useEffect(() => {
-    const node = toolbarRef.current;
-    if (!ghost || !node || typeof ResizeObserver === 'undefined') {
+    const node = ghost ? toolbarRef.current : toolsRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
       return;
     }
     const measure = (available: number) => {
-      const row = node.firstElementChild;
+      const row = ghost ? node.firstElementChild : node;
       if (!row) {
         return;
       }
@@ -175,8 +173,7 @@ export const MultiMediaComponent: FC<{
     return () => observer.disconnect();
   }, [ghost, showToolbar]);
 
-  // Non-ghost keeps its viewport breakpoints; ghost uses the measurement.
-  const hideLabel = ghost ? compact : undefined;
+  const hideLabel = compact;
   const user = useUser();
   const modals = useModals();
   const t = useT();
@@ -403,11 +400,14 @@ export const MultiMediaComponent: FC<{
             className={clsx(
               ghost
                 ? 'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px]'
-                : 'grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-[8px] border-t border-pqLine px-[10px] py-[8px] text-pqText'
+                : 'grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-[8px] border-t border-pqLine px-[10px] py-[6px] text-pqText'
             )}
           >
             {!mediaNotAvailable && (
-              <div className="flex min-w-0 flex-wrap items-center gap-[6px]">
+              <div
+                ref={toolsRef}
+                className="flex min-w-0 flex-nowrap items-center gap-[6px] overflow-hidden"
+              >
                 <button
                   type="button"
                   // The media picker opens from here and nowhere else, so the
@@ -500,19 +500,29 @@ export const MultiMediaComponent: FC<{
               </div>
             )}
             {!!toolBar && mediaNotAvailable && (
-              <div className="flex min-w-0 flex-wrap items-center gap-[6px]">
+              <div
+                ref={toolsRef}
+                className="flex min-w-0 flex-nowrap items-center gap-[6px] overflow-hidden"
+              >
                 {toolBar}
               </div>
             )}
-            {information && (
+            {(information || trailing) && (
               <div
-                data-pq="composer-char-count"
                 className={clsx(
-                  'flex h-[36px] shrink-0 items-center',
+                  'flex h-[36px] shrink-0 items-center gap-[2px]',
                   ghost && 'ms-auto'
                 )}
               >
-                {information}
+                {trailing}
+                {information && (
+                  <div
+                    data-pq="composer-char-count"
+                    className="flex h-[32px] items-center"
+                  >
+                    {information}
+                  </div>
+                )}
               </div>
             )}
           </div>

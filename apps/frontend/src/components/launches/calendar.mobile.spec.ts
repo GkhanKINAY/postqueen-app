@@ -72,8 +72,12 @@ describe('phone calendar and composer', () => {
     );
     assert.match(editor, /data-pq="composer-editor"/);
     assert.match(editor, /min-h-\[112px\]/);
+    assert.match(editor, /data-pq="composer-ai-hint"/);
+    assert.match(editor, /flex min-w-0 items-center gap-\[8px\]/);
+    assert.match(editor, /trailing=\{threadAction\}/);
     assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
     assert.doesNotMatch(editor, /w-full h-\[46px\] bg-pqInner cursor-text/);
+    assert.doesNotMatch(editor, /flex-col gap-\[8px\]/);
   });
 
   it('keeps X/general preview photos inside a feed aspect frame', () => {
@@ -116,9 +120,10 @@ describe('phone calendar and composer', () => {
     assert.match(tags, /touch \? t\('tags', 'Tags'\)/);
     assert.match(repeat, /touch \? \(\s*repeat \?/);
     assert.match(repeat, /aria-label=\{triggerLabel\}/);
-    assert.match(editor, /flex min-w-0 flex-col gap-\[8px\] overflow-hidden border-t border-pqLine/);
-    assert.match(editor, /flex min-w-0 items-start gap-\[12px\]/);
-    assert.match(editor, /flex w-full min-w-0 flex-wrap/);
+    assert.match(editor, /data-pq="composer-ai-hint"/);
+    assert.match(editor, /flex min-w-0 items-center gap-\[8px\] overflow-hidden border-t border-pqLine/);
+    assert.match(editor, /trailing=\{threadAction\}/);
+    assert.doesNotMatch(editor, /flex-col gap-\[8px\] overflow-hidden border-t/);
     assert.doesNotMatch(manage, /check_circles_above/);
   });
 

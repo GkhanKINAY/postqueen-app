@@ -272,9 +272,11 @@ export const AiImage: FC<{
           <div
             className={clsx(
               'font-[600]',
-              ghost
-                ? clsx('text-[12px] whitespace-nowrap', compact && 'hidden')
-                : 'text-[12px] iconBreak:hidden block'
+              clsx(
+                'text-[12px] whitespace-nowrap',
+                compact && 'hidden',
+                !ghost && 'iconBreak:hidden'
+              )
             )}
           >
             {ghost

@@ -472,45 +472,41 @@ export const EditorWrapper: FC<{
                 selectedIntegration={selectedIntegration}
                 chars={chars}
                 childButton={
-                  <>
-                    {(canEdit && items.length - 1 === index) || !comments ? (
-                      <div className="flex items-center">
-                        <div className="flex-1">
-                          {comments && (
-                            <AddPostButton
-                              num={index}
-                              onClick={addValue(index)}
-                              postComment={postComment}
-                            />
+                  ((canEdit && items.length - 1 === index) || !comments) &&
+                  !!internal &&
+                  !existingData?.integration ? (
+                    <div
+                      className="flex cursor-pointer select-none items-center gap-[20px]"
+                      onClick={goBackToGlobal}
+                    >
+                      <div className="flex items-center gap-[6px]">
+                        <div className="h-[8px] w-[8px] rounded-full bg-pqPink" />
+                        <div className="text-[14px] font-[600]">
+                          {t(
+                            'editing_a_specific_network',
+                            'Editing a Specific Network'
                           )}
                         </div>
-                        {!!internal && !existingData?.integration && (
-                          <div
-                            className="mt-[12px] flex gap-[20px] items-center cursor-pointer select-none"
-                            onClick={goBackToGlobal}
-                          >
-                            <div className="flex gap-[6px] items-center">
-                              <div className="w-[8px] h-[8px] rounded-full bg-pqPink" />
-                              <div className="text-[14px] font-[600]">
-                                {t(
-                                  'editing_a_specific_network',
-                                  'Editing a Specific Network'
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-[6px] items-center">
-                              <div>
-                                <ResetIcon />
-                              </div>
-                              <div className="text-[13px] font-[600]">
-                                {t('back_to_global', 'Back to global')}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    ) : null}
-                  </>
+                      <div className="flex items-center gap-[6px]">
+                        <div>
+                          <ResetIcon />
+                        </div>
+                        <div className="text-[13px] font-[600]">
+                          {t('back_to_global', 'Back to global')}
+                        </div>
+                      </div>
+                    </div>
+                  ) : undefined
+                }
+                threadAction={
+                  comments && canEdit && items.length - 1 === index ? (
+                    <AddPostButton
+                      num={index}
+                      onClick={addValue(index)}
+                      postComment={postComment}
+                    />
+                  ) : undefined
                 }
               />
             </div>
@@ -563,6 +559,7 @@ export const Editor: FC<{
   dummy: boolean;
   chars: Record<string, number>;
   childButton?: React.ReactNode;
+  threadAction?: React.ReactNode;
 }> = (props) => {
   const {
     editorType = 'normal',
@@ -575,6 +572,7 @@ export const Editor: FC<{
     dummy,
     chars,
     childButton,
+    threadAction,
     comments,
   } = props;
   const [id] = useState(makeId(10));
@@ -792,74 +790,49 @@ export const Editor: FC<{
                 <UppyProgress height={40} uppy={uppy} id={`prog-${num}`} />
               </div>
             </div>
-            {/* Ephemeral Connections tip — no filled panel; dismiss persists. */}
+            {/* Ephemeral Connections tip — one quiet row, not a stacked panel. */}
             {!num && !aiHintOff && !valueWithoutHtml.trim() && (
-              <div className="mx-[12px] mb-[2px] mt-[8px] flex min-w-0 flex-col gap-[8px] overflow-hidden border-t border-pqLine pt-[10px]">
-                <div className="flex min-w-0 items-start gap-[12px]">
-                  <span
-                    className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
-                    aria-hidden="true"
+              <div
+                data-pq="composer-ai-hint"
+                className="mx-[10px] mt-[4px] flex min-w-0 items-center gap-[8px] overflow-hidden border-t border-pqLine pt-[8px]"
+              >
+                <span
+                  className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
+                  aria-hidden="true"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      fill="none"
-                    >
-                      <path
-                        d="M12 3.5 13.1 8.4 18 9.5l-4.9 1.1L12 15.5l-1.1-4.9L6 9.5l4.9-1.1L12 3.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6.6-1.9Z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M5.5 15.5 5.9 16.7 7.1 17.1 5.9 17.5 5.5 18.7 5.1 17.5 3.9 17.1 5.1 16.7 5.5 15.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-                    <span className="text-[13.5px] font-[600] tracking-[-0.01em] text-pqText">
-                      {t('let_ai_write_this_post', 'Draft with your AI')}
-                    </span>
-                    <span className="break-words text-[12.5px] leading-[1.45] text-pqMuted">
-                      {t(
-                        'let_ai_write_this_post_sub',
-                        'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'
-                      )}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={dismissAiHint}
-                    aria-label={t('hide', 'Hide')}
-                    className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-full text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 6l12 12M18 6 6 18"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-[6px]">
+                    <path
+                      d="M12 3.5 13.1 8.4 18 9.5l-4.9 1.1L12 15.5l-1.1-4.9L6 9.5l4.9-1.1L12 3.5Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6.6-1.9Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M5.5 15.5 5.9 16.7 7.1 17.1 5.9 17.5 5.5 18.7 5.1 17.5 3.9 17.1 5.1 16.7 5.5 15.5Z"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] leading-[1.3] text-pqMuted">
+                  {t(
+                    'let_ai_write_this_post_sub',
+                    'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'
+                  )}
+                </span>
+                <div className="flex shrink-0 items-center gap-[4px]">
                   {(
                     [
                       {
@@ -887,7 +860,9 @@ export const Editor: FC<{
                     <NextLink
                       key={tool.id}
                       href="/connections"
-                      className="flex h-[28px] min-w-0 items-center gap-[6px] rounded-full ps-[6px] pe-[10px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+                      title={tool.label}
+                      aria-label={tool.label}
+                      className="flex h-[28px] items-center gap-[6px] rounded-full ps-[6px] pe-[10px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText maxMedia:pe-[6px]"
                     >
                       <SafeImage
                         src={tool.icon}
@@ -896,10 +871,31 @@ export const Editor: FC<{
                         height={17}
                         className="h-[17px] w-[17px] shrink-0 rounded-[5px] object-contain"
                       />
-                      {tool.label}
+                      <span className="maxMedia:hidden">{tool.label}</span>
                     </NextLink>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={dismissAiHint}
+                  aria-label={t('hide', 'Hide')}
+                  className="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-full text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 6l12 12M18 6 6 18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
               </div>
             )}
             <div className="flex cursor-default flex-col bg-pqInner">
@@ -923,7 +919,7 @@ export const Editor: FC<{
                     />
                   }
                   toolBar={
-                    <div className="flex flex-wrap items-center gap-[6px]">
+                    <div className="flex flex-nowrap items-center gap-[6px]">
                       <SignatureBox editor={editorRef?.current?.editor} />
                       {editorType !== 'none' && (
                         <>
@@ -992,12 +988,13 @@ export const Editor: FC<{
                   }}
                   onOpen={() => {}}
                   onClose={() => {}}
+                  trailing={threadAction}
                 />
               )}
               {!!childButton && (
                 <div
                   data-pq="composer-thread-actions"
-                  className="px-[10px] pb-[10px] pt-[2px]"
+                  className="px-[10px] pb-[10px] pt-[4px]"
                 >
                   {childButton}
                 </div>

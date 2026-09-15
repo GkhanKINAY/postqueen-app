@@ -306,7 +306,11 @@ export const ThirdPartyMedia: FC<{
           />
         </svg>
         <span
-          className={clsx(!ghost && 'iconBreak:hidden', compact && 'hidden')}
+          className={clsx(
+            'whitespace-nowrap',
+            !ghost && 'iconBreak:hidden',
+            compact && 'hidden'
+          )}
         >
           {t('integrations', 'Integrations')}
         </span>
