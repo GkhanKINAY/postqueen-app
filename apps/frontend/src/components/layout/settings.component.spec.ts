@@ -19,3 +19,14 @@ describe('Settings mobile stack', () => {
     assert.match(source, /closeMobilePane/);
   });
 });
+
+describe('Account nav', () => {
+  it('lists Account as the first Account-group row', () => {
+    const accountBlock = source.slice(source.indexOf("if (showLogout)"));
+    const accountTab = accountBlock.indexOf("tab: 'account'");
+    const apiTab = accountBlock.indexOf("tab: 'api'");
+    assert.ok(accountTab >= 0);
+    assert.ok(apiTab > accountTab);
+    assert.match(source, /label: t\('your_account', 'Account'\)/);
+  });
+});
