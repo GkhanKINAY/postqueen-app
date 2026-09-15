@@ -1488,6 +1488,7 @@ no_posts
 no_posts_yet
 no_published_posts
 no_short_link_results
+no_short_link_results_hint
 no_statistics_available
 no_time_slots
 no_top_posts
@@ -1865,6 +1866,8 @@ today
 tomorrow
 tone
 top_5_posts
+top_n_posts
+top_post
 top_title_add_api_key_for
 top_title_add_member
 tour_add_channel_text
