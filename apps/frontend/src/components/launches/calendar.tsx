@@ -72,6 +72,7 @@ import { useTour } from '@gitroom/frontend/components/onboarding/tour';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { CalendarMoveButton } from '@gitroom/frontend/components/layout/move-post-sheet';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -145,6 +146,99 @@ export function weekSlotPreviewCount(slotHeight: number, total: number): number 
     (budget + WEEK_SLOT_GAP) / (WEEK_PREVIEW_H + WEEK_SLOT_GAP)
   );
   return Math.max(1, Math.min(WEEK_SLOT_MAX, total, fit || 1));
+}
+
+const isVideoPath = (path: string) =>
+  hasExtension(path, 'mp4') || /\.webm$/i.test(path);
+
+/**
+ * First image/video on a calendar post. `Post.image` is a JSON string on the
+ * list/calendar payload and an array after `/posts/group/:id`. No media →
+ * null, so the card keeps today's layout (no empty hole).
+ */
+export function firstCalendarMedia(image: unknown): {
+  src: string;
+  video: boolean;
+} | null {
+  let list: unknown = image;
+  if (typeof image === 'string') {
+    const trimmed = image.trim();
+    if (!trimmed || trimmed === '[]' || trimmed === 'null') return null;
+    try {
+      list = JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const first = list.find(
+    (item): item is { path?: string; thumbnail?: string } =>
+      !!item && typeof item === 'object'
+  );
+  const path = typeof first?.path === 'string' ? first.path : '';
+  if (!path) return null;
+  const video = isVideoPath(path);
+  const thumb =
+    typeof first.thumbnail === 'string' && first.thumbnail
+      ? first.thumbnail
+      : '';
+  return { src: video && thumb ? thumb : path, video };
+}
+
+function CalendarMediaThumb({
+  image,
+  size,
+  className,
+}: {
+  image: unknown;
+  size: 'week' | 'month' | 'day';
+  className?: string;
+}) {
+  const media = firstCalendarMedia(image);
+  if (!media) return null;
+  const videoEl = media.video && isVideoPath(media.src);
+  return (
+    <span
+      data-ci-media={size}
+      className={clsx(
+        'relative shrink-0 overflow-hidden bg-pqSettings',
+        className
+      )}
+    >
+      {videoEl ? (
+        <video
+          className="h-full w-full object-cover"
+          src={`${media.src}#t=0.1`}
+          preload="metadata"
+          muted
+          playsInline
+          aria-hidden
+        />
+      ) : (
+        <img
+          className="h-full w-full object-cover"
+          src={media.src}
+          alt=""
+          decoding="async"
+        />
+      )}
+      {media.video && (
+        <span
+          className="pointer-events-none absolute inset-0 grid place-items-center"
+          aria-hidden
+        >
+          <span
+            data-ci-media-play="1"
+            className="grid place-items-center rounded-full bg-pqMediaScrim text-pqOnBrand"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M9 6.8v10.4L18 12 9 6.8Z" />
+            </svg>
+          </span>
+        </span>
+      )}
+    </span>
+  );
 }
 
 const HEADER_BADGE_GAP = 5;
@@ -1974,6 +2068,7 @@ const CalendarItem: FC<{
         <span className="min-w-0 truncate text-[10px] font-[700] text-pqMuted">
           {timeLabel}
         </span>
+        <CalendarMediaThumb image={post.image} size="month" />
         <span className="min-w-0 flex-1 truncate text-[10.5px] text-pqText">
           {contentPreview}
         </span>
@@ -2114,6 +2209,7 @@ const CalendarItem: FC<{
             )}
           </div>
         </div>
+        <CalendarMediaThumb image={post.image} size="day" />
         <div
           data-ci-actions="1"
           onClick={(e) => e.stopPropagation()}
@@ -2256,6 +2352,11 @@ const CalendarItem: FC<{
               {t('published', 'Published')}
             </span>
           )}
+          <CalendarMediaThumb
+            image={post.image}
+            size="week"
+            className={!publishedOnHeader ? 'ms-auto' : undefined}
+          />
         </div>
         <div className="flex min-w-0 items-start gap-[4px]">
           {state === 'PUBLISHED' && !publishedOnHeader && (
@@ -2565,6 +2666,7 @@ const ListItem: FC<{
           </div>
         )}
       </div>
+      <CalendarMediaThumb image={post.image} size="day" />
       <div
         data-ci-actions="1"
         onClick={(e) => e.stopPropagation()}
