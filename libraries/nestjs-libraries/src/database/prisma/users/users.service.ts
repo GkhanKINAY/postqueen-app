@@ -11,11 +11,13 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
 import dayjs from 'dayjs';
 import {
+  canCompleteSetPasswordWithToken,
   canUnlinkIdentity,
   decideLinkIdentity,
   emailsMatch,
   hasPasswordHash,
   isLinkableProvider,
+  nextProviderNameAfterUnlink,
   normalizeEmail,
 } from '@gitroom/helpers/auth/account-security';
 
@@ -245,6 +247,22 @@ export class UsersService {
     await this._usersRepository.deleteIdentity(userId, provider);
     await this._usersRepository.clearLinkedProvider(userId, provider);
 
+    const remaining = identities
+      .filter((row) => row.provider !== provider)
+      .map((row) => row.provider);
+    const nextName = nextProviderNameAfterUnlink({
+      nativeProvider: user.providerName,
+      unlinkedProvider: provider,
+      hasPassword: hasPasswordHash(user.password),
+      remainingProviders: remaining,
+    });
+    if (nextName) {
+      await this._usersRepository.updateProviderName(
+        userId,
+        nextName as Provider
+      );
+    }
+
     return { unlinked: true };
   }
 
@@ -335,7 +353,18 @@ export class UsersService {
     body: ChangePasswordDto,
     stepUp: boolean
   ) {
-    if (body.token) {
+    const user = await this._usersRepository.getUserById(userId);
+    if (!user) {
+      throw new HttpException('User not found', 400);
+    }
+
+    // A leftover set-password email must not skip current-password once a
+    // hash exists. Ignore the token and fall through to bcrypt instead of
+    // 400ing a caller who also sent the correct current password.
+    if (
+      body.token &&
+      canCompleteSetPasswordWithToken(hasPasswordHash(user.password))
+    ) {
       const payload = this.readPurposeToken(body.token, 'set_password');
       if (!payload || payload.id !== userId) {
         throw new HttpException('Invalid or expired token', 400);
@@ -344,15 +373,14 @@ export class UsersService {
       return { changed: true };
     }
 
-    const user = await this._usersRepository.getUserById(userId);
-    if (!user) {
-      throw new HttpException('User not found', 400);
-    }
-
     if (hasPasswordHash(user.password)) {
+      // Always bcrypt, including a missing current password, so timing does
+      // not say whether the field was omitted.
       if (
-        !body.currentPassword ||
-        !AuthService.comparePassword(body.currentPassword, user.password!)
+        !AuthService.comparePassword(
+          body.currentPassword || '',
+          user.password!
+        )
       ) {
         throw new HttpException('Current password is incorrect', 400);
       }
@@ -413,8 +441,10 @@ export class UsersService {
     }
 
     if (hasPasswordHash(user.password)) {
-      const passwordOk =
-        !!password && AuthService.comparePassword(password, user.password!);
+      const passwordOk = AuthService.comparePassword(
+        password || '',
+        user.password!
+      );
       if (!passwordOk && !stepUp) {
         throw new HttpException('Current password is incorrect', 400);
       }
@@ -489,8 +519,10 @@ export class UsersService {
       throw new HttpException('Email does not match this account', 400);
     }
     if (hasPasswordHash(user.password)) {
-      const passwordOk =
-        !!password && AuthService.comparePassword(password, user.password!);
+      const passwordOk = AuthService.comparePassword(
+        password || '',
+        user.password!
+      );
       if (!passwordOk && !stepUp) {
         throw new HttpException('Current password is incorrect', 400);
       }

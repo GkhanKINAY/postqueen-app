@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  canCompleteSetPasswordWithToken,
   canUnlinkIdentity,
   decideLinkIdentity,
   emailsMatch,
   hasPasswordHash,
   isLinkableProvider,
+  nextProviderNameAfterUnlink,
+  oauthLinkTicketMatchesState,
   pickUserWithPassword,
   sessionsNotBeforeFrom,
 } from './account-security.ts';
@@ -107,5 +110,60 @@ describe('pickUserWithPassword', () => {
 describe('sessionsNotBeforeFrom', () => {
   it('rounds down to the second so JWT iat comparisons work', () => {
     assert.equal(sessionsNotBeforeFrom(1_700_000_001_234).getTime(), 1_700_000_001_000);
+  });
+});
+
+describe('canCompleteSetPasswordWithToken', () => {
+  it('allows the emailed token only when no hash exists', () => {
+    assert.equal(canCompleteSetPasswordWithToken(false), true);
+    assert.equal(canCompleteSetPasswordWithToken(true), false);
+  });
+});
+
+describe('oauthLinkTicketMatchesState', () => {
+  it('binds the ticket nonce to link-${nonce} and rejects swaps', () => {
+    assert.equal(oauthLinkTicketMatchesState('abc123', 'link-abc123'), true);
+    assert.equal(oauthLinkTicketMatchesState('abc123', 'link-other'), false);
+    assert.equal(oauthLinkTicketMatchesState('abc123', 'login-abc123'), false);
+    assert.equal(oauthLinkTicketMatchesState(undefined, 'link-abc123'), false);
+    assert.equal(oauthLinkTicketMatchesState('user-id-raw', 'link-abc123'), false);
+  });
+});
+
+describe('nextProviderNameAfterUnlink', () => {
+  it('converts native GOOGLE to LOCAL when a password remains', () => {
+    assert.equal(
+      nextProviderNameAfterUnlink({
+        nativeProvider: 'GOOGLE',
+        unlinkedProvider: 'GOOGLE',
+        hasPassword: true,
+        remainingProviders: [],
+      }),
+      'LOCAL'
+    );
+  });
+
+  it('keeps providerName when unlinking a non-native identity', () => {
+    assert.equal(
+      nextProviderNameAfterUnlink({
+        nativeProvider: 'GOOGLE',
+        unlinkedProvider: 'GITHUB',
+        hasPassword: true,
+        remainingProviders: ['GOOGLE'],
+      }),
+      null
+    );
+  });
+
+  it('falls through to the next remaining identity without a password', () => {
+    assert.equal(
+      nextProviderNameAfterUnlink({
+        nativeProvider: 'GOOGLE',
+        unlinkedProvider: 'GOOGLE',
+        hasPassword: false,
+        remainingProviders: ['GITHUB'],
+      }),
+      'GITHUB'
+    );
   });
 });

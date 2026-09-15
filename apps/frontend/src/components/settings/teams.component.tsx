@@ -344,8 +344,9 @@ export const TeamsComponent: FC = () => {
 
   return (
     <div className="mt-[18px] flex flex-col gap-[10px]">
-      <div className="overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="hidden items-center gap-[11px] border-b border-pqLine px-[15px] py-[8px] text-[11px] font-[600] uppercase tracking-[0.04em] text-pqMuted tablet:flex">
+      <div className="overflow-x-auto rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+        <div className="min-w-[520px]">
+        <div className="flex items-center gap-[11px] border-b border-pqLine px-[15px] py-[8px] text-[11px] font-[600] uppercase tracking-[0.04em] text-pqMuted">
           <div className="min-w-0 flex-1">{t('member', 'Member')}</div>
           <div className="w-[120px] shrink-0">{t('role', 'Role')}</div>
           <div className="w-[148px] shrink-0 text-end">
@@ -367,10 +368,10 @@ export const TeamsComponent: FC = () => {
           return (
             <div
               key={p.user.id}
-              className="flex flex-col gap-[10px] border-b border-pqLine p-[13px_15px] last:border-b-0 tablet:flex-row tablet:items-center tablet:gap-[11px]"
+              className="flex items-center gap-[11px] border-b border-pqLine p-[13px_15px] last:border-b-0"
             >
               <div className="flex min-w-0 flex-1 items-center gap-[11px]">
-                <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-pqBrand text-[12px] font-[700] text-white">
+                <div className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-pqBrand text-[12px] font-[700] text-pqOnBrand">
                   {displayName.slice(0, 1)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -382,7 +383,7 @@ export const TeamsComponent: FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-full shrink-0 tablet:w-[120px]">
+              <div className="w-[120px] shrink-0">
                 {canManage && p.role !== 'SUPERADMIN' ? (
                   <select
                     aria-label={t('role', 'Role')}
@@ -405,7 +406,7 @@ export const TeamsComponent: FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex w-full shrink-0 items-center justify-end gap-[6px] tablet:w-[148px]">
+              <div className="flex w-[148px] shrink-0 items-center justify-end gap-[6px]">
                 {canTransfer ? (
                   <button
                     type="button"
@@ -446,6 +447,7 @@ export const TeamsComponent: FC = () => {
             </div>
           );
         })}
+        </div>
       </div>
       <button
         type="button"

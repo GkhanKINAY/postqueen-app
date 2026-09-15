@@ -72,3 +72,39 @@ export const pickUserWithPassword = <
 
 export const sessionsNotBeforeFrom = (nowMs = Date.now()) =>
   new Date(Math.floor(nowMs / 1000) * 1000);
+
+/** A set-password email token must not skip current-password once a hash exists. */
+export const canCompleteSetPasswordWithToken = (hasPassword: boolean) =>
+  !hasPassword;
+
+export const oauthLinkNonceFromState = (state?: string) =>
+  !!state && state.startsWith('link-') && state.length > 5
+    ? state.slice(5)
+    : null;
+
+export const oauthLinkTicketMatchesState = (
+  nonce: string | undefined,
+  state?: string
+) => {
+  const expected = oauthLinkNonceFromState(state);
+  return !!nonce && !!expected && nonce === expected;
+};
+
+/**
+ * After unlinking the native providerName, keep login working: LOCAL if a
+ * password remains, otherwise the next remaining identity.
+ */
+export const nextProviderNameAfterUnlink = (args: {
+  nativeProvider: string;
+  unlinkedProvider: string;
+  hasPassword: boolean;
+  remainingProviders: string[];
+}): string | null => {
+  if (args.nativeProvider !== args.unlinkedProvider) {
+    return null;
+  }
+  if (args.hasPassword) {
+    return 'LOCAL';
+  }
+  return args.remainingProviders[0] || null;
+};

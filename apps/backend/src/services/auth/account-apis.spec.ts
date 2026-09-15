@@ -3,10 +3,13 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  canCompleteSetPasswordWithToken,
   canUnlinkIdentity,
   decideLinkIdentity,
   emailsMatch,
   hasPasswordHash,
+  nextProviderNameAfterUnlink,
+  oauthLinkTicketMatchesState,
   pickUserWithPassword,
   sessionsNotBeforeFrom,
 } from '../../../../../libraries/helpers/src/auth/account-security.ts';
@@ -46,6 +49,15 @@ describe('password change', () => {
       google
     );
   });
+
+  it('set_password email token cannot skip current-password once a hash exists', () => {
+    assert.equal(canCompleteSetPasswordWithToken(true), false);
+    assert.equal(canCompleteSetPasswordWithToken(false), true);
+    assert.equal(
+      status(canCompleteSetPasswordWithToken(true), 200, 400),
+      400
+    );
+  });
 });
 
 describe('email change', () => {
@@ -77,6 +89,23 @@ describe('identities', () => {
       existingOwnerId: 'other',
     });
     assert.equal(status(decision.ok, 200, 409), 409);
+  });
+
+  it('oauth_link cookie must bind nonce to state, not a raw user id', () => {
+    assert.equal(oauthLinkTicketMatchesState('victim-id', 'link-abc'), false);
+    assert.equal(oauthLinkTicketMatchesState('abc', 'link-abc'), true);
+  });
+
+  it('unlinking native GOOGLE while a password remains becomes LOCAL', () => {
+    assert.equal(
+      nextProviderNameAfterUnlink({
+        nativeProvider: 'GOOGLE',
+        unlinkedProvider: 'GOOGLE',
+        hasPassword: true,
+        remainingProviders: [],
+      }),
+      'LOCAL'
+    );
   });
 });
 

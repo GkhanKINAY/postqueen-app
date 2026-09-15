@@ -27,7 +27,10 @@ import {
   shouldBlockLocalRegister,
   shouldCompleteOauthWithoutOrgForm,
 } from '@gitroom/backend/services/auth/oauth-local-link';
-import { hasPasswordHash } from '@gitroom/helpers/auth/account-security';
+import {
+  hasPasswordHash,
+  oauthLinkTicketMatchesState,
+} from '@gitroom/helpers/auth/account-security';
 
 // A session lasts as long as the cookie that carries it (one year, set in
 // auth.controller). Before this no token had an expiry at all, so a copied
@@ -567,6 +570,46 @@ export class AuthService {
     return !!state && state.startsWith('link-');
   }
 
+  /** Signed cookie: userId + nonce from `link-${nonce}`. Not a raw user id. */
+  oauthLinkTicket(userId: string, nonce: string) {
+    return AuthChecker.signJWT(
+      {
+        id: userId,
+        nonce,
+        purpose: 'oauth_link',
+        expires: dayjs().add(10, 'minutes').format('YYYY-MM-DD HH:mm:ss'),
+      },
+      { expiresIn: '10m' },
+    );
+  }
+
+  readOauthLinkUser(ticket: string | undefined, state?: string) {
+    if (!ticket) {
+      return undefined;
+    }
+    try {
+      const payload = AuthChecker.verifyJWT(ticket) as {
+        id?: string;
+        nonce?: string;
+        purpose?: string;
+        expires?: string;
+      };
+      if (
+        payload?.purpose !== 'oauth_link' ||
+        !payload.id ||
+        !payload.nonce ||
+        !payload.expires ||
+        dayjs(payload.expires).isBefore(dayjs()) ||
+        !oauthLinkTicketMatchesState(payload.nonce, state)
+      ) {
+        return undefined;
+      }
+      return payload.id;
+    } catch {
+      return undefined;
+    }
+  }
+
   stepUpJwt(userId: string) {
     return AuthChecker.signJWT(
       {
@@ -610,7 +653,7 @@ export class AuthService {
     stateCookie?: string,
     ip?: string,
     userAgent?: string,
-    linkUserId?: string,
+    linkTicket?: string,
   ) {
     // the mobile app passes redirect_uri and keeps no cookies, the web flow
     // never passes it, so the state nonce is only enforced for the web flow
@@ -634,6 +677,7 @@ export class AuthService {
     }
 
     if (this.isLinkOauthState(state)) {
+      const linkUserId = this.readOauthLinkUser(linkTicket, state);
       if (!linkUserId) {
         throw new Error('Invalid link session');
       }

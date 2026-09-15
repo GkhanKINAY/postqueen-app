@@ -417,6 +417,13 @@ export class UsersRepository {
     }
   }
 
+  updateProviderName(userId: string, providerName: Provider) {
+    return this._user.model.user.update({
+      where: { id: userId },
+      data: { providerName },
+    });
+  }
+
   async ensureIdentity(
     userId: string,
     provider: Provider,

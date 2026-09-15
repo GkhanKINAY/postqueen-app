@@ -39,7 +39,10 @@ import { ConfirmEmailChangeDto } from '@gitroom/nestjs-libraries/dtos/users/conf
 import { DeleteAccountDto } from '@gitroom/nestjs-libraries/dtos/users/delete.account.dto';
 import { SameOriginGuard } from '@gitroom/backend/services/auth/same-origin.guard';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
-import { isLinkableProvider } from '@gitroom/helpers/auth/account-security';
+import {
+  isLinkableProvider,
+  oauthLinkNonceFromState,
+} from '@gitroom/helpers/auth/account-security';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -139,9 +142,13 @@ export class UsersController {
     }
 
     const impersonate = req.cookies.impersonate || req.headers.impersonate;
+    const { password: _password, ...safeUser } = user as User & {
+      password?: string | null;
+    };
+    void _password;
     // @ts-ignore
     return {
-      ...user,
+      ...safeUser,
       orgId: organization.id,
       // Billing off: the top tier's own number, which the UI renders as
       // "Unlimited" (10000 was shown as a literal 10000).
@@ -324,6 +331,11 @@ export class UsersController {
     await this.assertAbuse('identity_link', user.email, ip);
 
     const state = `link-${makeId(16)}`;
+    const nonce = oauthLinkNonceFromState(state);
+    if (!nonce) {
+      throw new HttpException('Could not start the link session', 400);
+    }
+    const ticket = this._authService.oauthLinkTicket(user.id, nonce);
     response.cookie('oauth_state', state, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
       ...(areCookiesSecured()
@@ -335,7 +347,7 @@ export class UsersController {
         : {}),
       expires: new Date(Date.now() + 1000 * 60 * 10),
     });
-    response.cookie('oauth_link_user', user.id, {
+    response.cookie('oauth_link_user', ticket, {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
       ...(areCookiesSecured()
         ? {
@@ -448,6 +460,7 @@ export class UsersController {
   }
 
   @Post('/email-notifications')
+  @UseGuards(SameOriginGuard)
   async updateEmailNotifications(
     @GetUserFromRequest() user: User,
     @Body() body: EmailNotificationsDto

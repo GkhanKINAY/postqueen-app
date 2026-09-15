@@ -16,6 +16,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { isLinkOauthState } from '@gitroom/frontend/components/auth/google-login-return';
 
 dayjs.extend(utc);
@@ -83,7 +84,7 @@ export const UserAccountComponent = () => {
   const user = useUser();
   const toaster = useToaster();
   const { mutate: globalMutate } = useSWRConfig();
-  const { data, mutate } = useIdentities();
+  const { data, mutate, isLoading, error } = useIdentities();
   const { oauthDisplayName, isGeneral, genericOauth } = useVariables();
   const router = useRouter();
   const search = useSearchParams();
@@ -132,6 +133,7 @@ export const UserAccountComponent = () => {
     if (setPasswordParam) {
       setSetPasswordToken(setPasswordParam);
       setPasswordOpen(true);
+      router.replace('/settings?tab=account', { scroll: false });
     }
   }, [search, fetch, toaster, t, globalMutate, mutate, router]);
 
@@ -226,6 +228,8 @@ export const UserAccountComponent = () => {
     }
   }, [fetch, nextEmail, emailPassword, toaster, t]);
 
+  const hasPassword = data?.hasPassword ?? false;
+
   const savePassword = useCallback(async () => {
     if (password.length < 8) {
       toaster.show(
@@ -246,7 +250,7 @@ export const UserAccountComponent = () => {
           currentPassword: currentPassword || undefined,
           password,
           repeatPassword,
-          token: setPasswordToken || undefined,
+          token: hasPassword ? undefined : setPasswordToken || undefined,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -289,6 +293,7 @@ export const UserAccountComponent = () => {
     repeatPassword,
     currentPassword,
     setPasswordToken,
+    hasPassword,
     fetch,
     toaster,
     t,
@@ -352,7 +357,43 @@ export const UserAccountComponent = () => {
   );
 
   const providers = (data?.providers || []).filter((row) => row.enabled);
-  const hasPassword = data?.hasPassword ?? false;
+
+  if (isLoading && !data) {
+    return (
+      <div className="mt-[18px] flex flex-col gap-[10px]">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]"
+          >
+            <Skeleton className="h-[13px] w-[28%]" />
+            <Skeleton className="mt-[8px] h-[11px] w-[54%]" />
+            <Skeleton className="mt-[12px] h-[40px] w-full rounded-[10px]" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="mt-[18px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
+        <div className="text-[13.5px] font-[600] text-pqText">
+          {t('account', 'Account')}
+        </div>
+        <div className="mt-[6px] text-[12.5px] text-pqMuted">
+          {t('account_load_failed', 'Could not load your account settings.')}
+        </div>
+        <button
+          type="button"
+          onClick={() => mutate()}
+          className="mt-[12px] h-[32px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover"
+        >
+          {t('retry', 'Retry')}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-[18px] flex flex-col gap-[10px]">
@@ -451,7 +492,7 @@ export const UserAccountComponent = () => {
           </button>
         ) : (
           <div className="mt-[12px] flex flex-col gap-[10px]">
-            {hasPassword && !setPasswordToken && (
+            {hasPassword && (
               <input
                 type="password"
                 value={currentPassword}
