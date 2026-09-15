@@ -283,7 +283,7 @@ export const ShowAllProviders = forwardRef((props, ref) => {
     // `data-preview-root` scopes the two `<style>` rules below. They are plain
     // document-global CSS, and `[data-preview-channel]` on its own would reach
     // any future surface that reuses the attribute.
-    <div data-preview-root="1" className="flex w-full flex-1 flex-col">
+    <div data-preview-root="1" className="flex w-full min-w-0 flex-1 flex-col">
       {selectedIntegrations.length === 0 ? (
         <div className="rounded-[14px] bg-pqInner px-[24px] py-[48px] text-center text-[13.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
           {t(

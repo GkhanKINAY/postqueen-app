@@ -246,15 +246,54 @@ export const withProvider = function <T extends object>(params: {
         <FormProvider {...form}>
           <div
             className={clsx(
-              'border border-borderPreview rounded-[12px] shadow-previewShadow',
+              'relative isolate min-w-0 overflow-hidden rounded-[12px] border border-pqBorder bg-pqInner',
               // Global mode stacks every selected channel preview; per-channel
               // tab still shows only the active id. Filter chips hide via CSS
               // data attribute when parent marks the card filtered out.
+              // `relative isolate overflow-hidden` keeps TikTok/YouTube/Pinterest
+              // (and any leftover absolute chrome) inside this card. Upstream
+              // Postiz only renders the active channel, so their
+              // `absolute left-0 top-0 w-full h-full` fills the pane on purpose.
               !current && !isGlobal && 'hidden',
-              isGlobal && 'mb-[12px] last:mb-0'
+              isGlobal && 'mb-[16px] last:mb-0'
             )}
             data-preview-channel={props.id}
           >
+            {isGlobal && (
+              <div
+                data-pq="preview-channel-label"
+                className="flex min-w-0 items-center gap-[8px] border-b border-pqLine px-[12px] py-[8px]"
+              >
+                <div className="relative shrink-0">
+                  <SafeImage
+                    alt={selectedIntegration?.integration.name!}
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px] rounded-full"
+                    src={selectedIntegration?.integration.picture}
+                  />
+                  <SafeImage
+                    alt={selectedIntegration?.integration.identifier}
+                    width={12}
+                    height={12}
+                    className="absolute -bottom-[2px] -end-[2px] h-[12px] w-[12px] rounded-[3px]"
+                    src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 truncate text-[12px] font-[600] text-pqText">
+                  {selectedIntegration?.integration.name}
+                  {!!formatChannelHandle(
+                    selectedIntegration?.integration.display
+                  ) && (
+                    <span className="ms-[6px] font-[400] text-pqSoft">
+                      {formatChannelHandle(
+                        selectedIntegration?.integration.display
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             {(current || isGlobal) &&
               (tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&

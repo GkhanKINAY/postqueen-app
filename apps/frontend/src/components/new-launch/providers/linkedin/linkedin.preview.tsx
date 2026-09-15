@@ -292,7 +292,7 @@ export const LinkedinPreview: FC<{
     return { text: finalValue, images: p.image };
   });
   return (
-    <div className="py-[15px] flex flex-col px-[15px] w-full gap-[20px] bg-bgLinkedin rounded-[12px]">
+    <div className="flex w-full min-w-0 flex-col gap-[20px] overflow-hidden rounded-[12px] bg-bgLinkedin px-[15px] py-[15px]">
       <div className="flex gap-[8px]">
         <div className="w-[48px] h-[48px]">
           <img

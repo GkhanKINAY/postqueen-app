@@ -58,34 +58,42 @@ export const TiktokPreview: FC<{
 
     return { text: finalValue, images: p.image };
   });
+  const slides =
+    renderContent[0]?.images?.map((image, index) => (
+      <a
+        key={`image_${index}`}
+        className="block h-full w-full"
+        href={mediaDir.set(image.path)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
+      </a>
+    )) ?? [];
+  const caption = renderContent[0]?.text || '';
+  const handle =
+    formatChannelHandle(integration?.display) || integration?.name || '';
+
   return (
-    <div className="p-[15px] absolute left-0 top-0 w-full h-full flex justify-center bg-newBgColorInner">
-      <div className="relative">
+    <div className="flex w-full min-w-0 items-end justify-center gap-[12px] overflow-hidden bg-black px-[12px] py-[16px]">
+      <div className="relative min-w-0 w-full max-w-[280px] overflow-hidden rounded-[18px] bg-neutral-950 aspect-[9/16]">
         <SliderComponent
-          list={renderContent?.[0]?.images.map((image, index) => (
-            <a
-              key={`image_${index}`}
-              className="flex-1"
-              href={mediaDir.set(image.path)}
-              target="_blank"
-            >
-              <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
-            </a>
-          ))}
-          className="h-full bg-black aspect-[calc(9/16)] rounded-[3px] overflow-hidden"
+          list={slides}
+          className="absolute inset-0 bg-neutral-950"
         />
-        <div className="absolute pointer-events-none w-full h-full start-0 top-0 px-[12px] py-[25px] justify-end items-start text-white flex flex-col">
-          <div className="text-[14px] font-[500]">
-            {formatChannelHandle(integration?.display) || integration?.name}
-          </div>
-          <div className="text-[13px] font-[400] whitespace-pre-line line-clamp-6 w-full"
-            dangerouslySetInnerHTML={{
-              __html: sanitizePreviewHtml(renderContent?.[0]?.text),
-            }}
-          />
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/20 to-transparent px-[12px] py-[16px] text-white">
+          <div className="text-[14px] font-[600]">{handle}</div>
+          {!!caption && (
+            <div
+              className="mt-[4px] line-clamp-6 w-full text-[13px] font-[400] whitespace-pre-line"
+              dangerouslySetInnerHTML={{
+                __html: sanitizePreviewHtml(caption),
+              }}
+            />
+          )}
         </div>
       </div>
-      <div className="flex flex-col justify-end gap-[10px] ml-[18px]">
+      <div className="flex shrink-0 flex-col justify-end gap-[10px] pb-[8px]">
         <div className="relative">
           <img
             src={integration?.picture || '/no-picture.jpg'}

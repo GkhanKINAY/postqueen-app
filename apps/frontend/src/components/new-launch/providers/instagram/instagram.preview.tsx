@@ -67,7 +67,7 @@ export const InstagramPreview: FC<{
     return { text: finalValue, images: p.image };
   });
   return (
-    <div className="py-[10px] flex flex-col px-[15px] w-full gap-[10px] bg-bgInstagram rounded-[12px]">
+    <div className="flex w-full min-w-0 flex-col gap-[10px] overflow-hidden rounded-[12px] bg-bgInstagram px-[15px] py-[10px]">
       <div className="flex gap-[10px] items-center">
         <div className="w-[36px] h-[36px]">
           <img
@@ -87,7 +87,7 @@ export const InstagramPreview: FC<{
           )}
         </div>
       </div>
-      {!!renderContent?.[0]?.images?.length ? (
+      {!!renderContent?.[0]?.images?.length && (
         <SliderComponent
           className="rounded-[8px] overflow-hidden"
           list={renderContent?.[0]?.images.map((image, index) => (
@@ -101,15 +101,6 @@ export const InstagramPreview: FC<{
               onAspect={index === 0 ? setLeadWH : undefined}
             />
           ))}
-        />
-      ) : (
-        <div
-          style={{ background: 'url(/no-video-youtube.png)' }}
-          className={
-            isStory
-              ? '!bg-cover w-full aspect-[9/16] rounded-[8px] overflow-hidden'
-              : '!bg-cover w-full aspect-[4/5] rounded-[8px] overflow-hidden'
-          }
         />
       )}
       <div

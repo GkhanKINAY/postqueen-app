@@ -5,6 +5,7 @@ import { sanitizePreviewHtml } from '@gitroom/helpers/utils/sanitize.post.conten
 import { textSlicer } from '@gitroom/helpers/utils/count.length';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
+import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 
 export const PinterestPreview: FC<{
   maximumCharacters?: number;
@@ -46,7 +47,7 @@ export const PinterestPreview: FC<{
   });
 
   return (
-    <div className="absolute left-0 top-0 gap-[10px] w-full h-full flex flex-col p-[16px] bg-bgYoutube">
+    <div className="relative flex w-full min-w-0 flex-col gap-[10px] overflow-hidden bg-bgYoutube p-[16px]">
       <div className="h-[40px] items-center flex">
         <div className="flex gap-[16px] flex-1 items-center">
           <div className="flex gap-[8px] items-center">
@@ -139,25 +140,29 @@ export const PinterestPreview: FC<{
           Save
         </div>
       </div>
-      <div
-        style={{ background: 'url(/no-video-youtube.png)' }}
-        className="!bg-cover w-full aspect-[calc(16/9)] rounded-[20px] overflow-hidden"
-      >
-        {!!renderContent?.[0]?.images?.[0]?.path && (
+      {!!renderContent?.[0]?.images?.[0]?.path && (
+        <div className="mx-auto w-full max-w-[280px] overflow-hidden rounded-[20px] bg-pqLine aspect-[2/3]">
           <VideoOrImage
-            imageClassName="w-full aspect-[calc(16/9)]"
-            videoClassName="w-full aspect-[calc(16/9)] bg-black"
+            imageClassName="h-full w-full object-cover aspect-[2/3]"
+            videoClassName="h-full w-full bg-black object-cover aspect-[2/3]"
             autoplay={true}
-            src={mediaDir.set(renderContent?.[0]?.images?.[0]?.path || '')}
+            src={mediaDir.set(renderContent[0].images[0].path)}
           />
+        </div>
+      )}
+      <div className="min-w-0">
+        {!!formatChannelHandle(integration?.display) && (
+          <div className="truncate text-[12px] font-[500] text-pqSoft">
+            {formatChannelHandle(integration?.display)}
+          </div>
         )}
+        <div
+          className="mt-[6px] whitespace-pre-wrap break-words"
+          dangerouslySetInnerHTML={{
+            __html: sanitizePreviewHtml(renderContent?.[0]?.text),
+          }}
+        ></div>
       </div>
-      <div
-        className="mt-[13px] whitespace-pre-line"
-        dangerouslySetInnerHTML={{
-          __html: sanitizePreviewHtml(renderContent?.[0]?.text),
-        }}
-      ></div>
     </div>
   );
 };
