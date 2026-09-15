@@ -96,8 +96,11 @@ alt_text_subtitle
 amount
 analytics
 analytics_empty_connect_hint
+analytics_lifetime_totals_hint
 analytics_load_failed
 analytics_load_failed_hint
+analytics_posts_load_failed
+analytics_posts_load_failed_hint
 analytics_summary_range
 and
 announcement_color
@@ -326,6 +329,8 @@ browse
 browser_extension
 bug_mail_body
 bug_mail_subject
+by_channel
+by_channel_hint
 by_posting_you_agree_to_tiktoks
 by_registering_you_agree_to_our
 cal_swipe_for_days
@@ -388,6 +393,7 @@ check_circles_above
 checkout_not_finished_logout
 choose_a_new_password
 choose_a_video_type
+choose_channel
 choose_image
 choose_upload_without_posting_description
 chrome_extension_notice
@@ -999,6 +1005,7 @@ customer_socials_selected
 customer_updated
 customers
 customize_for_channel
+daily
 date
 date_format
 date_format_dmy
@@ -1056,6 +1063,13 @@ discount_forever
 discount_until
 documentation
 dont_have_an_account
+dow_fri
+dow_mon
+dow_sat
+dow_sun
+dow_thu
+dow_tue
+dow_wed
 downgrade_on
 downgrade_to_plan
 download
@@ -1085,6 +1099,10 @@ enable
 enable_channel
 end_free_trial
 end_trial_to_unlock
+eng_rate
+engagement_mix
+engagement_mix_hint
+enlarge_image
 enter_details
 enter_email
 error
@@ -1172,6 +1190,7 @@ global_settings
 go_back_to_login
 go_to_billing
 go_to_integrations
+go_to_post
 got_it
 grid
 guide_bluesky
@@ -1272,6 +1291,7 @@ import_as_draft
 import_debug_post
 import_from
 import_selected
+impressions
 insert_emoji
 insert_media
 instagram_add_audio
@@ -1463,12 +1483,14 @@ no_notifications_hint
 no_original_urls
 no_pickable_channels
 no_plugs_for_these_channels
+no_post_performance
 no_posts
 no_posts_yet
 no_published_posts
 no_short_link_results
 no_statistics_available
 no_time_slots
+no_top_posts
 no_upcoming_posts
 none
 none_yet
@@ -1519,6 +1541,7 @@ payment_failed_title
 payment_required
 per_month
 per_year
+performance_per_post
 personal_voice_i_am_happy_to_announce
 pick_a_date
 pick_a_day
@@ -1560,9 +1583,11 @@ please_fill_all_required_fields
 please_fix_your_settings
 please_type_your_prompt
 please_wait
+plus_n_channels
 portal_row_sub
 portal_row_title
 post
+post_actions
 post_already_published_drag
 post_already_published_republish_warning
 post_analytics
@@ -1588,6 +1613,8 @@ post_statistics
 post_today_to_start_your_streak
 post_validation_failed
 posted
+posting_days
+posting_days_hint
 posts
 preview
 preview_post
@@ -1611,6 +1638,7 @@ range_30d
 range_7d
 range_90d
 re_authorise_with_the_platform
+reactions
 reactivate_subscription
 read_the_docs
 ready_to_connect
@@ -1619,6 +1647,7 @@ reconnect_before_new_post
 reconnect_channel
 redirect_url
 refresh_channel
+refreshing_analytics
 refund_selected
 refund_selected_confirm
 refunded
@@ -1834,6 +1863,7 @@ to_your_telegram_group_channel_and_click_here
 today
 tomorrow
 tone
+top_5_posts
 top_title_add_api_key_for
 top_title_add_member
 tour_add_channel_text
@@ -1882,6 +1912,7 @@ understanding_the_category
 unlock_team_members
 unpin_chats
 unpin_sidebar
+untitled_post
 update
 update_credentials
 update_key
