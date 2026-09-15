@@ -46,7 +46,7 @@ describe('phone calendar and composer', () => {
   it('splits composer into Edit and Preview panes on phone and tablet', () => {
     assert.match(manage, /composerPane/);
     assert.match(manage, /setComposerPane\('preview'\)/);
-    assert.match(manage, /touch \? 'flex-col' : 'flex-row'/);
+    assert.match(manage, /touch \? 'flex-col' : 'flex-row overflow-hidden'/);
     assert.match(manage, /flex min-h-0 flex-1/);
     assert.match(manage, /!touch &&/);
     assert.match(manage, /<ComposeAiAssistant \/>/);
@@ -55,18 +55,24 @@ describe('phone calendar and composer', () => {
 
   it('keeps the desktop composer as a centered card, not edge-to-edge', () => {
     assert.match(manage, /data-pq="composer-shell"/);
-    assert.match(manage, /max-w-\[960px\]/);
-    assert.match(manage, /w-\[380px\] shrink-0/);
+    assert.match(manage, /data-pq="composer-card"/);
+    assert.match(manage, /max-w-\[840px\]/);
+    assert.match(manage, /max-h-\[min\(640px,calc\(100dvh-48px\)\)\]/);
+    assert.match(manage, /w-\[320px\] shrink-0/);
     assert.doesNotMatch(manage, /w-\[580px\]/);
+    assert.doesNotMatch(manage, /w-\[380px\] shrink-0/);
     assert.doesNotMatch(manage, /p-\[40px\]/);
+    assert.doesNotMatch(manage, /h-\[min\(720px/);
     const editor = readFileSync(
       fileURLToPath(
         new URL('../new-launch/editor.tsx', import.meta.url)
       ),
       'utf8',
     );
-    assert.match(editor, /min-h-\[88px\]/);
+    assert.match(editor, /data-pq="composer-editor"/);
+    assert.match(editor, /min-h-\[72px\]/);
     assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
+    assert.doesNotMatch(editor, /w-full h-\[46px\] bg-pqInner cursor-text/);
   });
 
   it('keeps X/general preview photos inside a feed aspect frame', () => {

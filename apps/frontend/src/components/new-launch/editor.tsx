@@ -734,9 +734,10 @@ export const Editor: FC<{
     <div className="flex w-full min-w-0 flex-col gap-[12px]">
       <div
         className={clsx(
-          'relative flex flex-col px-[12px] pt-[12px] pb-[12px]',
+          'relative flex flex-col overflow-hidden rounded-[12px] bg-pqInner px-[10px] pt-[8px] pb-[8px] shadow-[inset_0_0_0_1px_var(--border)]',
           num > 0 && '!rounded-bs-[0]'
         )}
+        data-pq="composer-editor"
         id={id}
       >
         <div className="relative flex cursor-text flex-col">
@@ -768,7 +769,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="relative z-[99] min-h-[88px] rounded-t-[6px] bg-pqInner px-[10px] pt-[10px]">
+            <div className="relative z-[99] min-h-[72px] bg-pqInner px-[6px] pt-[6px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -778,7 +779,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="min-h-[12px] bg-pqInner"
+              className="min-h-[8px] bg-pqInner"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -786,20 +787,11 @@ export const Editor: FC<{
                 editorRef?.current?.editor?.commands?.focus('end');
               }}
             />
-            <div className="w-full pointer-events-none">
-              <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-pqInner uppyChange">
-                <UppyProgress height={46} uppy={uppy} id={`prog-${num}`} />
+            <div className="pointer-events-none relative w-full">
+              <div className="uppyChange absolute left-0 top-0 h-[40px] w-full overflow-hidden bg-pqInner">
+                <UppyProgress height={40} uppy={uppy} id={`prog-${num}`} />
               </div>
             </div>
-            <div
-              className="w-full h-[46px] bg-pqInner cursor-text"
-              onClick={() => {
-                if (editorRef?.current?.editor?.isFocused) {
-                  return;
-                }
-                editorRef?.current?.editor?.commands?.focus('end');
-              }}
-            />
             {/* Ephemeral Connections tip — no filled panel; dismiss persists. */}
             {!num && !aiHintOff && !valueWithoutHtml.trim() && (
               <div className="mx-[2px] mb-[2px] mt-[10px] flex min-w-0 flex-col gap-[10px] overflow-hidden border-t border-pqLine pt-[12px]">
