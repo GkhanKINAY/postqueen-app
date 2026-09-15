@@ -1380,3 +1380,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Composer: When to post is next slot, now, or a date
 
 **i18n +5 (`next_available`, `next_available_hint`, `set_date_and_time`, `set_date_and_time_hint`, `post_now_hint`).** Reused `post_now`. Buffer's When to Post menu is Next Available / Prioritize / Now / Set Date. PostQueen already had the three honest ones: `/posts/find-slot` (next empty posting time), Post Now, and the date picker. **Prioritize is not in the menu** — it would bump other queued posts, and we do not. Create Post from the header defaults to Next available and re-resolves the slot on Add to Calendar. Calendar clicks and existing posts stay on the date picker. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer: Enter full screen from the header
+
+**i18n +2 (`enter_full_screen`, `exit_full_screen`).** Desktop Create Post stays the 1440px studio (or the compact picker) with a 24px gutter. A header control next to Close expands the same card edge-to-edge — preview rail, First Comment, When to post, and the footer stay put. Exit full screen restores the gutter. Phone and tablet already fill the overlay, so the control is hidden there. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.

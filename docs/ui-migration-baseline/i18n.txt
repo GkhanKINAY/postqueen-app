@@ -1092,10 +1092,12 @@ end_free_trial
 end_trial_to_unlock
 enter_details
 enter_email
+enter_full_screen
 enter_your_code
 error
 error_details
 error_occurred
+exit_full_screen
 extend_postqueen_with_other_tools
 extension_communication_error
 extension_cookies_missing

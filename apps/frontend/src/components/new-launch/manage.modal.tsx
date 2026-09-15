@@ -41,6 +41,8 @@ import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dumm
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
   CloseIcon,
+  CollapseIcon,
+  ExpandIcon,
   TrashIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
@@ -58,6 +60,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const fetch = useFetch();
   const { touch } = useViewport();
   const [composerPane, setComposerPane] = useState<'edit' | 'preview'>('edit');
+  const [fullScreen, setFullScreen] = useState(false);
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
@@ -634,7 +637,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       data-pq="composer-shell"
       className={clsx(
         'relative flex h-full w-full flex-1',
-        touch ? 'p-0' : 'items-center justify-center p-[24px]'
+        touch || fullScreen ? 'p-0' : 'items-center justify-center p-[24px]'
       )}
     >
       <div
@@ -643,7 +646,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           'flex flex-col overflow-hidden bg-pqInner shadow-pq',
           // Empty: compact channel picker. After a channel is picked: compose
           // studio with a 440px preview rail. Phone/tablet stay full-bleed.
-          touch
+          touch || fullScreen
             ? 'h-full w-full min-h-0 flex-1 rounded-none'
             : clsx(
                 'w-full rounded-[24px]',
@@ -669,7 +672,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               touch && composerPane !== 'edit' && 'hidden'
             )}
           >
-            <div className="flex h-[56px] items-center gap-[12px] rounded-ss-[24px] border-b border-pqLine bg-pqBg px-[24px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none">
+            <div
+              className={clsx(
+                'flex h-[56px] items-center gap-[12px] border-b border-pqLine bg-pqBg px-[24px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText',
+                !touch && !fullScreen && 'rounded-ss-[24px]'
+              )}
+            >
               {existingData?.integration
                 ? t('edit_post_title', 'Edit Post')
                 : t('create_post_title', 'Create Post')}
@@ -716,6 +724,32 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       {t('preview', 'Preview')}
                     </button>
                   </div>
+                )}
+                {!touch && (
+                  <button
+                    type="button"
+                    data-pq="composer-fullscreen"
+                    onClick={() => setFullScreen((value) => !value)}
+                    aria-pressed={fullScreen}
+                    aria-label={
+                      fullScreen
+                        ? t('exit_full_screen', 'Exit full screen')
+                        : t('enter_full_screen', 'Enter full screen')
+                    }
+                    data-tooltip-id="tooltip"
+                    data-tooltip-content={
+                      fullScreen
+                        ? t('exit_full_screen', 'Exit full screen')
+                        : t('enter_full_screen', 'Enter full screen')
+                    }
+                    className="grid size-[44px] cursor-pointer place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                  >
+                    {fullScreen ? (
+                      <CollapseIcon size={16} />
+                    ) : (
+                      <ExpandIcon size={16} />
+                    )}
+                  </button>
                 )}
                 <button
                   type="button"
@@ -837,8 +871,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           >
             <div
               className={clsx(
-                'flex h-[56px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none',
-                !touch && 'rounded-se-[24px]'
+                'flex h-[56px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText',
+                !touch && !fullScreen && 'rounded-se-[24px]'
               )}
             >
               <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
