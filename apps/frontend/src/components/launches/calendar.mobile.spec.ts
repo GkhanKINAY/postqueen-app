@@ -138,6 +138,7 @@ describe('phone calendar and composer', () => {
       'utf8',
     );
     assert.match(manage, /<ComposeNotify/);
+    assert.match(manage, /!dummy && hasChannels &&/);
     assert.match(manage, /\[PQ_NOTIFY_SETTING\]: notifyOnPublish/);
     assert.match(notify, /data-pq="composer-notify"/);
     assert.match(tags, /t\('tags', 'Tags'\)/);

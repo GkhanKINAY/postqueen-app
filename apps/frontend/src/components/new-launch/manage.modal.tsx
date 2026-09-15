@@ -891,7 +891,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
-            {!dummy && (
+            {!dummy && hasChannels && (
               <div
                 className={clsx(
                   'min-w-0',
