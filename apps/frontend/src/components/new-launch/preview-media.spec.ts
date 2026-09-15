@@ -97,6 +97,8 @@ describe('post preview media frame', () => {
     assert.doesNotMatch(youtube, /absolute left-0 top-0 w-full h-full/);
     assert.doesNotMatch(pinterest, /absolute left-0 top-0 w-full h-full/);
     assert.match(tiktok, /aspect-\[9\/16\]/);
+    assert.match(tiktok, /data-pq="tiktok-preview"/);
+    assert.doesNotMatch(tiktok, /bg-black px-\[12px\] py-\[16px\]/);
     assert.match(pinterest, /aspect-\[2\/3\]/);
     assert.match(hop, /relative isolate min-w-0 overflow-hidden/);
     assert.match(hop, /preview-channel-label/);

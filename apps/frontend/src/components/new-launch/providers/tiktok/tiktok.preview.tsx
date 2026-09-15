@@ -75,7 +75,10 @@ export const TiktokPreview: FC<{
     formatChannelHandle(integration?.display) || integration?.name || '';
 
   return (
-    <div className="flex w-full min-w-0 items-end justify-center gap-[12px] overflow-hidden bg-black px-[12px] py-[16px]">
+    <div
+      data-pq="tiktok-preview"
+      className="flex w-full min-w-0 items-end justify-center gap-[12px] overflow-hidden px-[12px] py-[16px]"
+    >
       <div className="relative min-w-0 w-full max-w-[280px] overflow-hidden rounded-[18px] bg-neutral-950 aspect-[9/16]">
         <SliderComponent
           list={slides}
