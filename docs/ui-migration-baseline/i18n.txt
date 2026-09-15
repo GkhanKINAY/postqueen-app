@@ -1065,6 +1065,7 @@ download
 download_invoice
 draft
 drafts
+drag_drop_or_select
 drop_files_here_paste_or_browse
 drop_files_here_to_upload
 drop_files_to_upload
@@ -1278,6 +1279,7 @@ import_from
 import_selected
 insert_emoji
 insert_media
+instagram_45_hint
 instagram_add_audio
 instagram_audio_facebook_login_only
 instagram_audio_label
