@@ -5,10 +5,14 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import { Button } from '@gitroom/react/form/button';
+import copy from 'copy-to-clipboard';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { oauthButtonClass } from '@gitroom/frontend/components/auth/oauth-button-class';
 export const FarcasterProvider = () => {
   const fetch = useFetch();
+  const modal = useModals();
   const t = useT();
   const toaster = useToaster();
   // customFetch resolves on 4xx/5xx, so an unchecked `.text()` would carry the
@@ -29,141 +33,19 @@ export const FarcasterProvider = () => {
     },
     [fetch, toaster, t]
   );
-  return <ButtonCaster login={gotoLogin} />;
-};
-export const ButtonCaster: FC<{
-  login: (code: string) => void;
-}> = (props) => {
-  const { login } = props;
-  const fetch = useFetch();
-  const toaster = useToaster();
-  const t = useT();
-  const stop = useRef(false);
-  const [approvalUrl, setApprovalUrl] = useState('');
-  const [qrCode, setQrCode] = useState('');
-
-  async function* load(signerUuid: string) {
-    while (true) {
-      try {
-        yield await (
-          await fetch(
-            `/auth/farcaster/signer?signerUuid=${encodeURIComponent(
-              signerUuid
-            )}`
-          )
-        ).json();
-      } catch (err) {
-        // network blip, keep polling until approved or timed out
-        yield {};
-      }
-    }
-  }
-
-  const poll = async (signerUuid: string) => {
-    stop.current = false;
-    const startedAt = Date.now();
-    const generator = load(signerUuid);
-    for await (const data of generator) {
-      if (stop.current) {
-        return;
-      }
-      if (data.status === 'approved') {
-        login(data.code);
-        return;
-      }
-      if (data.status === 'revoked') {
-        toaster.show(
-          t(
-            'farcaster_signer_revoked',
-            'The Farcaster approval was revoked, please try again'
-          ),
-          'warning'
-        );
-        setApprovalUrl('');
-        return;
-      }
-      if (Date.now() - startedAt > 10 * 60 * 1000) {
-        toaster.show(
-          t(
-            'farcaster_approval_timeout',
-            'Farcaster approval timed out, please try again'
-          ),
-          'warning'
-        );
-        setApprovalUrl('');
-        return;
-      }
-      await timer(2000);
-    }
-  };
-
-  const start = useCallback(async () => {
-    // opened synchronously on click so popup blockers allow it
-    const approvalWindow = window.open('', '_blank');
-    try {
-      const data = await (
-        await fetch('/auth/farcaster/signer', { method: 'POST' })
-      ).json();
-      if (data.error) {
-        approvalWindow?.close();
-        toaster.show(data.error, 'warning');
-        return;
-      }
-      setApprovalUrl(data.approvalUrl);
-      setQrCode(data.qrCode);
-      if (approvalWindow) {
-        approvalWindow.location.href = data.approvalUrl;
-      }
-      poll(data.signerUuid);
-    } catch (err) {
-      approvalWindow?.close();
-      toaster.show(
-        t('farcaster_signer_failed', 'Failed to start the Farcaster connection'),
-        'warning'
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      stop.current = true;
-    };
-  }, []);
-
-  if (approvalUrl) {
-    return (
-      <div className="flex flex-1 flex-col items-center gap-[8px] text-center">
-        <img
-          src={qrCode}
-          alt=""
-          className="h-[200px] w-[200px] rounded-[8px] bg-white"
-        />
-        <div>
-          {t(
-            'farcaster_approve_instructions',
-            'Scan the QR code with your phone, or open the link on your phone, then approve PostQueen in the Farcaster app.'
-          )}
-        </div>
-        <a
-          href={approvalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-[500] text-newTextColor underline hover:font-bold"
-        >
-          {t('farcaster_open_in_farcaster', 'Open in Farcaster')}
-        </a>
-        <div className="flex items-center gap-[8px] text-sm opacity-70">
-          <Spinner width={20} height={20} />
-          {t('farcaster_waiting_for_approval', 'Waiting for your approval...')}
-        </div>
-      </div>
-    );
-  }
-
+  const open = useCallback(() => {
+    modal.openModal({
+      title: t('farcaster', 'Farcaster'),
+      withCloseButton: true,
+      children: (close) => (
+        <FarcasterApproval login={gotoLogin} onFail={close} />
+      ),
+    });
+  }, [modal, t, gotoLogin]);
   return (
     <button
       type="button"
-      onClick={start}
+      onClick={open}
       aria-label={t('continue_with_farcaster', 'Continue with Farcaster')}
       className={oauthButtonClass}
     >
@@ -192,5 +74,147 @@ export const ButtonCaster: FC<{
       </svg>
       <div>{t('continue_with_farcaster', 'Continue with Farcaster')}</div>
     </button>
+  );
+};
+export const FarcasterApproval: FC<{
+  login: (code: string) => void;
+  onFail: () => void;
+}> = (props) => {
+  const { login, onFail } = props;
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const t = useT();
+  const activeSigner = useRef('');
+  const [approvalUrl, setApprovalUrl] = useState('');
+  const [qrCode, setQrCode] = useState('');
+
+  async function* load(signerUuid: string) {
+    while (true) {
+      try {
+        yield await (
+          await fetch(
+            `/auth/farcaster/signer?signerUuid=${encodeURIComponent(
+              signerUuid
+            )}`
+          )
+        ).json();
+      } catch (err) {
+        // network blip, keep polling until approved or timed out
+        yield {};
+      }
+    }
+  }
+
+  const poll = async (signerUuid: string) => {
+    activeSigner.current = signerUuid;
+    const startedAt = Date.now();
+    const generator = load(signerUuid);
+    for await (const data of generator) {
+      if (activeSigner.current !== signerUuid) {
+        return;
+      }
+      if (data.status === 'approved') {
+        login(data.code);
+        return;
+      }
+      if (data.status === 'revoked') {
+        toaster.show(
+          t(
+            'farcaster_signer_revoked',
+            'The Farcaster approval was revoked, please try again'
+          ),
+          'warning'
+        );
+        onFail();
+        return;
+      }
+      if (Date.now() - startedAt > 10 * 60 * 1000) {
+        toaster.show(
+          t(
+            'farcaster_approval_timeout',
+            'Farcaster approval timed out, please try again'
+          ),
+          'warning'
+        );
+        onFail();
+        return;
+      }
+      await timer(2000);
+    }
+  };
+
+  const start = async () => {
+    try {
+      const data = await (
+        await fetch('/auth/farcaster/signer', { method: 'POST' })
+      ).json();
+      if (!data.approvalUrl) {
+        toaster.show(
+          data.error ||
+            t(
+              'farcaster_signer_failed',
+              'Failed to start the Farcaster connection'
+            ),
+          'warning'
+        );
+        onFail();
+        return;
+      }
+      setApprovalUrl(data.approvalUrl);
+      setQrCode(data.qrCode);
+      poll(data.signerUuid);
+    } catch (err) {
+      toaster.show(
+        t('farcaster_signer_failed', 'Failed to start the Farcaster connection'),
+        'warning'
+      );
+      onFail();
+    }
+  };
+
+  const copyLink = useCallback(() => {
+    copy(approvalUrl);
+    toaster.show(
+      t('link_copied_to_clipboard', 'Link copied to clipboard'),
+      'success'
+    );
+  }, [approvalUrl]);
+
+  useEffect(() => {
+    start();
+    return () => {
+      activeSigner.current = '';
+    };
+  }, []);
+
+  if (!approvalUrl) {
+    return (
+      <div className="flex justify-center py-[20px]">
+        <Spinner width={40} height={40} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-[12px] py-[20px] text-center">
+      <img
+        src={qrCode}
+        alt=""
+        className="h-[200px] w-[200px] rounded-[8px] bg-white"
+      />
+      <div className="max-w-[400px]">
+        {t(
+          'farcaster_scan_instructions',
+          'Scan the QR code with your phone, or copy the link and open it on your phone, then approve PostQueen in the Farcaster app.'
+        )}
+      </div>
+      <Button onClick={copyLink}>
+        {t('farcaster_copy_link', 'Copy Farcaster link')}
+      </Button>
+      <div className="flex items-center gap-[8px] text-sm opacity-70">
+        <Spinner width={20} height={20} />
+        {t('farcaster_waiting_for_approval', 'Waiting for your approval...')}
+      </div>
+    </div>
   );
 };
