@@ -17,28 +17,32 @@ const editor = readFileSync(
 );
 
 describe('compose AI assistant placement', () => {
-  it('lives in the compose toolbar, not a viewport-edge FAB', () => {
+  it('lives in the compose toolbar as a rail switch, not a viewport-edge FAB', () => {
     assert.match(editor, /<ComposeAiAssistant \/>/);
-    assert.doesNotMatch(modal, /<ComposeAiAssistant \/>/);
+    assert.match(modal, /<StudioRailTabs \/>/);
+    assert.match(modal, /<ComposeAiRail \/>/);
+    assert.match(assistant, /data-pq="composer-rail-tabs"/);
     assert.doesNotMatch(modal, /bottom-\[104px\]/);
     assert.doesNotMatch(modal, /end-\[24px\]/);
     assert.doesNotMatch(assistant, /bottom-\[104px\]/);
     assert.doesNotMatch(assistant, /position: fixed;\s*bottom: 1rem/);
   });
 
-  it('stays visible without an OpenAI key and sends that path to Connections', () => {
+  it('stays reachable without an OpenAI key and sends that path to Connections', () => {
     assert.match(assistant, /useAiAvailable/);
     assert.match(assistant, /href="\/connections"/);
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 
-  it('opens CopilotKit as a popup chat anchored to the toolbar control', () => {
-    assert.match(assistant, /<CopilotPopup/);
-    assert.match(assistant, /Button=\{ComposeAiPopupButton\}/);
-    assert.match(assistant, /availableHeight: number/);
-    assert.match(assistant, /availableWidth: number/);
-    assert.match(assistant, /position: relative !important/);
+  it('opens CopilotKit as an inline chat that fills the Post Preview rail', () => {
+    assert.match(assistant, /<CopilotChat/);
+    assert.match(assistant, /data-pq="composer-ai-rail"/);
+    assert.match(assistant, /generateImageForPost/);
+    assert.match(assistant, /attachMediaToPost/);
+    assert.match(assistant, /setRail\(open \? 'preview' : 'assistant'\)/);
+    assert.doesNotMatch(assistant, /<CopilotPopup/);
+    assert.doesNotMatch(assistant, /usePinCopilotWindow/);
   });
 
   it('uses a high-contrast filled sparkle and a focused chip, not a brand ring', () => {
@@ -48,7 +52,6 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /bg-pqBrandSoft/);
     assert.match(assistant, /cursor-pointer/);
     assert.match(assistant, /var\(--focused\)/);
-    assert.doesNotMatch(assistant, /var\(--brand\)/);
-    assert.doesNotMatch(assistant, /text-pqBrand/);
+    assert.match(assistant, /triggerClassName/);
   });
 });

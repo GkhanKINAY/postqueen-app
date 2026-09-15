@@ -1384,3 +1384,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Composer: Enter full screen from the header
 
 **i18n +2 (`enter_full_screen`, `exit_full_screen`).** Desktop Create Post stays the 1440px studio (or the compact picker) with a 24px gutter. A header control next to Close expands the same card edge-to-edge — preview rail, First Comment, When to post, and the footer stay put. Exit full screen restores the gutter. Phone and tablet already fill the overlay, so the control is hidden there. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer: AI assistant fills the Post Preview rail
+
+**i18n +6 (`compose_ai_placeholder`, `write_more`, `rephrase_for`, `shorten_for`, `expand_for`, `these_channels`).** Reused `your_assistant` / `assistant_initial_message`. The toolbar AI chip used to open a small CopilotKit popup. It now switches the 440px right rail between **Post Preview** and **AI assistant** (`data-pq="composer-rail-tabs"`). The chat is inline CopilotChat (same `/copilot/chat` provider as the rest of the app): rewrite via existing `setPosts`, generate/attach images via `generateImageForPost` (the AI Image endpoint) and `attachMediaToPost`. Unconfigured still points at Connections. Phone/tablet get Edit | Preview | AI. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.

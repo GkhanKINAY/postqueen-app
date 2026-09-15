@@ -413,6 +413,7 @@ comment_delete_failed
 comments
 community
 company_voice_we_are_happy_to_announce
+compose_ai_placeholder
 compose_ai_unconfigured_tip
 configure_your_channel
 confirm_channel
@@ -1098,6 +1099,7 @@ error
 error_details
 error_occurred
 exit_full_screen
+expand_for
 extend_postqueen_with_other_tools
 extension_communication_error
 extension_cookies_missing
@@ -1655,6 +1657,7 @@ remove_social_account
 removes_the_channel_and_its_scheduled_posts
 repeat_post_every
 repeat_post_every_label
+rephrase_for
 report_a_bug
 republish_at
 republish_recurring_note
@@ -1736,6 +1739,7 @@ share_with_a_client
 short_link
 short_links_statistics
 short_post
+shorten_for
 shortlink_ask
 shortlink_no
 shortlink_preference_description
@@ -1825,6 +1829,7 @@ the_file
 the_hours_this_channel_publishes_at
 the_link_previews_point_at_for_this_channel
 theme
+these_channels
 third_party_status_connected
 this_cannot_be_changed_once_posted
 this_channel_needs_to_be_refreshed
@@ -1977,6 +1982,7 @@ when_to_post
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write_anything
+write_more
 write_something
 write_your_post_placeholder
 write_your_signature

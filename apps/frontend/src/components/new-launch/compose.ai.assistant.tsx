@@ -1,29 +1,75 @@
 'use client';
 
 import {
+  createContext,
   FC,
   ReactNode,
-  RefObject,
-  useLayoutEffect,
-  useRef,
-  useState,
+  useContext,
+  useMemo,
 } from 'react';
 import clsx from 'clsx';
 import NextLink from 'next/link';
-import {
-  autoUpdate,
-  computePosition,
-  flip,
-  offset,
-  shift,
-  size,
-} from '@floating-ui/dom';
-import { CopilotPopup, useChatContext } from '@copilotkit/react-ui';
+import { CopilotChat, CopilotKitCSSProperties } from '@copilotkit/react-ui';
+import { useCopilotAction } from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
-import { CloseIcon } from '@gitroom/frontend/components/ui/icons';
+import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
+import { useShallow } from 'zustand/react/shallow';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
-const COPILOT_DESKTOP_PX = 640;
+export type StudioRail = 'preview' | 'assistant';
+
+const StudioRailContext = createContext<{
+  rail: StudioRail;
+  setRail: (rail: StudioRail) => void;
+}>({
+  rail: 'preview',
+  setRail: () => undefined,
+});
+
+export const StudioRailProvider: FC<{
+  rail: StudioRail;
+  setRail: (rail: StudioRail) => void;
+  children: ReactNode;
+}> = ({ rail, setRail, children }) => (
+  <StudioRailContext.Provider value={{ rail, setRail }}>
+    {children}
+  </StudioRailContext.Provider>
+);
+
+export const useStudioRail = () => useContext(StudioRailContext);
+
+const NETWORK_LABEL: Record<string, string> = {
+  bluesky: 'Bluesky',
+  discord: 'Discord',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  lemmy: 'Lemmy',
+  linkedin: 'LinkedIn',
+  mastodon: 'Mastodon',
+  medium: 'Medium',
+  pinterest: 'Pinterest',
+  reddit: 'Reddit',
+  slack: 'Slack',
+  threads: 'Threads',
+  tiktok: 'TikTok',
+  vk: 'VK',
+  wordpress: 'WordPress',
+  x: 'X',
+  youtube: 'YouTube',
+};
+
+const COPILOT_INSTRUCTIONS = `
+You are an assistant that helps the user write this social media post in Create Post.
+You can:
+- Rewrite or replace the post text with setPosts (pass the full thread as a string array)
+- Generate an image and attach it to the post with generateImageForPost
+- Attach existing media with attachMediaToPost when you already have an id and path
+
+You cannot schedule, publish, or open other pages. The user uses Add to Calendar / Post Now for that.
+After changing the post, keep replies short.
+`;
 
 const triggerClassName = (open: boolean) =>
   clsx(
@@ -47,234 +93,351 @@ const SparkleIcon: FC = () => (
   </svg>
 );
 
-const ComposeAiTriggerFace: FC<{
-  open: boolean;
-  children?: ReactNode;
-}> = ({ open, children }) => {
+const railTabClass = (active: boolean) =>
+  clsx(
+    'flex h-[32px] cursor-pointer items-center gap-[6px] rounded-[8px] px-[10px] text-[12.5px] font-[600] transition-colors',
+    active
+      ? 'bg-pqInner text-pqText shadow-pqE1'
+      : 'text-pqSoft hover:bg-pqHover hover:text-pqText'
+  );
+
+function networkLabel(identifier: string, fallback: string) {
+  return NETWORK_LABEL[identifier] || fallback || identifier;
+}
+
+/**
+ * Post Preview | AI Assistant, in the right-rail header. This is the switch
+ * the compose chat fills — not a second popup.
+ */
+export const StudioRailTabs: FC = () => {
   const t = useT();
+  const { rail, setRail } = useStudioRail();
   return (
-    <>
-      {open ? (
-        <CloseIcon size={16} className="shrink-0 text-pqFocused" />
-      ) : (
+    <div
+      data-pq="composer-rail-tabs"
+      className="flex min-w-0 flex-1 items-center gap-[4px] rounded-pqSm bg-pqSettings p-[2px]"
+      role="tablist"
+      aria-label={t('post_preview', 'Post Preview')}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={rail === 'preview'}
+        data-pq="composer-rail-preview"
+        onClick={() => setRail('preview')}
+        className={railTabClass(rail === 'preview')}
+      >
+        {t('post_preview', 'Post Preview')}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={rail === 'assistant'}
+        data-pq="composer-rail-assistant"
+        onClick={() => setRail('assistant')}
+        className={railTabClass(rail === 'assistant')}
+      >
         <SparkleIcon />
-      )}
-      <span>{t('your_assistant', 'AI assistant')}</span>
-      {children}
-    </>
+        <span>{t('your_assistant', 'AI assistant')}</span>
+      </button>
+    </div>
   );
 };
 
 /**
- * CopilotKit's default Button reads open state from chat context, not props.
+ * Compose-toolbar chip. Opens the AI rail instead of a floating popup.
  */
-const ComposeAiPopupButton: FC = () => {
+export const ComposeAiAssistant: FC = () => {
   const t = useT();
-  const { open, setOpen } = useChatContext();
+  const { rail, setRail } = useStudioRail();
+  const open = rail === 'assistant';
   const label = t('your_assistant', 'AI assistant');
+
   return (
     <button
       type="button"
       data-pq-compose-ai-trigger
-      aria-expanded={open}
+      aria-pressed={open}
       aria-label={label}
-      onClick={() => setOpen(!open)}
+      onClick={() => setRail(open ? 'preview' : 'assistant')}
       className={triggerClassName(open)}
     >
-      <ComposeAiTriggerFace open={open} />
+      <SparkleIcon />
+      <span>{label}</span>
     </button>
   );
 };
 
-const COPILOT_INSTRUCTIONS = `
-You are an assistant that helps the user schedule social media posts.
-You can only edit post text in the compose thread. You cannot generate images or video.
-Here are the things you can do:
-- Add a new comment / post to the list of posts
-- Delete a comment / post from the list of posts
-- Add content to the comment / post
-- Activate or deactivate the comment / post
+const ComposeAiBindingsInner: FC = () => {
+  const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const {
+    current,
+    appendGlobalValueMedia,
+    appendInternalValueMedia,
+    setLocked,
+  } = useLaunchStore(
+    useShallow((state) => ({
+      current: state.current,
+      appendGlobalValueMedia: state.appendGlobalValueMedia,
+      appendInternalValueMedia: state.appendInternalValueMedia,
+      setLocked: state.setLocked,
+    }))
+  );
 
-Post content can be added using the addPostContentFor{num} function.
-After using the addPostFor{num} it will create a new addPostContentFor{num+ 1} function.
-`;
-
-/**
- * Pin CopilotKit's fixed chat window to the footer trigger. Below CopilotKit's
- * 640px breakpoint the SDK already goes fullscreen — leave that alone.
- */
-function usePinCopilotWindow(
-  hostRef: RefObject<HTMLElement | null>,
-  open: boolean
-) {
-  useLayoutEffect(() => {
-    const host = hostRef.current;
-    if (!open || !host) {
+  const attach = (index: number, media: { id: string; path: string }[]) => {
+    if (current !== 'global') {
+      appendInternalValueMedia(current, index, media);
       return;
     }
+    appendGlobalValueMedia(index, media);
+  };
 
-    let stop: (() => void) | undefined;
+  useCopilotAction({
+    name: 'attachMediaToPost',
+    description:
+      'Attach existing media to the post by id and path. Index 0 is the root post.',
+    parameters: [
+      {
+        name: 'id',
+        type: 'string',
+        description: 'Media id',
+        required: true,
+      },
+      {
+        name: 'path',
+        type: 'string',
+        description: 'Media URL / path',
+        required: true,
+      },
+      {
+        name: 'index',
+        type: 'number',
+        description: 'Thread index, default 0',
+        required: false,
+      },
+    ],
+    handler: async ({ id, path, index }) => {
+      attach(typeof index === 'number' ? index : 0, [{ id, path }]);
+    },
+  });
 
-    const attach = () => {
-      const floating = host.querySelector(
-        '.copilotKitWindow'
-      ) as HTMLElement | null;
-      if (window.innerWidth < COPILOT_DESKTOP_PX) {
-        stop?.();
-        stop = undefined;
-        if (floating) {
-          floating.style.left = '';
-          floating.style.top = '';
-          floating.style.right = '';
-          floating.style.bottom = '';
-          floating.style.margin = '';
-          floating.style.inset = '';
-          floating.style.maxHeight = '';
-          floating.style.maxWidth = '';
-          floating.style.position = '';
-        }
-        return;
+  useCopilotAction({
+    name: 'generateImageForPost',
+    description:
+      'Generate an image from a prompt and attach it to the post. Same path as AI Image in the toolbar.',
+    parameters: [
+      {
+        name: 'prompt',
+        type: 'string',
+        description: 'What to draw',
+        required: true,
+      },
+      {
+        name: 'style',
+        type: 'string',
+        description:
+          'Optional style: Realistic, Cartoon, Anime, Fantasy, Abstract, Pixel Art, Sketch, Watercolor, Minimalist, Cyberpunk',
+        required: false,
+      },
+      {
+        name: 'index',
+        type: 'number',
+        description: 'Thread index, default 0',
+        required: false,
+      },
+    ],
+    handler: async ({ prompt, style, index }) => {
+      const trimmed = String(prompt || '').trim();
+      if (!trimmed) {
+        toaster.show(
+          t('please_type_your_prompt', 'Please type your prompt'),
+          'warning'
+        );
+        return 'Need a prompt to generate an image.';
       }
-      const reference = host.querySelector(
-        '[data-pq-compose-ai-trigger]'
-      ) as HTMLElement | null;
-      if (!reference || !floating) {
-        return;
-      }
-      stop?.();
-      stop = autoUpdate(reference, floating, () => {
-        computePosition(reference, floating, {
-          placement: 'top-end',
-          strategy: 'fixed',
-          middleware: [
-            offset(12),
-            flip({ padding: 16 }),
-            shift({ padding: 16 }),
-            size({
-              padding: 16,
-              apply({
-                availableHeight,
-                availableWidth,
-                elements,
-              }: {
-                availableHeight: number;
-                availableWidth: number;
-                elements: { floating: HTMLElement };
-              }) {
-                elements.floating.style.maxHeight = `${Math.max(
-                  200,
-                  availableHeight
-                )}px`;
-                elements.floating.style.maxWidth = `${Math.min(
-                  384,
-                  Math.max(0, availableWidth)
-                )}px`;
-              },
-            }),
-          ],
-        }).then(({ x, y, strategy }) => {
-          Object.assign(floating.style, {
-            position: strategy,
-            left: `${x}px`,
-            top: `${y}px`,
-            right: 'auto',
-            bottom: 'auto',
-            margin: '0',
-            inset: 'auto',
-          });
+      setLocked(true);
+      try {
+        const response = await fetch('/media/generate-image-with-prompt', {
+          method: 'POST',
+          body: JSON.stringify({
+            prompt: `
+<!-- description -->
+${trimmed}
+<!-- /description -->
+
+<!-- style -->
+${style || 'Realistic'}
+<!-- /style -->
+`,
+          }),
         });
-      });
-    };
+        const image = await response.json();
+        if (response.ok && image?.id && image?.path) {
+          attach(typeof index === 'number' ? index : 0, [
+            { id: image.id, path: image.path },
+          ]);
+          return 'Image attached to the post.';
+        }
+        if (image === false) {
+          toaster.show(
+            t(
+              'ai_credits_exhausted',
+              'You are out of AI credits for this month.'
+            ),
+            'warning'
+          );
+          return 'Out of AI credits.';
+        }
+        if (!image?.cancelled) {
+          toaster.show(
+            typeof image?.message === 'string'
+              ? image.message
+              : t(
+                  'ai_generation_failed',
+                  'AI generation failed, please try again later.'
+                ),
+            'warning'
+          );
+        }
+        return 'Could not generate an image.';
+      } catch {
+        toaster.show(
+          t(
+            'ai_generation_failed',
+            'AI generation failed, please try again later.'
+          ),
+          'warning'
+        );
+        return 'Could not generate an image.';
+      } finally {
+        setLocked(false);
+      }
+    },
+  });
 
-    attach();
-    const mo = new MutationObserver(attach);
-    mo.observe(host, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ['class'],
-    });
-    window.addEventListener('resize', attach);
-    return () => {
-      mo.disconnect();
-      window.removeEventListener('resize', attach);
-      stop?.();
-    };
-  }, [hostRef, open]);
-}
+  return null;
+};
+
+export const ComposeAiBindings: FC = () => {
+  const aiOk = useAiAvailable();
+  return aiOk ? <ComposeAiBindingsInner /> : null;
+};
+
+const ComposeAiUnconfigured: FC = () => {
+  const t = useT();
+  return (
+    <div className="flex h-full min-h-0 flex-col items-start justify-center gap-[12px] px-[20px]">
+      <SparkleIcon />
+      <div className="font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText">
+        {t('your_assistant', 'AI assistant')}
+      </div>
+      <p className="text-[13.5px] leading-[1.55] text-pqMuted">
+        {t(
+          'compose_ai_unconfigured_tip',
+          'AI assistant needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
+        )}
+      </p>
+      <NextLink
+        href="/connections"
+        className="inline-flex h-[36px] items-center rounded-[8px] bg-pqBrandSoft px-[12px] text-[12.5px] font-[600] text-pqFocused hover:bg-pqBoxFocused"
+      >
+        {t('connections', 'Connections')}
+      </NextLink>
+    </div>
+  );
+};
 
 /**
- * Composer-toolbar AI control. Configured: CopilotKit popup chat. Unconfigured:
- * same control, links to Connections with a setup hint. Never a viewport-edge FAB.
+ * Copilot chat that fills the Post Preview rail. Chat history lives on the
+ * layout CopilotKit provider, so switching back to Preview does not drop it.
  */
-export const ComposeAiAssistant: FC = () => {
+export const ComposeAiRail: FC = () => {
   const t = useT();
   const aiOk = useAiAvailable();
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  usePinCopilotWindow(hostRef, open);
+  const { selectedIntegrations, current } = useLaunchStore(
+    useShallow((state) => ({
+      selectedIntegrations: state.selectedIntegrations,
+      current: state.current,
+    }))
+  );
+
+  const network = useMemo(() => {
+    const focused =
+      current !== 'global'
+        ? selectedIntegrations.find((p) => p.integration.id === current)
+        : selectedIntegrations.length === 1
+          ? selectedIntegrations[0]
+          : undefined;
+    if (!focused) {
+      return t('these_channels', 'these channels');
+    }
+    return networkLabel(
+      focused.integration.identifier,
+      focused.integration.identifier
+    );
+  }, [current, selectedIntegrations, t]);
+
+  const suggestions = useMemo(
+    () => [
+      {
+        title: t('write_more', 'Write more'),
+        message: 'Write more for this post, keeping the same voice.',
+      },
+      {
+        title: t('rephrase_for', 'Rephrase for {{network}}', { network }),
+        message: `Rephrase this post for ${network}.`,
+      },
+      {
+        title: t('shorten_for', 'Shorten for {{network}}', { network }),
+        message: `Shorten this post for ${network}.`,
+      },
+      {
+        title: t('expand_for', 'Expand for {{network}}', { network }),
+        message: `Expand this post for ${network}.`,
+      },
+    ],
+    [network, t]
+  );
 
   const label = t('your_assistant', 'AI assistant');
-  const unconfiguredTip = t(
-    'compose_ai_unconfigured_tip',
-    'AI assistant needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
-  );
 
   return (
     <div
-      ref={hostRef}
-      data-pq-compose-ai
-      className="relative shrink-0"
+      data-pq="composer-ai-rail"
+      style={
+        {
+          '--copilot-kit-primary-color': 'var(--brand)',
+          '--copilot-kit-contrast-color': 'var(--onBrand)',
+          '--copilot-kit-secondary-contrast-color': 'var(--text)',
+          '--copilot-kit-background-color': 'transparent',
+          '--copilot-kit-input-background-color': 'var(--inner)',
+          '--copilot-kit-separator-color': 'var(--line)',
+          '--copilot-kit-muted-color': 'var(--muted)',
+        } as CopilotKitCSSProperties
+      }
+      className="absolute inset-0 flex min-h-0 flex-col bg-pqBg"
     >
-      <style>
-        {`
-          [data-pq-compose-ai] .copilotKitPopup {
-            position: relative !important;
-            inset: auto !important;
-            bottom: auto !important;
-            right: auto !important;
-            left: auto !important;
-            top: auto !important;
-            z-index: 50;
-            display: block;
-            width: auto;
-            height: auto;
-          }
-          [data-pq-compose-ai] .copilotKitModalChildrenWrapper:empty {
-            display: none;
-          }
-          [data-pq-compose-ai] .copilotKitWindow {
-            z-index: 250;
-          }
-        `}
-      </style>
       {aiOk ? (
-        <CopilotPopup
-          className="pq-compose-ai"
-          hitEscapeToClose={false}
-          clickOutsideToClose={true}
-          onSetOpen={setOpen}
-          Button={ComposeAiPopupButton}
+        <CopilotChat
+          className="flex h-full min-h-0 w-full flex-col"
           instructions={COPILOT_INSTRUCTIONS}
+          suggestions={suggestions}
           labels={{
             title: label,
             initial: t(
               'assistant_initial_message',
-              'Hi! I can refine or rewrite your post text. I cannot generate images — use AI Image / AI Video in the toolbar for that.'
+              "Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it."
+            ),
+            placeholder: t(
+              'compose_ai_placeholder',
+              'Ask Copilot to write, rewrite, or add an image…'
             ),
           }}
         />
       ) : (
-        <NextLink
-          href="/connections"
-          data-pq-compose-ai-trigger
-          data-tooltip-id="tooltip"
-          data-tooltip-content={unconfiguredTip}
-          aria-label={label}
-          className={triggerClassName(false)}
-        >
-          <ComposeAiTriggerFace open={false} />
-        </NextLink>
+        <ComposeAiUnconfigured />
       )}
     </div>
   );

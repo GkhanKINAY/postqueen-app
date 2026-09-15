@@ -12,6 +12,13 @@ import { AddEditModalProps } from '@gitroom/frontend/components/new-launch/add.e
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { PicksSocialsComponent } from '@gitroom/frontend/components/new-launch/picks.socials.component';
+import {
+  ComposeAiBindings,
+  ComposeAiRail,
+  StudioRail,
+  StudioRailProvider,
+  StudioRailTabs,
+} from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { EditorWrapper } from '@gitroom/frontend/components/new-launch/editor';
 import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.current';
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
@@ -55,11 +62,52 @@ import { useClickOutside } from '@mantine/hooks';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
 
+const phoneStudioTabClass = (active: boolean) =>
+  clsx(
+    'h-[44px] min-w-[44px] rounded-[6px] px-[10px] text-[12.5px] font-[600]',
+    active ? 'bg-pqInner text-pqText shadow-pqE1' : 'text-pqSoft'
+  );
+
+const ComposerPhoneTabs: FC<{
+  pane: 'edit' | 'preview' | 'assistant';
+  onPane: (pane: 'edit' | 'preview' | 'assistant') => void;
+}> = ({ pane, onPane }) => {
+  const t = useT();
+  return (
+    <div className="flex gap-[4px] rounded-pqSm bg-pqSettings p-[2px]">
+      <button
+        type="button"
+        onClick={() => onPane('edit')}
+        className={phoneStudioTabClass(pane === 'edit')}
+      >
+        {t('edit', 'Edit')}
+      </button>
+      <button
+        type="button"
+        onClick={() => onPane('preview')}
+        className={phoneStudioTabClass(pane === 'preview')}
+      >
+        {t('preview', 'Preview')}
+      </button>
+      <button
+        type="button"
+        onClick={() => onPane('assistant')}
+        className={phoneStudioTabClass(pane === 'assistant')}
+      >
+        {t('your_assistant', 'AI assistant')}
+      </button>
+    </div>
+  );
+};
+
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
   const fetch = useFetch();
   const { touch } = useViewport();
-  const [composerPane, setComposerPane] = useState<'edit' | 'preview'>('edit');
+  const [composerPane, setComposerPane] = useState<
+    'edit' | 'preview' | 'assistant'
+  >('edit');
+  const [studioRail, setStudioRail] = useState<StudioRail>('preview');
   const [fullScreen, setFullScreen] = useState(false);
   const ref = useRef(null);
   const existingData = useExistingData();
@@ -125,6 +173,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   );
 
   const hasChannels = selectedIntegrations.length > 0;
+  const setRail = useCallback(
+    (rail: StudioRail) => {
+      setStudioRail(rail);
+      if (touch) {
+        setComposerPane(rail);
+      }
+    },
+    [touch]
+  );
+  const onPhonePane = useCallback(
+    (pane: 'edit' | 'preview' | 'assistant') => {
+      setComposerPane(pane);
+      if (pane !== 'edit') {
+        setStudioRail(pane);
+      }
+    },
+    []
+  );
   // First paint of an existing post must not slide the preview in. Enable
   // width transitions only after mount so a new post's first channel pick
   // still animates.
@@ -132,6 +198,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   useEffect(() => {
     setRailMotion(true);
   }, []);
+
+  useEffect(() => {
+    if (!hasChannels) {
+      setStudioRail('preview');
+    }
+  }, [hasChannels]);
 
   useEffect(() => {
     if (hide) {
@@ -633,6 +705,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   );
 
   return (
+    <StudioRailProvider rail={studioRail} setRail={setRail}>
     <div
       data-pq="composer-shell"
       className={clsx(
@@ -640,6 +713,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         touch || fullScreen ? 'p-0' : 'items-center justify-center p-[24px]'
       )}
     >
+      <ComposeAiBindings />
       <div
         data-pq="composer-card"
         className={clsx(
@@ -698,32 +772,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   />
                 )}
                 {touch && hasChannels && (
-                  <div className="flex gap-[4px] rounded-pqSm bg-pqSettings p-[2px]">
-                    <button
-                      type="button"
-                      onClick={() => setComposerPane('edit')}
-                      className={clsx(
-                        'h-[44px] min-w-[44px] rounded-[6px] px-[12px] text-[12.5px] font-[600]',
-                        composerPane === 'edit'
-                          ? 'bg-pqInner text-pqText shadow-pqE1'
-                          : 'text-pqSoft'
-                      )}
-                    >
-                      {t('edit', 'Edit')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setComposerPane('preview')}
-                      className={clsx(
-                        'h-[44px] min-w-[44px] rounded-[6px] px-[12px] text-[12.5px] font-[600]',
-                        composerPane === 'preview'
-                          ? 'bg-pqInner text-pqText shadow-pqE1'
-                          : 'text-pqSoft'
-                      )}
-                    >
-                      {t('preview', 'Preview')}
-                    </button>
-                  </div>
+                  <ComposerPhoneTabs
+                    pane={composerPane}
+                    onPane={onPhonePane}
+                  />
                 )}
                 {!touch && (
                   <button
@@ -857,7 +909,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               touch
                 ? clsx(
                     'w-full min-h-0 flex-1',
-                    (composerPane !== 'preview' || !hasChannels) && 'hidden'
+                    ((composerPane !== 'preview' &&
+                      composerPane !== 'assistant') ||
+                      !hasChannels) &&
+                      'hidden'
                   )
                 : clsx(
                     'shrink-0',
@@ -871,47 +926,41 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           >
             <div
               className={clsx(
-                'flex h-[56px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText',
+                'flex h-[56px] items-center gap-[8px] border-b border-pqLine bg-pqBg px-[16px] text-pqText',
                 !touch && !fullScreen && 'rounded-se-[24px]'
               )}
             >
-              <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
-              {touch && (
-                <div className="me-[8px] flex gap-[4px] rounded-pqSm bg-pqSettings p-[2px]">
-                  <button
-                    type="button"
-                    onClick={() => setComposerPane('edit')}
-                    className={clsx(
-                      'h-[44px] min-w-[44px] rounded-[6px] px-[12px] text-[12.5px] font-[600]',
-                      composerPane === 'edit'
-                        ? 'bg-pqInner text-pqText shadow-pqE1'
-                        : 'text-pqSoft'
-                    )}
-                  >
-                    {t('edit', 'Edit')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setComposerPane('preview')}
-                    className={clsx(
-                      'h-[44px] min-w-[44px] rounded-[6px] px-[12px] text-[12.5px] font-[600]',
-                      composerPane === 'preview'
-                        ? 'bg-pqInner text-pqText shadow-pqE1'
-                        : 'text-pqSoft'
-                    )}
-                  >
-                    {t('preview', 'Preview')}
-                  </button>
-                </div>
+              {touch ? (
+                <>
+                  <div className="min-w-0 flex-1 font-display text-[18px] font-[600] -tracking-[0.015em]">
+                    {studioRail === 'assistant'
+                      ? t('your_assistant', 'AI assistant')
+                      : t('post_preview', 'Post Preview')}
+                  </div>
+                  <ComposerPhoneTabs
+                    pane={composerPane}
+                    onPane={onPhonePane}
+                  />
+                </>
+              ) : (
+                <StudioRailTabs />
               )}
             </div>
             <div className="relative min-h-0 flex-1">
-              <Scrollable
-                scrollClasses="!pe-[16px]"
-                className="absolute left-0 top-0 h-full w-full overflow-x-hidden overflow-y-scroll p-[16px] pe-[8px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqBg"
+              <div
+                className={clsx(
+                  'absolute inset-0',
+                  studioRail === 'assistant' && 'hidden'
+                )}
               >
-                <ShowAllProviders ref={ref} />
-              </Scrollable>
+                <Scrollable
+                  scrollClasses="!pe-[16px]"
+                  className="absolute left-0 top-0 h-full w-full overflow-x-hidden overflow-y-scroll p-[16px] pe-[8px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqBg"
+                >
+                  <ShowAllProviders ref={ref} />
+                </Scrollable>
+              </div>
+              {studioRail === 'assistant' && <ComposeAiRail />}
             </div>
           </div>
         </div>
@@ -1138,6 +1187,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         </div>
       </div>
     </div>
+    </StudioRailProvider>
   );
 };
 

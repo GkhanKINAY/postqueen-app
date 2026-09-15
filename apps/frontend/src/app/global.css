@@ -1636,3 +1636,41 @@ html[dir='rtl'] .lbox {
   left: 20px !important;
   right: auto !important;
 }
+
+/* Create Post AI rail: CopilotChat fills the 440px preview column. */
+[data-pq='composer-ai-rail'] {
+  .copilotKitChat,
+  .copilotKitChatBody {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .copilotKitMessages {
+    min-height: 0;
+  }
+
+  .copilotKitMessagesContainer {
+    padding: 16px 16px 8px;
+    gap: 12px;
+  }
+
+  .copilotKitInputContainer {
+    padding: 0 12px 12px;
+  }
+
+  .copilotKitInput {
+    width: 100%;
+    min-height: 64px;
+    margin: 0;
+    border-radius: 12px;
+    background-color: var(--inner);
+    border-color: var(--border);
+  }
+
+  .copilotKitMessage {
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+}

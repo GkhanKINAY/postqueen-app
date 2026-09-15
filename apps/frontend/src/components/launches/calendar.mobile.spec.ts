@@ -45,7 +45,7 @@ describe('phone calendar and composer', () => {
 
   it('splits composer into Edit and Preview panes on phone and tablet', () => {
     assert.match(manage, /composerPane/);
-    assert.match(manage, /setComposerPane\('preview'\)/);
+    assert.match(manage, /onPane=\{onPhonePane\}/);
     assert.match(manage, /touch \? 'flex-col' : 'flex-row overflow-hidden'/);
     assert.match(manage, /flex min-h-0 flex-1/);
     assert.match(manage, /!touch &&/);
@@ -113,7 +113,13 @@ describe('phone calendar and composer', () => {
     assert.match(manage, /t\('select_channels', 'Select channels'\)/);
     assert.match(manage, /data-pq="composer-footer"/);
     assert.match(manage, /data-pq="composer-publish"/);
-    assert.match(manage, /max-\[1179px\]:!ml-0 max-\[1179px\]:w-full max-\[1179px\]:!flex-none/);
+    const when = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/compose.when.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(when, /max-\[1179px\]:!ml-0 max-\[1179px\]:w-full max-\[1179px\]:!flex-none/);
     const tags = readFileSync(
       fileURLToPath(new URL('./tags.component.tsx', import.meta.url)),
       'utf8',
