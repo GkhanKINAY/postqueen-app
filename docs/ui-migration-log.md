@@ -1372,3 +1372,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Composer: Notify me vs Quiet on this post
 
 **i18n +4 (`notify_me`, `notify_me_hint`, `notify_quiet`, `notify_quiet_hint`).** Create Post footer now has a Buffer-style notice menu next to Repeat after a channel is picked. **Notify me** (default) is today's success notice. **Quiet** stores `pq_notify: false` on the post settings JSON and the publish activity skips the digested "Your post has been published" notice. Failures still notify. Hidden on the empty compact picker so it does not collide with Save as draft. Not Buffer's "post yourself" mobile reminder — PostQueen always publishes. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer: First Comment under the tools, and on the preview
+
+**i18n +4 (`first_comment`, `your_comment`, `one_comment`, `comment_author`).** Buffer's First Comment is a single field under the compose tools; typing it paints the same text as the author's first comment on the LinkedIn preview. PostQueen already published that as the second thread item (comment on LinkedIn/Instagram/Facebook, reply on X) with an optional delay. The second full editor is now that field for comment-style networks; delay stays on the row because Buffer posts the comment immediately and we do not. LinkedIn preview shows a real comment count and an Author badge instead of a fake "4 Comments". X/Threads keep Continue thread. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.

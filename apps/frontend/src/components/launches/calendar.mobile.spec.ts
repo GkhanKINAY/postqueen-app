@@ -150,6 +150,8 @@ describe('phone calendar and composer', () => {
     assert.match(editor, /trailing=\{/);
     assert.match(editor, /<ComposeAiAssistant \/>/);
     assert.match(editor, /\{threadAction\}/);
+    assert.match(editor, /ComposeFirstComment/);
+    assert.match(editor, /firstCommentMode/);
     assert.doesNotMatch(editor, /flex-col gap-\[8px\] overflow-hidden border-t/);
     assert.doesNotMatch(manage, /check_circles_above/);
   });

@@ -408,6 +408,7 @@ client_secret
 close
 code_sent_to
 coming_soon
+comment_author
 comment_delete_failed
 comments
 community
@@ -1131,6 +1132,7 @@ finding_time_to_post
 finish
 finishing_trial_charging
 finishing_your_trial
+first_comment
 five_days
 follower_of_creator
 forgot_password
@@ -1498,6 +1500,7 @@ oauth_start_failed
 off
 ok
 oldest
+one_comment
 one_publishing_option
 one_selected
 only_option_to_connect
@@ -2001,6 +2004,7 @@ you_are_promoting_yourself
 you_can_add_signatures_to_your_account_to_be_used_in_your_posts
 you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you
 your_assistant
+your_comment
 your_post_should_have_at_least_one_character_or_one_image
 your_video_will_be_labeled_promotional
 youre_all_set
