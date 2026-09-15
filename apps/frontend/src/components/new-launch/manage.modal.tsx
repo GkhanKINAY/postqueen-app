@@ -622,19 +622,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       data-pq="composer-shell"
       className={clsx(
         'relative flex h-full w-full flex-1',
-        touch ? 'p-0' : 'items-center justify-center p-[16px]'
+        touch ? 'p-0' : 'items-center justify-center p-[12px]'
       )}
     >
       <div
         data-pq="composer-card"
         className={clsx(
           'flex flex-col overflow-hidden bg-pqInner shadow-pq',
-          // removeLayout + fullScreen ignores the openModal max-w-[1400px]
-          // class. Desktop is a compose window with a margin, not a postage
-          // stamp and not edge-to-edge. Phone/tablet stay full-bleed.
+          // removeLayout + fullScreen ignored the openModal max-w-[1400px]
+          // class. Desktop uses that 1400px window with a slim inset so it
+          // is not edge-to-edge. Phone/tablet stay full-bleed.
           touch
             ? 'h-full w-full min-h-0 flex-1 rounded-none'
-            : 'h-[min(800px,calc(100dvh-32px))] w-full max-w-[1200px] rounded-[20px]'
+            : 'h-[calc(100dvh-24px)] w-full max-w-[1400px] rounded-[20px]'
         )}
       >
         <div
@@ -803,7 +803,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     'w-full min-h-0 flex-1',
                     composerPane !== 'preview' && 'hidden'
                   )
-                : 'w-[420px] shrink-0'
+                : 'w-[480px] shrink-0'
             )}
           >
             <div
