@@ -71,7 +71,7 @@ describe('phone calendar and composer', () => {
       'utf8',
     );
     assert.match(editor, /data-pq="composer-editor"/);
-    assert.match(editor, /min-h-\[160px\]/);
+    assert.match(editor, /min-h-\[112px\]/);
     assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
     assert.doesNotMatch(editor, /w-full h-\[46px\] bg-pqInner cursor-text/);
   });
@@ -116,7 +116,7 @@ describe('phone calendar and composer', () => {
     assert.match(tags, /touch \? t\('tags', 'Tags'\)/);
     assert.match(repeat, /touch \? \(\s*repeat \?/);
     assert.match(repeat, /aria-label=\{triggerLabel\}/);
-    assert.match(editor, /flex min-w-0 flex-col gap-\[10px\] overflow-hidden border-t border-pqLine/);
+    assert.match(editor, /flex min-w-0 flex-col gap-\[8px\] overflow-hidden border-t border-pqLine/);
     assert.match(editor, /flex min-w-0 items-start gap-\[12px\]/);
     assert.match(editor, /flex w-full min-w-0 flex-wrap/);
     assert.doesNotMatch(manage, /check_circles_above/);

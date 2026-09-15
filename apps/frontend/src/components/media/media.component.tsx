@@ -399,15 +399,15 @@ export const MultiMediaComponent: FC<{
         {showToolbar && (
           <div
             ref={toolbarRef}
+            data-pq="composer-toolbar"
             className={clsx(
-              'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px] b1',
               ghost
-                ? 'items-center'
-                : 'border-t border-pqLine px-[12px] py-[10px] text-pqText'
+                ? 'flex w-full flex-wrap items-center gap-x-[10px] gap-y-[8px]'
+                : 'grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-[8px] border-t border-pqLine px-[10px] py-[8px] text-pqText'
             )}
           >
             {!mediaNotAvailable && (
-              <div className="flex flex-wrap items-center gap-[6px]">
+              <div className="flex min-w-0 flex-wrap items-center gap-[6px]">
                 <button
                   type="button"
                   // The media picker opens from here and nowhere else, so the
@@ -490,21 +490,28 @@ export const MultiMediaComponent: FC<{
                     )}
                   </>
                 )}
+                {!mediaNotAvailable && (!!toolBar || !!information) && (
+                  <div
+                    className="hidden h-[22px] w-px shrink-0 self-center bg-pqLine sm:block"
+                    aria-hidden="true"
+                  />
+                )}
+                {!!toolBar && toolBar}
               </div>
             )}
-            {!mediaNotAvailable && (!!toolBar || !!information) && (
-              <div
-                className="hidden h-[22px] w-px shrink-0 self-center bg-pqLine sm:block"
-                aria-hidden="true"
-              />
-            )}
-            {!!toolBar && (
-              <div className="flex flex-wrap items-center gap-[6px]">
+            {!!toolBar && mediaNotAvailable && (
+              <div className="flex min-w-0 flex-wrap items-center gap-[6px]">
                 {toolBar}
               </div>
             )}
             {information && (
-              <div className="ms-auto flex items-center gap-[4px]">
+              <div
+                data-pq="composer-char-count"
+                className={clsx(
+                  'flex h-[36px] shrink-0 items-center',
+                  ghost && 'ms-auto'
+                )}
+              >
                 {information}
               </div>
             )}

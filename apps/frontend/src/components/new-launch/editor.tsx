@@ -734,7 +734,7 @@ export const Editor: FC<{
     <div className="flex w-full min-w-0 flex-col gap-[12px]">
       <div
         className={clsx(
-          'relative flex flex-col overflow-hidden rounded-[12px] bg-pqInner px-[10px] pt-[8px] pb-[8px] shadow-[inset_0_0_0_1px_var(--border)]',
+          'relative flex flex-col overflow-hidden rounded-[12px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]',
           num > 0 && '!rounded-bs-[0]'
         )}
         data-pq="composer-editor"
@@ -769,7 +769,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="relative z-[99] min-h-[160px] bg-pqInner px-[8px] pt-[8px]">
+            <div className="relative z-[99] min-h-[112px] bg-pqInner px-[10px] pt-[10px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -779,7 +779,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="min-h-[16px] bg-pqInner"
+              className="min-h-[8px] bg-pqInner"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -794,7 +794,7 @@ export const Editor: FC<{
             </div>
             {/* Ephemeral Connections tip — no filled panel; dismiss persists. */}
             {!num && !aiHintOff && !valueWithoutHtml.trim() && (
-              <div className="mx-[2px] mb-[2px] mt-[10px] flex min-w-0 flex-col gap-[10px] overflow-hidden border-t border-pqLine pt-[12px]">
+              <div className="mx-[12px] mb-[2px] mt-[8px] flex min-w-0 flex-col gap-[8px] overflow-hidden border-t border-pqLine pt-[10px]">
                 <div className="flex min-w-0 items-start gap-[12px]">
                   <span
                     className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
@@ -902,7 +902,7 @@ export const Editor: FC<{
                 </div>
               </div>
             )}
-            <div className="flex bg-pqInner rounded-b-[6px] cursor-default">
+            <div className="flex cursor-default flex-col bg-pqInner">
               {setImages && (
                 <MultiMediaComponent
                   mediaNotAvailable={num > 0 && comments === 'no-media'}
@@ -994,8 +994,15 @@ export const Editor: FC<{
                   onClose={() => {}}
                 />
               )}
+              {!!childButton && (
+                <div
+                  data-pq="composer-thread-actions"
+                  className="px-[10px] pb-[10px] pt-[2px]"
+                >
+                  {childButton}
+                </div>
+              )}
             </div>
-            <div>{childButton}</div>
           </div>
         </div>
       </div>
