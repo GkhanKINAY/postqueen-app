@@ -115,28 +115,32 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
           'Your account, organizations and channels will be deleted permanently'
         )}
       </div>
-      <div className="mt-[12px] flex flex-col gap-[10px]">
+      <div className="mt-[12px] flex min-w-0 flex-col gap-[10px]">
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder={t('type_your_email', 'Type your email to confirm')}
-          className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+          className="h-[40px] min-w-0 w-full rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
         />
         <input
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder={t(
-            'current_password_or_oauth',
-            'Current password (or re-authenticate with a connected account)'
-          )}
-          className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+          placeholder={t('current_password', 'Current password')}
+          className="h-[40px] min-w-0 w-full rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
         />
+        <p className="text-[12px] leading-[1.4] text-pqMuted">
+          {t(
+            'delete_account_password_hint',
+            'Or re-authenticate with a connected account instead of a password.'
+          )}
+        </p>
       </div>
       <div className="mt-[14px] flex justify-end">
         <Button
-          className="!bg-pqDanger shrink-0"
+          variant="danger"
+          className="shrink-0"
           loading={loading}
           disabled={!user?.email || email.trim().toLowerCase() !== user.email.toLowerCase()}
           onClick={deleteAccount}

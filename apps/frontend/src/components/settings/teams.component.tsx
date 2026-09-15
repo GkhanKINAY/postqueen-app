@@ -345,11 +345,11 @@ export const TeamsComponent: FC = () => {
   return (
     <div className="mt-[18px] flex flex-col gap-[10px]">
       <div className="overflow-x-auto rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="min-w-[520px]">
+        <div className="min-w-[360px]">
         <div className="flex items-center gap-[11px] border-b border-pqLine px-[15px] py-[8px] text-[11px] font-[600] uppercase tracking-[0.04em] text-pqMuted">
           <div className="min-w-0 flex-1">{t('member', 'Member')}</div>
-          <div className="w-[120px] shrink-0">{t('role', 'Role')}</div>
-          <div className="w-[148px] shrink-0 text-end">
+          <div className="w-[104px] shrink-0">{t('role', 'Role')}</div>
+          <div className="w-[108px] shrink-0 text-end">
             {t('actions', 'Actions')}
           </div>
         </div>
@@ -383,7 +383,7 @@ export const TeamsComponent: FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="w-[120px] shrink-0">
+              <div className="w-[104px] shrink-0">
                 {canManage && p.role !== 'SUPERADMIN' ? (
                   <select
                     aria-label={t('role', 'Role')}
@@ -406,7 +406,7 @@ export const TeamsComponent: FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex w-[148px] shrink-0 items-center justify-end gap-[6px]">
+              <div className="flex w-[108px] shrink-0 items-center justify-end gap-[6px]">
                 {canTransfer ? (
                   <button
                     type="button"

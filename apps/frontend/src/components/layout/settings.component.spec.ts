@@ -18,6 +18,11 @@ describe('Settings mobile stack', () => {
     assert.match(source, /showIndex/);
     assert.match(source, /closeMobilePane/);
   });
+
+  it('hides the pane title with the JS phone chrome, not Tailwind mobile: (1025px)', () => {
+    assert.match(source, /hideTitle=\{mobile\}/);
+    assert.doesNotMatch(source, /text-pqText mobile:hidden/);
+  });
 });
 
 describe('Account nav', () => {

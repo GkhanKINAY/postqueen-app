@@ -1003,7 +1003,6 @@ create_post_title
 credentials
 current_package
 current_password
-current_password_or_oauth
 current_plan
 current_plan_lifetime
 current_time
@@ -1038,6 +1037,7 @@ delete
 delete_account
 delete_account_confirm
 delete_account_description
+delete_account_password_hint
 delete_announcement
 delete_announcement_confirm
 delete_app

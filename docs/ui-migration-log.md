@@ -31,6 +31,8 @@ the check: an uncommitted one would reseed itself on every CI run and guard noth
 
 ## Log
 
+**Account / Teams visual pass.** Settings pane titles used Tailwind `mobile:hidden` (1025px) while the back-arrow chrome keys off `useViewport().mobile` (760px), so 761–1025px Settings (Account, Teams, Global Settings) had no heading. Title now hides only with the JS phone chrome. Delete Account password placeholder no longer truncates at 420px (short field + helper). Teams Role/Actions columns are narrower so the header stays on-screen at 420. i18n swapped `current_password_or_oauth` for `delete_account_password_hint`. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
 **Account load-failed copy.** Account settings now has an explicit retry state when `/user/identities` fails (`account_load_failed`). Intentional i18n +1. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
 
 **Account settings, identities, and team roles.** Account is the first Account-group row (`?tab=account`): name, email change, password, connected OAuth, Delete Account (moved off Global Settings). Workspace name is SUPERADMIN-only on Global Settings. Teams gained a Role column, USER/ADMIN change, ownership transfer, and leave. Intentional inventory change: Account nav unhidden; new fetches (`/user/password`, `/user/email/*`, `/user/identities`, `/settings/organization`, `/settings/team/transfer`, `/settings/team/leave`, PATCH `/settings/team/:id`); i18n keys for those screens; dropped the unused `delete_your_account` / `request_account_deletion` / `detect_timezone` copy from the old hidden pane. `scripts/ui-migration-check.sh --update` rewrote `api.txt` and `i18n.txt`.

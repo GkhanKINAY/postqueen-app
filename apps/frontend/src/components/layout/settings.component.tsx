@@ -130,14 +130,23 @@ const SettingsNavIcon: FC<{ icon: string }> = ({ icon }) => (
 
 const SettingsTabPane: FC<{
   tabHeader: { title: string; desc?: string };
+  /** Same `useViewport().mobile` as the back-arrow chrome — not Tailwind
+   *  `mobile:` (1025px). At 761–1025 the two-column sheet is up, and hiding
+   *  this heading left Account / Teams untitled. */
+  hideTitle?: boolean;
   children: React.ReactNode;
-}> = ({ tabHeader, children }) => {
+}> = ({ tabHeader, hideTitle, children }) => {
   const { inEditor, chromePatch } = useSettingsTabChrome();
   return (
     <div className="flex w-full max-w-[920px] flex-col">
       {!inEditor && (
         <>
-          <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText mobile:hidden">
+          <h3
+            className={clsx(
+              'm-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText',
+              hideTitle && 'hidden'
+            )}
+          >
             {chromePatch?.title ?? tabHeader.title}
           </h3>
           {!!(chromePatch?.desc ?? tabHeader.desc) && (
@@ -697,7 +706,7 @@ export const SettingsPopup: FC<{
         )}
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner p-[26px_28px_34px] text-pqText mobile:p-[16px_16px_28px]">
           <SettingsTabChromeProvider key={tab}>
-            <SettingsTabPane tabHeader={tabHeader}>
+            <SettingsTabPane tabHeader={tabHeader} hideTitle={mobile}>
               {tab === 'global_settings' && (
                 <div>
                   <GlobalSettings />
