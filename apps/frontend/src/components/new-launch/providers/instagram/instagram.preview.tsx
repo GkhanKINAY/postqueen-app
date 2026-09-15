@@ -207,17 +207,12 @@ export const InstagramPreview: FC<{
                 </div>
                 <div className="flex flex-col gap-[6px] flex-1">
                   <div className="flex gap-[4px] py-[8px]">
-                    <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
-                      <div className="text-[13px] font-[600]">
-                        {integration?.name}
-                      </div>
-                      <div
-                        className="whitespace-pre-line text-[14px] font-[400]"
-                        dangerouslySetInnerHTML={{
-                          __html: sanitizePreviewHtml(value.text),
-                        }}
-                      />
-                    </div>
+                    <div
+                      className="whitespace-pre-line text-[14px] font-[400] flex-1"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizePreviewHtml(value.text),
+                      }}
+                    />
                     <div>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
