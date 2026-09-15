@@ -345,47 +345,34 @@ export const withProvider = function <T extends object>(params: {
                   data-id={props.id}
                   className={clsx(
                     isGlobal ? 'block' : 'hidden',
-                    'rounded-[12px] bg-pqInner p-[16px] shadow-[inset_0_0_0_1px_var(--border)]'
+                    'flex flex-col gap-[12px]'
                   )}
                 >
                   {isGlobal && (
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="mb-[12px] flex items-center gap-[10px] border-b border-pqLine pb-[12px]">
-                      <div className="relative">
-                        <SafeImage
-                          alt={selectedIntegration?.integration.name!}
-                          width={36}
-                          height={36}
-                          className="h-[36px] min-h-[36px] w-[36px] min-w-[36px] rounded-full"
-                          src={selectedIntegration?.integration.picture}
-                        />
-                        <SafeImage
-                          alt={selectedIntegration?.integration.identifier}
-                          width={14}
-                          height={14}
-                          className="absolute -bottom-[2px] -end-[2px] h-[14px] min-h-[14px] w-[14px] min-w-[14px] rounded-[14px]"
-                          src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
-                        />
-                      </div>
-                      <div>
-                        <div className="text-[15px] font-[600] tracking-[-0.01em] text-pqText">
-                          {selectedIntegration?.integration.name}
-                        </div>
+                    <div className="flex min-w-0 items-center gap-[8px]">
+                      <img
+                        src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
+                        alt=""
+                        className="h-[18px] w-[18px] shrink-0 rounded-[4px]"
+                      />
+                      <div className="min-w-0 truncate text-[13px] font-[600] text-pqText">
+                        {selectedIntegration?.integration.name}
                         {!!formatChannelHandle(
                           selectedIntegration?.integration.display
                         ) && (
-                          <div className="mt-[1px] truncate text-[12.5px] text-pqMuted">
+                          <span className="ms-[6px] font-[400] text-pqMuted">
                             {formatChannelHandle(
                               selectedIntegration?.integration.display
                             )}
-                          </div>
+                          </span>
                         )}
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col gap-[14px]">
+                  <div className="flex flex-col gap-[12px]">
                     {SettingsComponent && <SettingsComponent />}
                     {!!data?.internalPlugs?.length && !dummy && (
                       <InternalChannels plugs={data?.internalPlugs} />

@@ -5,7 +5,6 @@ import React, {
   ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -33,8 +32,6 @@ import { SelectCustomer } from '@gitroom/frontend/components/launches/select.cus
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
-  SettingsIcon,
-  ChevronDownIcon,
   CloseIcon,
   TrashIcon,
 } from '@gitroom/frontend/components/ui/icons';
@@ -61,7 +58,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const { dropPostGroupFromView } = useCalendar();
   const modal = useModals();
   const { formatShortWeekdayTime } = useDateFormat();
-  const [showSettings, setShowSettings] = useState(false);
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
   // Footer overflow-y-hidden clips absolute menus; fixed popover escapes it.
   const { referenceRef: postNowRef, floatingRef: postNowMenuRef } =
@@ -125,11 +121,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       setHide(false);
     }
   }, [hide]);
-
-  const currentChannel = useMemo(
-    () => integrations.find((p) => p.id === current),
-    [integrations, current]
-  );
 
   const changeCustomer = useCallback(
     (customer: string) => {
@@ -389,7 +380,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               );
               focus(item.id, 'fix');
               setLoading(false);
-              setShowSettings(true);
+              document
+                .getElementById('wrapper-settings')
+                ?.scrollIntoView({ block: 'nearest' });
               return;
             }
 
@@ -400,7 +393,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               );
               focus(item.id, 'preview');
               setLoading(false);
-              setShowSettings(false);
               return;
             }
 
@@ -751,104 +743,34 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
+                      id="wrapper-settings"
+                      data-pq="composer-settings"
+                      role="region"
+                      aria-label={t('channel_settings', 'Channel settings')}
+                      className={clsx(
+                        'flex flex-col',
+                        !hasChannels && 'hidden'
+                      )}
+                    >
+                      <span className="sr-only">
+                        {t(
+                          'channel_settings_hint',
+                          'Per network — title, tags, audience, and more'
+                        )}
+                      </span>
+                      <div
+                        id="social-settings"
+                        className="flex flex-col gap-[16px] text-[14px] font-[500] text-pqText"
+                      />
+                      <style>
+                        {`#social-settings [data-id="${current}"] {display: block !important;}`}
+                      </style>
+                    </div>
+                    <div
                       id="social-empty"
                       className="pb-[8px]"
                     />
                   </div>
-                </div>
-              </div>
-              <div
-                id="wrapper-settings"
-                data-pq="composer-settings"
-                className={clsx(
-                  'flex flex-col select-none px-[24px] pb-[20px] pt-[4px]',
-                  (current === 'global' || !hasChannels) && 'hidden'
-                )}
-              >
-                <div className="overflow-hidden rounded-[16px] border border-pqBorder bg-pqInner">
-                  <button
-                    type="button"
-                    aria-expanded={showSettings}
-                    aria-controls="social-settings"
-                    onClick={() => setShowSettings((open) => !open)}
-                    className="flex w-full cursor-pointer items-center gap-[12px] px-[14px] py-[12px] text-start transition-colors hover:bg-pqHover"
-                  >
-                    <span
-                      className="relative grid size-[36px] shrink-0 place-items-center overflow-hidden rounded-[10px] bg-pqSettings text-pqMuted"
-                      aria-hidden="true"
-                    >
-                      {current !== 'global' && currentChannel ? (
-                        <>
-                          <img
-                            src={`/icons/platforms/${currentChannel.identifier}.png`}
-                            className="h-[20px] w-[20px] rounded-[5px]"
-                            alt=""
-                          />
-                          <SettingsIcon
-                            size={12}
-                            className="absolute -end-[1px] -bottom-[1px] text-pqText"
-                          />
-                        </>
-                      ) : (
-                        <SettingsIcon size={16} className="text-pqMuted" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-[600] text-pqText">
-                        {t('channel_settings', 'Channel settings')}
-                      </span>
-                      <span className="mt-[1px] block truncate text-[12px] text-pqMuted">
-                        {current !== 'global' && currentChannel
-                          ? channelNameWithHandle(currentChannel) ||
-                            currentChannel.identifier
-                          : t(
-                              'channel_settings_hint',
-                              'Per network — title, tags, audience, and more'
-                            )}
-                      </span>
-                    </span>
-                    {current === 'global' && selectedIntegrations.length > 0 && (
-                      <span className="flex shrink-0 items-center pe-[4px]">
-                        {selectedIntegrations.slice(0, 4).map((item, index) => (
-                          <img
-                            key={item.integration.id}
-                            src={`/icons/platforms/${item.integration.identifier}.png`}
-                            alt={item.integration.identifier}
-                            title={channelNameWithHandle(item.integration)}
-                            className="h-[22px] w-[22px] rounded-[6px] shadow-[0_0_0_2px_var(--inner)]"
-                            style={{
-                              marginInlineStart: index === 0 ? 0 : -6,
-                            }}
-                          />
-                        ))}
-                        {selectedIntegrations.length > 4 && (
-                          <span className="ms-[6px] text-[11px] font-[600] text-pqSoft">
-                            +{selectedIntegrations.length - 4}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    <ChevronDownIcon
-                      rotated={showSettings}
-                      className="shrink-0 text-pqMuted"
-                    />
-                  </button>
-                  <div
-                    className={clsx(
-                      'border-t border-pqLine bg-pqSettings text-[14px] font-[500] text-pqText',
-                      !showSettings && 'hidden'
-                    )}
-                  >
-                    <div className="max-h-[min(420px,46vh)] overflow-x-hidden overflow-y-auto p-[12px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqSettings">
-                      <div
-                        id="social-settings"
-                        className="flex flex-col gap-[12px]"
-                      />
-                    </div>
-                  </div>
-                  <style>
-                    {`#social-settings [data-id="${current}"] {display: block !important;}`}
-                  </style>
                 </div>
               </div>
             </div>
