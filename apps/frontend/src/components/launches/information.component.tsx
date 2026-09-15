@@ -9,26 +9,6 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 import { hasLinks } from '@gitroom/helpers/utils/strip.links';
 
-const Valid: FC = () => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-    >
-      <path
-        d="M6 7.33333L8 9.33333L14.6667 2.66667M10.6667 2H5.2C4.0799 2 3.51984 2 3.09202 2.21799C2.71569 2.40973 2.40973 2.71569 2.21799 3.09202C2 3.51984 2 4.07989 2 5.2V10.8C2 11.9201 2 12.4802 2.21799 12.908C2.40973 13.2843 2.71569 13.5903 3.09202 13.782C3.51984 14 4.07989 14 5.2 14H10.8C11.9201 14 12.4802 14 12.908 13.782C13.2843 13.5903 13.5903 13.2843 13.782 12.908C14 12.4802 14 11.9201 14 10.8V8"
-        stroke="#00EB75"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-};
-
 const Invalid: FC = () => {
   return (
     <svg
@@ -108,51 +88,43 @@ export const InformationComponent: FC<{
     });
   }, [isGlobal, internal, selectedIntegrations]);
 
-  const isValid = useMemo(() => {
+  const isEmpty = !isPicture && !totalChars;
+
+  const isOverLimit = useMemo(() => {
     if (showStripLinkWarning) {
-      return false;
+      return true;
     }
 
-    if (!isPicture && !totalChars) {
-      return false;
-    }
-
-    if (totalChars > totalAllowedChars && !isGlobal) {
-      return false;
-    }
-
-    if (totalChars <= totalAllowedChars && !isGlobal) {
+    if (!isGlobal && totalChars > totalAllowedChars) {
       return true;
     }
 
     if (
+      isGlobal &&
       selectedIntegrations.some((p, index) => {
         if (isInternal[index]) {
           return false;
         }
-
         return totalChars > (chars?.[p.integration.id] || 0);
       })
     ) {
-      return false;
+      return true;
     }
 
-    return true;
+    return false;
   }, [
-    totalAllowedChars,
-    totalChars,
-    isInternal,
-    isPicture,
-    chars,
     showStripLinkWarning,
-    // Read above, and listed here on purpose. Today they are covered by
-    // accident: `isInternal` depends on both and returns a fresh array every
-    // time, so it re-triggers this. The first person to memoize that empty
-    // array — an obvious-looking optimisation — would otherwise leave the
-    // validity pill a tab behind, with nothing to point at.
     isGlobal,
+    totalChars,
+    totalAllowedChars,
     selectedIntegrations,
+    isInternal,
+    chars,
   ]);
+
+  // Empty is not a drafting error — only over-limit / stripped links are.
+  const isValid = !isEmpty && !isOverLimit;
+  const pillTone = isOverLimit ? 'warn' : isEmpty ? 'idle' : 'ok';
 
   const globalDisplayLimit = useMemo(() => {
     if (!isGlobal || !selectedIntegrations.length) {
@@ -180,7 +152,7 @@ export const InformationComponent: FC<{
   }, [isGlobal, selectedIntegrations, chars, isInternal, totalChars]);
 
   const hasDetails =
-    (isGlobal && selectedIntegrations.length > 0) || !isValid;
+    isOverLimit || (isGlobal && selectedIntegrations.length > 0);
   /**
    * Design `charPanelDisplay`: `charPanel && ((isGlobalTab && sel.length) || !charValid)`.
    * It is hover-gated, with no bypass for the invalid case — an empty editor is
@@ -196,17 +168,19 @@ export const InformationComponent: FC<{
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={clsx(
-        'relative flex h-[30px] items-center justify-center gap-[4px] rounded-[6px] px-[6px]',
-        isValid ? 'border border-newColColor' : 'bg-pqWarn'
+        'relative flex h-[32px] items-center justify-center gap-[4px] rounded-[8px] px-[8px]',
+        pillTone === 'warn' && 'bg-pqWarn',
+        pillTone === 'ok' && 'text-pqMuted',
+        pillTone === 'idle' && 'text-pqSoft'
       )}
     >
-      {isValid ? <Valid /> : <Invalid />}
+      {pillTone === 'warn' && <Invalid />}
 
       {!isGlobal && (
         <div
           className={clsx(
-            'flex items-center justify-center text-[10px] font-[600]',
-            !isValid && 'text-pqOnBrand'
+            'flex items-center justify-center text-[11px] font-[600] tabular-nums',
+            pillTone === 'warn' && 'text-pqOnBrand'
           )}
         >
           {totalChars}/{totalAllowedChars}
@@ -215,8 +189,8 @@ export const InformationComponent: FC<{
       {isGlobal && globalDisplayLimit !== null && (
         <div
           className={clsx(
-            'flex items-center justify-center text-[10px] font-[600]',
-            !isValid && 'text-pqOnBrand'
+            'flex items-center justify-center text-[11px] font-[600] tabular-nums',
+            pillTone === 'warn' && 'text-pqOnBrand'
           )}
         >
           {totalChars}/{globalDisplayLimit}
@@ -233,7 +207,7 @@ export const InformationComponent: FC<{
           onClick={() => setDetailsOpen((o) => !o)}
           className={clsx(
             'grid place-items-center rounded-[4px] p-[1px]',
-            !isValid && 'text-pqOnBrand'
+            !isValid && pillTone === 'warn' && 'text-pqOnBrand'
           )}
         >
           <svg
@@ -260,7 +234,7 @@ export const InformationComponent: FC<{
             // area, and the 5px gap between it and the pill lets a slow pointer
             // trip the wrapper's mouseleave on the way up.
             'pointer-events-none absolute bottom-[100%] end-0 z-[300] mb-[5px] flex flex-col rounded-[12px] bg-newBgColorInner p-[12px]',
-            isValid ? 'border border-newColColor' : 'border border-pqWarn'
+            pillTone === 'warn' ? 'border border-pqWarn' : 'border border-pqLine'
           )}
         >
           {!isPicture && !totalChars && (

@@ -69,9 +69,8 @@ export const DatePicker: FC<{
   return (
     <div
       className={clsx(
-        'relative ml-[7px] flex h-[44px] min-w-0 select-none items-center justify-center gap-[8px] overflow-hidden rounded-[8px] border border-newTextColor/10 px-[16px] text-[15px] font-[600]',
-        'max-[1179px]:ml-0 max-[1179px]:w-full max-[1179px]:flex-none',
-        'min-[1180px]:flex-1',
+        'relative flex h-[42px] min-w-0 shrink-0 cursor-pointer select-none items-center justify-center gap-[8px] overflow-hidden rounded-[10px] bg-pqInner px-[14px] text-[13px] font-[600] shadow-[inset_0_0_0_1px_var(--border)]',
+        'max-[1179px]:w-full max-[1179px]:flex-none min-[1180px]:w-auto',
         className
       )}
       ref={ref}

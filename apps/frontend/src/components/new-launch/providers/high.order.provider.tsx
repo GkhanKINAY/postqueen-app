@@ -246,15 +246,54 @@ export const withProvider = function <T extends object>(params: {
         <FormProvider {...form}>
           <div
             className={clsx(
-              'border border-borderPreview rounded-[12px] shadow-previewShadow',
+              'relative isolate min-w-0 overflow-hidden rounded-[16px] border border-pqBorder bg-pqInner shadow-pqE1',
               // Global mode stacks every selected channel preview; per-channel
               // tab still shows only the active id. Filter chips hide via CSS
               // data attribute when parent marks the card filtered out.
+              // `relative isolate overflow-hidden` keeps TikTok/YouTube/Pinterest
+              // (and any leftover absolute chrome) inside this card. Upstream
+              // Postiz only renders the active channel, so their
+              // `absolute left-0 top-0 w-full h-full` fills the pane on purpose.
               !current && !isGlobal && 'hidden',
               isGlobal && 'mb-[12px] last:mb-0'
             )}
             data-preview-channel={props.id}
           >
+            {isGlobal && (
+              <div
+                data-pq="preview-channel-label"
+                className="flex min-w-0 items-center gap-[8px] border-b border-pqLine bg-pqSettings px-[14px] py-[10px]"
+              >
+                <div className="relative shrink-0">
+                  <SafeImage
+                    alt={selectedIntegration?.integration.name!}
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px] rounded-full"
+                    src={selectedIntegration?.integration.picture}
+                  />
+                  <SafeImage
+                    alt={selectedIntegration?.integration.identifier}
+                    width={12}
+                    height={12}
+                    className="absolute -bottom-[2px] -end-[2px] h-[12px] w-[12px] rounded-[3px]"
+                    src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 truncate text-[12px] font-[600] text-pqText">
+                  {selectedIntegration?.integration.name}
+                  {!!formatChannelHandle(
+                    selectedIntegration?.integration.display
+                  ) && (
+                    <span className="ms-[6px] font-[400] text-pqSoft">
+                      {formatChannelHandle(
+                        selectedIntegration?.integration.display
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             {(current || isGlobal) &&
               (tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&
@@ -306,47 +345,34 @@ export const withProvider = function <T extends object>(params: {
                   data-id={props.id}
                   className={clsx(
                     isGlobal ? 'block' : 'hidden',
-                    'rounded-[12px] bg-pqInner p-[16px] shadow-[inset_0_0_0_1px_var(--border)]'
+                    'flex flex-col gap-[12px]'
                   )}
                 >
                   {isGlobal && (
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="mb-[14px] flex items-center gap-[12px] border-b border-pqLine pb-[14px]">
-                      <div className="relative">
-                        <SafeImage
-                          alt={selectedIntegration?.integration.name!}
-                          width={36}
-                          height={36}
-                          className="h-[36px] min-h-[36px] w-[36px] min-w-[36px] rounded-full"
-                          src={selectedIntegration?.integration.picture}
-                        />
-                        <SafeImage
-                          alt={selectedIntegration?.integration.identifier}
-                          width={14}
-                          height={14}
-                          className="absolute -bottom-[2px] -end-[2px] h-[14px] min-h-[14px] w-[14px] min-w-[14px] rounded-[14px]"
-                          src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
-                        />
-                      </div>
-                      <div>
-                        <div className="text-[15px] font-[600] tracking-[-0.01em] text-pqText">
-                          {selectedIntegration?.integration.name}
-                        </div>
+                    <div className="flex min-w-0 items-center gap-[8px]">
+                      <img
+                        src={`/icons/platforms/${selectedIntegration?.integration.identifier}.png`}
+                        alt=""
+                        className="h-[18px] w-[18px] shrink-0 rounded-[4px]"
+                      />
+                      <div className="min-w-0 truncate text-[13px] font-[600] text-pqText">
+                        {selectedIntegration?.integration.name}
                         {!!formatChannelHandle(
                           selectedIntegration?.integration.display
                         ) && (
-                          <div className="mt-[1px] truncate text-[12.5px] text-pqMuted">
+                          <span className="ms-[6px] font-[400] text-pqMuted">
                             {formatChannelHandle(
                               selectedIntegration?.integration.display
                             )}
-                          </div>
+                          </span>
                         )}
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col gap-[14px]">
+                  <div className="flex flex-col gap-[12px]">
                     {SettingsComponent && <SettingsComponent />}
                     {!!data?.internalPlugs?.length && !dummy && (
                       <InternalChannels plugs={data?.internalPlugs} />

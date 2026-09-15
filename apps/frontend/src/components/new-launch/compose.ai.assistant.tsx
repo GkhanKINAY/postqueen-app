@@ -27,16 +27,17 @@ const COPILOT_DESKTOP_PX = 640;
 
 const triggerClassName = (open: boolean) =>
   clsx(
-    'flex h-[42px] shrink-0 items-center gap-[8px] rounded-[10px] border-0 bg-btnSimple px-[16px] text-[14px] font-[600] text-pqText transition-colors hover:bg-pqHover',
-    open &&
-      'bg-pqBrandSoft shadow-[inset_0_0_0_1px_var(--focused)] hover:bg-pqBrandSoft'
+    'flex h-[36px] shrink-0 cursor-pointer items-center gap-[6px] whitespace-nowrap rounded-[8px] bg-pqBrandSoft px-[10px] text-[12.5px] font-[600] text-pqFocused transition-colors',
+    open
+      ? 'shadow-[inset_0_0_0_1px_var(--focused)] hover:bg-pqBrandSoft'
+      : 'hover:bg-pqBoxFocused'
   );
 
 const SparkleIcon: FC = () => (
   <svg
     viewBox="0 0 24 24"
-    width="20"
-    height="20"
+    width="16"
+    height="16"
     fill="currentColor"
     aria-hidden="true"
     className="shrink-0 text-pqFocused"
@@ -54,7 +55,7 @@ const ComposeAiTriggerFace: FC<{
   return (
     <>
       {open ? (
-        <CloseIcon size={20} className="shrink-0 text-pqFocused" />
+        <CloseIcon size={16} className="shrink-0 text-pqFocused" />
       ) : (
         <SparkleIcon />
       )}
@@ -203,7 +204,7 @@ function usePinCopilotWindow(
 }
 
 /**
- * Composer-footer AI control. Configured: CopilotKit popup chat. Unconfigured:
+ * Composer-toolbar AI control. Configured: CopilotKit popup chat. Unconfigured:
  * same control, links to Connections with a setup hint. Never a viewport-edge FAB.
  */
 export const ComposeAiAssistant: FC = () => {

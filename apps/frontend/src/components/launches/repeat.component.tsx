@@ -79,8 +79,9 @@ export const RepeatComponent: FC<{
     return list.find((p) => p.value === repeat)?.label;
   }, [repeat, list]);
 
-  const emptyLabel = t('repeat_post_every', 'Repeat Post Every...');
-  const triggerLabel = repeat
+  const emptyLabel = t('repeat_post_every', 'Repeat');
+  const triggerLabel = repeat ? everyLabel : emptyLabel;
+  const ariaLabel = repeat
     ? `${t('repeat_post_every_label', 'Repeat Post Every')} ${everyLabel}`
     : emptyLabel;
 
@@ -88,14 +89,14 @@ export const RepeatComponent: FC<{
     <div
       ref={ref}
       className={clsx(
-        'relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden rounded-[8px] border text-[15px] font-[600] select-none',
+        'relative flex h-[42px] min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover',
         isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
       )}
     >
       <div
         ref={referenceRef}
         role="button"
-        aria-label={triggerLabel}
+        aria-label={ariaLabel}
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
           'flex h-full min-w-0 flex-1 select-none items-center justify-center gap-[8px]',
@@ -105,13 +106,7 @@ export const RepeatComponent: FC<{
         <div className="cursor-pointer">
           <RepeatIcon />
         </div>
-        {touch ? (
-          repeat ? (
-            <div className="min-w-0 cursor-pointer truncate">{everyLabel}</div>
-          ) : null
-        ) : (
-          <div className="min-w-0 cursor-pointer truncate">{triggerLabel}</div>
-        )}
+        <div className="min-w-0 cursor-pointer truncate">{triggerLabel}</div>
         <div className="cursor-pointer">
           <DropdownArrowIcon rotated={isOpen} />
         </div>

@@ -57,29 +57,29 @@ export const GeneralPreviewComponent: FC<{
   });
 
   return (
-    <div className={clsx('w-full p-[15px]')}>
-      <div className="w-full h-full relative flex flex-col">
+    <div className={clsx('relative isolate w-full min-w-0 overflow-hidden px-[16px] py-[14px]')}>
+      <div className="relative flex w-full min-w-0 flex-col">
         {renderContent.map((value, index) => (
           <div
             key={`tweet_${index}`}
             style={{}}
             className={clsx(
-              `flex gap-[8px] relative`,
+              `relative flex min-w-0 gap-[8px]`,
               index === renderContent.length - 1 ? 'pb-[12px]' : 'pb-[24px]'
             )}
           >
-            <div className="min-w-[40px] h-[40px] min-h-[40px] w-[40px] flex flex-col items-center">
+            <div className="flex h-[40px] min-h-[40px] min-w-[40px] w-[40px] flex-col items-center">
               <div className="relative">
                 <img
                   src={integration?.picture || '/no-picture.jpg'}
                   alt={integration?.name || 'channel'}
-                  className="rounded-full relative z-[2]"
+                  className="relative z-[2] h-[40px] w-[40px] rounded-full object-cover"
                 />
 
                 {!!integration?.identifier && (
                   <SafeImage
                     src={`/icons/platforms/${integration.identifier}.png`}
-                    className="min-w-[20px] min-h-[20px] rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
+                    className="absolute -bottom-[5px] -end-[5px] z-10 min-h-[20px] min-w-[20px] rounded-full border border-fifth"
                     alt={integration.identifier}
                     width={20}
                     height={20}
@@ -87,22 +87,22 @@ export const GeneralPreviewComponent: FC<{
                 )}
               </div>
               {index !== topValue.length - 1 && (
-                <div className="flex-1 w-[2px] h-[calc(100%-10px)] bg-customColor25 absolute top-[10px] z-[1]" />
+                <div className="absolute top-[10px] z-[1] h-[calc(100%-10px)] w-[2px] flex-1 bg-pqLine" />
               )}
             </div>
-            <div className="flex-1 flex flex-col gap-[4px]">
-              <div className="flex">
-                <div className="h-[22px] text-[15px] font-[700]">
+            <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
+              <div className="flex min-w-0 items-center">
+                <div className="h-[22px] truncate text-[15px] font-[700] text-pqText">
                   {integration?.name ||
                     (current === 'global' ? 'Global' : '')}
                 </div>
-                {!!integration?.name && (
-                  <div className="text-[15px] text-customColor26 mt-[1px] ms-[2px]">
+                {integration?.identifier === 'x' && !!integration?.name && (
+                  <div className="ms-[2px] mt-[1px] shrink-0 text-[15px] text-pqText">
                     <svg
                       viewBox="0 0 22 22"
                       aria-label="Verified account"
                       role="img"
-                      className="max-w-[20px] max-h-[20px] fill-current h-[1.25em]"
+                      className="h-[1.25em] max-h-[20px] max-w-[20px] fill-current"
                       data-testid="icon-verified"
                     >
                       <g>
@@ -111,13 +111,15 @@ export const GeneralPreviewComponent: FC<{
                     </svg>
                   </div>
                 )}
-                <div className="text-[15px] font-[400] text-customColor27 ms-[4px]">
+                <div className="ms-[4px] truncate text-[15px] font-[400] text-pqSoft">
                   {formatChannelHandle(integration?.display) ||
                     (integration?.name ? '@username' : '')}
                 </div>
               </div>
               <div
-                className={clsx('text-wrap whitespace-pre', 'preview')}
+                className={clsx(
+                  'min-w-0 whitespace-pre-wrap break-words preview'
+                )}
                 dangerouslySetInnerHTML={{
                   __html: sanitizePreviewHtml(value.text),
                 }}

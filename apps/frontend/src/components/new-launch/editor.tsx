@@ -24,7 +24,14 @@ import {
   useLaunchStore,
 } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
+import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { AddPostButton } from '@gitroom/frontend/components/new-launch/add.post.button';
+import {
+  ComposeFirstComment,
+  editorHtmlToPlain,
+  plainToEditorHtml,
+} from '@gitroom/frontend/components/new-launch/compose.first.comment';
+import { PostComment } from '@gitroom/frontend/components/new-launch/providers/post-comment.enum';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -366,6 +373,68 @@ export const EditorWrapper: FC<{
     [current, global, internal, t]
   );
 
+  const firstCommentMode =
+    Boolean(comments) && postComment !== PostComment.POST && canEdit;
+  const lastVisibleIndex = firstCommentMode
+    ? items.length <= 2
+      ? 0
+      : items.length - 1
+    : items.length - 1;
+
+  const setFirstCommentText = useCallback(
+    (text: string) => {
+      const html = text.trim() ? plainToEditorHtml(text) : '';
+      const comment = items[1];
+      if (!comment) {
+        if (!html) {
+          return;
+        }
+        const next = [
+          {
+            delay: 0,
+            content: html,
+            id: makeId(10),
+            media: [] as { id: string; path: string; thumbnail?: string }[],
+          },
+        ];
+        if (internal) {
+          addInternalValue(0, current, next);
+          return;
+        }
+        addGlobalValue(0, next);
+        return;
+      }
+      if (
+        !html &&
+        items.length === 2 &&
+        !(comment.media && comment.media.length)
+      ) {
+        if (internal) {
+          deleteInternalValue(current, 1);
+          return;
+        }
+        deleteGlobalValue(1);
+        return;
+      }
+      if (internal) {
+        setInternalValueText(current, 1, html);
+        return;
+      }
+      setGlobalValueText(1, html);
+    },
+    [
+      addGlobalValue,
+      addInternalValue,
+      current,
+      deleteGlobalValue,
+      deleteInternalValue,
+      internal,
+      items,
+      setGlobalValueText,
+      setInternalValueText,
+    ]
+  );
+
   if (!loaded || !loadedState) {
     return null;
   }
@@ -373,10 +442,10 @@ export const EditorWrapper: FC<{
   return (
     <div
       className={clsx(
-        'relative flex-col gap-[20px] flex-1',
+        'relative flex w-full min-w-0 flex-col gap-[16px]',
         (items.length === 1 || !canEdit || !comments) && 'flex',
         ((!canEdit && !isCreateSet) || !comments) &&
-          'bg-pqSettings rounded-[12px]'
+          'rounded-[12px] bg-pqSettings'
       )}
     >
       {aiOk && (
@@ -434,19 +503,28 @@ export const EditorWrapper: FC<{
           <div className="absolute w-full h-full left-0 top-0 bg-pqPopup opacity-60 z-[100] rounded-[12px]" />
         </>
       )}
-      {items.map((g, index) => (
+      {items.map((g, index) => {
+        if (firstCommentMode && index === 1) {
+          return null;
+        }
+        const showAddComment =
+          comments &&
+          canEdit &&
+          index === lastVisibleIndex &&
+          !(firstCommentMode && items.length < 2);
+        return (
         <div
           key={g.id}
           className={clsx(
-            'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
+            'relative flex w-full min-w-0 flex-col gap-[16px] bg-pqSettings',
             index === 0 && 'rounded-t-[12px]',
-            (index === items.length - 1 || !comments) && 'rounded-b-[12px]',
+            (index === items.length - 1 || !comments || (firstCommentMode && items.length <= 2)) && 'rounded-b-[12px]',
             !canEdit && !isCreateSet && 'blur-s',
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
           )}
         >
-          <div className="flex gap-[5px] flex-1 w-full">
-            <div className="flex-1 flex w-full">
+          <div className="flex w-full min-w-0 gap-[5px]">
+            <div className="flex w-full min-w-0">
               {index > 0 && (
                 <div className="flex justify-center pl-[12px] text-newSep">
                   <ConnectionLineIcon />
@@ -471,50 +549,56 @@ export const EditorWrapper: FC<{
                 dummy={dummy}
                 selectedIntegration={selectedIntegration}
                 chars={chars}
+                firstComment={
+                  firstCommentMode && index === 0 ? (
+                    <ComposeFirstComment
+                      value={editorHtmlToPlain(items[1]?.content || '')}
+                      onChange={setFirstCommentText}
+                    />
+                  ) : undefined
+                }
                 childButton={
-                  <>
-                    {(canEdit && items.length - 1 === index) || !comments ? (
-                      <div className="flex items-center">
-                        <div className="flex-1">
-                          {comments && (
-                            <AddPostButton
-                              num={index}
-                              onClick={addValue(index)}
-                              postComment={postComment}
-                            />
+                  ((canEdit && items.length - 1 === index) || !comments) &&
+                  !!internal &&
+                  !existingData?.integration ? (
+                    <div
+                      className="flex cursor-pointer select-none items-center gap-[20px]"
+                      onClick={goBackToGlobal}
+                    >
+                      <div className="flex items-center gap-[6px]">
+                        <div className="h-[8px] w-[8px] rounded-full bg-pqPink" />
+                        <div className="text-[14px] font-[600]">
+                          {t(
+                            'editing_a_specific_network',
+                            'Editing a Specific Network'
                           )}
                         </div>
-                        {!!internal && !existingData?.integration && (
-                          <div
-                            className="mt-[12px] flex gap-[20px] items-center cursor-pointer select-none"
-                            onClick={goBackToGlobal}
-                          >
-                            <div className="flex gap-[6px] items-center">
-                              <div className="w-[8px] h-[8px] rounded-full bg-pqPink" />
-                              <div className="text-[14px] font-[600]">
-                                {t(
-                                  'editing_a_specific_network',
-                                  'Editing a Specific Network'
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-[6px] items-center">
-                              <div>
-                                <ResetIcon />
-                              </div>
-                              <div className="text-[13px] font-[600]">
-                                {t('back_to_global', 'Back to global')}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    ) : null}
-                  </>
+                      <div className="flex items-center gap-[6px]">
+                        <div>
+                          <ResetIcon />
+                        </div>
+                        <div className="text-[13px] font-[600]">
+                          {t('back_to_global', 'Back to global')}
+                        </div>
+                      </div>
+                    </div>
+                  ) : undefined
+                }
+                threadAction={
+                  showAddComment ? (
+                    <AddPostButton
+                      num={index}
+                      onClick={addValue(
+                        firstCommentMode ? items.length - 1 : index
+                      )}
+                      postComment={postComment}
+                    />
+                  ) : undefined
                 }
               />
             </div>
-            {comments && (
+            {comments && !(firstCommentMode && index === 0) && (
               <div className="flex flex-col items-center gap-[10px] pe-[12px]">
                 <UpDownArrow
                   isUp={index !== 0}
@@ -539,7 +623,8 @@ export const EditorWrapper: FC<{
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -563,6 +648,8 @@ export const Editor: FC<{
   dummy: boolean;
   chars: Record<string, number>;
   childButton?: React.ReactNode;
+  threadAction?: React.ReactNode;
+  firstComment?: React.ReactNode;
 }> = (props) => {
   const {
     editorType = 'normal',
@@ -575,6 +662,8 @@ export const Editor: FC<{
     dummy,
     chars,
     childButton,
+    threadAction,
+    firstComment,
     comments,
   } = props;
   const [id] = useState(makeId(10));
@@ -731,16 +820,17 @@ export const Editor: FC<{
   }
 
   return (
-    <div className="flex flex-col gap-[20px] flex-1">
+    <div className="flex w-full min-w-0 flex-col gap-[12px]">
       <div
         className={clsx(
-          'relative flex-1 px-[12px] pt-[12px] pb-[12px] flex flex-col',
+          'relative flex flex-col overflow-hidden rounded-[12px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]',
           num > 0 && '!rounded-bs-[0]'
         )}
+        data-pq="composer-editor"
         id={id}
       >
-        <div className="relative cursor-text flex flex-1 flex-col">
-          <div {...getRootProps()} className="flex flex-1 flex-col">
+        <div className="relative flex cursor-text flex-col">
+          <div {...getRootProps()} className="flex flex-col">
             <div
               className={clsx(
                 // Solid cover like DropFiles — never frost thumbs through.
@@ -768,7 +858,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="px-[10px] pt-[10px] bg-pqInner rounded-t-[6px] relative z-[99]">
+            <div className="relative z-[99] min-h-[112px] bg-pqInner px-[10px] pt-[10px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -778,7 +868,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="bg-pqInner flex-1"
+              className="min-h-[8px] bg-pqInner"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
@@ -786,88 +876,58 @@ export const Editor: FC<{
                 editorRef?.current?.editor?.commands?.focus('end');
               }}
             />
-            <div className="w-full pointer-events-none">
-              <div className="w-full h-[46px] overflow-hidden absolute left-0 bg-pqInner uppyChange">
-                <UppyProgress height={46} uppy={uppy} id={`prog-${num}`} />
+            <div className="pointer-events-none relative w-full">
+              <div className="uppyChange absolute left-0 top-0 h-[40px] w-full overflow-hidden bg-pqInner">
+                <UppyProgress height={40} uppy={uppy} id={`prog-${num}`} />
               </div>
             </div>
-            <div
-              className="w-full h-[46px] bg-pqInner cursor-text"
-              onClick={() => {
-                if (editorRef?.current?.editor?.isFocused) {
-                  return;
-                }
-                editorRef?.current?.editor?.commands?.focus('end');
-              }}
-            />
-            {/* Ephemeral Connections tip — no filled panel; dismiss persists. */}
+            {/* Ephemeral Connections tip — one quiet row, not a stacked panel. */}
             {!num && !aiHintOff && !valueWithoutHtml.trim() && (
-              <div className="mx-[2px] mb-[2px] mt-[10px] flex min-w-0 flex-col gap-[10px] overflow-hidden border-t border-pqLine pt-[12px]">
-                <div className="flex min-w-0 items-start gap-[12px]">
-                  <span
-                    className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
-                    aria-hidden="true"
+              <div
+                data-pq="composer-ai-hint"
+                className="mx-[10px] mt-[4px] flex min-w-0 items-center gap-[8px] overflow-hidden border-t border-pqLine pt-[8px]"
+              >
+                <span
+                  className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
+                  aria-hidden="true"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      fill="none"
-                    >
-                      <path
-                        d="M12 3.5 13.1 8.4 18 9.5l-4.9 1.1L12 15.5l-1.1-4.9L6 9.5l4.9-1.1L12 3.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6.6-1.9Z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M5.5 15.5 5.9 16.7 7.1 17.1 5.9 17.5 5.5 18.7 5.1 17.5 3.9 17.1 5.1 16.7 5.5 15.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    <path
+                      d="M12 3.5 13.1 8.4 18 9.5l-4.9 1.1L12 15.5l-1.1-4.9L6 9.5l4.9-1.1L12 3.5Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6.6-1.9Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M5.5 15.5 5.9 16.7 7.1 17.1 5.9 17.5 5.5 18.7 5.1 17.5 3.9 17.1 5.1 16.7 5.5 15.5Z"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] leading-[1.3] text-pqMuted">
+                  <span className="font-[600] text-pqText">
+                    {t('let_ai_write_this_post', 'Draft with your AI')}
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-                    <span className="text-[13.5px] font-[600] tracking-[-0.01em] text-pqText">
-                      {t('let_ai_write_this_post', 'Draft with your AI')}
-                    </span>
-                    <span className="break-words text-[12.5px] leading-[1.45] text-pqMuted">
-                      {t(
-                        'let_ai_write_this_post_sub',
-                        'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'
-                      )}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={dismissAiHint}
-                    aria-label={t('hide', 'Hide')}
-                    className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-full text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 6l12 12M18 6 6 18"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-[6px]">
+                  {' — '}
+                  {t(
+                    'let_ai_write_this_post_sub',
+                    'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'
+                  )}
+                </span>
+                <div className="flex shrink-0 items-center gap-[4px]">
                   {(
                     [
                       {
@@ -895,7 +955,9 @@ export const Editor: FC<{
                     <NextLink
                       key={tool.id}
                       href="/connections"
-                      className="flex h-[28px] min-w-0 items-center gap-[6px] rounded-full ps-[6px] pe-[10px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+                      title={tool.label}
+                      aria-label={tool.label}
+                      className="flex h-[28px] items-center gap-[6px] rounded-full ps-[6px] pe-[10px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText maxMedia:pe-[6px]"
                     >
                       <SafeImage
                         src={tool.icon}
@@ -904,13 +966,34 @@ export const Editor: FC<{
                         height={17}
                         className="h-[17px] w-[17px] shrink-0 rounded-[5px] object-contain"
                       />
-                      {tool.label}
+                      <span className="maxMedia:hidden">{tool.label}</span>
                     </NextLink>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={dismissAiHint}
+                  aria-label={t('hide', 'Hide')}
+                  className="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-full text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 6l12 12M18 6 6 18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
               </div>
             )}
-            <div className="flex bg-pqInner rounded-b-[6px] cursor-default">
+            <div className="flex cursor-default flex-col bg-pqInner">
               {setImages && (
                 <MultiMediaComponent
                   mediaNotAvailable={num > 0 && comments === 'no-media'}
@@ -931,7 +1014,7 @@ export const Editor: FC<{
                     />
                   }
                   toolBar={
-                    <div className="flex flex-wrap items-center gap-[6px]">
+                    <div className="flex flex-nowrap items-center gap-[6px]">
                       <SignatureBox editor={editorRef?.current?.editor} />
                       {editorType !== 'none' && (
                         <>
@@ -1000,10 +1083,24 @@ export const Editor: FC<{
                   }}
                   onOpen={() => {}}
                   onClose={() => {}}
+                  trailing={
+                    <>
+                      {!num && <ComposeAiAssistant />}
+                      {threadAction}
+                    </>
+                  }
                 />
               )}
+              {!!firstComment && firstComment}
+              {!!childButton && (
+                <div
+                  data-pq="composer-thread-actions"
+                  className="px-[10px] pb-[10px] pt-[4px]"
+                >
+                  {childButton}
+                </div>
+              )}
             </div>
-            <div>{childButton}</div>
           </div>
         </div>
       </div>

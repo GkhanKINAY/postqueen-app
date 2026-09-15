@@ -1366,3 +1366,19 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Channels: X options nests Long posts
 
 **i18n +7.** Channels → X treated “X options” and “Verified” as two sibling tiles, so the row did not read as a child of the accordion. They now share one `pqPop` card: collapsed is a single control, expanded shows the child inset (`pqThird`, title-aligned indent, `pqLine` divider). The stored flag is still `title: "Verified"` (composer 280 vs 4000). Visible copy is **Long posts** / **X Premium character limit** — not the blue check, and not “Applies to every post on this channel.” Edit still POSTs the same JSON. Facebook / Instagram / Threads / YouTube keep returning `null` from `PublishingOptions` when `additionalSettings` is empty. Channel list selected name is semibold; empty-list hint matches settings row size. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer media: overlay chips on a 120px Create Post thumb
+
+**i18n +2 (`instagram_45_hint`, `drag_drop_or_select`).** Create Post attachments were 48px chips with a hanging X, so alt/edit could not sit on the photo. Studio thumbs are now 120px squares: info and close on the image, ALT and edit as dark chips on the bottom, plus a dashed add well. ALT opens the existing media-settings modal; edit opens Polonto when that is available, otherwise the same modal (video thumbnail). Agent and in-form attachment chips stay 58/48px. Instagram stills get a 4:5 hint under the row. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` and `gates.txt` (`tier.ai` 7 → 8: the thumb pencil uses the same AI gate as Design Media).
+
+## Composer: Notify me vs Quiet on this post
+
+**i18n +4 (`notify_me`, `notify_me_hint`, `notify_quiet`, `notify_quiet_hint`).** Create Post footer now has a Buffer-style notice menu next to Repeat after a channel is picked. **Notify me** (default) is today's success notice. **Quiet** stores `pq_notify: false` on the post settings JSON and the publish activity skips the digested "Your post has been published" notice. Failures still notify. Hidden on the empty compact picker so it does not collide with Save as draft. Not Buffer's "post yourself" mobile reminder — PostQueen always publishes. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer: First Comment under the tools, and on the preview
+
+**i18n +4 (`first_comment`, `your_comment`, `one_comment`, `comment_author`).** Buffer's First Comment is a single field under the compose tools; typing it paints the same text as the author's first comment on the LinkedIn preview (`1 comment`, Author badge, comment body under the action bar). PostQueen already published that as the second thread item (comment on LinkedIn/Instagram/Facebook, reply on X). Buffer posts the comment immediately after the root — First Comment stays at delay 0 with no clock. Extra comments / Continue thread still keep delay. LinkedIn preview shows a real comment count and an Author badge instead of a fake "4 Comments". X/Threads keep Continue thread. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.
+
+## Composer: When to post is next slot, now, or a date
+
+**i18n +5 (`next_available`, `next_available_hint`, `set_date_and_time`, `set_date_and_time_hint`, `post_now_hint`).** Reused `post_now`. Buffer's When to Post menu is Next Available / Prioritize / Now / Set Date. PostQueen already had the three honest ones: `/posts/find-slot` (next empty posting time), Post Now, and the date picker. **Prioritize is not in the menu** — it would bump other queued posts, and we do not. Create Post from the header defaults to Next available and re-resolves the slot on Add to Calendar. Calendar clicks and existing posts stay on the date picker. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.

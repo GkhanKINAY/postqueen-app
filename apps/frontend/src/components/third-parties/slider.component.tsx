@@ -7,8 +7,9 @@ import {
 
 export const SliderComponent: FC<{
   className: string;
-  list: ReactNode[];
+  list: ReactNode[] | undefined;
 }> = ({ className, list }) => {
+  const slides = Array.isArray(list) ? list : [];
   const [show, setShow] = useState(0);
 
   const goToPrevious = useCallback(() => {
@@ -16,15 +17,15 @@ export const SliderComponent: FC<{
   }, []);
 
   const goToNext = useCallback(() => {
-    setShow((prev) => (prev < list.length - 1 ? prev + 1 : prev));
-  }, [list.length]);
+    setShow((prev) => (prev < slides.length - 1 ? prev + 1 : prev));
+  }, [slides.length]);
 
   const canGoPrevious = show > 0;
-  const canGoNext = show < list.length - 1;
+  const canGoNext = show < slides.length - 1;
 
   return (
     <div className={clsx(className, 'relative')}>
-      {list[show]}
+      {slides[show]}
 
       {/* Left Arrow */}
       {canGoPrevious && (
@@ -49,9 +50,9 @@ export const SliderComponent: FC<{
       )}
 
       {/* Pagination Dots */}
-      {list.length > 1 && (
+      {slides.length > 1 && (
         <div className="absolute bottom-[10px] left-[50%] -translate-x-[50%] flex gap-2">
-          {list.map((_, index) => (
+          {slides.map((_, index) => (
             <button
               key={index}
               onClick={() => setShow(index)}

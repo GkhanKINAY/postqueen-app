@@ -46,11 +46,47 @@ describe('phone calendar and composer', () => {
   it('splits composer into Edit and Preview panes on phone and tablet', () => {
     assert.match(manage, /composerPane/);
     assert.match(manage, /setComposerPane\('preview'\)/);
-    assert.match(manage, /touch \? 'flex-col' : 'flex-row'/);
+    assert.match(manage, /touch \? 'flex-col' : 'flex-row overflow-hidden'/);
     assert.match(manage, /flex min-h-0 flex-1/);
     assert.match(manage, /!touch &&/);
-    assert.match(manage, /<ComposeAiAssistant \/>/);
+    const editor = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/editor.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(editor, /<ComposeAiAssistant \/>/);
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
+  });
+
+  it('keeps the desktop composer as a centered card, not edge-to-edge', () => {
+    assert.match(manage, /data-pq="composer-shell"/);
+    assert.match(manage, /data-pq="composer-card"/);
+    assert.match(manage, /data-pq="composer-preview"/);
+    assert.match(manage, /max-w-\[min\(1440px,calc\(100vw-48px\)\)\]/);
+    assert.match(manage, /h-\[calc\(100dvh-48px\)\] max-w-\[min\(1440px,calc\(100vw-48px\)\)\]/);
+    assert.match(manage, /max-w-\[min\(720px,calc\(100vw-48px\)\)\]/);
+    assert.match(manage, /w-\[440px\] shrink-0 bg-pqBg/);
+    assert.match(manage, /p-\[24px\]/);
+    assert.doesNotMatch(manage, /w-\[580px\]/);
+    assert.doesNotMatch(manage, /max-w-\[840px\]/);
+    assert.doesNotMatch(manage, /p-\[40px\]/);
+    const editor = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/editor.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(editor, /data-pq="composer-editor"/);
+    assert.match(editor, /min-h-\[112px\]/);
+    assert.match(editor, /data-pq="composer-ai-hint"/);
+    assert.match(editor, /flex min-w-0 items-center gap-\[8px\]/);
+    assert.match(editor, /trailing=\{/);
+    assert.match(editor, /<ComposeAiAssistant \/>/);
+    assert.match(editor, /\{threadAction\}/);
+    assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
+    assert.doesNotMatch(editor, /w-full h-\[46px\] bg-pqInner cursor-text/);
+    assert.doesNotMatch(editor, /flex-col gap-\[8px\]/);
   });
 
   it('keeps X/general preview photos inside a feed aspect frame', () => {
@@ -75,6 +111,8 @@ describe('phone calendar and composer', () => {
   it('keeps the composer footer from overlapping on phone and tablet', () => {
     assert.match(manage, /grid w-full grid-cols-2/);
     assert.match(manage, /t\('select_channels', 'Select channels'\)/);
+    assert.match(manage, /data-pq="composer-footer"/);
+    assert.match(manage, /data-pq="composer-publish"/);
     assert.match(manage, /max-\[1179px\]:!ml-0 max-\[1179px\]:w-full max-\[1179px\]:!flex-none/);
     const tags = readFileSync(
       fileURLToPath(new URL('./tags.component.tsx', import.meta.url)),
@@ -90,13 +128,42 @@ describe('phone calendar and composer', () => {
       ),
       'utf8',
     );
-    assert.match(tags, /touch \? t\('tags', 'Tags'\)/);
-    assert.match(repeat, /touch \? \(\s*repeat \?/);
-    assert.match(repeat, /aria-label=\{triggerLabel\}/);
-    assert.match(editor, /flex min-w-0 flex-col gap-\[10px\] overflow-hidden border-t border-pqLine/);
-    assert.match(editor, /flex min-w-0 items-start gap-\[12px\]/);
-    assert.match(editor, /flex w-full min-w-0 flex-wrap/);
+    assert.match(manage, /data-pq="composer-empty"/);
+    assert.match(manage, /select_a_channel_to_create_a_post/);
+    assert.match(manage, /when_to_post/);
+    const notify = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/compose.notify.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(manage, /<ComposeNotify/);
+    assert.match(manage, /!dummy && hasChannels &&/);
+    assert.match(manage, /\[PQ_NOTIFY_SETTING\]: notifyOnPublish/);
+    assert.match(notify, /data-pq="composer-notify"/);
+    assert.match(tags, /t\('tags', 'Tags'\)/);
+    assert.doesNotMatch(tags, /touch \? t\('tags', 'Tags'\)/);
+    assert.match(repeat, /aria-label=\{ariaLabel\}/);
+    assert.match(repeat, /t\('repeat_post_every', 'Repeat'\)/);
+    assert.match(editor, /data-pq="composer-ai-hint"/);
+    assert.match(editor, /flex min-w-0 items-center gap-\[8px\] overflow-hidden border-t border-pqLine/);
+    assert.match(editor, /trailing=\{/);
+    assert.match(editor, /<ComposeAiAssistant \/>/);
+    assert.match(editor, /\{threadAction\}/);
+    assert.match(editor, /ComposeFirstComment/);
+    assert.match(editor, /firstCommentMode/);
+    assert.doesNotMatch(editor, /flex-col gap-\[8px\] overflow-hidden border-t/);
     assert.doesNotMatch(manage, /check_circles_above/);
+  });
+
+  it('keeps channel settings in the compose flow, not a takeover or accordion', () => {
+    assert.match(manage, /data-pq="composer-settings"/);
+    assert.match(manage, /id="social-settings"/);
+    assert.match(manage, /channel_settings_hint/);
+    assert.match(manage, /role="region"/);
+    assert.doesNotMatch(manage, /aria-expanded=\{showSettings\}/);
+    assert.doesNotMatch(manage, /showSettings && 'flex min-h-0 flex-1 flex-col pt-\[12px\]'/);
+    assert.doesNotMatch(manage, /!showSettings && 'hidden'/);
   });
 
   it('opens Day/Week/Month from a single View sheet on phone', () => {

@@ -133,8 +133,11 @@ export const FacebookPreview: FC<{
 
     return { text: finalValue, images: p.image };
   });
+  const commentPreview = renderContent.slice(1).filter((_, index) =>
+    stripHtmlValidation('normal', topValue[index + 1]?.content || '', true).trim()
+  );
   return (
-    <div className="py-[15px] flex flex-col px-[15px] w-full gap-[20px] bg-bgFacebook rounded-[12px]">
+    <div className="flex w-full min-w-0 flex-col gap-[20px] overflow-hidden rounded-[12px] bg-bgFacebook px-[15px] py-[15px]">
       <div className="flex gap-[8px]">
         <div className="w-[36px] h-[36px]">
           <img
@@ -284,7 +287,7 @@ export const FacebookPreview: FC<{
           <div>Share</div>
         </div>
       </div>
-      {renderContent.length > 1 && (
+      {commentPreview.length > 0 && (
         <>
           <div className="flex items-center">
             <div className="text-[14px] font-[700]">Most relevant</div>
@@ -303,7 +306,7 @@ export const FacebookPreview: FC<{
               </svg>
             </div>
           </div>
-          {renderContent.slice(1).map((value, index) => (
+          {commentPreview.map((value, index) => (
             <div key={index} className="flex flex-col gap-[12px]">
               <div className="flex gap-[6px] leading-[17px]">
                 <div className="h-[34px]">

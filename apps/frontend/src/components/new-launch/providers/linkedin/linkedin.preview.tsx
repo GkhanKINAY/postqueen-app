@@ -6,6 +6,7 @@ import { sanitizePreviewHtml } from '@gitroom/helpers/utils/sanitize.post.conten
 import { textSlicer } from '@gitroom/helpers/utils/count.length';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { FC } from 'react';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
 import {
@@ -255,6 +256,7 @@ const LinkedinIconSmall = () => {
 export const LinkedinPreview: FC<{
   maximumCharacters?: number;
 }> = (props) => {
+  const t = useT();
   const { value: topValue, integration } = useIntegration();
   const current = useLaunchStore((state) => state.current);
   const mediaDir = useMediaDirectory();
@@ -291,8 +293,12 @@ export const LinkedinPreview: FC<{
 
     return { text: finalValue, images: p.image };
   });
+  const commentPreview = renderContent.slice(1).filter((_, index) =>
+    stripHtmlValidation('normal', topValue[index + 1]?.content || '', true).trim()
+  );
+  const commentCount = commentPreview.length;
   return (
-    <div className="py-[15px] flex flex-col px-[15px] w-full gap-[20px] bg-bgLinkedin rounded-[12px]">
+    <div className="flex w-full min-w-0 flex-col gap-[20px] overflow-hidden rounded-[12px] bg-bgLinkedin px-[15px] py-[15px]">
       <div className="flex gap-[8px]">
         <div className="w-[48px] h-[48px]">
           <img
@@ -360,19 +366,23 @@ export const LinkedinPreview: FC<{
             ))}
           </div>
         ))}
-      <div className="flex text-textLinkedin text-[12px] font-[400] items-center">
-        <div className="flex flex-1 gap-[11px] items-center">
-          <Icons />
-          <div className="">88</div>
+      {commentCount > 0 ? (
+        <div className="flex justify-end text-[12px] font-[400] text-textLinkedin">
+          {commentCount === 1
+            ? t('one_comment', '1 comment')
+            : `${commentCount} ${t('comments', 'comments')}`}
         </div>
-        <div className="gap-[9px] items-center flex">
-          <div>4 Comments</div>
-          <div>
-            <div className="w-[3px] h-[3px] bg-[#565C65] rounded-full" />
+      ) : (
+        <div className="flex text-textLinkedin text-[12px] font-[400] items-center">
+          <div className="flex flex-1 gap-[11px] items-center">
+            <Icons />
+            <div className="">88</div>
           </div>
-          <div>8 Reposts</div>
+          <div className="gap-[9px] items-center flex">
+            <div>8 Reposts</div>
+          </div>
         </div>
-      </div>
+      )}
       <div className="pt-[8px] flex text-[14px] font-[700] px-[32px] justify-between border-t border-borderLinkedin text-textLinkedin">
         <div className="flex gap-[4px] items-center">
           <svg
@@ -447,9 +457,9 @@ export const LinkedinPreview: FC<{
           <div>Send</div>
         </div>
       </div>
-      {renderContent.length > 1 && (
+      {commentCount > 0 && (
         <>
-          {renderContent.slice(1).map((value, index) => (
+          {commentPreview.map((value, index) => (
             <div key={index} className="flex flex-col gap-[12px]">
               <div className="flex gap-[6px] leading-[17px]">
                 <div className="h-[34px]">
@@ -465,6 +475,9 @@ export const LinkedinPreview: FC<{
                       <div className="text-[13px] font-[500]">
                         {integration?.name}
                       </div>
+                      <span className="rounded-[4px] bg-[#00000014] px-[6px] py-[1px] text-[11px] font-[600] text-[#00000099]">
+                        {t('comment_author', 'Author')}
+                      </span>
                       <div>
                         <LinkedinIconSmall />
                       </div>

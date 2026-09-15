@@ -152,7 +152,7 @@ describe('Channel pick list handle contract', () => {
 });
 
 describe('Composer preview handle contract', () => {
-  it('shows formatChannelHandle(display) on Instagram, Facebook, YouTube, LinkedIn, and TikTok', () => {
+  it('shows formatChannelHandle(display) on Instagram, Facebook, YouTube, LinkedIn, TikTok, Threads, and Pinterest', () => {
     const read = (rel: string) =>
       readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
     assert.match(
@@ -173,6 +173,14 @@ describe('Composer preview handle contract', () => {
     );
     assert.match(
       read('../new-launch/providers/tiktok/tiktok.preview.tsx'),
+      /formatChannelHandle\(integration\?\.display\)/,
+    );
+    assert.match(
+      read('../new-launch/providers/threads/threads.preview.tsx'),
+      /formatChannelHandle\(integration\?\.display\)/,
+    );
+    assert.match(
+      read('../new-launch/providers/pinterest/pinterest.preview.tsx'),
       /formatChannelHandle\(integration\?\.display\)/,
     );
     assert.doesNotMatch(

@@ -305,9 +305,7 @@ export const ThirdPartyMedia: FC<{
             fill="currentColor"
           />
         </svg>
-        <span
-          className={clsx(!ghost && 'iconBreak:hidden', compact && 'hidden')}
-        >
+        <span className={clsx(compact && 'hidden')}>
           {t('integrations', 'Integrations')}
         </span>
       </button>

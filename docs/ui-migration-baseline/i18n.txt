@@ -380,6 +380,7 @@ channel_needs_reconnect
 channel_save_missing_session
 channel_save_network_error
 channel_settings
+channel_settings_hint
 channels
 channels_list_empty_hint
 chatgpt
@@ -406,6 +407,7 @@ client_secret
 close
 code_sent_to
 coming_soon
+comment_author
 comment_delete_failed
 comments
 community
@@ -1062,6 +1064,7 @@ download
 download_invoice
 draft
 drafts
+drag_drop_or_select
 drop_files_here_paste_or_browse
 drop_files_here_to_upload
 drop_files_to_upload
@@ -1126,6 +1129,7 @@ finding_time_to_post
 finish
 finishing_trial_charging
 finishing_your_trial
+first_comment
 five_days
 follower_of_creator
 forgot_password
@@ -1274,6 +1278,7 @@ import_from
 import_selected
 insert_emoji
 insert_media
+instagram_45_hint
 instagram_add_audio
 instagram_audio_facebook_login_only
 instagram_audio_label
@@ -1432,6 +1437,8 @@ newest
 next
 next_3_days
 next_7_days
+next_available
+next_available_hint
 next_day
 next_month
 no
@@ -1478,6 +1485,10 @@ nothing_here_yet
 nothing_published_yet
 notifications
 notifications_settings_description
+notify_me
+notify_me_hint
+notify_quiet
+notify_quiet_hint
 oauth_app_admin_only
 oauth_app_admin_only_title
 oauth_app_empty_hint
@@ -1486,6 +1497,7 @@ oauth_start_failed
 off
 ok
 oldest
+one_comment
 one_publishing_option
 one_selected
 only_option_to_connect
@@ -1581,6 +1593,7 @@ post_move_failed
 post_needs_content_or_image
 post_not_found
 post_now
+post_now_hint
 post_on_next_available_slot
 post_open_failed
 post_preview
@@ -1676,6 +1689,7 @@ see_all_n_posts
 see_all_posts_on
 select
 select_1
+select_a_channel_to_create_a_post
 select_all
 select_channels
 select_customer_label
@@ -1701,6 +1715,8 @@ send_test
 send_this_invite_link
 separate_post
 set
+set_date_and_time
+set_date_and_time_hint
 set_delay
 set_delete_failed
 set_deleted_successfully
@@ -1950,6 +1966,7 @@ webhooks_quota_title
 week
 what_do_you_want_to_do
 whats_new
+when_to_post
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write_anything
@@ -1987,6 +2004,7 @@ you_are_promoting_yourself
 you_can_add_signatures_to_your_account_to_be_used_in_your_posts
 you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you
 your_assistant
+your_comment
 your_post_should_have_at_least_one_character_or_one_image
 your_video_will_be_labeled_promotional
 youre_all_set

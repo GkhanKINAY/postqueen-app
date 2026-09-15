@@ -361,9 +361,10 @@
     --new-menu-hover: var(--text);
     --menu-shadow: var(--shadow);
     --popup-color: var(--popup);
-    /* Preview frames — step 5. */
-    --border-preview: transparent;
-    --preview-box-shadow: none;
+    /* Preview cards in the composer. Dark used to zero these so stacked
+       channel previews bled into one pane. */
+    --border-preview: var(--border);
+    --preview-box-shadow: var(--e1);
     --linkedin-border: var(--linkedinBorder);
     --linkedin-bg: var(--linkedinBg);
     --linkedin-text: var(--linkedinText);

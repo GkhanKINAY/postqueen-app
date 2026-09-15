@@ -5,7 +5,6 @@ import React, {
   ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -18,10 +17,18 @@ import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.cu
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
+import {
+  ComposeWhen,
+  ComposeWhenMode,
+} from '@gitroom/frontend/components/new-launch/compose.when';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
+import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
+import {
+  PQ_NOTIFY_SETTING,
+  postWantsPublishNotice,
+} from '@gitroom/helpers/utils/post.publish.notice';
 import { TagsComponent } from '@gitroom/frontend/components/launches/tags.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -31,11 +38,8 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
-import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
-  SettingsIcon,
-  ChevronDownIcon,
   CloseIcon,
   TrashIcon,
 } from '@gitroom/frontend/components/ui/icons';
@@ -58,11 +62,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
   const [postNowOpen, setPostNowOpen] = useState(false);
+  const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
+    postWantsPublishNotice(existingData.settings)
+  );
   const toaster = useToaster();
   const { dropPostGroupFromView } = useCalendar();
   const modal = useModals();
   const { formatShortWeekdayTime } = useDateFormat();
-  const [showSettings, setShowSettings] = useState(false);
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
   // Footer overflow-y-hidden clips absolute menus; fixed popover escapes it.
   const { referenceRef: postNowRef, floatingRef: postNowMenuRef } =
@@ -76,7 +82,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   });
 
-  const { addEditSets, mutate, customClose, dummy } = props;
+  const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
+  const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
+    existingData?.posts?.[0] ? 'date' : whenProp === 'next' ? 'next' : 'date'
+  );
 
   const {
     selectedIntegrations,
@@ -112,45 +121,20 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }))
   );
 
+  const hasChannels = selectedIntegrations.length > 0;
+  // First paint of an existing post must not slide the preview in. Enable
+  // width transitions only after mount so a new post's first channel pick
+  // still animates.
+  const [railMotion, setRailMotion] = useState(false);
+  useEffect(() => {
+    setRailMotion(true);
+  }, []);
+
   useEffect(() => {
     if (hide) {
       setHide(false);
     }
   }, [hide]);
-
-  const currentIntegrationText = useMemo(() => {
-    if (current === 'global') {
-      return (
-        <div className="flex items-center gap-[10px]">
-          <div className="relative">
-            <SettingsIcon size={15} className="text-pqText" />
-          </div>
-          <div>Settings</div>
-        </div>
-      );
-    }
-
-    const currentIntegration = integrations.find((p) => p.id === current)!;
-
-    return (
-      <div className="flex items-center gap-[10px]">
-        <div className="relative">
-          <img
-            src={`/icons/platforms/${currentIntegration.identifier}.png`}
-            className="w-[20px] h-[20px] rounded-[4px]"
-            alt={currentIntegration.identifier}
-          />
-          <SettingsIcon
-            size={15}
-            className="absolute -end-[5px] -bottom-[5px] text-pqText"
-          />
-        </div>
-        <div>
-          {currentIntegration.name} {t('channel_settings', 'Settings')}
-        </div>
-      </div>
-    );
-  }, [current]);
 
   const changeCustomer = useCallback(
     (customer: string) => {
@@ -311,6 +295,26 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       // catch can tell "failed" from "succeeded then stumbled".
       let saved = false;
       try {
+      if (type === 'schedule' && whenMode === 'now') {
+        type = 'now';
+      }
+      let publishAt = date;
+      if (type === 'schedule' && whenMode === 'next') {
+        const slotResponse = await fetch('/posts/find-slot');
+        const slot = slotResponse.ok
+          ? (await slotResponse.json().catch(() => ({})))?.date
+          : undefined;
+        if (!slot) {
+          setLoading(false);
+          toaster.show(
+            t('create_post_failed', 'Could not start a new post, please try again'),
+            'warning'
+          );
+          return;
+        }
+        publishAt = dayjs.utc(slot).local();
+        setDate(publishAt);
+      }
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
@@ -336,7 +340,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           id: post.id,
         },
         group,
-        settings: { ...(post.settings || {}) },
+        settings: {
+          ...(post.settings || {}),
+          [PQ_NOTIFY_SETTING]: notifyOnPublish,
+        },
         value: post.values.map((value: any) => ({
           ...(value.id ? { id: value.id } : {}),
           content: value.content,
@@ -410,7 +417,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               );
               focus(item.id, 'fix');
               setLoading(false);
-              setShowSettings(true);
+              document
+                .getElementById('wrapper-settings')
+                ?.scrollIntoView({ block: 'nearest' });
               return;
             }
 
@@ -421,7 +430,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               );
               focus(item.id, 'preview');
               setLoading(false);
-              setShowSettings(false);
               return;
             }
 
@@ -490,7 +498,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         ...(repeater ? { inter: repeater } : {}),
         tags,
         shortLink,
-        date: date.utc().format('YYYY-MM-DDTHH:mm:ss'),
+        date: publishAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
         posts,
       };
 
@@ -614,30 +622,54 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       shortlinkPreferenceData,
       toaster,
       t,
+      notifyOnPublish,
+      whenMode,
+      fetch,
+      setDate,
     ]
   );
 
   return (
-    <div className={clsx(
-      'relative flex h-full w-full flex-1',
-      touch ? 'p-0' : 'p-[40px]'
-    )}>
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[20px] bg-pqInner shadow-pq mobile:rounded-none">
+    <div
+      data-pq="composer-shell"
+      className={clsx(
+        'relative flex h-full w-full flex-1',
+        touch ? 'p-0' : 'items-center justify-center p-[24px]'
+      )}
+    >
+      <div
+        data-pq="composer-card"
+        className={clsx(
+          'flex flex-col overflow-hidden bg-pqInner shadow-pq',
+          // Empty: compact channel picker. After a channel is picked: compose
+          // studio with a 440px preview rail. Phone/tablet stay full-bleed.
+          touch
+            ? 'h-full w-full min-h-0 flex-1 rounded-none'
+            : clsx(
+                'w-full rounded-[24px]',
+                railMotion &&
+                  'motion-safe:transition-[max-width] motion-safe:duration-[380ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]',
+                hasChannels
+                  ? 'h-[calc(100dvh-48px)] max-w-[min(1440px,calc(100vw-48px))]'
+                  : 'max-h-[calc(100dvh-48px)] max-w-[min(720px,calc(100vw-48px))]'
+              )
+        )}
+      >
         <div
           className={clsx(
             'flex min-h-0 flex-1',
             // Phone/tablet: Edit | Preview tabs. Preview fills leftover height.
-            touch ? 'flex-col' : 'flex-row'
+            touch ? 'flex-col' : 'flex-row overflow-hidden'
           )}
         >
           <div
             className={clsx(
               'flex min-h-0 flex-1 flex-col',
-              !touch && 'border-e border-pqBorder',
+              !touch && hasChannels && 'border-e border-pqBorder',
               touch && composerPane !== 'edit' && 'hidden'
             )}
           >
-            <div className="flex h-[65px] items-center gap-[12px] rounded-ss-[20px] border-b border-pqLine bg-pqBg px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none">
+            <div className="flex h-[56px] items-center gap-[12px] rounded-ss-[24px] border-b border-pqLine bg-pqBg px-[24px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none">
               {existingData?.integration
                 ? t('edit_post_title', 'Edit Post')
                 : t('create_post_title', 'Create Post')}
@@ -645,8 +677,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 creationMethod={existingData?.posts?.[0]?.creationMethod}
                 size="sm"
               />
-              {touch && (
-                <div className="ms-auto flex items-center gap-[8px]">
+              <div className="ms-auto flex items-center gap-[8px]">
+                {!dummy && (
+                  <TagsComponent
+                    name="tags"
+                    label={t('tags', 'Tags')}
+                    menuPlacement="bottom-start"
+                    initial={tags}
+                    onChange={(e) => {
+                      setTags(e.target.value);
+                    }}
+                  />
+                )}
+                {touch && hasChannels && (
                   <div className="flex gap-[4px] rounded-pqSm bg-pqSettings p-[2px]">
                     <button
                       type="button"
@@ -673,24 +716,22 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       {t('preview', 'Preview')}
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={askClose}
-                    aria-label={t('close', 'Close')}
-                    className="grid size-[44px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-                  >
-                    <CloseIcon size={16} />
-                  </button>
-                </div>
-              )}
+                )}
+                <button
+                  type="button"
+                  onClick={askClose}
+                  aria-label={t('close', 'Close')}
+                  className="grid size-[44px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                >
+                  <CloseIcon size={16} />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 flex flex-col gap-[16px]">
-              <div
-                className={clsx('flex-1 relative', showSettings && 'hidden')}
-              >
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
+              <div>
                 <div
                   id="social-content"
-                  className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                  className="flex flex-col gap-[20px] pe-[8px] ps-[24px] pt-[20px]"
                 >
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
@@ -722,83 +763,82 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-1 gap-[6px] flex-col">
-                    <div>
+                  <div className="flex flex-col gap-[6px]">
+                    {!hasChannels && (
+                      <div
+                        data-pq="composer-empty"
+                        className="flex flex-col items-center justify-center px-[16px] py-[48px] text-center"
+                      >
+                        <p className="text-[14px] leading-[1.5] text-pqMuted">
+                          {t(
+                            'select_a_channel_to_create_a_post',
+                            'Select a channel to create a post.'
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    <div className={clsx(!hasChannels && 'hidden')}>
                       <SelectCurrent />
                     </div>
-                    <div className="flex-1 flex">
+                    <div className={clsx('flex w-full min-w-0', !hasChannels && 'hidden')}>
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
-                      id="social-empty"
+                      id="wrapper-settings"
+                      data-pq="composer-settings"
+                      role="region"
+                      aria-label={t('channel_settings', 'Channel settings')}
                       className={clsx(
-                        'pb-[16px]'
-                        // current !== 'global' && 'hidden'
+                        'flex flex-col',
+                        !hasChannels && 'hidden'
                       )}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div
-                id="wrapper-settings"
-                className={clsx(
-                  'px-[20px] pb-[20px] select-none',
-                  showSettings && 'flex flex-1 flex-col pt-[12px]',
-                  current === 'global' && 'hidden'
-                )}
-              >
-                <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-hidden rounded-[14px] bg-pqSettings p-[12px] shadow-[inset_0_0_0_1px_var(--border)]">
-                  <button
-                    type="button"
-                    onClick={() => setShowSettings(!showSettings)}
-                    className={clsx(
-                      'flex h-[48px] w-full cursor-pointer items-center gap-[10px] rounded-[12px] bg-pqTableHeader px-[14px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover',
-                      showSettings && 'rounded-b-[10px]'
-                    )}
-                  >
-                    <div className="flex-1 text-[13.5px] font-[600] text-pqText">
-                      {currentIntegrationText}
-                    </div>
-                    <ChevronDownIcon
-                      rotated={showSettings}
-                      className="text-pqMuted"
-                    />
-                  </button>
-                  <div
-                    className={clsx(
-                      !showSettings ? 'hidden' : 'relative min-h-0 flex-1',
-                      'text-[14px] font-[500] text-pqText'
-                    )}
-                  >
-                    <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqSettings">
+                    >
+                      <span className="sr-only">
+                        {t(
+                          'channel_settings_hint',
+                          'Per network — title, tags, audience, and more'
+                        )}
+                      </span>
                       <div
                         id="social-settings"
-                        className="flex flex-col gap-[12px] pe-[4px]"
+                        className="flex flex-col gap-[16px] text-[14px] font-[500] text-pqText"
                       />
+                      <style>
+                        {`#social-settings [data-id="${current}"] {display: block !important;}`}
+                      </style>
                     </div>
+                    <div
+                      id="social-empty"
+                      className="pb-[8px]"
+                    />
                   </div>
-                  <style>
-                    {`#social-settings [data-id="${current}"] {display: block !important;}`}
-                  </style>
                 </div>
               </div>
             </div>
           </div>
           <div
+            data-pq="composer-preview"
             className={clsx(
-              'flex flex-col',
+              'flex flex-col overflow-hidden bg-pqBg',
               touch
                 ? clsx(
                     'w-full min-h-0 flex-1',
-                    composerPane !== 'preview' && 'hidden'
+                    (composerPane !== 'preview' || !hasChannels) && 'hidden'
                   )
-                : 'w-[580px]'
+                : clsx(
+                    'shrink-0',
+                    railMotion &&
+                      'motion-safe:transition-[width,opacity] motion-safe:duration-[380ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]',
+                    hasChannels
+                      ? 'w-[440px] shrink-0 bg-pqBg opacity-100'
+                      : 'pointer-events-none w-0 min-w-0 max-w-0 flex-none opacity-0'
+                  )
             )}
           >
             <div
               className={clsx(
-                'flex h-[65px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none',
-                !touch && 'rounded-se-[20px]'
+                'flex h-[56px] items-center border-b border-pqLine bg-pqBg px-[20px] font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText mobile:rounded-none',
+                !touch && 'rounded-se-[24px]'
               )}
             >
               <div className="flex-1">{t('post_preview', 'Post Preview')}</div>
@@ -830,19 +870,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   </button>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={askClose}
-                aria-label={t('close', 'Close')}
-                className="grid size-[44px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-              >
-                <CloseIcon size={16} />
-              </button>
             </div>
             <div className="relative min-h-0 flex-1">
               <Scrollable
-                scrollClasses="!pe-[20px]"
-                className="absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                scrollClasses="!pe-[16px]"
+                className="absolute left-0 top-0 h-full w-full overflow-x-hidden overflow-y-scroll p-[16px] pe-[8px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqBg"
               >
                 <ShowAllProviders ref={ref} />
               </Scrollable>
@@ -850,12 +882,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           </div>
         </div>
         <div
+          data-pq="composer-footer"
           className={clsx(
-            'flex min-w-0 select-none border-t border-pqBorder pb-[max(12px,env(safe-area-inset-bottom))]',
+            'flex min-w-0 select-none border-t border-pqBorder bg-pqBg pb-[max(12px,env(safe-area-inset-bottom))]',
             'max-[1179px]:flex-col max-[1179px]:gap-[10px] max-[1179px]:overflow-x-hidden max-[1179px]:px-[16px] max-[1179px]:py-[12px]',
             touch
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] items-center overflow-x-auto overflow-y-hidden py-[20px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
+              : 'items-center overflow-x-auto overflow-y-hidden px-[20px] py-[12px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
           )}
         >
           <div
@@ -864,36 +897,52 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               'max-[1179px]:grid max-[1179px]:w-full max-[1179px]:grid-cols-2',
               touch
                 ? 'grid w-full grid-cols-2'
-                : 'flex flex-1 items-center ps-[20px] min-[1180px]:flex'
+                : 'flex flex-1 items-end gap-[12px] min-[1180px]:flex'
             )}
           >
+            <div className={clsx('min-w-0', touch ? 'w-full' : 'shrink-0')}>
+              <div className="mb-[4px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+                {t('when_to_post', 'When to post')}
+              </div>
+              <ComposeWhen
+                mode={whenMode}
+                date={date}
+                onMode={setWhenMode}
+                onChange={setDate}
+              />
+            </div>
             {!dummy && (
-              <div className={clsx('min-w-0', touch && 'w-full [&>*]:w-full')}>
-                <TagsComponent
-                  name="tags"
-                  label={t('tags', 'Tags')}
-                  initial={tags}
-                  onChange={(e) => {
-                    setTags(e.target.value);
-                  }}
-                />
+              <div
+                className={clsx(
+                  'min-w-0',
+                  touch ? 'w-full [&>*]:w-full self-end' : 'shrink-0'
+                )}
+              >
+                <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
-
-            {!dummy && (
-              <div className={clsx('min-w-0', touch && 'w-full [&>*]:w-full')}>
-                <RepeatComponent repeat={repeater} onChange={setRepeater} />
+            {!dummy && hasChannels && (
+              <div
+                className={clsx(
+                  'min-w-0',
+                  touch ? 'w-full [&>*]:w-full self-end' : 'shrink-0'
+                )}
+              >
+                <ComposeNotify
+                  notify={notifyOnPublish}
+                  onChange={setNotifyOnPublish}
+                />
               </div>
             )}
           </div>
           <div
+            data-pq="composer-publish"
             className={clsx(
               'flex min-w-0 items-center justify-end gap-[8px]',
               'max-[1179px]:w-full max-[1179px]:flex-col',
-              touch ? 'w-full flex-col' : 'shrink-0 pe-[20px]'
+              touch ? 'w-full flex-col' : 'shrink-0'
             )}
           >
-            <ComposeAiAssistant />
             {existingData?.integration && (
               <button
                 onClick={deletePost}
@@ -905,11 +954,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div>{t('delete_post', 'Delete Post')}</div>
               </button>
             )}
-            <DatePicker
-              onChange={setDate}
-              date={date}
-              className="max-[1179px]:!ml-0 max-[1179px]:w-full max-[1179px]:!flex-none"
-            />
             <div
               className={clsx(
                 'flex min-w-0 items-center justify-end gap-[8px]',
@@ -924,11 +968,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 }
                 onClick={schedule('draft')}
                 className={clsx(
-                  'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-btnSimple text-[14px] font-[600] disabled:cursor-not-allowed',
+                  'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-[10px] border border-pqBorder bg-pqInner text-[13px] font-[600] text-pqText transition-colors hover:bg-pqHover disabled:cursor-not-allowed',
                   'max-[1179px]:h-[44px] max-[1179px]:min-w-0 max-[1179px]:flex-1 max-[1179px]:px-[12px]',
                   touch
                     ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                    : 'h-[42px] px-[18px]'
+                    : 'h-[42px] px-[16px]'
                 )}
               >
                 {loading && (
@@ -994,6 +1038,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         ? t('select_channels', 'Select channels')
                         : dummy
                         ? t('create_output', 'Create output')
+                        : whenMode === 'now'
+                        ? t('post_now', 'Post Now')
                         : !existingData?.integration
                         ? t('add_to_calendar', 'Add to calendar')
                         : existingData?.posts?.[0]?.state === 'DRAFT'
