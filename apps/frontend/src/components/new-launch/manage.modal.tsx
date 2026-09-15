@@ -622,7 +622,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       data-pq="composer-shell"
       className={clsx(
         'relative flex h-full w-full flex-1',
-        touch ? 'p-0' : 'items-center justify-center p-[24px]'
+        touch ? 'p-0' : 'items-center justify-center p-[16px]'
       )}
     >
       <div
@@ -630,12 +630,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         className={clsx(
           'flex flex-col overflow-hidden bg-pqInner shadow-pq',
           // removeLayout + fullScreen ignores the openModal max-w-[1400px]
-          // class, so the card used to paint edge-to-edge. Desktop is a
-          // centered compose window that hugs its content; phone/tablet stay
-          // full-bleed.
+          // class. Desktop is a compose window with a margin, not a postage
+          // stamp and not edge-to-edge. Phone/tablet stay full-bleed.
           touch
             ? 'h-full w-full min-h-0 flex-1 rounded-none'
-            : 'h-auto max-h-[min(640px,calc(100dvh-48px))] w-full max-w-[840px] rounded-[20px]'
+            : 'h-[min(800px,calc(100dvh-32px))] w-full max-w-[1200px] rounded-[20px]'
         )}
       >
         <div
@@ -699,26 +698,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 </div>
               )}
             </div>
-            <div
-              className={clsx(
-                'flex min-h-0 flex-1 flex-col',
-                touch && 'gap-[16px]'
-              )}
-            >
+            <div className="flex min-h-0 flex-1 flex-col gap-[16px]">
               <div
-                className={clsx(
-                  showSettings && 'hidden',
-                  touch ? 'relative min-h-0 flex-1' : 'min-h-0 overflow-y-auto'
-                )}
+                className={clsx('relative min-h-0 flex-1', showSettings && 'hidden')}
               >
                 <div
                   id="social-content"
-                  className={clsx(
-                    'flex flex-col gap-[16px] overflow-x-hidden pe-[8px] ps-[20px] pt-[16px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner',
-                    touch
-                      ? 'absolute inset-0 h-full w-full overflow-y-scroll'
-                      : 'pb-[8px]'
-                  )}
+                  className="absolute inset-0 flex h-full w-full flex-col gap-[20px] overflow-x-hidden overflow-y-scroll pe-[8px] ps-[20px] pt-[20px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
                 >
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
@@ -759,7 +745,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     </div>
                     <div
                       id="social-empty"
-                      className="pb-[4px]"
+                      className="pb-[16px]"
                     />
                   </div>
                 </div>
@@ -767,7 +753,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <div
                 id="wrapper-settings"
                 className={clsx(
-                  'select-none px-[20px] pb-[12px]',
+                  'select-none px-[20px] pb-[16px]',
                   showSettings && 'flex min-h-0 flex-1 flex-col pt-[12px]',
                   current === 'global' && 'hidden'
                 )}
@@ -807,9 +793,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   </style>
                 </div>
               </div>
-              {!touch && (
-                <div className="min-h-0 flex-1" aria-hidden="true" />
-              )}
             </div>
           </div>
           <div
@@ -820,7 +803,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     'w-full min-h-0 flex-1',
                     composerPane !== 'preview' && 'hidden'
                   )
-                : 'w-[320px] shrink-0'
+                : 'w-[420px] shrink-0'
             )}
           >
             <div

@@ -769,7 +769,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="relative z-[99] min-h-[72px] bg-pqInner px-[6px] pt-[6px]">
+            <div className="relative z-[99] min-h-[140px] bg-pqInner px-[8px] pt-[8px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -779,7 +779,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="min-h-[8px] bg-pqInner"
+              className="min-h-[16px] bg-pqInner"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;
