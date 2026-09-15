@@ -11,6 +11,7 @@ access_revoked
 account
 account_link_failed
 account_linked
+account_load_failed
 account_menu
 account_not_activated
 account_settings_description
