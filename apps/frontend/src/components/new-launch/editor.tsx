@@ -24,6 +24,7 @@ import {
   useLaunchStore,
 } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
+import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { AddPostButton } from '@gitroom/frontend/components/new-launch/add.post.button';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
@@ -992,7 +993,12 @@ export const Editor: FC<{
                   }}
                   onOpen={() => {}}
                   onClose={() => {}}
-                  trailing={threadAction}
+                  trailing={
+                    <>
+                      {!num && <ComposeAiAssistant />}
+                      {threadAction}
+                    </>
+                  }
                 />
               )}
               {!!childButton && (

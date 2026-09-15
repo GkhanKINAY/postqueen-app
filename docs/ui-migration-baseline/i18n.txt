@@ -1682,6 +1682,7 @@ see_all_n_posts
 see_all_posts_on
 select
 select_1
+select_a_channel_to_create_a_post
 select_all
 select_channels
 select_customer_label
@@ -1956,6 +1957,7 @@ webhooks_quota_title
 week
 what_do_you_want_to_do
 whats_new
+when_to_post
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write_anything

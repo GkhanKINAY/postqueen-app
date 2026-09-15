@@ -725,6 +725,8 @@
   "updated_successfully": "Başarıyla güncellendi",
   "create_post_title": "Gönderi Oluştur",
   "post_preview": "Gönderi Önizlemesi",
+  "select_a_channel_to_create_a_post": "Gönderi oluşturmak için bir kanal seçin.",
+  "when_to_post": "Ne zaman paylaşılacak",
   "check_circles_above": "Kanal seçmek için yukarıdaki dairelere tıklayın",
   "create_output": "Çıktı oluştur",
   "assistant_initial_message": "Merhaba! Sosyal medya gönderilerinizi düzenlemenize yardımcı olabilirim.",

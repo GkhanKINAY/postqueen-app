@@ -996,6 +996,8 @@
   "updated_successfully": "Updated successfully",
   "create_post_title": "Create Post",
   "post_preview": "Post Preview",
+  "select_a_channel_to_create_a_post": "Select a channel to create a post.",
+  "when_to_post": "When to post",
   "check_circles_above": "Check the circles above to pick a channel",
   "create_output": "Create output",
   "assistant_initial_message": "Hi! I can refine or rewrite your post text. I cannot generate images — use AI Image / AI Video in the toolbar for that.",

@@ -25,6 +25,7 @@ export const TagsComponent: FC<{
   name: string;
   label: string;
   initial: any[];
+  menuPlacement?: 'top-start' | 'bottom-start';
   onChange: (event: {
     target: {
       value: any[];
@@ -53,13 +54,21 @@ export const TagsComponentInner: FC<{
   initial: any[];
   allTags: any;
   mutate: () => Promise<any>;
+  menuPlacement?: 'top-start' | 'bottom-start';
   onChange: (event: {
     target: {
       value: any[];
       name: string;
     };
   }) => void;
-}> = ({ initial, onChange, name, mutate, allTags: data }) => {
+}> = ({
+  initial,
+  onChange,
+  name,
+  mutate,
+  allTags: data,
+  menuPlacement = 'top-start',
+}) => {
   const t = useT();
   const { touch } = useViewport();
   const fetch = useFetch();
@@ -75,7 +84,7 @@ export const TagsComponentInner: FC<{
   const { referenceRef, floatingRef } = useAnchoredPopover<
     HTMLDivElement,
     HTMLDivElement
-  >(isOpen, 'start', { offsetPx: 10, placement: 'top-start' });
+  >(isOpen, 'start', { offsetPx: 10, placement: menuPlacement });
 
   const ref = useClickOutside(() => {
     if (!isOpen || !allowClose) {
