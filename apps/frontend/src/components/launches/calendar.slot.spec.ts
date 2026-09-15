@@ -87,4 +87,19 @@ describe('calendar slot density', () => {
     );
     assert.match(calendar, /!postList\.length\s*\? 'min-h-full w-full p-\[5px\]'/);
   });
+
+  it('draws a plus on the day empty-hour Add control, not the label alone', () => {
+    const dayHour = calendar.slice(calendar.indexOf('const DayHourSection'));
+    const emptyBtn = dayHour.slice(
+      dayHour.indexOf('{!loading && postList.length === 0 && ('),
+      dayHour.indexOf('{emptyLabel}'),
+    );
+    assert.match(emptyBtn, /!isBeforeNow && \(/);
+    assert.match(emptyBtn, /data-empty-add="1"/);
+    assert.match(emptyBtn, /d="M12 5\.5v13M5\.5 12h13"/);
+    assert.match(
+      calendar,
+      /t\('add_a_post_at', 'Add a post at \{\{time\}\}'\)/,
+    );
+  });
 });

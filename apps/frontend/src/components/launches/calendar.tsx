@@ -2979,6 +2979,7 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
                   : 'cursor-pointer text-pqMuted hover:bg-pqHover hover:text-pqText hover:shadow-[inset_0_0_0_1px_var(--brand)]'
               )}
             >
+              {/* Plus sits on the empty-hour control next to the i18n label. */}
               {!isBeforeNow && (
                 <svg
                   viewBox="0 0 24 24"
@@ -2986,7 +2987,8 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
                   height="15"
                   fill="none"
                   aria-hidden="true"
-                  className="shrink-0 text-pqSoft"
+                  data-empty-add="1"
+                  className="shrink-0"
                 >
                   <path
                     d="M12 5.5v13M5.5 12h13"
