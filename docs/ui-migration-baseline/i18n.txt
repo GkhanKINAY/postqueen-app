@@ -380,6 +380,7 @@ channel_needs_reconnect
 channel_save_missing_session
 channel_save_network_error
 channel_settings
+channel_settings_hint
 channels
 channels_list_empty_hint
 chatgpt

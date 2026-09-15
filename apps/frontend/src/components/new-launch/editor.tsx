@@ -827,6 +827,10 @@ export const Editor: FC<{
                   </svg>
                 </span>
                 <span className="min-w-0 flex-1 truncate text-[12.5px] leading-[1.3] text-pqMuted">
+                  <span className="font-[600] text-pqText">
+                    {t('let_ai_write_this_post', 'Draft with your AI')}
+                  </span>
+                  {' — '}
                   {t(
                     'let_ai_write_this_post_sub',
                     'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'

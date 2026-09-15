@@ -352,7 +352,7 @@ export const withProvider = function <T extends object>(params: {
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="mb-[14px] flex items-center gap-[12px] border-b border-pqLine pb-[14px]">
+                    <div className="mb-[12px] flex items-center gap-[10px] border-b border-pqLine pb-[12px]">
                       <div className="relative">
                         <SafeImage
                           alt={selectedIntegration?.integration.name!}

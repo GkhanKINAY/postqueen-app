@@ -118,39 +118,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   }, [hide]);
 
-  const currentIntegrationText = useMemo(() => {
-    if (current === 'global') {
-      return (
-        <div className="flex items-center gap-[10px]">
-          <div className="relative">
-            <SettingsIcon size={15} className="text-pqText" />
-          </div>
-          <div>Settings</div>
-        </div>
-      );
-    }
-
-    const currentIntegration = integrations.find((p) => p.id === current)!;
-
-    return (
-      <div className="flex items-center gap-[10px]">
-        <div className="relative">
-          <img
-            src={`/icons/platforms/${currentIntegration.identifier}.png`}
-            className="w-[20px] h-[20px] rounded-[4px]"
-            alt={currentIntegration.identifier}
-          />
-          <SettingsIcon
-            size={15}
-            className="absolute -end-[5px] -bottom-[5px] text-pqText"
-          />
-        </div>
-        <div>
-          {currentIntegration.name} {t('channel_settings', 'Settings')}
-        </div>
-      </div>
-    );
-  }, [current]);
+  const currentChannel = useMemo(
+    () => integrations.find((p) => p.id === current),
+    [integrations, current]
+  );
 
   const changeCustomer = useCallback(
     (customer: string) => {
@@ -700,7 +671,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               )}
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
-              <div className={clsx(showSettings && 'hidden')}>
+              <div>
                 <div
                   id="social-content"
                   className="flex flex-col gap-[20px] pe-[8px] ps-[24px] pt-[20px]"
@@ -751,39 +722,90 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </div>
               <div
                 id="wrapper-settings"
+                data-pq="composer-settings"
                 className={clsx(
-                  'select-none px-[24px] pb-[16px] pt-[8px]',
-                  showSettings && 'flex min-h-0 flex-1 flex-col pt-[12px]',
+                  'flex flex-col select-none px-[24px] pb-[20px] pt-[4px]',
                   current === 'global' && 'hidden'
                 )}
               >
-                <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-hidden rounded-[14px] bg-pqSettings p-[12px] shadow-[inset_0_0_0_1px_var(--border)]">
+                <div className="overflow-hidden rounded-[16px] border border-pqBorder bg-pqInner">
                   <button
                     type="button"
-                    onClick={() => setShowSettings(!showSettings)}
-                    className={clsx(
-                      'flex h-[48px] w-full cursor-pointer items-center gap-[10px] rounded-[12px] bg-pqTableHeader px-[14px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover',
-                      showSettings && 'rounded-b-[10px]'
-                    )}
+                    aria-expanded={showSettings}
+                    aria-controls="social-settings"
+                    onClick={() => setShowSettings((open) => !open)}
+                    className="flex w-full cursor-pointer items-center gap-[12px] px-[14px] py-[12px] text-start transition-colors hover:bg-pqHover"
                   >
-                    <div className="flex-1 text-[13.5px] font-[600] text-pqText">
-                      {currentIntegrationText}
-                    </div>
+                    <span
+                      className="relative grid size-[36px] shrink-0 place-items-center overflow-hidden rounded-[10px] bg-pqSettings text-pqMuted"
+                      aria-hidden="true"
+                    >
+                      {current !== 'global' && currentChannel ? (
+                        <>
+                          <img
+                            src={`/icons/platforms/${currentChannel.identifier}.png`}
+                            className="h-[20px] w-[20px] rounded-[5px]"
+                            alt=""
+                          />
+                          <SettingsIcon
+                            size={12}
+                            className="absolute -end-[1px] -bottom-[1px] text-pqText"
+                          />
+                        </>
+                      ) : (
+                        <SettingsIcon size={16} className="text-pqMuted" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-[600] text-pqText">
+                        {t('channel_settings', 'Channel settings')}
+                      </span>
+                      <span className="mt-[1px] block truncate text-[12px] text-pqMuted">
+                        {current !== 'global' && currentChannel
+                          ? channelNameWithHandle(currentChannel) ||
+                            currentChannel.identifier
+                          : t(
+                              'channel_settings_hint',
+                              'Per network — title, tags, audience, and more'
+                            )}
+                      </span>
+                    </span>
+                    {current === 'global' && selectedIntegrations.length > 0 && (
+                      <span className="flex shrink-0 items-center pe-[4px]">
+                        {selectedIntegrations.slice(0, 4).map((item, index) => (
+                          <img
+                            key={item.integration.id}
+                            src={`/icons/platforms/${item.integration.identifier}.png`}
+                            alt={item.integration.identifier}
+                            title={channelNameWithHandle(item.integration)}
+                            className="h-[22px] w-[22px] rounded-[6px] shadow-[0_0_0_2px_var(--inner)]"
+                            style={{
+                              marginInlineStart: index === 0 ? 0 : -6,
+                            }}
+                          />
+                        ))}
+                        {selectedIntegrations.length > 4 && (
+                          <span className="ms-[6px] text-[11px] font-[600] text-pqSoft">
+                            +{selectedIntegrations.length - 4}
+                          </span>
+                        )}
+                      </span>
+                    )}
                     <ChevronDownIcon
                       rotated={showSettings}
-                      className="text-pqMuted"
+                      className="shrink-0 text-pqMuted"
                     />
                   </button>
                   <div
                     className={clsx(
-                      !showSettings ? 'hidden' : 'relative min-h-0 flex-1',
-                      'text-[14px] font-[500] text-pqText'
+                      'border-t border-pqLine bg-pqSettings text-[14px] font-[500] text-pqText',
+                      !showSettings && 'hidden'
                     )}
                   >
-                    <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqSettings">
+                    <div className="max-h-[min(420px,46vh)] overflow-x-hidden overflow-y-auto p-[12px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqSettings">
                       <div
                         id="social-settings"
-                        className="flex flex-col gap-[12px] pe-[4px]"
+                        className="flex flex-col gap-[12px]"
                       />
                     </div>
                   </div>

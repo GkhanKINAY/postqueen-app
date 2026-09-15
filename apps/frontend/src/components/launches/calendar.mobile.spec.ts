@@ -127,6 +127,15 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /check_circles_above/);
   });
 
+  it('keeps channel settings as an in-flow accordion, not a takeover', () => {
+    assert.match(manage, /data-pq="composer-settings"/);
+    assert.match(manage, /aria-expanded=\{showSettings\}/);
+    assert.match(manage, /id="social-settings"/);
+    assert.match(manage, /channel_settings_hint/);
+    assert.match(manage, /!showSettings && 'hidden'/);
+    assert.doesNotMatch(manage, /showSettings && 'flex min-h-0 flex-1 flex-col pt-\[12px\]'/);
+  });
+
   it('opens Day/Week/Month from a single View sheet on phone', () => {
     const filters = readFileSync(
       fileURLToPath(new URL('./filters.tsx', import.meta.url)),
