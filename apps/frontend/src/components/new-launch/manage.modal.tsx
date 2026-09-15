@@ -21,6 +21,11 @@ import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.p
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
+import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
+import {
+  PQ_NOTIFY_SETTING,
+  postWantsPublishNotice,
+} from '@gitroom/helpers/utils/post.publish.notice';
 import { TagsComponent } from '@gitroom/frontend/components/launches/tags.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -54,6 +59,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
   const [postNowOpen, setPostNowOpen] = useState(false);
+  const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
+    postWantsPublishNotice(existingData.settings)
+  );
   const toaster = useToaster();
   const { dropPostGroupFromView } = useCalendar();
   const modal = useModals();
@@ -306,7 +314,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           id: post.id,
         },
         group,
-        settings: { ...(post.settings || {}) },
+        settings: {
+          ...(post.settings || {}),
+          [PQ_NOTIFY_SETTING]: notifyOnPublish,
+        },
         value: post.values.map((value: any) => ({
           ...(value.id ? { id: value.id } : {}),
           content: value.content,
@@ -585,6 +596,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       shortlinkPreferenceData,
       toaster,
       t,
+      notifyOnPublish,
     ]
   );
 
@@ -877,6 +889,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 )}
               >
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
+              </div>
+            )}
+            {!dummy && (
+              <div
+                className={clsx(
+                  'min-w-0',
+                  touch ? 'w-full [&>*]:w-full self-end' : 'shrink-0'
+                )}
+              >
+                <ComposeNotify
+                  notify={notifyOnPublish}
+                  onChange={setNotifyOnPublish}
+                />
               </div>
             )}
           </div>

@@ -1368,3 +1368,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Composer media: overlay chips on a 120px Create Post thumb
 
 **i18n +2 (`instagram_45_hint`, `drag_drop_or_select`).** Create Post attachments were 48px chips with a hanging X, so alt/edit could not sit on the photo. Studio thumbs are now 120px squares: info and close on the image, ALT and edit as dark chips on the bottom, plus a dashed add well. ALT opens the existing media-settings modal; edit opens Polonto when that is available, otherwise the same modal (video thumbnail). Agent and in-form attachment chips stay 58/48px. Instagram stills get a 4:5 hint under the row. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` and `gates.txt` (`tier.ai` 7 → 8: the thumb pencil uses the same AI gate as Design Media).
+
+## Composer: Notify me vs Quiet on this post
+
+**i18n +4 (`notify_me`, `notify_me_hint`, `notify_quiet`, `notify_quiet_hint`).** Create Post footer now has a Buffer-style notice menu next to Repeat. **Notify me** (default) is today's success notice. **Quiet** stores `pq_notify: false` on the post settings JSON and the publish activity skips the digested "Your post has been published" notice. Failures still notify. Not Buffer's "post yourself" mobile reminder — PostQueen always publishes. `scripts/ui-migration-check.sh --update` wrote `i18n.txt` only.

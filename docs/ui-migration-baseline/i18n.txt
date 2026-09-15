@@ -1486,6 +1486,10 @@ nothing_here_yet
 nothing_published_yet
 notifications
 notifications_settings_description
+notify_me
+notify_me_hint
+notify_quiet
+notify_quiet_hint
 oauth_app_admin_only
 oauth_app_admin_only_title
 oauth_app_empty_hint

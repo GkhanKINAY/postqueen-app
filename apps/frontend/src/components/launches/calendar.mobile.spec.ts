@@ -131,6 +131,15 @@ describe('phone calendar and composer', () => {
     assert.match(manage, /data-pq="composer-empty"/);
     assert.match(manage, /select_a_channel_to_create_a_post/);
     assert.match(manage, /when_to_post/);
+    const notify = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/compose.notify.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(manage, /<ComposeNotify/);
+    assert.match(manage, /\[PQ_NOTIFY_SETTING\]: notifyOnPublish/);
+    assert.match(notify, /data-pq="composer-notify"/);
     assert.match(tags, /t\('tags', 'Tags'\)/);
     assert.doesNotMatch(tags, /touch \? t\('tags', 'Tags'\)/);
     assert.match(repeat, /aria-label=\{ariaLabel\}/);

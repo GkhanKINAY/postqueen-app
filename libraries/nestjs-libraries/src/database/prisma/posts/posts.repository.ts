@@ -444,6 +444,19 @@ export class PostsRepository {
     });
   }
 
+  getSettingsByReleaseUrl(orgId: string, releaseURL: string) {
+    return this._post.model.post.findFirst({
+      where: {
+        organizationId: orgId,
+        releaseURL,
+        deletedAt: null,
+      },
+      select: {
+        settings: true,
+      },
+    });
+  }
+
   /**
    * The claim a publishing run takes before it acts on a post (post workflow
    * v1.0.9). One conditional write, so two runs can never both hold it; the
