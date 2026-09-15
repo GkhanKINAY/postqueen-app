@@ -373,10 +373,10 @@ export const EditorWrapper: FC<{
   return (
     <div
       className={clsx(
-        'relative flex-col gap-[20px] flex-1',
+        'relative flex w-full min-w-0 flex-col gap-[16px]',
         (items.length === 1 || !canEdit || !comments) && 'flex',
         ((!canEdit && !isCreateSet) || !comments) &&
-          'bg-pqSettings rounded-[12px]'
+          'rounded-[12px] bg-pqSettings'
       )}
     >
       {aiOk && (
@@ -438,15 +438,15 @@ export const EditorWrapper: FC<{
         <div
           key={g.id}
           className={clsx(
-            'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
+            'relative flex w-full min-w-0 flex-col gap-[16px] bg-pqSettings',
             index === 0 && 'rounded-t-[12px]',
             (index === items.length - 1 || !comments) && 'rounded-b-[12px]',
             !canEdit && !isCreateSet && 'blur-s',
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
           )}
         >
-          <div className="flex gap-[5px] flex-1 w-full">
-            <div className="flex-1 flex w-full">
+          <div className="flex w-full min-w-0 gap-[5px]">
+            <div className="flex w-full min-w-0">
               {index > 0 && (
                 <div className="flex justify-center pl-[12px] text-newSep">
                   <ConnectionLineIcon />
@@ -731,16 +731,16 @@ export const Editor: FC<{
   }
 
   return (
-    <div className="flex flex-col gap-[20px] flex-1">
+    <div className="flex w-full min-w-0 flex-col gap-[12px]">
       <div
         className={clsx(
-          'relative flex-1 px-[12px] pt-[12px] pb-[12px] flex flex-col',
+          'relative flex flex-col px-[12px] pt-[12px] pb-[12px]',
           num > 0 && '!rounded-bs-[0]'
         )}
         id={id}
       >
-        <div className="relative cursor-text flex flex-1 flex-col">
-          <div {...getRootProps()} className="flex flex-1 flex-col">
+        <div className="relative flex cursor-text flex-col">
+          <div {...getRootProps()} className="flex flex-col">
             <div
               className={clsx(
                 // Solid cover like DropFiles — never frost thumbs through.
@@ -768,7 +768,7 @@ export const Editor: FC<{
                 )}
               </div>
             </div>
-            <div className="px-[10px] pt-[10px] bg-pqInner rounded-t-[6px] relative z-[99]">
+            <div className="relative z-[99] min-h-[88px] rounded-t-[6px] bg-pqInner px-[10px] pt-[10px]">
               <OnlyEditor
                 value={props.value}
                 editorType={editorType}
@@ -778,7 +778,7 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="bg-pqInner flex-1"
+              className="min-h-[12px] bg-pqInner"
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;

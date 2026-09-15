@@ -618,11 +618,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   );
 
   return (
-    <div className={clsx(
-      'relative flex h-full w-full flex-1',
-      touch ? 'p-0' : 'p-[40px]'
-    )}>
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[20px] bg-pqInner shadow-pq mobile:rounded-none">
+    <div
+      data-pq="composer-shell"
+      className={clsx(
+        'relative flex h-full w-full flex-1',
+        touch ? 'p-0' : 'items-center justify-center p-[24px]'
+      )}
+    >
+      <div
+        className={clsx(
+          'flex flex-col overflow-hidden bg-pqInner shadow-pq',
+          // removeLayout + fullScreen ignores the openModal max-w-[1400px]
+          // class, so the card used to paint edge-to-edge. Desktop sits as a
+          // centered compose window; phone/tablet stay full-bleed.
+          touch
+            ? 'h-full w-full min-h-0 flex-1 rounded-none'
+            : 'h-[min(720px,calc(100dvh-48px))] w-full max-w-[960px] rounded-[20px]'
+        )}
+      >
         <div
           className={clsx(
             'flex min-h-0 flex-1',
@@ -690,7 +703,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               >
                 <div
                   id="social-content"
-                  className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                  className="absolute top-0 left-0 flex h-full w-full flex-col gap-[20px] overflow-x-hidden overflow-y-scroll pe-[8px] ps-[20px] pt-[20px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
                 >
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
@@ -726,7 +739,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     <div>
                       <SelectCurrent />
                     </div>
-                    <div className="flex-1 flex">
+                    <div className="flex w-full min-w-0">
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
@@ -792,7 +805,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     'w-full min-h-0 flex-1',
                     composerPane !== 'preview' && 'hidden'
                   )
-                : 'w-[580px]'
+                : 'w-[380px] shrink-0'
             )}
           >
             <div

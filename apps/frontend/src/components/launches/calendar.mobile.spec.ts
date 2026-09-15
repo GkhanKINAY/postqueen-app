@@ -53,6 +53,22 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
   });
 
+  it('keeps the desktop composer as a centered card, not edge-to-edge', () => {
+    assert.match(manage, /data-pq="composer-shell"/);
+    assert.match(manage, /max-w-\[960px\]/);
+    assert.match(manage, /w-\[380px\] shrink-0/);
+    assert.doesNotMatch(manage, /w-\[580px\]/);
+    assert.doesNotMatch(manage, /p-\[40px\]/);
+    const editor = readFileSync(
+      fileURLToPath(
+        new URL('../new-launch/editor.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(editor, /min-h-\[88px\]/);
+    assert.doesNotMatch(editor, /className="bg-pqInner flex-1"/);
+  });
+
   it('keeps X/general preview photos inside a feed aspect frame', () => {
     const preview = readFileSync(
       fileURLToPath(
