@@ -553,8 +553,6 @@ export const EditorWrapper: FC<{
                   firstCommentMode && index === 0 ? (
                     <ComposeFirstComment
                       value={editorHtmlToPlain(items[1]?.content || '')}
-                      delay={items[1]?.delay || 0}
-                      showDelay={items.length >= 2}
                       onChange={setFirstCommentText}
                     />
                   ) : undefined

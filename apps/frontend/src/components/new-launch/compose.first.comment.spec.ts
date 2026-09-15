@@ -9,12 +9,11 @@ const source = readFileSync(
 );
 
 describe('composer first comment', () => {
-  it('is a Buffer-style field with delay, not a second compose box', () => {
+  it('is a Buffer-style field, not a second compose box or delay clock', () => {
     assert.match(source, /data-pq="composer-first-comment"/);
     assert.match(source, /first_comment/);
     assert.match(source, /your_comment/);
-    assert.match(source, /DelayComponent/);
-    assert.match(source, /currentIndex=\{1\}/);
+    assert.doesNotMatch(source, /DelayComponent/);
     assert.doesNotMatch(source, /EditorContent/);
   });
 });

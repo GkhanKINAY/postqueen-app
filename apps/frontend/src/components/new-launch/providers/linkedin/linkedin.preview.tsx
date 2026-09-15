@@ -366,27 +366,23 @@ export const LinkedinPreview: FC<{
             ))}
           </div>
         ))}
-      <div className="flex text-textLinkedin text-[12px] font-[400] items-center">
-        <div className="flex flex-1 gap-[11px] items-center">
-          <Icons />
-          <div className="">88</div>
+      {commentCount > 0 ? (
+        <div className="flex justify-end text-[12px] font-[400] text-textLinkedin">
+          {commentCount === 1
+            ? t('one_comment', '1 comment')
+            : `${commentCount} ${t('comments', 'comments')}`}
         </div>
-        <div className="gap-[9px] items-center flex">
-          {commentCount > 0 && (
-            <>
-              <div>
-                {commentCount === 1
-                  ? t('one_comment', '1 comment')
-                  : `${commentCount} ${t('comments', 'comments')}`}
-              </div>
-              <div>
-                <div className="w-[3px] h-[3px] bg-[#565C65] rounded-full" />
-              </div>
-            </>
-          )}
-          <div>8 Reposts</div>
+      ) : (
+        <div className="flex text-textLinkedin text-[12px] font-[400] items-center">
+          <div className="flex flex-1 gap-[11px] items-center">
+            <Icons />
+            <div className="">88</div>
+          </div>
+          <div className="gap-[9px] items-center flex">
+            <div>8 Reposts</div>
+          </div>
         </div>
-      </div>
+      )}
       <div className="pt-[8px] flex text-[14px] font-[700] px-[32px] justify-between border-t border-borderLinkedin text-textLinkedin">
         <div className="flex gap-[4px] items-center">
           <svg
