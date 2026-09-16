@@ -71,7 +71,6 @@ const GmbSettings: FC = () => {
     <div className="flex flex-col gap-[16px]">
       <FormChoice
         name="topicType"
-        icon="type"
         label="Post Type"
         layout="segment"
         defaultValue="STANDARD"

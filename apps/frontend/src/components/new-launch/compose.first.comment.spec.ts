@@ -34,7 +34,14 @@ describe('composer first comment', () => {
     assert.match(source, /data-pq="composer-add-comment-trigger"/);
     assert.match(source, /t\('add_comment', 'Add comment'\)/);
     assert.match(source, /bg-pqPink/);
-    assert.match(source, /w-full/);
+    assert.match(
+      source,
+      /data-pq="composer-add-comment-trigger"[\s\S]{0,200}h-\[36px\] w-auto/,
+    );
+    assert.doesNotMatch(
+      source,
+      /data-pq="composer-add-comment-trigger"[\s\S]{0,200}w-full/,
+    );
     assert.match(editor, /commentDraftOpen/);
     assert.match(editor, /showComments/);
     assert.doesNotMatch(editor, /firstCommentFilled/);
@@ -115,9 +122,32 @@ describe('composer first comment', () => {
     assert.match(editor, /data-pq="composer-comments"/);
     assert.match(
       editor,
-      /\{comments \? \(\s*<div className="border-t border-pqLine px-\[12px\] py-\[10px\]">\s*<AddPostButton/,
+      /\{comments \? \(\s*<div className="self-start">\s*<AddPostButton/,
     );
-    assert.match(editor, /wide/);
+    assert.doesNotMatch(editor, /wide/);
+  });
+
+  it('sits below the editor chrome, not nested in the inner rounded panel', () => {
+    assert.match(editor, /data-pq="composer-comments"/);
+    assert.match(
+      editor,
+      /relative flex flex-col gap-\[16px\] flex-1/,
+    );
+    assert.doesNotMatch(editor, /firstComment=\{/);
+    assert.doesNotMatch(
+      editor,
+      /data-pq="composer-comments"[\s\S]{0,180}bg-pqPop/,
+    );
+    assert.doesNotMatch(
+      editor,
+      /overflow-hidden rounded-\[12px\] bg-pqPop/,
+    );
+    const addPost = readFileSync(
+      fileURLToPath(new URL('./add.post.button.tsx', import.meta.url)),
+      'utf8',
+    );
+    assert.match(addPost, /h-\[36px\] w-auto/);
+    assert.doesNotMatch(addPost, /w-full/);
   });
 
   it('uses the posts array so extra comments are a thread, not a new API', () => {

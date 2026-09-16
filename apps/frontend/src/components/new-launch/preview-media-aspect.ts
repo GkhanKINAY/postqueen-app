@@ -58,6 +58,15 @@ export function postHasPreview(item?: {
   );
 }
 
+/** Lead slide after a reorder that dropped path on some rows. */
+export function firstPreviewableMedia<T extends { path?: string | null }>(
+  images?: T[] | null
+): T | undefined {
+  return images?.find(
+    (item) => typeof item?.path === 'string' && item.path.length > 0
+  );
+}
+
 export function instagramFeedPreviewRange(opts: {
   isStory: boolean;
   paths: Array<string | undefined>;

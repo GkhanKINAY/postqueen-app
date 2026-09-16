@@ -125,13 +125,8 @@ ${style}
   return (
     <div className="flex flex-col gap-[18px]">
       <div className="flex flex-col gap-[8px]">
-        <div>
-          <div className="text-[12.5px] font-[600] text-pqSoft">
-            {t('prompt', 'Prompt')}
-          </div>
-          <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
-            {t('ai_image_prompt_help', 'What should appear in the image?')}
-          </div>
+        <div className="text-[12.5px] font-[600] text-pqSoft">
+          {t('prompt', 'Prompt')}
         </div>
         <textarea
           value={prompt}

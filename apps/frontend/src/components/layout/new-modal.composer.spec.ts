@@ -98,4 +98,20 @@ describe('composer modal chrome', () => {
       /bg-btnSimple text-\[14px\] font-\[600\]/,
     );
   });
+
+  it('leaves space under the Settings cards so they are not flush with the footer', () => {
+    assert.match(manage, /data-pq="composer-settings-block"/);
+    assert.match(
+      manage,
+      /data-pq="composer-settings-block"[\s\S]{0,180}pb-\[32px\]/,
+    );
+    assert.match(
+      manage,
+      /id="social-content"[\s\S]{0,280}pb-\[32px\]/,
+    );
+    assert.doesNotMatch(
+      manage,
+      /id="social-settings"[\s\S]{0,220}bg-pqLine p-\[1px\]/,
+    );
+  });
 });

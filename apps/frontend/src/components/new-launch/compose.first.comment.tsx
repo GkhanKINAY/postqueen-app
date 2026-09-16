@@ -34,12 +34,12 @@ export const AddCommentTrigger: FC<{
 }> = ({ onClick }) => {
   const t = useT();
   return (
-    <div data-pq="composer-first-comment-trigger">
+    <div data-pq="composer-first-comment-trigger" className="self-start">
       <button
         type="button"
         onClick={onClick}
         data-pq="composer-add-comment-trigger"
-        className="inline-flex h-[40px] w-full cursor-pointer select-none items-center justify-center gap-[6px] rounded-[10px] bg-pqPink px-[14px] text-[13px] font-[600] text-pqOnBrand transition-opacity hover:opacity-90"
+        className="inline-flex h-[36px] w-auto cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] bg-pqPink px-[12px] text-[13px] font-[600] text-pqOnBrand transition-opacity hover:opacity-90"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -166,8 +166,8 @@ export const ComposeFirstComment: FC<{
     <div
       data-pq="composer-first-comment"
       className={clsx(
-        'flex min-w-0 flex-col gap-[8px] px-[12px] py-[12px]',
-        commentIndex > 1 && 'border-t border-pqLine'
+        'flex min-w-0 flex-col gap-[8px]',
+        commentIndex > 1 && 'border-t border-pqLine pt-[12px]'
       )}
       onFocusCapture={() => {
         onActivate();

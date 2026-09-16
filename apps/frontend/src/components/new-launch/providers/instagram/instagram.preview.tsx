@@ -8,7 +8,10 @@ import { FC, useEffect, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { SliderComponent } from '@gitroom/frontend/components/third-parties/slider.component';
 import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
-import { instagramFeedPreviewRange } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
+import {
+  firstPreviewableMedia,
+  instagramFeedPreviewRange,
+} from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -25,13 +28,15 @@ export const InstagramPreview: FC<{
     | string
     | undefined;
   const isStory = postType === 'story';
-  const media = topValue?.[0]?.image ?? [];
+  const media = (topValue?.[0]?.image ?? []).filter((image) =>
+    firstPreviewableMedia([image])
+  );
   const range = instagramFeedPreviewRange({
     isStory,
     paths: media.map((image) => image.path),
   });
   const [leadWH, setLeadWH] = useState<number | undefined>();
-  const leadPath = media[0]?.path;
+  const leadPath = firstPreviewableMedia(media)?.path;
   useEffect(() => {
     setLeadWH(undefined);
   }, [leadPath, range.minWH, range.maxWH]);
@@ -67,7 +72,10 @@ export const InstagramPreview: FC<{
       }) +
       `</mark>`;
 
-    return { text: finalValue, images: p.image };
+    return {
+      text: finalValue,
+      images: (p.image || []).filter((image) => firstPreviewableMedia([image])),
+    };
   });
   return (
     <div className="py-[10px] flex flex-col px-[15px] w-full gap-[10px] bg-bgInstagram rounded-[12px]">

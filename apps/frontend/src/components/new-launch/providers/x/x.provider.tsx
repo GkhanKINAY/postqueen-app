@@ -50,7 +50,6 @@ const SettingsComponent = () => {
     <>
       <FormChoice
         name="post_type"
-        icon="type"
         label={t('label_post_type', 'Post type')}
         layout="segment"
         defaultValue="post"

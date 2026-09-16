@@ -17,10 +17,7 @@ import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.cu
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import {
-  ComposeWhen,
-  ComposeWhenMode,
-} from '@gitroom/frontend/components/new-launch/compose.when';
+import { ComposeWhen } from '@gitroom/frontend/components/new-launch/compose.when';
 import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
 import {
   PQ_NOTIFY_SETTING,
@@ -198,10 +195,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   });
 
-  const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
-  const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
-    existingData?.posts?.[0] ? 'date' : whenProp === 'next' ? 'next' : 'date'
-  );
+  const { addEditSets, mutate, customClose, dummy } = props;
 
   const {
     selectedIntegrations,
@@ -435,29 +429,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       // catch can tell "failed" from "succeeded then stumbled".
       let saved = false;
       try {
-      if (type === 'schedule' && whenMode === 'now') {
-        type = 'now';
-      }
-      let publishAt = date;
-      if (type === 'schedule' && whenMode === 'next') {
-        const slotResponse = await fetch('/posts/find-slot');
-        const slot = slotResponse.ok
-          ? (await slotResponse.json().catch(() => ({})))?.date
-          : undefined;
-        if (!slot) {
-          setLoading(false);
-          toaster.show(
-            t(
-              'create_post_failed',
-              'Could not start a new post, please try again'
-            ),
-            'warning'
-          );
-          return;
-        }
-        publishAt = dayjs.utc(slot).local();
-        setDate(publishAt);
-      }
+      const publishAt = date;
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
@@ -787,7 +759,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       shortlinkPreferenceData,
       toaster,
       t,
-      whenMode,
       notifyOnPublish,
       fetch,
     ]
@@ -893,10 +864,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div
                   id="social-content"
                   className={clsx(
-                    'gap-[32px] flex flex-col px-[20px] pt-[20px] pb-[20px]',
+                    'gap-[32px] flex flex-col px-[20px] pt-[20px] pb-[32px]',
                     hasChannels || compactChrome
                       ? 'absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner'
-                      : 'overflow-visible pb-[20px]'
+                      : 'overflow-visible'
                   )}
                 >
                   <div className={clsx(
@@ -955,22 +926,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
-                      data-pq="composer-settings-heading"
-                      id="composer-settings-heading"
+                      data-pq="composer-settings-block"
                       className={clsx(
-                        'px-[4px] pt-[8px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft',
+                        'flex flex-col gap-[12px] pb-[32px]',
                         !hasChannels && 'hidden'
                       )}
+                    >
+                    <div
+                      data-pq="composer-settings-heading"
+                      id="composer-settings-heading"
+                      className="px-[4px] pt-[8px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft"
                     >
                       {t('settings', 'Settings')}
                     </div>
                     <div
                       id="composer-quick-settings"
                       data-pq="composer-quick-settings"
-                      className={clsx(
-                        'flex flex-col empty:hidden px-[4px]',
-                        !hasChannels && 'hidden'
-                      )}
+                      className="flex flex-col empty:hidden px-[4px]"
                     />
                     <div
                       id="wrapper-settings"
@@ -987,7 +959,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     >
                       <div
                         id="social-settings"
-                        className="flex min-w-0 flex-col gap-[1px] overflow-hidden rounded-[14px] bg-pqLine p-[1px] text-[14px] font-[500] text-pqText"
+                        className="flex min-w-0 flex-col divide-y divide-pqLine overflow-hidden rounded-[14px] bg-pqInner text-[14px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] empty:hidden"
                       />
                       <style>
                         {`#social-settings [data-id="${current}"] {display: block !important;}`}
@@ -995,11 +967,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     </div>
                     <div
                       id="social-empty"
-                      className={clsx(
-                        'pb-[16px]'
-                        // current !== 'global' && 'hidden'
-                      )}
+                      className="pb-[8px]"
                     />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1188,12 +1158,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-y-auto px-[16px] py-[12px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
-                <ComposeWhen
-                  mode={whenMode}
-                  date={date}
-                  onMode={setWhenMode}
-                  onChange={setDate}
-                />
+                <ComposeWhen date={date} onChange={setDate} />
                 {!dummy && selectedIntegrations.length > 0 && (
                   <ComposeNotify
                     notify={notifyOnPublish}
@@ -1329,12 +1294,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </div>
             )}
             {compactFooter && hasChannels && (
-              <ComposeWhen
-                mode={whenMode}
-                date={date}
-                onMode={setWhenMode}
-                onChange={setDate}
-              />
+              <ComposeWhen date={date} onChange={setDate} />
             )}
             {compactFooter && !dummy && selectedIntegrations.length > 0 && (
               <ComposeNotify
@@ -1352,12 +1312,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             )}
           >
             {!phoneFlow && (!compactFooter || !hasChannels) && (
-              <ComposeWhen
-                mode={whenMode}
-                date={date}
-                onMode={setWhenMode}
-                onChange={setDate}
-              />
+              <ComposeWhen date={date} onChange={setDate} />
             )}
             {!phoneFlow && existingData?.integration && (
               <button

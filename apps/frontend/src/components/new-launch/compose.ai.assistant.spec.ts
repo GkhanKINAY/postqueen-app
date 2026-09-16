@@ -56,7 +56,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.match(assistant, /data-pq="composer-ai-chat"/);
     assert.match(assistant, /className="copilotKitInputContainer"/);
-    assert.match(assistant, /className="copilotKitInput flex items-center gap-\[8px\]"/);
+    assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
     assert.match(assistant, /copilotKitUserMessage/);
     assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
@@ -72,6 +72,17 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
     assert.match(assistant, /Then apply it with setPosts/);
     assert.match(assistant, /quick_edits/);
+    assert.match(assistant, /h-\[28px\].*text-\[12px\]/);
+    assert.doesNotMatch(
+      assistant,
+      /flex h-\[36px\] items-center gap-\[6px\] rounded-\[10px\]/,
+    );
+    assert.match(assistant, /min-h-\[72px\] flex-1 resize-none/);
+    assert.match(
+      assistant,
+      /share_with_the_world[\s\S]{0,80}What do you want to share with the world\?/,
+    );
+    assert.doesNotMatch(assistant, /write_something/);
     assert.match(assistant, /🔄/);
     assert.match(assistant, /t\('send', 'Send'\)/);
     assert.match(assistant, /Input=\{ComposeAiInput\}/);

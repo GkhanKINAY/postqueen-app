@@ -48,7 +48,6 @@ const InstagramCollaborators: FC<{
     <>
       <FormChoice
         name="post_type"
-        icon="type"
         label="Post Type"
         layout="segment"
         defaultValue="post"

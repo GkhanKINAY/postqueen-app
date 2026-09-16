@@ -23,6 +23,10 @@ import {
 } from '@gitroom/frontend/components/ui/icons';
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox';
+import {
+  commitMediaOrder,
+  mediaOrderUnchanged,
+} from '@gitroom/frontend/components/media/media.reorder';
 
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
@@ -444,8 +448,16 @@ export const MultiMediaComponent: FC<{
               <ReactSortable
                 list={currentMedia}
                 setList={(next) => {
-                  setCurrentMedia(next);
-                  onChange({ target: { name, value: next } });
+                  const committed = commitMediaOrder(
+                    next,
+                    currentMediaRef.current
+                  );
+                  if (mediaOrderUnchanged(committed, currentMediaRef.current)) {
+                    return;
+                  }
+                  currentMediaRef.current = committed;
+                  setCurrentMedia(committed);
+                  onChange({ target: { name, value: committed } });
                 }}
                 className={clsx(
                   'sortable-container flex',
@@ -463,7 +475,7 @@ export const MultiMediaComponent: FC<{
               >
                 {currentMedia.map((media, index) => (
                   <div
-                    key={`${media.id}-${index}`}
+                    key={media.id}
                     data-pq={studioThumbs ? 'composer-media-thumb' : undefined}
                     className={clsx(
                       'group relative transition-[box-shadow]',

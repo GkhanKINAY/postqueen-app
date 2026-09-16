@@ -382,7 +382,7 @@ export const withProvider = function <T extends object>(params: {
                     data-id={props.id}
                     className={clsx(
                       isGlobal ? 'block' : 'hidden',
-                      'min-w-0 overflow-hidden bg-pqInner first:rounded-t-[13px] last:rounded-b-[13px]'
+                      'min-w-0 bg-pqInner'
                     )}
                   >
                     {isGlobal && (
