@@ -56,7 +56,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.match(assistant, /data-pq="composer-ai-chat"/);
     assert.match(assistant, /className="copilotKitInputContainer"/);
-    assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
+    assert.match(assistant, /className="copilotKitInput flex items-center gap-\[8px\]"/);
     assert.match(assistant, /copilotKitUserMessage/);
     assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
@@ -71,6 +71,11 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /t\('more_formal', 'More Formal'\)/);
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
     assert.match(assistant, /Then apply it with setPosts/);
+    assert.match(assistant, /quick_edits/);
+    assert.match(assistant, /🔄/);
+    assert.match(assistant, /t\('send', 'Send'\)/);
+    assert.match(assistant, /Input=\{ComposeAiInput\}/);
+    assert.match(assistant, /data-pq="composer-ai-send"/);
   });
 
   it('can rewrite the post and generate an attached image', () => {

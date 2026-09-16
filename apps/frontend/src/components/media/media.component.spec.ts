@@ -25,6 +25,10 @@ describe('composer media hover actions', () => {
     assert.doesNotMatch(source, />\s*ALT\s*</);
     assert.doesNotMatch(source, /instagram_45_hint/);
     assert.doesNotMatch(source, /#2563EB/);
+    assert.match(
+      source,
+      /!touch &&\s+'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'/,
+    );
   });
 
   it('keeps agent and in-form attachment chips small, with a hanging X', () => {
@@ -45,5 +49,25 @@ describe('composer media hover actions', () => {
     assert.match(source, /<AiVideo/);
     assert.match(source, /!!user\?\.tier\?\.ai/);
     assert.doesNotMatch(source, /showAiImage/);
+  });
+
+  it('draws the settings cover picker like Create Post thumbs, not Select/Clear', () => {
+    const single = source.slice(source.indexOf('export const MediaComponent'));
+    assert.match(single, /data-pq="settings-media-thumb"/);
+    assert.match(single, /data-pq="composer-media-enlarge"/);
+    assert.match(single, /data-pq="composer-add-media"/);
+    assert.match(single, /h-\[120px\] w-\[120px\]/);
+    assert.match(single, /<MediaLightbox/);
+    assert.match(single, /change_alt_text/);
+    assert.match(single, /insert_media/);
+    assert.doesNotMatch(single, /t\('select'/);
+    assert.doesNotMatch(single, /t\('clear'/);
+    assert.doesNotMatch(single, /border-tableBorder/);
+    assert.doesNotMatch(single, /bg-customColor45/);
+    assert.doesNotMatch(single, /window\.open/);
+    assert.match(
+      single,
+      /opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100/,
+    );
   });
 });

@@ -15,6 +15,20 @@ const repeat = readFileSync(
   fileURLToPath(new URL('../launches/repeat.component.tsx', import.meta.url)),
   'utf8',
 );
+const tags = readFileSync(
+  fileURLToPath(new URL('../launches/tags.component.tsx', import.meta.url)),
+  'utf8',
+);
+const notify = readFileSync(
+  fileURLToPath(
+    new URL('../new-launch/compose.notify.tsx', import.meta.url)
+  ),
+  'utf8',
+);
+const when = readFileSync(
+  fileURLToPath(new URL('../new-launch/compose.when.tsx', import.meta.url)),
+  'utf8',
+);
 const css = readFileSync(
   fileURLToPath(new URL('../../app/global.css', import.meta.url)),
   'utf8',
@@ -66,5 +80,22 @@ describe('composer modal chrome', () => {
     assert.match(repeat, /t\('repeat_post_every', 'Repeat Post Every'\)/);
     assert.doesNotMatch(repeat, /Repeat Post Every\.\.\./);
     assert.match(repeat, /whitespace-nowrap/);
+    assert.match(tags, /text-\[15px\] font-\[600\]/);
+    assert.match(repeat, /text-\[15px\] font-\[600\]/);
+    assert.match(manage, /data-pq="composer-footer-notify"/);
+    assert.match(notify, /text-\[15px\] font-\[600\]/);
+    assert.match(when, /text-\[15px\] font-\[600\] text-pqText/);
+    assert.match(
+      manage,
+      /bg-btnSimple text-\[15px\] font-\[600\]/,
+    );
+    assert.match(
+      manage,
+      /bg-pqBrand text-\[15px\] font-\[600\] text-white/,
+    );
+    assert.doesNotMatch(
+      manage,
+      /bg-btnSimple text-\[14px\] font-\[600\]/,
+    );
   });
 });

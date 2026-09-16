@@ -1236,7 +1236,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <button
                 type="button"
                 onClick={() => setComposerPane('edit')}
-                className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-btnSimple text-[14px] font-[600]"
+                className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-btnSimple text-[15px] font-[600]"
               >
                 {t('back', 'Back')}
               </button>
@@ -1253,7 +1253,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   composerPane === 'edit' ? 'preview' : 'schedule'
                 )
               }
-              className="btnSub flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-pqBrand px-[12px] text-[14px] font-[600] text-white"
+              className="btnSub flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-pqBrand px-[12px] text-[15px] font-[600] text-white"
             >
               {composerPane === 'edit'
                 ? t('preview', 'Preview')
@@ -1384,11 +1384,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 }
                 onClick={schedule('draft')}
                 className={clsx(
-                  'relative flex cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-btnSimple text-[14px] font-[600] disabled:cursor-not-allowed',
-                  'max-[1179px]:h-[44px] max-[1179px]:min-w-0 max-[1179px]:flex-1 max-[1179px]:px-[12px]',
-                  touch
-                    ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                    : 'h-[42px] px-[18px]'
+                  'relative flex h-[44px] cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-btnSimple text-[15px] font-[600] disabled:cursor-not-allowed',
+                  'max-[1179px]:min-w-0 max-[1179px]:flex-1 max-[1179px]:px-[12px]',
+                  touch ? 'min-w-0 flex-1 px-[12px]' : 'px-[18px]'
                 )}
               >
                 {loading && (
@@ -1409,10 +1407,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             {addEditSets && (
               <button
                 className={clsx(
-                  'btnSub flex items-center justify-center gap-[8px] rounded-[10px] bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
+                  'btnSub flex h-[44px] items-center justify-center gap-[8px] rounded-[10px] bg-pqBrand text-[15px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
                   touch
-                    ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                    : 'h-[42px] min-w-[168px] px-[18px]'
+                    ? 'min-w-0 flex-1 px-[12px]'
+                    : 'min-w-[168px] px-[18px]'
                 )}
                 disabled={
                   selectedIntegrations.length === 0 || loading || locked
@@ -1432,14 +1430,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     }
                     onClick={schedule('schedule')}
                     className={clsx(
-                      'btnSub relative flex min-w-0 items-center justify-center overflow-hidden bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-40',
+                      'btnSub relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden bg-pqBrand text-[15px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-40',
                       dummy || !hasChannels
                         ? 'rounded-[10px]'
                         : 'rounded-s-[10px]',
-                      'max-[1179px]:h-[44px] max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
+                      'max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
                       touch
-                        ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                        : 'h-[42px] min-w-[168px] px-[18px]'
+                        ? 'min-w-0 flex-1 px-[12px]'
+                        : 'min-w-[168px] px-[18px]'
                     )}
                   >
                     {loading && (
@@ -1471,11 +1469,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       }
                       onClick={() => setPostNowOpen((v) => !v)}
                       aria-label={t('post_now', 'Post Now')}
-                      data-tooltip-id="tooltip"
-                      data-tooltip-content={t('post_now', 'Post Now')}
                       className={clsx(
-                        'grid w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80',
-                        touch ? 'h-[44px]' : 'h-[42px]'
+                        'grid h-[44px] w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80'
                       )}
                     >
                       <svg

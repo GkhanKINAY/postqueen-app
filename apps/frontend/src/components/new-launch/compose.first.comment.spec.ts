@@ -34,6 +34,7 @@ describe('composer first comment', () => {
     assert.match(source, /data-pq="composer-add-comment-trigger"/);
     assert.match(source, /t\('add_comment', 'Add comment'\)/);
     assert.match(source, /bg-pqPink/);
+    assert.match(source, /w-full/);
     assert.match(editor, /commentDraftOpen/);
     assert.match(editor, /showComments/);
     assert.doesNotMatch(editor, /firstCommentFilled/);
@@ -85,10 +86,10 @@ describe('composer first comment', () => {
     assert.doesNotMatch(toolbarClass, /bg-pqBtnSimple/);
   });
 
-  it('reuses the post character counter with comment copy, without nagging empty comments', () => {
+  it('reuses the post character counter — empty open comments are invalid', () => {
     assert.match(source, /<InformationComponent/);
     assert.match(source, /variant="comment"/);
-    assert.match(source, /requireContent=\{false\}/);
+    assert.doesNotMatch(source, /requireContent=\{false\}/);
     assert.match(source, /totalAllowedChars/);
     assert.match(source, /totalChars=\{value\.length\}/);
     assert.match(editor, /chars=\{chars\}/);
@@ -103,23 +104,20 @@ describe('composer first comment', () => {
     );
     assert.match(information, /requireContent && !isPicture && !totalChars/);
     assert.match(information, /variant === 'comment'/);
-    assert.match(information, /status === 'idle'/);
-    assert.match(information, /An unused comment is optional/);
   });
 
-  it('keeps Add comment on comment-capable networks even when comments is false', () => {
-    assert.match(
-      editor,
-      /canEdit && postComment !== PostComment\.POST/,
-    );
+  it('uses the First Comment card on every editable channel, including threads', () => {
+    assert.match(editor, /const firstCommentMode = canEdit;/);
     assert.doesNotMatch(
       editor,
-      /Boolean\(comments\) && postComment !== PostComment\.POST/,
+      /firstCommentMode =\s*canEdit && postComment !== PostComment\.POST/,
     );
+    assert.match(editor, /data-pq="composer-comments"/);
     assert.match(
       editor,
-      /\{comments \? \(\s*<div className="px-\[12px\] pb-\[10px\]">\s*<AddPostButton/,
+      /\{comments \? \(\s*<div className="border-t border-pqLine px-\[12px\] py-\[10px\]">\s*<AddPostButton/,
     );
+    assert.match(editor, /wide/);
   });
 
   it('uses the posts array so extra comments are a thread, not a new API', () => {

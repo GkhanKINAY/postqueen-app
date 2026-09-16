@@ -265,12 +265,27 @@ export const TagsComponentInner: FC<{
                 </span>
               </div>
               {!tagValue.find((a) => a.id === p.id) && (
-                <div
+                <button
+                  type="button"
                   onClick={(e) => deleteTag(p, e)}
-                  className="ms-auto transition-opacity cursor-pointer text-red-500 text-[14px] font-[600]"
+                  aria-label={t('delete_tag', 'Delete Tag')}
+                  className="ms-auto grid size-[28px] shrink-0 place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqDanger hover:text-white"
                 >
-                  ×
-                </div>
+                  <svg
+                    viewBox="0 0 12 12"
+                    width="12"
+                    height="12"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M3 3l6 6M9 3L3 9"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
               )}
             </div>
           ))}
@@ -569,7 +584,18 @@ const ShowModal: FC<{
     close();
   }, [tagName, color, id]);
   return (
-    <div>
+    <div className="flex flex-col gap-[16px]">
+      <div className="flex items-center gap-[12px] rounded-[10px] bg-pqSettings p-[12px]">
+        <span
+          className="inline-flex min-h-[28px] max-w-full items-center truncate rounded-[8px] px-[10px] text-[13px] font-[600] text-white"
+          style={{ backgroundColor: color }}
+        >
+          {tagName.trim() || t('tag_name', 'Name')}
+        </span>
+        <span className="ms-auto font-mono text-[12px] uppercase tracking-[0.04em] text-pqMuted">
+          {color}
+        </span>
+      </div>
       <Input
         name="name"
         disableForm={true}
@@ -585,7 +611,7 @@ const ShowModal: FC<{
         enabled={true}
         canBeCancelled={false}
       />
-      <Button onClick={save} className="mt-[16px]">
+      <Button onClick={save} className="w-full">
         {t('save', 'Save')}
       </Button>
     </div>

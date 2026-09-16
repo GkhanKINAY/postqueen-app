@@ -80,7 +80,7 @@ export const FormChoice: FC<{
         aria-label={label}
         className={
           layout === 'segment'
-            ? 'flex h-[40px] w-full gap-[2px] rounded-[10px] bg-pqTableHeader p-[3px] shadow-[inset_0_0_0_1px_var(--border)]'
+            ? 'flex h-[40px] w-full gap-[2px] rounded-[10px] bg-pqInner p-[3px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)]'
             : 'flex flex-wrap gap-[6px]'
         }
       >

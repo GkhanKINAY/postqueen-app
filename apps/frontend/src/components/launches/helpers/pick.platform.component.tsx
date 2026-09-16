@@ -3,12 +3,12 @@ import { Integrations } from '@gitroom/frontend/components/launches/calendar.con
 import { useMoveToIntegrationListener } from '@gitroom/frontend/components/launches/helpers/use.move.to.integration';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import clsx from 'clsx';
-import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useStateCallback } from '@gitroom/react/helpers/use.state.callback';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 const PickPlatformCopilotBindings: FC<{
   isMain: boolean;
@@ -237,93 +237,91 @@ export const PickPlatforms: FC<{
           ref={ref}
         >
           <div className="innerComponent">
-            <div className="flex gap-[10px] flex-wrap">
+            <div className="flex flex-wrap gap-[12px] p-[4px]">
               {integrations
                 .filter((f) => !f.inBetweenSteps)
-                .map((integration) =>
-                  !props.singleSelect ? (
-                    <div
-                      key={integration.id}
-                      className="flex gap-[8px] items-center"
-                      {...(props.toolTip && {
-                        'data-tooltip-id': 'tooltip',
-                        'data-tooltip-content': channelNameWithHandle(integration),
-                      })}
-                    >
-                      <div
-                        onClick={addPlatform(integration)}
-                        className={clsx(
-                          'cursor-pointer relative w-[34px] h-[34px] rounded-full flex justify-center items-center bg-fifth filter transition-all duration-500',
-                          selectedAccounts.findIndex(
-                            (p) => p.id === integration.id
-                          ) === -1
-                            ? 'opacity-40'
-                            : ''
-                        )}
-                      >
-                        <SafeImage
-                          src={integration.picture || '/no-picture.jpg'}
-                          className="rounded-full"
-                          alt={integration.identifier}
-                          width={32}
-                          height={32}
-                        />
-                        {integration.identifier === 'youtube' ? (
-                          <img
-                            src="/icons/platforms/youtube.svg"
-                            className="absolute z-10 bottom-0 -end-[5px]"
-                            width={20}
+                .map((integration) => {
+                  const selected = selectedAccounts.some(
+                    (account) => account.id === integration.id
+                  );
+                  const name = channelNameWithHandle(integration);
+                  if (props.singleSelect) {
+                    return (
+                      <div key={integration.id}>
+                        <button
+                          type="button"
+                          onClick={addPlatform(integration)}
+                          aria-pressed={selected}
+                          className={clsx(
+                            'relative flex h-[40px] w-[200px] cursor-pointer items-center justify-center gap-[10px] rounded-[50px] px-[12px] text-[13px] font-[600] transition-colors',
+                            selected
+                              ? 'bg-pqBrandSoft text-pqText shadow-[inset_0_0_0_1px_var(--brand)]'
+                              : 'bg-pqSettings text-pqMuted hover:text-pqText'
+                          )}
+                        >
+                          <ChannelAvatar
+                            integration={integration}
+                            size={24}
+                            rounded="full"
+                            badgeSize={12}
                           />
-                        ) : (
-                          <SafeImage
-                            src={`/icons/platforms/${integration.identifier}.png`}
-                            className="rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
-                            alt={integration.identifier}
-                            width={20}
-                            height={20}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div key={integration.id} className="">
-                      <div
-                        onClick={addPlatform(integration)}
-                        className={clsx(
-                          'cursor-pointer rounded-[50px] w-[200px] relative h-[40px] flex justify-center items-center bg-fifth filter transition-all duration-500',
-                          selectedAccounts.findIndex(
-                            (p) => p.id === integration.id
-                          ) === -1
-                            ? 'bg-third border border-third'
-                            : 'bg-customColor29 border border-customColor30'
-                        )}
-                      >
-                        <div className="flex items-center justify-center gap-[10px]">
-                          <div className="relative">
-                            <img
-                              src={integration.picture || '/no-picture.jpg'}
-                              className="rounded-full"
-                              alt={integration.identifier}
-                              width={24}
-                              height={24}
-                            />
-                            <SafeImage
-                              src={`/icons/platforms/${integration.identifier}.png`}
-                              className="rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
-                              alt={integration.identifier}
-                              width={15}
-                              height={15}
-                            />
-                          </div>
-                          <div>
+                          <span className="min-w-0 truncate">
                             {integration.name.slice(0, 10)}
                             {integration.name.length > 10 ? '...' : ''}
-                          </div>
-                        </div>
+                          </span>
+                        </button>
                       </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={integration.id}
+                      className="flex items-center"
+                      data-tooltip-id="tooltip"
+                      data-tooltip-content={name}
+                    >
+                      <button
+                        type="button"
+                        onClick={addPlatform(integration)}
+                        aria-pressed={selected}
+                        aria-label={name}
+                        className={clsx(
+                          'relative grid size-[40px] cursor-pointer place-items-center rounded-full transition-all',
+                          selected
+                            ? 'ring-2 ring-pqBrand ring-offset-2 ring-offset-pqSettings'
+                            : 'opacity-50 grayscale hover:opacity-80 hover:grayscale-0'
+                        )}
+                      >
+                        <ChannelAvatar
+                          integration={integration}
+                          size={36}
+                          rounded="full"
+                        />
+                        {selected && (
+                          <span
+                            className="absolute -end-[2px] -top-[2px] z-20 grid size-[16px] place-items-center rounded-full bg-pqBrand text-pqOnBrand ring-2 ring-pqSettings"
+                            aria-hidden="true"
+                          >
+                            <svg
+                              viewBox="0 0 12 12"
+                              width="9"
+                              height="9"
+                              fill="none"
+                            >
+                              <path
+                                d="M2.2 6.2 4.6 8.6 9.8 3.4"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        )}
+                      </button>
                     </div>
-                  )
-                )}
+                  );
+                })}
             </div>
           </div>
         </div>

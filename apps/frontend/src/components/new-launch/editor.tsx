@@ -375,8 +375,7 @@ export const EditorWrapper: FC<{
     [current, global, internal, t]
   );
 
-  const firstCommentMode =
-    canEdit && postComment !== PostComment.POST;
+  const firstCommentMode = canEdit;
   const lastVisibleIndex = firstCommentMode ? 0 : items.length - 1;
   const [commentDraftOpen, setCommentDraftOpen] = useState(false);
   const showComments = commentDraftOpen || items.length > 1;
@@ -595,7 +594,10 @@ export const EditorWrapper: FC<{
                   firstCommentMode && index === 0 ? (
                     <>
                       {showComments ? (
-                        <>
+                        <div
+                          data-pq="composer-comments"
+                          className="mx-[12px] mb-[12px] flex flex-col overflow-hidden rounded-[12px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]"
+                        >
                           {(items.length > 1
                             ? items.slice(1)
                             : [
@@ -636,22 +638,25 @@ export const EditorWrapper: FC<{
                             );
                           })}
                           {comments ? (
-                            <div className="px-[12px] pb-[10px]">
+                            <div className="border-t border-pqLine px-[12px] py-[10px]">
                               <AddPostButton
                                 num={0}
                                 onClick={addValue(items.length - 1)}
                                 postComment={postComment}
+                                wide
                               />
                             </div>
                           ) : null}
-                        </>
+                        </div>
                       ) : (
-                        <AddCommentTrigger
-                          onClick={() => {
-                            setCommentDraftOpen(true);
-                            ensureFirstComment();
-                          }}
-                        />
+                        <div className="mx-[12px] mb-[12px]">
+                          <AddCommentTrigger
+                            onClick={() => {
+                              setCommentDraftOpen(true);
+                              ensureFirstComment();
+                            }}
+                          />
+                        </div>
                       )}
                     </>
                   ) : undefined

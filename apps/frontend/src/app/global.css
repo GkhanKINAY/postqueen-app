@@ -1135,6 +1135,11 @@ html[dir='rtl'] .lbox {
   .copilotKitMessage img {
     width: 200px;
   }
+  [data-pq='agent-draft-card'] img,
+  [data-pq='agent-draft-card'] video {
+    width: 100%;
+    height: 100%;
+  }
   .copilotKitMessage a {
     color: var(--focused);
   }
@@ -1753,6 +1758,40 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
   .suggestions {
     padding: 0;
     background: transparent;
+  }
+
+  .copilotKitInput {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px 8px 12px;
+  }
+
+  .copilotKitInput textarea {
+    min-height: 36px;
+    padding: 6px 0;
+  }
+
+  .copilotKitInputControlButton,
+  .copilotKitInputControlButton:not([disabled]),
+  .copilotKitInputControlButton[data-pq='composer-ai-send'] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    min-width: 72px;
+    height: 36px !important;
+    min-height: 36px;
+    padding: 0 14px !important;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .copilotKitInputControlButton svg {
+    display: none;
   }
 }
 

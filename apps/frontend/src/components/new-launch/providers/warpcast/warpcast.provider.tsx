@@ -43,12 +43,27 @@ const WrapcastProvider: FC = () => {
       <div className="flex flex-col gap-[20px] mb-[20px]">
         {fields.map((field, index) => (
           <div key={field.id} className="flex flex-col relative">
-            <div
+            <button
+              type="button"
               onClick={deleteField(index)}
-              className="absolute -start-[10px] justify-center items-center flex -top-[10px] w-[20px] h-[20px] bg-red-600 rounded-full text-textColor"
+              aria-label={t('remove', 'Remove')}
+              className="absolute -end-[7px] -top-[7px] z-[3] grid h-[18px] w-[18px] place-items-center rounded-full bg-pqPop text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqDanger hover:text-white hover:shadow-none"
             >
-              x
-            </div>
+              <svg
+                viewBox="0 0 24 24"
+                width="10"
+                height="10"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 6l12 12M18 6 6 18"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
             <Subreddit {...register(`subreddit.${index}.value`)} />
           </div>
         ))}

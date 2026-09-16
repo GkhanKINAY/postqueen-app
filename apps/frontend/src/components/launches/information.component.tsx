@@ -62,8 +62,9 @@ export const InformationComponent: FC<{
   isPicture: boolean;
   text?: string;
   /**
-   * Post body must have text or media. Comments are optional, so an unused
-   * empty comment must not fail the same way as an empty post.
+   * Post body must have text or media. An open comment field is the same:
+   * empty is invalid (fill it or delete it). Collapsed "Add comment" is not
+   * this counter.
    */
   requireContent?: boolean;
   variant?: 'post' | 'comment';

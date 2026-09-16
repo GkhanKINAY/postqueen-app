@@ -1,7 +1,6 @@
 'use client';
 
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '@gitroom/react/form/button';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import EventEmitter from 'events';
@@ -488,7 +487,13 @@ export const MultiMediaComponent: FC<{
                     </div>
 
                     {studioThumbs ? (
-                      <>
+                      <div
+                        className={clsx(
+                          'pointer-events-none absolute inset-0 z-[20]',
+                          !touch &&
+                            'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
+                        )}
+                      >
                         <button
                           type="button"
                           data-ci-actions="1"
@@ -500,7 +505,7 @@ export const MultiMediaComponent: FC<{
                           }}
                           aria-label={t('enlarge_image', 'Enlarge image')}
                           title={t('enlarge_image', 'Enlarge image')}
-                          className="absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+                          className="pointer-events-auto absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -528,7 +533,7 @@ export const MultiMediaComponent: FC<{
                           }}
                           aria-label={t('remove', 'Remove')}
                           title={t('remove', 'Remove')}
-                          className="absolute end-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-pqDanger"
+                          className="pointer-events-auto absolute end-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-pqDanger"
                         >
                           <svg
                             viewBox="0 0 12 12"
@@ -563,7 +568,7 @@ export const MultiMediaComponent: FC<{
                             }}
                             aria-label={t('edit', 'Edit')}
                             title={t('edit', 'Edit')}
-                            className="grid size-[32px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+                            className="pointer-events-auto grid size-[32px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
                           >
                             <svg
                               viewBox="0 0 16 16"
@@ -581,7 +586,7 @@ export const MultiMediaComponent: FC<{
                             </svg>
                           </button>
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -768,6 +773,7 @@ export const MediaComponent: FC<{
   value?: {
     path: string;
     id: string;
+    alt?: string;
   };
   name: string;
   onChange: (event: {
@@ -776,6 +782,7 @@ export const MediaComponent: FC<{
       value?: {
         id: string;
         path: string;
+        alt?: string;
       };
     };
   }) => void;
@@ -790,9 +797,9 @@ export const MediaComponent: FC<{
     props;
   const { billingEnabled, plontoKey } = useVariables();
   const setupHint = useFeatureSetupHint();
-  // Same rule as Design Media above.
   const showDesign = !billingEnabled || !!plontoKey;
   const [currentMedia, setCurrentMedia] = useState(value);
+  const [lightbox, setLightbox] = useState(false);
   useEffect(() => {
     setCurrentMedia(value);
   }, [value]);
@@ -855,9 +862,10 @@ export const MediaComponent: FC<{
         />
       ),
     });
-  }, [t, changeMedia, type, currentMedia, touch]);
+  }, [t, changeMedia, type, currentMedia, touch, modals]);
   const clearMedia = useCallback(() => {
     setCurrentMedia(undefined);
+    setLightbox(false);
     onChange({
       target: {
         name,
@@ -865,30 +873,171 @@ export const MediaComponent: FC<{
       },
     });
   }, [name, onChange]);
+  const editAlt = useCallback(() => {
+    if (!currentMedia) {
+      return;
+    }
+    modals.openModal({
+      title: t('change_alt_text', 'Change alt text'),
+      askClose: false,
+      closeOnEscape: true,
+      children: (close) => (
+        <MediaComponentInner
+          media={currentMedia as any}
+          onClose={close}
+          onSelect={(next: any) => {
+            const updated = { ...currentMedia, ...next };
+            setCurrentMedia(updated);
+            onChange({
+              target: {
+                name,
+                value: updated,
+              },
+            });
+          }}
+        />
+      ),
+    });
+  }, [currentMedia, modals, name, onChange, t]);
   return (
     <div className="flex flex-col gap-[8px]">
-      <div className="text-[14px] text-pqMuted">{label}</div>
-      <div className="text-[12px] text-pqSoft">{description}</div>
-      {!!currentMedia && (
-        <div className="my-[20px] cursor-pointer w-[200px] h-[200px] border-2 border-tableBorder">
-          <img
-            className="w-full h-full object-cover"
-            src={mediaDirectory.set(currentMedia.path)}
-            onClick={() => window.open(mediaDirectory.set(currentMedia.path))}
-          />
+      <div className="text-[13px] font-[500] text-pqMuted">{label}</div>
+      {description ? (
+        <div className="text-[12px] leading-[1.45] text-pqMuted">
+          {description}
         </div>
-      )}
-      <div className="flex gap-[5px]">
-        <Button onClick={showModal}>{t('select', 'Select')}</Button>
-        {showDesign && (
-          <Button onClick={showDesignModal} className="!bg-customColor45">
-            {t('editor', 'Editor')}
-          </Button>
+      ) : null}
+      <div className="flex flex-wrap items-start gap-[10px]">
+        {!!currentMedia && (
+          <div
+            data-pq="settings-media-thumb"
+            className="group relative h-[120px] w-[120px] overflow-hidden rounded-[10px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)]"
+          >
+            <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
+              {hasExtension(currentMedia.path, 'mp4') ? (
+                <VideoFrame url={mediaDirectory.set(currentMedia.path)} />
+              ) : (
+                <img
+                  className="h-full w-full object-cover"
+                  src={mediaDirectory.set(currentMedia.path)}
+                  alt={currentMedia.alt || ''}
+                />
+              )}
+            </div>
+            <div
+              className={clsx(
+                'pointer-events-none absolute inset-0 z-[20]',
+                !touch &&
+                  'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
+              )}
+            >
+            <button
+              type="button"
+              data-pq="composer-media-enlarge"
+              onClick={() => setLightbox(true)}
+              aria-label={t('enlarge_image', 'Enlarge image')}
+              title={t('enlarge_image', 'Enlarge image')}
+              className="pointer-events-auto absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9 3H4v5M15 3h5v5M9 21H4v-5M15 21h5v-5"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={clearMedia}
+              aria-label={t('remove', 'Remove')}
+              title={t('remove', 'Remove')}
+              className="pointer-events-auto absolute end-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-pqDanger"
+            >
+              <svg
+                viewBox="0 0 12 12"
+                width="10"
+                height="10"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 3l6 6M9 3L3 9"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[10] h-[56px] bg-gradient-to-t from-black/55 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 z-[20] flex items-center justify-end gap-[6px] px-[8px] pb-[8px]">
+              <button
+                type="button"
+                onClick={editAlt}
+                aria-label={t('edit', 'Edit')}
+                title={t('edit', 'Edit')}
+                className="pointer-events-auto grid size-[32px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M11.4 2.6 13.4 4.6 5.85 12.15 3.5 12.65l.5-2.35L11.4 2.6Z"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            </div>
+          </div>
         )}
-        <Button secondary={true} onClick={clearMedia}>
-          {t('clear', 'Clear')}
-        </Button>
+        <button
+          type="button"
+          data-pq="composer-add-media"
+          onClick={showModal}
+          aria-label={t('insert_media', 'Insert media')}
+          className="flex h-[120px] w-[120px] shrink-0 cursor-pointer flex-col items-center justify-center gap-[8px] rounded-[10px] border border-dashed border-[color-mix(in_srgb,var(--brand)_55%,var(--border))] bg-pqInner px-[10px] text-center text-pqBrand transition-colors hover:bg-pqHover"
+        >
+          <InsertMediaIcon />
+          <span className="text-[11.5px] font-[600] leading-[1.25]">
+            {t('insert_media', 'Insert media')}
+          </span>
+        </button>
       </div>
+      {showDesign && (
+        <button
+          type="button"
+          onClick={showDesignModal}
+          aria-label={t('design_media', 'Design Media')}
+          className="inline-flex h-[36px] w-fit cursor-pointer items-center justify-center gap-[8px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+        >
+          <DesignMediaIcon />
+          {t('design_media', 'Design Media')}
+        </button>
+      )}
+      {lightbox && currentMedia && (
+        <MediaLightbox
+          media={currentMedia}
+          onClose={() => setLightbox(false)}
+          onDelete={() => {
+            clearMedia();
+          }}
+        />
+      )}
     </div>
   );
 };

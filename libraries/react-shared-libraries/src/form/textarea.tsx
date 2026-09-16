@@ -52,7 +52,7 @@ export const Textarea: FC<
       <textarea
         {...(disableForm ? {} : form.register(props.name))}
         className={clsx(
-          'min-h-[110px] resize-y rounded-[10px] border-0 bg-pqTableHeader p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-shadow placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]',
+          'min-h-[110px] resize-none rounded-[10px] border-0 bg-pqInner p-[12px] text-[14px] leading-[1.55] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] transition-shadow placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]',
           className
         )}
         {...rest}

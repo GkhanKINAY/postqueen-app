@@ -978,6 +978,7 @@ continue_with_google
 continue_with_wallet
 continue_without_set
 conversations
+copilot_will_schedule
 copy
 copy_a_link_that_works_for_one_hour
 copy_channel_id
@@ -1102,7 +1103,6 @@ edit_post_title
 edit_signature
 edit_time_slots
 editing_a_specific_network
-editor
 email
 email_address
 email_confirm_sent
@@ -1554,10 +1554,12 @@ open_billing_portal
 open_calendar
 open_channel
 open_claim_page
+open_composer
 open_connections
 open_link
 open_wizard
 openclaw
+opening_composer
 or
 or_wait_unlocks_on_date
 or_wait_until_trial_ends
@@ -1682,6 +1684,7 @@ published
 publishing_now
 publishing_options
 purchase
+quick_edits
 range_30d
 range_7d
 range_90d
@@ -1768,6 +1771,7 @@ select_set
 select_the_page_or_account
 select_user_to_switch_to
 self_only
+send
 send_again
 send_code
 send_confirmation

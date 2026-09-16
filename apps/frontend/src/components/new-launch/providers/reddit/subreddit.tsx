@@ -4,7 +4,6 @@ import { FC, FormEvent, useCallback, useMemo, useState } from 'react';
 import { useCustomProviderFunction } from '@gitroom/frontend/components/launches/helpers/use.custom.provider.function';
 import { Input } from '@gitroom/react/form/input';
 import { useDebouncedCallback } from 'use-debounce';
-import { Button } from '@gitroom/react/form/button';
 import clsx from 'clsx';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { useWatch } from 'react-hook-form';
@@ -13,6 +12,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { Canonical } from '@gitroom/react/form/canonical';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { FormSection } from '@gitroom/react/form/form.section';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 export const RenderOptions: FC<{
   options: Array<'self' | 'link' | 'media'>;
@@ -38,13 +38,21 @@ export const RenderOptions: FC<{
     })) || [];
   }, [options]);
   return (
-    <div className="flex">
+    <div className="flex overflow-hidden rounded-[10px] bg-pqInner p-[3px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)]">
       {mapValues.map((p) => (
-        <Button
-          className={clsx('flex-1', p.id !== value && 'bg-secondary')}
+        <button
+          type="button"
           key={p.id}
-          {...p}
-        />
+          onClick={p.onClick}
+          className={clsx(
+            'h-[36px] flex-1 rounded-[8px] text-[13px] font-[600] transition-colors',
+            p.id === value
+              ? 'bg-pqBrandSoft text-pqText'
+              : 'text-pqMuted hover:text-pqText'
+          )}
+        >
+          {p.children}
+        </button>
       ))}
     </div>
   );
@@ -181,7 +189,7 @@ export const Subreddit: FC<{
     500
   );
   return (
-    <div className="bg-primary p-[20px]">
+    <FormSection>
       {value?.subreddit ? (
         <>
           <Input
@@ -251,12 +259,12 @@ export const Subreddit: FC<{
             }}
           />
           {!!results.length && !loading && (
-            <div className="z-[400] w-full absolute bg-input -mt-[20px] outline-none border-fifth border cursor-pointer">
+            <div className="absolute start-0 end-0 top-full z-[400] cursor-pointer overflow-hidden rounded-[10px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
               {results.map((r: { id: string; name: string }) => (
                 <div
                   onClick={setResult(r)}
                   key={r.id}
-                  className="px-[16px] py-[5px] hover:bg-secondary"
+                  className="px-[16px] py-[8px] text-[13px] text-pqText hover:bg-pqHover"
                 >
                   {r.name}
                 </div>
@@ -265,6 +273,6 @@ export const Subreddit: FC<{
           )}
         </div>
       )}
-    </div>
+    </FormSection>
   );
 };
