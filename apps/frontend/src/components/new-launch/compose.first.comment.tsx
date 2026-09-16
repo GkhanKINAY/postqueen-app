@@ -9,7 +9,9 @@ import { SignatureBox } from '@gitroom/frontend/components/signature';
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { applyUnicodeBold } from '@gitroom/frontend/components/new-launch/bold.text';
-import { EmojiIcon } from '@gitroom/frontend/components/ui/icons';
+import { applyUnicodeUnderline } from '@gitroom/frontend/components/new-launch/u.text';
+import { InformationComponent } from '@gitroom/frontend/components/launches/information.component';
+import { EmojiIcon, TrashIcon } from '@gitroom/frontend/components/ui/icons';
 
 export function editorHtmlToPlain(html: string): string {
   return stripHtmlValidation('normal', html || '', true);
@@ -23,10 +25,50 @@ export function plainToEditorHtml(text: string): string {
   return `<p>${escaped.replace(/\n/g, '<br>')}</p>`;
 }
 
+const toolChip =
+  'flex h-[36px] w-[36px] cursor-pointer select-none items-center justify-center rounded-[8px] bg-pqBtnSimple text-pqText transition-colors hover:bg-pqHover';
+
+export const AddCommentTrigger: FC<{
+  onClick: () => void;
+}> = ({ onClick }) => {
+  const t = useT();
+  return (
+    <div
+      data-pq="composer-first-comment-trigger"
+      className="border-t border-pqLine px-[12px] py-[12px]"
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        data-pq="composer-add-comment-trigger"
+        className="inline-flex h-[36px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] bg-pqPink px-[12px] text-[12px] font-[600] text-pqOnBrand transition-opacity hover:opacity-90"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M8.00065 3.33301V12.6663M3.33398 7.99967H12.6673"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {t('add_comment', 'Add comment')}
+      </button>
+    </div>
+  );
+};
+
 /**
- * First Comment is a labeled field under the post, with the same tools the
- * comment already had (media, signature, delay) plus emoji and unicode bold.
- * Tools stay visible so delay is a named chip, not a lone clock.
+ * First Comment is a labeled field under the post. Text tools match the post
+ * toolbar (icon chips after Insert Media). Delay sits with the character
+ * counter — it is a schedule control, not a text style.
  */
 export const ComposeFirstComment: FC<{
   value: string;
@@ -38,6 +80,10 @@ export const ComposeFirstComment: FC<{
   dummy: boolean;
   allValues: { content: string; id?: string }[];
   onActivate: () => void;
+  commentIndex?: number;
+  chars: Record<string, number>;
+  totalAllowedChars: number;
+  onRemove?: () => void;
 }> = ({
   value,
   onChange,
@@ -48,6 +94,10 @@ export const ComposeFirstComment: FC<{
   dummy,
   allValues,
   onActivate,
+  commentIndex = 1,
+  chars,
+  totalAllowedChars,
+  onRemove,
 }) => {
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -105,6 +155,15 @@ export const ComposeFirstComment: FC<{
     onActivate();
   }, [onActivate, replaceSelection, value]);
 
+  const applyUnderline = useCallback(() => {
+    const node = inputRef.current;
+    const from = node?.selectionStart ?? 0;
+    const to = node?.selectionEnd ?? 0;
+    const result = applyUnicodeUnderline(value, from, to);
+    replaceSelection(result.text, result.from, result.to);
+    onActivate();
+  }, [onActivate, replaceSelection, value]);
+
   return (
     <div
       data-pq="composer-first-comment"
@@ -113,8 +172,24 @@ export const ComposeFirstComment: FC<{
         onActivate();
       }}
     >
-      <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
-        {t('first_comment', 'First Comment')}
+      <div className="flex items-center justify-between gap-[8px]">
+        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+          {commentIndex === 1
+            ? t('first_comment', 'First Comment')
+            : t('comments', 'Comments')}
+        </div>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            data-tooltip-id="tooltip"
+            data-tooltip-content={t('delete_post_tooltip', 'Delete Post')}
+            aria-label={t('delete_post_tooltip', 'Delete Post')}
+            className="grid size-[28px] place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
+          >
+            <TrashIcon size={16} />
+          </button>
+        ) : null}
       </div>
       <textarea
         ref={inputRef}
@@ -122,7 +197,11 @@ export const ComposeFirstComment: FC<{
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={t('your_comment', 'Your comment')}
-        aria-label={t('first_comment', 'First Comment')}
+        aria-label={
+          commentIndex === 1
+            ? t('first_comment', 'First Comment')
+            : t('add_comment', 'Add comment')
+        }
         className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
       <div
@@ -145,20 +224,42 @@ export const ComposeFirstComment: FC<{
           description=""
           value={pictures}
           dummy={dummy}
-          name="first-comment-image"
+          name={`first-comment-image-${commentIndex}`}
           toolBar={
             <div className="flex flex-wrap items-center gap-[6px]">
-              <SignatureBox
-                editor={signatureEditor}
-                label={t('add_signature', 'Add Signature')}
-              />
+              <SignatureBox editor={signatureEditor} />
+              <button
+                type="button"
+                onClick={applyUnderline}
+                data-tooltip-id="tooltip"
+                data-tooltip-content="Underline"
+                aria-label="Underline"
+                className={toolChip}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M11.9993 2.66699V7.33366C11.9993 9.5428 10.2085 11.3337 7.99935 11.3337C5.79021 11.3337 3.99935 9.5428 3.99935 7.33366V2.66699M2.66602 14.0003H13.3327"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
               <button
                 type="button"
                 onClick={applyBold}
                 data-tooltip-id="tooltip"
                 data-tooltip-content="Bold Text"
                 aria-label="Bold Text"
-                className="flex h-[36px] cursor-pointer select-none items-center gap-[8px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+                className={toolChip}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -176,7 +277,6 @@ export const ComposeFirstComment: FC<{
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span>Bold</span>
               </button>
               <button
                 type="button"
@@ -185,15 +285,33 @@ export const ComposeFirstComment: FC<{
                 data-tooltip-content={t('insert_emoji', 'Insert Emoji')}
                 aria-label={t('insert_emoji', 'Insert Emoji')}
                 aria-expanded={emojiOpen}
-                className="flex h-[36px] cursor-pointer select-none items-center gap-[8px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+                className={toolChip}
               >
                 <EmojiIcon />
-                <span>{t('insert_emoji', 'Insert Emoji')}</span>
               </button>
+            </div>
+          }
+          information={
+            <div
+              data-pq="composer-first-comment-meta"
+              className="flex items-center gap-[8px] border-s border-pqLine ps-[8px]"
+              onMouseDown={() => {
+                onActivate();
+              }}
+            >
               <DelayComponent
                 toolbar
-                currentIndex={1}
+                currentIndex={commentIndex}
                 currentDelay={delay}
+              />
+              <InformationComponent
+                variant="comment"
+                requireContent={false}
+                isPicture={!!pictures?.length}
+                chars={chars}
+                totalChars={value.length}
+                totalAllowedChars={totalAllowedChars}
+                text={value}
               />
             </div>
           }

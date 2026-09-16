@@ -9,6 +9,7 @@ import { GmbSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-s
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { Input } from '@gitroom/react/form/input';
 import { FormChoice } from '@gitroom/react/form/form.choice';
+import { FormSection } from '@gitroom/react/form/form.section';
 import { useWatch } from 'react-hook-form';
 
 const topicTypes = [
@@ -70,6 +71,7 @@ const GmbSettings: FC = () => {
     <div className="flex flex-col gap-[16px]">
       <FormChoice
         name="topicType"
+        icon="type"
         label="Post Type"
         layout="segment"
         defaultValue="STANDARD"
@@ -78,6 +80,7 @@ const GmbSettings: FC = () => {
 
       <FormChoice
         name="callToActionType"
+        icon="post"
         label="Call to Action"
         defaultValue="NONE"
         options={callToActionTypes}
@@ -94,8 +97,7 @@ const GmbSettings: FC = () => {
         )}
 
       {topicType === 'EVENT' && (
-        <div className="flex flex-col gap-[12px] rounded-[10px] bg-pqSettings p-[14px]">
-          <div className="text-[13px] font-[600] text-pqText">Event Details</div>
+        <FormSection icon="event" title="Event Details">
           <Input
             label="Event Title"
             placeholder="Event name"
@@ -121,12 +123,11 @@ const GmbSettings: FC = () => {
               {...register('eventEndTime')}
             />
           </div>
-        </div>
+        </FormSection>
       )}
 
       {topicType === 'OFFER' && (
-        <div className="flex flex-col gap-[12px] rounded-[10px] bg-pqSettings p-[14px]">
-          <div className="text-[13px] font-[600] text-pqText">Offer Details</div>
+        <FormSection icon="offer" title="Offer Details">
           <Input
             label="Coupon Code (optional)"
             placeholder="SAVE20"
@@ -142,7 +143,7 @@ const GmbSettings: FC = () => {
             placeholder="Valid until..."
             {...register('offerTerms')}
           />
-        </div>
+        </FormSection>
       )}
     </div>
   );

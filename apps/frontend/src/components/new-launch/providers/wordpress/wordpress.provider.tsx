@@ -21,6 +21,7 @@ const WordpressSettings: FC = () => {
       <WordpressPostType {...form.register('type')} />
       <FormChoice
         name="status"
+        icon="status"
         label="Status"
         layout="segment"
         defaultValue="publish"

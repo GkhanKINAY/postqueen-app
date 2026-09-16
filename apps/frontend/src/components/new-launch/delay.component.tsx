@@ -100,16 +100,19 @@ export const DelayComponent: FC<{
         }
         aria-label={t('delay_comment', 'Delay comment')}
         aria-expanded={isOpen}
+        data-pq={toolbar ? 'composer-comment-delay' : undefined}
         className={clsx(
           'flex cursor-pointer items-center justify-center transition-colors',
           toolbar
-            ? 'h-[36px] gap-[8px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText hover:bg-pqHover'
+            ? 'h-[36px] gap-[6px] rounded-[8px] px-[8px] text-[12px] font-[600] text-pqMuted hover:bg-pqHover hover:text-pqText'
             : 'h-[24px] gap-[3px] rounded-[6px]',
           !toolbar &&
             (currentDelay > 0
               ? 'bg-pqInner px-[5px] text-pqPink shadow-[inset_0_0_0_1px_var(--pink)]'
               : 'text-pqText hover:text-pqPink'),
-          toolbar && currentDelay > 0 && 'text-pqPink'
+          toolbar &&
+            currentDelay > 0 &&
+            'bg-pqInner text-pqPink shadow-[inset_0_0_0_1px_var(--pink)]'
         )}
       >
         <DelayIcon size={toolbar ? 16 : 18} />

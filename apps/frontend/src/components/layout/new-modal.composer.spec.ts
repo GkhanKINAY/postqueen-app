@@ -11,6 +11,10 @@ const manage = readFileSync(
   fileURLToPath(new URL('../new-launch/manage.modal.tsx', import.meta.url)),
   'utf8',
 );
+const repeat = readFileSync(
+  fileURLToPath(new URL('../launches/repeat.component.tsx', import.meta.url)),
+  'utf8',
+);
 const css = readFileSync(
   fileURLToPath(new URL('../../app/global.css', import.meta.url)),
   'utf8',
@@ -38,13 +42,31 @@ describe('composer modal chrome', () => {
     assert.match(css, /min\(960px, calc\(100vw - 64px\)\)/);
     assert.doesNotMatch(css, /min\(720px, calc\(100vw - 64px\)\)/);
     assert.match(css, /\[data-pq='composer-ai-rail'\],\s*\[data-pq='composer-ai-dock'\]/);
-    assert.match(manage, /!dummy && hasChannels && \(/);
-    assert.ok(
-      (manage.match(/!dummy && hasChannels && \(/g) || []).length >= 4,
-      'Tags, Repeat and Post Now stay behind hasChannels'
-    );
+    assert.match(manage, /data-pq="composer-footer-tag"/);
+    assert.match(manage, /!dummy && !hasChannels/);
+    assert.match(manage, /justify-between/);
+    assert.match(manage, /!phoneFlow && !hasChannels/);
+    assert.match(manage, /disabled:opacity-40/);
+    assert.match(manage, /selectedIntegrations\.length === 0 \|\| loading \|\| locked/);
     assert.match(manage, /<ComposeWhen/);
-    assert.match(manage, /t\('save_as_draft', 'Save as Draft'\)/);
-    assert.match(manage, /t\('select_channels', 'Select channels'\)/);
+    assert.match(manage, /data-pq="composer-ai"/);
+    assert.match(manage, /w-\[min\(520px,38vw\)\]/);
+    assert.doesNotMatch(manage, /fixed inset-0 z-\[401\]/);
+    assert.doesNotMatch(css, /html:has\(\[data-pq-composer-max='1'\]\) \[data-pq-composer-shell\] \{\s*padding: 0 !important;/);
+  });
+
+  it('puts Repeat Post Every in the footer after a channel is picked, not truncated in the header', () => {
+    const extrasStart = manage.indexOf('data-pq="composer-header-extras"');
+    const extrasEnd = manage.indexOf('ComposerStepTabs', extrasStart);
+    const extras = manage.slice(extrasStart, extrasEnd);
+    assert.ok(extrasStart > 0 && extrasEnd > extrasStart);
+    assert.match(extras, /TagsComponent/);
+    assert.match(extras, /ComposeNotify/);
+    assert.doesNotMatch(extras, /RepeatComponent/);
+    assert.match(manage, /data-pq="composer-footer-repeat"/);
+    assert.match(manage, /<RepeatComponent/);
+    assert.match(repeat, /t\('repeat_post_every', 'Repeat Post Every'\)/);
+    assert.doesNotMatch(repeat, /Repeat Post Every\.\.\./);
+    assert.match(repeat, /whitespace-nowrap/);
   });
 });

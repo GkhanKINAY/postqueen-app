@@ -4,12 +4,14 @@ import {
   DetailedHTMLProps,
   forwardRef,
   SelectHTMLAttributes,
+  useLayoutEffect,
   useMemo,
 } from 'react';
 import { clsx } from 'clsx';
 import { useFormContext } from 'react-hook-form';
 import type { RegisterOptions } from 'react-hook-form';
 import { TranslatedLabel } from '../translation/translated-label';
+import { FormIcon, isEmptyFormValue, type FormIconName } from './form.icon';
 
 export type SelectProps = DetailedHTMLProps<
   SelectHTMLAttributes<HTMLSelectElement>,
@@ -25,6 +27,7 @@ export type SelectProps = DetailedHTMLProps<
   translationParams?: Record<string, string | number>;
   /** Narrow control for short option lists (Yes/No). */
   compact?: boolean;
+  icon?: FormIconName;
 };
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -40,9 +43,29 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       translationParams,
       compact,
       name,
+      icon,
+      defaultValue,
       ...rest
     } = props;
     const form = useFormContext();
+    if (!disableForm && defaultValue !== undefined && defaultValue !== '') {
+      const existing = form.getValues(name);
+      if (isEmptyFormValue(existing)) {
+        form.register(name, { ...(extraForm || {}), value: defaultValue });
+      }
+    }
+    useLayoutEffect(() => {
+      if (disableForm || defaultValue === undefined || defaultValue === '') {
+        return;
+      }
+      if (isEmptyFormValue(form.getValues(name))) {
+        form.setValue(name, defaultValue, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        });
+      }
+    }, [disableForm, name, defaultValue, form]);
     const err = useMemo(() => {
       if (error) return error;
       if (!form || !form.formState.errors[name]) return;
@@ -57,7 +80,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         )}
       >
         {!!label && (
-          <div className="text-[13px] font-[500] text-pqMuted">
+          <div className="flex items-center gap-[8px] text-[13px] font-[500] text-pqMuted">
+            {icon && <FormIcon name={icon} size={15} className="text-pqSoft" />}
             <TranslatedLabel
               label={label}
               translationKey={translationKey}
@@ -68,10 +92,20 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <div className="relative">
           <select
             ref={ref}
-            {...(disableForm ? {} : form.register(name, extraForm))}
+            {...(disableForm
+              ? defaultValue !== undefined
+                ? { defaultValue }
+                : {}
+              : form.register(
+                  name,
+                  defaultValue !== undefined && defaultValue !== ''
+                    ? { ...(extraForm || {}), value: defaultValue }
+                    : extraForm
+                ))}
             className={clsx(
               // Native arrow replaced — OS chevrons look broken on dark fills.
               'h-[40px] w-full appearance-none rounded-[10px] border-0 bg-pqTableHeader pe-[36px] ps-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand)]',
+              icon && 'ps-[12px]',
               className
             )}
             {...rest}

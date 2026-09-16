@@ -1756,11 +1756,8 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
   }
 }
 
-html:has([data-pq-composer-max='1']) [data-pq-composer-shell] {
-  padding: 0 !important;
-}
-html:has([data-pq-composer-max='1']) [data-pq-composer-shell] > div {
-  max-width: none !important;
+html:has([data-pq-composer-max='1']) [data-pq-composer-shell] > div.max-w-\[1400px\] {
+  max-width: 100% !important;
   width: 100% !important;
   height: 100% !important;
 }

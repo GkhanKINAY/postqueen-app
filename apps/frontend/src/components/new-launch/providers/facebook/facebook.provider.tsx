@@ -22,10 +22,12 @@ const postType = [
   {
     value: 'post',
     label: 'Post',
+    icon: 'post' as const,
   },
   {
     value: 'story',
     label: 'Story',
+    icon: 'story' as const,
   },
 ];
 
@@ -53,6 +55,7 @@ export const FacebookSettings = () => {
     <>
       <FormChoice
         name="post_type"
+        icon="type"
         label="Post Type"
         layout="segment"
         defaultValue="post"

@@ -16,9 +16,9 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { InstagramPreview } from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.preview';
 
 const postType = [
-  { value: 'post', label: 'Post' },
-  { value: 'reel', label: 'Reel' },
-  { value: 'story', label: 'Story' },
+  { value: 'post', label: 'Post', icon: 'post' as const },
+  { value: 'reel', label: 'Reel', icon: 'story' as const },
+  { value: 'story', label: 'Story', icon: 'story' as const },
 ];
 
 const graduationStrategies = [
@@ -48,6 +48,7 @@ const InstagramCollaborators: FC<{
     <>
       <FormChoice
         name="post_type"
+        icon="type"
         label="Post Type"
         layout="segment"
         defaultValue="post"
@@ -80,12 +81,15 @@ const InstagramCollaborators: FC<{
             {...register('is_trial_reel', {
               value: false,
             })}
+            defaultValue={false}
+            icon="story"
             label={t('trial_reel', 'Trial Reel (share only to non-followers first)')}
           />
 
           {isTrialReel && (
             <FormChoice
               name="graduation_strategy"
+              icon="status"
               label="Graduation Strategy"
               defaultValue="MANUAL"
               options={graduationStrategies}

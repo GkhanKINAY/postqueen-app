@@ -297,32 +297,12 @@ export const withProvider = function <T extends object>(params: {
               postHasPreview(value?.[0]) && (
                 <div
                   data-pq="preview-channel-identity"
-                  className="flex items-center gap-[10px] border-b border-pqLine bg-pqInner px-[14px] py-[10px]"
+                  className="flex items-center gap-[10px] border-b border-pqLine px-[14px] py-[10px]"
                 >
-                  <ChannelAvatar
-                    integration={selectedIntegration.integration}
-                    size={32}
-                    badgeSize={12}
-                    rounded="full"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
-                      {channelPlatformLabel(
-                        selectedIntegration.integration.identifier
-                      )}
-                    </div>
-                    <div className="truncate text-[13px] font-[600] text-pqText">
-                      {selectedIntegration.integration.name}
-                      {!!formatChannelHandle(
-                        selectedIntegration.integration.display
-                      ) && (
-                        <span className="ms-[6px] font-[500] text-pqMuted">
-                          {formatChannelHandle(
-                            selectedIntegration.integration.display
-                          )}
-                        </span>
-                      )}
-                    </div>
+                  <div className="truncate text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+                    {channelPlatformLabel(
+                      selectedIntegration.integration.identifier
+                    )}
                   </div>
                 </div>
               )}
@@ -343,8 +323,12 @@ export const withProvider = function <T extends object>(params: {
             {(current || isGlobal) &&
               (tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&
-              postHasPreview(value?.[0]) &&
-              (CustomPreviewComponent ? (
+              postHasPreview(value?.[0]) && (
+                <div
+                  data-pq="preview-channel-body"
+                  className="px-[12px] pb-[14px] pt-[12px]"
+                >
+              {CustomPreviewComponent ? (
                 <CustomPreviewComponent
                   maximumCharacters={
                     typeof maximumCharacters === 'number'
@@ -370,7 +354,9 @@ export const withProvider = function <T extends object>(params: {
                         )
                   }
                 />
-              ))}
+              )}
+                </div>
+              )}
             {(SettingsComponent || !!data?.internalPlugs?.length) &&
               createPortal(
                 current ? (

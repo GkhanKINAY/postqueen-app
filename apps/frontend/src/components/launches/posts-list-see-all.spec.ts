@@ -20,6 +20,15 @@ const launches = readFileSync(
   fileURLToPath(new URL('./launches.component.tsx', import.meta.url)),
   'utf8',
 );
+const repo = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../../../libraries/nestjs-libraries/src/database/prisma/posts/posts.repository.ts',
+      import.meta.url,
+    ),
+  ),
+  'utf8',
+);
 
 /**
  * Keep in lockstep with `listStateForSeeAll` in calendar.context.tsx — the
@@ -111,5 +120,25 @@ describe('Posts list toolbar stays on screen', () => {
       launches,
       /isList &&\s*'overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'/,
     );
+  });
+});
+
+describe('Posts All is mixed history, newest first', () => {
+  it('does not hide past rows on All, only on Scheduled', () => {
+    const list = repo.slice(repo.indexOf('async getPostsList('));
+    assert.match(
+      list,
+      /stateFilter === 'scheduled'\s*\? \{ publishDate: \{ gte: dayjs\.utc\(\)\.toDate\(\) \} \}/,
+    );
+    assert.doesNotMatch(
+      list,
+      /stateFilter === 'published' \|\| stateFilter === 'draft'/,
+    );
+  });
+
+  it('defaults the list to newest-first and sends order to the API', () => {
+    assert.match(context, /useState<ListSortOrder>\('desc'\)/);
+    assert.match(context, /order: listSort/);
+    assert.match(context, /listSort: 'desc'/);
   });
 });

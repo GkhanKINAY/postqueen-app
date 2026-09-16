@@ -16,14 +16,17 @@ const type = [
   {
     label: 'Public',
     value: 'public',
+    icon: 'globe' as const,
   },
   {
     label: 'Private',
     value: 'private',
+    icon: 'lock' as const,
   },
   {
     label: 'Unlisted',
     value: 'unlisted',
+    icon: 'visibility' as const,
   },
 ];
 
@@ -44,6 +47,7 @@ const YoutubeSettings: FC = () => {
       <Input label="Title" {...register('title')} maxLength={100} />
       <FormChoice
         name="type"
+        icon="visibility"
         label="Type"
         layout="segment"
         defaultValue="public"
@@ -51,6 +55,7 @@ const YoutubeSettings: FC = () => {
       />
       <FormChoice
         name="selfDeclaredMadeForKids"
+        icon="kids"
         label="Made for kids"
         layout="segment"
         defaultValue="no"

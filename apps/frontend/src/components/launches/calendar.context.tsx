@@ -83,7 +83,7 @@ function isPastListDayRange(range: ListRangeFilter, now: dayjs.Dayjs = newDayjs(
   );
 }
 
-/** Calendar cell → Posts tab. All/Scheduled hide past rows (API gte now). */
+/** Calendar cell → Posts tab. Scheduled is still upcoming-only (API gte now). */
 export function listStateForSeeAll(
   date: dayjs.Dayjs,
   states: Array<string | undefined> = [],
@@ -254,7 +254,7 @@ export const CalendarContext = createContext({
   setListRange: (_range: ListRangeFilter) => {
     /** empty **/
   },
-  listSort: 'asc' as ListSortOrder,
+  listSort: 'desc' as ListSortOrder,
   setListSort: (_sort: ListSortOrder) => {
     /** empty **/
   },
@@ -356,10 +356,8 @@ export const CalendarWeekProvider: FC<{
 
   // List view state
   const [listPage, setListPage] = useState(0);
-  // List toolbar defaults to All (owner). Posts panel tabs stay
-  // Scheduled / Drafts / Posted only — no All there (design queue inventory).
-  // Panel state is separate so calendar never inherits state=all (which hides
-  // past drafts via publishDate >= now).
+  // List toolbar defaults to All (mixed states, newest first). Posts panel
+  // tabs stay Scheduled / Drafts / Posted only — no All there.
   const [listState, setListStateRaw] = useState<ListStateFilter>('all');
   const [panelListState, setPanelListStateRaw] =
     useState<PanelListStateFilter>('scheduled');
@@ -404,14 +402,13 @@ export const CalendarWeekProvider: FC<{
   listRangeRef.current = listRange;
   const listStateRef = useRef(listState);
   listStateRef.current = listState;
-  // Prototype default for the Posts list is Oldest (asc).
-  const [listSort, setListSortRaw] = useState<ListSortOrder>('asc');
+  const [listSort, setListSortRaw] = useState<ListSortOrder>('desc');
   const setListRange = useCallback((next: ListRangeFilter) => {
     setListRangeRaw(next);
     setListPage(0);
-    // All/Scheduled list API is upcoming-only. A past day would paint empty.
+    // Scheduled is still upcoming-only — a past day would paint empty.
     const tab = listStateRef.current;
-    if (isPastListDayRange(next) && tab !== 'published' && tab !== 'draft') {
+    if (isPastListDayRange(next) && tab === 'scheduled') {
       setListStateRaw('published');
     }
   }, []);
@@ -483,8 +480,9 @@ export const CalendarWeekProvider: FC<{
       limit: String(LIST_PAGE_SIZE),
       customer: filters?.customer?.toString() || '',
       state: activeListState,
+      order: listSort,
     }).toString();
-  }, [listPage, filters.customer, activeListState]);
+  }, [listPage, filters.customer, activeListState, listSort]);
 
   // One page at a time (Previous / page / Next) — same model as Insert media.
   // Earlier "Show more" stacked every page under one key; edits then had to
@@ -495,6 +493,7 @@ export const CalendarWeekProvider: FC<{
       limit: String(LIST_PAGE_SIZE),
       customer: filters?.customer?.toString() || '',
       state: activeListState,
+      order: listSort,
     }).toString();
     const response = await fetch(`/posts/list?${pageParams}`);
     const data = expandPostsList(await response.json());
@@ -502,7 +501,7 @@ export const CalendarWeekProvider: FC<{
       posts: data?.posts || [],
       total: data?.total || 0,
     };
-  }, [listPage, filters.customer, activeListState, fetch]);
+  }, [listPage, filters.customer, activeListState, listSort, fetch]);
 
   // First open of the posts panel (or org/customer change): pick a tab that
   // has rows — scheduled → draft → published. Manual tab clicks stick via

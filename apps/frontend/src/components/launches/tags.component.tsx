@@ -176,7 +176,8 @@ export const TagsComponentInner: FC<{
     <div
       ref={ref}
       className={clsx(
-        'relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden rounded-[8px] border text-[15px] font-[600] select-none',
+        'relative flex h-[44px] items-center justify-center rounded-[8px] border text-[15px] font-[600] select-none',
+        touch ? 'min-w-0 overflow-hidden' : 'shrink-0',
         isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
       )}
     >
@@ -199,7 +200,12 @@ export const TagsComponentInner: FC<{
         <div className="cursor-pointer">
           <TagIcon />
         </div>
-        <div className="min-w-0 truncate whitespace-nowrap">
+        <div
+          className={clsx(
+            'whitespace-nowrap',
+            touch ? 'min-w-0 truncate' : ''
+          )}
+        >
           {tagValue.length === 0 ? (
             touch ? t('tags', 'Tags') : t('add_new_tag', 'Add New Tag')
           ) : (

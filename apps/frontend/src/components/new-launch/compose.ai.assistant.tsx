@@ -542,10 +542,8 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
         } as CopilotKitCSSProperties
       }
       className={clsx(
-        'trz agent flex min-h-0 flex-col',
-        docked
-          ? 'h-full border-t border-pqLine bg-pqInner'
-          : 'absolute inset-0 bg-pqInner'
+        'trz agent flex h-full min-h-0 flex-col bg-pqInner',
+        docked && 'border-t border-pqLine'
       )}
     >
       {aiOk ? (
