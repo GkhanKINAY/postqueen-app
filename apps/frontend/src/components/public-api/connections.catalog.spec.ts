@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   AGENTS_DISPLAY_ORDER,
   BOTS_DISPLAY_ORDER,
@@ -63,10 +66,19 @@ describe('Connect marketplace catalog', () => {
       leftover.find((g) => g.nav === 'agents')?.items.some((c) => c.id === 'claude-code')
     );
     assert.ok(
+      leftover.find((g) => g.nav === 'agents')?.items.some((c) => c.id === 'gemini'),
+      'Gemini CLI is a terminal agent, not an editor'
+    );
+    assert.ok(
       leftover.find((g) => g.nav === 'bots')?.items.some((c) => c.id === 'openclaw')
     );
     assert.ok(
       leftover.find((g) => g.nav === 'editors')?.items.some((c) => c.id === 'vscode')
+    );
+    assert.ok(
+      !leftover
+        .find((g) => g.nav === 'editors')
+        ?.items.some((c) => c.id === 'gemini' || c.id === 'other-mcp')
     );
     assert.ok(leftover.find((g) => g.nav === 'chat')?.items.some((c) => c.id === 'whatsapp'));
     assert.ok(!leftover.some((g) => g.items.some((c) => c.section === 'developer')));
@@ -80,12 +92,13 @@ describe('Connect marketplace catalog', () => {
     );
   });
 
-  it('features Claude, ChatGPT, Cursor and Grok', () => {
+  it('features Claude, ChatGPT, Cursor, Grok and Any MCP client', () => {
     assert.deepEqual([...FEATURED_IDS], [
       'claude-apps',
       'chatgpt',
       'cursor',
       'grok',
+      'other-mcp',
     ]);
   });
 
@@ -96,6 +109,7 @@ describe('Connect marketplace catalog', () => {
       'cursor',
       'grok-build',
       'muse-code',
+      'gemini',
     ]);
     assert.deepEqual([...BOTS_DISPLAY_ORDER], [
       'openclaw',
@@ -107,12 +121,12 @@ describe('Connect marketplace catalog', () => {
       'vscode',
       'windsurf',
       'zed',
-      'gemini',
-      'other-mcp',
     ]);
     assert.equal(byId('claude-code').section, 'agents');
     assert.equal(byId('codex').section, 'agents');
     assert.equal(byId('cursor').section, 'agents');
+    assert.equal(byId('gemini').section, 'agents');
+    assert.equal(byId('other-mcp').section, 'featured');
     assert.equal(byId('openclaw').section, 'bots');
     assert.equal(byId('grok-bot').section, 'bots');
     assert.equal(byId('hermes').section, 'bots');
@@ -123,6 +137,7 @@ describe('Connect marketplace catalog', () => {
     assert.equal(byId('grok').section, 'featured');
     assert.ok(!FEATURED_IDS.includes('openclaw' as never));
     assert.ok(!FEATURED_IDS.includes('hermes' as never));
+    assert.ok(!FEATURED_IDS.includes('gemini' as never));
     assert.equal(byId('muse').soon, true);
     assert.equal(byId('muse-code').soon, undefined);
   });
@@ -600,5 +615,34 @@ describe('Connect marketplace catalog', () => {
     assert.equal(defaultNavForConnection(byId('chatgpt')), 'all');
     assert.equal(defaultNavForConnection(byId('claude-code')), 'all');
     assert.equal(defaultNavForConnection(byId('vscode')), 'all');
+  });
+
+  it('uses original Grok Bot, Muse and Codex marks, not invented stand-ins', () => {
+    assert.equal(byId('grok').icon, '/icons/connections/grok.svg');
+    assert.equal(byId('grok-build').icon, '/icons/connections/grok.svg');
+    assert.equal(byId('grok-bot').icon, '/icons/connections/grok-bot.svg');
+    assert.equal(byId('muse').icon, '/icons/connections/muse.svg');
+    assert.equal(byId('muse-code').icon, '/icons/connections/muse.svg');
+    assert.equal(byId('codex').icon, '/icons/connections/codex.svg');
+
+    const iconsDir = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../public/icons/connections'
+    );
+    const grok = readFileSync(join(iconsDir, 'grok.svg'), 'utf8');
+    const grokBot = readFileSync(join(iconsDir, 'grok-bot.svg'), 'utf8');
+    const muse = readFileSync(join(iconsDir, 'muse.svg'), 'utf8');
+    const codex = readFileSync(join(iconsDir, 'codex.svg'), 'utf8');
+
+    assert.doesNotMatch(grok, /M15 6\.5 17\.2 12\.3l6\.3\.5/);
+    assert.match(grok, /24\.3186 12\.8506/);
+    assert.doesNotMatch(grokBot, /M15 6\.5 17\.2 12\.3l6\.3\.5/);
+    assert.match(grokBot, /pq-grok-bot-eyes/);
+    assert.doesNotMatch(muse, /M15 7\.2c2\.4 2\.2 4\.8 2\.2 7\.2 0/);
+    assert.match(muse, /#0033FF/);
+    assert.match(muse, /M24 144V24l40 68 40-68v120/);
+    assert.match(codex, /#3941FF/);
+    assert.match(codex, /#7A9DFF/);
+    assert.match(codex, /#B1A7FF/);
   });
 });

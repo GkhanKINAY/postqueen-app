@@ -1014,7 +1014,7 @@ export const ConnectPanel: FC<{
         title: t('connect_hub_agents', 'Agents'),
         blurb: t(
           'connect_hub_agents_blurb',
-          'Coding agents you run in an editor or a terminal. Claude Code, Codex, Cursor, Grok Build, Muse Code.'
+          'Coding agents you run in an editor or a terminal. Claude Code, Codex, Cursor, Grok Build, Muse Code, Gemini CLI.'
         ),
       },
       bots: {
@@ -1035,7 +1035,7 @@ export const ConnectPanel: FC<{
         title: t('connect_hub_editors', 'Editors'),
         blurb: t(
           'connect_hub_editors_blurb',
-          'Editor and MCP clients. VS Code, Windsurf, Zed, Gemini CLI, and any other MCP client.'
+          'Code editors that speak MCP. VS Code, Windsurf and Zed.'
         ),
       },
       automation: {

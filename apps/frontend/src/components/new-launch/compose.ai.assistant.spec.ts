@@ -43,6 +43,17 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 
+  it('sends Rephrase / Shorten / Expand chips as Copilot commands that call setPosts', () => {
+    assert.match(assistant, /data-pq="composer-ai-chips"/);
+    assert.match(assistant, /t\('rephrase', 'Rephrase'\)/);
+    assert.match(assistant, /t\('shorten', 'Shorten'\)/);
+    assert.match(assistant, /t\('expand', 'Expand'\)/);
+    assert.match(assistant, /t\('more_casual', 'More Casual'\)/);
+    assert.match(assistant, /t\('more_formal', 'More Formal'\)/);
+    assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
+    assert.match(assistant, /Then apply it with setPosts/);
+  });
+
   it('can rewrite the post and generate an attached image', () => {
     assert.match(assistant, /generateImageForPost/);
     assert.match(assistant, /attachMediaToPost/);

@@ -118,6 +118,20 @@ export const PlatformAnalytics = () => {
     router.push('/channels?add=1');
   }, [router]);
 
+  const openReconnectInChannels = useCallback(
+    (id: string) => {
+      toaster.show(
+        t(
+          'please_reconnect_from_channels',
+          'Please reconnect this channel from Channels'
+        ),
+        'warning'
+      );
+      router.push(`/channels?focus=${encodeURIComponent(id)}`);
+    },
+    [router, t, toaster]
+  );
+
   // Design `_autoSide`: collapse under 1180 on viewport transitions only.
   useEffect(() => {
     if (mobile) return;
@@ -470,10 +484,7 @@ export const PlatformAnalytics = () => {
                   type="button"
                   onClick={() => {
                     if (integration.refreshNeeded) {
-                      toaster.show(
-                        'Please refresh the integration from the calendar',
-                        'warning'
-                      );
+                      openReconnectInChannels(integration.id);
                       return;
                     }
                     selectChannel(integration.id);
@@ -674,10 +685,7 @@ export const PlatformAnalytics = () => {
                   title={channelNameWithHandle(integration)}
                   onClick={() => {
                     if (integration.refreshNeeded) {
-                      toaster.show(
-                        'Please refresh the integration from the calendar',
-                        'warning'
-                      );
+                      openReconnectInChannels(integration.id);
                       return;
                     }
                     setSelected(integration.id);

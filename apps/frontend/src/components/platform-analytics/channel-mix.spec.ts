@@ -87,4 +87,11 @@ describe('All channels rail', () => {
     assert.doesNotMatch(rail, /all_channels_hint/);
     assert.equal((rail.match(/<AllChannelsMosaic /g) || []).length, 3);
   });
+
+  it('sends a disconnected channel to Channels, not the calendar', () => {
+    assert.match(rail, /openReconnectInChannels/);
+    assert.match(rail, /please_reconnect_from_channels/);
+    assert.match(rail, /\/channels\?focus=/);
+    assert.doesNotMatch(rail, /from the calendar/);
+  });
 });

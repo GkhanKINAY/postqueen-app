@@ -128,25 +128,23 @@ const PostsPanelWhenCalendar = () => {
 };
 
 /**
- * List view: Filters + posts scroll as one column (no inner-only scrollbar).
- * Week/day/month keep Filters fixed and scroll inside the calendar grid.
+ * Filters stay on screen. Week/day/month scroll inside the calendar grid;
+ * list scrolls the posts column under the toolbar (date + All/Scheduled/…).
  */
 const LaunchesMainColumn = () => {
   const { display } = useCalendar();
   const isList = display === 'list';
   return (
-    <div
-      className={clsx(
-        'flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]',
-        isList &&
-          'overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
-      )}
-    >
-      <Filters />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[12px] bg-pqInner p-[20px] mobile:p-[12px]">
+      <div className="shrink-0">
+        <Filters />
+      </div>
       <div
         className={clsx(
           'flex min-w-0',
-          isList ? 'flex-col' : 'min-h-0 flex-1'
+          isList
+            ? 'min-h-0 flex-1 flex-col overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
+            : 'min-h-0 flex-1'
         )}
       >
         <Calendar />
