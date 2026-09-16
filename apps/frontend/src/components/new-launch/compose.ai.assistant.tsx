@@ -71,17 +71,26 @@ const triggerClassName = (open: boolean) =>
       : 'hover:bg-pqBoxFocused'
   );
 
-const SparkleIcon: FC = () => (
+/** Same mark as the AI Copilot empty state and nav — stroked 4-point star. */
+export const CopilotMark: FC<{ size?: number; className?: string }> = ({
+  size = 16,
+  className,
+}) => (
   <svg
     viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="currentColor"
+    width={size}
+    height={size}
+    fill="none"
     aria-hidden="true"
-    className="shrink-0 text-pqFocused"
+    className={clsx('shrink-0', className)}
   >
-    <path d="M12 1.8 15.2 8.8 22.2 12 15.2 15.2 12 22.2 8.8 15.2 1.8 12 8.8 8.8Z" />
-    <path d="M18.55 2.45 19.75 6.25 23.55 7.45 19.75 8.65 18.55 12.45 17.35 8.65 13.55 7.45 17.35 6.25Z" />
+    <path
+      d="M12 3l1.9 4.8 4.8 1.9-4.8 1.9L12 16.4l-1.9-4.8L5.3 9.7l4.8-1.9L12 3ZM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
@@ -122,7 +131,7 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
 };
 
 /**
- * Post Preview | AI Assistant, in the right-rail header. This is the switch
+ * Post Preview | AI Copilot, in the right-rail header. This is the switch
  * the compose chat fills — not a second popup.
  */
 export const StudioRailTabs: FC = () => {
@@ -153,8 +162,8 @@ export const StudioRailTabs: FC = () => {
         onClick={() => setRail('assistant')}
         className={railTabClass(rail === 'assistant')}
       >
-        <SparkleIcon />
-        <span>{t('your_assistant', 'AI assistant')}</span>
+        <CopilotMark className="text-pqFocused" />
+        <span>{t('ai_copilot', 'AI Copilot')}</span>
       </button>
     </div>
   );
@@ -170,7 +179,7 @@ export const ComposeAiAssistant: FC<{
   const t = useT();
   const { rail, setRail } = useStudioRail();
   const open = rail === 'assistant';
-  const label = t('your_assistant', 'AI assistant');
+  const label = t('ai_copilot', 'AI Copilot');
 
   return (
     <button
@@ -188,7 +197,7 @@ export const ComposeAiAssistant: FC<{
       }}
       className={clsx(triggerClassName(open), className)}
     >
-      <SparkleIcon />
+      <CopilotMark className="text-pqFocused" />
       <span>{label}</span>
     </button>
   );
@@ -362,7 +371,7 @@ const ComposeAiUnconfigured: FC<{
   );
   const tip = t(
     'compose_ai_unconfigured_tip',
-    'AI assistant needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
+    'AI Copilot needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
   );
 
   const explain = () => {
@@ -403,11 +412,11 @@ const ComposeAiUnconfigured: FC<{
             className="flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
           >
           <span className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-pqBrandSoft text-pqFocused">
-            <SparkleIcon />
+            <CopilotMark size={22} />
           </span>
           <div>
             <div className="font-display text-[18px] font-[600] tracking-[-0.02em] text-pqText">
-              {t('your_assistant', 'AI assistant')}
+              {t('ai_copilot', 'AI Copilot')}
             </div>
             <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
               {t(
@@ -421,7 +430,15 @@ const ComposeAiUnconfigured: FC<{
             className="flex w-full max-w-[360px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[12px_14px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
           >
             <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
-              <SparkleIcon />
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+                <path
+                  d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5ZM4 15.5 12 20l8-4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
               <span className="text-[13px] font-[600] text-pqText">
@@ -499,7 +516,7 @@ const ComposeAiUnconfigured: FC<{
 export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
   const t = useT();
   const aiOk = useAiAvailable();
-  const label = t('your_assistant', 'AI assistant');
+  const label = t('ai_copilot', 'AI Copilot');
   const apply = APPLY_WITH_SET_POSTS;
   const suggestions = useMemo(
     () => [

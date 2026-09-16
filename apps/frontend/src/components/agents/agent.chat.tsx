@@ -121,7 +121,7 @@ export const AgentChat: FC = () => {
           <CopilotChat
             className="w-full h-full"
             labels={{
-              title: t('your_assistant', 'Your Assistant'),
+              title: t('ai_copilot', 'AI Copilot'),
               placeholder: t(
                 'agent_placeholder',
                 'Ask Copilot to draft, schedule or generate…'

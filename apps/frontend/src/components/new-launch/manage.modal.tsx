@@ -42,6 +42,7 @@ import {
   ComposeAiAssistant,
   ComposeAiBindings,
   ComposeAiRail,
+  CopilotMark,
   StudioRail,
   StudioRailProvider,
   StudioRailTabs,
@@ -171,6 +172,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const [composerPane, setComposerPane] = useState<ComposerPane>('edit');
   const [studioRail, setStudioRail] = useState<StudioRail>('preview');
   const [maximized, setMaximized] = useState(false);
+  // Desktop default: one right rail, Post Preview | AI tabs. Full screen
+  // keeps write | preview | AI as three columns.
+  const tabbedRail = !compactChrome && !maximized;
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
@@ -1059,7 +1063,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   phoneFlow ? 'h-[52px] text-[17px]' : 'h-[65px] text-[20px]'
                 )}
               >
-                {compactChrome ? (
+                {compactChrome || tabbedRail ? (
                   <StudioRailTabs />
                 ) : (
                   <div className="min-w-0 flex-1 truncate text-[17px] min-[1024px]:text-[20px]">
@@ -1073,8 +1077,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     onPane={setComposerPane}
                   />
                 )}
-                {compactChrome && (
+                {(compactChrome || tabbedRail) && (
                 <div className="ms-auto flex shrink-0 items-center gap-[8px]">
+                  {tabbedRail && !touch && (
+                    <button
+                      type="button"
+                      onClick={() => setMaximized(true)}
+                      aria-label={t('full_screen', 'Full screen')}
+                      className="grid size-[44px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                    >
+                      <ExpandIcon size={16} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={askClose}
@@ -1100,7 +1114,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <div
                 className={clsx(
                   'absolute inset-0',
-                  compactChrome && studioRail === 'assistant' && 'hidden'
+                  (compactChrome || tabbedRail) &&
+                    studioRail === 'assistant' &&
+                    'hidden'
                 )}
               >
                 <Scrollable
@@ -1115,7 +1131,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   <ShowAllProviders ref={ref} />
                 </Scrollable>
               </div>
-              {hasChannels && compactChrome && (
+              {hasChannels && (compactChrome || tabbedRail) && (
                 <div
                   className={clsx(
                     'absolute inset-0',
@@ -1127,14 +1143,15 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               )}
             </div>
           </div>
-          {!compactChrome && hasChannels && (
+          {!compactChrome && hasChannels && maximized && (
             <div
               data-pq="composer-ai"
               className="flex min-h-0 w-[min(400px,30vw)] shrink-0 flex-col overflow-hidden rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]"
             >
               <div className="flex h-[65px] shrink-0 items-center gap-[8px] border-b border-pqLine px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText">
+                <CopilotMark size={18} className="text-pqFocused" />
                 <div className="min-w-0 flex-1 truncate">
-                  {t('your_assistant', 'AI assistant')}
+                  {t('ai_copilot', 'AI Copilot')}
                 </div>
                 <div className="ms-auto flex shrink-0 items-center gap-[8px]">
                   {!touch && (

@@ -20,6 +20,9 @@ describe('compose AI assistant placement', () => {
   it('fills the Post Preview rail on every viewport, not a dock under the editor', () => {
     assert.match(modal, /<StudioRailProvider/);
     assert.match(modal, /<StudioRailTabs \/>/);
+    assert.match(modal, /const tabbedRail = !compactChrome && !maximized/);
+    assert.match(modal, /compactChrome \|\| tabbedRail/);
+    assert.match(modal, /!compactChrome && hasChannels && maximized && \(/);
     assert.match(
       assistant,
       /data-pq="composer-rail-tabs"[\s\S]{0,80}className="flex shrink-0 items-center gap-\[2px\]/
@@ -77,12 +80,15 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /setPosts/);
   });
 
-  it('uses a high-contrast filled sparkle and a focused chip, not a brand ring', () => {
-    assert.match(assistant, /width="16"/);
-    assert.match(assistant, /fill="currentColor"/);
-    assert.match(assistant, /text-pqFocused/);
-    assert.match(assistant, /AI assistant/);
-    assert.match(assistant, /var\(--focused\)/);
-    assert.doesNotMatch(assistant, /text-pqBrand/);
+  it('labels the rail AI Copilot and uses the Agents sparkle, not a filled stand-in', () => {
+    assert.match(assistant, /t\('ai_copilot', 'AI Copilot'\)/);
+    assert.match(assistant, /M12 3l1\.9 4\.8 4\.8 1\.9/);
+    assert.match(assistant, /M18\.5 15\.5l\.8 2 2 \.8/);
+    assert.match(assistant, /fill="none"/);
+    assert.match(assistant, /stroke="currentColor"/);
+    assert.doesNotMatch(assistant, /AI assistant/);
+    assert.doesNotMatch(assistant, /fill="currentColor"/);
+    assert.match(modal, /t\('ai_copilot', 'AI Copilot'\)/);
+    assert.doesNotMatch(modal, /AI assistant/);
   });
 });
