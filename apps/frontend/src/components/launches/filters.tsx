@@ -24,14 +24,14 @@ import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 
 /**
  * The day states the old `dayClassName` branched on, as the data attributes
- * Mantine 9 puts on each day. Same colours as that branch. The selected day is
- * absent on purpose: Mantine paints it with its primary colour, which
- * `global.css` maps to `--brand`.
+ * Mantine 9 puts on each day. Selected uses onBrand so the number stays
+ * readable on the brand fill (Mantine primary = `--brand`).
  */
 const DAY_CLASSNAMES = [
   'text-pqText hover:bg-pqHover',
   'data-[weekend]:!text-pqSoft',
   'data-[outside]:!text-pqSoft data-[outside]:opacity-50',
+  'data-[selected]:!text-pqOnBrand',
 ].join(' ');
 
 // Helper function to get start and end dates based on display type

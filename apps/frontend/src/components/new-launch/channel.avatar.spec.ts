@@ -20,6 +20,12 @@ const picks = readFileSync(
   fileURLToPath(new URL('./picks.socials.component.tsx', import.meta.url)),
   'utf8'
 );
+const pickPlatform = readFileSync(
+  fileURLToPath(
+    new URL('../launches/helpers/pick.platform.component.tsx', import.meta.url)
+  ),
+  'utf8'
+);
 const providers = readFileSync(
   fileURLToPath(
     new URL('./providers/show.all.providers.tsx', import.meta.url)
@@ -67,8 +73,10 @@ describe('channel avatar fallback', () => {
     assert.match(selectCurrent, /<ChannelAvatar/);
     assert.match(picks, /<ChannelAvatar/);
     assert.match(providers, /<ChannelAvatar/);
+    assert.match(pickPlatform, /<ChannelAvatar/);
     assert.doesNotMatch(selectCurrent, /fallbackSrc="\/no-picture\.jpg"/);
     assert.doesNotMatch(picks, /fallbackSrc="\/no-picture\.jpg"/);
+    assert.doesNotMatch(pickPlatform, /no-picture\.jpg/);
     assert.match(source, /referrerPolicy="no-referrer"/);
   });
 
@@ -79,5 +87,10 @@ describe('channel avatar fallback', () => {
     assert.match(selectCurrent, /ring-2 ring-pqPink/);
     assert.match(selectCurrent, /ring-2 ring-pqBrand/);
     assert.doesNotMatch(selectCurrent, /inset_0_0_0_1\.5px_var\(--pink\)/);
+    assert.match(pickPlatform, /aria-pressed=\{selected\}/);
+    assert.match(pickPlatform, /ring-2 ring-pqBrand ring-offset-2/);
+    assert.match(pickPlatform, /bg-pqBrand text-white/);
+    assert.doesNotMatch(pickPlatform, /opacity-40/);
+    assert.doesNotMatch(pickPlatform, /bg-customColor29/);
   });
 });

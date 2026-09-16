@@ -72,6 +72,8 @@ describe('composer channel settings controls', () => {
     const finisher = read('../finisher/thread.finisher.tsx');
     assert.match(finisher, /data-pq="composer-thread-finisher"/);
     assert.match(finisher, /thread_finisher_placeholder/);
+    assert.match(finisher, /resize-none/);
+    assert.doesNotMatch(finisher, /resize-y/);
     assert.doesNotMatch(finisher, /<Editor/);
     const input = read(
       '../../../../../../libraries/react-shared-libraries/src/form/input.tsx'
@@ -83,6 +85,14 @@ describe('composer channel settings controls', () => {
     );
     assert.match(instagram, /defaultValue="post"/);
     assert.match(instagram, /icon="type"/);
+    const plugs = read('../../launches/internal.channels.tsx');
+    const redditSub = read('./reddit/subreddit.tsx');
+    const reddit = read('./reddit/reddit.provider.tsx');
+    assert.match(plugs, /<FormSection>/);
+    assert.doesNotMatch(plugs, /border-tableBorder/);
+    assert.match(redditSub, /<FormSection>/);
+    assert.doesNotMatch(redditSub, /bg-primary p-\[20px\]/);
+    assert.doesNotMatch(reddit, /bg-red-600/);
   });
 
   it('keeps the same settings form after the editor when a channel is selected', () => {

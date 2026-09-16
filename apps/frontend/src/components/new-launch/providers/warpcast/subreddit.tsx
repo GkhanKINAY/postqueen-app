@@ -6,6 +6,7 @@ import { Input } from '@gitroom/react/form/input';
 import { useDebouncedCallback } from 'use-debounce';
 import { useWatch } from 'react-hook-form';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
+import { FormSection } from '@gitroom/react/form/form.section';
 export const Subreddit: FC<{
   onChange: (event: {
     target: {
@@ -98,7 +99,7 @@ export const Subreddit: FC<{
     500
   );
   return (
-    <div className="bg-primary p-[20px]">
+    <FormSection>
       {value?.subreddit ? (
         <>
           <Input
@@ -127,12 +128,12 @@ export const Subreddit: FC<{
             }}
           />
           {!!results.length && !loading && (
-            <div className="z-[400] w-full absolute bg-input -mt-[20px] outline-none border-fifth border cursor-pointer">
+            <div className="absolute start-0 end-0 top-full z-[400] cursor-pointer overflow-hidden rounded-[10px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
               {results.map((r: { id: string; name: string }) => (
                 <div
                   onClick={setResult(r)}
                   key={r.id}
-                  className="px-[16px] py-[5px] hover:bg-secondary"
+                  className="px-[16px] py-[8px] text-[13px] text-pqText hover:bg-pqHover"
                 >
                   {r.name}
                 </div>
@@ -141,6 +142,6 @@ export const Subreddit: FC<{
           )}
         </div>
       )}
-    </div>
+    </FormSection>
   );
 };

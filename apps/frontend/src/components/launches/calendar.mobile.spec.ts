@@ -168,6 +168,7 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /check_circles_above/);
     assert.match(manage, /setPostNowOpen/);
     assert.match(manage, /schedule\('now'\)/);
+    assert.doesNotMatch(manage, /data-tooltip-content=\{t\('post_now'/);
     assert.doesNotMatch(manage, /t\('add_to_calendar'/);
   });
 

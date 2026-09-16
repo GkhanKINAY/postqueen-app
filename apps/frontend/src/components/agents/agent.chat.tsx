@@ -41,6 +41,11 @@ import {
   TextMessage,
 } from '@copilotkit/runtime-client-gql';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+import {
+  AgentDraftCard,
+  AgentDraftItem,
+  AgentDraftOutcome,
+} from '@gitroom/frontend/components/agents/agent.draft.card';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
@@ -668,12 +673,10 @@ Use the following social media platforms: ${JSON.stringify(
 };
 
 export const Hooks: FC = () => {
-  const modals = useModals();
-
   useCopilotAction({
     name: 'manualPosting',
     description:
-      'This tool should be triggered when the user wants to manually add the generated post',
+      'Show a Post Preview card in chat for a brand-new draft (channels, UTC dates, HTML posts, attachments, settings). Always call this before schedulePostTool. Wait for the user: they will schedule from the card or open Create Post. Do not use this to edit an existing post.',
     parameters: [
       {
         name: 'list',
@@ -729,8 +732,18 @@ export const Hooks: FC = () => {
       },
     ],
     renderAndWaitForResponse: ({ args, status, respond }) => {
-      if (status === 'executing') {
-        return <OpenModal args={args} respond={respond} />;
+      if (
+        status === 'inProgress' ||
+        status === 'executing' ||
+        status === 'complete'
+      ) {
+        return (
+          <DraftPreview
+            args={args}
+            respond={respond}
+            waiting={status === 'executing'}
+          />
+        );
       }
 
       return null;
@@ -739,25 +752,37 @@ export const Hooks: FC = () => {
   return null;
 };
 
-const OpenModal: FC<{
+const DraftPreview: FC<{
   respond: (value: any) => void;
-  args: {
-    list: {
-      integrationId: string;
-      date: string;
-      settings?: Record<string, any>;
-      posts: { content: string; attachments: { id: string; path: string }[] }[];
-    }[];
+  waiting: boolean;
+  args?: {
+    list?: AgentDraftItem[];
   };
-}> = ({ args, respond }) => {
+}> = ({ args, respond, waiting }) => {
   const modals = useModals();
   const { properties } = useContext(PropertiesContext);
   const usableProperties = useMemo(
     () => selectableIntegrations(properties),
     [properties]
   );
-  const startModal = useCallback(async () => {
-    for (const integration of args.list) {
+  const [outcome, setOutcome] = useState<AgentDraftOutcome>('idle');
+  const responded = useRef(false);
+
+  const finish = useCallback(
+    (message: string) => {
+      if (responded.current) {
+        return;
+      }
+      responded.current = true;
+      respond(message);
+    },
+    [respond]
+  );
+
+  const openComposer = useCallback(async () => {
+    setOutcome('composer');
+    const list = args?.list || [];
+    for (const integration of list) {
       const channel = usableProperties.find(
         (p) => p.id === integration.integrationId
       );
@@ -786,7 +811,7 @@ const OpenModal: FC<{
                 integration: integration.integrationId,
                 integrationPicture: channel.picture || '',
                 settings: integration.settings || {},
-                posts: integration.posts.map((p) => ({
+                posts: (integration.posts || []).map((p) => ({
                   approvedSubmitForOrder: 'NO',
                   content: p.content,
                   createdAt: new Date().toISOString(),
@@ -797,7 +822,7 @@ const OpenModal: FC<{
                   integrationId: integration.integrationId,
                   integration: channel,
                   publishDate: dayjs.utc(integration.date).toISOString(),
-                  image: p.attachments.map((a) => ({
+                  image: (p.attachments || []).map((a) => ({
                     id: a.id,
                     path: a.path,
                   })),
@@ -808,11 +833,11 @@ const OpenModal: FC<{
                 date={dayjs.utc(integration.date)}
                 allIntegrations={usableProperties}
                 integrations={[channel]}
-                onlyValues={integration.posts.map((p) => ({
+                onlyValues={(integration.posts || []).map((p) => ({
                   content: p.content,
                   id: makeId(10),
                   settings: integration.settings || {},
-                  image: p.attachments.map((a) => ({
+                  image: (p.attachments || []).map((a) => ({
                     id: a.id,
                     path: a.path,
                   })),
@@ -826,15 +851,25 @@ const OpenModal: FC<{
       });
     }
 
-    respond('User scheduled all the posts');
-  }, [args, respond, usableProperties, modals]);
+    finish(
+      'User opened the Create Post composer with this draft. They will edit and schedule there. Do not call schedulePostTool for this draft.'
+    );
+  }, [args, finish, usableProperties, modals]);
 
-  useEffect(() => {
-    startModal();
-  }, []);
+  const schedule = useCallback(() => {
+    setOutcome('schedule');
+    finish(
+      'User confirmed. Schedule these posts now with schedulePostTool using the same channels, dates, HTML content, attachments and settings. Do not call manualPosting again.'
+    );
+  }, [finish]);
+
   return (
-    <div onClick={() => respond('continue')}>
-      Opening the composer…
-    </div>
+    <AgentDraftCard
+      list={args?.list}
+      outcome={outcome}
+      waiting={waiting}
+      onSchedule={schedule}
+      onOpenComposer={openComposer}
+    />
   );
 };

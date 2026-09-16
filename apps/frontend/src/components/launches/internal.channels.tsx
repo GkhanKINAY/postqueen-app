@@ -1,7 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import {
   Integrations,
-  useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
 import { PickPlatforms } from '@gitroom/frontend/components/launches/helpers/pick.platform.component';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
@@ -9,8 +8,8 @@ import { Select } from '@gitroom/react/form/select';
 import { Slider } from '@gitroom/react/form/slider';
 import { Input } from '@gitroom/react/form/input';
 import { Textarea } from '@gitroom/react/form/textarea';
+import { FormSection } from '@gitroom/react/form/form.section';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
-import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 const delayOptions = [
   {
@@ -146,69 +145,69 @@ const Plug: FC<{
     return null;
   }
   return (
-    <div
-      key={plug.title}
-      className="flex flex-col gap-[10px] border-tableBorder border p-[15px] rounded-lg"
-    >
-      <div className="flex items-center">
-        <div className="flex-1">{plug.title}</div>
-        <div>
-          <Slider
-            value={active ? 'on' : 'off'}
-            onChange={(p) =>
-              setValue(`plug--${plug.identifier}--active`, p === 'on')
-            }
-            fill={true}
-          />
+    <FormSection>
+      <div className="flex items-center gap-[12px]">
+        <div className="min-w-0 flex-1 text-[13px] font-[600] text-pqText">
+          {plug.title}
         </div>
+        <Slider
+          value={active ? 'on' : 'off'}
+          onChange={(p) =>
+            setValue(`plug--${plug.identifier}--active`, p === 'on')
+          }
+          fill={true}
+        />
       </div>
-      <div className="w-full max-w-[600px] overflow-y-auto pb-[10px] text-[12px] flex flex-col gap-[10px]">
-        {!allowedIntegrations.length ? (
-          'No available accounts'
-        ) : (
-          <div
-            className={clsx(
-              'flex flex-col gap-[10px]',
-              !active && 'opacity-25 pointer-events-none'
-            )}
-          >
-            <div>{plug.description}</div>
-            <Select
-              label="Delay"
-              hideErrors={true}
-              {...register(`plug--${plug.identifier}--delay`)}
-            >
-              {delayOptions.map((p) => (
-                <option key={p.name} value={p.value}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-            {plug.fields.length > 0 && (
-              <div className="flex flex-col gap-[10px]">
-                {plug.fields.map((field) => (
-                  <PlugField
-                    key={field.name}
-                    plugIdentifier={plug.identifier}
-                    field={field}
-                  />
-                ))}
-              </div>
-            )}
-            <div>
-              {t('accounts_that_will_engage', 'Accounts that will engage:')}
-            </div>
-            <PickPlatforms
-              hide={false}
-              integrations={allowedIntegrations}
-              selectedIntegrations={localValue}
-              singleSelect={false}
-              isMain={true}
-              onChange={setLocalValue}
-            />
+      {active ? (
+        <div className="flex flex-col gap-[12px]">
+          <div className="text-[13px] leading-[1.45] text-pqMuted">
+            {plug.description}
           </div>
-        )}
-      </div>
-    </div>
+          {!allowedIntegrations.length ? (
+            <div className="text-[13px] text-pqMuted">
+              No available accounts
+            </div>
+          ) : (
+            <>
+              <Select
+                label="Delay"
+                hideErrors={true}
+                {...register(`plug--${plug.identifier}--delay`, {
+                  value: 3600000,
+                })}
+              >
+                {delayOptions.map((p) => (
+                  <option key={p.name} value={p.value}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+              {plug.fields.length > 0 && (
+                <div className="flex flex-col gap-[12px]">
+                  {plug.fields.map((field) => (
+                    <PlugField
+                      key={field.name}
+                      plugIdentifier={plug.identifier}
+                      field={field}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="text-[13px] font-[500] text-pqMuted">
+                {t('accounts_that_will_engage', 'Accounts that will engage:')}
+              </div>
+              <PickPlatforms
+                hide={false}
+                integrations={allowedIntegrations}
+                selectedIntegrations={localValue}
+                singleSelect={false}
+                isMain={true}
+                onChange={setLocalValue}
+              />
+            </>
+          )}
+        </div>
+      ) : null}
+    </FormSection>
   );
 };

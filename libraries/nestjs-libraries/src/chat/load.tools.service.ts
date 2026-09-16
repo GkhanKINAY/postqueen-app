@@ -77,7 +77,7 @@ export class LoadToolsService {
       - Always make sure you use this tool before you schedule any post.
       - In every message I will send you the list of needed social medias (id and platform), if you already have the information use it, if not, use the integrationSchema tool to get it.
       - Make sure you always take the last information I give you about the socials, it might have changed.
-      - Before scheduling a post, always make sure you ask the user confirmation by providing all the details of the post (text, images, videos, date, time, social media platform, account).
+      - Before scheduling a brand-new post, confirm the draft (text, images, videos, date, time, channel). In the app UI that confirmation is the manualPosting preview card, not a typed "yes". Over MCP or other clients, write the details in the reply and wait for an explicit yes.
       - To find or inspect existing posts, use postsListTool with a UTC start and end date - it returns every post scheduled in that window. To cover "all my upcoming posts", pass a wide window starting now.
       - For analytics, never invent numbers. Call the tools and print what they return, including null as "unknown" (an em dash), never as zero.
         - analyticsSummaryTool: totals for posts published in the last 7, 30 or 90 days. Optional integrationId or platform.
@@ -93,7 +93,11 @@ export class LoadToolsService {
       - The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box
       ${renderArray(
         [
-          'If the user confirm, ask if they would like to get a modal with populated content without scheduling the post yet or if they want to schedule it right away.',
+          'For a brand-new post, always call manualPosting with the full draft (channels, UTC dates, HTML content, attachment ids/paths, settings) BEFORE schedulePostTool.',
+          'manualPosting shows a Post Preview card. Wait for it to return. Do not also ask the user to type yes.',
+          'If it returns that the user opened the composer, do NOT call schedulePostTool — they schedule from Create Post.',
+          'If it returns that the user confirmed scheduling, THEN call schedulePostTool with the same payload. Do not call manualPosting again.',
+          'Never call schedulePostTool for a brand-new post before manualPosting has returned.',
         ],
         !!ui
       )}

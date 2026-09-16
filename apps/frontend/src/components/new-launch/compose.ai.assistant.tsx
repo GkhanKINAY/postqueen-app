@@ -15,7 +15,9 @@ import NextLink from 'next/link';
 import {
   CopilotChat,
   CopilotKitCSSProperties,
+  InputProps,
   RenderSuggestionsListProps,
+  useChatContext,
 } from '@copilotkit/react-ui';
 import { useCopilotAction } from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -107,25 +109,98 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
   onSuggestionClick,
   isLoading,
 }) => {
+  const t = useT();
+  const marks: Record<string, string> = {
+    [t('rephrase', 'Rephrase')]: '🔄',
+    [t('shorten', 'Shorten')]: '✂️',
+    [t('expand', 'Expand')]: '➕',
+    [t('more_casual', 'More Casual')]: '😊',
+    [t('more_formal', 'More Formal')]: '💼',
+  };
   if (!suggestions.length) {
     return null;
   }
   return (
     <div
       data-pq="composer-ai-chips"
-      className="flex flex-wrap gap-[8px] px-[16px] pb-[8px]"
+      className="flex flex-col gap-[8px] px-[16px] pb-[10px]"
     >
-      {suggestions.map((suggestion) => (
+      <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
+        {t('quick_edits', 'Quick edits')}
+      </div>
+      <div className="flex flex-wrap gap-[8px]">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion.title}
+            type="button"
+            disabled={isLoading}
+            onClick={() => onSuggestionClick(suggestion.message)}
+            className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {marks[suggestion.title] ? (
+              <span aria-hidden="true" className="text-[14px] leading-none">
+                {marks[suggestion.title]}
+              </span>
+            ) : null}
+            {suggestion.title}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ComposeAiInput: FC<InputProps> = ({
+  inProgress,
+  onSend,
+  onStop,
+  hideStopButton = false,
+  isVisible = true,
+}) => {
+  const t = useT();
+  const context = useChatContext();
+  const [text, setText] = useState('');
+  if (!isVisible) {
+    return null;
+  }
+  const send = () => {
+    const next = text.trim();
+    if (inProgress || !next) {
+      return;
+    }
+    onSend(text);
+    setText('');
+  };
+  const showStop = inProgress && !hideStopButton;
+  return (
+    <div className="copilotKitInputContainer">
+      <div className="copilotKitInput flex items-center gap-[8px]">
+        <textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              send();
+            }
+          }}
+          placeholder={
+            context.labels.placeholder ||
+            t('write_something', 'Write something …')
+          }
+          rows={1}
+          className="min-h-[36px] flex-1 resize-none"
+        />
         <button
-          key={suggestion.title}
           type="button"
-          disabled={isLoading}
-          onClick={() => onSuggestionClick(suggestion.message)}
-          className="flex h-[36px] items-center rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!showStop && !text.trim()}
+          onClick={showStop ? onStop : send}
+          data-pq="composer-ai-send"
+          className="copilotKitInputControlButton shrink-0"
         >
-          {suggestion.title}
+          {showStop ? t('stop', 'Stop') : t('send', 'Send')}
         </button>
-      ))}
+      </div>
     </div>
   );
 };
@@ -474,7 +549,7 @@ const ComposeAiUnconfigured: FC<{
         isLoading={false}
       />
       <form className="copilotKitInputContainer" onSubmit={onSubmit}>
-        <div className="copilotKitInput flex items-end gap-[8px]">
+        <div className="copilotKitInput flex items-center gap-[8px]">
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -485,23 +560,15 @@ const ComposeAiUnconfigured: FC<{
               }
             }}
             placeholder={t('write_something', 'Write something …')}
-            rows={2}
-            className="min-h-[52px] flex-1 resize-none"
+            rows={1}
+            className="min-h-[36px] flex-1 resize-none"
           />
           <button
             type="submit"
+            data-pq="composer-ai-send"
             className="copilotKitInputControlButton shrink-0"
-            aria-label={t('send_message', 'Send message')}
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <path
-                d="M5 12h14M13 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {t('send', 'Send')}
           </button>
         </div>
       </form>
@@ -571,6 +638,7 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
               instructions={COPILOT_INSTRUCTIONS}
               suggestions={suggestions}
               RenderSuggestionsList={ComposeAiSuggestionList}
+              Input={ComposeAiInput}
               labels={{
                 title: label,
                 initial: t(

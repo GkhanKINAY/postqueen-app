@@ -1,6 +1,7 @@
 'use client';
 
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import EmojiPicker from 'emoji-picker-react';
 import { Theme } from 'emoji-picker-react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -33,15 +34,12 @@ export const AddCommentTrigger: FC<{
 }> = ({ onClick }) => {
   const t = useT();
   return (
-    <div
-      data-pq="composer-first-comment-trigger"
-      className="border-t border-pqLine px-[12px] py-[12px]"
-    >
+    <div data-pq="composer-first-comment-trigger">
       <button
         type="button"
         onClick={onClick}
         data-pq="composer-add-comment-trigger"
-        className="inline-flex h-[36px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] bg-pqPink px-[12px] text-[12px] font-[600] text-pqOnBrand transition-opacity hover:opacity-90"
+        className="inline-flex h-[40px] w-full cursor-pointer select-none items-center justify-center gap-[6px] rounded-[10px] bg-pqPink px-[14px] text-[13px] font-[600] text-pqOnBrand transition-opacity hover:opacity-90"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -167,13 +165,16 @@ export const ComposeFirstComment: FC<{
   return (
     <div
       data-pq="composer-first-comment"
-      className="flex min-w-0 flex-col gap-[8px] border-t border-pqLine px-[12px] py-[12px]"
+      className={clsx(
+        'flex min-w-0 flex-col gap-[8px] px-[12px] py-[12px]',
+        commentIndex > 1 && 'border-t border-pqLine'
+      )}
       onFocusCapture={() => {
         onActivate();
       }}
     >
       <div className="flex items-center justify-between gap-[8px]">
-        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
           {commentIndex === 1
             ? t('first_comment', 'First Comment')
             : t('comments', 'Comments')}
@@ -203,7 +204,7 @@ export const ComposeFirstComment: FC<{
             ? t('first_comment', 'First Comment')
             : t('add_comment', 'Add comment')
         }
-        className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="min-h-[64px] w-full resize-none rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
       <div
         data-pq="composer-first-comment-tools"
@@ -308,7 +309,6 @@ export const ComposeFirstComment: FC<{
               />
               <InformationComponent
                 variant="comment"
-                requireContent={false}
                 isPicture={!!pictures?.length}
                 chars={chars}
                 totalChars={value.length}

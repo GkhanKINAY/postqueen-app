@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FC } from 'react';
+import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 
@@ -17,8 +18,9 @@ export const AddPostButton: FC<{
   onClick: () => void;
   num: number;
   postComment: PostComment;
+  wide?: boolean;
 }> = (props) => {
-  const { onClick } = props;
+  const { onClick, wide } = props;
   const t = useT();
 
   const label =
@@ -28,12 +30,22 @@ export const AddPostButton: FC<{
       ? t('add_post', 'Continue thread')
       : t('add_comment', 'Add comment');
 
+  const asComment =
+    props.postComment === PostComment.COMMENT ||
+    props.postComment === PostComment.ALL;
+
   return (
     <button
       type="button"
       onClick={onClick}
       data-pq="composer-add-comment"
-      className="inline-flex h-[36px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+      className={clsx(
+        'inline-flex h-[40px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[10px] px-[14px] text-[13px] font-[600] transition-opacity',
+        wide && 'w-full',
+        asComment
+          ? 'bg-pqPink text-pqOnBrand hover:opacity-90'
+          : 'bg-pqInner text-pqText shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] hover:bg-pqHover hover:opacity-100'
+      )}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

@@ -1,9 +1,25 @@
+'use client';
+
 import { FC, useCallback, useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { useFormContext } from 'react-hook-form';
+import { clsx } from 'clsx';
 import { Button } from './button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { TranslatedLabel } from '../translation/translated-label';
+
+const COLOR_PRESETS = [
+  '#7C3AED',
+  '#2563EB',
+  '#0EA5E9',
+  '#10B981',
+  '#F59E0B',
+  '#F97316',
+  '#EF4444',
+  '#EC4899',
+  '#6B7280',
+  '#111827',
+];
 
 export const ColorPicker: FC<{
   name: string;
@@ -23,7 +39,6 @@ export const ColorPicker: FC<{
   const {
     name,
     label,
-    enabled,
     value,
     canBeCancelled,
     onChange,
@@ -38,26 +53,28 @@ export const ColorPicker: FC<{
     : form.register(name);
   const watch = onChange ? value : form.watch(name);
   const [enabledState, setEnabledState] = useState(!!watch);
+  const setColor = useCallback(
+    (next: string) => {
+      color.onChange({
+        target: {
+          name,
+          value: next,
+        },
+      });
+    },
+    [color, name]
+  );
   const enable = useCallback(async () => {
-    await color.onChange({
-      target: {
-        name,
-        value: '#FFFFFF',
-      },
-    });
+    await setColor('#FFFFFF');
     setEnabledState(true);
-  }, []);
+  }, [setColor]);
   const cancel = useCallback(async () => {
-    await color.onChange({
-      target: {
-        name,
-        value: '',
-      },
-    });
+    await setColor('');
     setEnabledState(false);
-  }, []);
+  }, [setColor]);
 
   const t = useT();
+  const current = typeof watch === 'string' ? watch : '';
 
   if (!enabledState) {
     return (
@@ -69,50 +86,59 @@ export const ColorPicker: FC<{
     );
   }
   return (
-    <div className="flex flex-col gap-[6px]">
-      <div>
-        {!!label && (
-          <div className="text-[14px] text-pqMuted">
+    <div className="flex flex-col gap-[12px]">
+      {!!label && (
+        <div className="flex items-center justify-between gap-[8px]">
+          <div className="text-[13px] font-[500] text-pqMuted">
             <TranslatedLabel
               label={label}
               translationKey={translationKey}
               translationParams={translationParams}
             />
           </div>
-        )}
-      </div>
-      {canBeCancelled && (
-        <div>
-          <Button onClick={cancel}>
-            {t('cancel_the_color_picker', 'Cancel the color picker')}
-          </Button>
+          {canBeCancelled && (
+            <Button onClick={cancel} variant="ghost" size="sm">
+              {t('cancel_the_color_picker', 'Cancel the color picker')}
+            </Button>
+          )}
         </div>
       )}
-      <div className="flex items-end gap-[20px]">
-        <div>
-          <HexColorPicker
-            color={watch}
-            onChange={(value) =>
-              color.onChange({
-                target: {
-                  name,
-                  value,
-                },
-              })
-            }
-          />
-        </div>
-        <div className="flex gap-[10px]">
-          <div>
-            <div
-              className="w-[20px] h-[20px]"
-              style={{
-                backgroundColor: watch,
-              }}
+      <div className="flex flex-wrap gap-[8px]">
+        {COLOR_PRESETS.map((hex) => {
+          const selected = current.toLowerCase() === hex.toLowerCase();
+          return (
+            <button
+              type="button"
+              key={hex}
+              aria-label={hex}
+              aria-pressed={selected}
+              onClick={() => setColor(hex)}
+              className={clsx(
+                'size-[28px] shrink-0 rounded-full transition-shadow',
+                selected
+                  ? 'ring-2 ring-pqBrand ring-offset-2 ring-offset-pqPop'
+                  : 'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_22%,transparent)] hover:shadow-[inset_0_0_0_2px_var(--brand)]'
+              )}
+              style={{ backgroundColor: hex }}
             />
-          </div>
-          <div>{watch}</div>
-        </div>
+          );
+        })}
+      </div>
+      <div className="overflow-hidden rounded-[10px] [&_.react-colorful]:h-[148px] [&_.react-colorful]:w-full">
+        <HexColorPicker color={current || '#FFFFFF'} onChange={setColor} />
+      </div>
+      <div className="flex h-[40px] items-center gap-[10px] rounded-[10px] bg-pqInner px-[10px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
+        <span
+          className="size-[22px] shrink-0 rounded-[6px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_18%,transparent)]"
+          style={{ backgroundColor: current || '#FFFFFF' }}
+        />
+        <input
+          value={current}
+          spellCheck={false}
+          aria-label={label}
+          onChange={(event) => setColor(event.target.value)}
+          className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] uppercase tracking-[0.04em] text-pqText outline-none placeholder:text-pqMuted"
+        />
       </div>
     </div>
   );
