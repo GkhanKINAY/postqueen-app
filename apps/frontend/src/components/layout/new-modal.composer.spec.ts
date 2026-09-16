@@ -43,9 +43,9 @@ describe('composer modal chrome', () => {
     assert.doesNotMatch(css, /min\(720px, calc\(100vw - 64px\)\)/);
     assert.match(css, /\[data-pq='composer-ai-rail'\],\s*\[data-pq='composer-ai-dock'\]/);
     assert.match(manage, /data-pq="composer-footer-tag"/);
-    assert.match(manage, /!dummy && !hasChannels/);
+    assert.match(manage, /!dummy && !compactFooter/);
     assert.match(manage, /justify-between/);
-    assert.match(manage, /!phoneFlow && !hasChannels/);
+    assert.match(manage, /!phoneFlow && \(!compactFooter \|\| !hasChannels\)/);
     assert.match(manage, /disabled:opacity-40/);
     assert.match(manage, /selectedIntegrations\.length === 0 \|\| loading \|\| locked/);
     assert.match(manage, /<ComposeWhen/);
@@ -57,15 +57,11 @@ describe('composer modal chrome', () => {
     assert.doesNotMatch(css, /html:has\(\[data-pq-composer-max='1'\]\) \[data-pq-composer-shell\] \{\s*padding: 0 !important;/);
   });
 
-  it('puts Repeat Post Every in the footer after a channel is picked, not truncated in the header', () => {
-    const extrasStart = manage.indexOf('data-pq="composer-header-extras"');
-    const extrasEnd = manage.indexOf('ComposerStepTabs', extrasStart);
-    const extras = manage.slice(extrasStart, extrasEnd);
-    assert.ok(extrasStart > 0 && extrasEnd > extrasStart);
-    assert.match(extras, /TagsComponent/);
-    assert.match(extras, /ComposeNotify/);
-    assert.doesNotMatch(extras, /RepeatComponent/);
+  it('puts Tags, Repeat, and Notify in the footer, not the Create Post header', () => {
+    assert.doesNotMatch(manage, /data-pq="composer-header-extras"/);
+    assert.match(manage, /data-pq="composer-footer-tag"/);
     assert.match(manage, /data-pq="composer-footer-repeat"/);
+    assert.match(manage, /data-pq="composer-footer-notify"/);
     assert.match(manage, /<RepeatComponent/);
     assert.match(repeat, /t\('repeat_post_every', 'Repeat Post Every'\)/);
     assert.doesNotMatch(repeat, /Repeat Post Every\.\.\./);

@@ -187,11 +187,11 @@ export const ThreadsPreview: FC<{
         >
           <div className="relative flex w-[36px] shrink-0 flex-col items-center">
             <ChannelAvatar
-              integration={{
-                picture: integration?.picture,
-                identifier: integration?.identifier || 'threads',
-                name: integration?.name,
-              }}
+              integration={
+                integration || {
+                  identifier: 'threads',
+                }
+              }
               size={36}
               rounded="full"
               badge={false}

@@ -36,7 +36,7 @@ describe('composer first comment', () => {
     assert.match(source, /bg-pqPink/);
     assert.match(editor, /commentDraftOpen/);
     assert.match(editor, /showComments/);
-    assert.match(editor, /<AddCommentTrigger/);
+    assert.doesNotMatch(editor, /firstCommentFilled/);
     assert.doesNotMatch(
       editor,
       /firstCommentMode && index === 0 \? \(\s*<ComposeFirstComment/,
@@ -64,6 +64,7 @@ describe('composer first comment', () => {
     assert.match(source, /insert_emoji/);
     assert.match(source, /<MultiMediaComponent/);
     assert.match(source, /attachmentsOnly/);
+    assert.match(source, /largeThumbs/);
     assert.match(bold, /export function applyUnicodeBold/);
     assert.match(underline, /export function applyUnicodeUnderline/);
   });
@@ -75,6 +76,7 @@ describe('composer first comment', () => {
     assert.match(delay, /toolbar\?: boolean/);
     assert.match(delay, /data-pq=\{toolbar \? 'composer-comment-delay'/);
     assert.match(delay, /t\('delay_comment', 'Delay comment'\)/);
+    assert.match(delay, /data-tooltip-id=\{toolbar \? undefined : 'tooltip'\}/);
     const toolbarClass = delay.slice(
       delay.indexOf("toolbar\n            ? '"),
       delay.indexOf(": 'h-[24px]"),
@@ -101,6 +103,8 @@ describe('composer first comment', () => {
     );
     assert.match(information, /requireContent && !isPicture && !totalChars/);
     assert.match(information, /variant === 'comment'/);
+    assert.match(information, /status === 'idle'/);
+    assert.match(information, /An unused comment is optional/);
   });
 
   it('keeps Add comment on comment-capable networks even when comments is false', () => {
@@ -112,7 +116,10 @@ describe('composer first comment', () => {
       editor,
       /Boolean\(comments\) && postComment !== PostComment\.POST/,
     );
-    assert.match(editor, /firstCommentFilled && comments/);
+    assert.match(
+      editor,
+      /\{comments \? \(\s*<div className="px-\[12px\] pb-\[10px\]">\s*<AddPostButton/,
+    );
   });
 
   it('uses the posts array so extra comments are a thread, not a new API', () => {
@@ -122,6 +129,29 @@ describe('composer first comment', () => {
     assert.match(editor, /firstCommentMode && index >= 1/);
     assert.match(editor, /addValue\(items\.length - 1\)/);
     assert.match(editor, /setCommentText/);
-    assert.match(editor, /commentIndex > 1/);
+    assert.match(editor, /onRemove=\{removeComment\(commentIndex\)\}/);
+    assert.match(source, /data-pq="composer-first-comment-remove"/);
+    assert.match(source, /onRemove \? \(/);
+    assert.match(source, /t\('remove', 'Remove'\)/);
+    assert.doesNotMatch(editor, /commentIndex > 1/);
+  });
+
+  it('does not preview or publish empty follow-up comments', () => {
+    const hop = readFileSync(
+      fileURLToPath(new URL('./providers/high.order.provider.tsx', import.meta.url)),
+      'utf8',
+    );
+    const strip = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../../../libraries/helpers/src/utils/strip.html.validation.ts',
+          import.meta.url,
+        ),
+      ),
+      'utf8',
+    );
+    assert.match(strip, /export const dropEmptyFollowUps/);
+    assert.match(hop, /dropEmptyFollowUps\(value\)/);
+    assert.match(hop, /values: dropEmptyFollowUps\(value\)/);
   });
 });

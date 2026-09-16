@@ -1322,7 +1322,7 @@ html[dir='rtl'] .lbox {
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  color: var(--soft);
+  color: var(--muted);
   content: attr(data-placeholder);
   float: left;
   height: 0;

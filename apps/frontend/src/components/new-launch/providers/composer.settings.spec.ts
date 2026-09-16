@@ -52,11 +52,15 @@ describe('composer channel settings controls', () => {
     );
     const tiktok = read('./tiktok/tiktok.provider.tsx');
     const instagram = read('./instagram/instagram.collaborators.tsx');
+    const x = read('./x/x.provider.tsx');
 
     assert.match(choice, /isEmptyFormValue\(raw\) \? initial : raw/);
     assert.match(choice, /shouldDirty: false/);
     assert.match(choice, /icon\?: FormIconName/);
     assert.match(icon, /export type FormIconName/);
+    assert.match(icon, /ai: '✨'/);
+    assert.match(icon, /partnership: '🤝'/);
+    assert.match(x, /icon="partnership"/);
     assert.match(section, /bg-pqSettings/);
     assert.doesNotMatch(choice, /tiktok/i);
     assert.doesNotMatch(icon, /tiktok/i);
@@ -64,6 +68,19 @@ describe('composer channel settings controls', () => {
     assert.match(tiktok, /icon="music"/);
     assert.match(tiktok, /defaultValue="PUBLIC_TO_EVERYONE"/);
     assert.match(tiktok, /defaultValue="DIRECT_POST"/);
+    assert.match(x, /placeholder="https:\/\/x.com\/i\/communities\/…"/);
+    const finisher = read('../finisher/thread.finisher.tsx');
+    assert.match(finisher, /data-pq="composer-thread-finisher"/);
+    assert.match(finisher, /thread_finisher_placeholder/);
+    assert.doesNotMatch(finisher, /<Editor/);
+    const input = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/input.tsx'
+    );
+    assert.match(input, /placeholder:text-pqMuted/);
+    assert.match(
+      input,
+      /color-mix\(in_srgb,var\(--text\)_20%,transparent\)/,
+    );
     assert.match(instagram, /defaultValue="post"/);
     assert.match(instagram, /icon="type"/);
   });
@@ -79,11 +96,23 @@ describe('composer channel settings controls', () => {
     assert.match(manage, /t\('settings', 'Settings'\)/);
     assert.match(
       manage,
-      /id="social-settings"[\s\S]{0,80}gap-\[1px\] overflow-hidden rounded-\[14px\] bg-pqLine/
+      /id="social-settings"[\s\S]{0,120}gap-\[1px\] overflow-hidden rounded-\[14px\] bg-pqLine/
     );
     assert.match(hop, /data-pq="preview-channel-identity"/);
     assert.match(hop, /channelPlatformLabel/);
     assert.match(hop, /data-pq="preview-channel-body"/);
+    assert.match(hop, /overflow-hidden rounded-\[12px\] shadow-previewShadow/);
+    assert.doesNotMatch(
+      hop,
+      /border border-borderPreview rounded-\[12px\] shadow-previewShadow/,
+    );
+    const bodyAt = hop.indexOf('data-pq="preview-channel-body"');
+    const bodyGate = hop.slice(
+      hop.lastIndexOf('{(tab === 0', bodyAt),
+      bodyAt,
+    );
+    assert.match(bodyGate, /postHasPreview/);
+    assert.doesNotMatch(bodyGate, /current \|\| isGlobal/);
     const identityStart = hop.indexOf('data-pq="preview-channel-identity"');
     const identityEnd = hop.indexOf('data-pq="preview-channel-body"');
     const identity = hop.slice(identityStart, identityEnd);
@@ -96,7 +125,11 @@ describe('composer channel settings controls', () => {
         manage.indexOf('id="composer-quick-settings"'),
       'channel settings must sit below the post text'
     );
-    assert.match(select, /addRemoveInternal\(integration\.id\)/);
+    assert.doesNotMatch(select, /addRemoveInternal\(integration\.id\)/);
+    assert.match(select, /setCurrent\(integration\.id\)/);
+    const editor = read('../editor.tsx');
+    assert.match(editor, /t\('edit_content', 'Edit content'\)/);
+    assert.match(editor, /addRemoveInternal\(current\)/);
     assert.match(linkedin, /name="post_as_images_carousel"/);
     assert.match(linkedin, /layout="segment"/);
   });

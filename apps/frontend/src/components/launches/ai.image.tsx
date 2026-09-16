@@ -190,16 +190,17 @@ export const AiImage: FC<{
   const [loading, setLoading] = useState(false);
   const modals = useModals();
   const canOpen = useOpenGuard();
-  const { aiEnabled } = useVariables();
+  const { aiEnabled, billingEnabled } = useVariables();
   const setupHint = useFeatureSetupHint();
 
   const openImageModal = useCallback(() => {
     if (loading || !canOpen()) {
       return;
     }
-    // Only reachable on a self-hosted instance without a key; the hosted
-    // service does not render the button then.
-    if (!aiEnabled) {
+    // Self-host without a key: keep the button (same row as AI Video) and
+    // explain how to switch it on. Hosted always opens the generator — the
+    // plan already paid for AI, and a missing frontend flag must not hide it.
+    if (!aiEnabled && !billingEnabled) {
       setupHint(
         t('generate_image', 'Generate image'),
         'OPENAI_API_KEY',
@@ -217,7 +218,7 @@ export const AiImage: FC<{
         />
       ),
     });
-  }, [loading, canOpen, onChange, modals, t, aiEnabled, setupHint]);
+  }, [loading, canOpen, onChange, modals, t, aiEnabled, billingEnabled, setupHint]);
 
   return (
     <div className="relative">

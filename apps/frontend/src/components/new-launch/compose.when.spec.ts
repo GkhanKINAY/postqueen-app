@@ -20,5 +20,10 @@ describe('composer when-to-post control', () => {
     assert.match(source, /border-s border-newTextColor\/10/);
     assert.doesNotMatch(source, /mode === 'date' && 'gap-\[4px\]'/);
     assert.doesNotMatch(source, /value: 'prioritize'/);
+    assert.match(source, /h-\[44px\].*text-\[15px\] font-\[600\] text-pqText/);
+    assert.doesNotMatch(
+      source,
+      /flex h-\[42px\] cursor-pointer[\s\S]*text-pqMuted/,
+    );
   });
 });

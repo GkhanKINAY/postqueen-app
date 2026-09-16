@@ -183,9 +183,10 @@ export const ComposeFirstComment: FC<{
             type="button"
             onClick={onRemove}
             data-tooltip-id="tooltip"
-            data-tooltip-content={t('delete_post_tooltip', 'Delete Post')}
-            aria-label={t('delete_post_tooltip', 'Delete Post')}
-            className="grid size-[28px] place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
+            data-pq="composer-first-comment-remove"
+            data-tooltip-content={t('remove', 'Remove')}
+            aria-label={t('remove', 'Remove')}
+            className="grid size-[28px] cursor-pointer place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
           >
             <TrashIcon size={16} />
           </button>
@@ -202,7 +203,7 @@ export const ComposeFirstComment: FC<{
             ? t('first_comment', 'First Comment')
             : t('add_comment', 'Add comment')
         }
-        className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
       <div
         data-pq="composer-first-comment-tools"
@@ -217,6 +218,7 @@ export const ComposeFirstComment: FC<{
       >
         <MultiMediaComponent
           attachmentsOnly
+          largeThumbs
           mediaNotAvailable={comments === 'no-media'}
           allData={allValues}
           text={value}

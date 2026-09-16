@@ -849,35 +849,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     />
                   </span>
                 </div>
-                {!touch && hasChannels && (
-                  <div
-                    data-pq="composer-header-extras"
-                    className="flex min-w-0 shrink-0 items-center gap-[8px]"
-                  >
-                    {!dummy && (
-                      <div className="shrink-0">
-                        <TagsComponent
-                          name="tags"
-                          label={t('tags', 'Tags')}
-                          initial={tags}
-                          menuPlacement="bottom-end"
-                          onChange={(e) => {
-                            setTags(e.target.value);
-                          }}
-                        />
-                      </div>
-                    )}
-                    {selectedIntegrations.length > 0 && !dummy && (
-                      <div className="min-w-0 max-w-[160px]">
-                        <ComposeNotify
-                          notify={notifyOnPublish}
-                          menuPlacement="bottom-end"
-                          onChange={setNotifyOnPublish}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
                 {compactChrome && !phoneFlow && (
                   <ComposerStepTabs
                     pane={composerPane === 'schedule' ? 'preview' : composerPane}
@@ -922,7 +893,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div
                   id="social-content"
                   className={clsx(
-                    'gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px]',
+                    'gap-[32px] flex flex-col px-[20px] pt-[20px] pb-[20px]',
                     hasChannels || compactChrome
                       ? 'absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner'
                       : 'overflow-visible pb-[20px]'
@@ -997,7 +968,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       id="composer-quick-settings"
                       data-pq="composer-quick-settings"
                       className={clsx(
-                        'flex flex-col empty:hidden',
+                        'flex flex-col empty:hidden px-[4px]',
                         !hasChannels && 'hidden'
                       )}
                     />
@@ -1008,7 +979,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       aria-labelledby="composer-settings-heading"
                       aria-label={t('channel_settings', 'Channel settings')}
                       className={clsx(
-                        'flex flex-col select-none',
+                        'flex min-w-0 flex-col select-none px-[4px]',
                         (selectedIntegrations.length === 0 ||
                           current !== 'global') &&
                           'hidden'
@@ -1016,7 +987,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     >
                       <div
                         id="social-settings"
-                        className="flex flex-col gap-[1px] overflow-hidden rounded-[14px] bg-pqLine p-[1px] text-[14px] font-[500] text-pqText"
+                        className="flex min-w-0 flex-col gap-[1px] overflow-hidden rounded-[14px] bg-pqLine p-[1px] text-[14px] font-[500] text-pqText"
                       />
                       <style>
                         {`#social-settings [data-id="${current}"] {display: block !important;}`}
@@ -1308,7 +1279,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 : 'flex min-w-0 flex-1 items-center ps-[20px]'
             )}
           >
-            {!dummy && !hasChannels && (
+            {!dummy && !compactFooter && (
               <div data-pq="composer-footer-tag" className="shrink-0">
                 <TagsComponent
                   name="tags"
@@ -1348,7 +1319,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
             )}
-            {hasChannels && (
+            {!dummy && hasChannels && !compactFooter && (
+              <div data-pq="composer-footer-notify" className="shrink-0">
+                <ComposeNotify
+                  notify={notifyOnPublish}
+                  menuPlacement="top-start"
+                  onChange={setNotifyOnPublish}
+                />
+              </div>
+            )}
+            {compactFooter && hasChannels && (
               <ComposeWhen
                 mode={whenMode}
                 date={date}
@@ -1371,7 +1351,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               phoneFlow && 'flex-row'
             )}
           >
-            {!phoneFlow && !hasChannels && (
+            {!phoneFlow && (!compactFooter || !hasChannels) && (
               <ComposeWhen
                 mode={whenMode}
                 date={date}

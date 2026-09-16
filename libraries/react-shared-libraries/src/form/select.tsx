@@ -104,7 +104,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 ))}
             className={clsx(
               // Native arrow replaced — OS chevrons look broken on dark fills.
-              'h-[40px] w-full appearance-none rounded-[10px] border-0 bg-pqTableHeader pe-[36px] ps-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand)]',
+              'h-[40px] w-full appearance-none rounded-[10px] border-0 bg-pqInner pe-[36px] ps-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] transition-shadow focus:shadow-[inset_0_0_0_1px_var(--brand)]',
               icon && 'ps-[12px]',
               className
             )}

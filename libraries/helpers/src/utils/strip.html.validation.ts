@@ -284,6 +284,29 @@ export const convertMention = (
   );
 };
 
+export const hasPlainContent = (html: string | undefined): boolean => {
+  return stripHtmlValidation('normal', html || '', true).trim().length > 0;
+};
+
+/**
+ * Keep the root post even when empty (that still fails validation). Drop
+ * follow-up items — first comments, extra comments, thread slots — that have
+ * no text and no media so they are neither previewed nor published.
+ */
+export const dropEmptyFollowUps = <
+  T extends { content?: string; media?: unknown[]; image?: unknown[] },
+>(
+  items: T[]
+): T[] => {
+  return items.filter((item, index) => {
+    if (index === 0) {
+      return true;
+    }
+    const media = item.media || item.image || [];
+    return hasPlainContent(item.content) || media.length > 0;
+  });
+};
+
 export const convertToAscii = (value: string): string => {
   return value
     .replace(/<strong>(.+?)<\/strong>/gi, (match, p1) => {

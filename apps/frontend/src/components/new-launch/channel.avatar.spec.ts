@@ -69,6 +69,7 @@ describe('channel avatar fallback', () => {
     assert.match(providers, /<ChannelAvatar/);
     assert.doesNotMatch(selectCurrent, /fallbackSrc="\/no-picture\.jpg"/);
     assert.doesNotMatch(picks, /fallbackSrc="\/no-picture\.jpg"/);
+    assert.match(source, /referrerPolicy="no-referrer"/);
   });
 
   it('draws selected channel rings with box-shadow, not a CSS border plus filter', () => {

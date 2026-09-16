@@ -13,13 +13,16 @@ describe('composer media hover actions', () => {
     assert.match(source, /dragging h-\[120px\] w-\[120px\]/);
     assert.match(source, /composer-media-thumb/);
     assert.match(source, /data-pq="composer-add-media"/);
-    assert.match(source, /data-pq="composer-media-info"/);
+    assert.match(source, /data-pq="composer-media-enlarge"/);
+    assert.match(source, /enlarge_image/);
+    assert.match(source, /<MediaLightbox/);
     assert.match(source, /change_alt_text/);
-    assert.match(source, /alt_text_subtitle/);
     assert.match(source, /MediaComponentInner/);
     assert.match(source, /absolute end-\[6px\] top-\[6px\].*size-\[28px\]/);
     assert.match(source, /absolute start-\[6px\] top-\[6px\].*size-\[28px\]/);
-    assert.match(source, /trailing\?: React\.ReactNode/);
+    assert.match(source, /const studioThumbs = !ghost && \(!attachmentsOnly \|\| largeThumbs\)/);
+    assert.doesNotMatch(source, /composer-media-info/);
+    assert.doesNotMatch(source, />\s*ALT\s*</);
     assert.doesNotMatch(source, /instagram_45_hint/);
     assert.doesNotMatch(source, /#2563EB/);
   });
@@ -35,5 +38,12 @@ describe('composer media hover actions', () => {
     assert.match(source, /handle=".dragging"/);
     assert.doesNotMatch(source, /reorder_media/);
     assert.match(source, /filter=\{\'\[data-ci-actions="1"\]\'\}/);
+  });
+
+  it('keeps AI Image on the same toolbar row as AI Video', () => {
+    assert.match(source, /<AiImage/);
+    assert.match(source, /<AiVideo/);
+    assert.match(source, /!!user\?\.tier\?\.ai/);
+    assert.doesNotMatch(source, /showAiImage/);
   });
 });

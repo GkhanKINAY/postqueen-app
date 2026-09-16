@@ -61,6 +61,7 @@ export const ChannelAvatar: FC<{
             alt={integration.name || integration.identifier}
             width={size}
             height={size}
+            referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
             onError={() => setFailed(true)}
           />

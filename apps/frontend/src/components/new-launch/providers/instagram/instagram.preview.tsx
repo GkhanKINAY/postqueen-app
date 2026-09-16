@@ -74,11 +74,11 @@ export const InstagramPreview: FC<{
       <div className="flex gap-[10px] items-center">
         <div className="w-[36px] h-[36px]">
           <ChannelAvatar
-            integration={{
-              picture: integration?.picture,
-              identifier: integration?.identifier || 'instagram',
-              name: integration?.name,
-            }}
+            integration={
+              integration || {
+                identifier: 'instagram',
+              }
+            }
             size={36}
             rounded="full"
             badge={false}
@@ -222,11 +222,11 @@ export const InstagramPreview: FC<{
               <div className="flex gap-[10px] leading-[17px]">
                 <div className="h-[34px]">
                   <ChannelAvatar
-                    integration={{
-                      picture: integration?.picture,
-                      identifier: integration?.identifier || 'instagram',
-                      name: integration?.name,
-                    }}
+                    integration={
+                      integration || {
+                        identifier: 'instagram',
+                      }
+                    }
                     size={34}
                     rounded="full"
                     badge={false}

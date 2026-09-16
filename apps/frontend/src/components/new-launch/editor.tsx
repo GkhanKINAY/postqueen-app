@@ -380,11 +380,19 @@ export const EditorWrapper: FC<{
   const lastVisibleIndex = firstCommentMode ? 0 : items.length - 1;
   const [commentDraftOpen, setCommentDraftOpen] = useState(false);
   const showComments = commentDraftOpen || items.length > 1;
-  const firstCommentFilled = items.slice(1).some(
-    (comment) =>
-      Boolean(editorHtmlToPlain(comment.content || '').trim()) ||
-      Boolean(comment.media?.length) ||
-      Boolean(comment.delay)
+
+  const removeComment = useCallback(
+    (index: number) => () => {
+      if (internal) {
+        deleteInternalValue(current, index);
+      } else {
+        deleteGlobalValue(index);
+      }
+      if (items.length <= 2) {
+        setCommentDraftOpen(false);
+      }
+    },
+    [current, deleteGlobalValue, deleteInternalValue, internal, items.length]
   );
 
   const setCommentText = useCallback(
@@ -623,15 +631,11 @@ export const EditorWrapper: FC<{
                                 }
                                 chars={chars}
                                 totalAllowedChars={totalChars}
-                                onRemove={
-                                  commentIndex > 1
-                                    ? deletePost(commentIndex)
-                                    : undefined
-                                }
+                                onRemove={removeComment(commentIndex)}
                               />
                             );
                           })}
-                          {firstCommentFilled && comments ? (
+                          {comments ? (
                             <div className="px-[12px] pb-[10px]">
                               <AddPostButton
                                 num={0}
@@ -643,7 +647,10 @@ export const EditorWrapper: FC<{
                         </>
                       ) : (
                         <AddCommentTrigger
-                          onClick={() => setCommentDraftOpen(true)}
+                          onClick={() => {
+                            setCommentDraftOpen(true);
+                            ensureFirstComment();
+                          }}
                         />
                       )}
                     </>
@@ -1264,7 +1271,7 @@ export const OnlyEditor = forwardRef<
       BulletList,
       ListItem,
       Placeholder.configure({
-        placeholder: t('write_something', 'Write something …'),
+        placeholder: t('write_your_post', 'Write your post…'),
         emptyEditorClass: 'is-editor-empty',
       }),
       ...(editorType === 'html' || editorType === 'markdown'

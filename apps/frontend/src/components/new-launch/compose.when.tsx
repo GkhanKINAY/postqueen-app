@@ -129,7 +129,7 @@ export const ComposeWhen: FC<{
       {mode === 'date' ? (
         <div
           className={clsx(
-            'flex h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded-[10px] border',
+            'flex h-[44px] min-w-0 flex-1 items-center overflow-hidden rounded-[8px] border',
             isOpen ? 'border-pqBrand' : 'border-newTextColor/10',
             touch && 'w-full'
           )}
@@ -164,7 +164,7 @@ export const ComposeWhen: FC<{
           disabled={slotLoading}
           onClick={() => setIsOpen(!isOpen)}
           className={clsx(
-            'flex h-[42px] cursor-pointer items-center justify-center gap-[8px] rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover disabled:cursor-wait',
+            'flex h-[44px] cursor-pointer items-center justify-center gap-[8px] rounded-[8px] border text-[15px] font-[600] text-pqText select-none transition-colors hover:bg-pqHover disabled:cursor-wait',
             isOpen ? 'border-pqBrand' : 'border-newTextColor/10',
             touch ? 'w-full min-w-0 px-[8px]' : 'shrink-0 px-[16px]'
           )}

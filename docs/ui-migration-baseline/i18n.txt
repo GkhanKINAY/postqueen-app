@@ -31,6 +31,7 @@ add_a_post_at
 add_a_signature
 add_a_social_set
 add_a_tag
+add_a_thread_finisher
 add_a_webhook
 add_an_autopost
 add_announcement
@@ -1352,6 +1353,7 @@ label_auto_add_music
 label_auto_add_signature
 label_branded_content
 label_comments
+label_community
 label_content_posting_method
 label_disclose_video_content
 label_duet
@@ -1892,6 +1894,7 @@ this_month
 this_video_will_be_classified_brand_organic
 this_video_will_be_classified_branded_content
 this_week
+thread_finisher_placeholder
 three_days
 tiktok_add_location
 tiktok_add_music
@@ -2052,6 +2055,7 @@ would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
 write_anything
 write_something
+write_your_post
 write_your_post_placeholder
 write_your_signature
 x_lock_perk_analytics

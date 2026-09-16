@@ -126,7 +126,14 @@ const TikTokSettings: FC<{
           </div>
         </FormSection>
       )}
-      {isTitle && <Input label="Title" {...register('title')} maxLength={89} />}
+      {isTitle && (
+        <Input
+          label="Title"
+          placeholder="Video title"
+          {...register('title')}
+          maxLength={89}
+        />
+      )}
       <div className={directPostOnly}>
         <FormSection>
           <FormChoice
@@ -272,7 +279,6 @@ const TikTokSettings: FC<{
             />
             <Checkbox
               variant="hollow"
-              icon="disclosure"
               label={t('label_disclose_video_content', 'Disclose Video Content')}
               disabled={isUploadMode}
               defaultValue={false}
@@ -311,7 +317,7 @@ const TikTokSettings: FC<{
           >
             <Checkbox
               variant="hollow"
-              icon="brand"
+              icon="user"
               label={t('label_your_brand', 'Your brand')}
               disabled={isUploadMode}
               defaultValue={false}
@@ -332,7 +338,7 @@ const TikTokSettings: FC<{
             </div>
             <Checkbox
               variant="hollow"
-              icon="brand"
+              icon="partnership"
               label={t('label_branded_content', 'Branded content')}
               disabled={isUploadMode}
               defaultValue={false}

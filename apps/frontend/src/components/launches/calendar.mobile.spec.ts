@@ -59,13 +59,14 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
   });
 
-  it('keeps when-to-post with tags, not squeezed against Add to calendar', () => {
+  it('puts when-to-post left of Save as draft on desktop', () => {
     assert.match(manage, /gap-\[12px\] p-\[12px\]/);
-    assert.match(manage, /data-pq="composer-header-extras"/);
-    const whenIdx = manage.lastIndexOf('<ComposeWhen');
-    const footerTagsIdx = manage.lastIndexOf('compactFooter && !dummy && hasChannels');
+    const whenRight = manage.indexOf(
+      '!phoneFlow && (!compactFooter || !hasChannels)',
+    );
+    const draft = manage.indexOf("t('save_as_draft'");
     const scheduleIdx = manage.lastIndexOf("schedule('schedule')");
-    assert.ok(whenIdx > 0 && footerTagsIdx > 0 && scheduleIdx > whenIdx);
+    assert.ok(whenRight > 0 && draft > whenRight && scheduleIdx > draft);
     assert.match(manage, /shrink-0 pe-\[20px\]/);
   });
 
@@ -158,6 +159,7 @@ describe('phone calendar and composer', () => {
     assert.match(repeat, /aria-label=\{triggerLabel\}/);
     assert.match(repeat, /t\('every', 'Every'\)/);
     assert.match(repeat, /t\('clear', 'Clear'\)/);
+    assert.match(repeat, /p.clear &&\s*'text-\[14px\] font-\[600\] text-pqDanger hover:bg-pqDangerSoft'/);
     assert.match(repeat, /if \(p\.clear && !repeat\)/);
     assert.doesNotMatch(repeat, /t\('cancel', 'Cancel'\)/);
     assert.match(editor, /flex min-w-0 flex-col gap-\[10px\] overflow-hidden border-t border-pqLine/);

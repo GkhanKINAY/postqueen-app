@@ -54,7 +54,8 @@ export const ComposeNotify: FC<{
       ref={ref}
       data-pq="composer-notify"
       className={clsx(
-        'relative flex h-[42px] min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover',
+        'relative flex h-[44px] items-center justify-center rounded-[8px] border text-[15px] font-[600] select-none transition-colors hover:bg-pqHover',
+        touch ? 'min-w-0 overflow-hidden' : 'shrink-0',
         isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
       )}
     >
@@ -91,7 +92,9 @@ export const ComposeNotify: FC<{
             strokeLinecap="round"
           />
         </svg>
-        <span className="min-w-0 truncate">{triggerLabel}</span>
+        <span className={clsx(touch ? 'min-w-0 truncate' : 'whitespace-nowrap')}>
+          {triggerLabel}
+        </span>
         <DropdownArrowIcon rotated={isOpen} />
       </div>
       {isOpen && (

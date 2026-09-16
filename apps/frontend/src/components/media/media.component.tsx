@@ -23,6 +23,7 @@ import {
   DesignMediaIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
+import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox';
 
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
@@ -84,6 +85,10 @@ export const MultiMediaComponent: FC<{
   // (Those fields also pass `dummy`, which makes Design Media a no-op, so what
   // remains there in practice is Insert media.)
   attachmentsOnly?: boolean;
+  // First Comment still hides Integrations / AI generators, but its photos
+  // should be the same 120px overlay thumbs as the post (enlarge / edit / X
+  // inside the frame). Generator forms leave this unset.
+  largeThumbs?: boolean;
   allData: {
     content: string;
     id?: string;
@@ -128,6 +133,7 @@ export const MultiMediaComponent: FC<{
     ghost,
     ghostPart = 'all',
     attachmentsOnly,
+    largeThumbs,
     toolBar,
     information,
     trailing,
@@ -135,7 +141,7 @@ export const MultiMediaComponent: FC<{
   } = props;
   const showThumbs = !ghost || ghostPart === 'all' || ghostPart === 'thumbs';
   const showToolbar = !ghost || ghostPart === 'all' || ghostPart === 'toolbar';
-  const studioThumbs = !ghost && !attachmentsOnly;
+  const studioThumbs = !ghost && (!attachmentsOnly || largeThumbs);
 
   // Ghost mode never hides a label, which was fine for four buttons and wraps
   // with five. The constraint is the *column*, not the window — the agent
@@ -188,17 +194,20 @@ export const MultiMediaComponent: FC<{
   const modals = useModals();
   const t = useT();
   const { touch } = useViewport();
-  const { billingEnabled, plontoKey, aiEnabled } = useVariables();
+  const { billingEnabled, plontoKey } = useVariables();
   const setupHint = useFeatureSetupHint();
   // The hosted service hides what it has no key for. A self-hosted instance
   // keeps the button and explains how to switch it on (FeatureSetupHint).
   const showDesign = !billingEnabled || !!plontoKey;
-  const showAiImage = !billingEnabled || aiEnabled;
   useEffect(() => {
     setCurrentMedia(value);
   }, [value]);
 
   const [currentMedia, setCurrentMedia] = useState(value);
+  const [lightbox, setLightbox] = useState<{
+    id: string;
+    path: string;
+  } | null>(null);
   // The attachment list, readable without re-creating `changeMedia`.
   //
   // `new-modal.tsx` builds a modal's children once, at open time, so whatever
@@ -483,31 +492,30 @@ export const MultiMediaComponent: FC<{
                         <button
                           type="button"
                           data-ci-actions="1"
-                          data-pq="composer-media-info"
-                          data-tooltip-id="tooltip"
-                          data-tooltip-content={t(
-                            'alt_text_subtitle',
-                            'Describe the image for screen readers and platforms that support alt text.'
-                          )}
+                          data-pq="composer-media-enlarge"
                           onMouseDown={(e) => e.stopPropagation()}
-                          aria-label={t('help', 'Help')}
-                          title={t('help', 'Help')}
-                          className="absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-full bg-pqBrand text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightbox({ id: media.id, path: media.path });
+                          }}
+                          aria-label={t('enlarge_image', 'Enlarge image')}
+                          title={t('enlarge_image', 'Enlarge image')}
+                          className="absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
                         >
                           <svg
-                            viewBox="0 0 16 16"
+                            viewBox="0 0 24 24"
                             width="14"
                             height="14"
                             fill="none"
                             aria-hidden="true"
                           >
                             <path
-                              d="M8 7.15v4.1"
+                              d="M9 3H4v5M15 3h5v5M9 21H4v-5M15 21h5v-5"
                               stroke="currentColor"
-                              strokeWidth="1.8"
+                              strokeWidth="1.7"
                               strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
-                            <circle cx="8" cy="5" r="1.05" fill="currentColor" />
                           </svg>
                         </button>
                         <button
@@ -543,25 +551,8 @@ export const MultiMediaComponent: FC<{
                         />
                         <div
                           data-ci-actions="1"
-                          className="absolute inset-x-0 bottom-0 z-[20] flex items-center justify-center gap-[6px] px-[8px] pb-[8px]"
+                          className="absolute inset-x-0 bottom-0 z-[20] flex items-center justify-end gap-[6px] px-[8px] pb-[8px]"
                         >
-                          <button
-                            type="button"
-                            data-ci-actions="1"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openMediaSettings(media);
-                            }}
-                            aria-label={t(
-                              'change_alt_text',
-                              'Change alt text'
-                            )}
-                            title={t('change_alt_text', 'Change alt text')}
-                            className="inline-flex h-[32px] cursor-pointer items-center rounded-[8px] bg-black/72 px-[8px] text-[11px] font-[700] tracking-[0.06em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
-                          >
-                            ALT
-                          </button>
                           <button
                             type="button"
                             data-ci-actions="1"
@@ -721,14 +712,12 @@ export const MultiMediaComponent: FC<{
 
                     {!!user?.tier?.ai && (
                       <>
-                        {showAiImage && (
-                          <AiImage
-                            ghost={ghost}
-                            compact={compact}
-                            value={text}
-                            onChange={changeMedia}
-                          />
-                        )}
+                        <AiImage
+                          ghost={ghost}
+                          compact={compact}
+                          value={text}
+                          onChange={changeMedia}
+                        />
                         <AiVideo
                           ghost={ghost}
                           compact={compact}
@@ -764,6 +753,12 @@ export const MultiMediaComponent: FC<{
         )}
       </div>
       {showToolbar && <div className="text-[12px] text-red-400">{error}</div>}
+      {lightbox && (
+        <MediaLightbox
+          media={lightbox}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </>
   );
 };

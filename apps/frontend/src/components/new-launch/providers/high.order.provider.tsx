@@ -26,6 +26,7 @@ import clsx from 'clsx';
 import { ChannelAvatar, channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { ChevronDownIcon } from '@gitroom/frontend/components/ui/icons';
+import { dropEmptyFollowUps } from '@gitroom/helpers/utils/strip.html.validation';
 
 class Empty {
   @IsOptional()
@@ -230,7 +231,7 @@ export const withProvider = function <T extends object>(params: {
           return {
             id: props.id,
             identifier: selectedIntegration.integration.identifier,
-            values: value,
+            values: dropEmptyFollowUps(value),
             settings: form.getValues(),
           };
         },
@@ -272,7 +273,7 @@ export const withProvider = function <T extends object>(params: {
           date,
           integration: selectedIntegration.integration,
           allIntegrations,
-          value: value.map((p) => ({
+          value: dropEmptyFollowUps(value).map((p) => ({
             id: p.id,
             content: p.content,
             image: p.media,
@@ -282,22 +283,23 @@ export const withProvider = function <T extends object>(params: {
         <FormProvider {...form}>
           <div
             className={clsx(
-              'border border-borderPreview rounded-[12px] shadow-previewShadow',
-              // Global mode stacks every selected channel preview; per-channel
-              // tab still shows only the active id. Filter chips hide via CSS
-              // data attribute when parent marks the card filtered out.
+              // Platform preview is the only raised card. Dark already had no
+              // wrapper chrome (`--preview-box-shadow: none`); light used to
+              // paint a second white glass around Facebook / Instagram.
               !current && !isGlobal && 'hidden',
               isGlobal && 'mb-[16px] last:mb-0 snap-start'
             )}
             data-preview-channel={props.id}
           >
-            {(current || isGlobal) &&
-              (tab === 0 ||
+            {/* Keep identity + body mounted while this card is CSS-hidden
+                (`!current && !isGlobal`). Unmounting refetch Instagram/Facebook
+                avatars and they come back as a gray circle. */}
+            {(tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&
               postHasPreview(value?.[0]) && (
                 <div
                   data-pq="preview-channel-identity"
-                  className="flex items-center gap-[10px] border-b border-pqLine px-[14px] py-[10px]"
+                  className="flex items-center gap-[10px] border-b border-pqLine py-[10px]"
                 >
                   <div className="truncate text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
                     {channelPlatformLabel(
@@ -320,15 +322,15 @@ export const withProvider = function <T extends object>(params: {
                   )}
                 </div>
               )}
-            {(current || isGlobal) &&
-              (tab === 0 ||
+            {(tab === 0 ||
                 (!SettingsComponent && !data?.internalPlugs?.length)) &&
               postHasPreview(value?.[0]) && (
                 <div
                   data-pq="preview-channel-body"
-                  className="px-[12px] pb-[14px] pt-[12px]"
+                  className="pt-[8px]"
                 >
               {CustomPreviewComponent ? (
+                <div className="overflow-hidden rounded-[12px] shadow-previewShadow">
                 <CustomPreviewComponent
                   maximumCharacters={
                     typeof maximumCharacters === 'number'
@@ -341,6 +343,7 @@ export const withProvider = function <T extends object>(params: {
                         )
                   }
                 />
+                </div>
               ) : (
                 <GeneralPreviewComponent
                   maximumCharacters={
@@ -379,7 +382,7 @@ export const withProvider = function <T extends object>(params: {
                     data-id={props.id}
                     className={clsx(
                       isGlobal ? 'block' : 'hidden',
-                      'overflow-hidden bg-pqInner'
+                      'min-w-0 overflow-hidden bg-pqInner first:rounded-t-[13px] last:rounded-b-[13px]'
                     )}
                   >
                     {isGlobal && (
@@ -389,7 +392,7 @@ export const withProvider = function <T extends object>(params: {
                       type="button"
                       aria-expanded={settingsOpen}
                       onClick={() => setSettingsOpen((open) => !open)}
-                      className="flex w-full items-center gap-[10px] px-[14px] py-[12px] text-start hover:bg-pqHover"
+                      className="flex min-w-0 w-full items-center gap-[10px] px-[14px] py-[12px] text-start hover:bg-pqHover"
                     >
                       {settingsIdentity}
                       <ChevronDownIcon
