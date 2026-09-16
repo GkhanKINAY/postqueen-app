@@ -64,6 +64,17 @@ export class InstagramProvider
     if (firstPost.length > 10) {
       return 'Instagram carousel only supports up to 10 media attachments';
     }
+    if (settings?.post_type === 'reel') {
+      if ((firstPost?.length ?? 0) !== 1) {
+        return 'Reels must be a single video';
+      }
+      const reelVideo = firstPost?.some(
+        (f) => (f?.path?.indexOf?.('mp4') ?? -1) > -1
+      );
+      if (!reelVideo) {
+        return 'Reels must be a video';
+      }
+    }
     if (this.assetBoolean(settings?.is_trial_reel)) {
       if ((firstPost?.length ?? 0) > 1) {
         return 'Trial Reels can only have one video';

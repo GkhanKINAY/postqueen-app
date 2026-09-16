@@ -61,6 +61,8 @@ import { AComponent } from '@gitroom/frontend/components/new-launch/a.component'
 import { Placeholder } from '@tiptap/extensions';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { InformationComponent } from '@gitroom/frontend/components/launches/information.component';
+import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
+import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import {
   LockIcon,
   ConnectionLineIcon,
@@ -725,6 +727,7 @@ export const Editor: FC<{
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const t = useT();
   const toaster = useToaster();
+  const { mobile } = useViewport();
   const editorRef = useRef<undefined | { editor: any }>(undefined);
   const [loading, setLoading] = useState(false);
   // Design composeVals aiHint — dismiss persists; links reuse /connections (MCP).
@@ -1114,6 +1117,7 @@ export const Editor: FC<{
                       >
                         <EmojiIcon />
                       </div>
+                      {num === 0 && !mobile && <ComposeAiAssistant />}
                       <div className="relative">
                         <div
                           className={clsx(

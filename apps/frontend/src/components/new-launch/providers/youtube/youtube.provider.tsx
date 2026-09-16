@@ -10,7 +10,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { Input } from '@gitroom/react/form/input';
 import { MediumTags } from '@gitroom/frontend/components/new-launch/providers/medium/medium.tags';
 import { MediaComponent } from '@gitroom/frontend/components/media/media.component';
-import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { YoutubePreview } from '@gitroom/frontend/components/new-launch/providers/youtube/youtube.preview';
 const type = [
   {
@@ -38,45 +38,33 @@ const madeForKids = [
   },
 ];
 const YoutubeSettings: FC = () => {
-  const { register, control } = useSettings();
+  const { register } = useSettings();
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-[16px]">
       <Input label="Title" {...register('title')} maxLength={100} />
-      <Select
+      <FormChoice
+        name="type"
         label="Type"
-        {...register('type', {
-          value: 'public',
-        })}
-      >
-        {type.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </Select>
-      <Select
+        layout="segment"
+        defaultValue="public"
+        options={type}
+      />
+      <FormChoice
+        name="selfDeclaredMadeForKids"
         label="Made for kids"
-        {...register('selfDeclaredMadeForKids', {
-          value: 'no',
-        })}
-      >
-        {madeForKids.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </Select>
+        layout="segment"
+        defaultValue="no"
+        options={madeForKids}
+      />
       <MediumTags label="Tags" {...register('tags')} />
-      <div className="mt-[20px]">
-        <MediaComponent
-          type="image"
-          width={1280}
-          height={720}
-          label="Thumbnail"
-          description="Thumbnail picture (optional)"
-          {...register('thumbnail')}
-        />
-      </div>
+      <MediaComponent
+        type="image"
+        width={1280}
+        height={720}
+        label="Thumbnail"
+        description="Thumbnail picture (optional)"
+        {...register('thumbnail')}
+      />
     </div>
   );
 };

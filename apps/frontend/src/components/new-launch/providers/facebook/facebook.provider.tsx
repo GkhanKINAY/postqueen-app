@@ -11,6 +11,7 @@ import {
 import { getPresetBackground } from '@gitroom/frontend/components/new-launch/providers/facebook/facebook.background';
 import { Input } from '@gitroom/react/form/input';
 import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { FacebookPreview } from '@gitroom/frontend/components/new-launch/providers/facebook/facebook.preview';
@@ -50,23 +51,13 @@ export const FacebookSettings = () => {
 
   return (
     <>
-      <div className="pt-[20px]">
-        <Select
-          label="Post Type"
-          {...register('post_type', {
-            value: 'post',
-          })}
-        >
-          <option value="">
-            {t('select_post_type', 'Select Post Type...')}
-          </option>
-          {postType.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <FormChoice
+        name="post_type"
+        label="Post Type"
+        layout="segment"
+        defaultValue="post"
+        options={postType}
+      />
 
       {postCurrentType !== 'story' && (
         <Input
@@ -76,7 +67,7 @@ export const FacebookSettings = () => {
       )}
 
       {presetAvailable && (
-        <>
+        <div className="flex flex-col gap-[6px]">
           <Select
             label="Background (applies to text-only posts shorter than 130 characters)"
             hideErrors
@@ -105,13 +96,13 @@ export const FacebookSettings = () => {
               );
             })}
           </Select>
-          <div className="text-[12px] opacity-70 mt-[8px]">
+          <div className="text-[12px] leading-[1.45] text-pqMuted">
             {t(
               'facebook_background_note',
               'Unofficial list: the colors shown are approximate, an unsupported background is dropped (published as plain text)'
             )}
           </div>
-        </>
+        </div>
       )}
     </>
   );

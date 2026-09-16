@@ -7,7 +7,7 @@ import {
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { TwitchDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/twitch.dto';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
-import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { useWatch } from 'react-hook-form';
 
 const messageTypes = [
@@ -45,39 +45,28 @@ const announcementColors = [
 ];
 
 const TwitchSettings: FC = () => {
-  const { register, control } = useSettings();
+  const { control } = useSettings();
   const messageType = useWatch({
     control,
     name: 'messageType',
   });
 
   return (
-    <div className="flex flex-col">
-      <Select
+    <div className="flex flex-col gap-[16px]">
+      <FormChoice
+        name="messageType"
         label="Message Type"
-        {...register('messageType', {
-          value: 'message',
-        })}
-      >
-        {messageTypes.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </Select>
+        layout="segment"
+        defaultValue="message"
+        options={messageTypes}
+      />
       {messageType === 'announcement' && (
-        <Select
+        <FormChoice
+          name="announcementColor"
           label="Announcement Color"
-          {...register('announcementColor', {
-            value: 'primary',
-          })}
-        >
-          {announcementColors.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
+          defaultValue="primary"
+          options={announcementColors}
+        />
       )}
     </div>
   );

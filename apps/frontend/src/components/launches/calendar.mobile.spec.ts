@@ -55,7 +55,7 @@ describe('phone calendar and composer', () => {
       manage,
       /compactChrome\s*\?\s*'pb-\[min\(34vh,260px\)\] snap-y snap-proximity'/
     );
-    assert.match(manage, /<ComposeAiAssistant \/>/);
+    assert.match(manage, /<ComposeAiAssistant/);
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
   });
 
@@ -97,10 +97,14 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /focus\(item\.id, 'preview'\)/);
   });
 
-  it('does not mount two AI assistants on the phone Write step', () => {
-    assert.match(manage, /composerPane === 'schedule' && <ComposeAiAssistant \/>/);
-    const assistantCount = manage.match(/<ComposeAiAssistant \/>/g) || [];
-    assert.equal(assistantCount.length, 3);
+  it('opens the AI rail from the phone Write step instead of a second popup', () => {
+    assert.match(manage, /<ComposeAiAssistant className="h-\[44px\] w-full justify-center" \/>/);
+    assert.doesNotMatch(
+      manage,
+      /composerPane === 'schedule' && <ComposeAiAssistant/
+    );
+    const assistantCount = manage.match(/<ComposeAiAssistant/g) || [];
+    assert.equal(assistantCount.length, 1);
   });
 
   it('keeps X/general preview photos inside a feed aspect frame', () => {
@@ -124,6 +128,10 @@ describe('phone calendar and composer', () => {
     assert.match(hop, /preview: revealChannel/);
     assert.match(hop, /aria-expanded=\{settingsOpen\}/);
     assert.match(hop, /const showSettingsBody = !isGlobal \|\| settingsOpen/);
+    assert.match(hop, /size=\{36\}/);
+    assert.match(hop, /overflow-hidden rounded-\[14px\]/);
+    assert.match(hop, /#composer-quick-settings/);
+    assert.match(hop, /data-pq="composer-channel-settings"/);
   });
 
   it('keeps the composer footer from overlapping on phone and tablet', () => {

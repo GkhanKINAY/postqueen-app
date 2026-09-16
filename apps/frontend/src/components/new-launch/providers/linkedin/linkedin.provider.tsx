@@ -4,8 +4,8 @@ import {
   PostComment,
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
-import { Checkbox } from '@gitroom/react/form/checkbox';
 import { Input } from '@gitroom/react/form/input';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { LinkedinDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/linkedin.dto';
@@ -13,28 +13,30 @@ import { LinkedinPreview } from '@gitroom/frontend/components/new-launch/provide
 
 const LinkedInSettings = () => {
   const t = useT();
-  const { watch, register, formState, control } = useSettings();
-  const isCarousel = watch('post_as_images_carousel');
+  const { watch, register } = useSettings();
+  const carouselRaw = watch('post_as_images_carousel');
+  const isCarousel = carouselRaw === true || carouselRaw === 'true';
 
   return (
-    <div className="mb-[20px]">
-      <Checkbox
-        variant="hollow"
+    <>
+      <FormChoice
+        name="post_as_images_carousel"
         label={t('post_as_images_carousel', 'Post as images carousel')}
-        {...register('post_as_images_carousel', {
-          value: false,
-        })}
+        layout="segment"
+        defaultValue={false}
+        options={[
+          { value: false, label: t('label_post_type_post', 'Post') },
+          { value: true, label: 'Carousel' },
+        ]}
       />
       {isCarousel && (
-        <div className="mt-[10px]">
-          <Input
-            label={t('carousel_name', 'Carousel slide name')}
-            placeholder="slides"
-            {...register('carousel_name')}
-          />
-        </div>
+        <Input
+          label={t('carousel_name', 'Carousel slide name')}
+          placeholder="slides"
+          {...register('carousel_name')}
+        />
       )}
-    </div>
+    </>
   );
 };
 export default withProvider<LinkedinDto>({

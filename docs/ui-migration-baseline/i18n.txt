@@ -1746,6 +1746,7 @@ see_all_n_posts
 see_all_posts_on
 select
 select_1
+select_a_channel_to_create_a_post
 select_all
 select_channels
 select_customer_label
@@ -1755,7 +1756,6 @@ select_local_integration
 select_matching_content
 select_media_to_import
 select_or_upload_media
-select_post_type
 select_role
 select_set
 select_the_page_or_account

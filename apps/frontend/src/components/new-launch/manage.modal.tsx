@@ -38,7 +38,14 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
-import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
+import {
+  ComposeAiAssistant,
+  ComposeAiBindings,
+  ComposeAiRail,
+  StudioRail,
+  StudioRailProvider,
+  StudioRailTabs,
+} from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
   CloseIcon,
@@ -162,6 +169,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const compactFooter = touch;
   const phoneFlow = mobile;
   const [composerPane, setComposerPane] = useState<ComposerPane>('edit');
+  const [studioRail, setStudioRail] = useState<StudioRail>('preview');
   const [maximized, setMaximized] = useState(false);
   const ref = useRef(null);
   const existingData = useExistingData();
@@ -225,11 +233,34 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }))
   );
 
+  const hasChannels = selectedIntegrations.length > 0;
+  const setRail = useCallback(
+    (rail: StudioRail) => {
+      setStudioRail(rail);
+      if (compactChrome && rail === 'assistant') {
+        setComposerPane('preview');
+      }
+    },
+    [compactChrome]
+  );
+
   useEffect(() => {
     if (hide) {
       setHide(false);
     }
   }, [hide]);
+
+  useEffect(() => {
+    if (!hasChannels) {
+      setStudioRail('preview');
+    }
+  }, [hasChannels]);
+
+  useEffect(() => {
+    if (!hasChannels && composerPane !== 'edit') {
+      setComposerPane('edit');
+    }
+  }, [hasChannels, composerPane]);
 
   useEffect(() => hideChatbaseWhileComposerOpen(), []);
 
@@ -513,6 +544,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           setComposerPane('edit');
           if (kind === 'settings') {
             document
+              .getElementById('composer-quick-settings')
+              ?.scrollIntoView({ block: 'nearest' });
+            document
               .getElementById('wrapper-settings')
               ?.scrollIntoView({ block: 'nearest' });
           }
@@ -756,15 +790,19 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   );
 
   return (
+    <StudioRailProvider rail={studioRail} setRail={setRail}>
     <div
       id="add-edit-modal"
       data-pq="composer"
       data-pq-composer-max={maximized ? '1' : '0'}
+      data-pq-composer-empty={hasChannels ? '0' : '1'}
       className={clsx(
-        'relative flex h-full min-h-0 w-full flex-1',
+        'relative flex min-h-0 w-full flex-1',
+        (hasChannels || maximized || touch) && 'h-full',
         maximized && !touch && 'fixed inset-0 z-[401] h-dvh w-screen'
       )}
     >
+      <ComposeAiBindings />
       <div
         className={clsx(
           'flex min-h-0 flex-1 flex-col overflow-hidden shadow-pq',
@@ -819,7 +857,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     onPane={setComposerPane}
                   />
                 )}
-                {compactChrome && (
+                {(compactChrome || !hasChannels) && (
                   <button
                     type="button"
                     onClick={askClose}
@@ -840,11 +878,27 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 </div>
               )}
             </div>
-            <div className="flex-1 flex flex-col gap-[16px]">
-              <div className="flex-1 relative">
+            <div
+              className={clsx(
+                'flex flex-col gap-[16px]',
+                hasChannels || compactChrome ? 'flex-1' : 'flex-none'
+              )}
+            >
+              <div
+                className={clsx(
+                  hasChannels || compactChrome
+                    ? 'flex-1 relative'
+                    : 'relative'
+                )}
+              >
                 <div
                   id="social-content"
-                  className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                  className={clsx(
+                    'gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px]',
+                    hasChannels || compactChrome
+                      ? 'absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner'
+                      : 'overflow-visible pb-[20px]'
+                  )}
                 >
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
@@ -877,10 +931,33 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     </div>
                   </div>
                   <div className="flex flex-1 gap-[6px] flex-col">
-                    <div>
+                    {!hasChannels && (
+                      <div
+                        data-pq="composer-empty"
+                        className="flex flex-col items-center justify-center px-[16px] py-[48px] text-center"
+                      >
+                        <p className="text-[14px] leading-[1.5] text-pqMuted">
+                          {t(
+                            'select_a_channel_to_create_a_post',
+                            'Select a channel to create a post.'
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    <div className={clsx(!hasChannels && 'hidden')}>
                       <SelectCurrent />
                     </div>
-                    <div className="flex-1 flex">
+                    <div
+                      id="composer-quick-settings"
+                      data-pq="composer-quick-settings"
+                      className={clsx(
+                        'flex flex-col empty:hidden',
+                        !hasChannels && 'hidden'
+                      )}
+                    />
+                    <div
+                      className={clsx('flex-1 flex', !hasChannels && 'hidden')}
+                    >
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
@@ -914,16 +991,21 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             </div>
           </div>
           <div
+            data-pq="composer-preview"
             className={clsx(
               'flex min-h-0 flex-col overflow-hidden',
               compactChrome
                 ? clsx(
                     'w-full flex-1',
-                    composerPane !== 'preview' && 'hidden'
+                    (composerPane !== 'preview' || !hasChannels) && 'hidden'
                   )
                 : clsx(
                     'rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]',
-                    maximized ? 'w-[min(580px,42vw)]' : 'w-[580px]'
+                    hasChannels
+                      ? maximized
+                        ? 'w-[min(580px,42vw)]'
+                        : 'w-[580px]'
+                      : 'pointer-events-none hidden w-0 min-w-0'
                   )
             )}
           >
@@ -939,8 +1021,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   phoneFlow ? 'h-[52px] text-[17px]' : 'h-[65px] text-[20px]'
                 )}
               >
-                <div className="min-w-0 flex-1 truncate">
-                  {t('post_preview', 'Post Preview')}
+                <div className="min-w-0 flex-1">
+                  <StudioRailTabs />
                 </div>
                 {compactChrome && !phoneFlow && (
                   <ComposerStepTabs
@@ -983,17 +1065,34 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               )}
             </div>
             <div className="relative min-h-0 flex-1">
-              <Scrollable
-                scrollClasses="!pe-[20px]"
+              <div
                 className={clsx(
-                  'absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner',
-                  compactChrome
-                    ? 'pb-[min(34vh,260px)] snap-y snap-proximity'
-                    : 'pb-[20px]'
+                  'absolute inset-0',
+                  studioRail === 'assistant' && 'hidden'
                 )}
               >
-                <ShowAllProviders ref={ref} />
-              </Scrollable>
+                <Scrollable
+                  scrollClasses="!pe-[20px]"
+                  className={clsx(
+                    'absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner',
+                    compactChrome
+                      ? 'pb-[min(34vh,260px)] snap-y snap-proximity'
+                      : 'pb-[20px]'
+                  )}
+                >
+                  <ShowAllProviders ref={ref} />
+                </Scrollable>
+              </div>
+              {hasChannels && (
+                <div
+                  className={clsx(
+                    'absolute inset-0',
+                    studioRail !== 'assistant' && 'hidden'
+                  )}
+                >
+                  <ComposeAiRail />
+                </div>
+              )}
             </div>
           </div>
           {phoneFlow && (
@@ -1053,7 +1152,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     <RepeatComponent repeat={repeater} onChange={setRepeater} />
                   </div>
                 )}
-                {composerPane === 'schedule' && <ComposeAiAssistant />}
                 {existingData?.integration && (
                   <button
                     onClick={deletePost}
@@ -1078,9 +1176,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 {t('back', 'Back')}
               </button>
             )}
-            {composerPane === 'edit' && (
+            {composerPane === 'edit' && hasChannels && (
               <div className="min-w-0 flex-1 [&>*]:w-full">
-                <ComposeAiAssistant />
+                <ComposeAiAssistant className="h-[44px] w-full justify-center" />
               </div>
             )}
             <button
@@ -1155,7 +1253,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               phoneFlow && 'flex-row'
             )}
           >
-            {!phoneFlow && <ComposeAiAssistant />}
             {!phoneFlow && existingData?.integration && (
               <button
                 onClick={deletePost}
@@ -1314,6 +1411,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         </div>
       </div>
     </div>
+    </StudioRailProvider>
   );
 };
 
