@@ -3,8 +3,6 @@
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { ReactTags } from 'react-tag-autocomplete';
-import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
-import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export const InstagramCollaboratorsTags: FC<{
@@ -19,7 +17,6 @@ export const InstagramCollaboratorsTags: FC<{
 }> = (props) => {
   const { onChange, name, label } = props;
   const { getValues } = useSettings();
-  const { integration } = useIntegration();
   const [tagValue, setTagValue] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<string>('');
   const t = useT();
@@ -71,7 +68,7 @@ export const InstagramCollaboratorsTags: FC<{
   return (
     <div>
       <div>
-        <div className={clsx(`text-[14px] mb-[6px]`)}>{label}</div>
+        <div className="text-[13px] font-[500] text-pqMuted mb-[6px]">{label}</div>
         <ReactTags
           placeholderText={t('add_a_tag', 'Add a tag')}
           suggestions={suggestionsArray}

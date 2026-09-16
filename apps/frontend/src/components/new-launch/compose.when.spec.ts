@@ -15,6 +15,10 @@ describe('composer when-to-post control', () => {
     assert.match(source, /post_now/);
     assert.match(source, /set_date_and_time/);
     assert.match(source, /formatShortWeekdayTime/);
+    assert.match(source, /t\('today', 'Today'\)/);
+    assert.match(source, /t\('tomorrow', 'Tomorrow'\)/);
+    assert.match(source, /border-s border-newTextColor\/10/);
+    assert.doesNotMatch(source, /mode === 'date' && 'gap-\[4px\]'/);
     assert.doesNotMatch(source, /value: 'prioritize'/);
   });
 });

@@ -55,6 +55,8 @@ import {
   useViewport,
 } from '@gitroom/frontend/components/layout/use.viewport';
 import { useCalendar } from '@gitroom/frontend/components/launches/calendar.context';
+import { useClickOutside } from '@mantine/hooks';
+import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
 
 /** Side-by-side editor + preview once the viewport can hold a 420px preview. */
@@ -164,6 +166,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
+  const [postNowOpen, setPostNowOpen] = useState(false);
   const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
     postWantsPublishNotice(existingData.settings)
   );
@@ -172,6 +175,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const modal = useModals();
   const { formatShortWeekdayTime } = useDateFormat();
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
+  const { referenceRef: postNowRef, floatingRef: postNowMenuRef } =
+    useAnchoredPopover<HTMLDivElement, HTMLDivElement>(postNowOpen, 'end', {
+      offsetPx: 10,
+      placement: 'top-end',
+    });
+  const postNowClickRef = useClickOutside(() => {
+    if (postNowOpen) {
+      setPostNowOpen(false);
+    }
+  });
 
   const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
   const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
@@ -972,7 +985,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             <div className="relative min-h-0 flex-1">
               <Scrollable
                 scrollClasses="!pe-[20px]"
-                className="absolute top-0 p-[20px] pe-[8px] pb-[min(34vh,260px)] left-0 w-full h-full overflow-x-hidden overflow-y-scroll snap-y snap-proximity scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
+                className={clsx(
+                  'absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner',
+                  compactChrome
+                    ? 'pb-[min(34vh,260px)] snap-y snap-proximity'
+                    : 'pb-[20px]'
+                )}
               >
                 <ShowAllProviders ref={ref} />
               </Scrollable>
@@ -1202,44 +1220,94 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </button>
             )}
             {!addEditSets && (
-              <button
-                type="button"
-                disabled={
-                  selectedIntegrations.length === 0 || loading || locked
-                }
-                onClick={schedule('schedule')}
-                className={clsx(
-                  'btnSub relative flex min-w-0 items-center justify-center overflow-hidden rounded-[10px] bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
-                  'max-[1179px]:h-[44px] max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
-                  touch
-                    ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                    : 'h-[42px] min-w-[168px] px-[18px]'
-                )}
-              >
-                {loading && (
-                  <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-white">
-                    <Spinner width={20} height={20} />
+              <div className={clsx('relative', touch && 'flex min-w-0 flex-1')} ref={postNowClickRef}>
+                <div className={clsx('flex min-w-0', touch && 'w-full')} ref={postNowRef}>
+                  <button
+                    type="button"
+                    disabled={
+                      selectedIntegrations.length === 0 || loading || locked
+                    }
+                    onClick={schedule('schedule')}
+                    className={clsx(
+                      'btnSub relative flex min-w-0 items-center justify-center overflow-hidden rounded-s-[10px] bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
+                      'max-[1179px]:h-[44px] max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
+                      touch
+                        ? 'h-[44px] min-w-0 flex-1 px-[12px]'
+                        : 'h-[42px] min-w-[168px] px-[18px]'
+                    )}
+                  >
+                    {loading && (
+                      <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-white">
+                        <Spinner width={20} height={20} />
+                      </div>
+                    )}
+                    <span
+                      className={clsx(
+                        'min-w-0 truncate whitespace-nowrap',
+                        loading && 'invisible'
+                      )}
+                    >
+                      {selectedIntegrations.length === 0
+                        ? t('select_channels', 'Select channels')
+                        : dummy
+                        ? t('create_output', 'Create output')
+                        : existingData?.posts?.[0]?.state &&
+                          existingData.posts[0].state !== 'DRAFT'
+                        ? t('update', 'Update')
+                        : t('schedule', 'Schedule')}
+                    </span>
+                  </button>
+                  {!dummy && (
+                    <button
+                      type="button"
+                      disabled={
+                        selectedIntegrations.length === 0 || loading || locked
+                      }
+                      onClick={() => setPostNowOpen((v) => !v)}
+                      aria-label={t('post_now', 'Post Now')}
+                      data-tooltip-id="tooltip"
+                      data-tooltip-content={t('post_now', 'Post Now')}
+                      className={clsx(
+                        'grid w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80',
+                        touch ? 'h-[44px]' : 'h-[42px]'
+                      )}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        className="opacity-65"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {!dummy && postNowOpen && (
+                  <div
+                    ref={postNowMenuRef}
+                    className="z-[300] w-[206px] rounded-[8px] border border-pqBorder bg-pqInner p-[12px] shadow-pq"
+                  >
+                    <button
+                      type="button"
+                      onClick={schedule('now')}
+                      disabled={
+                        selectedIntegrations.length === 0 || loading || locked
+                      }
+                      className="post-now flex h-[44px] w-full items-center justify-center rounded-[8px] bg-pqPink text-[15px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-80"
+                    >
+                      {t('post_now', 'Post Now')}
+                    </button>
                   </div>
                 )}
-                <span
-                  className={clsx(
-                    'min-w-0 truncate whitespace-nowrap',
-                    loading && 'invisible'
-                  )}
-                >
-                  {selectedIntegrations.length === 0
-                    ? t('select_channels', 'Select channels')
-                    : dummy
-                    ? t('create_output', 'Create output')
-                    : phoneFlow
-                    ? t('schedule', 'Schedule')
-                    : !existingData?.integration
-                    ? t('add_to_calendar', 'Add to calendar')
-                    : existingData?.posts?.[0]?.state === 'DRAFT'
-                    ? t('schedule', 'Schedule')
-                    : t('update', 'Update')}
-                </span>
-              </button>
+              </div>
             )}
             </div>
           </div>

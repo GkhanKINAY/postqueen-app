@@ -179,10 +179,8 @@ export const SelectCurrent: FC = () => {
               'Global — same post for all channels'
             )}
             className={clsx(
-              'flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqTableHeader text-pqPink transition-all',
-              !isGlobal
-                ? 'shadow-[inset_0_0_0_1.5px_transparent]'
-                : 'shadow-[inset_0_0_0_1.5px_var(--pink)]'
+              'flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqTableHeader text-pqPink',
+              isGlobal && 'ring-2 ring-pqPink'
             )}
           >
             <GlobalIcon />
@@ -205,10 +203,8 @@ export const SelectCurrent: FC = () => {
                     : channelNameWithHandle(integration)
                 }
                 className={clsx(
-                  'group relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqSettings transition-all duration-500',
-                  isActive
-                    ? 'shadow-[inset_0_0_0_1.5px_var(--brand)]'
-                    : 'shadow-[inset_0_0_0_1.5px_transparent]'
+                  'group relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqSettings',
+                  isActive && 'ring-2 ring-pqBrand'
                 )}
               >
                 <IsGlobal id={integration.id} />

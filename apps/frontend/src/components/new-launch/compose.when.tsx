@@ -33,7 +33,7 @@ export const ComposeWhen: FC<{
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const { formatShortWeekdayTime } = useDateFormat();
+  const { formatTime, formatShortWeekdayTime } = useDateFormat();
   const { touch } = useViewport();
   const [isOpen, setIsOpen] = useState(false);
   const [slotLoading, setSlotLoading] = useState(false);
@@ -98,9 +98,21 @@ export const ComposeWhen: FC<{
     }
   };
 
+  const slotStamp = (() => {
+    const local = date.local();
+    const time = formatTime(local);
+    if (local.isSame(dayjs(), 'day')) {
+      return `${t('today', 'Today')} · ${time}`;
+    }
+    if (local.isSame(dayjs().add(1, 'day'), 'day')) {
+      return `${t('tomorrow', 'Tomorrow')} · ${time}`;
+    }
+    return formatShortWeekdayTime(local);
+  })();
+
   const triggerLabel =
     mode === 'next'
-      ? `${t('next_available', 'Next available')} · ${formatShortWeekdayTime(date)}`
+      ? `${t('next_available', 'Next available')} · ${slotStamp}`
       : mode === 'now'
       ? t('post_now', 'Post Now')
       : null;
@@ -111,19 +123,37 @@ export const ComposeWhen: FC<{
       data-pq="composer-when"
       className={clsx(
         'relative flex min-w-0 items-center',
-        touch && 'w-full',
-        mode === 'date' && 'gap-[4px]'
+        touch && 'w-full'
       )}
     >
       {mode === 'date' ? (
-        <DatePicker
-          date={date}
-          onChange={(next) => {
-            onMode('date');
-            onChange(next);
-          }}
-          className="max-[1179px]:!ml-0 max-[1179px]:w-full max-[1179px]:!flex-none"
-        />
+        <div
+          className={clsx(
+            'flex h-[42px] min-w-0 flex-1 items-center overflow-hidden rounded-[10px] border',
+            isOpen ? 'border-pqBrand' : 'border-newTextColor/10',
+            touch && 'w-full'
+          )}
+        >
+          <DatePicker
+            date={date}
+            onChange={(next) => {
+              onMode('date');
+              onChange(next);
+            }}
+            className="!ml-0 !h-full min-w-0 !flex-1 !rounded-none !border-0 !px-[12px] max-[1179px]:!ml-0 max-[1179px]:!w-auto max-[1179px]:!flex-1"
+          />
+          <button
+            type="button"
+            ref={referenceRef}
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
+            aria-label={t('when_to_post', 'When to post')}
+            onClick={() => setIsOpen(!isOpen)}
+            className="grid h-full w-[38px] shrink-0 cursor-pointer place-items-center border-s border-newTextColor/10 text-pqMuted transition-colors hover:bg-pqHover"
+          >
+            <DropdownArrowIcon rotated={isOpen} />
+          </button>
+        </div>
       ) : (
         <button
           type="button"
@@ -141,22 +171,6 @@ export const ComposeWhen: FC<{
         >
           <QueueIcon />
           <span className="min-w-0 truncate">{triggerLabel}</span>
-          <DropdownArrowIcon rotated={isOpen} />
-        </button>
-      )}
-      {mode === 'date' && (
-        <button
-          type="button"
-          ref={referenceRef}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-label={t('when_to_post', 'When to post')}
-          onClick={() => setIsOpen(!isOpen)}
-          className={clsx(
-            'grid h-[42px] w-[38px] shrink-0 cursor-pointer place-items-center rounded-[10px] border text-pqMuted transition-colors hover:bg-pqHover',
-            isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
-          )}
-        >
           <DropdownArrowIcon rotated={isOpen} />
         </button>
       )}

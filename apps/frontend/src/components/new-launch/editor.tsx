@@ -379,6 +379,11 @@ export const EditorWrapper: FC<{
       ? 0
       : items.length - 1
     : items.length - 1;
+  const firstCommentFilled = Boolean(
+    editorHtmlToPlain(items[1]?.content || '').trim() ||
+      items[1]?.media?.length ||
+      items[1]?.delay
+  );
 
   const setFirstCommentText = useCallback(
     (text: string) => {
@@ -406,7 +411,8 @@ export const EditorWrapper: FC<{
       if (
         !html &&
         items.length === 2 &&
-        !(comment.media && comment.media.length)
+        !(comment.media && comment.media.length) &&
+        !comment.delay
       ) {
         if (internal) {
           deleteInternalValue(current, 1);
@@ -432,6 +438,33 @@ export const EditorWrapper: FC<{
       setGlobalValueText,
       setInternalValueText,
     ]
+  );
+
+  const ensureFirstComment = useCallback(() => {
+    if (items[1]) {
+      return;
+    }
+    const next = [
+      {
+        delay: 0,
+        content: '',
+        id: makeId(10),
+        media: [] as { id: string; path: string; thumbnail?: string }[],
+      },
+    ];
+    if (internal) {
+      addInternalValue(0, current, next);
+      return;
+    }
+    addGlobalValue(0, next);
+  }, [addGlobalValue, addInternalValue, current, internal, items]);
+
+  const setFirstCommentImages = useCallback(
+    (value: any[]) => {
+      ensureFirstComment();
+      changeImages(1)(value);
+    },
+    [changeImages, ensureFirstComment]
   );
 
   if (!loaded || !loadedState) {
@@ -548,14 +581,35 @@ export const EditorWrapper: FC<{
                 chars={chars}
                 firstComment={
                   firstCommentMode && index === 0 ? (
-                    <ComposeFirstComment
-                      value={editorHtmlToPlain(items[1]?.content || '')}
-                      onChange={setFirstCommentText}
-                    />
+                    <>
+                      <ComposeFirstComment
+                        value={editorHtmlToPlain(items[1]?.content || '')}
+                        onChange={setFirstCommentText}
+                        pictures={items[1]?.media || []}
+                        setImages={setFirstCommentImages}
+                        delay={items[1]?.delay || 0}
+                        comments={comments}
+                        dummy={dummy}
+                        allValues={items}
+                        onActivate={ensureFirstComment}
+                      />
+                      {firstCommentFilled && items.length <= 2 ? (
+                        <div className="px-[12px] pb-[10px]">
+                          <AddPostButton
+                            num={0}
+                            onClick={addValue(items.length - 1)}
+                            postComment={postComment}
+                          />
+                        </div>
+                      ) : null}
+                    </>
                   ) : undefined
                 }
                 trailing={
-                  comments && canEdit && index === lastVisibleIndex ? (
+                  comments &&
+                  canEdit &&
+                  index === lastVisibleIndex &&
+                  !(firstCommentMode && items.length <= 2) ? (
                     <AddPostButton
                       num={index}
                       onClick={addValue(

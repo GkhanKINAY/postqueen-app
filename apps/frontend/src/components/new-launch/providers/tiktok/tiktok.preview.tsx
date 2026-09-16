@@ -8,6 +8,7 @@ import { formatChannelHandle } from '@gitroom/frontend/components/channels/chann
 import { FC, ReactNode } from 'react';
 import { SliderComponent } from '@gitroom/frontend/components/third-parties/slider.component';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
+import { PREVIEW_MEDIA_MAX_HEIGHT } from '@gitroom/frontend/components/new-launch/preview-media';
 
 const TikTokItem: FC<{ icon: ReactNode; num: string }> = ({ icon, num }) => {
   return (
@@ -58,34 +59,46 @@ export const TiktokPreview: FC<{
 
     return { text: finalValue, images: p.image };
   });
+  const images = renderContent?.[0]?.images ?? [];
   return (
-    <div className="flex w-full justify-center p-[15px] bg-newBgColorInner">
-      <div className="relative">
-        <SliderComponent
-          list={renderContent?.[0]?.images.map((image, index) => (
-            <a
-              key={`image_${index}`}
-              className="flex-1"
-              href={mediaDir.set(image.path)}
-              target="_blank"
-            >
-              <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
-            </a>
-          ))}
-          className="mx-auto w-full max-w-[280px] bg-black aspect-[9/16] max-h-[min(34vh,300px)] rounded-[3px] overflow-hidden"
-        />
-        <div className="absolute pointer-events-none w-full h-full start-0 top-0 px-[12px] py-[25px] justify-end items-start text-white flex flex-col">
+    <div className="flex w-full items-end justify-center gap-[12px] p-[15px] bg-newBgColorInner">
+      <div
+        className="relative shrink-0 overflow-hidden rounded-[8px] bg-black"
+        style={{
+          aspectRatio: '9 / 16',
+          maxHeight: PREVIEW_MEDIA_MAX_HEIGHT,
+          width: `min(100%, calc(${PREVIEW_MEDIA_MAX_HEIGHT} * 9 / 16))`,
+        }}
+      >
+        {images.length > 0 && (
+          <SliderComponent
+            list={images.map((image, index) => (
+              <a
+                key={`image_${index}`}
+                className="absolute inset-0 block"
+                href={mediaDir.set(image.path)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
+              </a>
+            ))}
+            className="absolute inset-0 h-full w-full overflow-hidden"
+          />
+        )}
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end px-[12px] py-[16px] text-white">
           <div className="text-[14px] font-[500]">
             {formatChannelHandle(integration?.display) || integration?.name}
           </div>
-          <div className="text-[13px] font-[400] whitespace-pre-line line-clamp-6 w-full"
+          <div
+            className="w-full text-[13px] font-[400] whitespace-pre-line line-clamp-6"
             dangerouslySetInnerHTML={{
               __html: sanitizePreviewHtml(renderContent?.[0]?.text),
             }}
           />
         </div>
       </div>
-      <div className="flex flex-col justify-end gap-[10px] ml-[18px]">
+      <div className="flex shrink-0 flex-col justify-end gap-[10px]">
         <div className="relative">
           <img
             src={integration?.picture || '/no-picture.jpg'}
