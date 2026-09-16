@@ -35,6 +35,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
+import { publishNoticeReleaseUrl } from '@gitroom/helpers/utils/post.publish.notice';
 
 /**
  * Written to `Post.error` when a scheduled post could not run because the org
@@ -523,6 +524,22 @@ export class PostActivity {
     digest = false,
     type: NotificationType = 'success'
   ) {
+    // Frozen workflows always fire a digested success notice after
+    // updatePost. Quiet posts opt out of that one; failures still speak.
+    if (
+      digest &&
+      type === 'success' &&
+      typeof message === 'string' &&
+      message.startsWith('Your post has been published')
+    ) {
+      const url = publishNoticeReleaseUrl(message);
+      if (
+        url &&
+        (await this._postService.shouldSkipPublishNotice(orgId, url))
+      ) {
+        return;
+      }
+    }
     await this._notificationService.inAppNotification(
       orgId,
       subject,

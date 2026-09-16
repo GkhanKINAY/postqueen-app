@@ -18,7 +18,15 @@ import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.cu
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
+import {
+  ComposeWhen,
+  ComposeWhenMode,
+} from '@gitroom/frontend/components/new-launch/compose.when';
+import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
+import {
+  PQ_NOTIFY_SETTING,
+  postWantsPublishNotice,
+} from '@gitroom/helpers/utils/post.publish.notice';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
@@ -162,6 +170,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
   const [postNowOpen, setPostNowOpen] = useState(false);
+  const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
+    postWantsPublishNotice(existingData.settings)
+  );
   const toaster = useToaster();
   const { dropPostGroupFromView } = useCalendar();
   const modal = useModals();
@@ -180,7 +191,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   });
 
-  const { addEditSets, mutate, customClose, dummy } = props;
+  const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
+  const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
+    existingData?.posts?.[0] ? 'date' : whenProp === 'next' ? 'next' : 'date'
+  );
 
   const {
     selectedIntegrations,
@@ -425,6 +439,29 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       // catch can tell "failed" from "succeeded then stumbled".
       let saved = false;
       try {
+      if (type === 'schedule' && whenMode === 'now') {
+        type = 'now';
+      }
+      let publishAt = date;
+      if (type === 'schedule' && whenMode === 'next') {
+        const slotResponse = await fetch('/posts/find-slot');
+        const slot = slotResponse.ok
+          ? (await slotResponse.json().catch(() => ({})))?.date
+          : undefined;
+        if (!slot) {
+          setLoading(false);
+          toaster.show(
+            t(
+              'create_post_failed',
+              'Could not start a new post, please try again'
+            ),
+            'warning'
+          );
+          return;
+        }
+        publishAt = dayjs.utc(slot).local();
+        setDate(publishAt);
+      }
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
@@ -458,7 +495,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           id: post.id,
         },
         group,
-        settings: { ...(post.settings || {}) },
+        settings: {
+          ...(post.settings || {}),
+          [PQ_NOTIFY_SETTING]: notifyOnPublish,
+        },
         value: post.values.map((value: any) => ({
           ...(value.id ? { id: value.id } : {}),
           content: value.content,
@@ -620,7 +660,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         ...(repeater ? { inter: repeater } : {}),
         tags,
         shortLink,
-        date: date.utc().format('YYYY-MM-DDTHH:mm:ss'),
+        date: publishAt.utc().format('YYYY-MM-DDTHH:mm:ss'),
         posts,
       };
 
@@ -684,7 +724,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             toaster.show(
               t('scheduled_for_when', 'Scheduled for {when}').replace(
                 '{when}',
-                formatShortWeekdayTime(date.local())
+                formatShortWeekdayTime(publishAt.local())
               ),
               'success'
             );
@@ -744,6 +784,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       shortlinkPreferenceData,
       toaster,
       t,
+      whenMode,
+      notifyOnPublish,
+      fetch,
     ]
   );
 
@@ -1038,7 +1081,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-y-auto px-[16px] py-[12px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
-                <DatePicker onChange={setDate} date={date} className="!ml-0 w-full !flex-none" />
+                <ComposeWhen
+                  mode={whenMode}
+                  date={date}
+                  onMode={setWhenMode}
+                  onChange={setDate}
+                />
+                {!dummy && (
+                  <ComposeNotify
+                    notify={notifyOnPublish}
+                    onChange={setNotifyOnPublish}
+                  />
+                )}
                 {!dummy && (
                   <div className="w-full [&>*]:w-full">
                     <TagsComponent
@@ -1159,11 +1213,20 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </button>
             )}
             {!phoneFlow && (
-            <DatePicker
-              onChange={setDate}
-              date={date}
-              className="max-[1179px]:!ml-0 max-[1179px]:w-full max-[1179px]:!flex-none"
-            />
+              <>
+                <ComposeWhen
+                  mode={whenMode}
+                  date={date}
+                  onMode={setWhenMode}
+                  onChange={setDate}
+                />
+                {!dummy && (
+                  <ComposeNotify
+                    notify={notifyOnPublish}
+                    onChange={setNotifyOnPublish}
+                  />
+                )}
+              </>
             )}
             <div
               className={clsx(
