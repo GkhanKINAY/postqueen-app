@@ -1,9 +1,11 @@
 import { FC, useCallback } from 'react';
+import clsx from 'clsx';
 import { SignaturesComponent } from '@gitroom/frontend/components/settings/signatures.component';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 export const SignatureBox: FC<{
   editor: any;
-}> = ({ editor }) => {
+  label?: string;
+}> = ({ editor, label }) => {
   const modals = useModals();
   const appendValue = (val: string) => {
     editor?.commands?.insertContent('\n\n' + val);
@@ -25,8 +27,11 @@ export const SignatureBox: FC<{
       <div
         onClick={addSignature}
         data-tooltip-id="tooltip"
-        data-tooltip-content="Add Signature"
-        className="flex h-[36px] w-[36px] cursor-pointer select-none items-center justify-center rounded-[8px] bg-pqBtnSimple text-pqText transition-colors hover:bg-pqHover"
+        data-tooltip-content={label || 'Add Signature'}
+        className={clsx(
+          'flex h-[36px] cursor-pointer select-none items-center justify-center rounded-[8px] bg-pqBtnSimple text-pqText transition-colors hover:bg-pqHover',
+          label ? 'gap-[8px] px-[12px] text-[12px] font-[600]' : 'w-[36px]'
+        )}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -34,6 +39,7 @@ export const SignatureBox: FC<{
           height="16"
           viewBox="0 0 16 16"
           fill="none"
+          aria-hidden="true"
         >
           <g clipPath="url(#clip0_2352_53073)">
             <path
@@ -55,6 +61,7 @@ export const SignatureBox: FC<{
             </clipPath>
           </defs>
         </svg>
+        {label ? <span>{label}</span> : null}
       </div>
     </>
   );

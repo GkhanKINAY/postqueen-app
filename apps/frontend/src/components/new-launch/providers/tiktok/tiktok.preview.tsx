@@ -8,7 +8,6 @@ import { formatChannelHandle } from '@gitroom/frontend/components/channels/chann
 import { FC, ReactNode } from 'react';
 import { SliderComponent } from '@gitroom/frontend/components/third-parties/slider.component';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
-import { PREVIEW_MEDIA_MAX_HEIGHT } from '@gitroom/frontend/components/new-launch/preview-media';
 
 const TikTokItem: FC<{ icon: ReactNode; num: string }> = ({ icon, num }) => {
   return (
@@ -66,8 +65,8 @@ export const TiktokPreview: FC<{
         className="relative shrink-0 overflow-hidden rounded-[8px] bg-black"
         style={{
           aspectRatio: '9 / 16',
-          maxHeight: PREVIEW_MEDIA_MAX_HEIGHT,
-          width: `min(100%, calc(${PREVIEW_MEDIA_MAX_HEIGHT} * 9 / 16))`,
+          maxHeight: 'min(46vh, 400px)',
+          width: 'min(100%, calc(min(46vh, 400px) * 9 / 16))',
         }}
       >
         {images.length > 0 && (

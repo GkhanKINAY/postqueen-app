@@ -260,9 +260,13 @@ const SERIES_FIELD: Record<
   Likes: 'reactions',
   Reactions: 'reactions',
   Comments: 'comments',
+  Replies: 'comments',
+  'Recent Comments': 'comments',
   Shares: 'shares',
   Retweets: 'shares',
   Reposts: 'shares',
+  'Recent Likes': 'reactions',
+  'Recent Shares': 'shares',
 };
 
 const SERIES_RAW: Record<string, string> = {
@@ -271,6 +275,10 @@ const SERIES_RAW: Record<string, string> = {
   Reach: 'reach',
   Clicks: 'clicks',
   Quotes: 'quotes',
+  Bookmarks: 'bookmarks',
+  Favorites: 'favorites',
+  'Pin Clicks': 'pinClicks',
+  'Outbound Clicks': 'outboundClicks',
 };
 
 function dayKey(value: Date | string) {
@@ -314,33 +322,109 @@ export type SnapshotSeriesPoint = {
   raw: unknown;
 };
 
+function eachUtcDay(from: string, to: string) {
+  const days: string[] = [];
+  const cursor = new Date(`${from}T00:00:00.000Z`);
+  const end = new Date(`${to}T00:00:00.000Z`);
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) {
+    return days;
+  }
+  while (cursor <= end) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+}
+
+/** Lifetime snapshot totals → per-day growth, one point per day in the range. */
+export function lifetimeToDailyRange(
+  points: Array<{ total: string; date: string }>,
+  rangeStart: Date | string,
+  rangeEnd: Date | string,
+) {
+  const start = dayKey(rangeStart);
+  const end = dayKey(rangeEnd);
+  const byDay = new Map<string, number>();
+  for (const point of points) {
+    byDay.set(point.date.slice(0, 10), Number(point.total));
+  }
+  const days = eachUtcDay(start, end);
+  if (!days.length) {
+    return points;
+  }
+  let lastKnown = 0;
+  let prevCumulative = 0;
+  return days.map((day) => {
+    if (byDay.has(day)) {
+      lastKnown = byDay.get(day) as number;
+    }
+    const delta = Math.max(0, lastKnown - prevCumulative);
+    prevCumulative = lastKnown;
+    return { total: String(delta), date: day };
+  });
+}
+
+function toDailySeries(
+  points: Array<{ total: string; date: string }>,
+  rangeStart?: Date | string,
+  rangeEnd?: Date | string,
+) {
+  if (rangeStart && rangeEnd) {
+    return lifetimeToDailyRange(points, rangeStart, rangeEnd);
+  }
+  let prev = 0;
+  return points.map((point) => {
+    const value = Number(point.total);
+    const delta = Math.max(0, value - prev);
+    prev = value;
+    return { total: String(delta), date: point.date };
+  });
+}
+
 /** Plot captured snapshot days when live postAnalytics only returned a single lifetime point. */
 export function overlaySnapshotSeries<
   T extends { label: string; data: Array<{ total: string; date: string }> },
->(live: T[], snapshots: SnapshotSeriesPoint[]): T[] {
-  if (!live.length || snapshots.length < 2) {
+>(
+  live: T[],
+  snapshots: SnapshotSeriesPoint[],
+  options?: { rangeStart?: Date | string; rangeEnd?: Date | string },
+): T[] {
+  if (!live.length) {
     return live;
   }
-  return live.map((series) => {
-    const points = snapshots
-      .map((snapshot) => {
-        const total = snapshotMetric(snapshot, series.label);
-        if (total == null) {
-          return null;
-        }
-        return { total: String(total), date: dayKey(snapshot.capturedDay) };
-      })
-      .filter((point): point is { total: string; date: string } => point != null);
-    if (points.length < 2) {
-      return series;
-    }
-    const lastLive = series.data[series.data.length - 1];
-    const lastSnap = points[points.length - 1];
-    if (lastLive && lastLive.date > lastSnap.date) {
-      points.push(lastLive);
-    }
-    return { ...series, data: points };
-  });
+  const mapped =
+    snapshots.length < 2
+      ? live
+      : live.map((series) => {
+          const points = snapshots
+            .map((snapshot) => {
+              const total = snapshotMetric(snapshot, series.label);
+              if (total == null) {
+                return null;
+              }
+              return { total: String(total), date: dayKey(snapshot.capturedDay) };
+            })
+            .filter(
+              (point): point is { total: string; date: string } => point != null,
+            );
+          if (points.length < 2) {
+            return series;
+          }
+          const lastLive = series.data[series.data.length - 1];
+          const lastSnap = points[points.length - 1];
+          if (lastLive && lastLive.date > lastSnap.date) {
+            points.push(lastLive);
+          }
+          return { ...series, data: points };
+        });
+  return mapped.map((series) => ({
+    ...series,
+    data: toDailySeries(
+      series.data || [],
+      options?.rangeStart,
+      options?.rangeEnd,
+    ),
+  }));
 }
 
 function snapshotEngagementRate(

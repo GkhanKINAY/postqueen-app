@@ -727,7 +727,7 @@ export const Editor: FC<{
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const t = useT();
   const toaster = useToaster();
-  const { mobile } = useViewport();
+  const { mobile, splitComposer } = useViewport();
   const editorRef = useRef<undefined | { editor: any }>(undefined);
   const [loading, setLoading] = useState(false);
   // Design composeVals aiHint — dismiss persists; links reuse /connections (MCP).
@@ -1117,7 +1117,7 @@ export const Editor: FC<{
                       >
                         <EmojiIcon />
                       </div>
-                      {num === 0 && !mobile && <ComposeAiAssistant />}
+                      {num === 0 && !mobile && !splitComposer && <ComposeAiAssistant />}
                       <div className="relative">
                         <div
                           className={clsx(

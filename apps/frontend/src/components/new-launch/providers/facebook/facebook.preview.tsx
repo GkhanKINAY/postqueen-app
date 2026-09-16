@@ -171,7 +171,7 @@ export const FacebookPreview: FC<{
       </div>
       {background ? (
         <div
-          className="-mx-[15px] min-h-[320px] flex items-center justify-center text-center px-[32px] py-[32px] text-[28px] font-[700] leading-[36px] whitespace-pre-line break-words"
+          className="-mx-[15px] flex min-h-[180px] max-h-[240px] items-center justify-center px-[32px] py-[24px] text-center text-[22px] font-[700] leading-[28px] whitespace-pre-line break-words"
           style={{ background: background.background, color: background.text }}
           dangerouslySetInnerHTML={{
             __html: sanitizePreviewHtml(renderContent?.[0]?.text),

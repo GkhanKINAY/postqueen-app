@@ -23,7 +23,8 @@ const delayOptions = [
 export const DelayComponent: FC<{
   currentIndex: number;
   currentDelay: number;
-}> = ({ currentIndex, currentDelay }) => {
+  toolbar?: boolean;
+}> = ({ currentIndex, currentDelay, toolbar = false }) => {
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [customValue, setCustomValue] = useState('');
@@ -100,17 +101,31 @@ export const DelayComponent: FC<{
         aria-label={t('delay_comment', 'Delay comment')}
         aria-expanded={isOpen}
         className={clsx(
-          'flex h-[24px] cursor-pointer items-center justify-center gap-[3px] rounded-[6px] transition-colors',
-          currentDelay > 0
-            ? 'bg-pqInner px-[5px] text-pqPink shadow-[inset_0_0_0_1px_var(--pink)]'
-            : 'text-pqText hover:text-pqPink'
+          'flex cursor-pointer items-center justify-center transition-colors',
+          toolbar
+            ? 'h-[36px] gap-[8px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText hover:bg-pqHover'
+            : 'h-[24px] gap-[3px] rounded-[6px]',
+          !toolbar &&
+            (currentDelay > 0
+              ? 'bg-pqInner px-[5px] text-pqPink shadow-[inset_0_0_0_1px_var(--pink)]'
+              : 'text-pqText hover:text-pqPink'),
+          toolbar && currentDelay > 0 && 'text-pqPink'
         )}
       >
-        <DelayIcon size={18} />
-        {currentDelay > 0 && delayLabel && (
-          <span className="text-[10px] font-[700] leading-none">
-            {delayLabel}
+        <DelayIcon size={toolbar ? 16 : 18} />
+        {toolbar ? (
+          <span>
+            {currentDelay > 0 && delayLabel
+              ? `${t('delay_comment', 'Delay comment')} · ${delayLabel}`
+              : t('delay_comment', 'Delay comment')}
           </span>
+        ) : (
+          currentDelay > 0 &&
+          delayLabel && (
+            <span className="text-[10px] font-[700] leading-none">
+              {delayLabel}
+            </span>
+          )
         )}
       </button>
       {isOpen && (

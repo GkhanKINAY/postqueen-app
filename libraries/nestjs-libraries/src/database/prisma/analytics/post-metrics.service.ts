@@ -371,11 +371,15 @@ export class PostMetricsService {
       percentageChange: number;
     }>,
   ) {
+    const { from, to } = analyticsPublishDateRange(days);
     const snapshots = await this.snapshotsForPost(
       organizationId,
       postId,
       days,
     );
-    return overlaySnapshotSeries(live, snapshots);
+    return overlaySnapshotSeries(live, snapshots, {
+      rangeStart: from,
+      rangeEnd: to,
+    });
   }
 }

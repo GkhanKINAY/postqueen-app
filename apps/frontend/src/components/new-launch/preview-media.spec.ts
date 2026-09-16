@@ -87,7 +87,7 @@ describe('post preview media frame', () => {
     assert.doesNotMatch(pinterest, /absolute left-0 top-0/);
     assert.match(youtube, /flex w-full flex-col/);
     assert.match(youtube, /PREVIEW_MEDIA_MAX_HEIGHT/);
-    assert.match(tiktok, /PREVIEW_MEDIA_MAX_HEIGHT/);
+    assert.match(tiktok, /min\(46vh, 400px\)/);
     assert.match(tiktok, /aspectRatio: '9 \/ 16'/);
     assert.doesNotMatch(tiktok, /max-h-\[min\(34vh,300px\)\]/);
   });

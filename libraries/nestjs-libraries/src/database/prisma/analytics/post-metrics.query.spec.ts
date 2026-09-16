@@ -7,6 +7,7 @@ import {
   matchesAnalyticsQuery,
   previewText,
   overlaySnapshotSeries,
+  lifetimeToDailyRange,
   sortAnalyticsPosts,
   sumComplete,
   sumKnown,
@@ -283,7 +284,12 @@ describe('summarizeAnalyticsPosts', () => {
 });
 
 describe('overlaySnapshotSeries', () => {
-  it('keeps a single live point when there are not enough snapshots', () => {
+  const range = {
+    rangeStart: '2026-09-10',
+    rangeEnd: '2026-09-16',
+  };
+
+  it('turns a single lifetime point into a daily bump in the selected range', () => {
     const live = [
       {
         label: 'Comments',
@@ -291,20 +297,28 @@ describe('overlaySnapshotSeries', () => {
         data: [{ total: '3', date: '2026-09-15' }],
       },
     ];
-    const out = overlaySnapshotSeries(live, [
-      {
-        capturedDay: '2026-09-15',
-        impressions: 0,
-        reactions: 0,
-        comments: 3,
-        shares: 0,
-        raw: null,
-      },
-    ]);
-    assert.equal(out[0].data.length, 1);
+    const out = overlaySnapshotSeries(
+      live,
+      [
+        {
+          capturedDay: '2026-09-15',
+          impressions: 0,
+          reactions: 0,
+          comments: 3,
+          shares: 0,
+          raw: null,
+        },
+      ],
+      range,
+    );
+    assert.deepEqual(
+      out[0].data.map((point) => point.total),
+      ['0', '0', '0', '0', '0', '3', '0'],
+    );
+    assert.equal(out[0].data[5].date, '2026-09-15');
   });
 
-  it('plots captured snapshot days instead of inventing waves', () => {
+  it('plots daily growth, not a lifetime plateau, across the selected days', () => {
     const live = [
       {
         label: 'Comments',
@@ -312,36 +326,151 @@ describe('overlaySnapshotSeries', () => {
         data: [{ total: '3', date: '2026-09-15' }],
       },
     ];
-    const out = overlaySnapshotSeries(live, [
+    const out = overlaySnapshotSeries(
+      live,
+      [
+        {
+          capturedDay: '2026-09-13',
+          impressions: 0,
+          reactions: 0,
+          comments: 0,
+          shares: 0,
+          raw: null,
+        },
+        {
+          capturedDay: '2026-09-14',
+          impressions: 0,
+          reactions: 0,
+          comments: 3,
+          shares: 0,
+          raw: null,
+        },
+        {
+          capturedDay: '2026-09-15',
+          impressions: 0,
+          reactions: 0,
+          comments: 3,
+          shares: 0,
+          raw: null,
+        },
+      ],
+      range,
+    );
+    assert.deepEqual(
+      out[0].data.map((point) => [point.date, point.total]),
+      [
+        ['2026-09-10', '0'],
+        ['2026-09-11', '0'],
+        ['2026-09-12', '0'],
+        ['2026-09-13', '0'],
+        ['2026-09-14', '3'],
+        ['2026-09-15', '0'],
+        ['2026-09-16', '0'],
+      ],
+    );
+  });
+
+  it('plots Threads/X Replies from the comments snapshots as a daily bump', () => {
+    const live = [
       {
-        capturedDay: '2026-09-13',
-        impressions: 0,
-        reactions: 0,
-        comments: 0,
-        shares: 0,
-        raw: null,
+        label: 'Replies',
+        percentageChange: 0,
+        data: [{ total: '1', date: '2026-09-16' }],
       },
+    ];
+    const out = overlaySnapshotSeries(
+      live,
+      [
+        {
+          capturedDay: '2026-09-14',
+          impressions: 8,
+          reactions: 0,
+          comments: 0,
+          shares: 0,
+          raw: null,
+        },
+        {
+          capturedDay: '2026-09-16',
+          impressions: 8,
+          reactions: 0,
+          comments: 1,
+          shares: 0,
+          raw: null,
+        },
+      ],
+      range,
+    );
+    assert.deepEqual(
+      out[0].data.map((point) => point.total),
+      ['0', '0', '0', '0', '0', '0', '1'],
+    );
+  });
+
+  it('does the same daily bump for Views, Comments and zero series in one pass', () => {
+    const live = [
+      {
+        label: 'Views',
+        percentageChange: 0,
+        data: [{ total: '8', date: '2026-09-16' }],
+      },
+      {
+        label: 'Comments',
+        percentageChange: 0,
+        data: [{ total: '1', date: '2026-09-16' }],
+      },
+      {
+        label: 'Saves',
+        percentageChange: 0,
+        data: [{ total: '0', date: '2026-09-16' }],
+      },
+    ];
+    const snapshots = [
       {
         capturedDay: '2026-09-14',
-        impressions: 0,
+        impressions: 8,
         reactions: 0,
-        comments: 3,
+        comments: 1,
         shares: 0,
-        raw: null,
+        raw: { saves: 0, reach: 0 },
       },
       {
-        capturedDay: '2026-09-15',
-        impressions: 0,
+        capturedDay: '2026-09-16',
+        impressions: 8,
         reactions: 0,
-        comments: 3,
+        comments: 1,
         shares: 0,
-        raw: null,
+        raw: { saves: 0, reach: 0 },
       },
-    ]);
-    assert.deepEqual(out[0].data, [
-      { total: '0', date: '2026-09-13' },
-      { total: '3', date: '2026-09-14' },
-      { total: '3', date: '2026-09-15' },
-    ]);
+    ];
+    const out = overlaySnapshotSeries(live, snapshots, range);
+    assert.deepEqual(
+      out[0].data.map((point) => point.total),
+      ['0', '0', '0', '0', '8', '0', '0'],
+    );
+    assert.deepEqual(
+      out[1].data.map((point) => point.total),
+      ['0', '0', '0', '0', '1', '0', '0'],
+    );
+    assert.deepEqual(
+      out[2].data.map((point) => point.total),
+      ['0', '0', '0', '0', '0', '0', '0'],
+    );
+  });
+});
+
+describe('lifetimeToDailyRange', () => {
+  it('puts the growth on the day the lifetime total jumped, then returns to 0', () => {
+    const daily = lifetimeToDailyRange(
+      [
+        { total: '8', date: '2026-09-14' },
+        { total: '8', date: '2026-09-16' },
+      ],
+      '2026-09-10',
+      '2026-09-16',
+    );
+    assert.deepEqual(
+      daily.map((point) => point.total),
+      ['0', '0', '0', '0', '8', '0', '0'],
+    );
   });
 });

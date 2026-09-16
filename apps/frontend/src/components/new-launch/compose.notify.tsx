@@ -11,14 +11,15 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 export const ComposeNotify: FC<{
   notify: boolean;
   onChange: (notify: boolean) => void;
-}> = ({ notify, onChange }) => {
+  menuPlacement?: 'top-start' | 'bottom-end';
+}> = ({ notify, onChange, menuPlacement = 'top-start' }) => {
   const t = useT();
   const { touch } = useViewport();
   const [isOpen, setIsOpen] = useState(false);
   const { referenceRef, floatingRef } = useAnchoredPopover<
     HTMLDivElement,
     HTMLDivElement
-  >(isOpen, 'start', { offsetPx: 10, placement: 'top-start' });
+  >(isOpen, 'start', { offsetPx: 10, placement: menuPlacement });
   const ref = useClickOutside(() => {
     if (isOpen) {
       setIsOpen(false);
