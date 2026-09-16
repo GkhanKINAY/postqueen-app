@@ -70,6 +70,7 @@ export const FEATURED_IDS = [
   'chatgpt',
   'cursor',
   'grok',
+  'other-mcp',
 ] as const;
 
 /** Category order on the Connectors hub, after Featured. */
@@ -87,6 +88,7 @@ export const AGENTS_DISPLAY_ORDER = [
   'cursor',
   'grok-build',
   'muse-code',
+  'gemini',
 ] as const;
 
 export const BOTS_DISPLAY_ORDER = [
@@ -100,8 +102,6 @@ export const EDITORS_DISPLAY_ORDER = [
   'vscode',
   'windsurf',
   'zed',
-  'gemini',
-  'other-mcp',
 ] as const;
 
 function sortByIdOrder(
@@ -678,7 +678,7 @@ openclaw pairing approve discord <CODE>`,
       label: t('conn_group_agents', 'Agents'),
       blurb: t(
         'conn_group_agents_blurb',
-        'Coding agents: Claude Code, Codex, Cursor, Grok Build and Muse Code.'
+        'Coding agents: Claude Code, Codex, Cursor, Grok Build, Muse Code and Gemini CLI.'
       ),
       items: [
         {
@@ -1325,7 +1325,7 @@ openclaw onboard --install-daemon`,
       label: t('conn_group_featured', 'Featured'),
       blurb: t(
         'conn_group_featured_blurb',
-        'Chat products that call PostQueen over MCP. One URL, 17 tools.'
+        'Chat products and any other MCP client. One URL, 17 tools.'
       ),
       items: [
         {
@@ -1563,7 +1563,7 @@ openclaw onboard --install-daemon`,
           id: 'grok-bot',
           name: t('conn_grok_bot_name', 'Grok Bot'),
           glyph: 'GB',
-          icon: '/icons/connections/grok.svg',
+          icon: '/icons/connections/grok-bot.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
@@ -1967,7 +1967,7 @@ openclaw onboard --install-daemon`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'cli',
-          section: 'editors',
+          section: 'agents',
           short: t('conn_gemini_short', 'Gemini CLI talks over streamable HTTP'),
           intro: t(
             'conn_gemini_intro',
@@ -2090,7 +2090,7 @@ openclaw onboard --install-daemon`,
       label: t('conn_group_editors', 'Editors'),
       blurb: t(
         'conn_group_editors_blurb',
-        'Editor and MCP clients. VS Code, Windsurf, Zed, Gemini CLI, and any other MCP client.'
+        'Code editors that speak MCP. VS Code, Windsurf and Zed.'
       ),
       items: [
         {
@@ -2102,7 +2102,7 @@ openclaw onboard --install-daemon`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
-          section: 'editors',
+          section: 'featured',
           short: t('conn_other_mcp_short', 'Any other MCP client with the URL'),
           intro: t(
             'conn_other_mcp_intro',

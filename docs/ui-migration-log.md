@@ -29,6 +29,16 @@ change is *meant* to move a list, run `--update`, **commit the baseline**, and s
 why here and in the PR. A baseline file that is absent rather than different fails
 the check: an uncommitted one would reseed itself on every CI run and guard nothing.
 
+**Connect marketplace: Gemini CLI is an agent, Any MCP is Featured.** Gemini CLI is a terminal coding agent, not an editor — it sits with Claude Code / Codex under Agents. Any MCP client is the generic catch-all, so it is a Featured card (not a leftover under Editors). Editors is VS Code, Windsurf and Zed. i18n 0.
+
+**Connect marketplace original marks.** Grok Bot no longer shares an invented 5-point star with Grok. Grok / Grok Build use the official Grok flame, Grok Bot uses xAI's head-and-eyes logomark, Muse uses the official stroked M on Muse blue (`#0033FF`), Codex uses the official white tile with blue–lavender glyph (`#B1A7FF` / `#7A9DFF` / `#3941FF`). i18n 0.
+
+**Analytics reconnect copy.** A disconnected channel on Analytics used to toast “Please refresh the integration from the calendar”. Channels moved off the calendar; the toast now says reconnect from Channels and opens `/channels?focus=`. i18n +1 (`please_reconnect_from_channels`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
+
+**Calendar thumbs stay at rest size.** Hover no longer scales the week/month/day media thumb (~2×). Duplicate / Preview / Delete on the card is enough. i18n 0.
+
+**Composer AI chips.** The AI assistant rail has Rephrase / Shorten / Expand / More Casual / More Formal. Each chip sends a Copilot command; the model updates the post with `setPosts`. i18n +5 (`rephrase`, `shorten`, `expand`, `more_casual`, `more_formal`).
+
 **Composer Preview | AI assistant rail.** Create Post opens as a compact channel picker (`Select a channel to create a post.`). After a channel is picked the right rail returns with Post Preview | AI assistant tabs. CopilotChat fills that rail (rewrite via `setPosts`, generate/attach via `/media/generate-image-with-prompt`) instead of the footer `CopilotPopup`. Phone Write still has the AI chip — it switches to the Preview pane on the assistant tab. Desktop empty card is 720px (shell `data-pq-composer-empty`) and keeps a Close on the left. i18n +1 (`select_a_channel_to_create_a_post`).
 
 **Composer channel settings sit above the editor.** Selecting a channel (not Global) portals that channel's settings form into `#composer-quick-settings` above the write box so Post / Reel / Story, LinkedIn carousel, YouTube title, etc. are on the compose surface. Global still lists every channel as a card under the editor. One `useForm` per channel — the portal target changes, the form does not, so values stay in sync when you go back to Global. Instagram `post_type` gained `reel` (DTO + validity: a reel is one video; publishing still uses the existing REELS media type). i18n 0.

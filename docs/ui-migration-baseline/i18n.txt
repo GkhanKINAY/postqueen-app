@@ -1122,6 +1122,7 @@ error
 error_details
 error_occurred
 every
+expand
 extend_postqueen_with_other_tools
 extension_communication_error
 extension_cookies_missing
@@ -1447,6 +1448,8 @@ moltbook_register_description
 month
 monthly
 more
+more_casual
+more_formal
 most_popular
 move
 move_add_to_group
@@ -1620,6 +1623,7 @@ please_add_the_following_command_in_your_chat
 please_check_your_email_to_activate_your_account
 please_fill_all_required_fields
 please_fix_your_settings
+please_reconnect_from_channels
 please_type_your_prompt
 please_wait
 plus_n_channels
@@ -1705,6 +1709,7 @@ remove_social_account
 removes_the_channel_and_its_scheduled_posts
 repeat_password
 repeat_post_every
+rephrase
 report_a_bug
 republish_at
 republish_recurring_note
@@ -1788,6 +1793,7 @@ share_with_a_client
 short_link
 short_links_statistics
 short_post
+shorten
 shortlink_ask
 shortlink_no
 shortlink_preference_description

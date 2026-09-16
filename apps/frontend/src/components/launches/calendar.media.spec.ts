@@ -94,25 +94,9 @@ describe('calendar media thumbs', () => {
     assert.match(calendar, /src: video && thumb \? thumb : path/);
   });
 
-  it('grows the same thumb ~2× in place on fine-pointer hover, not on touch', () => {
-    assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
-    assert.match(css, /--ci-media-scale: 2/);
-    assert.match(css, /transform: scale\(var\(--ci-media-scale, 2\)\)/);
-    assert.doesNotMatch(css, /--ci-media-scale: 5/);
-    assert.match(css, /transform-origin: center right/);
-    assert.match(css, /\[dir='rtl'\] \[data-ci-media\]/);
-    assert.match(css, /transform-origin: center left/);
-    assert.match(css, /box-shadow: var\(--e2\)/);
-    assert.match(css, /border-radius: var\(--r-md\)/);
-    assert.match(
-      css,
-      /\[data-mobile='1'\] \[data-ci\]:hover \[data-ci-media\]/,
-    );
-    assert.match(
-      css,
-      /\[data-tablet='1'\] \[data-ci\]:hover \[data-ci-media\]/,
-    );
-    assert.match(css, /transform: none/);
+  it('keeps calendar thumbs at rest size on hover', () => {
+    assert.doesNotMatch(css, /--ci-media-scale/);
+    assert.doesNotMatch(css, /\[data-ci\]:hover \[data-ci-media\]/);
     assert.doesNotMatch(calendar, /onClick=\{[^}]*media/);
   });
 

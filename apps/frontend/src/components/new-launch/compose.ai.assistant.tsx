@@ -5,10 +5,15 @@ import {
   FC,
   ReactNode,
   useContext,
+  useMemo,
 } from 'react';
 import clsx from 'clsx';
 import NextLink from 'next/link';
-import { CopilotChat, CopilotKitCSSProperties } from '@copilotkit/react-ui';
+import {
+  CopilotChat,
+  CopilotKitCSSProperties,
+  RenderSuggestionsListProps,
+} from '@copilotkit/react-ui';
 import { useCopilotAction } from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
@@ -46,9 +51,14 @@ You can:
 - Generate an image and attach it to the post with generateImageForPost
 - Attach existing media with attachMediaToPost when you already have an id and path
 
+When the user asks to rephrase, shorten, expand, or change tone, apply the new text with setPosts immediately. Do not only propose it in chat. Keep the same number of thread items unless they ask otherwise.
+
 You cannot schedule, publish, or open other pages. The user uses Schedule / Post Now for that.
 After changing the post, keep replies short.
 `;
+
+const APPLY_WITH_SET_POSTS =
+  'Then apply it with setPosts (the full thread as a string array).';
 
 const triggerClassName = (open: boolean) =>
   clsx(
@@ -79,6 +89,34 @@ const railTabClass = (active: boolean) =>
       ? 'bg-pqInner text-pqText shadow-pqE1'
       : 'text-pqSoft hover:bg-pqHover hover:text-pqText'
   );
+
+const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
+  suggestions,
+  onSuggestionClick,
+  isLoading,
+}) => {
+  if (!suggestions.length) {
+    return null;
+  }
+  return (
+    <div
+      data-pq="composer-ai-chips"
+      className="flex flex-wrap gap-[8px] px-[16px] pb-[8px]"
+    >
+      {suggestions.map((suggestion) => (
+        <button
+          key={suggestion.title}
+          type="button"
+          disabled={isLoading}
+          onClick={() => onSuggestionClick(suggestion.message)}
+          className="flex h-[36px] items-center rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {suggestion.title}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 /**
  * Post Preview | AI Assistant, in the right-rail header. This is the switch
@@ -342,6 +380,32 @@ export const ComposeAiRail: FC = () => {
   const t = useT();
   const aiOk = useAiAvailable();
   const label = t('your_assistant', 'AI assistant');
+  const apply = APPLY_WITH_SET_POSTS;
+  const suggestions = useMemo(
+    () => [
+      {
+        title: t('rephrase', 'Rephrase'),
+        message: `Rephrase this post. Keep the same meaning and facts. ${apply}`,
+      },
+      {
+        title: t('shorten', 'Shorten'),
+        message: `Shorten this post. Keep the same meaning. ${apply}`,
+      },
+      {
+        title: t('expand', 'Expand'),
+        message: `Expand this post with more useful detail, in the same voice. ${apply}`,
+      },
+      {
+        title: t('more_casual', 'More Casual'),
+        message: `Rewrite this post in a more casual, conversational voice. ${apply}`,
+      },
+      {
+        title: t('more_formal', 'More Formal'),
+        message: `Rewrite this post in a more formal, professional voice. ${apply}`,
+      },
+    ],
+    [t]
+  );
 
   return (
     <div
@@ -363,6 +427,8 @@ export const ComposeAiRail: FC = () => {
         <CopilotChat
           className="flex h-full min-h-0 w-full flex-col"
           instructions={COPILOT_INSTRUCTIONS}
+          suggestions={suggestions}
+          RenderSuggestionsList={ComposeAiSuggestionList}
           labels={{
             title: label,
             initial: t(

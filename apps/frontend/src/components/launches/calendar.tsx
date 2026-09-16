@@ -13,6 +13,7 @@ import React, {
 } from 'react';
 import {
   Integrations,
+  postStatesOnDay,
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
@@ -757,7 +758,7 @@ export const DayView = () => {
 };
 
 export const WeekView = () => {
-  const { startDate, endDate, openPostsForDay, scrollToNowToken } =
+  const { startDate, endDate, openPostsForDay, scrollToNowToken, posts } =
     useCalendar();
   const t = useT();
   const { mobile } = useViewport();
@@ -862,7 +863,12 @@ export const WeekView = () => {
                 type="button"
                 key={day.day}
                 data-cal-today={today ? '1' : undefined}
-                onClick={() => openPostsForDay(day.date.startOf('day'))}
+                onClick={() =>
+                  openPostsForDay(
+                    day.date.startOf('day'),
+                    postStatesOnDay(posts, day.date)
+                  )
+                }
                 title={t('see_all_posts_on', 'See all posts on {{day}}').replace(
                   '{{day}}',
                   day.date.format('dddd')
@@ -1369,8 +1375,11 @@ export const CalendarColumn: FC<{
   }, [posts, display, getDate]);
   const showAllFunc = useCallback(() => {
     // Design: overflow opens the Posts list for that day — not in-cell expand.
-    openPostsForDay(getDate.startOf('day'));
-  }, [openPostsForDay, getDate]);
+    openPostsForDay(
+      getDate.startOf('day'),
+      postList.map((p) => p.state)
+    );
+  }, [openPostsForDay, getDate, postList]);
   const cellEl = useRef<HTMLDivElement | null>(null);
   const [weekVisible, setWeekVisible] = useState(WEEK_SLOT_MAX);
   // Fit as many week previews as the hour height allows (typically 2 in 108px).
@@ -2240,6 +2249,13 @@ const CalendarItem: FC<{
           <button type="button" className={dayAction} onClick={onDuplicate}>
             <Duplicate tooltip={demo ? demoTooltip : undefined} />
           </button>
+          <GoToLivePostButton
+            releaseURL={post.releaseURL}
+            className={dayAction}
+            demo={demo}
+            demoTooltip={demoTooltip}
+            onDemo={explainDemo}
+          />
           <button type="button" className={dayAction} onClick={preview}>
             <Preview tooltip={demo ? demoTooltip : undefined} />
           </button>
@@ -2397,7 +2413,7 @@ const CalendarItem: FC<{
           </div>
         </div>
       </div>
-      {/* Prototype: Open / Duplicate / Preview / Delete — no Statistics on
+      {/* Open (live URL) / Duplicate / Preview / Delete — no Statistics on
           calendar cells. Controls appear over the card on hover. */}
       <div
         data-ci-actions="1"
@@ -2424,6 +2440,13 @@ const CalendarItem: FC<{
         <button type="button" className={actionButton} onClick={onDuplicate}>
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
+        <GoToLivePostButton
+          releaseURL={post.releaseURL}
+          className={actionButton}
+          demo={demo}
+          demoTooltip={demoTooltip}
+          onDemo={explainDemo}
+        />
         <button type="button" className={actionButton} onClick={preview}>
           <Preview tooltip={demo ? demoTooltip : undefined} />
         </button>
@@ -2697,6 +2720,13 @@ const ListItem: FC<{
         <button type="button" className={actionButton} onClick={onDuplicate}>
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
+        <GoToLivePostButton
+          releaseURL={post.releaseURL}
+          className={actionButton}
+          demo={demo}
+          demoTooltip={demoTooltip}
+          onDemo={explainDemo}
+        />
         <button type="button" className={actionButton} onClick={preview}>
           <Preview tooltip={demo ? demoTooltip : undefined} />
         </button>
@@ -3255,7 +3285,9 @@ const MobileMonthAgenda = () => {
               key={key}
               type="button"
               disabled={out}
-              onClick={() => openPostsForDay(day.startOf('day'))}
+              onClick={() =>
+                openPostsForDay(day.startOf('day'), postStatesOnDay(posts, day))
+              }
               className={clsx(
                 'flex min-h-[48px] flex-col items-center justify-center rounded-[10px]',
                 out && 'opacity-30',
@@ -3434,6 +3466,57 @@ export const Duplicate = ({ tooltip }: ActionIconProps = {}) => {
     </svg>
   );
 };
+export const GoToPost = ({ tooltip }: ActionIconProps = {}) => {
+  const t = useT();
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      fill="none"
+      data-tooltip-id="tooltip"
+      data-tooltip-content={tooltip ?? t('go_to_post', 'Go to post')}
+    >
+      <path
+        d="M14 5h5v5M19 5l-9 9M10 6H6.5A1.5 1.5 0 0 0 5 7.5v10A1.5 1.5 0 0 0 6.5 19h10a1.5 1.5 0 0 0 1.5-1.5V14"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+export const GoToLivePostButton: FC<{
+  releaseURL?: string | null;
+  className: string;
+  demo?: boolean;
+  demoTooltip?: string;
+  onDemo?: () => void;
+}> = ({ releaseURL, className, demo, demoTooltip, onDemo }) => {
+  const go = useCallback(() => {
+    if (demo) {
+      onDemo?.();
+      return;
+    }
+    if (releaseURL) {
+      window.open(releaseURL, '_blank', 'noopener,noreferrer');
+    }
+  }, [demo, onDemo, releaseURL]);
+  if (!releaseURL) return null;
+  return (
+    <button
+      type="button"
+      data-pq="go-to-post"
+      className={className}
+      onClick={go}
+    >
+      <GoToPost tooltip={demo ? demoTooltip : undefined} />
+    </button>
+  );
+};
+
 export const Preview = ({ tooltip }: ActionIconProps = {}) => {
   const t = useT();
   return (

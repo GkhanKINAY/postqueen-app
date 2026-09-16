@@ -76,6 +76,56 @@ function isPastOrientedListRange(range: ListRangeFilter) {
   return (PAST_ORIENTED_LIST_RANGES as readonly string[]).includes(range);
 }
 
+function isPastListDayRange(range: ListRangeFilter, now: dayjs.Dayjs = newDayjs()) {
+  return (
+    range.startsWith('day:') &&
+    newDayjs(range.slice(4)).endOf('day').isBefore(now)
+  );
+}
+
+/** Calendar cell → Posts tab. All/Scheduled hide past rows (API gte now). */
+export function listStateForSeeAll(
+  date: dayjs.Dayjs,
+  states: Array<string | undefined> = [],
+  now: dayjs.Dayjs = newDayjs()
+): ListStateFilter {
+  const unique = new Set(
+    states
+      .filter((s): s is string => !!s)
+      .map((s) => s.toUpperCase())
+  );
+  if (unique.size === 1) {
+    if (unique.has('PUBLISHED')) return 'published';
+    if (unique.has('DRAFT')) return 'draft';
+    if (unique.has('QUEUE')) return 'scheduled';
+  }
+  if (unique.has('PUBLISHED')) return 'published';
+  if (date.endOf('day').isBefore(now)) return 'published';
+  if (unique.has('DRAFT') && !unique.has('QUEUE')) return 'draft';
+  return 'all';
+}
+
+export function postStatesOnDay(
+  posts: Array<{ publishDate?: string | Date; state?: string }>,
+  date: dayjs.Dayjs
+) {
+  const key = date.format('YYYY-MM-DD');
+  return posts
+    .filter((p) => p.publishDate && localDayKey(p.publishDate) === key)
+    .map((p) => p.state);
+}
+
+function listStateMatchesPost(
+  state: string | undefined,
+  listState: ListStateFilter
+) {
+  const st = String(state || '').toUpperCase();
+  if (listState === 'scheduled') return st === 'QUEUE';
+  if (listState === 'draft') return st === 'DRAFT';
+  if (listState === 'published') return st === 'PUBLISHED';
+  return true;
+}
+
 function postInListRange(
   publishDate: string | Date,
   range: ListRangeFilter,
@@ -208,7 +258,10 @@ export const CalendarContext = createContext({
   setListSort: (_sort: ListSortOrder) => {
     /** empty **/
   },
-  openPostsForDay: (_date: dayjs.Dayjs) => {
+  openPostsForDay: (
+    _date: dayjs.Dayjs,
+    _states?: Array<string | undefined>
+  ) => {
     /** empty **/
   },
   // Empty = all channels (design chanFilter). Client-side only — same posts
@@ -349,11 +402,18 @@ export const CalendarWeekProvider: FC<{
   // putting side effects inside a setState updater (those run during render).
   const listRangeRef = useRef(listRange);
   listRangeRef.current = listRange;
+  const listStateRef = useRef(listState);
+  listStateRef.current = listState;
   // Prototype default for the Posts list is Oldest (asc).
   const [listSort, setListSortRaw] = useState<ListSortOrder>('asc');
   const setListRange = useCallback((next: ListRangeFilter) => {
     setListRangeRaw(next);
     setListPage(0);
+    // All/Scheduled list API is upcoming-only. A past day would paint empty.
+    const tab = listStateRef.current;
+    if (isPastListDayRange(next) && tab !== 'published' && tab !== 'draft') {
+      setListStateRaw('published');
+    }
   }, []);
   const setListSort = useCallback((next: ListSortOrder) => {
     setListSortRaw(next);
@@ -774,18 +834,21 @@ export const CalendarWeekProvider: FC<{
     if (!rows.length && !realPosts.length && tourDemo.length) {
       rows = mapTourDemo();
     }
-    // Day deep-link: if this list page has not loaded yet, fall back to
+    // Day deep-link: if this list page has not loaded that day yet, fall back to
     // calendar rows already on screen (See all from a cell). After the list
     // fetch (or an optimistic delete) has a payload, do not resurrect rows
-    // from the other view's keepPreviousData cache.
+    // from the other view's keepPreviousData cache — unless the page still
+    // has zero rows for this day (Scheduled/All hide past; keepPreviousData
+    // of the panel would otherwise flash "No posts").
     if (
-      !listData &&
       listRange.startsWith('day:') &&
       !rows.some((p) => postInListRange(p.publishDate, listRange, weekStart))
     ) {
       const dayRows = (realPosts.length ? realPosts : posts).filter(
-        (p: { publishDate: string | Date }) =>
-          postInListRange(p.publishDate, listRange, weekStart)
+        (p: { publishDate: string | Date; state?: string }) =>
+          postInListRange(p.publishDate, listRange, weekStart) &&
+          matchChannel(p) &&
+          listStateMatchesPost(p.state, listState)
       );
       if (dayRows.length) rows = dayRows;
     }
@@ -809,6 +872,7 @@ export const CalendarWeekProvider: FC<{
     demoWeekStart,
     listRange,
     listSort,
+    listState,
   ]);
 
   // Always use the server total for pagination. Client channel/range filters
@@ -821,9 +885,11 @@ export const CalendarWeekProvider: FC<{
   );
 
   const openPostsForDay = useCallback(
-    (date: dayjs.Dayjs) => {
+    (date: dayjs.Dayjs, states?: Array<string | undefined>) => {
       const day = date.format('YYYY-MM-DD');
       const range = `day:${day}` as ListRangeFilter;
+      const nextState = listStateForSeeAll(date, states);
+      setListStateRaw(nextState);
       setListRangeRaw(range);
       setListPage(0);
       const next = {

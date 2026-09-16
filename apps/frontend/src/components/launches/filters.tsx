@@ -448,9 +448,10 @@ export const Filters = () => {
     <div
       data-tour="cal-views"
       className={clsx(
-        'flex w-full select-none flex-col gap-[8px] text-pqText md:flex-row md:items-center',
-        containedColumn &&
-          'mx-auto max-w-[860px] overflow-y-auto px-[4px] [scrollbar-gutter:stable]'
+        'flex w-full shrink-0 select-none flex-col gap-[8px] text-pqText md:flex-row md:items-center',
+        // No overflow-y-auto: a flex child with overflow not visible gets
+        // min-height 0 and the list/day column shrinks this toolbar away.
+        containedColumn && 'mx-auto max-w-[860px] px-[4px]'
       )}
     >
       {!isListView && (
@@ -596,10 +597,13 @@ export const Filters = () => {
         </div>
       )}
       {isListView && (
-        <div className={clsx(
-          'flex flex-grow items-center gap-[10px]',
-          touch && 'flex-wrap'
-        )}>
+        <div
+          data-pq="posts-list-toolbar"
+          className={clsx(
+            'flex flex-grow items-center gap-[10px]',
+            touch && 'flex-wrap'
+          )}
+        >
           {/* List toolbar: Date → Status → flex-1 → Newest/Oldest.
               Status lives here because PostsPanel is unmounted on list. */}
           <div

@@ -14,6 +14,7 @@ import {
   DeletePost,
   Duplicate,
   EditPost,
+  GoToLivePostButton,
   isClientDemoPost,
   useDemoPostAction,
   usePostActions,
@@ -524,6 +525,13 @@ const QueueCard: FC<{
         <button type="button" className={actionButton} onClick={onDuplicate}>
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
+        <GoToLivePostButton
+          releaseURL={post.releaseURL}
+          className={actionButton}
+          demo={demo}
+          demoTooltip={demoTooltip}
+          onDemo={explainDemo}
+        />
         <button
           type="button"
           className={clsx(actionButton, 'hover:text-pqWarn')}
