@@ -51,6 +51,8 @@ describe('composer modal chrome', () => {
     assert.match(manage, /<ComposeWhen/);
     assert.match(manage, /data-pq="composer-ai"/);
     assert.match(manage, /w-\[min\(520px,38vw\)\]/);
+    assert.match(manage, /const tabbedRail = !compactChrome && !maximized/);
+    assert.match(manage, /!compactChrome && hasChannels && maximized && \(/);
     assert.doesNotMatch(manage, /fixed inset-0 z-\[401\]/);
     assert.doesNotMatch(css, /html:has\(\[data-pq-composer-max='1'\]\) \[data-pq-composer-shell\] \{\s*padding: 0 !important;/);
   });
