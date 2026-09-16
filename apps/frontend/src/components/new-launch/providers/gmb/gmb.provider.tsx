@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect } from 'react';
+import { FC } from 'react';
 import {
   PostComment,
   withProvider,
@@ -8,7 +8,7 @@ import {
 import { GmbSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/gmb.settings.dto';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { Input } from '@gitroom/react/form/input';
-import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { useWatch } from 'react-hook-form';
 
 const topicTypes = [
@@ -67,32 +67,21 @@ const GmbSettings: FC = () => {
   const callToActionType = useWatch({ control, name: 'callToActionType' });
 
   return (
-    <div className="flex flex-col gap-[10px]">
-      <Select
+    <div className="flex flex-col gap-[16px]">
+      <FormChoice
+        name="topicType"
         label="Post Type"
-        {...register('topicType', {
-          value: 'STANDARD',
-        })}
-      >
-        {topicTypes.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </Select>
+        layout="segment"
+        defaultValue="STANDARD"
+        options={topicTypes}
+      />
 
-      <Select
+      <FormChoice
+        name="callToActionType"
         label="Call to Action"
-        {...register('callToActionType', {
-          value: 'NONE',
-        })}
-      >
-        {callToActionTypes.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </Select>
+        defaultValue="NONE"
+        options={callToActionTypes}
+      />
 
       {callToActionType &&
         callToActionType !== 'NONE' &&
@@ -105,8 +94,8 @@ const GmbSettings: FC = () => {
         )}
 
       {topicType === 'EVENT' && (
-        <div className="flex flex-col gap-[10px] mt-[10px] p-[15px] border border-input rounded-[8px]">
-          <div className="text-[14px] font-medium mb-[5px]">Event Details</div>
+        <div className="flex flex-col gap-[12px] rounded-[10px] bg-pqSettings p-[14px]">
+          <div className="text-[13px] font-[600] text-pqText">Event Details</div>
           <Input
             label="Event Title"
             placeholder="Event name"
@@ -136,8 +125,8 @@ const GmbSettings: FC = () => {
       )}
 
       {topicType === 'OFFER' && (
-        <div className="flex flex-col gap-[10px] mt-[10px] p-[15px] border border-input rounded-[8px]">
-          <div className="text-[14px] font-medium mb-[5px]">Offer Details</div>
+        <div className="flex flex-col gap-[12px] rounded-[10px] bg-pqSettings p-[14px]">
+          <div className="text-[13px] font-[600] text-pqText">Offer Details</div>
           <Input
             label="Coupon Code (optional)"
             placeholder="SAVE20"

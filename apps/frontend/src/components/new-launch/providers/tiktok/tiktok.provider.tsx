@@ -11,6 +11,7 @@ import {
 import { TikTokDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/tiktok.dto';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { Checkbox } from '@gitroom/react/form/checkbox';
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -134,20 +135,13 @@ const TikTokSettings: FC<{
       )}
       {isTitle && <Input label="Title" {...register('title')} maxLength={89} />}
       <div className={directPostOnly}>
-        <Select
+        <FormChoice
+          name="privacy_level"
           label={t('label_who_can_see_this_video', 'Who can see this video?')}
           disabled={isUploadMode}
-          {...register('privacy_level', {
-            value: 'PUBLIC_TO_EVERYONE',
-          })}
-        >
-          <option value="">{t('select', 'Select')}</option>
-          {privacyLevel.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
+          defaultValue="PUBLIC_TO_EVERYONE"
+          options={privacyLevel}
+        />
       </div>
       <div className="text-[14px] mt-[10px] mb-[18px] text-balance">
         {t(
@@ -171,24 +165,18 @@ const TikTokSettings: FC<{
       </Select>
       {isUploadMode && <div className="-mt-[23px] mb-[23px] text-red-600">After posting you fill find a notification inside your Inbox about your post (not content studio)</div>}
       <div className={clsx('flex flex-col', directPostOnly)}>
-        <Select
+        <FormChoice
+          name="autoAddMusic"
           label={
             isBusiness
               ? t('label_add_random_music', 'Add random music')
               : t('label_auto_add_music', 'Auto add music')
           }
+          layout="segment"
           disabled={isUploadMode}
-          {...register('autoAddMusic', {
-            value: 'no',
-          })}
-        >
-          <option value="">{t('select', 'Select')}</option>
-          {yesNo.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
+          defaultValue="no"
+          options={yesNo}
+        />
         <div className="text-[14px] mt-[10px] mb-[24px] text-balance">
           {isBusiness
             ? t(

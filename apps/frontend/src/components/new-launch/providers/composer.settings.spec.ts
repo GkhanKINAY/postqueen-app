@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const read = (rel: string) =>
+  readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+
+describe('composer channel settings controls', () => {
+  it('uses a segmented FormChoice for Post / Story (and similar 2–3 types)', () => {
+    const choice = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/form.choice.tsx'
+    );
+    const facebook = read('./facebook/facebook.provider.tsx');
+    const instagram = read('./instagram/instagram.collaborators.tsx');
+    const x = read('./x/x.provider.tsx');
+    const gmb = read('./gmb/gmb.provider.tsx');
+
+    assert.match(choice, /layout\?: 'pills' \| 'segment'/);
+    assert.match(choice, /role="radiogroup"/);
+    assert.match(facebook, /layout="segment"/);
+    assert.match(facebook, /name="post_type"/);
+    assert.match(instagram, /layout="segment"/);
+    assert.match(instagram, /name="post_type"/);
+    assert.match(instagram, /value: 'reel'/);
+    assert.match(instagram, /value: 'story'/);
+    assert.match(x, /name="post_type"/);
+    assert.match(x, /layout="segment"/);
+    assert.match(gmb, /name="topicType"/);
+    assert.match(gmb, /layout="segment"/);
+  });
+
+  it('keeps long catalogs as native selects', () => {
+    const facebook = read('./facebook/facebook.provider.tsx');
+    const tiktok = read('./tiktok/tiktok.provider.tsx');
+
+    assert.match(facebook, /FACEBOOK_PRESETS\.map/);
+    assert.match(facebook, /<Select/);
+    assert.match(tiktok, /label_content_posting_method/);
+    assert.match(tiktok, /<Select/);
+  });
+
+  it('moves the same settings form above the editor when a channel is selected', () => {
+    const hop = read('./high.order.provider.tsx');
+    const manage = read('../manage.modal.tsx');
+    const linkedin = read('./linkedin/linkedin.provider.tsx');
+
+    assert.match(manage, /id="composer-quick-settings"/);
+    assert.match(hop, /current \? '#composer-quick-settings' : '#social-settings'/);
+    assert.match(linkedin, /name="post_as_images_carousel"/);
+    assert.match(linkedin, /layout="segment"/);
+  });
+});

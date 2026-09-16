@@ -80,7 +80,7 @@ export const ChannelAvatar: FC<{
           width={badgeSize}
           height={badgeSize}
           className={clsx(
-            'absolute z-10',
+            'absolute z-10 ring-2 ring-pqInner',
             rounded === 'full'
               ? '-bottom-[1px] -end-[1px]'
               : 'bottom-[2px] end-[2px]',

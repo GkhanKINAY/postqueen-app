@@ -241,6 +241,31 @@ export const withProvider = function <T extends object>(params: {
       [value, selectedIntegration, setCurrent]
     );
 
+    const settingsIdentity = (
+      <>
+        <ChannelAvatar
+          integration={selectedIntegration.integration}
+          size={36}
+          badgeSize={14}
+          rounded="full"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-[600] text-pqText">
+            {selectedIntegration?.integration.name}
+          </div>
+          {!!formatChannelHandle(
+            selectedIntegration?.integration.display
+          ) && (
+            <div className="truncate text-[12px] text-pqMuted">
+              {formatChannelHandle(
+                selectedIntegration?.integration.display
+              )}
+            </div>
+          )}
+        </div>
+      </>
+    );
+
     return (
       <IntegrationContext.Provider
         value={{
@@ -313,64 +338,62 @@ export const withProvider = function <T extends object>(params: {
               ))}
             {(SettingsComponent || !!data?.internalPlugs?.length) &&
               createPortal(
-                <div
-                  data-id={props.id}
-                  className={clsx(
-                    isGlobal ? 'block' : 'hidden',
-                    'rounded-[12px] bg-pqInner p-[16px] shadow-[inset_0_0_0_1px_var(--border)]'
-                  )}
-                >
-                  {isGlobal && (
-                    <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
-                  )}
-                  {isGlobal && (
-                    <button
-                      type="button"
-                      aria-expanded={settingsOpen}
-                      onClick={() => setSettingsOpen((open) => !open)}
-                      className="flex w-full items-center gap-[8px] text-start"
-                    >
-                      <ChannelAvatar
-                        integration={selectedIntegration.integration}
-                        size={22}
-                        rounded="full"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-[600] text-pqText">
-                          {selectedIntegration?.integration.name}
-                        </div>
-                        {!!formatChannelHandle(
-                          selectedIntegration?.integration.display
-                        ) && (
-                          <div className="truncate text-[11.5px] text-pqMuted">
-                            {formatChannelHandle(
-                              selectedIntegration?.integration.display
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronDownIcon
-                        rotated={settingsOpen}
-                        size={16}
-                        className="shrink-0 text-pqMuted"
-                      />
-                    </button>
-                  )}
+                current ? (
+                  // Same FormProvider as the global cards. Switching the
+                  // portal target (not remounting the form) is what keeps
+                  // Post Type / carousel / etc. in sync when you leave a
+                  // channel and go back to Global.
                   <div
-                    className={clsx(
-                      'flex flex-col gap-[14px]',
-                      isGlobal && settingsOpen && 'mt-[12px]',
-                      !showSettingsBody && 'hidden'
-                    )}
+                    data-id={props.id}
+                    data-pq="composer-channel-settings"
+                    className="flex flex-col gap-[16px] rounded-[14px] bg-pqInner p-[14px] shadow-[inset_0_0_0_1px_var(--border)]"
                   >
                     {SettingsComponent && <SettingsComponent />}
                     {!!data?.internalPlugs?.length && !dummy && (
                       <InternalChannels plugs={data?.internalPlugs} />
                     )}
                   </div>
-                </div>,
-                document.querySelector('#social-settings') ||
-                  document.createElement('div')
+                ) : (
+                  <div
+                    data-id={props.id}
+                    className={clsx(
+                      isGlobal ? 'block' : 'hidden',
+                      'overflow-hidden rounded-[14px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]'
+                    )}
+                  >
+                    {isGlobal && (
+                      <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
+                    )}
+                    <button
+                      type="button"
+                      aria-expanded={settingsOpen}
+                      onClick={() => setSettingsOpen((open) => !open)}
+                      className="flex w-full items-center gap-[10px] px-[14px] py-[12px] text-start hover:bg-pqHover"
+                    >
+                      {settingsIdentity}
+                      <ChevronDownIcon
+                        rotated={settingsOpen}
+                        size={16}
+                        className="shrink-0 text-pqMuted"
+                      />
+                    </button>
+                    <div
+                      className={clsx(
+                        'flex flex-col gap-[16px] px-[14px] pb-[16px]',
+                        showSettingsBody && 'border-t border-pqLine pt-[16px]',
+                        !showSettingsBody && 'hidden'
+                      )}
+                    >
+                      {SettingsComponent && <SettingsComponent />}
+                      {!!data?.internalPlugs?.length && !dummy && (
+                        <InternalChannels plugs={data?.internalPlugs} />
+                      )}
+                    </div>
+                  </div>
+                ),
+                document.querySelector(
+                  current ? '#composer-quick-settings' : '#social-settings'
+                ) || document.createElement('div')
               )}
             {current &&
               !SettingsComponent &&

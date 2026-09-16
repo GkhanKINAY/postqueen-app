@@ -56,6 +56,7 @@ describe('channel avatar fallback', () => {
 
   it('is the composer chip face instead of a gray no-picture tile', () => {
     assert.match(source, /object-contain/);
+    assert.match(source, /ring-2 ring-pqInner/);
     assert.match(selectCurrent, /<ChannelAvatar/);
     assert.match(picks, /<ChannelAvatar/);
     assert.match(providers, /<ChannelAvatar/);

@@ -5,7 +5,7 @@ import {
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { ThreadFinisher } from '@gitroom/frontend/components/new-launch/finisher/thread.finisher';
-import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
@@ -38,24 +38,24 @@ const whoCanReply = [
 
 const SettingsComponent = () => {
   const t = useT();
-  const { register, watch, setValue } = useSettings();
+  const { register, watch } = useSettings();
   const postType = watch('post_type') || 'post';
 
   return (
     <>
-      <Select
+      <FormChoice
+        name="post_type"
         label={t('label_post_type', 'Post type')}
-        className="mb-5"
-        hideErrors={true}
-        {...register('post_type', {
-          value: 'post',
-        })}
-      >
-        <option value="post">{t('label_post_type_post', 'Post')}</option>
-        <option value="article">
-          {t('label_post_type_article', 'Article (long-form)')}
-        </option>
-      </Select>
+        layout="segment"
+        defaultValue="post"
+        options={[
+          { value: 'post', label: t('label_post_type_post', 'Post') },
+          {
+            value: 'article',
+            label: t('label_post_type_article', 'Article (long-form)'),
+          },
+        ]}
+      />
 
       {postType === 'article' ? (
         <>
@@ -63,21 +63,22 @@ const SettingsComponent = () => {
             label={t('label_article_title', 'Article title')}
             {...register('article_title')}
           />
-          <Select
+          <FormChoice
+            name="article_status"
             label={t('label_article_status', 'Article status')}
-            className="mb-5"
-            hideErrors={true}
-            {...register('article_status', {
-              value: 'draft',
-            })}
-          >
-            <option value="draft">
-              {t('label_article_status_draft', 'Save as draft')}
-            </option>
-            <option value="published">
-              {t('label_article_status_published', 'Publish')}
-            </option>
-          </Select>
+            layout="segment"
+            defaultValue="draft"
+            options={[
+              {
+                value: 'draft',
+                label: t('label_article_status_draft', 'Save as draft'),
+              },
+              {
+                value: 'published',
+                label: t('label_article_status_published', 'Publish'),
+              },
+            ]}
+          />
           <MediaComponent
             type="image"
             label={t('label_article_cover', 'Cover image')}
@@ -90,23 +91,15 @@ const SettingsComponent = () => {
         </>
       ) : (
         <>
-          <Select
+          <FormChoice
+            name="who_can_reply_post"
             label={t(
               'label_who_can_reply_to_this_post',
               'Who can reply to this post?'
             )}
-            className="mb-5"
-            hideErrors={true}
-            {...register('who_can_reply_post', {
-              value: 'everyone',
-            })}
-          >
-            {whoCanReply.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </Select>
+            defaultValue="everyone"
+            options={whoCanReply}
+          />
 
           <Input
             label={
@@ -115,7 +108,7 @@ const SettingsComponent = () => {
             {...register('community')}
           />
 
-          <div className="mt-5 flex flex-col gap-[10px]">
+          <div className="flex flex-col gap-[10px]">
             <Checkbox
               label={t('label_made_with_ai', 'Made with AI')}
               {...register('made_with_ai')}
