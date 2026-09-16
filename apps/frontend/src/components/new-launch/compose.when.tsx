@@ -10,6 +10,7 @@ import { DropdownArrowIcon } from '@gitroom/frontend/components/ui/icons';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
+import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 
@@ -32,6 +33,7 @@ export const ComposeWhen: FC<{
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
+  const { formatShortWeekdayTime } = useDateFormat();
   const { touch } = useViewport();
   const [isOpen, setIsOpen] = useState(false);
   const [slotLoading, setSlotLoading] = useState(false);
@@ -98,7 +100,7 @@ export const ComposeWhen: FC<{
 
   const triggerLabel =
     mode === 'next'
-      ? t('next_available', 'Next available')
+      ? `${t('next_available', 'Next available')} · ${formatShortWeekdayTime(date)}`
       : mode === 'now'
       ? t('post_now', 'Post Now')
       : null;

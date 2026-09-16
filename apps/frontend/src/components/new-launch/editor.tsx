@@ -554,22 +554,21 @@ export const EditorWrapper: FC<{
                     />
                   ) : undefined
                 }
+                trailing={
+                  comments && canEdit && index === lastVisibleIndex ? (
+                    <AddPostButton
+                      num={index}
+                      onClick={addValue(
+                        firstCommentMode ? items.length - 1 : index
+                      )}
+                      postComment={postComment}
+                    />
+                  ) : undefined
+                }
                 childButton={
                   <>
                     {(canEdit && index === lastVisibleIndex) || !comments ? (
                       <div className="flex items-center">
-                        <div className="flex-1">
-                          {comments &&
-                            !(firstCommentMode && items.length < 2) && (
-                            <AddPostButton
-                              num={index}
-                              onClick={addValue(
-                                firstCommentMode ? items.length - 1 : index
-                              )}
-                              postComment={postComment}
-                            />
-                          )}
-                        </div>
                         {!!internal && !existingData?.integration && (
                           <div
                             className="mt-[12px] flex gap-[20px] items-center cursor-pointer select-none"
@@ -651,6 +650,7 @@ export const Editor: FC<{
   chars: Record<string, number>;
   childButton?: React.ReactNode;
   firstComment?: React.ReactNode;
+  trailing?: React.ReactNode;
 }> = (props) => {
   const {
     editorType = 'normal',
@@ -664,6 +664,7 @@ export const Editor: FC<{
     chars,
     childButton,
     firstComment,
+    trailing,
     comments,
   } = props;
   const [id] = useState(makeId(10));
@@ -1087,6 +1088,7 @@ export const Editor: FC<{
                   onChange={(value) => {
                     setImages(value.target.value);
                   }}
+                  trailing={trailing}
                   onOpen={() => {}}
                   onClose={() => {}}
                 />

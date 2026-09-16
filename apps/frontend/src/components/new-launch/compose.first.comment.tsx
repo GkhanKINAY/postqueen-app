@@ -45,7 +45,7 @@ export const ComposeFirstComment: FC<{
         onChange={(event) => onChange(event.target.value)}
         placeholder={t('your_comment', 'Your comment')}
         aria-label={t('first_comment', 'First Comment')}
-        className="h-[40px] min-w-0 flex-1 rounded-[8px] border-0 bg-pqSettings px-[12px] text-[13.5px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="h-[40px] min-w-0 flex-1 rounded-[8px] border-0 bg-pqInner px-[12px] text-[13.5px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
     </div>
   );

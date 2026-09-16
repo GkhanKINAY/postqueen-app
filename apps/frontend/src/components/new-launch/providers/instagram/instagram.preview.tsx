@@ -11,10 +11,12 @@ import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/previ
 import { instagramFeedPreviewRange } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export const InstagramPreview: FC<{
   maximumCharacters?: number;
 }> = (props) => {
+  const t = useT();
   const { value: topValue, integration } = useIntegration();
   const current = useLaunchStore((state) => state.current);
   const mediaDir = useMediaDirectory();
@@ -110,23 +112,23 @@ export const InstagramPreview: FC<{
         />
       ) : (
         <div
+          className="mx-auto flex items-center justify-center overflow-hidden rounded-[8px] bg-pqSettings text-[13px] font-[600] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]"
           style={
             isStory
               ? {
-                  background: 'url(/no-video-youtube.png)',
                   aspectRatio: '9 / 16',
                   maxHeight: 'min(34vh, 300px)',
                   width: 'min(100%, calc(min(34vh, 300px) * 9 / 16))',
                 }
               : {
-                  background: 'url(/no-video-youtube.png)',
                   aspectRatio: '4 / 5',
                   maxHeight: 'min(34vh, 300px)',
                   width: 'min(100%, calc(min(34vh, 300px) * 4 / 5))',
                 }
           }
-          className="mx-auto !bg-cover overflow-hidden rounded-[8px]"
-        />
+        >
+          {t('insert_media', 'Insert media')}
+        </div>
       )}
       <div
         className="text-[14px] font-[400] whitespace-pre-line"

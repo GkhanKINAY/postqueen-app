@@ -15,5 +15,6 @@ describe('composer first comment', () => {
     assert.match(source, /your_comment/);
     assert.doesNotMatch(source, /DelayComponent/);
     assert.doesNotMatch(source, /EditorContent/);
+    assert.match(source, /bg-pqInner/);
   });
 });
