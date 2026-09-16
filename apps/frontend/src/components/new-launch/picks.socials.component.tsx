@@ -93,10 +93,10 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                       addOrRemoveSelectedIntegration(integration, {});
                     }}
                     className={clsx(
-                      'relative flex cursor-pointer items-center justify-center rounded-full border-[2px] bg-pqSettings filter transition-all duration-500',
-                      !isSelected
-                        ? 'grayscale border-transparent'
-                        : 'border-pqBrand'
+                      'relative flex cursor-pointer items-center justify-center rounded-full bg-pqSettings',
+                      isSelected
+                        ? 'ring-2 ring-pqBrand'
+                        : 'grayscale'
                     )}
                   >
                     {isSelected && (
@@ -123,12 +123,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                       size={42}
                       rounded="full"
                       badgeSize={16}
-                      className={clsx(
-                        'min-h-[42px] min-w-[42px] border-[1.5px] transition-all',
-                        !isSelected
-                          ? 'border-transparent'
-                          : 'border-pqInner'
-                      )}
+                      className="min-h-[42px] min-w-[42px]"
                     />
                   </div>
                 </div>

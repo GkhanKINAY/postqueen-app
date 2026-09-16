@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useState,
 } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { IsOptional } from 'class-validator';
@@ -24,6 +25,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { ChevronDownIcon } from '@gitroom/frontend/components/ui/icons';
 
 class Empty {
   @IsOptional()
@@ -103,6 +105,8 @@ export const withProvider = function <T extends object>(params: {
         ),
       }))
     );
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const showSettingsBody = !isGlobal || settingsOpen;
 
     useEffect(() => {
       if (!setTotalChars) {
@@ -181,6 +185,12 @@ export const withProvider = function <T extends object>(params: {
       criteriaMode: 'all',
       reValidateMode: 'onChange',
     });
+
+    useEffect(() => {
+      if (Object.keys(form.formState.errors).length > 0) {
+        setSettingsOpen(true);
+      }
+    }, [form.formState.errors]);
 
     const revealChannel = () => {
       setCurrent(props.id);
@@ -314,13 +324,18 @@ export const withProvider = function <T extends object>(params: {
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="mb-[12px] flex items-center gap-[8px]">
+                    <button
+                      type="button"
+                      aria-expanded={settingsOpen}
+                      onClick={() => setSettingsOpen((open) => !open)}
+                      className="flex w-full items-center gap-[8px] text-start"
+                    >
                       <ChannelAvatar
                         integration={selectedIntegration.integration}
                         size={22}
                         rounded="full"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="truncate text-[13px] font-[600] text-pqText">
                           {selectedIntegration?.integration.name}
                         </div>
@@ -334,9 +349,20 @@ export const withProvider = function <T extends object>(params: {
                           </div>
                         )}
                       </div>
-                    </div>
+                      <ChevronDownIcon
+                        rotated={settingsOpen}
+                        size={16}
+                        className="shrink-0 text-pqMuted"
+                      />
+                    </button>
                   )}
-                  <div className="flex flex-col gap-[14px]">
+                  <div
+                    className={clsx(
+                      'flex flex-col gap-[14px]',
+                      isGlobal && settingsOpen && 'mt-[12px]',
+                      !showSettingsBody && 'hidden'
+                    )}
+                  >
                     {SettingsComponent && <SettingsComponent />}
                     {!!data?.internalPlugs?.length && !dummy && (
                       <InternalChannels plugs={data?.internalPlugs} />

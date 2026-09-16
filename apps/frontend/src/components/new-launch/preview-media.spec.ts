@@ -87,7 +87,9 @@ describe('post preview media frame', () => {
     assert.doesNotMatch(pinterest, /absolute left-0 top-0/);
     assert.match(youtube, /flex w-full flex-col/);
     assert.match(youtube, /PREVIEW_MEDIA_MAX_HEIGHT/);
-    assert.match(tiktok, /max-h-\[min\(34vh,300px\)\]/);
+    assert.match(tiktok, /PREVIEW_MEDIA_MAX_HEIGHT/);
+    assert.match(tiktok, /aspectRatio: '9 \/ 16'/);
+    assert.doesNotMatch(tiktok, /max-h-\[min\(34vh,300px\)\]/);
   });
 
   it('shows the channel handle on Instagram, not only the page name', () => {

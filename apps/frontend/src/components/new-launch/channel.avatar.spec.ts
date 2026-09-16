@@ -62,4 +62,13 @@ describe('channel avatar fallback', () => {
     assert.doesNotMatch(selectCurrent, /fallbackSrc="\/no-picture\.jpg"/);
     assert.doesNotMatch(picks, /fallbackSrc="\/no-picture\.jpg"/);
   });
+
+  it('draws selected channel rings with box-shadow, not a CSS border plus filter', () => {
+    assert.match(picks, /ring-2 ring-pqBrand/);
+    assert.doesNotMatch(picks, /border-pqBrand/);
+    assert.doesNotMatch(picks, /bg-pqSettings filter /);
+    assert.match(selectCurrent, /ring-2 ring-pqPink/);
+    assert.match(selectCurrent, /ring-2 ring-pqBrand/);
+    assert.doesNotMatch(selectCurrent, /inset_0_0_0_1\.5px_var\(--pink\)/);
+  });
 });

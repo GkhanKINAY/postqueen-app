@@ -57,7 +57,6 @@ add_signature
 add_subreddit
 add_team_member
 add_time_slot
-add_to_calendar
 add_webhook
 add_your_first_channel
 added_successfully
@@ -1122,6 +1121,7 @@ enter_email
 error
 error_details
 error_occurred
+every
 extend_postqueen_with_other_tools
 extension_communication_error
 extension_cookies_missing
@@ -1705,7 +1705,6 @@ remove_social_account
 removes_the_channel_and_its_scheduled_posts
 repeat_password
 repeat_post_every
-repeat_post_every_label
 report_a_bug
 republish_at
 republish_recurring_note

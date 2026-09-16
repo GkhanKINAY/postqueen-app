@@ -51,6 +51,10 @@ describe('phone calendar and composer', () => {
     assert.match(manage, /flex min-h-0 flex-1/);
     assert.match(manage, /pb-\[min\(34vh,260px\)\]/);
     assert.match(manage, /snap-y snap-proximity/);
+    assert.match(
+      manage,
+      /compactChrome\s*\?\s*'pb-\[min\(34vh,260px\)\] snap-y snap-proximity'/
+    );
     assert.match(manage, /<ComposeAiAssistant \/>/);
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
   });
@@ -118,6 +122,8 @@ describe('phone calendar and composer', () => {
     assert.match(hop, /postHasPreview\(value\?\.\[0\]\)/);
     assert.match(hop, /fix: revealChannel/);
     assert.match(hop, /preview: revealChannel/);
+    assert.match(hop, /aria-expanded=\{settingsOpen\}/);
+    assert.match(hop, /const showSettingsBody = !isGlobal \|\| settingsOpen/);
   });
 
   it('keeps the composer footer from overlapping on phone and tablet', () => {
@@ -141,10 +147,17 @@ describe('phone calendar and composer', () => {
     assert.match(tags, /tagsToPostPayload/);
     assert.match(repeat, /touch \? \(\s*repeat \?/);
     assert.match(repeat, /aria-label=\{triggerLabel\}/);
+    assert.match(repeat, /t\('every', 'Every'\)/);
+    assert.match(repeat, /t\('clear', 'Clear'\)/);
+    assert.match(repeat, /if \(p\.clear && !repeat\)/);
+    assert.doesNotMatch(repeat, /t\('cancel', 'Cancel'\)/);
     assert.match(editor, /flex min-w-0 flex-col gap-\[10px\] overflow-hidden border-t border-pqLine/);
     assert.match(editor, /flex min-w-0 items-start gap-\[12px\]/);
     assert.match(editor, /flex w-full min-w-0 flex-wrap/);
     assert.doesNotMatch(manage, /check_circles_above/);
+    assert.match(manage, /setPostNowOpen/);
+    assert.match(manage, /schedule\('now'\)/);
+    assert.doesNotMatch(manage, /t\('add_to_calendar'/);
   });
 
   it('opens Day/Week/Month from a single View sheet on phone', () => {

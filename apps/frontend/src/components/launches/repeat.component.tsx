@@ -8,48 +8,54 @@ import { RepeatIcon, DropdownArrowIcon } from '@gitroom/frontend/components/ui/i
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 
-const getList = (t: (key: string, fallback: string) => string) => [
-  {
-    value: 1,
-    label: t('day', 'Day'),
-  },
-  {
-    value: 2,
-    label: t('two_days', 'Two Days'),
-  },
-  {
-    value: 3,
-    label: t('three_days', 'Three Days'),
-  },
-  {
-    value: 4,
-    label: t('four_days', 'Four Days'),
-  },
-  {
-    value: 5,
-    label: t('five_days', 'Five Days'),
-  },
-  {
-    value: 6,
-    label: t('six_days', 'Six Days'),
-  },
-  {
-    value: 7,
-    label: t('week', 'Week'),
-  },
-  {
-    value: 14,
-    label: t('two_weeks', 'Two Weeks'),
-  },
-  {
-    value: 30,
-    label: t('month', 'Month'),
-  },
-  {
-    value: null,
-    label: t('cancel', 'Cancel'),
-  },
-];
+const getList = (
+  t: (key: string, fallback: string) => string
+): { value: number | null; label: string; clear?: boolean }[] => {
+  const every = t('every', 'Every');
+  return [
+    {
+      value: 1,
+      label: `${every} ${t('day', 'Day')}`,
+    },
+    {
+      value: 2,
+      label: `${every} ${t('two_days', 'Two Days')}`,
+    },
+    {
+      value: 3,
+      label: `${every} ${t('three_days', 'Three Days')}`,
+    },
+    {
+      value: 4,
+      label: `${every} ${t('four_days', 'Four Days')}`,
+    },
+    {
+      value: 5,
+      label: `${every} ${t('five_days', 'Five Days')}`,
+    },
+    {
+      value: 6,
+      label: `${every} ${t('six_days', 'Six Days')}`,
+    },
+    {
+      value: 7,
+      label: `${every} ${t('week', 'Week')}`,
+    },
+    {
+      value: 14,
+      label: `${every} ${t('two_weeks', 'Two Weeks')}`,
+    },
+    {
+      value: 30,
+      label: `${every} ${t('month', 'Month')}`,
+    },
+    {
+      value: null,
+      label: t('clear', 'Clear'),
+      clear: true,
+    },
+  ];
+};
 export const RepeatComponent: FC<{
   repeat: number | null;
   onChange: (newVal: number) => void;
@@ -80,9 +86,9 @@ export const RepeatComponent: FC<{
   }, [repeat, list]);
 
   const emptyLabel = t('repeat_post_every', 'Repeat Post Every...');
-  const triggerLabel = repeat
-    ? `${t('repeat_post_every_label', 'Repeat Post Every')} ${everyLabel}`
-    : emptyLabel;
+  // Selected trigger is just "Every Day" — prefixing repeat_post_every_label
+  // would read "Repeat Post Every Every Day".
+  const triggerLabel = repeat ? everyLabel : emptyLabel;
 
   return (
     <div
@@ -121,18 +127,34 @@ export const RepeatComponent: FC<{
           ref={floatingRef}
           className="z-[300] flex w-[240px] flex-col bg-newBgColorInner p-[12px] menu-shadow"
         >
-          {list.map((p) => (
-            <div
-              onClick={() => {
-                props.onChange(Number(p.value));
-                setIsOpen(false);
-              }}
-              key={p.label}
-              className="h-[40px] py-[8px] px-[20px] -mx-[12px] hover:bg-newBgColor"
-            >
-              {p.label}
-            </div>
-          ))}
+          {list.map((p) => {
+            if (p.clear && !repeat) {
+              return null;
+            }
+            return (
+              <div key={p.label}>
+                {p.clear && (
+                  <div
+                    className="mx-[8px] my-[6px] h-px bg-pqLine"
+                    aria-hidden="true"
+                  />
+                )}
+                <div
+                  role="button"
+                  onClick={() => {
+                    props.onChange(Number(p.value));
+                    setIsOpen(false);
+                  }}
+                  className={clsx(
+                    'h-[40px] cursor-pointer px-[20px] py-[8px] -mx-[12px] hover:bg-newBgColor',
+                    p.clear && 'text-[14px] font-[600] text-pqMuted'
+                  )}
+                >
+                  {p.label}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
