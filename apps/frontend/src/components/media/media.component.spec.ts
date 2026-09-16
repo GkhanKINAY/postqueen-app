@@ -9,18 +9,31 @@ const source = readFileSync(
 );
 
 describe('composer media hover actions', () => {
-  it('keeps the 48px thumb uncovered: corner X only, no overlay or extra chips', () => {
+  it('paints Create Post thumbs with overlay chips on the photo', () => {
+    assert.match(source, /dragging h-\[120px\] w-\[120px\]/);
+    assert.match(source, /composer-media-thumb/);
+    assert.match(source, /data-pq="composer-add-media"/);
+    assert.match(source, /data-pq="composer-media-info"/);
+    assert.match(source, /change_alt_text/);
+    assert.match(source, /alt_text_subtitle/);
+    assert.match(source, /MediaComponentInner/);
+    assert.match(source, /absolute end-\[6px\] top-\[6px\].*size-\[28px\]/);
+    assert.match(source, /absolute start-\[6px\] top-\[6px\].*size-\[28px\]/);
+    assert.match(source, /trailing\?: React\.ReactNode/);
+    assert.doesNotMatch(source, /instagram_45_hint/);
+    assert.doesNotMatch(source, /#2563EB/);
+  });
+
+  it('keeps agent and in-form attachment chips small, with a hanging X', () => {
+    assert.match(source, /dragging h-\[58px\] w-\[58px\]/);
+    assert.match(source, /dragging h-\[48px\] w-\[48px\]/);
     assert.match(source, /absolute -end-\[6px\] -top-\[6px\].*size-\[16px\]/);
-    assert.doesNotMatch(source, /bg-black\/(40|70)/);
-    assert.doesNotMatch(source, /media_settings/);
-    assert.doesNotMatch(source, /change_alt_text/);
-    assert.doesNotMatch(source, /overflow-hidden transition-\[box-shadow\]/);
     assert.match(source, /!ghost &&\s+!touch &&\s+'opacity-0/);
-    assert.match(source, /height: touch \? '100%' : MEDIA_LIBRARY_PICKER_HEIGHT/);
   });
 
   it('drags from the whole thumb, not a four-dot grab handle', () => {
-    assert.match(source, /dragging h-\[48px\] w-\[48px\]/);
+    assert.match(source, /handle=".dragging"/);
     assert.doesNotMatch(source, /reorder_media/);
+    assert.match(source, /filter=\{\'\[data-ci-actions="1"\]\'\}/);
   });
 });

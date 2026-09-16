@@ -29,30 +29,29 @@ export const AddPostButton: FC<{
       : t('add_comment', 'Add comment');
 
   return (
-    <div className="flex">
-      <button
-        type="button"
-        onClick={onClick}
-        className="mt-[12px] flex h-[40px] max-w-full cursor-pointer select-none items-center justify-center gap-[8px] rounded-[10px] bg-pqPink ps-[16px] pe-[18px] text-[13.5px] font-[600] text-white transition-opacity hover:opacity-90"
+    <button
+      type="button"
+      onClick={onClick}
+      data-pq="composer-add-comment"
+      className="inline-flex h-[36px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] bg-pqBtnSimple px-[12px] text-[12px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        aria-hidden="true"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M8.00065 3.33301V12.6663M3.33398 7.99967H12.6673"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        {label}
-      </button>
-    </div>
+        <path
+          d="M8.00065 3.33301V12.6663M3.33398 7.99967H12.6673"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {label}
+    </button>
   );
 };

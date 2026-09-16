@@ -14,7 +14,7 @@ describe('composer when-to-post control', () => {
     assert.match(source, /next_available/);
     assert.match(source, /post_now/);
     assert.match(source, /set_date_and_time/);
-    assert.match(source, /\/posts\/find-slot/);
+    assert.match(source, /formatShortWeekdayTime/);
     assert.doesNotMatch(source, /value: 'prioritize'/);
   });
 });

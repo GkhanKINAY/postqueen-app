@@ -93,4 +93,8 @@ describe('post preview media frame', () => {
   it('shows the channel handle on Instagram, not only the page name', () => {
     assert.match(instagram, /formatChannelHandle\(integration\?\.display\)/);
   });
+
+  it('does not paint the YouTube empty placeholder onto Instagram', () => {
+    assert.doesNotMatch(instagram, /no-video-youtube/);
+  });
 });

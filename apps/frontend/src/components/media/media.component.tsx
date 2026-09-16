@@ -22,6 +22,7 @@ import {
   InsertMediaIcon,
   DesignMediaIcon,
 } from '@gitroom/frontend/components/ui/icons';
+import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 
 const Polonto = dynamic(
   () => import('@gitroom/frontend/components/launches/polonto')
@@ -102,6 +103,7 @@ export const MultiMediaComponent: FC<{
   onClose?: () => void;
   toolBar?: React.ReactNode;
   information?: React.ReactNode;
+  trailing?: React.ReactNode;
   onChange: (event: {
     target: {
       name: string;
@@ -128,10 +130,12 @@ export const MultiMediaComponent: FC<{
     attachmentsOnly,
     toolBar,
     information,
+    trailing,
     mediaNotAvailable,
   } = props;
   const showThumbs = !ghost || ghostPart === 'all' || ghostPart === 'thumbs';
   const showToolbar = !ghost || ghostPart === 'all' || ghostPart === 'toolbar';
+  const studioThumbs = !ghost && !attachmentsOnly;
 
   // Ghost mode never hides a label, which was fine for four buttons and wraps
   // with five. The constraint is the *column*, not the window — the agent
@@ -298,6 +302,111 @@ export const MultiMediaComponent: FC<{
     // callback keeps its first-render capture of the tier gate.
   }, [changeMedia, user, dummy, modals, t, plontoKey, setupHint]);
 
+  const openMediaSettings = useCallback(
+    (media: {
+      id: string;
+      path: string;
+      alt?: string;
+      thumbnail?: string;
+      thumbnailTimestamp?: number;
+    }) => {
+      modals.openModal({
+        title: t('change_alt_text', 'Change alt text'),
+        askClose: false,
+        closeOnEscape: true,
+        children: (close) => (
+          <MediaComponentInner
+            media={media as any}
+            onClose={close}
+            onSelect={(next: any) => {
+              const existing = currentMediaRef.current || [];
+              const updated = existing.map((item) =>
+                item.id === media.id ? { ...item, ...next } : item
+              );
+              setCurrentMedia(updated);
+              onChange({
+                target: {
+                  name,
+                  value: updated,
+                },
+              });
+            }}
+          />
+        ),
+      });
+    },
+    [modals, t, name, onChange]
+  );
+
+  const replaceMediaAt = useCallback(
+    (index: number) =>
+      (m: { path: string; id: string }[]) => {
+        const next = m[0];
+        if (!next?.id) {
+          return;
+        }
+        const existing = currentMediaRef.current || [];
+        const updated = existing.map((item, i) =>
+          i === index ? { ...item, id: next.id, path: next.path } : item
+        );
+        setCurrentMedia(updated);
+        onChange({
+          target: {
+            name,
+            value: updated,
+          },
+        });
+      },
+    [name, onChange]
+  );
+
+  const editMedia = useCallback(
+    (
+      index: number,
+      media: {
+        id: string;
+        path: string;
+        alt?: string;
+        thumbnail?: string;
+        thumbnailTimestamp?: number;
+      }
+    ) => {
+      const isVideo = hasExtension(media?.path, 'mp4');
+      const canDesign = showDesign && !!user?.tier?.ai && !dummy && !isVideo;
+      if (canDesign) {
+        if (!plontoKey) {
+          setupHint(
+            t('design_media', 'Design Media'),
+            'NEXT_PUBLIC_POLOTNO',
+            'https://docs.postqueen.ai/configuration/polotno'
+          );
+          return;
+        }
+        modals.openModal({
+          askClose: false,
+          title: t('design_media', 'Design Media'),
+          size: '80%',
+          children: (close) => (
+            <Polonto setMedia={replaceMediaAt(index)} closeModal={close} />
+          ),
+        });
+        return;
+      }
+      openMediaSettings(media);
+    },
+    [
+      showDesign,
+      user,
+      dummy,
+      plontoKey,
+      setupHint,
+      t,
+      modals,
+      replaceMediaAt,
+      openMediaSettings,
+    ]
+  );
+
   if (ghost && ghostPart === 'thumbs' && !currentMedia?.length) {
     return null;
   }
@@ -315,10 +424,12 @@ export const MultiMediaComponent: FC<{
         {showThumbs && (
           <div
             className={clsx(
-              'flex overflow-visible',
+              'flex',
               ghost
-                ? 'flex-wrap gap-[7px] pb-[3px] pe-[6px] pt-[6px]'
-                : 'gap-[10px] px-[12px] pe-[18px] pt-[8px]'
+                ? 'flex-wrap gap-[7px] overflow-visible pb-[3px] pe-[6px] pt-[6px]'
+                : studioThumbs
+                  ? 'flex-wrap items-start gap-[10px] px-[12px] pt-[10px]'
+                  : 'gap-[10px] overflow-visible px-[12px] pe-[18px] pt-[8px]'
             )}
           >
             {!!currentMedia && (
@@ -329,8 +440,12 @@ export const MultiMediaComponent: FC<{
                   onChange({ target: { name, value: next } });
                 }}
                 className={clsx(
-                  'sortable-container flex overflow-visible',
-                  ghost ? 'flex-wrap gap-[7px]' : 'gap-[10px]'
+                  'sortable-container flex',
+                  ghost
+                    ? 'flex-wrap gap-[7px] overflow-visible'
+                    : studioThumbs
+                      ? 'flex-wrap gap-[10px]'
+                      : 'gap-[10px] overflow-visible'
                 )}
                 animation={200}
                 swap={true}
@@ -341,11 +456,14 @@ export const MultiMediaComponent: FC<{
                 {currentMedia.map((media, index) => (
                   <div
                     key={`${media.id}-${index}`}
+                    data-pq={studioThumbs ? 'composer-media-thumb' : undefined}
                     className={clsx(
-                      'group relative overflow-visible transition-[box-shadow]',
+                      'group relative transition-[box-shadow]',
                       ghost
-                        ? 'dragging h-[58px] w-[58px] cursor-move rounded-[9px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)]'
-                        : 'dragging h-[48px] w-[48px] cursor-move rounded-[8px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand)]'
+                        ? 'dragging h-[58px] w-[58px] cursor-move overflow-visible rounded-[9px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)]'
+                        : studioThumbs
+                          ? 'dragging h-[120px] w-[120px] cursor-move overflow-hidden rounded-[10px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)]'
+                          : 'dragging h-[48px] w-[48px] cursor-move overflow-visible rounded-[8px] bg-pqSettings shadow-[inset_0_0_0_1px_var(--border)] hover:shadow-[inset_0_0_0_1px_var(--brand)]'
                     )}
                   >
                     <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
@@ -355,47 +473,175 @@ export const MultiMediaComponent: FC<{
                         <img
                           className="h-full w-full object-cover"
                           src={mediaDirectory.set(media?.path)}
-                          alt=""
+                          alt={(media as { alt?: string }).alt || ''}
                         />
                       )}
                     </div>
 
-                    {/* 48px cannot hold overlay chips. Drag the thumb; remove hangs off the corner. */}
-                    <button
-                      type="button"
-                      data-ci-actions="1"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        clearMedia(index)();
-                      }}
-                      aria-label={t('remove', 'Remove')}
-                      title={t('remove', 'Remove')}
-                      className={clsx(
-                        'absolute -end-[6px] -top-[6px] z-[20] grid size-[16px] cursor-pointer place-items-center rounded-full bg-pqPop text-pqMuted shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_0_0_1px_var(--border)] hover:bg-pqDanger hover:text-pqOnBrand',
-                        !ghost &&
-                          !touch &&
-                          'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
-                      )}
-                    >
-                      <svg
-                        viewBox="0 0 12 12"
-                        width="8"
-                        height="8"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M3 3l6 6M9 3L3 9"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
+                    {studioThumbs ? (
+                      <>
+                        <button
+                          type="button"
+                          data-ci-actions="1"
+                          data-pq="composer-media-info"
+                          data-tooltip-id="tooltip"
+                          data-tooltip-content={t(
+                            'alt_text_subtitle',
+                            'Describe the image for screen readers and platforms that support alt text.'
+                          )}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          aria-label={t('help', 'Help')}
+                          title={t('help', 'Help')}
+                          className="absolute start-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-full bg-pqBrand text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
+                        >
+                          <svg
+                            viewBox="0 0 16 16"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M8 7.15v4.1"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
+                            <circle cx="8" cy="5" r="1.05" fill="currentColor" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          data-ci-actions="1"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearMedia(index)();
+                          }}
+                          aria-label={t('remove', 'Remove')}
+                          title={t('remove', 'Remove')}
+                          className="absolute end-[6px] top-[6px] z-[20] grid size-[28px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-pqDanger"
+                        >
+                          <svg
+                            viewBox="0 0 12 12"
+                            width="10"
+                            height="10"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M3 3l6 6M9 3L3 9"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          data-ci-actions="1"
+                          className="pointer-events-none absolute inset-x-0 bottom-0 z-[10] h-[56px] bg-gradient-to-t from-black/55 to-transparent"
                         />
-                      </svg>
-                    </button>
+                        <div
+                          data-ci-actions="1"
+                          className="absolute inset-x-0 bottom-0 z-[20] flex items-center justify-center gap-[6px] px-[8px] pb-[8px]"
+                        >
+                          <button
+                            type="button"
+                            data-ci-actions="1"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMediaSettings(media);
+                            }}
+                            aria-label={t(
+                              'change_alt_text',
+                              'Change alt text'
+                            )}
+                            title={t('change_alt_text', 'Change alt text')}
+                            className="inline-flex h-[32px] cursor-pointer items-center rounded-[8px] bg-black/72 px-[8px] text-[11px] font-[700] tracking-[0.06em] text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+                          >
+                            ALT
+                          </button>
+                          <button
+                            type="button"
+                            data-ci-actions="1"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editMedia(index, media);
+                            }}
+                            aria-label={t('edit', 'Edit')}
+                            title={t('edit', 'Edit')}
+                            className="grid size-[32px] cursor-pointer place-items-center rounded-[8px] bg-black/72 text-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] backdrop-blur-[2px] hover:bg-black/85"
+                          >
+                            <svg
+                              viewBox="0 0 16 16"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M11.4 2.6 13.4 4.6 5.85 12.15 3.5 12.65l.5-2.35L11.4 2.6Z"
+                                stroke="currentColor"
+                                strokeWidth="1.4"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        data-ci-actions="1"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearMedia(index)();
+                        }}
+                        aria-label={t('remove', 'Remove')}
+                        title={t('remove', 'Remove')}
+                        className={clsx(
+                          'absolute -end-[6px] -top-[6px] z-[20] grid size-[16px] cursor-pointer place-items-center rounded-full bg-pqPop text-pqMuted shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_0_0_1px_var(--border)] hover:bg-pqDanger hover:text-pqOnBrand',
+                          !ghost &&
+                            !touch &&
+                            'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
+                        )}
+                      >
+                        <svg
+                          viewBox="0 0 12 12"
+                          width="8"
+                          height="8"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M3 3l6 6M9 3L3 9"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 ))}
               </ReactSortable>
+            )}
+            {studioThumbs && !!currentMedia?.length && (
+              <button
+                type="button"
+                data-pq="composer-add-media"
+                onClick={showModal}
+                aria-label={t('insert_media', 'Insert media')}
+                className="flex h-[120px] w-[120px] shrink-0 cursor-pointer flex-col items-center justify-center gap-[8px] rounded-[10px] border border-dashed border-[color-mix(in_srgb,var(--brand)_55%,var(--border))] bg-pqInner px-[10px] text-center text-pqBrand transition-colors hover:bg-pqHover"
+              >
+                <InsertMediaIcon />
+                <span className="text-[11.5px] font-[600] leading-[1.25]">
+                  {t('insert_media', 'Insert media')}
+                </span>
+              </button>
             )}
           </div>
         )}
@@ -505,6 +751,9 @@ export const MultiMediaComponent: FC<{
               <div className="flex flex-wrap items-center gap-[6px]">
                 {toolBar}
               </div>
+            )}
+            {!!trailing && (
+              <div className="flex shrink-0 items-center">{trailing}</div>
             )}
             {information && (
               <div className="ms-auto flex items-center gap-[4px]">

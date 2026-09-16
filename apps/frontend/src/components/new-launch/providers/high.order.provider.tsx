@@ -314,20 +314,20 @@ export const withProvider = function <T extends object>(params: {
                     <style>{`#wrapper-settings {display: flex !important} #social-empty {display: block !important;}`}</style>
                   )}
                   {isGlobal && (
-                    <div className="mb-[14px] flex items-center gap-[12px] border-b border-pqLine pb-[14px]">
+                    <div className="mb-[12px] flex items-center gap-[8px]">
                       <ChannelAvatar
                         integration={selectedIntegration.integration}
-                        size={36}
+                        size={22}
                         rounded="full"
                       />
-                      <div>
-                        <div className="text-[15px] font-[600] tracking-[-0.01em] text-pqText">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-[600] text-pqText">
                           {selectedIntegration?.integration.name}
                         </div>
                         {!!formatChannelHandle(
                           selectedIntegration?.integration.display
                         ) && (
-                          <div className="mt-[1px] truncate text-[12.5px] text-pqMuted">
+                          <div className="truncate text-[11.5px] text-pqMuted">
                             {formatChannelHandle(
                               selectedIntegration?.integration.display
                             )}

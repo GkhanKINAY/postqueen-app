@@ -55,11 +55,13 @@ describe('phone calendar and composer', () => {
     assert.doesNotMatch(manage, /max-h-\[340px\]/);
   });
 
-  it('keeps when-to-post beside Add to calendar, not on the far left', () => {
+  it('keeps when-to-post with tags, not squeezed against Add to calendar', () => {
     assert.match(manage, /gap-\[12px\] p-\[12px\]/);
-    const dateIdx = manage.indexOf('<DatePicker');
+    const whenIdx = manage.lastIndexOf('<ComposeWhen');
+    const tagsIdx = manage.lastIndexOf('<TagsComponent');
     const scheduleIdx = manage.lastIndexOf("schedule('schedule')");
-    assert.ok(dateIdx > 0 && scheduleIdx > dateIdx);
+    assert.ok(whenIdx > 0 && tagsIdx > 0 && scheduleIdx > whenIdx);
+    assert.ok(whenIdx > tagsIdx);
     assert.match(manage, /shrink-0 pe-\[20px\]/);
   });
 

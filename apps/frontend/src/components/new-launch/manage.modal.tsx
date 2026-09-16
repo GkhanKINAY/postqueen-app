@@ -5,7 +5,6 @@ import React, {
   ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -42,8 +41,6 @@ import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dumm
 import { ComposeAiAssistant } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
-  SettingsIcon,
-  ChevronDownIcon,
   CloseIcon,
   ExpandIcon,
   CollapseIcon,
@@ -58,8 +55,6 @@ import {
   useViewport,
 } from '@gitroom/frontend/components/layout/use.viewport';
 import { useCalendar } from '@gitroom/frontend/components/launches/calendar.context';
-import { useClickOutside } from '@mantine/hooks';
-import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
 
 /** Side-by-side editor + preview once the viewport can hold a 420px preview. */
@@ -169,7 +164,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
-  const [postNowOpen, setPostNowOpen] = useState(false);
   const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
     postWantsPublishNotice(existingData.settings)
   );
@@ -177,19 +171,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const { dropPostGroupFromView } = useCalendar();
   const modal = useModals();
   const { formatShortWeekdayTime } = useDateFormat();
-  const [showSettings, setShowSettings] = useState(false);
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
-  // Footer overflow-y-hidden clips absolute menus; fixed popover escapes it.
-  const { referenceRef: postNowRef, floatingRef: postNowMenuRef } =
-    useAnchoredPopover<HTMLDivElement, HTMLDivElement>(postNowOpen, 'end', {
-      offsetPx: 10,
-      placement: 'top-end',
-    });
-  const postNowClickRef = useClickOutside(() => {
-    if (postNowOpen) {
-      setPostNowOpen(false);
-    }
-  });
 
   const { addEditSets, mutate, customClose, dummy, when: whenProp } = props;
   const [whenMode, setWhenMode] = useState<ComposeWhenMode>(() =>
@@ -245,40 +227,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       setComposerPane('edit');
     }
   }, [phoneFlow, composerPane]);
-
-  const currentIntegrationText = useMemo(() => {
-    if (current === 'global') {
-      return (
-        <div className="flex items-center gap-[10px]">
-          <div className="relative">
-            <SettingsIcon size={15} className="text-pqText" />
-          </div>
-          <div>Settings</div>
-        </div>
-      );
-    }
-
-    const currentIntegration = integrations.find((p) => p.id === current)!;
-
-    return (
-      <div className="flex items-center gap-[10px]">
-        <div className="relative">
-          <img
-            src={`/icons/platforms/${currentIntegration.identifier}.png`}
-            className="w-[20px] h-[20px] rounded-[4px]"
-            alt={currentIntegration.identifier}
-          />
-          <SettingsIcon
-            size={15}
-            className="absolute -end-[5px] -bottom-[5px] text-pqText"
-          />
-        </div>
-        <div>
-          {currentIntegration.name} {t('channel_settings', 'Settings')}
-        </div>
-      </div>
-    );
-  }, [current]);
 
   const changeCustomer = useCallback(
     (customer: string) => {
@@ -550,7 +498,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // off global editing and locks the editor behind "Edit content".
         const revealWriteForIssue = (kind: 'settings' | 'content') => {
           setComposerPane('edit');
-          setShowSettings(kind === 'settings');
+          if (kind === 'settings') {
+            document
+              .getElementById('wrapper-settings')
+              ?.scrollIntoView({ block: 'nearest' });
+          }
         };
 
         const notEnoughChars = checkAllValid.filter((p: any) => p.emptyContent);
@@ -876,9 +828,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               )}
             </div>
             <div className="flex-1 flex flex-col gap-[16px]">
-              <div
-                className={clsx('flex-1 relative', showSettings && 'hidden')}
-              >
+              <div className="flex-1 relative">
                 <div
                   id="social-content"
                   className="gap-[32px] flex flex-col pe-[8px] pt-[20px] ps-[20px] absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner"
@@ -921,6 +871,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
                     <div
+                      id="wrapper-settings"
+                      data-pq="composer-settings"
+                      role="region"
+                      aria-label={t('channel_settings', 'Channel settings')}
+                      className={clsx(
+                        'flex flex-col select-none',
+                        selectedIntegrations.length === 0 && 'hidden'
+                      )}
+                    >
+                      <div
+                        id="social-settings"
+                        className="flex flex-col gap-[16px] text-[14px] font-[500] text-pqText"
+                      />
+                      <style>
+                        {`#social-settings [data-id="${current}"] {display: block !important;}`}
+                      </style>
+                    </div>
+                    <div
                       id="social-empty"
                       className={clsx(
                         'pb-[16px]'
@@ -928,49 +896,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       )}
                     />
                   </div>
-                </div>
-              </div>
-              <div
-                id="wrapper-settings"
-                className={clsx(
-                  'px-[20px] pb-[20px] select-none',
-                  showSettings && 'flex flex-1 flex-col pt-[12px]',
-                  current === 'global' && 'hidden'
-                )}
-              >
-                <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-hidden rounded-[14px] bg-pqSettings p-[12px] shadow-[inset_0_0_0_1px_var(--border)]">
-                  <button
-                    type="button"
-                    onClick={() => setShowSettings(!showSettings)}
-                    className={clsx(
-                      'flex h-[48px] w-full cursor-pointer items-center gap-[10px] rounded-[12px] bg-pqTableHeader px-[14px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover',
-                      showSettings && 'rounded-b-[10px]'
-                    )}
-                  >
-                    <div className="flex-1 text-[13.5px] font-[600] text-pqText">
-                      {currentIntegrationText}
-                    </div>
-                    <ChevronDownIcon
-                      rotated={showSettings}
-                      className="text-pqMuted"
-                    />
-                  </button>
-                  <div
-                    className={clsx(
-                      !showSettings ? 'hidden' : 'relative min-h-0 flex-1',
-                      'text-[14px] font-[500] text-pqText'
-                    )}
-                  >
-                    <div className="absolute inset-0 flex flex-col overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqSettings">
-                      <div
-                        id="social-settings"
-                        className="flex flex-col gap-[12px] pe-[4px]"
-                      />
-                    </div>
-                  </div>
-                  <style>
-                    {`#social-settings [data-id="${current}"] {display: block !important;}`}
-                  </style>
                 </div>
               </div>
             </div>
@@ -1087,7 +1012,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   onMode={setWhenMode}
                   onChange={setDate}
                 />
-                {!dummy && (
+                {!dummy && selectedIntegrations.length > 0 && (
                   <ComposeNotify
                     notify={notifyOnPublish}
                     onChange={setNotifyOnPublish}
@@ -1191,6 +1116,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
+            <ComposeWhen
+              mode={whenMode}
+              date={date}
+              onMode={setWhenMode}
+              onChange={setDate}
+            />
+            {!dummy && selectedIntegrations.length > 0 && (
+              <ComposeNotify
+                notify={notifyOnPublish}
+                onChange={setNotifyOnPublish}
+              />
+            )}
           </div>
           )}
           <div
@@ -1211,22 +1148,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 </div>
                 <div>{t('delete_post', 'Delete Post')}</div>
               </button>
-            )}
-            {!phoneFlow && (
-              <>
-                <ComposeWhen
-                  mode={whenMode}
-                  date={date}
-                  onMode={setWhenMode}
-                  onChange={setDate}
-                />
-                {!dummy && (
-                  <ComposeNotify
-                    notify={notifyOnPublish}
-                    onChange={setNotifyOnPublish}
-                  />
-                )}
-              </>
             )}
             <div
               className={clsx(
@@ -1281,97 +1202,44 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </button>
             )}
             {!addEditSets && (
-              <div className={clsx('relative', touch && 'flex min-w-0 flex-1')} ref={postNowClickRef}>
-                <div className={clsx('flex min-w-0', touch && 'w-full')} ref={postNowRef}>
-                  <button
-                    type="button"
-                    disabled={
-                      selectedIntegrations.length === 0 || loading || locked
-                    }
-                    onClick={schedule('schedule')}
-                    className={clsx(
-                      'btnSub relative flex min-w-0 items-center justify-center overflow-hidden rounded-s-[10px] bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
-                      'max-[1179px]:h-[44px] max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
-                      touch
-                        ? 'h-[44px] min-w-0 flex-1 px-[12px]'
-                        : 'h-[42px] min-w-[168px] px-[18px]'
-                    )}
-                  >
-                    {loading && (
-                      <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-white">
-                        <Spinner width={20} height={20} />
-                      </div>
-                    )}
-                    <span
-                      className={clsx(
-                        'min-w-0 truncate whitespace-nowrap',
-                        loading && 'invisible'
-                      )}
-                    >
-                      {selectedIntegrations.length === 0
-                        ? t('select_channels', 'Select channels')
-                        : dummy
-                        ? t('create_output', 'Create output')
-                        : phoneFlow
-                        ? t('schedule', 'Schedule')
-                        : !existingData?.integration
-                        ? t('add_to_calendar', 'Add to calendar')
-                        : existingData?.posts?.[0]?.state === 'DRAFT'
-                        ? t('schedule', 'Schedule')
-                        : t('update', 'Update')}
-                    </span>
-                  </button>
-                  {!dummy && (
-                    <button
-                      type="button"
-                      disabled={
-                        selectedIntegrations.length === 0 || loading || locked
-                      }
-                      onClick={() => setPostNowOpen((v) => !v)}
-                      aria-label={t('more', 'More')}
-                      data-tooltip-id="tooltip"
-                      data-tooltip-content={t('more', 'More')}
-                      className={clsx(
-                        'grid w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80',
-                        touch ? 'h-[44px]' : 'h-[42px]'
-                      )}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        className="opacity-65"
-                      >
-                        <path
-                          d="m6 9 6 6 6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                {!dummy && postNowOpen && (
-                  <div
-                    ref={postNowMenuRef}
-                    className="z-[300] w-[206px] rounded-[8px] border border-pqBorder bg-pqInner p-[12px] shadow-pq"
-                  >
-                    <button
-                      type="button"
-                      onClick={schedule('now')}
-                      disabled={
-                        selectedIntegrations.length === 0 || loading || locked
-                      }
-                      className="post-now flex h-[44px] w-full items-center justify-center rounded-[8px] bg-pqPink text-[15px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-80"
-                    >
-                      {t('post_now', 'Post Now')}
-                    </button>
+              <button
+                type="button"
+                disabled={
+                  selectedIntegrations.length === 0 || loading || locked
+                }
+                onClick={schedule('schedule')}
+                className={clsx(
+                  'btnSub relative flex min-w-0 items-center justify-center overflow-hidden rounded-[10px] bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
+                  'max-[1179px]:h-[44px] max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
+                  touch
+                    ? 'h-[44px] min-w-0 flex-1 px-[12px]'
+                    : 'h-[42px] min-w-[168px] px-[18px]'
+                )}
+              >
+                {loading && (
+                  <div className="absolute left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] text-white">
+                    <Spinner width={20} height={20} />
                   </div>
                 )}
-              </div>
+                <span
+                  className={clsx(
+                    'min-w-0 truncate whitespace-nowrap',
+                    loading && 'invisible'
+                  )}
+                >
+                  {selectedIntegrations.length === 0
+                    ? t('select_channels', 'Select channels')
+                    : dummy
+                    ? t('create_output', 'Create output')
+                    : phoneFlow
+                    ? t('schedule', 'Schedule')
+                    : !existingData?.integration
+                    ? t('add_to_calendar', 'Add to calendar')
+                    : existingData?.posts?.[0]?.state === 'DRAFT'
+                    ? t('schedule', 'Schedule')
+                    : t('update', 'Update')}
+                </span>
+              </button>
             )}
             </div>
           </div>
