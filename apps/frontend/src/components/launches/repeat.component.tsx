@@ -149,7 +149,8 @@ export const RepeatComponent: FC<{
                   }}
                   className={clsx(
                     'h-[40px] cursor-pointer px-[20px] py-[8px] -mx-[12px] hover:bg-newBgColor',
-                    p.clear && 'text-[14px] font-[600] text-pqMuted'
+                    p.clear &&
+                      'text-[14px] font-[600] text-pqDanger hover:bg-pqDangerSoft'
                   )}
                 >
                   {p.label}

@@ -19,6 +19,7 @@ export const FORM_ICON_NAMES = [
   'duet',
   'stitch',
   'ai',
+  'partnership',
   'disclosure',
   'upload',
   'location',
@@ -40,7 +41,13 @@ export const FORM_ICON_NAMES = [
 
 export type FormIconName = (typeof FORM_ICON_NAMES)[number];
 
-const PATHS: Record<FormIconName, string[]> = {
+/** Readable glyphs where a stroke icon would be ambiguous (sun ≠ AI). */
+const EMOJI: Partial<Record<FormIconName, string>> = {
+  ai: '✨',
+  partnership: '🤝',
+};
+
+const PATHS: Partial<Record<FormIconName, string[]>> = {
   visibility: [
     'M1.5 8s2.7-5 6.5-5 6.5 5 6.5 5-2.7 5-6.5 5S1.5 8 1.5 8Z',
     'M8 10.2A2.2 2.2 0 1 0 8 5.8a2.2 2.2 0 0 0 0 4.4Z',
@@ -84,17 +91,6 @@ const PATHS: Record<FormIconName, string[]> = {
     'M5.2 10.2 2.8 12.6l2.4 2.2',
     'M10.8 10.2l2.4 2.4-2.4 2.2',
     'M8 9.8v4.6',
-  ],
-  ai: [
-    'M8 2.2v1.8',
-    'M8 12v1.8',
-    'M2.2 8h1.8',
-    'M12 8h1.8',
-    'M4 4l1.2 1.2',
-    'M10.8 10.8 12 12',
-    'M12 4l-1.2 1.2',
-    'M5.2 10.8 4 12',
-    'M8 10.5A2.5 2.5 0 1 0 8 5.5a2.5 2.5 0 0 0 0 5Z',
   ],
   disclosure: [
     'M3.2 13.2V4.8L8 2.5l4.8 2.3v8.4L8 15.5 3.2 13.2Z',
@@ -182,6 +178,21 @@ export const FormIcon: FC<{
   size?: number;
   className?: string;
 }> = ({ name, size = 16, className }) => {
+  const emoji = EMOJI[name];
+  if (emoji) {
+    return (
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'inline-flex shrink-0 items-center justify-center leading-none',
+          className
+        )}
+        style={{ width: size, height: size, fontSize: Math.max(12, size - 2) }}
+      >
+        {emoji}
+      </span>
+    );
+  }
   const paths = PATHS[name];
   if (!paths) {
     return null;

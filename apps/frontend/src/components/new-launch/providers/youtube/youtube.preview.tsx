@@ -75,11 +75,11 @@ export const YoutubePreview: FC<{
         <div className="flex flex-1 gap-[17px] items-center">
           <div>
             <ChannelAvatar
-              integration={{
-                picture: integration?.picture,
-                identifier: integration?.identifier || 'youtube',
-                name: integration?.name,
-              }}
+              integration={
+                integration || {
+                  identifier: 'youtube',
+                }
+              }
               size={40}
               rounded="full"
               badge={false}

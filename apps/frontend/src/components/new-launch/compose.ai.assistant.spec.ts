@@ -25,7 +25,7 @@ describe('compose AI assistant placement', () => {
     assert.match(modal, /!compactChrome && hasChannels && maximized && \(/);
     assert.match(
       assistant,
-      /data-pq="composer-rail-tabs"[\s\S]{0,80}className="flex shrink-0 items-center gap-\[2px\]/
+      /data-pq="composer-rail-tabs"[\s\S]{0,80}className="flex shrink-0 items-center gap-\[3px\]/
     );
     assert.doesNotMatch(modal, /<ComposeAiRail docked \/>/);
     assert.doesNotMatch(modal, /h-\[min\(240px,32vh\)\]/);
@@ -33,7 +33,7 @@ describe('compose AI assistant placement', () => {
     assert.match(modal, /data-pq="composer-ai"/);
     assert.match(modal, /w-\[min\(400px,30vw\)\]/);
     assert.match(modal, /<ComposeAiRail \/>/);
-    assert.match(modal, /data-pq="composer-header-extras"/);
+    assert.match(modal, /data-pq="composer-footer-tag"/);
     assert.match(modal, /<ComposeAiBindings \/>/);
     assert.match(modal, /data-pq="composer-empty"/);
     assert.match(modal, /data-pq-composer-empty/);
@@ -88,6 +88,8 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /stroke="currentColor"/);
     assert.doesNotMatch(assistant, /AI assistant/);
     assert.doesNotMatch(assistant, /fill="currentColor"/);
+    assert.match(assistant, /h-\[40px\] min-w-\[132px\]/);
+    assert.match(assistant, /text-\[14px\]/);
     assert.match(modal, /t\('ai_copilot', 'AI Copilot'\)/);
     assert.doesNotMatch(modal, /AI assistant/);
   });

@@ -183,9 +183,10 @@ export const ComposeFirstComment: FC<{
             type="button"
             onClick={onRemove}
             data-tooltip-id="tooltip"
-            data-tooltip-content={t('delete_post_tooltip', 'Delete Post')}
-            aria-label={t('delete_post_tooltip', 'Delete Post')}
-            className="grid size-[28px] place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
+            data-pq="composer-first-comment-remove"
+            data-tooltip-content={t('remove', 'Remove')}
+            aria-label={t('remove', 'Remove')}
+            className="grid size-[28px] cursor-pointer place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
           >
             <TrashIcon size={16} />
           </button>
@@ -217,6 +218,7 @@ export const ComposeFirstComment: FC<{
       >
         <MultiMediaComponent
           attachmentsOnly
+          largeThumbs
           mediaNotAvailable={comments === 'no-media'}
           allData={allValues}
           text={value}

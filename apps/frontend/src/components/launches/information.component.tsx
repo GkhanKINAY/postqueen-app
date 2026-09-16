@@ -122,21 +122,26 @@ export const InformationComponent: FC<{
     });
   }, [isGlobal, internal, selectedIntegrations]);
 
-  const isValid = useMemo(() => {
+  const status: 'idle' | 'valid' | 'invalid' = useMemo(() => {
     if (showStripLinkWarning) {
-      return false;
+      return 'invalid';
     }
 
     if (requireContent && !isPicture && !totalChars) {
-      return false;
+      return 'invalid';
+    }
+
+    // An unused comment is optional. Don't paint the green check at 0/N.
+    if (variant === 'comment' && !isPicture && !totalChars) {
+      return 'idle';
     }
 
     if (totalChars > totalAllowedChars && !isGlobal) {
-      return false;
+      return 'invalid';
     }
 
     if (totalChars <= totalAllowedChars && !isGlobal) {
-      return true;
+      return 'valid';
     }
 
     if (
@@ -148,16 +153,17 @@ export const InformationComponent: FC<{
         return totalChars > (chars?.[p.integration.id] || 0);
       })
     ) {
-      return false;
+      return 'invalid';
     }
 
-    return true;
+    return 'valid';
   }, [
     totalAllowedChars,
     totalChars,
     isInternal,
     isPicture,
     requireContent,
+    variant,
     chars,
     showStripLinkWarning,
     // Read above, and listed here on purpose. Today they are covered by
@@ -168,6 +174,7 @@ export const InformationComponent: FC<{
     isGlobal,
     selectedIntegrations,
   ]);
+  const isValid = status === 'valid';
 
   const globalDisplayLimit = useMemo(() => {
     if (!isGlobal || !selectedIntegrations.length) {
@@ -195,7 +202,7 @@ export const InformationComponent: FC<{
   }, [isGlobal, selectedIntegrations, chars, isInternal, totalChars]);
 
   const hasDetails =
-    (isGlobal && selectedIntegrations.length > 0) || !isValid;
+    (isGlobal && selectedIntegrations.length > 0) || status === 'invalid';
   /**
    * Design `charPanelDisplay`: `charPanel && ((isGlobalTab && sel.length) || !charValid)`.
    * It is hover-gated, with no bypass for the invalid case — an empty editor is
@@ -212,16 +219,18 @@ export const InformationComponent: FC<{
       onMouseLeave={() => setHovered(false)}
       className={clsx(
         'relative flex h-[30px] items-center justify-center gap-[4px] rounded-[6px] px-[6px]',
-        isValid ? 'border border-newColColor' : 'bg-pqWarn'
+        status === 'valid' && 'border border-newColColor',
+        status === 'invalid' && 'bg-pqWarn',
+        status === 'idle' && 'text-pqMuted'
       )}
     >
-      {isValid ? <Valid /> : <Invalid />}
+      {status === 'valid' ? <Valid /> : status === 'invalid' ? <Invalid /> : null}
 
       {!isGlobal && (
         <div
           className={clsx(
             'flex items-center justify-center text-[10px] font-[600]',
-            !isValid && 'text-pqOnBrand'
+            status === 'invalid' && 'text-pqOnBrand'
           )}
         >
           {totalChars}/{totalAllowedChars}
@@ -231,7 +240,7 @@ export const InformationComponent: FC<{
         <div
           className={clsx(
             'flex items-center justify-center text-[10px] font-[600]',
-            !isValid && 'text-pqOnBrand'
+            status === 'invalid' && 'text-pqOnBrand'
           )}
         >
           {totalChars}/{globalDisplayLimit}
@@ -248,7 +257,7 @@ export const InformationComponent: FC<{
           onClick={() => setDetailsOpen((o) => !o)}
           className={clsx(
             'grid place-items-center rounded-[4px] p-[1px]',
-            !isValid && 'text-pqOnBrand'
+            status === 'invalid' && 'text-pqOnBrand'
           )}
         >
           <svg

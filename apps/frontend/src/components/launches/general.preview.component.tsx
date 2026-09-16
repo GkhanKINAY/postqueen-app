@@ -71,11 +71,11 @@ export const GeneralPreviewComponent: FC<{
             <div className="min-w-[40px] h-[40px] min-h-[40px] w-[40px] flex flex-col items-center">
               <div className="relative">
                 <ChannelAvatar
-                  integration={{
-                    picture: integration?.picture,
-                    identifier: integration?.identifier || 'x',
-                    name: integration?.name,
-                  }}
+                  integration={
+                    integration || {
+                      identifier: 'x',
+                    }
+                  }
                   size={40}
                   rounded="full"
                   badge={!!integration?.identifier}

@@ -92,9 +92,11 @@ export const DelayComponent: FC<{
         type="button"
         ref={referenceRef}
         onClick={() => setIsOpen(!isOpen)}
-        data-tooltip-id="tooltip"
+        data-tooltip-id={toolbar ? undefined : 'tooltip'}
         data-tooltip-content={
-          !currentDelay
+          toolbar
+            ? undefined
+            : !currentDelay
             ? t('delay_comment', 'Delay comment')
             : `${t('delay_comment_by', 'Comment delayed by')} ${delayLabel}`
         }

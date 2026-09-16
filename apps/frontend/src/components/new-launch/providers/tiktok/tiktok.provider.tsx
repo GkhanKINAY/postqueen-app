@@ -272,7 +272,6 @@ const TikTokSettings: FC<{
             />
             <Checkbox
               variant="hollow"
-              icon="disclosure"
               label={t('label_disclose_video_content', 'Disclose Video Content')}
               disabled={isUploadMode}
               defaultValue={false}
@@ -311,7 +310,7 @@ const TikTokSettings: FC<{
           >
             <Checkbox
               variant="hollow"
-              icon="brand"
+              icon="user"
               label={t('label_your_brand', 'Your brand')}
               disabled={isUploadMode}
               defaultValue={false}
@@ -332,7 +331,7 @@ const TikTokSettings: FC<{
             </div>
             <Checkbox
               variant="hollow"
-              icon="brand"
+              icon="partnership"
               label={t('label_branded_content', 'Branded content')}
               disabled={isUploadMode}
               defaultValue={false}

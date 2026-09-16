@@ -96,10 +96,10 @@ export const CopilotMark: FC<{ size?: number; className?: string }> = ({
 
 const railTabClass = (active: boolean) =>
   clsx(
-    'flex h-[32px] shrink-0 cursor-pointer items-center justify-center gap-[6px] whitespace-nowrap rounded-[6px] px-[12px] text-[12.5px] font-[600] transition-colors',
+    'flex h-[40px] min-w-[132px] shrink-0 cursor-pointer items-center justify-center gap-[8px] whitespace-nowrap rounded-[8px] px-[16px] text-[14px] font-[600] transition-colors',
     active
       ? 'bg-pqInner text-pqText shadow-pqE1'
-      : 'text-pqSoft hover:text-pqText'
+      : 'text-pqMuted hover:text-pqText'
   );
 
 const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
@@ -140,7 +140,7 @@ export const StudioRailTabs: FC = () => {
   return (
     <div
       data-pq="composer-rail-tabs"
-      className="flex shrink-0 items-center gap-[2px] rounded-pqSm bg-pqSettings p-[2px]"
+      className="flex shrink-0 items-center gap-[3px] rounded-[10px] bg-pqSettings p-[3px]"
       role="tablist"
       aria-label={t('post_preview', 'Post Preview')}
     >
@@ -162,7 +162,7 @@ export const StudioRailTabs: FC = () => {
         onClick={() => setRail('assistant')}
         className={railTabClass(rail === 'assistant')}
       >
-        <CopilotMark className="text-pqFocused" />
+        <CopilotMark size={18} className="text-pqFocused" />
         <span>{t('ai_copilot', 'AI Copilot')}</span>
       </button>
     </div>

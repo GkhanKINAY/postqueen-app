@@ -125,7 +125,7 @@ const SettingsComponent = () => {
               {...register('made_with_ai')}
             />
             <Checkbox
-              icon="disclosure"
+              icon="partnership"
               label={t('label_paid_partnership', 'Paid partnership')}
               defaultValue={false}
               {...register('paid_partnership')}

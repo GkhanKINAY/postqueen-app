@@ -55,8 +55,6 @@ export const SelectCurrent: FC = () => {
     setCurrent,
     locked,
     setHide,
-    addRemoveInternal,
-    internal,
     addOrRemoveSelectedIntegration,
     isCreateSet,
   } = useLaunchStore(
@@ -66,8 +64,6 @@ export const SelectCurrent: FC = () => {
       setCurrent: state.setCurrent,
       locked: state.locked,
       setHide: state.setHide,
-      addRemoveInternal: state.addRemoveInternal,
-      internal: state.internal,
       addOrRemoveSelectedIntegration: state.addOrRemoveSelectedIntegration,
       isCreateSet: state.isCreateSet,
     }))
@@ -196,13 +192,6 @@ export const SelectCurrent: FC = () => {
                 onClick={() => {
                   setHide(true);
                   setCurrent(integration.id);
-                  // "Click a channel to customize" should open that
-                  // channel's text, not the locked global overlay.
-                  if (
-                    !internal.some((p) => p.integration.id === integration.id)
-                  ) {
-                    addRemoveInternal(integration.id);
-                  }
                 }}
                 key={integration.id}
                 data-tooltip-id="tooltip"
