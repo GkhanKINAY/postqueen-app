@@ -61,11 +61,11 @@ describe('phone calendar and composer', () => {
 
   it('keeps when-to-post with tags, not squeezed against Add to calendar', () => {
     assert.match(manage, /gap-\[12px\] p-\[12px\]/);
+    assert.match(manage, /data-pq="composer-header-extras"/);
     const whenIdx = manage.lastIndexOf('<ComposeWhen');
-    const tagsIdx = manage.lastIndexOf('<TagsComponent');
+    const footerTagsIdx = manage.lastIndexOf('compactFooter && !dummy && hasChannels');
     const scheduleIdx = manage.lastIndexOf("schedule('schedule')");
-    assert.ok(whenIdx > 0 && tagsIdx > 0 && scheduleIdx > whenIdx);
-    assert.ok(whenIdx > tagsIdx);
+    assert.ok(whenIdx > 0 && footerTagsIdx > 0 && scheduleIdx > whenIdx);
     assert.match(manage, /shrink-0 pe-\[20px\]/);
   });
 
@@ -129,7 +129,7 @@ describe('phone calendar and composer', () => {
     assert.match(hop, /aria-expanded=\{settingsOpen\}/);
     assert.match(hop, /const showSettingsBody = !isGlobal \|\| settingsOpen/);
     assert.match(hop, /size=\{36\}/);
-    assert.match(hop, /overflow-hidden rounded-\[14px\]/);
+    assert.match(hop, /overflow-hidden bg-pqInner/);
     assert.match(hop, /#composer-quick-settings/);
     assert.match(hop, /data-pq="composer-channel-settings"/);
   });

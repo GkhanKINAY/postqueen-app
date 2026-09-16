@@ -3,10 +3,13 @@
 import {
   createContext,
   FC,
+  FormEvent,
   ReactNode,
   useContext,
   useMemo,
+  useState,
 } from 'react';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import clsx from 'clsx';
 import NextLink from 'next/link';
 import {
@@ -84,10 +87,10 @@ const SparkleIcon: FC = () => (
 
 const railTabClass = (active: boolean) =>
   clsx(
-    'flex h-[32px] cursor-pointer items-center gap-[6px] rounded-[8px] px-[10px] text-[12.5px] font-[600] transition-colors',
+    'flex h-[32px] shrink-0 cursor-pointer items-center justify-center gap-[6px] whitespace-nowrap rounded-[6px] px-[12px] text-[12.5px] font-[600] transition-colors',
     active
       ? 'bg-pqInner text-pqText shadow-pqE1'
-      : 'text-pqSoft hover:bg-pqHover hover:text-pqText'
+      : 'text-pqSoft hover:text-pqText'
   );
 
 const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
@@ -128,7 +131,7 @@ export const StudioRailTabs: FC = () => {
   return (
     <div
       data-pq="composer-rail-tabs"
-      className="flex min-w-0 flex-1 items-center gap-[4px] rounded-pqSm bg-pqSettings p-[2px]"
+      className="flex shrink-0 items-center gap-[2px] rounded-pqSm bg-pqSettings p-[2px]"
       role="tablist"
       aria-label={t('post_preview', 'Post Preview')}
     >
@@ -348,26 +351,143 @@ export const ComposeAiBindings: FC = () => {
   return aiOk ? <ComposeAiBindingsInner /> : null;
 };
 
-const ComposeAiUnconfigured: FC = () => {
+const ComposeAiUnconfigured: FC<{
+  suggestions: { title: string; message: string }[];
+}> = ({ suggestions }) => {
   const t = useT();
+  const toaster = useToaster();
+  const [text, setText] = useState('');
+  const [messages, setMessages] = useState<{ id: string; content: string }[]>(
+    []
+  );
+  const tip = t(
+    'compose_ai_unconfigured_tip',
+    'AI assistant needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
+  );
+
+  const explain = () => {
+    toaster.show(tip, 'warning');
+  };
+
+  const send = () => {
+    const content = text.trim();
+    if (content) {
+      setMessages((prev) => [...prev, { id: makeId(10), content }]);
+      setText('');
+    }
+    explain();
+  };
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    send();
+  };
+
   return (
-    <div className="flex h-full min-h-0 flex-col items-start justify-center gap-[12px] px-[20px]">
-      <SparkleIcon />
-      <div className="font-display text-[18px] font-[600] -tracking-[0.015em] text-pqText">
-        {t('your_assistant', 'AI assistant')}
-      </div>
-      <p className="text-[13.5px] leading-[1.55] text-pqMuted">
-        {t(
-          'compose_ai_unconfigured_tip',
-          'AI assistant needs OpenAI configured. Discover Claude, ChatGPT, and MCP agents in Connections.'
+    <div data-pq="composer-ai-chat" className="flex h-full min-h-0 flex-col">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
+        {messages.length > 0 ? (
+          <div className="copilotKitMessagesContainer flex flex-col">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className="copilotKitMessage copilotKitUserMessage whitespace-pre-wrap"
+              >
+                {message.content}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            data-copilot-empty="1"
+            className="flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
+          >
+          <span className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-pqBrandSoft text-pqFocused">
+            <SparkleIcon />
+          </span>
+          <div>
+            <div className="font-display text-[18px] font-[600] tracking-[-0.02em] text-pqText">
+              {t('your_assistant', 'AI assistant')}
+            </div>
+            <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
+              {t(
+                'assistant_initial_message',
+                'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
+              )}
+            </p>
+          </div>
+          <NextLink
+            href="/connections"
+            className="flex w-full max-w-[360px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[12px_14px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
+          >
+            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
+              <SparkleIcon />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
+              <span className="text-[13px] font-[600] text-pqText">
+                {t('connections', 'Connections')}
+              </span>
+              <span className="text-[12px] leading-[1.45] text-pqMuted">
+                {tip}
+              </span>
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              className="shrink-0 text-pqSoft rtl:-scale-x-100"
+              aria-hidden="true"
+            >
+              <path
+                d="m9 6 6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </NextLink>
+          </div>
         )}
-      </p>
-      <NextLink
-        href="/connections"
-        className="inline-flex h-[36px] items-center rounded-[8px] bg-pqBrandSoft px-[12px] text-[12.5px] font-[600] text-pqFocused hover:bg-pqBoxFocused"
-      >
-        {t('connections', 'Connections')}
-      </NextLink>
+      </div>
+      <ComposeAiSuggestionList
+        suggestions={suggestions}
+        onSuggestionClick={explain}
+        isLoading={false}
+      />
+      <form className="copilotKitInputContainer" onSubmit={onSubmit}>
+        <div className="copilotKitInput flex items-end gap-[8px]">
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                send();
+              }
+            }}
+            placeholder={t('write_something', 'Write something …')}
+            rows={2}
+            className="min-h-[52px] flex-1 resize-none"
+          />
+          <button
+            type="submit"
+            className="copilotKitInputControlButton shrink-0"
+            aria-label={t('send_message', 'Send message')}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path
+                d="M5 12h14M13 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
@@ -376,7 +496,7 @@ const ComposeAiUnconfigured: FC = () => {
  * Copilot chat that fills the Post Preview rail. Chat history lives on the
  * layout CopilotKit provider, so switching back to Preview does not drop it.
  */
-export const ComposeAiRail: FC = () => {
+export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
   const t = useT();
   const aiOk = useAiAvailable();
   const label = t('your_assistant', 'AI assistant');
@@ -409,7 +529,7 @@ export const ComposeAiRail: FC = () => {
 
   return (
     <div
-      data-pq="composer-ai-rail"
+      data-pq={docked ? 'composer-ai-dock' : 'composer-ai-rail'}
       style={
         {
           '--copilot-kit-primary-color': 'var(--brand)',
@@ -421,25 +541,34 @@ export const ComposeAiRail: FC = () => {
           '--copilot-kit-muted-color': 'var(--muted)',
         } as CopilotKitCSSProperties
       }
-      className="absolute inset-0 flex min-h-0 flex-col bg-pqBg"
+      className={clsx(
+        'trz agent flex min-h-0 flex-col',
+        docked
+          ? 'h-full border-t border-pqLine bg-pqInner'
+          : 'absolute inset-0 bg-pqInner'
+      )}
     >
       {aiOk ? (
-        <CopilotChat
-          className="flex h-full min-h-0 w-full flex-col"
-          instructions={COPILOT_INSTRUCTIONS}
-          suggestions={suggestions}
-          RenderSuggestionsList={ComposeAiSuggestionList}
-          labels={{
-            title: label,
-            initial: t(
-              'assistant_initial_message',
-              'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
-            ),
-            placeholder: t('write_something', 'Write something …'),
-          }}
-        />
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0">
+            <CopilotChat
+              className="h-full w-full"
+              instructions={COPILOT_INSTRUCTIONS}
+              suggestions={suggestions}
+              RenderSuggestionsList={ComposeAiSuggestionList}
+              labels={{
+                title: label,
+                initial: t(
+                  'assistant_initial_message',
+                  'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
+                ),
+                placeholder: t('write_something', 'Write something …'),
+              }}
+            />
+          </div>
+        </div>
       ) : (
-        <ComposeAiUnconfigured />
+        <ComposeAiUnconfigured suggestions={suggestions} />
       )}
     </div>
   );

@@ -59,8 +59,9 @@ const getList = (
 export const RepeatComponent: FC<{
   repeat: number | null;
   onChange: (newVal: number) => void;
+  menuPlacement?: 'top-start' | 'bottom-end';
 }> = (props) => {
-  const { repeat } = props;
+  const { repeat, menuPlacement = 'top-start' } = props;
   const t = useT();
   const { touch } = useViewport();
   const list = getList(t);
@@ -69,7 +70,7 @@ export const RepeatComponent: FC<{
   const { referenceRef, floatingRef } = useAnchoredPopover<
     HTMLDivElement,
     HTMLDivElement
-  >(isOpen, 'start', { offsetPx: 10, placement: 'top-start' });
+  >(isOpen, 'start', { offsetPx: 10, placement: menuPlacement });
 
   const ref = useClickOutside(() => {
     if (!isOpen) {

@@ -21,14 +21,14 @@ function latestTotal(series: AnalyticsData) {
   if (!points.length) {
     return 0;
   }
+  const sum = points.reduce(
+    (acc, point) => acc + Number(point.total),
+    0,
+  );
   if (series.average) {
-    const sum = points.reduce(
-      (acc, point) => acc + Number(point.total),
-      0,
-    );
     return `${(sum / points.length).toFixed(2)}%`;
   }
-  return Math.round(Number(points[points.length - 1].total));
+  return Math.round(sum);
 }
 
 export const StatisticsModal: FC<{

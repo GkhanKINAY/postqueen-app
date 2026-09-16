@@ -17,14 +17,23 @@ const editor = readFileSync(
 );
 
 describe('compose AI assistant placement', () => {
-  it('fills the right rail, not a viewport-edge FAB or footer popup', () => {
+  it('fills the right rail on phone, and docks under the editor on desktop', () => {
     assert.match(modal, /<StudioRailProvider/);
     assert.match(modal, /<StudioRailTabs \/>/);
+    assert.match(modal, /ms-auto flex shrink-0 items-center gap-\[8px\]/);
+    assert.match(
+      assistant,
+      /data-pq="composer-rail-tabs"[\s\S]{0,80}className="flex shrink-0 items-center gap-\[2px\]/
+    );
+    assert.match(modal, /<ComposeAiRail docked \/>/);
     assert.match(modal, /<ComposeAiRail \/>/);
+    assert.match(modal, /hasChannels && compactChrome && \(/);
+    assert.match(modal, /data-pq="composer-header-extras"/);
     assert.match(modal, /<ComposeAiBindings \/>/);
     assert.match(modal, /data-pq="composer-empty"/);
     assert.match(modal, /data-pq-composer-empty/);
     assert.match(assistant, /<CopilotChat/);
+    assert.match(assistant, /data-pq=\{docked \? 'composer-ai-dock' : 'composer-ai-rail'\}/);
     assert.doesNotMatch(assistant, /<CopilotPopup/);
     assert.doesNotMatch(modal, /bottom-\[104px\]/);
     assert.doesNotMatch(modal, /end-\[24px\]/);
@@ -32,14 +41,19 @@ describe('compose AI assistant placement', () => {
     assert.doesNotMatch(assistant, /position: fixed;\s*bottom: 1rem/);
   });
 
-  it('keeps a toolbar chip on desktop that opens the same rail', () => {
-    assert.match(editor, /num === 0 && !mobile && <ComposeAiAssistant \/>/);
+  it('keeps a toolbar chip on tablet that opens the same rail', () => {
+    assert.match(editor, /num === 0 && !mobile && !splitComposer && <ComposeAiAssistant \/>/);
   });
 
-  it('stays visible without an OpenAI key and sends that path to Connections', () => {
+  it('stays visible without an OpenAI key and looks like the Agents chatbox', () => {
     assert.match(assistant, /useAiAvailable/);
     assert.match(assistant, /href="\/connections"/);
     assert.match(assistant, /compose_ai_unconfigured_tip/);
+    assert.match(assistant, /data-pq="composer-ai-chat"/);
+    assert.match(assistant, /className="copilotKitInputContainer"/);
+    assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
+    assert.match(assistant, /copilotKitUserMessage/);
+    assert.match(assistant, /trz agent flex min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 

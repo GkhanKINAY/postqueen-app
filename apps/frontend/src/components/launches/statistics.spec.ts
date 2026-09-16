@@ -17,9 +17,9 @@ describe('Statistics modal', () => {
     assert.doesNotMatch(source, /7 Days/);
   });
 
-  it('plots the returned series and uses the latest point as the card total', () => {
+  it('plots daily points and sums them for the card total, like channel analytics', () => {
     assert.match(source, /ChartSocial/);
-    assert.match(source, /points\[points\.length - 1\]/);
+    assert.match(source, /points\.reduce\(/);
     assert.match(source, /variant="spark"/);
   });
 

@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   channelPlatformIcon,
+  channelPlatformLabel,
   isUsableChannelPicture,
 } from './channel-picture.ts';
 
@@ -41,6 +42,12 @@ describe('channel avatar fallback', () => {
       isUsableChannelPicture('https://cdn.example/pic.jpg'),
       true
     );
+  });
+
+  it('names TikTok and Facebook so stacked previews are not anonymous', () => {
+    assert.equal(channelPlatformLabel('tiktok'), 'TikTok');
+    assert.equal(channelPlatformLabel('facebook'), 'Facebook');
+    assert.equal(channelPlatformLabel('instagram'), 'Instagram');
   });
 
   it('uses the YouTube svg and pngs for every other network', () => {

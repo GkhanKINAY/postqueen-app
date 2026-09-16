@@ -1,8 +1,10 @@
 'use client';
 
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { chartTooltipBox } from '@gitroom/frontend/components/analytics/chart-social-label';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
@@ -164,23 +166,100 @@ const WeekdayPulse: FC<{ counts: number[] }> = ({ counts }) => {
     t('dow_sun', 'Sun'),
   ];
   const max = Math.max(...counts, 1);
+  const [mounted, setMounted] = useState(false);
+  const [tip, setTip] = useState<{
+    title: string;
+    body: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!el) {
+      return;
+    }
+    if (!tip) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    const box = el.getBoundingClientRect();
+    const header = document.querySelector('header');
+    const minTop = Math.max(
+      8,
+      header ? header.getBoundingClientRect().bottom + 8 : 8,
+    );
+    const next = chartTooltipBox(
+      tip.x,
+      tip.y,
+      box.width,
+      box.height,
+      window.innerWidth,
+      window.innerHeight,
+      12,
+      minTop,
+    );
+    el.style.left = `${next.left}px`;
+    el.style.top = `${next.top}px`;
+  }, [tip]);
+
   if (!counts.some((count) => count > 0)) {
     return null;
   }
+
+  const postsLabel = (count: number) =>
+    `${formatCount(count)} ${
+      count === 1 ? t('post', 'Post') : t('posts', 'Posts')
+    }`;
+
+  const onEnter = (
+    event: { currentTarget: HTMLButtonElement },
+    index: number,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setTip({
+      title: labels[index],
+      body: postsLabel(counts[index]),
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+  };
+
   return (
-    <section className="rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
+    <section
+      data-pq="posting-days"
+      className="rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]"
+    >
       <div className="mb-[14px] font-display text-[16px] font-[600] text-pqText">
         {t('posting_days', 'Posting days')}
       </div>
       <div className="-mt-[8px] mb-[14px] text-[13px] text-pqMuted">
         {t('posting_days_hint', 'How many posts went out each weekday')}
       </div>
-      <div className="flex h-[108px] items-end gap-[8px]">
+      <div className="flex items-end gap-[8px]">
         {counts.map((count, index) => (
-          <div
+          <button
             key={labels[index]}
-            className="flex min-w-0 flex-1 flex-col items-center gap-[6px]"
+            type="button"
+            className="flex min-w-0 flex-1 flex-col items-center gap-[6px] border-0 bg-transparent p-0 text-center"
+            aria-label={`${labels[index]}, ${postsLabel(count)}`}
+            onMouseEnter={(event) => onEnter(event, index)}
+            onFocus={(event) => onEnter(event, index)}
+            onMouseLeave={() => setTip(null)}
+            onBlur={() => setTip(null)}
           >
+            <div
+              data-pq="posting-days-count"
+              className="h-[14px] text-[11px] font-[600] tabular-nums text-pqText"
+            >
+              {count > 0 ? formatCount(count) : ''}
+            </div>
             <div className="flex h-[72px] w-full items-end">
               <div
                 className="w-full rounded-[6px] bg-pqBrand"
@@ -193,9 +272,32 @@ const WeekdayPulse: FC<{ counts: number[] }> = ({ counts }) => {
             <div className="text-[11px] font-[600] text-pqMuted">
               {labels[index]}
             </div>
-          </div>
+          </button>
         ))}
       </div>
+      {mounted &&
+        createPortal(
+          <div
+            ref={tipRef}
+            data-pq="chart-tooltip"
+            className="pointer-events-none fixed z-[220] min-w-[72px] rounded-[8px] bg-pqPop px-[10px] py-[10px] shadow-[inset_0_0_0_1px_var(--border)]"
+            style={{ display: 'none', left: 0, top: 0 }}
+          >
+            <div
+              data-pq="chart-tooltip-title"
+              className="text-[12px] font-normal text-pqText"
+            >
+              {tip?.title}
+            </div>
+            <div
+              data-pq="chart-tooltip-body"
+              className="text-[14px] font-bold text-pqMuted"
+            >
+              {tip?.body}
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 };

@@ -4,10 +4,11 @@ import { FC, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import {
   channelPlatformIcon,
+  channelPlatformLabel,
   isUsableChannelPicture,
 } from '@gitroom/frontend/components/new-launch/channel-picture';
 
-export { channelPlatformIcon, isUsableChannelPicture };
+export { channelPlatformIcon, channelPlatformLabel, isUsableChannelPicture };
 
 export const ChannelAvatar: FC<{
   integration: {

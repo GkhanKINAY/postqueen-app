@@ -70,6 +70,28 @@ const originalMap = {
 const reverseMap = Object.fromEntries(
   Object.entries(originalMap).map(([key, value]) => [value, key])
 );
+
+export function applyUnicodeBold(
+  text: string,
+  from: number,
+  to: number
+): { text: string; from: number; to: number } {
+  if (from === to) {
+    return { text, from, to };
+  }
+  const start = Math.min(from, to);
+  const end = Math.max(from, to);
+  const slice = text.slice(start, end);
+  const mapped = Array.from(slice)
+    .map((ch) => originalMap[ch as keyof typeof originalMap] || reverseMap[ch] || ch)
+    .join('');
+  return {
+    text: text.slice(0, start) + mapped + text.slice(end),
+    from: start,
+    to: start + mapped.length,
+  };
+}
+
 export const BoldText: FC<{
   editor: any;
   currentValue: string;

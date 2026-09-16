@@ -40,13 +40,28 @@ describe('composer channel settings controls', () => {
     assert.match(tiktok, /<Select/);
   });
 
-  it('moves the same settings form above the editor when a channel is selected', () => {
+  it('keeps the same settings form after the editor when a channel is selected', () => {
     const hop = read('./high.order.provider.tsx');
     const manage = read('../manage.modal.tsx');
+    const select = read('../select.current.tsx');
     const linkedin = read('./linkedin/linkedin.provider.tsx');
 
     assert.match(manage, /id="composer-quick-settings"/);
-    assert.match(hop, /current \? '#composer-quick-settings' : '#social-settings'/);
+    assert.match(manage, /data-pq="composer-settings-heading"/);
+    assert.match(manage, /t\('settings', 'Settings'\)/);
+    assert.match(
+      manage,
+      /id="social-settings"[\s\S]{0,80}gap-\[1px\] overflow-hidden rounded-\[14px\] bg-pqLine/
+    );
+    assert.match(hop, /data-pq="preview-channel-identity"/);
+    assert.match(hop, /channelPlatformLabel/);
+    assert.match(manage, /w-\[440px\]/);
+    assert.ok(
+      manage.indexOf('{!hide && <EditorWrapper') <
+        manage.indexOf('id="composer-quick-settings"'),
+      'channel settings must sit below the post text'
+    );
+    assert.match(select, /addRemoveInternal\(integration\.id\)/);
     assert.match(linkedin, /name="post_as_images_carousel"/);
     assert.match(linkedin, /layout="segment"/);
   });

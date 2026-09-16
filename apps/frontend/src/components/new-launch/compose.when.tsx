@@ -164,13 +164,13 @@ export const ComposeWhen: FC<{
           disabled={slotLoading}
           onClick={() => setIsOpen(!isOpen)}
           className={clsx(
-            'flex h-[42px] min-w-0 cursor-pointer items-center justify-center gap-[8px] rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover disabled:cursor-wait',
+            'flex h-[42px] cursor-pointer items-center justify-center gap-[8px] rounded-[10px] border text-[13px] font-[600] text-pqMuted select-none transition-colors hover:bg-pqHover disabled:cursor-wait',
             isOpen ? 'border-pqBrand' : 'border-newTextColor/10',
-            touch ? 'w-full px-[8px]' : 'px-[16px]'
+            touch ? 'w-full min-w-0 px-[8px]' : 'shrink-0 px-[16px]'
           )}
         >
           <QueueIcon />
-          <span className="min-w-0 truncate">{triggerLabel}</span>
+          <span className={clsx(touch ? 'min-w-0 truncate' : 'whitespace-nowrap')}>{triggerLabel}</span>
           <DropdownArrowIcon rotated={isOpen} />
         </button>
       )}
