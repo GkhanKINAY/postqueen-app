@@ -44,7 +44,12 @@ const YoutubeSettings: FC = () => {
   const { register } = useSettings();
   return (
     <div className="flex flex-col gap-[16px]">
-      <Input label="Title" {...register('title')} maxLength={100} />
+      <Input
+        label="Title"
+        placeholder="Video title"
+        {...register('title')}
+        maxLength={100}
+      />
       <FormChoice
         name="type"
         icon="visibility"

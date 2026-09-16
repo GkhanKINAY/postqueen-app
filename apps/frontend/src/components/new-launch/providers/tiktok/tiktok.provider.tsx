@@ -126,7 +126,14 @@ const TikTokSettings: FC<{
           </div>
         </FormSection>
       )}
-      {isTitle && <Input label="Title" {...register('title')} maxLength={89} />}
+      {isTitle && (
+        <Input
+          label="Title"
+          placeholder="Video title"
+          {...register('title')}
+          maxLength={89}
+        />
+      )}
       <div className={directPostOnly}>
         <FormSection>
           <FormChoice

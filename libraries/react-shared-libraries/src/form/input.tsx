@@ -35,6 +35,7 @@ export const Input: FC<
     error,
     translationKey,
     translationParams,
+    placeholder,
     ...rest
   } = props;
   const form = useFormContext();
@@ -60,10 +61,10 @@ export const Input: FC<
           />
         </div>
       )}
-      {/* Prototype form fields: denser h40, --tableHeader, inset border, r10. */}
+      {/* Well on both --inner and --settings: fill is inner, ring is 20% text. */}
       <div
         className={clsx(
-          'flex h-[40px] items-center justify-center rounded-[10px] bg-pqTableHeader text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-shadow',
+          'flex h-[40px] items-center justify-center rounded-[10px] bg-pqInner text-pqText shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] transition-shadow',
           'focus-within:shadow-[inset_0_0_0_1px_var(--brand)]',
           className
         )}
@@ -71,9 +72,18 @@ export const Input: FC<
         {icon && <div className="ps-[12px]">{icon}</div>}
         <input
           className={clsx(
-            'h-full flex-1 bg-transparent text-[14px] text-pqText outline-none placeholder:text-pqSoft',
+            'h-full flex-1 bg-transparent text-[14px] text-pqText outline-none placeholder:text-pqMuted',
             icon ? 'ps-[8px] pe-[12px]' : 'px-[12px]'
           )}
+          placeholder={
+            placeholder ??
+            (label &&
+            label.length > 0 &&
+            label.length <= 32 &&
+            !label.includes('http')
+              ? label
+              : undefined)
+          }
           {...(disableForm ? {} : form.register(props.name))}
           {...rest}
         />

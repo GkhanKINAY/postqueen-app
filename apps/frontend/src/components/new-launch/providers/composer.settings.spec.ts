@@ -68,6 +68,19 @@ describe('composer channel settings controls', () => {
     assert.match(tiktok, /icon="music"/);
     assert.match(tiktok, /defaultValue="PUBLIC_TO_EVERYONE"/);
     assert.match(tiktok, /defaultValue="DIRECT_POST"/);
+    assert.match(x, /placeholder="https:\/\/x.com\/i\/communities\/…"/);
+    const finisher = read('../finisher/thread.finisher.tsx');
+    assert.match(finisher, /data-pq="composer-thread-finisher"/);
+    assert.match(finisher, /thread_finisher_placeholder/);
+    assert.doesNotMatch(finisher, /<Editor/);
+    const input = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/input.tsx'
+    );
+    assert.match(input, /placeholder:text-pqMuted/);
+    assert.match(
+      input,
+      /color-mix\(in_srgb,var\(--text\)_20%,transparent\)/,
+    );
     assert.match(instagram, /defaultValue="post"/);
     assert.match(instagram, /icon="type"/);
   });

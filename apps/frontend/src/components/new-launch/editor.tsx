@@ -1271,7 +1271,7 @@ export const OnlyEditor = forwardRef<
       BulletList,
       ListItem,
       Placeholder.configure({
-        placeholder: t('write_something', 'Write something …'),
+        placeholder: t('write_your_post', 'Write your post…'),
         emptyEditorClass: 'is-editor-empty',
       }),
       ...(editorType === 'html' || editorType === 'markdown'

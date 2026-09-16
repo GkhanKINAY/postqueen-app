@@ -203,7 +203,7 @@ export const ComposeFirstComment: FC<{
             ? t('first_comment', 'First Comment')
             : t('add_comment', 'Add comment')
         }
-        className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="min-h-[64px] w-full resize-y rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
       <div
         data-pq="composer-first-comment-tools"

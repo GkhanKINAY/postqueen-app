@@ -68,6 +68,7 @@ const SettingsComponent = () => {
         <>
           <Input
             label={t('label_article_title', 'Article title')}
+            placeholder={t('label_article_title', 'Article title')}
             {...register('article_title')}
           />
           <FormChoice
@@ -111,9 +112,8 @@ const SettingsComponent = () => {
           />
 
           <Input
-            label={
-              'Post to a community, URL (Ex: https://x.com/i/communities/1493446837214187523)'
-            }
+            label={t('label_community', 'Community')}
+            placeholder="https://x.com/i/communities/…"
             {...register('community')}
           />
 
