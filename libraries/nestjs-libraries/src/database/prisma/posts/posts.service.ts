@@ -31,6 +31,7 @@ import {
   minifyPostsList,
   minifyPosts,
 } from '@gitroom/helpers/utils/posts.list.minify';
+import { postWantsPublishNotice } from '@gitroom/helpers/utils/post.publish.notice';
 import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import sharp from 'sharp';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
@@ -86,6 +87,14 @@ export class PostsService {
 
   updatePost(id: string, postId: string, releaseURL: string) {
     return this._postRepository.updatePost(id, postId, releaseURL);
+  }
+
+  async shouldSkipPublishNotice(orgId: string, releaseURL: string) {
+    const row = await this._postRepository.getSettingsByReleaseUrl(
+      orgId,
+      releaseURL
+    );
+    return !postWantsPublishNotice(row?.settings);
   }
 
   claimPost(id: string, claimant: string, anyState: boolean) {

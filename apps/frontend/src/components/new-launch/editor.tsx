@@ -70,6 +70,12 @@ import {
   DelayIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
+import { PostComment } from '@gitroom/frontend/components/new-launch/providers/post-comment.enum';
+import {
+  ComposeFirstComment,
+  editorHtmlToPlain,
+  plainToEditorHtml,
+} from '@gitroom/frontend/components/new-launch/compose.first.comment';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
 
@@ -366,6 +372,68 @@ export const EditorWrapper: FC<{
     [current, global, internal, t]
   );
 
+  const firstCommentMode =
+    Boolean(comments) && postComment !== PostComment.POST && canEdit;
+  const lastVisibleIndex = firstCommentMode
+    ? items.length <= 2
+      ? 0
+      : items.length - 1
+    : items.length - 1;
+
+  const setFirstCommentText = useCallback(
+    (text: string) => {
+      const html = text.trim() ? plainToEditorHtml(text) : '';
+      const comment = items[1];
+      if (!comment) {
+        if (!html) {
+          return;
+        }
+        const next = [
+          {
+            delay: 0,
+            content: html,
+            id: makeId(10),
+            media: [] as { id: string; path: string; thumbnail?: string }[],
+          },
+        ];
+        if (internal) {
+          addInternalValue(0, current, next);
+          return;
+        }
+        addGlobalValue(0, next);
+        return;
+      }
+      if (
+        !html &&
+        items.length === 2 &&
+        !(comment.media && comment.media.length)
+      ) {
+        if (internal) {
+          deleteInternalValue(current, 1);
+          return;
+        }
+        deleteGlobalValue(1);
+        return;
+      }
+      if (internal) {
+        setInternalValueText(current, 1, html);
+        return;
+      }
+      setGlobalValueText(1, html);
+    },
+    [
+      addGlobalValue,
+      addInternalValue,
+      current,
+      deleteGlobalValue,
+      deleteInternalValue,
+      internal,
+      items,
+      setGlobalValueText,
+      setInternalValueText,
+    ]
+  );
+
   if (!loaded || !loadedState) {
     return null;
   }
@@ -434,13 +502,20 @@ export const EditorWrapper: FC<{
           <div className="absolute w-full h-full left-0 top-0 bg-pqPopup opacity-60 z-[100] rounded-[12px]" />
         </>
       )}
-      {items.map((g, index) => (
+      {items.map((g, index) => {
+        if (firstCommentMode && index === 1) {
+          return null;
+        }
+        return (
         <div
           key={g.id}
           className={clsx(
             'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
             index === 0 && 'rounded-t-[12px]',
-            (index === items.length - 1 || !comments) && 'rounded-b-[12px]',
+            (index === items.length - 1 ||
+              !comments ||
+              (firstCommentMode && items.length <= 2)) &&
+              'rounded-b-[12px]',
             !canEdit && !isCreateSet && 'blur-s',
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
           )}
@@ -471,15 +546,26 @@ export const EditorWrapper: FC<{
                 dummy={dummy}
                 selectedIntegration={selectedIntegration}
                 chars={chars}
+                firstComment={
+                  firstCommentMode && index === 0 ? (
+                    <ComposeFirstComment
+                      value={editorHtmlToPlain(items[1]?.content || '')}
+                      onChange={setFirstCommentText}
+                    />
+                  ) : undefined
+                }
                 childButton={
                   <>
-                    {(canEdit && items.length - 1 === index) || !comments ? (
+                    {(canEdit && index === lastVisibleIndex) || !comments ? (
                       <div className="flex items-center">
                         <div className="flex-1">
-                          {comments && (
+                          {comments &&
+                            !(firstCommentMode && items.length < 2) && (
                             <AddPostButton
                               num={index}
-                              onClick={addValue(index)}
+                              onClick={addValue(
+                                firstCommentMode ? items.length - 1 : index
+                              )}
                               postComment={postComment}
                             />
                           )}
@@ -514,7 +600,7 @@ export const EditorWrapper: FC<{
                 }
               />
             </div>
-            {comments && (
+            {comments && !(firstCommentMode && index === 0) && (
               <div className="flex flex-col items-center gap-[10px] pe-[12px]">
                 <UpDownArrow
                   isUp={index !== 0}
@@ -539,7 +625,8 @@ export const EditorWrapper: FC<{
             )}
           </div>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 };
@@ -563,6 +650,7 @@ export const Editor: FC<{
   dummy: boolean;
   chars: Record<string, number>;
   childButton?: React.ReactNode;
+  firstComment?: React.ReactNode;
 }> = (props) => {
   const {
     editorType = 'normal',
@@ -575,6 +663,7 @@ export const Editor: FC<{
     dummy,
     chars,
     childButton,
+    firstComment,
     comments,
   } = props;
   const [id] = useState(makeId(10));
@@ -1003,6 +1092,7 @@ export const Editor: FC<{
                 />
               )}
             </div>
+            {!!firstComment && firstComment}
             <div>{childButton}</div>
           </div>
         </div>

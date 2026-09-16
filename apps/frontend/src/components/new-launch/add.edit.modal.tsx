@@ -23,6 +23,8 @@ export interface AddEditModalProps {
   focusedChannel?: string;
   addEditSets?: (data: any) => void;
   reopenModal: () => void;
+  /** Create Post from the header opens on the next free slot. Calendar clicks keep a date. */
+  when?: 'next' | 'date';
   mutate: () => void;
   padding?: string;
   customClose?: () => void;
