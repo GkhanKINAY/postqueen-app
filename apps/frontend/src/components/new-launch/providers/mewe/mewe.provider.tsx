@@ -19,12 +19,13 @@ const MeweComponent: FC = () => {
     <div className="flex flex-col gap-[16px]">
       <FormChoice
         name="postType"
+        icon="group"
         label="Post To"
         layout="segment"
         defaultValue="timeline"
         options={[
-          { value: 'timeline', label: 'My Timeline' },
-          { value: 'group', label: 'Group' },
+          { value: 'timeline', label: 'My Timeline', icon: 'post' },
+          { value: 'group', label: 'Group', icon: 'group' },
         ]}
       />
       {postType === 'group' && (

@@ -61,7 +61,21 @@ export const InformationComponent: FC<{
   totalAllowedChars: number;
   isPicture: boolean;
   text?: string;
-}> = ({ totalChars, totalAllowedChars, chars, isPicture, text }) => {
+  /**
+   * Post body must have text or media. Comments are optional, so an unused
+   * empty comment must not fail the same way as an empty post.
+   */
+  requireContent?: boolean;
+  variant?: 'post' | 'comment';
+}> = ({
+  totalChars,
+  totalAllowedChars,
+  chars,
+  isPicture,
+  text,
+  requireContent = true,
+  variant = 'post',
+}) => {
   const t = useT();
   // `detailsOpen` pins the panel (click, for touch / keyboard); `hovered` is the
   // design's `charPanel` flag, which is the only thing that opens it there.
@@ -113,7 +127,7 @@ export const InformationComponent: FC<{
       return false;
     }
 
-    if (!isPicture && !totalChars) {
+    if (requireContent && !isPicture && !totalChars) {
       return false;
     }
 
@@ -143,6 +157,7 @@ export const InformationComponent: FC<{
     totalChars,
     isInternal,
     isPicture,
+    requireContent,
     chars,
     showStripLinkWarning,
     // Read above, and listed here on purpose. Today they are covered by
@@ -263,17 +278,22 @@ export const InformationComponent: FC<{
             isValid ? 'border border-newColColor' : 'border border-pqWarn'
           )}
         >
-          {!isPicture && !totalChars && (
+          {requireContent && !isPicture && !totalChars && (
             <div
               className={clsx(
                 'whitespace-nowrap text-sm text-pqWarn',
                 isGlobal && selectedIntegrations.length && 'mb-[12px]'
               )}
             >
-              {t(
-                'your_post_should_have_at_least_one_character_or_one_image',
-                'Your post should have at least one character or one image.'
-              )}
+              {variant === 'comment'
+                ? t(
+                    'your_comment_should_have_at_least_one_character_or_one_image',
+                    'Your comment should have at least one character or one image.'
+                  )
+                : t(
+                    'your_post_should_have_at_least_one_character_or_one_image',
+                    'Your post should have at least one character or one image.'
+                  )}
             </div>
           )}
           {isGlobal && (
@@ -325,7 +345,7 @@ export const InformationComponent: FC<{
               className={clsx(
                 'whitespace-nowrap text-sm text-pqWarn',
                 ((isGlobal && selectedIntegrations.length) ||
-                  (!isPicture && !totalChars)) &&
+                  (requireContent && !isPicture && !totalChars)) &&
                   'mt-[12px]'
               )}
             >

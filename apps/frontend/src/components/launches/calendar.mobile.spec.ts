@@ -69,11 +69,12 @@ describe('phone calendar and composer', () => {
     assert.match(manage, /shrink-0 pe-\[20px\]/);
   });
 
-  it('lets desktop maximize the composer to the viewport', () => {
+  it('lets desktop maximize the composer inside the padded shell, not flush to the viewport', () => {
     assert.match(manage, /ExpandIcon/);
     assert.match(manage, /CollapseIcon/);
     assert.match(manage, /t\('full_screen', 'Full screen'\)/);
-    assert.match(manage, /fixed inset-0 z-\[401\]/);
+    assert.doesNotMatch(manage, /fixed inset-0 z-\[401\]/);
+    assert.match(manage, /data-pq-composer-max=\{maximized \? '1' : '0'\}/);
   });
 
   it('uses a three-step Write / Preview / Post flow on phone', () => {

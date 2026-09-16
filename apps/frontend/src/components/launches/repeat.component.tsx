@@ -86,7 +86,7 @@ export const RepeatComponent: FC<{
     return list.find((p) => p.value === repeat)?.label;
   }, [repeat, list]);
 
-  const emptyLabel = t('repeat_post_every', 'Repeat Post Every...');
+  const emptyLabel = t('repeat_post_every', 'Repeat Post Every');
   // Selected trigger is just "Every Day" — prefixing repeat_post_every_label
   // would read "Repeat Post Every Every Day".
   const triggerLabel = repeat ? everyLabel : emptyLabel;
@@ -95,7 +95,8 @@ export const RepeatComponent: FC<{
     <div
       ref={ref}
       className={clsx(
-        'relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden rounded-[8px] border text-[15px] font-[600] select-none',
+        'relative flex h-[44px] items-center justify-center rounded-[8px] border text-[15px] font-[600] select-none',
+        touch ? 'min-w-0 overflow-hidden' : 'shrink-0',
         isOpen ? 'border-pqBrand' : 'border-newTextColor/10'
       )}
     >
@@ -117,7 +118,7 @@ export const RepeatComponent: FC<{
             <div className="min-w-0 cursor-pointer truncate">{everyLabel}</div>
           ) : null
         ) : (
-          <div className="min-w-0 cursor-pointer truncate">{triggerLabel}</div>
+          <div className="cursor-pointer whitespace-nowrap">{triggerLabel}</div>
         )}
         <div className="cursor-pointer">
           <DropdownArrowIcon rotated={isOpen} />

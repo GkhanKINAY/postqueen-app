@@ -17,6 +17,12 @@ describe('notification panel rows', () => {
     assert.doesNotMatch(source, /dangerouslySetInnerHTML/);
   });
 
+  it('paints a complete bell, not a lone clapper stroke', () => {
+    assert.match(source, /M6 8a6 6 0 0 1 12 0/);
+    assert.match(source, /M10\.3 21a1\.94 1\.94 0 0 0 3\.4 0/);
+    assert.doesNotMatch(source, /C6\.63216 6\.4087 6\.00002 8C/);
+  });
+
   it('uses readable Mark all read colour and distinct error/warning icons', () => {
     assert.match(source, /text-pqFocused/);
     assert.match(source, /kind === 'fail'/);

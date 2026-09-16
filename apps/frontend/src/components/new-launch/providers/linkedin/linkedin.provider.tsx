@@ -21,12 +21,13 @@ const LinkedInSettings = () => {
     <>
       <FormChoice
         name="post_as_images_carousel"
+        icon="carousel"
         label={t('post_as_images_carousel', 'Post as images carousel')}
         layout="segment"
         defaultValue={false}
         options={[
-          { value: false, label: t('label_post_type_post', 'Post') },
-          { value: true, label: 'Carousel' },
+          { value: false, label: t('label_post_type_post', 'Post'), icon: 'post' },
+          { value: true, label: 'Carousel', icon: 'carousel' },
         ]}
       />
       {isCarousel && (

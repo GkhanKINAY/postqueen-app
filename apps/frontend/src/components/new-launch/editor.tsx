@@ -74,6 +74,7 @@ import {
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/post-comment.enum';
 import {
+  AddCommentTrigger,
   ComposeFirstComment,
   editorHtmlToPlain,
   plainToEditorHtml,
@@ -375,22 +376,21 @@ export const EditorWrapper: FC<{
   );
 
   const firstCommentMode =
-    Boolean(comments) && postComment !== PostComment.POST && canEdit;
-  const lastVisibleIndex = firstCommentMode
-    ? items.length <= 2
-      ? 0
-      : items.length - 1
-    : items.length - 1;
-  const firstCommentFilled = Boolean(
-    editorHtmlToPlain(items[1]?.content || '').trim() ||
-      items[1]?.media?.length ||
-      items[1]?.delay
+    canEdit && postComment !== PostComment.POST;
+  const lastVisibleIndex = firstCommentMode ? 0 : items.length - 1;
+  const [commentDraftOpen, setCommentDraftOpen] = useState(false);
+  const showComments = commentDraftOpen || items.length > 1;
+  const firstCommentFilled = items.slice(1).some(
+    (comment) =>
+      Boolean(editorHtmlToPlain(comment.content || '').trim()) ||
+      Boolean(comment.media?.length) ||
+      Boolean(comment.delay)
   );
 
-  const setFirstCommentText = useCallback(
-    (text: string) => {
+  const setCommentText = useCallback(
+    (index: number) => (text: string) => {
       const html = text.trim() ? plainToEditorHtml(text) : '';
-      const comment = items[1];
+      const comment = items[index];
       if (!comment) {
         if (!html) {
           return;
@@ -412,6 +412,7 @@ export const EditorWrapper: FC<{
       }
       if (
         !html &&
+        index === 1 &&
         items.length === 2 &&
         !(comment.media && comment.media.length) &&
         !comment.delay
@@ -424,10 +425,10 @@ export const EditorWrapper: FC<{
         return;
       }
       if (internal) {
-        setInternalValueText(current, 1, html);
+        setInternalValueText(current, index, html);
         return;
       }
-      setGlobalValueText(1, html);
+      setGlobalValueText(index, html);
     },
     [
       addGlobalValue,
@@ -461,12 +462,14 @@ export const EditorWrapper: FC<{
     addGlobalValue(0, next);
   }, [addGlobalValue, addInternalValue, current, internal, items]);
 
-  const setFirstCommentImages = useCallback(
-    (value: any[]) => {
-      ensureFirstComment();
-      changeImages(1)(value);
+  const setCommentImages = useCallback(
+    (index: number) => (value: any[]) => {
+      if (index === 1 && !items[1]) {
+        ensureFirstComment();
+      }
+      changeImages(index)(value);
     },
-    [changeImages, ensureFirstComment]
+    [changeImages, ensureFirstComment, items]
   );
 
   if (!loaded || !loadedState) {
@@ -477,7 +480,8 @@ export const EditorWrapper: FC<{
     <div
       className={clsx(
         'relative flex-col gap-[20px] flex-1',
-        (items.length === 1 || !canEdit || !comments) && 'flex',
+        (items.length === 1 || !canEdit || !comments || firstCommentMode) &&
+          'flex',
         ((!canEdit && !isCreateSet) || !comments) &&
           'bg-pqSettings rounded-[12px]'
       )}
@@ -538,7 +542,7 @@ export const EditorWrapper: FC<{
         </>
       )}
       {items.map((g, index) => {
-        if (firstCommentMode && index === 1) {
+        if (firstCommentMode && index >= 1) {
           return null;
         }
         return (
@@ -547,9 +551,7 @@ export const EditorWrapper: FC<{
           className={clsx(
             'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
             index === 0 && 'rounded-t-[12px]',
-            (index === items.length - 1 ||
-              !comments ||
-              (firstCommentMode && items.length <= 2)) &&
+            (index === items.length - 1 || !comments || firstCommentMode) &&
               'rounded-b-[12px]',
             !canEdit && !isCreateSet && 'blur-s',
             ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
@@ -584,26 +586,66 @@ export const EditorWrapper: FC<{
                 firstComment={
                   firstCommentMode && index === 0 ? (
                     <>
-                      <ComposeFirstComment
-                        value={editorHtmlToPlain(items[1]?.content || '')}
-                        onChange={setFirstCommentText}
-                        pictures={items[1]?.media || []}
-                        setImages={setFirstCommentImages}
-                        delay={items[1]?.delay || 0}
-                        comments={comments}
-                        dummy={dummy}
-                        allValues={items}
-                        onActivate={ensureFirstComment}
-                      />
-                      {firstCommentFilled && items.length <= 2 ? (
-                        <div className="px-[12px] pb-[10px]">
-                          <AddPostButton
-                            num={0}
-                            onClick={addValue(items.length - 1)}
-                            postComment={postComment}
-                          />
-                        </div>
-                      ) : null}
+                      {showComments ? (
+                        <>
+                          {(items.length > 1
+                            ? items.slice(1)
+                            : [
+                                {
+                                  id: 'comment-draft',
+                                  content: '',
+                                  media: [] as {
+                                    id: string;
+                                    path: string;
+                                    thumbnail?: string;
+                                  }[],
+                                  delay: 0,
+                                },
+                              ]
+                          ).map((comment, offset) => {
+                            const commentIndex = offset + 1;
+                            return (
+                              <ComposeFirstComment
+                                key={`comment-${commentIndex}`}
+                                commentIndex={commentIndex}
+                                value={editorHtmlToPlain(comment.content || '')}
+                                onChange={setCommentText(commentIndex)}
+                                pictures={comment.media || []}
+                                setImages={setCommentImages(commentIndex)}
+                                delay={comment.delay || 0}
+                                comments={comments}
+                                dummy={dummy}
+                                allValues={items}
+                                onActivate={
+                                  commentIndex === 1
+                                    ? ensureFirstComment
+                                    : () => undefined
+                                }
+                                chars={chars}
+                                totalAllowedChars={totalChars}
+                                onRemove={
+                                  commentIndex > 1
+                                    ? deletePost(commentIndex)
+                                    : undefined
+                                }
+                              />
+                            );
+                          })}
+                          {firstCommentFilled && comments ? (
+                            <div className="px-[12px] pb-[10px]">
+                              <AddPostButton
+                                num={0}
+                                onClick={addValue(items.length - 1)}
+                                postComment={postComment}
+                              />
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <AddCommentTrigger
+                          onClick={() => setCommentDraftOpen(true)}
+                        />
+                      )}
                     </>
                   ) : undefined
                 }
@@ -611,12 +653,10 @@ export const EditorWrapper: FC<{
                   comments &&
                   canEdit &&
                   index === lastVisibleIndex &&
-                  !(firstCommentMode && items.length <= 2) ? (
+                  !firstCommentMode ? (
                     <AddPostButton
                       num={index}
-                      onClick={addValue(
-                        firstCommentMode ? items.length - 1 : index
-                      )}
+                      onClick={addValue(index)}
                       postComment={postComment}
                     />
                   ) : undefined
@@ -925,7 +965,10 @@ export const Editor: FC<{
               />
             </div>
             <div
-              className="bg-pqInner flex-1"
+              className={clsx(
+                'bg-pqInner',
+                splitComposer ? 'min-h-[48px]' : 'flex-1'
+              )}
               onClick={() => {
                 if (editorRef?.current?.editor?.isFocused) {
                   return;

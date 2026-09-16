@@ -798,19 +798,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       data-pq-composer-empty={hasChannels ? '0' : '1'}
       className={clsx(
         'relative flex min-h-0 w-full flex-1',
-        (hasChannels || maximized || touch) && 'h-full',
-        maximized && !touch && 'fixed inset-0 z-[401] h-dvh w-screen'
+        (hasChannels || maximized || touch) && 'h-full'
       )}
     >
       <ComposeAiBindings />
       <div
         className={clsx(
           'flex min-h-0 flex-1 flex-col overflow-hidden shadow-pq',
-          touch
-            ? 'rounded-none bg-pqInner'
-            : maximized
-            ? 'rounded-none bg-pqBg'
-            : 'rounded-[20px] bg-pqBg'
+          touch ? 'rounded-none bg-pqInner' : 'rounded-[20px] bg-pqBg'
         )}
       >
         <div
@@ -856,7 +851,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     className="flex min-w-0 shrink-0 items-center gap-[8px]"
                   >
                     {!dummy && (
-                      <div className="min-w-0 max-w-[190px]">
+                      <div className="shrink-0">
                         <TagsComponent
                           name="tags"
                           label={t('tags', 'Tags')}
@@ -865,15 +860,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                           onChange={(e) => {
                             setTags(e.target.value);
                           }}
-                        />
-                      </div>
-                    )}
-                    {!dummy && (
-                      <div className="min-w-0 max-w-[210px]">
-                        <RepeatComponent
-                          repeat={repeater}
-                          menuPlacement="bottom-end"
-                          onChange={setRepeater}
                         />
                       </div>
                     )}
@@ -986,7 +972,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       <SelectCurrent />
                     </div>
                     <div
-                      className={clsx('flex-1 flex', !hasChannels && 'hidden')}
+                      className={clsx(
+                        !hasChannels && 'hidden',
+                        compactChrome ? 'flex flex-1' : 'w-full shrink-0'
+                      )}
                     >
                       {!hide && <EditorWrapper totalPosts={1} value="" />}
                     </div>
@@ -1039,11 +1028,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   </div>
                 </div>
               </div>
-              {!compactChrome && hasChannels && (
-                <div className="relative h-[min(240px,32vh)] min-h-[180px] shrink-0 overflow-hidden">
-                  <ComposeAiRail docked />
-                </div>
-              )}
             </div>
           </div>
           <div
@@ -1058,9 +1042,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 : clsx(
                     'rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]',
                     hasChannels
-                      ? maximized
-                        ? 'w-[min(440px,36vw)]'
-                        : 'w-[440px]'
+                      ? 'w-[min(520px,38vw)] shrink-0'
                       : 'pointer-events-none hidden w-0 min-w-0'
                   )
             )}
@@ -1068,7 +1050,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             <div
               className={clsx(
                 'flex shrink-0 flex-col border-b border-pqLine bg-pqInner text-pqText',
-                !compactChrome && !maximized && 'rounded-se-[16px]'
+                !compactChrome && 'rounded-t-[16px]'
               )}
             >
               <div
@@ -1091,21 +1073,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     onPane={setComposerPane}
                   />
                 )}
+                {compactChrome && (
                 <div className="ms-auto flex shrink-0 items-center gap-[8px]">
-                  {!touch && (
-                    <button
-                      type="button"
-                      onClick={() => setMaximized((v) => !v)}
-                      aria-label={
-                        maximized
-                          ? t('restore', 'Restore')
-                          : t('full_screen', 'Full screen')
-                      }
-                      className="grid size-[44px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-                    >
-                      {maximized ? <CollapseIcon size={16} /> : <ExpandIcon size={16} />}
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={askClose}
@@ -1115,6 +1084,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     <CloseIcon size={16} />
                   </button>
                 </div>
+                )}
               </div>
               {phoneFlow && (
                 <div className="px-[12px] pb-[8px]">
@@ -1130,7 +1100,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               <div
                 className={clsx(
                   'absolute inset-0',
-                  studioRail === 'assistant' && 'hidden'
+                  compactChrome && studioRail === 'assistant' && 'hidden'
                 )}
               >
                 <Scrollable
@@ -1157,6 +1127,51 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               )}
             </div>
           </div>
+          {!compactChrome && hasChannels && (
+            <div
+              data-pq="composer-ai"
+              className="flex min-h-0 w-[min(400px,30vw)] shrink-0 flex-col overflow-hidden rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]"
+            >
+              <div className="flex h-[65px] shrink-0 items-center gap-[8px] border-b border-pqLine px-[20px] font-display text-[20px] font-[600] -tracking-[0.015em] text-pqText">
+                <div className="min-w-0 flex-1 truncate">
+                  {t('your_assistant', 'AI assistant')}
+                </div>
+                <div className="ms-auto flex shrink-0 items-center gap-[8px]">
+                  {!touch && (
+                    <button
+                      type="button"
+                      onClick={() => setMaximized((v) => !v)}
+                      aria-label={
+                        maximized
+                          ? t('restore', 'Restore')
+                          : t('full_screen', 'Full screen')
+                      }
+                      className="grid size-[44px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                    >
+                      {maximized ? (
+                        <CollapseIcon size={16} />
+                      ) : (
+                        <ExpandIcon size={16} />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={askClose}
+                    aria-label={t('close', 'Close')}
+                    className="grid size-[44px] shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+                  >
+                    <CloseIcon size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="relative min-h-0 flex-1">
+                <div className="absolute inset-0">
+                  <ComposeAiRail />
+                </div>
+              </div>
+            </div>
+          )}
           {phoneFlow && (
             <div
               className={clsx(
@@ -1264,7 +1279,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             phoneFlow && composerPane !== 'schedule' && 'hidden',
             compactFooter
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] items-center overflow-x-auto overflow-y-hidden py-[20px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
+              : 'min-h-[84px] w-full items-center justify-between overflow-x-auto overflow-y-hidden py-[20px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
           )}
         >
           {!phoneFlow && (
@@ -1273,12 +1288,22 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               'min-w-0 gap-[8px]',
               compactFooter
                 ? 'grid w-full grid-cols-2'
-                : clsx(
-                    'flex items-center ps-[20px]',
-                    hasChannels ? 'min-w-0 flex-1' : 'shrink-0'
-                  )
+                : 'flex min-w-0 flex-1 items-center ps-[20px]'
             )}
           >
+            {!dummy && !hasChannels && (
+              <div data-pq="composer-footer-tag" className="shrink-0">
+                <TagsComponent
+                  name="tags"
+                  label={t('tags', 'Tags')}
+                  initial={tags}
+                  menuPlacement="top-start"
+                  onChange={(e) => {
+                    setTags(e.target.value);
+                  }}
+                />
+              </div>
+            )}
             {compactFooter && !dummy && hasChannels && (
               <div className={clsx('min-w-0', compactFooter && 'w-full [&>*]:w-full')}>
                 <TagsComponent
@@ -1297,12 +1322,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
-            <ComposeWhen
-              mode={whenMode}
-              date={date}
-              onMode={setWhenMode}
-              onChange={setDate}
-            />
+            {!dummy && hasChannels && !compactFooter && (
+              <div data-pq="composer-footer-repeat" className="shrink-0">
+                <RepeatComponent
+                  repeat={repeater}
+                  menuPlacement="top-start"
+                  onChange={setRepeater}
+                />
+              </div>
+            )}
+            {hasChannels && (
+              <ComposeWhen
+                mode={whenMode}
+                date={date}
+                onMode={setWhenMode}
+                onChange={setDate}
+              />
+            )}
             {compactFooter && !dummy && selectedIntegrations.length > 0 && (
               <ComposeNotify
                 notify={notifyOnPublish}
@@ -1318,6 +1354,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               phoneFlow && 'flex-row'
             )}
           >
+            {!phoneFlow && !hasChannels && (
+              <ComposeWhen
+                mode={whenMode}
+                date={date}
+                onMode={setWhenMode}
+                onChange={setDate}
+              />
+            )}
             {!phoneFlow && existingData?.integration && (
               <button
                 onClick={deletePost}
@@ -1391,7 +1435,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     }
                     onClick={schedule('schedule')}
                     className={clsx(
-                      'btnSub relative flex min-w-0 items-center justify-center overflow-hidden bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-80',
+                      'btnSub relative flex min-w-0 items-center justify-center overflow-hidden bg-pqBrand text-[14px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-40',
                       dummy || !hasChannels
                         ? 'rounded-[10px]'
                         : 'rounded-s-[10px]',

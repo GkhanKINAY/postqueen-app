@@ -17,23 +17,25 @@ const editor = readFileSync(
 );
 
 describe('compose AI assistant placement', () => {
-  it('fills the right rail on phone, and docks under the editor on desktop', () => {
+  it('fills the Post Preview rail on every viewport, not a dock under the editor', () => {
     assert.match(modal, /<StudioRailProvider/);
     assert.match(modal, /<StudioRailTabs \/>/);
-    assert.match(modal, /ms-auto flex shrink-0 items-center gap-\[8px\]/);
     assert.match(
       assistant,
       /data-pq="composer-rail-tabs"[\s\S]{0,80}className="flex shrink-0 items-center gap-\[2px\]/
     );
-    assert.match(modal, /<ComposeAiRail docked \/>/);
+    assert.doesNotMatch(modal, /<ComposeAiRail docked \/>/);
+    assert.doesNotMatch(modal, /h-\[min\(240px,32vh\)\]/);
+    assert.match(modal, /data-pq="composer-preview"/);
+    assert.match(modal, /data-pq="composer-ai"/);
+    assert.match(modal, /w-\[min\(400px,30vw\)\]/);
     assert.match(modal, /<ComposeAiRail \/>/);
-    assert.match(modal, /hasChannels && compactChrome && \(/);
     assert.match(modal, /data-pq="composer-header-extras"/);
     assert.match(modal, /<ComposeAiBindings \/>/);
     assert.match(modal, /data-pq="composer-empty"/);
     assert.match(modal, /data-pq-composer-empty/);
     assert.match(assistant, /<CopilotChat/);
-    assert.match(assistant, /data-pq=\{docked \? 'composer-ai-dock' : 'composer-ai-rail'\}/);
+    assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
     assert.doesNotMatch(assistant, /<CopilotPopup/);
     assert.doesNotMatch(modal, /bottom-\[104px\]/);
     assert.doesNotMatch(modal, /end-\[24px\]/);
@@ -53,7 +55,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /className="copilotKitInputContainer"/);
     assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
     assert.match(assistant, /copilotKitUserMessage/);
-    assert.match(assistant, /trz agent flex min-h-0 flex-col/);
+    assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 

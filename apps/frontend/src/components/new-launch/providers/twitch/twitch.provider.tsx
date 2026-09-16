@@ -55,6 +55,7 @@ const TwitchSettings: FC = () => {
     <div className="flex flex-col gap-[16px]">
       <FormChoice
         name="messageType"
+        icon="chat"
         label="Message Type"
         layout="segment"
         defaultValue="message"

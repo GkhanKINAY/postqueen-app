@@ -17,22 +17,27 @@ const whoCanReply = [
   {
     label: 'Everyone',
     value: 'everyone',
+    icon: 'globe' as const,
   },
   {
     label: 'Accounts you follow',
     value: 'following',
+    icon: 'users' as const,
   },
   {
     label: 'Mentioned accounts',
     value: 'mentionedUsers',
+    icon: 'user' as const,
   },
   {
     label: 'Subscribers',
     value: 'subscribers',
+    icon: 'status' as const,
   },
   {
     label: 'Verified accounts',
     value: 'verified',
+    icon: 'lock' as const,
   },
 ];
 
@@ -45,14 +50,16 @@ const SettingsComponent = () => {
     <>
       <FormChoice
         name="post_type"
+        icon="type"
         label={t('label_post_type', 'Post type')}
         layout="segment"
         defaultValue="post"
         options={[
-          { value: 'post', label: t('label_post_type_post', 'Post') },
+          { value: 'post', label: t('label_post_type_post', 'Post'), icon: 'post' },
           {
             value: 'article',
             label: t('label_post_type_article', 'Article (long-form)'),
+            icon: 'article',
           },
         ]}
       />
@@ -65,6 +72,7 @@ const SettingsComponent = () => {
           />
           <FormChoice
             name="article_status"
+            icon="status"
             label={t('label_article_status', 'Article status')}
             layout="segment"
             defaultValue="draft"
@@ -93,6 +101,7 @@ const SettingsComponent = () => {
         <>
           <FormChoice
             name="who_can_reply_post"
+            icon="reply"
             label={t(
               'label_who_can_reply_to_this_post',
               'Who can reply to this post?'
@@ -110,11 +119,15 @@ const SettingsComponent = () => {
 
           <div className="flex flex-col gap-[10px]">
             <Checkbox
+              icon="ai"
               label={t('label_made_with_ai', 'Made with AI')}
+              defaultValue={false}
               {...register('made_with_ai')}
             />
             <Checkbox
+              icon="disclosure"
               label={t('label_paid_partnership', 'Paid partnership')}
+              defaultValue={false}
               {...register('paid_partnership')}
             />
           </div>

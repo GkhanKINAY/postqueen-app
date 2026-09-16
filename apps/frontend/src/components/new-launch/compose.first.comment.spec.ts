@@ -19,8 +19,30 @@ const bold = readFileSync(
   fileURLToPath(new URL('./bold.text.tsx', import.meta.url)),
   'utf8',
 );
+const underline = readFileSync(
+  fileURLToPath(new URL('./u.text.tsx', import.meta.url)),
+  'utf8',
+);
+const information = readFileSync(
+  fileURLToPath(new URL('../launches/information.component.tsx', import.meta.url)),
+  'utf8',
+);
 
 describe('composer first comment', () => {
+  it('stays collapsed behind a pink Add comment trigger', () => {
+    assert.match(source, /data-pq="composer-first-comment-trigger"/);
+    assert.match(source, /data-pq="composer-add-comment-trigger"/);
+    assert.match(source, /t\('add_comment', 'Add comment'\)/);
+    assert.match(source, /bg-pqPink/);
+    assert.match(editor, /commentDraftOpen/);
+    assert.match(editor, /showComments/);
+    assert.match(editor, /<AddCommentTrigger/);
+    assert.doesNotMatch(
+      editor,
+      /firstCommentMode && index === 0 \? \(\s*<ComposeFirstComment/,
+    );
+  });
+
   it('is a field, not a second compose box', () => {
     assert.match(source, /data-pq="composer-first-comment"/);
     assert.match(source, /first_comment/);
@@ -30,22 +52,76 @@ describe('composer first comment', () => {
     assert.match(source, /bg-pqInner/);
   });
 
-  it('keeps media, signature, bold, emoji and a labeled delay on the toolbar', () => {
+  it('aligns comment tools with the post toolbar icon chips', () => {
     assert.match(source, /data-pq="composer-first-comment-tools"/);
-    assert.match(source, /<DelayComponent/);
-    assert.match(source, /toolbar/);
-    assert.match(source, /<SignatureBox/);
-    assert.match(source, /add_signature/);
+    assert.match(source, /<SignatureBox editor=\{signatureEditor\} \/>/);
+    assert.doesNotMatch(source, /add_signature/);
+    assert.doesNotMatch(source, /<span>Bold<\/span>/);
+    assert.doesNotMatch(source, /t\('insert_emoji', 'Insert Emoji'\)<\/span>/);
+    assert.match(source, /w-\[36px\]/);
     assert.match(source, /applyUnicodeBold/);
+    assert.match(source, /applyUnicodeUnderline/);
     assert.match(source, /insert_emoji/);
     assert.match(source, /<MultiMediaComponent/);
     assert.match(source, /attachmentsOnly/);
-    assert.match(delay, /toolbar\?: boolean/);
-    assert.match(delay, /t\('delay_comment', 'Delay comment'\)/);
     assert.match(bold, /export function applyUnicodeBold/);
+    assert.match(underline, /export function applyUnicodeUnderline/);
+  });
+
+  it('keeps delay distinct from Bold / Signature / emoji chips', () => {
+    assert.match(source, /data-pq="composer-first-comment-meta"/);
+    assert.match(source, /<DelayComponent/);
+    assert.match(source, /toolbar/);
+    assert.match(delay, /toolbar\?: boolean/);
+    assert.match(delay, /data-pq=\{toolbar \? 'composer-comment-delay'/);
+    assert.match(delay, /t\('delay_comment', 'Delay comment'\)/);
+    const toolbarClass = delay.slice(
+      delay.indexOf("toolbar\n            ? '"),
+      delay.indexOf(": 'h-[24px]"),
+    );
+    assert.match(toolbarClass, /text-pqMuted/);
+    assert.doesNotMatch(toolbarClass, /bg-pqBtnSimple/);
+  });
+
+  it('reuses the post character counter with comment copy, without nagging empty comments', () => {
+    assert.match(source, /<InformationComponent/);
+    assert.match(source, /variant="comment"/);
+    assert.match(source, /requireContent=\{false\}/);
+    assert.match(source, /totalAllowedChars/);
+    assert.match(source, /totalChars=\{value\.length\}/);
+    assert.match(editor, /chars=\{chars\}/);
+    assert.match(editor, /totalAllowedChars=\{totalChars\}/);
+    assert.match(
+      information,
+      /your_post_should_have_at_least_one_character_or_one_image/,
+    );
+    assert.match(
+      information,
+      /your_comment_should_have_at_least_one_character_or_one_image/,
+    );
+    assert.match(information, /requireContent && !isPicture && !totalChars/);
+    assert.match(information, /variant === 'comment'/);
+  });
+
+  it('keeps Add comment on comment-capable networks even when comments is false', () => {
+    assert.match(
+      editor,
+      /canEdit && postComment !== PostComment\.POST/,
+    );
+    assert.doesNotMatch(
+      editor,
+      /Boolean\(comments\) && postComment !== PostComment\.POST/,
+    );
+    assert.match(editor, /firstCommentFilled && comments/);
+  });
+
+  it('uses the posts array so extra comments are a thread, not a new API', () => {
     assert.match(editor, /ensureFirstComment/);
     assert.match(editor, /!comment\.delay/);
-    assert.match(editor, /firstCommentFilled && items\.length <= 2/);
-    assert.match(editor, /!\(firstCommentMode && items\.length <= 2\)/);
+    assert.match(editor, /items\.slice\(1\)/);
+    assert.match(editor, /firstCommentMode && index >= 1/);
+    assert.match(editor, /addValue\(items\.length - 1\)/);
+    assert.match(editor, /setCommentText/);
+    assert.match(editor, /commentIndex > 1/);
   });
 });

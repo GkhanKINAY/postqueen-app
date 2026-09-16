@@ -1,8 +1,9 @@
 'use client';
 
-import { forwardRef, useCallback } from 'react';
+import { forwardRef, useCallback, useLayoutEffect } from 'react';
 import clsx from 'clsx';
 import { useFormContext } from 'react-hook-form';
+import { FormIcon, isEmptyFormValue, type FormIconName } from './form.icon';
 
 /**
  * Checkbox face is always light (`--onBrand` / white) with a brand tick when
@@ -17,6 +18,9 @@ export const Checkbox = forwardRef<
     name?: string;
     className?: string;
     label?: string;
+    icon?: FormIconName;
+    /** Form default when the field has never been set — matches the payload. */
+    defaultValue?: boolean;
     onChange?: (event: {
       target: {
         name?: string;
@@ -27,11 +31,33 @@ export const Checkbox = forwardRef<
     variant?: 'default' | 'hollow';
   }
 >((props, ref: any) => {
-  const { checked, className, label, disableForm } = props;
+  const { checked, className, label, disableForm, icon, defaultValue } = props;
   const form = useFormContext();
+  if (!disableForm && props.name && defaultValue !== undefined) {
+    const existing = form.getValues(props.name);
+    if (isEmptyFormValue(existing)) {
+      form.register(props.name, { value: defaultValue });
+    }
+  }
   const watch = disableForm ? undefined : form.watch(props.name!);
   // `watch || checked` treated `false` as missing and flipped state wrongly.
-  const val = !!(disableForm ? checked : watch ?? checked);
+  const val = !!(disableForm
+    ? checked
+    : isEmptyFormValue(watch)
+      ? checked ?? defaultValue
+      : watch);
+
+  useLayoutEffect(() => {
+    if (disableForm || !props.name || defaultValue === undefined) {
+      return;
+    }
+    if (isEmptyFormValue(form.getValues(props.name))) {
+      form.setValue(props.name, defaultValue, {
+        shouldDirty: false,
+        shouldTouch: false,
+      });
+    }
+  }, [disableForm, props.name, defaultValue, form]);
 
   const changeStatus = useCallback(() => {
     const next = !val;
@@ -77,12 +103,14 @@ export const Checkbox = forwardRef<
       </div>
       {!!label && (
         <div
-          className="cursor-pointer text-[14px] text-pqText"
+          className="flex cursor-pointer items-center gap-[6px] text-[14px] text-pqText"
           onClick={changeStatus}
         >
+          {icon && <FormIcon name={icon} size={14} className="text-pqSoft" />}
           {label}
         </div>
       )}
     </div>
   );
 });
+Checkbox.displayName = 'Checkbox';

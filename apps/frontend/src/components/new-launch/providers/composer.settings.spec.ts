@@ -40,6 +40,34 @@ describe('composer channel settings controls', () => {
     assert.match(tiktok, /<Select/);
   });
 
+  it('paints FormChoice defaults on first paint and draws named setting icons', () => {
+    const choice = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/form.choice.tsx'
+    );
+    const icon = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/form.icon.tsx'
+    );
+    const section = read(
+      '../../../../../../libraries/react-shared-libraries/src/form/form.section.tsx'
+    );
+    const tiktok = read('./tiktok/tiktok.provider.tsx');
+    const instagram = read('./instagram/instagram.collaborators.tsx');
+
+    assert.match(choice, /isEmptyFormValue\(raw\) \? initial : raw/);
+    assert.match(choice, /shouldDirty: false/);
+    assert.match(choice, /icon\?: FormIconName/);
+    assert.match(icon, /export type FormIconName/);
+    assert.match(section, /bg-pqSettings/);
+    assert.doesNotMatch(choice, /tiktok/i);
+    assert.doesNotMatch(icon, /tiktok/i);
+    assert.match(tiktok, /icon="visibility"/);
+    assert.match(tiktok, /icon="music"/);
+    assert.match(tiktok, /defaultValue="PUBLIC_TO_EVERYONE"/);
+    assert.match(tiktok, /defaultValue="DIRECT_POST"/);
+    assert.match(instagram, /defaultValue="post"/);
+    assert.match(instagram, /icon="type"/);
+  });
+
   it('keeps the same settings form after the editor when a channel is selected', () => {
     const hop = read('./high.order.provider.tsx');
     const manage = read('../manage.modal.tsx');
@@ -55,7 +83,14 @@ describe('composer channel settings controls', () => {
     );
     assert.match(hop, /data-pq="preview-channel-identity"/);
     assert.match(hop, /channelPlatformLabel/);
-    assert.match(manage, /w-\[440px\]/);
+    assert.match(hop, /data-pq="preview-channel-body"/);
+    const identityStart = hop.indexOf('data-pq="preview-channel-identity"');
+    const identityEnd = hop.indexOf('data-pq="preview-channel-body"');
+    const identity = hop.slice(identityStart, identityEnd);
+    assert.ok(identityStart > 0 && identityEnd > identityStart);
+    assert.doesNotMatch(identity, /formatChannelHandle/);
+    assert.doesNotMatch(identity, /integration\.name/);
+    assert.match(manage, /w-\[min\(520px,38vw\)\]/);
     assert.ok(
       manage.indexOf('{!hide && <EditorWrapper') <
         manage.indexOf('id="composer-quick-settings"'),

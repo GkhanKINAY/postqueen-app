@@ -70,6 +70,35 @@ const underlineMap = {
 const reverseMap = Object.fromEntries(
   Object.entries(underlineMap).map(([key, value]) => [value, key])
 );
+
+const COMBINING_UNDERLINE = '\u0332';
+
+export function applyUnicodeUnderline(
+  text: string,
+  from: number,
+  to: number
+): { text: string; from: number; to: number } {
+  if (from === to) {
+    return { text, from, to };
+  }
+  const start = Math.min(from, to);
+  const end = Math.max(from, to);
+  const slice = text.slice(start, end);
+  const hasUnderline = slice.includes(COMBINING_UNDERLINE);
+  const mapped = hasUnderline
+    ? slice.split(COMBINING_UNDERLINE).join('')
+    : Array.from(slice)
+        .map((ch) =>
+          ch === COMBINING_UNDERLINE ? '' : ch + COMBINING_UNDERLINE
+        )
+        .join('');
+  return {
+    text: text.slice(0, start) + mapped + text.slice(end),
+    from: start,
+    to: start + mapped.length,
+  };
+}
+
 export const UText: FC<{
   editor: any;
   currentValue: string;

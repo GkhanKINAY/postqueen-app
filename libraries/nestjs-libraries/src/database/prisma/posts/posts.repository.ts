@@ -282,7 +282,8 @@ export class PostsRepository {
           };
 
     const orderDirection: 'asc' | 'desc' =
-      stateFilter === 'published' ? 'desc' : 'asc';
+      query.order ||
+      (stateFilter === 'published' || stateFilter === 'all' ? 'desc' : 'asc');
 
     const where = {
       AND: [
@@ -295,12 +296,11 @@ export class PostsRepository {
         },
       ],
       ...stateAndDate,
-      // Published: any publishDate. Drafts: any publishDate (past drafts must
-      // stay visible in the Drafts panel — calendar already excludes DRAFT).
-      // Scheduled/other: upcoming only.
-      ...(stateFilter === 'published' || stateFilter === 'draft'
-        ? {}
-        : { publishDate: { gte: dayjs.utc().toDate() } }),
+      // Published / Drafts / All: any publishDate so All is mixed history +
+      // upcoming. Scheduled stays upcoming-only.
+      ...(stateFilter === 'scheduled'
+        ? { publishDate: { gte: dayjs.utc().toDate() } }
+        : {}),
       deletedAt: null as Date | null,
       parentPostId: null as string | null,
       intervalInDays: null as number | null,
