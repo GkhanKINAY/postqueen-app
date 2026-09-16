@@ -68,6 +68,11 @@ describe('calendar slot density', () => {
     );
     assert.match(
       calendar,
+      /rounded-\[7px\] bg-pqBrand px-\[5px\] text-\[10\.5px\] font-\[700\] text-pqOnBrand/,
+    );
+    assert.doesNotMatch(calendar, /bg-pqBrandSoft px-\[5px\].*text-pqFocused/);
+    assert.match(
+      calendar,
       /flex w-full shrink-0 flex-col justify-start text-\[12px\]/,
     );
     assert.match(

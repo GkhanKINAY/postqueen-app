@@ -1735,7 +1735,7 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
 
   .copilotKitInput textarea {
     width: 100%;
-    min-height: 52px;
+    min-height: 72px;
     padding: 2px;
     border: 0;
     outline: 0;
@@ -1762,13 +1762,13 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
 
   .copilotKitInput {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 8px;
-    padding: 8px 8px 8px 12px;
+    padding: 10px 8px 10px 12px;
   }
 
   .copilotKitInput textarea {
-    min-height: 36px;
+    min-height: 72px;
     padding: 6px 0;
   }
 

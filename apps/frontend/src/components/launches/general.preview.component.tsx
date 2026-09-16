@@ -7,6 +7,7 @@ import {
   FEED_PREVIEW_FALLBACK_WH,
   FEED_PREVIEW_MAX_WH,
   FEED_PREVIEW_MIN_WH,
+  firstPreviewableMedia,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { FC } from 'react';
 import { textSlicer } from '@gitroom/helpers/utils/count.length';
@@ -53,7 +54,10 @@ export const GeneralPreviewComponent: FC<{
       }) +
       `</mark>`;
 
-    return { text: finalValue, images: p.image };
+    return {
+      text: finalValue,
+      images: (p.image || []).filter((image) => firstPreviewableMedia([image])),
+    };
   });
 
   return (

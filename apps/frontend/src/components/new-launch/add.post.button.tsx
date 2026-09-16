@@ -18,9 +18,8 @@ export const AddPostButton: FC<{
   onClick: () => void;
   num: number;
   postComment: PostComment;
-  wide?: boolean;
 }> = (props) => {
-  const { onClick, wide } = props;
+  const { onClick } = props;
   const t = useT();
 
   const label =
@@ -40,8 +39,7 @@ export const AddPostButton: FC<{
       onClick={onClick}
       data-pq="composer-add-comment"
       className={clsx(
-        'inline-flex h-[40px] cursor-pointer select-none items-center justify-center gap-[6px] rounded-[10px] px-[14px] text-[13px] font-[600] transition-opacity',
-        wide && 'w-full',
+        'inline-flex h-[36px] w-auto self-start cursor-pointer select-none items-center justify-center gap-[6px] rounded-[8px] px-[12px] text-[13px] font-[600] transition-opacity',
         asComment
           ? 'bg-pqPink text-pqOnBrand hover:opacity-90'
           : 'bg-pqInner text-pqText shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] hover:bg-pqHover hover:opacity-100'

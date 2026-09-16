@@ -44,6 +44,17 @@ describe('composer media hover actions', () => {
     assert.match(source, /filter=\{\'\[data-ci-actions="1"\]\'\}/);
   });
 
+  it('commits reorder by id so each item keeps path', () => {
+    assert.match(source, /commitMediaOrder/);
+    assert.match(source, /mediaOrderUnchanged/);
+    assert.match(source, /key=\{media\.id\}/);
+    assert.doesNotMatch(source, /key=\{`\$\{media\.id\}-\$\{index\}`\}/);
+    assert.doesNotMatch(
+      source,
+      /onChange\(\{ target: \{ name, value: next \} \}\)/,
+    );
+  });
+
   it('keeps AI Image on the same toolbar row as AI Video', () => {
     assert.match(source, /<AiImage/);
     assert.match(source, /<AiVideo/);

@@ -8,6 +8,7 @@ import {
   STORY_PREVIEW_WH,
   clampPreviewAspect,
   feedPreviewAspect,
+  firstPreviewableMedia,
   instagramFeedPreviewRange,
   postHasPreview,
 } from './preview-media-aspect.ts';
@@ -50,6 +51,19 @@ describe('postHasPreview', () => {
     assert.equal(postHasPreview({ content: '', image: [{ id: '1' }] }), true);
     assert.equal(postHasPreview({ content: '', media: [] }), false);
     assert.equal(postHasPreview({ content: 'hello' }), true);
+  });
+});
+
+describe('firstPreviewableMedia', () => {
+  it('skips reorder stubs that lost path so the frame measures a real file', () => {
+    assert.equal(
+      firstPreviewableMedia([
+        { id: 'blank', path: '' },
+        { id: 'redsim', path: '/media/redsim.jpg' },
+      ])?.path,
+      '/media/redsim.jpg'
+    );
+    assert.equal(firstPreviewableMedia([{ id: 'blank' }]), undefined);
   });
 });
 

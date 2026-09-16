@@ -84,7 +84,9 @@ describe('composer channel settings controls', () => {
       /color-mix\(in_srgb,var\(--text\)_20%,transparent\)/,
     );
     assert.match(instagram, /defaultValue="post"/);
-    assert.match(instagram, /icon="type"/);
+    assert.match(instagram, /name="post_type"/);
+    assert.doesNotMatch(instagram, /name="post_type"[\s\S]{0,80}icon=/);
+    assert.doesNotMatch(instagram, /icon="type"/);
     const plugs = read('../../launches/internal.channels.tsx');
     const redditSub = read('./reddit/subreddit.tsx');
     const reddit = read('./reddit/reddit.provider.tsx');
@@ -106,8 +108,17 @@ describe('composer channel settings controls', () => {
     assert.match(manage, /t\('settings', 'Settings'\)/);
     assert.match(
       manage,
-      /id="social-settings"[\s\S]{0,120}gap-\[1px\] overflow-hidden rounded-\[14px\] bg-pqLine/
+      /id="social-settings"[\s\S]{0,280}divide-y divide-pqLine overflow-hidden rounded-\[14px\] bg-pqInner/,
     );
+    assert.match(
+      manage,
+      /id="social-settings"[\s\S]{0,280}empty:hidden/,
+    );
+    assert.doesNotMatch(
+      manage,
+      /id="social-settings"[\s\S]{0,280}bg-pqLine p-\[1px\]/,
+    );
+    assert.doesNotMatch(hop, /first:rounded-t-\[13px\]/);
     assert.match(hop, /data-pq="preview-channel-identity"/);
     assert.match(hop, /channelPlatformLabel/);
     assert.match(hop, /data-pq="preview-channel-body"/);

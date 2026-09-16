@@ -29,6 +29,8 @@ change is *meant* to move a list, run `--update`, **commit the baseline**, and s
 why here and in the PR. A baseline file that is absent rather than different fails
 the check: an uncommitted one would reseed itself on every CI run and guard nothing.
 
+**Generate AI Image prompt helper.** Dropped the unused “What should appear in the image?” line under Prompt; the Prompt label and textarea placeholder stay. i18n −1 (`ai_image_prompt_help`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
+
 **AI Copilot draft card.** `/agents` still has no Create Post Preview rail. When Copilot is ready to post, `manualPosting` now paints a chat card (text, thumbs, channel, date) with Schedule / Open composer instead of auto-opening the composer. Same commit: Create Post field chrome (Re-posters, cover thumbs, First Comment, tags, Copilot Send). i18n +5 −1 (`open_composer`, `opening_composer`, `copilot_will_schedule`, `quick_edits`, `send`; unused `editor` dropped). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
 
 **Composer settings fields.** Empty settings inputs used `--tableHeader` on `--inner` (a smudge, no placeholder). Fields now have a 20% text ring and `--muted` placeholders; short labels fill in when no example is passed. Community is a short label plus a URL placeholder. Thread finisher is a real textarea (not a faded post editor) and only shows when the toggle is on. i18n +4 (`write_your_post`, `add_a_thread_finisher`, `thread_finisher_placeholder`, `label_community`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
@@ -1440,3 +1442,11 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Analytics: channel charts keep provider meaning
 
 **i18n -5 (`engagement`, `followers`, `workspace_engagement_hint`, `workspace_followers_hint`, `workspace_impressions_hint`).** Removed the all-channel chart merger because it added unlike provider metrics by English-label regex: YouTube subscriber losses increased “Followers”, and views plus reach could double-count “Impressions”. Channel drill-down still shows each provider’s real day-by-day series and metric label; the all-channel view stays on comparable post snapshots. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Composer: date picker is the when-to-post control
+
+**i18n -6 (`next_available`, `next_available_hint`, `post_now_hint`, `set_date_and_time`, `set_date_and_time_hint`, `when_to_post`).** Create Post footer went back to the date/time picker. Next available / Post now / Set date and time was a mode menu that hid the calendar. Post Now stays on the Schedule split. Header Create Post still opens on `find-slot`. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Composer Copilot: warmer placeholder, smaller chips
+
+**i18n +1 −1 (`share_with_the_world` in, unused `write_something` out).** Create Post → AI Copilot input placeholder is “What do you want to share with the world?” instead of “Write something …”. A new key so locale JSON still saying “write something” cannot override it. Quick Edits chips are 28px; the textarea is 72px. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.

@@ -128,17 +128,17 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
       <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
         {t('quick_edits', 'Quick edits')}
       </div>
-      <div className="flex flex-wrap gap-[8px]">
+      <div className="flex flex-wrap gap-[6px]">
         {suggestions.map((suggestion) => (
           <button
             key={suggestion.title}
             type="button"
             disabled={isLoading}
             onClick={() => onSuggestionClick(suggestion.message)}
-            className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-[28px] items-center gap-[4px] rounded-[8px] bg-pqInner px-[8px] text-[12px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {marks[suggestion.title] ? (
-              <span aria-hidden="true" className="text-[14px] leading-none">
+              <span aria-hidden="true" className="text-[12px] leading-none">
                 {marks[suggestion.title]}
               </span>
             ) : null}
@@ -174,7 +174,7 @@ const ComposeAiInput: FC<InputProps> = ({
   const showStop = inProgress && !hideStopButton;
   return (
     <div className="copilotKitInputContainer">
-      <div className="copilotKitInput flex items-center gap-[8px]">
+      <div className="copilotKitInput flex items-end gap-[8px]">
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -186,10 +186,13 @@ const ComposeAiInput: FC<InputProps> = ({
           }}
           placeholder={
             context.labels.placeholder ||
-            t('write_something', 'Write something …')
+            t(
+              'share_with_the_world',
+              'What do you want to share with the world?'
+            )
           }
-          rows={1}
-          className="min-h-[36px] flex-1 resize-none"
+          rows={3}
+          className="min-h-[72px] flex-1 resize-none"
         />
         <button
           type="button"
@@ -549,7 +552,7 @@ const ComposeAiUnconfigured: FC<{
         isLoading={false}
       />
       <form className="copilotKitInputContainer" onSubmit={onSubmit}>
-        <div className="copilotKitInput flex items-center gap-[8px]">
+        <div className="copilotKitInput flex items-end gap-[8px]">
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -559,9 +562,12 @@ const ComposeAiUnconfigured: FC<{
                 send();
               }
             }}
-            placeholder={t('write_something', 'Write something …')}
-            rows={1}
-            className="min-h-[36px] flex-1 resize-none"
+            placeholder={t(
+              'share_with_the_world',
+              'What do you want to share with the world?'
+            )}
+            rows={3}
+            className="min-h-[72px] flex-1 resize-none"
           />
           <button
             type="submit"
@@ -645,7 +651,10 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
                   'assistant_initial_message',
                   'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
                 ),
-                placeholder: t('write_something', 'Write something …'),
+                placeholder: t(
+                  'share_with_the_world',
+                  'What do you want to share with the world?'
+                ),
               }}
             />
           </div>

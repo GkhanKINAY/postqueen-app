@@ -1808,7 +1808,7 @@ export const CalendarColumn: FC<{
           {showOverflowChip && (
             <button
               type="button"
-              className="relative z-[4] flex h-[19px] w-full shrink-0 cursor-pointer items-center justify-center gap-[3px] whitespace-nowrap rounded-[5px] bg-pqBrandSoft px-[5px] text-[10.5px] font-[700] text-pqFocused transition-colors hover:bg-pqBrandFaint"
+              className="relative z-[4] flex h-[19px] w-full shrink-0 cursor-pointer items-center justify-center gap-[3px] whitespace-nowrap rounded-[7px] bg-pqBrand px-[5px] text-[10.5px] font-[700] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
               onClick={(e) => {
                 e.stopPropagation();
                 showAllFunc();

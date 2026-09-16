@@ -42,6 +42,7 @@ describe('post preview media frame', () => {
 
   it('does not default the Instagram feed card to square', () => {
     assert.match(instagram, /instagramFeedPreviewRange/);
+    assert.match(instagram, /firstPreviewableMedia/);
     assert.match(instagram, /aspectRatio: '4 \/ 5'/);
     assert.doesNotMatch(instagram, /aspect-square/);
     assert.doesNotMatch(instagram, /fallbackWH=\{1\}/);
@@ -51,6 +52,11 @@ describe('post preview media frame', () => {
     assert.match(videoOrImage, /playsInline/);
     assert.match(videoOrImage, /isContain \? 'object-contain' : 'object-cover'/);
     assert.match(frame, /FEED_PREVIEW_FALLBACK_WH/);
+  });
+
+  it('re-measures when the lead src changes after a reorder', () => {
+    assert.match(frame, /setRatio\(fallbackWH\)/);
+    assert.match(frame, /\[src, fallbackWH\]/);
   });
 
   it('caps the media frame so a 4:5 card fits fully in the preview pane', () => {

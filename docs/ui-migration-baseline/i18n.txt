@@ -79,7 +79,6 @@ ai_copilot
 ai_copilot_unlocks_after_your_trial
 ai_credits_exhausted
 ai_generation_failed
-ai_image_prompt_help
 ai_lock_perk_chat
 ai_lock_perk_images
 ai_lock_perk_videos
@@ -1482,8 +1481,6 @@ newest
 next
 next_3_days
 next_7_days
-next_available
-next_available_hint
 next_day
 next_month
 no
@@ -1652,7 +1649,6 @@ post_move_failed
 post_needs_content_or_image
 post_not_found
 post_now
-post_now_hint
 post_on_next_available_slot
 post_open_failed
 post_preview
@@ -1783,8 +1779,6 @@ send_test
 send_this_invite_link
 separate_post
 set
-set_date_and_time
-set_date_and_time_hint
 set_delay
 set_delete_failed
 set_deleted_successfully
@@ -1796,6 +1790,7 @@ settings
 settings_update_failed
 settings_updated
 share_with_a_client
+share_with_the_world
 short_link
 short_links_statistics
 short_post
@@ -2050,7 +2045,6 @@ webhooks_quota_title
 week
 what_do_you_want_to_do
 whats_new
-when_to_post
 workspace
 workspace_name
 workspace_name_description
@@ -2058,7 +2052,6 @@ workspace_name_length
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
 write_anything
-write_something
 write_your_post
 write_your_post_placeholder
 write_your_signature

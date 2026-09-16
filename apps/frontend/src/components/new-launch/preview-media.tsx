@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import {
@@ -31,6 +31,10 @@ export const PreviewMediaFrame: FC<{
   onAspect,
 }) => {
   const [ratio, setRatio] = useState(fallbackWH);
+
+  useEffect(() => {
+    setRatio(fallbackWH);
+  }, [src, fallbackWH]);
 
   const onMediaReady = useCallback(
     (width: number, height: number) => {

@@ -556,12 +556,17 @@ export const EditorWrapper: FC<{
         <div
           key={g.id}
           className={clsx(
+            'relative flex flex-col gap-[16px] flex-1',
+            !canEdit && !isCreateSet && 'blur-s',
+            ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
+          )}
+        >
+        <div
+          className={clsx(
             'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
             index === 0 && 'rounded-t-[12px]',
             (index === items.length - 1 || !comments || firstCommentMode) &&
-              'rounded-b-[12px]',
-            !canEdit && !isCreateSet && 'blur-s',
-            ((!canEdit && index > 0) || (!comments && index > 0)) && 'hidden'
+              'rounded-b-[12px]'
           )}
         >
           <div className="flex gap-[5px] flex-1 w-full">
@@ -590,77 +595,6 @@ export const EditorWrapper: FC<{
                 dummy={dummy}
                 selectedIntegration={selectedIntegration}
                 chars={chars}
-                firstComment={
-                  firstCommentMode && index === 0 ? (
-                    <>
-                      {showComments ? (
-                        <div
-                          data-pq="composer-comments"
-                          className="mx-[12px] mb-[12px] flex flex-col overflow-hidden rounded-[12px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]"
-                        >
-                          {(items.length > 1
-                            ? items.slice(1)
-                            : [
-                                {
-                                  id: 'comment-draft',
-                                  content: '',
-                                  media: [] as {
-                                    id: string;
-                                    path: string;
-                                    thumbnail?: string;
-                                  }[],
-                                  delay: 0,
-                                },
-                              ]
-                          ).map((comment, offset) => {
-                            const commentIndex = offset + 1;
-                            return (
-                              <ComposeFirstComment
-                                key={`comment-${commentIndex}`}
-                                commentIndex={commentIndex}
-                                value={editorHtmlToPlain(comment.content || '')}
-                                onChange={setCommentText(commentIndex)}
-                                pictures={comment.media || []}
-                                setImages={setCommentImages(commentIndex)}
-                                delay={comment.delay || 0}
-                                comments={comments}
-                                dummy={dummy}
-                                allValues={items}
-                                onActivate={
-                                  commentIndex === 1
-                                    ? ensureFirstComment
-                                    : () => undefined
-                                }
-                                chars={chars}
-                                totalAllowedChars={totalChars}
-                                onRemove={removeComment(commentIndex)}
-                              />
-                            );
-                          })}
-                          {comments ? (
-                            <div className="border-t border-pqLine px-[12px] py-[10px]">
-                              <AddPostButton
-                                num={0}
-                                onClick={addValue(items.length - 1)}
-                                postComment={postComment}
-                                wide
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="mx-[12px] mb-[12px]">
-                          <AddCommentTrigger
-                            onClick={() => {
-                              setCommentDraftOpen(true);
-                              ensureFirstComment();
-                            }}
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : undefined
-                }
                 trailing={
                   comments &&
                   canEdit &&
@@ -731,6 +665,73 @@ export const EditorWrapper: FC<{
               </div>
             )}
           </div>
+        </div>
+          {firstCommentMode && index === 0 ? (
+            showComments ? (
+              <div
+                data-pq="composer-comments"
+                className="flex flex-col gap-[8px]"
+              >
+                {(items.length > 1
+                  ? items.slice(1)
+                  : [
+                      {
+                        id: 'comment-draft',
+                        content: '',
+                        media: [] as {
+                          id: string;
+                          path: string;
+                          thumbnail?: string;
+                        }[],
+                        delay: 0,
+                      },
+                    ]
+                ).map((comment, offset) => {
+                  const commentIndex = offset + 1;
+                  return (
+                    <ComposeFirstComment
+                      key={`comment-${commentIndex}`}
+                      commentIndex={commentIndex}
+                      value={editorHtmlToPlain(comment.content || '')}
+                      onChange={setCommentText(commentIndex)}
+                      pictures={comment.media || []}
+                      setImages={setCommentImages(commentIndex)}
+                      delay={comment.delay || 0}
+                      comments={comments}
+                      dummy={dummy}
+                      allValues={items}
+                      onActivate={
+                        commentIndex === 1
+                          ? ensureFirstComment
+                          : () => undefined
+                      }
+                      chars={chars}
+                      totalAllowedChars={totalChars}
+                      onRemove={removeComment(commentIndex)}
+                    />
+                  );
+                })}
+                {comments ? (
+                  <div className="self-start">
+                    <AddPostButton
+                      num={0}
+                      onClick={addValue(items.length - 1)}
+                      postComment={postComment}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="self-start">
+                <AddCommentTrigger
+                  onClick={() => {
+                    setCommentDraftOpen(true);
+                    ensureFirstComment();
+                  }}
+                />
+              </div>
+            )
+          ) : null}
         </div>
       );
       })}
@@ -1207,10 +1208,12 @@ export const Editor: FC<{
                 />
               )}
             </div>
-            {!!firstComment && firstComment}
-            <div>{childButton}</div>
           </div>
         </div>
+        {!!firstComment && (
+          <div className="mt-[12px] flex min-w-0 flex-col">{firstComment}</div>
+        )}
+        <div>{childButton}</div>
       </div>
     </div>
   );
