@@ -137,7 +137,7 @@ const AnalyticsPreview = () => {
     >
       <div
         aria-hidden="true"
-        className="flex h-full min-h-0 w-full flex-col gap-[12px] overflow-hidden p-[14px] 2xl:gap-[14px] 2xl:p-[18px]"
+        className="flex h-full min-h-0 w-full flex-col justify-between gap-[12px] overflow-hidden p-[14px] 2xl:gap-[16px] 2xl:p-[18px]"
       >
         <div className="min-w-0 shrink-0">
           <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
@@ -202,15 +202,15 @@ const AnalyticsPreview = () => {
           </div>
         </section>
 
-        <div className="grid min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:mt-auto 2xl:gap-[12px]">
-          <section className="flex min-w-0 flex-col rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
+        <div className="grid min-h-0 min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:min-h-[148px] 2xl:gap-[12px]">
+          <section className="flex min-h-0 min-w-0 flex-col justify-between rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
             <div className="shrink-0 font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
               {t('posting_days', 'Posting days')}
             </div>
             <div className="mt-[2px] hidden shrink-0 text-[12.5px] text-pqMuted 2xl:block">
               {t('posting_days_hint', 'How many posts went out each weekday')}
             </div>
-            <div className="mt-[8px] flex h-[56px] shrink-0 items-end gap-[6px] 2xl:mt-[10px] 2xl:h-[72px] 2xl:gap-[8px]">
+            <div className="mt-[8px] flex h-[56px] shrink-0 items-end gap-[6px] 2xl:mt-[10px] 2xl:h-[80px] 2xl:gap-[8px]">
               {POSTING_DAY_HEIGHTS.map((height, index) => (
                 <div
                   key={days[index]}
@@ -232,7 +232,7 @@ const AnalyticsPreview = () => {
               ))}
             </div>
           </section>
-          <section className="flex min-w-0 flex-col rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
+          <section className="flex min-h-0 min-w-0 flex-col justify-between rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
             <div className="shrink-0 font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
               {t('engagement_mix', 'Engagement mix')}
             </div>

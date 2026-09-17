@@ -57,5 +57,7 @@ describe('auth email and password fields', () => {
     assert.match(register, /!bg-pqBrandSoft/);
     assert.match(login, /!text-pqFocused/);
     assert.match(login, /!opacity-100/);
+    assert.match(login, /focus-visible:!outline-none/);
+    assert.match(login, /focus-visible:ring-0/);
   });
 });

@@ -30,7 +30,8 @@ describe('auth product showcase', () => {
     assert.match(showcase, /line-clamp-2/);
     assert.match(showcase, /#\{index \+ 1\}/);
     assert.match(showcase, /2xl:min-h-\[118px\]/);
-    assert.match(showcase, /grid min-w-0 shrink-0 grid-cols-2/);
+    assert.match(showcase, /grid min-h-0 min-w-0 shrink-0 grid-cols-2/);
+    assert.match(showcase, /justify-between gap-\[12px\]/);
     assert.match(
       showcase,
       /justify-between gap-\[8px\] whitespace-nowrap/
@@ -43,6 +44,7 @@ describe('auth product showcase', () => {
     assert.doesNotMatch(showcase, /range_7d/);
     assert.doesNotMatch(showcase, /range_30d/);
     assert.doesNotMatch(showcase, /range_90d/);
+    assert.doesNotMatch(showcase, /2xl:mt-auto/);
     assert.doesNotMatch(showcase, /grid-cols-2 gap-\[10px\] xl:grid-cols-4/);
     assert.doesNotMatch(showcase, /flex-wrap justify-between/);
     assert.doesNotMatch(showcase, /overflow-x-hidden overflow-y-auto/);
