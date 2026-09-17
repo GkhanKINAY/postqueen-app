@@ -22,16 +22,20 @@ describe('auth product showcase', () => {
     assert.match(showcase, /min-w-\[155%\]/);
     assert.match(showcase, /object-left/);
     assert.match(showcase, /w-\[55%\]/);
-    assert.match(showcase, /flex h-full min-h-0 w-full flex-col/);
+    assert.match(showcase, /flex w-full flex-col gap-\[16px\]/);
+    assert.match(showcase, /shrink-0 overflow-hidden rounded-3xl bg-pqInner/);
+    assert.match(showcase, /justify-center gap-\[10px\]/);
     assert.match(showcase, /h-full min-h-0 w-\[55%\]/);
-    assert.match(showcase, /overflow-hidden p-\[14px\]/);
+    assert.match(showcase, /gap-\[16px\] p-\[14px\]/);
     assert.match(showcase, /grid grid-cols-4 gap-\[6px\]/);
     assert.match(showcase, /const PREVIEW_TOP = PREVIEW_POSTS;/);
     assert.match(showcase, /line-clamp-2/);
     assert.match(showcase, /#\{index \+ 1\}/);
     assert.match(showcase, /2xl:min-h-\[118px\]/);
-    assert.match(showcase, /grid min-h-0 min-w-0 shrink-0 grid-cols-2/);
-    assert.match(showcase, /justify-between gap-\[12px\]/);
+    assert.match(showcase, /grid min-w-0 shrink-0 grid-cols-2/);
+    assert.match(showcase, /flex-col gap-\[16px\]/);
+    assert.doesNotMatch(showcase, /justify-between gap-\[12px\]/);
+    assert.doesNotMatch(showcase, /flex-1 overflow-hidden rounded-3xl bg-pqInner/);
     assert.match(
       showcase,
       /justify-between gap-\[8px\] whitespace-nowrap/

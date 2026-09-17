@@ -128,7 +128,7 @@ const AnalyticsPreview = () => {
 
   return (
     <div
-      className="dark relative min-h-0 w-full max-w-full flex-1 overflow-hidden rounded-3xl bg-pqInner text-pqText shadow-[var(--e2)]"
+      className="dark relative w-full max-w-full shrink-0 overflow-hidden rounded-3xl bg-pqInner text-pqText shadow-[var(--e2)]"
       role="img"
       aria-label={t(
         'auth_showcase_alt',
@@ -137,7 +137,7 @@ const AnalyticsPreview = () => {
     >
       <div
         aria-hidden="true"
-        className="flex h-full min-h-0 w-full flex-col justify-between gap-[12px] overflow-hidden p-[14px] 2xl:gap-[16px] 2xl:p-[18px]"
+        className="flex w-full flex-col gap-[16px] p-[14px] 2xl:gap-[18px] 2xl:p-[18px]"
       >
         <div className="min-w-0 shrink-0">
           <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
@@ -202,8 +202,8 @@ const AnalyticsPreview = () => {
           </div>
         </section>
 
-        <div className="grid min-h-0 min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:min-h-[148px] 2xl:gap-[12px]">
-          <section className="flex min-h-0 min-w-0 flex-col justify-between rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
+        <div className="grid min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:gap-[12px]">
+          <section className="flex min-w-0 flex-col rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
             <div className="shrink-0 font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
               {t('posting_days', 'Posting days')}
             </div>
@@ -232,7 +232,7 @@ const AnalyticsPreview = () => {
               ))}
             </div>
           </section>
-          <section className="flex min-h-0 min-w-0 flex-col justify-between rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
+          <section className="flex min-w-0 flex-col rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
             <div className="shrink-0 font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
               {t('engagement_mix', 'Engagement mix')}
             </div>
@@ -271,7 +271,7 @@ const InsightsCard = () => {
   const t = useT();
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col gap-[8px] overflow-hidden 2xl:gap-[10px]">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col justify-center gap-[10px] overflow-hidden 2xl:gap-[12px]">
       <div className="shrink-0 px-[8px] text-center text-white">
         <span className="inline-flex rounded-[6px] bg-pqBrand px-[8px] py-[3px] text-[11px] font-[700] uppercase tracking-[0.08em] text-pqOnBrand">
           {t('new', 'NEW')}
