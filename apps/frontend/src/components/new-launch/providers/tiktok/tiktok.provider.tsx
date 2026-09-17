@@ -2,8 +2,12 @@
 
 import {
   FC,
+  useCallback,
+  useEffect,
   useMemo,
+  useRef,
 } from 'react';
+import useSWR from 'swr';
 import {
   PostComment,
   withProvider,
@@ -13,20 +17,90 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { Select } from '@gitroom/react/form/select';
 import { FormChoice } from '@gitroom/react/form/form.choice';
 import { FormSection } from '@gitroom/react/form/form.section';
-import { FormIcon } from '@gitroom/react/form/form.icon';
+import { FormIcon, type FormIconName } from '@gitroom/react/form/form.icon';
 import { Checkbox } from '@gitroom/react/form/checkbox';
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { Input } from '@gitroom/react/form/input';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { useCustomProviderFunction } from '@gitroom/frontend/components/launches/helpers/use.custom.provider.function';
 import { TiktokPreview } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.preview';
 import { TikTokMusicSelector } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.music';
 import { TikTokLocationSelector } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.location';
 
+type TikTokCreatorInfo = {
+  privacyLevelOptions: string[];
+  maxDurationSeconds?: number;
+  commentDisabled: boolean;
+  duetDisabled: boolean;
+  stitchDisabled: boolean;
+};
+
+/**
+ * TikTok's own answer for what this creator may post right now.
+ *
+ * Its own hook around one SWR call, so `rules-of-hooks` is satisfied without an
+ * eslint-disable.
+ *
+ * The throw is load-bearing. `/integrations/function` answers HTTP 200 with a
+ * body of `false` when the provider call fails, and `useCustomProviderFunction`
+ * never throws on a bad status either - its guard reads
+ * `status > 299 && status < 200`, which cannot be true. So a failure arrives
+ * here looking exactly like a success carrying nothing, and SWR would report it
+ * as loaded-and-empty. Checking the shape and throwing is what gives SWR an
+ * `error` to tell the two apart, the same reason `use.integration.list.tsx`
+ * throws on a non-ok response.
+ *
+ * No `keepPreviousData`: the key carries an integration id, and one channel's
+ * permissions shown under another channel's name would be wrong data rather
+ * than a stale view.
+ */
+const useTikTokCreatorInfo = (integrationId?: string) => {
+  const call = useCustomProviderFunction();
+  const get = call.get;
+
+  const load = useCallback(async () => {
+    const info = await get('creatorInfo');
+    if (!info || !Array.isArray(info.privacyLevelOptions)) {
+      throw new Error('TikTok did not answer with creator info');
+    }
+
+    return info as TikTokCreatorInfo;
+  }, [get]);
+
+  return useSWR(
+    integrationId ? `tiktok-creator-info-${integrationId}` : null,
+    load,
+    {
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+      revalidateOnMount: true,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+    }
+  );
+};
+
+/**
+ * Label and glyph for each value TikTok can return in `privacy_level_options`.
+ * The mapping lives here rather than in `FormChoice`, because which privacy
+ * levels exist is TikTok's business and generic form components must not know
+ * a provider's vocabulary.
+ */
+const PRIVACY_ICONS: Record<string, FormIconName> = {
+  PUBLIC_TO_EVERYONE: 'globe',
+  MUTUAL_FOLLOW_FRIENDS: 'users',
+  FOLLOWER_OF_CREATOR: 'user',
+  SELF_ONLY: 'lock',
+};
+
 const TikTokSettings: FC<{
   values?: any;
 }> = (props) => {
-  const { watch, register } = useSettings();
+  const { watch, register, setValue } = useSettings();
   const { value, integration } = useIntegration();
   const t = useT();
 
@@ -68,28 +142,130 @@ const TikTokSettings: FC<{
     );
   }, [hasMedia, isUploadMode, isVideo, t]);
 
-  const privacyLevel = [
-    {
-      value: 'PUBLIC_TO_EVERYONE',
-      label: t('public_to_everyone', 'Public to everyone'),
-      icon: 'globe' as const,
-    },
-    {
-      value: 'MUTUAL_FOLLOW_FRIENDS',
-      label: t('mutual_follow_friends', 'Mutual follow friends'),
-      icon: 'users' as const,
-    },
-    {
-      value: 'FOLLOWER_OF_CREATOR',
-      label: t('follower_of_creator', 'Follower of creator'),
-      icon: 'user' as const,
-    },
-    {
-      value: 'SELF_ONLY',
-      label: t('self_only', 'Self only'),
-      icon: 'lock' as const,
-    },
-  ];
+  const privacy_level = watch('privacy_level');
+  const {
+    data: creatorInfo,
+    isLoading: creatorInfoLoading,
+    error: creatorInfoError,
+    mutate: retryCreatorInfo,
+  } = useTikTokCreatorInfo(integration?.id);
+
+  const privacyLabels: Record<string, string> = useMemo(
+    () => ({
+      PUBLIC_TO_EVERYONE: t('public_to_everyone', 'Public to everyone'),
+      MUTUAL_FOLLOW_FRIENDS: t('mutual_follow_friends', 'Mutual follow friends'),
+      FOLLOWER_OF_CREATOR: t('follower_of_creator', 'Follower of creator'),
+      SELF_ONLY: t('self_only', 'Self only'),
+    }),
+    [t]
+  );
+
+  // Only what TikTok said this creator may use, in the order TikTok listed it.
+  //
+  // The list describes the ACCOUNT, not this app: measured against a live token,
+  // a private account answered
+  // `['FOLLOWER_OF_CREATOR','MUTUAL_FOLLOW_FRIENDS','SELF_ONLY']` — no
+  // `PUBLIC_TO_EVERYONE`, because a private account cannot post publicly. The
+  // fixed list of four therefore offered a level the platform would refuse, and
+  // building the control from the API is a Content Sharing Guidelines
+  // requirement besides.
+  //
+  // It does not cover the app's audit gate, which `creator_info` says nothing
+  // about: an unaudited app is refused anything but SELF_ONLY at publish time
+  // even when this list offered it. `handleErrors` names that case.
+  //
+  // Branded content cannot be private - TikTok answers
+  // `privacy_level_option_mismatch` for that pair - so the toggle removes the
+  // option rather than letting the publish fail.
+  const privacyLevel = useMemo(() => {
+    return (creatorInfo?.privacyLevelOptions ?? [])
+      .filter((option) => !(brand_content_toggle && option === 'SELF_ONLY'))
+      .map((option) => ({
+        value: option,
+        label: privacyLabels[option] || option,
+        icon: PRIVACY_ICONS[option],
+      }));
+  }, [creatorInfo, brand_content_toggle, privacyLabels]);
+
+  // Nothing is preselected: the guidelines want the creator to choose, and
+  // `FormChoice` registers a `defaultValue` during render, before the options
+  // could have arrived anyway. One case still needs a write.
+  //
+  // UPLOAD discards privacy entirely — `buildTikokPostInfoBody` does not even
+  // put the field in the request — but `TikTokDto` keeps it required on
+  // purpose, because existing API clients depend on that. So UPLOAD carries the
+  // most conservative inert value.
+  //
+  // Only the UPLOAD → DIRECT_POST *transition* clears it, which is why the
+  // previous mode is tracked rather than the value inspected: a creator who
+  // deliberately chose Self only for a direct post must keep it.
+  const wasUploadMode = useRef(isUploadMode);
+  useEffect(() => {
+    const leftUploadMode = wasUploadMode.current && !isUploadMode;
+    wasUploadMode.current = isUploadMode;
+
+    if (isUploadMode) {
+      if (!privacy_level) {
+        setValue('privacy_level', 'SELF_ONLY');
+      }
+      return;
+    }
+
+    if (leftUploadMode) {
+      setValue('privacy_level', '');
+    }
+  }, [isUploadMode, privacy_level, setValue]);
+
+  // TikTok reports the creator's own account-level switches. A creator who
+  // turned comments off must not be offered a control that turns them back on,
+  // and sending `disable_comment: false` for such an account is a publish TikTok
+  // rejects — the same class of after-the-fact failure as the privacy list.
+  const duetOff = !!creatorInfo?.duetDisabled;
+  const stitchOff = !!creatorInfo?.stitchDisabled;
+  const commentOff = !!creatorInfo?.commentDisabled;
+
+  useEffect(() => {
+    if (duetOff) {
+      setValue('duet', false);
+    }
+    if (stitchOff) {
+      setValue('stitch', false);
+    }
+    if (commentOff) {
+      setValue('comment', false);
+    }
+  }, [duetOff, stitchOff, commentOff, setValue]);
+
+  // Named, because a control that is simply greyed out tells the creator
+  // nothing about why.
+  const accountDisabledNotice = useMemo(() => {
+    const off = [
+      duetOff ? t('label_duet', 'Allow Duet') : '',
+      stitchOff ? t('label_stitch', 'Allow Stitch') : '',
+      commentOff ? t('label_comments', 'Allow Comments') : '',
+    ].filter((p) => p);
+
+    if (!off.length) {
+      return null;
+    }
+
+    return t(
+      'tiktok_disabled_on_account',
+      'Turned off on your TikTok account, so it cannot be set here'
+    ) + `: ${off.join(', ')}`;
+  }, [duetOff, stitchOff, commentOff, t]);
+
+  // A choice that TikTok has since withdrawn — most often SELF_ONLY after
+  // branded content was switched on — must not stay selected and be submitted.
+  useEffect(() => {
+    if (isUploadMode || !privacy_level || !creatorInfo) {
+      return;
+    }
+
+    if (!privacyLevel.some((option) => option.value === privacy_level)) {
+      setValue('privacy_level', '');
+    }
+  }, [isUploadMode, privacy_level, creatorInfo, privacyLevel, setValue]);
   const contentPostingMethod = [
     {
       value: 'DIRECT_POST',
@@ -136,17 +312,80 @@ const TikTokSettings: FC<{
       )}
       <div className={directPostOnly}>
         <FormSection>
-          <FormChoice
-            name="privacy_level"
-            icon="visibility"
-            label={t(
-              'label_who_can_see_this_video',
-              'Who can see this video?'
-            )}
-            disabled={isUploadMode}
-            defaultValue="PUBLIC_TO_EVERYONE"
-            options={privacyLevel}
-          />
+          {creatorInfoLoading && !creatorInfo ? (
+            // A bone per row of the control it replaces: the label line, then
+            // the pill track. A spinner here would promise nothing about the
+            // shape that is coming.
+            <div className="flex flex-col gap-[5px]">
+              <Skeleton className="h-[16px] w-[160px]" />
+              <Skeleton className="h-[32px] w-full max-w-[420px]" />
+            </div>
+          ) : creatorInfoError ? (
+            // No guessed fallback list. Offering a level TikTok has not
+            // approved is the exact failure this change exists to remove, so a
+            // failed lookup says so and offers another go.
+            <div className="flex flex-col gap-[6px]">
+              <div className="flex items-center gap-[8px] text-[13px] font-[500] text-pqMuted">
+                <FormIcon name="visibility" size={15} className="text-pqSoft" />
+                {t('label_who_can_see_this_video', 'Who can see this video?')}
+              </div>
+              <div className="text-[12px] leading-[1.45] text-pqDanger text-balance">
+                {t(
+                  'tiktok_privacy_options_failed',
+                  'Could not load who can see this video from TikTok. Without it we cannot know which privacy levels your account is allowed to use.'
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => retryCreatorInfo()}
+                className="w-fit text-[12px] font-[600] text-pqFocused hover:underline"
+              >
+                {t('try_again', 'Try again')}
+              </button>
+            </div>
+          ) : privacyLevel.length ? (
+            <div className="flex flex-col gap-[5px]">
+              <FormChoice
+                name="privacy_level"
+                icon="visibility"
+                label={t(
+                  'label_who_can_see_this_video',
+                  'Who can see this video?'
+                )}
+                disabled={isUploadMode}
+                options={privacyLevel}
+              />
+              {!privacy_level && (
+                <div className="text-[12px] leading-[1.45] text-pqDanger">
+                  {t(
+                    'tiktok_privacy_required',
+                    'Choose who can see this video before scheduling.'
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            // Reachable when branded content has removed the only level the
+            // account had left - a private account whose one remaining option
+            // was SELF_ONLY, which branded content is not allowed to use.
+            <div className="flex flex-col gap-[6px]">
+              <div className="flex items-center gap-[8px] text-[13px] font-[500] text-pqMuted">
+                <FormIcon name="visibility" size={15} className="text-pqSoft" />
+                {t('label_who_can_see_this_video', 'Who can see this video?')}
+              </div>
+              <div className="text-[12px] leading-[1.45] text-pqDanger text-balance">
+                {brand_content_toggle
+                  ? t(
+                      'tiktok_privacy_none_with_branded',
+                      'TikTok does not allow branded content to be private, and this account has no other privacy level available. Turn Branded content off to post this.'
+                    )
+                  : t(
+                      'tiktok_privacy_none',
+                      'TikTok did not offer any privacy level for this account, so this video cannot be posted directly.'
+                    )}
+              </div>
+            </div>
+          )}
         </FormSection>
       </div>
       <FormSection
@@ -237,7 +476,7 @@ const TikTokSettings: FC<{
               variant="hollow"
               icon="duet"
               label={t('label_duet', 'Allow Duet')}
-              disabled={isUploadMode}
+              disabled={isUploadMode || duetOff}
               defaultValue={false}
               {...register('duet', {
                 value: false,
@@ -247,7 +486,7 @@ const TikTokSettings: FC<{
               icon="stitch"
               label={t('label_stitch', 'Allow Stitch')}
               variant="hollow"
-              disabled={isUploadMode}
+              disabled={isUploadMode || stitchOff}
               defaultValue={false}
               {...register('stitch', {
                 value: false,
@@ -264,6 +503,11 @@ const TikTokSettings: FC<{
               })}
             />
           </div>
+          {accountDisabledNotice && (
+            <div className="text-[12px] leading-[1.45] text-pqMuted text-balance">
+              {accountDisabledNotice}
+            </div>
+          )}
         </FormSection>
         <FormSection>
           <div className="flex flex-col gap-[14px]">
@@ -271,7 +515,7 @@ const TikTokSettings: FC<{
               icon="comments"
               label={t('label_comments', 'Allow Comments')}
               variant="hollow"
-              disabled={isUploadMode}
+              disabled={isUploadMode || commentOff}
               defaultValue={true}
               {...register('comment', {
                 value: true,
