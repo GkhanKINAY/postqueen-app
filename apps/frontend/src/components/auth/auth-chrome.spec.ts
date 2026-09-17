@@ -41,8 +41,10 @@ describe('auth mode chrome', () => {
       layout,
       /max-w-\[452px\][\s\S]*AuthNav[\s\S]*AuthFooter/
     );
-    assert.doesNotMatch(layout, /lg:w-\[46%\]/);
-    assert.match(layout, /lg:w-1\/2/);
+    // The split is 45/55, not even: the form column is pinned and the product
+    // panel takes the rest. Asserting the exact width covers the old 46% and
+    // 50/50 shapes without needing a doesNotMatch per superseded value.
+    assert.match(layout, /lg:w-\[45%\]/);
     assert.match(layout, /pt-12/);
     assert.doesNotMatch(layout, /py-\[24px\]/);
     assert.match(
