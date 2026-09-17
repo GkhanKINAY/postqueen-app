@@ -66,5 +66,13 @@ jobs:
       - name: UI migration guard
         run: scripts/ui-migration-check.sh
 
+      # 86 spec files, 527 assertions, and until this step nothing ran them:
+      # there was no `test` script and no workflow calling one. `main` sat red
+      # for two days while three releases shipped over it, because the only way
+      # to find out was to remember to run a glob by hand. They are source-text
+      # assertions, so they cost seconds, not minutes.
+      - name: Tests
+        run: pnpm run test
+
       - name: Build
         run: pnpm run build

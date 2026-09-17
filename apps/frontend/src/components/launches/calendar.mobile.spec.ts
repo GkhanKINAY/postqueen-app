@@ -148,12 +148,6 @@ describe('phone calendar and composer', () => {
       fileURLToPath(new URL('./repeat.component.tsx', import.meta.url)),
       'utf8',
     );
-    const editor = readFileSync(
-      fileURLToPath(
-        new URL('../new-launch/editor.tsx', import.meta.url)
-      ),
-      'utf8',
-    );
     assert.match(tags, /touch \? t\('tags', 'Tags'\)/);
     assert.match(tags, /tagsToPostPayload/);
     assert.match(repeat, /touch \? \(\s*repeat \?/);
@@ -163,9 +157,12 @@ describe('phone calendar and composer', () => {
     assert.match(repeat, /p.clear &&\s*'text-\[14px\] font-\[600\] text-pqDanger hover:bg-pqDangerSoft'/);
     assert.match(repeat, /if \(p\.clear && !repeat\)/);
     assert.doesNotMatch(repeat, /t\('cancel', 'Cancel'\)/);
-    assert.match(editor, /flex min-w-0 flex-col gap-\[10px\] overflow-hidden border-t border-pqLine/);
-    assert.match(editor, /flex min-w-0 items-start gap-\[12px\]/);
-    assert.match(editor, /flex w-full min-w-0 flex-wrap/);
+    // Three assertions used to sit here describing the "Draft with your AI"
+    // hint card's overflow guards inside editor.tsx. That card was removed
+    // deliberately, and its absence is asserted by compose.ai.assistant.spec.ts
+    // — restoring the markup would turn that spec red. The footer-overlap
+    // behaviour this case is named for lives in manage.modal.tsx and is covered
+    // by the compactChrome / compactFooter assertions above.
     assert.doesNotMatch(manage, /check_circles_above/);
     assert.match(manage, /setPostNowOpen/);
     assert.match(manage, /schedule\('now'\)/);

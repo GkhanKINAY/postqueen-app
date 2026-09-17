@@ -48,11 +48,13 @@ describe('Channels detail handle contract', () => {
 });
 
 describe('Channels list handle contract', () => {
-  it('renders formatChannelHandle(integration.display) before the platform slug', () => {
-    assert.match(
-      detailSource,
-      /formatChannelHandle\(\s*integration\.display\s*\)\s*\|\|/,
-    );
+  // The list used to format the handle inline; it now goes through
+  // `channelListSubtitle`, whose own behaviour is covered just below. What this
+  // guards is that the list still renders a handle rather than falling back to
+  // `@name` or the bare platform slug.
+  it('renders the channel handle through channelListSubtitle', () => {
+    assert.match(detailSource, /channelListSubtitle\(\s*integration/);
+    assert.doesNotMatch(detailSource, /integration\.name\?\.replace\(\/\^@\//);
   });
 });
 
