@@ -127,12 +127,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v1010, matching posts.service.ts. The recovery sweep starting an older
+      // v1011, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV1010', {
+        .workflow.signalWithStart('postWorkflowV1011', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -627,6 +627,11 @@ export class PostActivity {
       // that already PUBLISHED, so it announces a failure that never happened.
       reason === 'No Post' ||
       reason === 'Already posted' ||
+      // post workflow v1.0.11 and up writes this on the parts a channel
+      // without a `comment` implementation can never publish, and sends one
+      // notice for the whole set. Left to speak for itself it would send one
+      // per dropped part, all saying the same thing.
+      reason === 'This channel cannot post comments' ||
       err?.cause?.type === 'bad_body';
     if (alreadyReported) {
       return;
