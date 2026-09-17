@@ -155,15 +155,32 @@ const AnalyticsPreview = () => {
         aria-hidden="true"
         className="flex w-full flex-col gap-[12px] p-[12px] 2xl:gap-[16px] 2xl:p-[18px]"
       >
-        <div className="min-w-0 shrink-0">
-          <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
-            {t('all_channels', 'All channels')}
+        <div className="flex min-w-0 shrink-0 items-start justify-between gap-[10px]">
+          <div className="min-w-0">
+            <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
+              {t('all_channels', 'All channels')}
+            </div>
+            <div className="mt-[2px] text-[12px] leading-[1.35] text-pqMuted 2xl:text-[12.5px]">
+              {t(
+                'analytics_lifetime_totals_hint',
+                'Posts published in this period · current totals'
+              )}
+            </div>
           </div>
-          <div className="mt-[2px] text-[12px] leading-[1.35] text-pqMuted 2xl:text-[12.5px]">
-            {t(
-              'analytics_lifetime_totals_hint',
-              'Posts published in this period · current totals'
-            )}
+          <div
+            className="flex shrink-0 items-center gap-[2px] rounded-pqSm bg-pqSettings p-[2px] 2xl:gap-[3px] 2xl:p-[3px]"
+            role="group"
+            aria-label={`${t('today', 'Today')}, ${t('range_7d', '7d')}`}
+          >
+            <span className="flex h-[26px] items-center rounded-[8px] bg-pqInner px-[8px] text-[11px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] 2xl:h-[28px] 2xl:px-[10px] 2xl:text-[12px]">
+              {t('today', 'Today')}
+            </span>
+            <span className="flex h-[26px] items-center px-[8px] text-[11px] font-[500] text-pqMuted 2xl:h-[28px] 2xl:px-[10px] 2xl:text-[12px]">
+              {t('range_7d', '7d')}
+            </span>
+            <span className="hidden h-[26px] items-center px-[8px] text-[11px] font-[500] text-pqMuted min-[1180px]:flex 2xl:h-[28px] 2xl:px-[10px] 2xl:text-[12px]">
+              {t('range_30d', '30d')}
+            </span>
           </div>
         </div>
 

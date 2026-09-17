@@ -1812,6 +1812,17 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
   }
 }
 
+/* Auth/settings wells: one rounded-[10px] ring on the container (input + eye),
+   not a second stadium on the native control. */
+[data-pq='form-input-well'] input:focus,
+[data-pq='form-input-well'] input:focus-visible,
+[data-pq='form-input-well'] button:focus,
+[data-pq='form-input-well'] button:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
 /* First Comment: the global `body *:focus-visible` 2px offset --ring oval
    outranks Tailwind `outline-none` (unlayered vs @layer utilities). Keep the
    same 1px inset the card already draws, brand only while the textarea is

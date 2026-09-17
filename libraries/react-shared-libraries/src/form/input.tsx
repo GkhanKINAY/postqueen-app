@@ -116,6 +116,7 @@ export const Input: FC<
       )}
       {/* Well on both --inner and --settings: fill is inner, ring is 20% text. */}
       <div
+        data-pq="form-input-well"
         className={clsx(
           'flex h-[40px] items-center justify-center rounded-[10px] bg-pqInner text-pqText shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] transition-shadow',
           brandFocus && 'focus-within:shadow-[inset_0_0_0_1px_var(--brand)]',
@@ -125,7 +126,7 @@ export const Input: FC<
         {icon && <div className="ps-[12px]">{icon}</div>}
         <input
           className={clsx(
-            'h-full flex-1 bg-transparent text-[14px] text-pqText outline-none placeholder:text-pqMuted focus-visible:outline-none',
+            'h-full min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent text-[14px] text-pqText shadow-none outline-none ring-0 placeholder:text-pqMuted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0',
             icon
               ? 'ps-[8px] pe-[12px]'
               : passwordField
@@ -149,7 +150,7 @@ export const Input: FC<
           <button
             type="button"
             data-pq="password-reveal"
-            className="grid size-[36px] shrink-0 cursor-pointer place-items-center text-pqMuted transition-colors hover:text-pqText"
+            className="grid size-[36px] shrink-0 cursor-pointer place-items-center rounded-none text-pqMuted outline-none ring-0 transition-colors hover:text-pqText focus:outline-none focus-visible:outline-none focus-visible:ring-0"
             aria-label={
               showPassword
                 ? t('hide_password', 'Hide password')

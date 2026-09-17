@@ -45,8 +45,9 @@ describe('auth product showcase', () => {
     assert.match(showcase, /size = 40/);
     assert.match(showcase, /width=\{size\}/);
     assert.match(showcase, /object-contain/);
-    assert.doesNotMatch(showcase, /range_7d/);
-    assert.doesNotMatch(showcase, /range_30d/);
+    assert.match(showcase, /t\('today', 'Today'\)/);
+    assert.match(showcase, /t\('range_7d', '7d'\)/);
+    assert.match(showcase, /t\('range_30d', '30d'\)/);
     assert.doesNotMatch(showcase, /range_90d/);
     assert.doesNotMatch(showcase, /2xl:mt-auto/);
     assert.doesNotMatch(showcase, /grid-cols-2 gap-\[10px\] xl:grid-cols-4/);
