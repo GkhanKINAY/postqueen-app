@@ -4,7 +4,10 @@ FROM node:22.20-bookworm-slim
 # latter, so the tag arrived here and went nowhere.
 ARG NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+# procps provides `ps`, which pm2 needs to kill a process tree. Without it
+# `pm2 restart` stopped only the pnpm wrapper and the old node kept the port.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    procps \
     g++ \
     make \
     python3-pip \
