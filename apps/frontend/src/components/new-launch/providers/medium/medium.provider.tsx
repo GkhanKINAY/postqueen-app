@@ -19,7 +19,11 @@ const MediumSettings: FC = () => {
   return (
     <>
       <Input label="Title" {...form.register('title')} />
-      <Input label="Subtitle" {...form.register('subtitle')} />
+      {/* No Subtitle field: Medium's publishing API takes title, contentFormat,
+          content, tags, canonicalUrl and publishStatus, and nothing else.
+          Medium derives the subtitle from the content itself. The control used
+          to be here and was required, so every post forced the user to write a
+          subtitle that was then dropped before the request was built. */}
       <Canonical
         date={date}
         label="Canonical Link"
