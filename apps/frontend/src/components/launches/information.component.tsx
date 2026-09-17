@@ -195,6 +195,7 @@ export const InformationComponent: FC<{
     variant,
     chars,
     showStripLinkWarning,
+    showCannotCommentWarning,
     // Read above, and listed here on purpose. Today they are covered by
     // accident: `isInternal` depends on both and returns a fresh array every
     // time, so it re-triggers this. The first person to memoize that empty
