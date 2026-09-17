@@ -214,12 +214,19 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // Said "not approved for public posting, contact support", which was wrong
+    // twice over: every level except SELF_ONLY is refused, not just the public
+    // one, and support cannot do anything about it. This gate is TikTok's app
+    // audit, and it is invisible in `creator_info` - an account may be offered
+    // MUTUAL_FOLLOW_FRIENDS and still be refused it by an unaudited app, so the
+    // message has to name the real cause and the one level that works.
     if (
       body.indexOf('unaudited_client_can_only_post_to_private_accounts') > -1
     ) {
       return {
         type: 'bad-body' as const,
-        value: 'App not approved for public posting, contact support',
+        value:
+          'This TikTok app has not passed TikTok\'s review yet, so it can only publish with the "Self only" privacy level. Choose Self only, or submit the app for review in the TikTok developer portal.',
       };
     }
 
@@ -404,11 +411,27 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  async maxVideoLength(accessToken: string) {
-    const {
-      data: { max_video_post_duration_sec },
-    } = await (
-      await fetch(
+  /**
+   * What TikTok will accept from this creator right now, asked of the platform
+   * instead of assumed.
+   *
+   * `privacy_level_options` is the load-bearing field. An app that has not
+   * passed audit may only post privately, and TikTok answers `['SELF_ONLY']`
+   * for it. Offering the other three anyway is what produced
+   * `unaudited_client_can_only_post_to_private_accounts` at publish time, long
+   * after the user had chosen - and TikTok's Content Sharing Guidelines require
+   * the privacy control to be built from this list rather than a fixed one.
+   *
+   * The three `*_disabled` flags are the same requirement for the interaction
+   * toggles: a creator who has turned comments off on their account must not be
+   * offered a switch that turns them back on.
+   *
+   * Replaces `maxVideoLength`, which asked this endpoint for one field and had
+   * no callers anywhere in the repo.
+   */
+  async creatorInfo(accessToken: string) {
+    const { data } = await (
+      await this.fetch(
         'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
         {
           method: 'POST',
@@ -421,7 +444,16 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     ).json();
 
     return {
-      maxDurationSeconds: max_video_post_duration_sec,
+      // No fallback list on purpose: an empty array is the honest answer when
+      // TikTok did not say, and the composer shows that as a failure rather
+      // than guessing an option the platform would then reject.
+      privacyLevelOptions: (data?.privacy_level_options ?? []) as string[],
+      maxDurationSeconds: data?.max_video_post_duration_sec as
+        | number
+        | undefined,
+      commentDisabled: !!data?.comment_disabled,
+      duetDisabled: !!data?.duet_disabled,
+      stitchDisabled: !!data?.stitch_disabled,
     };
   }
 
