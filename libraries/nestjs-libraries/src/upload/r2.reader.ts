@@ -46,29 +46,48 @@ export interface R2Object {
   contentType?: string;
   contentLength?: number;
   etag?: string;
+  // Set only when a `range` was asked for and the store answered with part of
+  // the object. Its presence is what tells the caller to reply 206.
+  contentRange?: string;
 }
 
 /**
  * Returns null when the object is not there, rather than throwing — a missing
  * file is a 404, not a server error, and media URLs are public enough to be
  * probed.
+ *
+ * `range` is passed through verbatim as the S3 `Range` parameter, so the store
+ * decides what it can satisfy rather than this doing arithmetic on a header it
+ * did not parse. An unsatisfiable range is its own answer: the object exists,
+ * so it is a 416 and not the 404 a null would produce.
  */
-export async function readFromR2(key: string): Promise<R2Object | null> {
+export async function readFromR2(
+  key: string,
+  range?: string
+): Promise<R2Object | null | 'range-not-satisfiable'> {
   try {
     const object = await r2().send(
       new GetObjectCommand({
         Bucket: process.env.CLOUDFLARE_BUCKETNAME!,
         Key: key,
+        ...(range ? { Range: range } : {}),
       })
     );
 
     return {
       body: object.Body as Readable,
       contentType: object.ContentType,
+      // With a Range this is the length of the part, not of the object, which
+      // is exactly what the response needs.
       contentLength: object.ContentLength,
       etag: object.ETag,
+      contentRange: object.ContentRange,
     };
-  } catch {
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'InvalidRange') {
+      return 'range-not-satisfiable';
+    }
+
     return null;
   }
 }
