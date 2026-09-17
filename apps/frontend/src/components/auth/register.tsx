@@ -19,10 +19,7 @@ import { WalletUiProvider } from '@gitroom/frontend/components/auth/providers/pl
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import useCookie from 'react-use-cookie';
 import { AuthShell } from '@gitroom/frontend/components/auth/auth-shell';
-import {
-  AuthModeFooter,
-  AuthModeSwitch,
-} from '@gitroom/frontend/components/auth/auth-chrome';
+import { AuthModeFooter, authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 const WalletProvider = dynamic(
   () => import('@gitroom/frontend/components/auth/providers/wallet.provider'),
   {
@@ -121,6 +118,16 @@ export function RegisterAfter({
     },
   });
   const fetchData = useFetch();
+  const email = form.watch('email');
+  const password = form.watch('password');
+  const company = form.watch('company');
+  const canSubmit = isAfterProvider
+    ? Boolean(String(company ?? '').trim())
+    : Boolean(
+        String(email ?? '').trim() &&
+          String(password ?? '') &&
+          String(company ?? '').trim(),
+      );
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
     await fetchData('/auth/register', {
@@ -164,7 +171,7 @@ export function RegisterAfter({
   // from a provider round-trip.
   const emailFields = (
     <div className="flex flex-col gap-[12px]">
-      <div className="flex flex-col gap-[20px] text-textColor">
+      <div className="flex flex-col gap-[8px] text-textColor">
         {!isAfterProvider && (
           <>
             <Input
@@ -173,7 +180,7 @@ export function RegisterAfter({
               {...form.register('email')}
               type="email"
               autoFocus
-              placeholder={t('email_address', 'Email Address')}
+              placeholder={t('email_placeholder', 'name@example.com')}
             />
             <Input
               label="Password"
@@ -181,7 +188,7 @@ export function RegisterAfter({
               {...form.register('password')}
               autoComplete="off"
               type="password"
-              placeholder={t('label_password', 'Password')}
+              placeholder={t('password_placeholder', '••••••••')}
             />
           </>
         )}
@@ -191,7 +198,7 @@ export function RegisterAfter({
           {...form.register('company')}
           autoComplete="off"
           type="text"
-          placeholder={t('label_organization', 'Organization')}
+          placeholder=""
         />
       </div>
       {/* Only claim the user agreed to terms when this deployment actually
@@ -224,22 +231,27 @@ export function RegisterAfter({
           &nbsp;
         </div>
       )}
-      <div className="w-full flex mt-[12px]">
+      <div className="w-full flex">
         <Button
           type="submit"
-          className="flex-1 rounded-[10px] !h-[52px]"
+          disabled={!canSubmit}
+          className={
+            canSubmit
+              ? 'flex-1 rounded-[10px] !h-[52px]'
+              : 'flex-1 rounded-[10px] !h-[52px] !bg-pqText'
+          }
           loading={loading}
         >
-          {t('create_account', 'Create Account')}
+          {t('sign_up_1', 'Sign up')}
         </Button>
       </div>
     </div>
   );
 
-  // Sign in / Create account sits under the title and again under the form.
+  // Sign in / Create account sits next to the logo and again under the form.
   const subtitle = t(
     'sign_up_subtitle',
-    'Create your account and connect your first channel.',
+    'Connect your first channel in seconds.',
   );
 
   return (
@@ -249,21 +261,22 @@ export function RegisterAfter({
           // Returning from an OAuth round-trip: no provider choice, just the
           // remaining Company field.
           <div className="flex flex-col flex-1">
-            <h1 className="text-[32px] font-[600] -tracking-[0.8px] font-display lg:text-[40px]">
-              {t('sign_up', 'Sign Up')}
+            <div className="flex flex-col gap-[4px]">
+            <h1 className={authTitleClass}>
+              {t('create_your_account', 'Create your account')}
             </h1>
-            <p className="mt-[10px] text-[15px] text-textItemBlur">
+            <p className={authSubtitleClass}>
               {subtitle}
             </p>
-            <AuthModeSwitch />
-            <div className="min-h-[320px] flex flex-col mt-[28px]">
+            </div>
+            <div className="min-h-[320px] flex flex-col mt-[24px]">
               {emailFields}
               <AuthModeFooter />
             </div>
           </div>
         ) : (
           <AuthShell
-            title={t('sign_up', 'Sign Up')}
+            title={t('create_your_account', 'Create your account')}
             subtitle={subtitle}
             extraProviders={walletLogin ? <WalletProvider /> : undefined}
             emailStep={emailFields}

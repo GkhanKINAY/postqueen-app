@@ -35,8 +35,6 @@ import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
 import { UppyProgress } from '@gitroom/react/helpers/uppy.progress';
 import Link from '@tiptap/extension-link';
-import NextLink from 'next/link';
-import SafeImage from '@gitroom/react/helpers/safe.image';
 import {
   useEditor,
   EditorContent,
@@ -692,7 +690,7 @@ export const EditorWrapper: FC<{
               {showComments ? (
               <div
                 data-pq="composer-comments"
-                className="flex flex-col gap-[10px]"
+                className="flex flex-col"
               >
                 {(items.length > 1
                   ? items.slice(1)
@@ -711,30 +709,41 @@ export const EditorWrapper: FC<{
                 ).map((comment, offset) => {
                   const commentIndex = offset + 1;
                   return (
-                    <ComposeFirstComment
+                    <div
                       key={`comment-${commentIndex}`}
-                      commentIndex={commentIndex}
-                      value={editorHtmlToPlain(comment.content || '')}
-                      onChange={setCommentText(commentIndex)}
-                      pictures={comment.media || []}
-                      setImages={setCommentImages(commentIndex)}
-                      delay={comment.delay || 0}
-                      comments={comments}
-                      dummy={dummy}
-                      allValues={items}
-                      onActivate={
-                        commentIndex === 1
-                          ? ensureFirstComment
-                          : () => undefined
-                      }
-                      chars={chars}
-                      totalAllowedChars={totalChars}
-                      onRemove={removeComment(commentIndex)}
-                    />
+                      className="flex flex-col"
+                    >
+                      {offset > 0 ? (
+                        <div
+                          data-pq="composer-comment-stem"
+                          className="ms-[20px] h-[14px] w-px bg-pqLine"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <ComposeFirstComment
+                        commentIndex={commentIndex}
+                        value={editorHtmlToPlain(comment.content || '')}
+                        onChange={setCommentText(commentIndex)}
+                        pictures={comment.media || []}
+                        setImages={setCommentImages(commentIndex)}
+                        delay={comment.delay || 0}
+                        comments={comments}
+                        dummy={dummy}
+                        allValues={items}
+                        onActivate={
+                          commentIndex === 1
+                            ? ensureFirstComment
+                            : () => undefined
+                        }
+                        chars={chars}
+                        totalAllowedChars={totalChars}
+                        onRemove={removeComment(commentIndex)}
+                      />
+                    </div>
                   );
                 })}
                 {comments ? (
-                  <div className="self-start">
+                  <div className="mt-[10px] self-start">
                     <AddPostButton
                       num={0}
                       onClick={addValue(items.length - 1)}
@@ -806,23 +815,6 @@ export const Editor: FC<{
   const { mobile, splitComposer } = useViewport();
   const editorRef = useRef<undefined | { editor: any }>(undefined);
   const [loading, setLoading] = useState(false);
-  // Design composeVals aiHint — dismiss persists; links reuse /connections (MCP).
-  const [aiHintOff, setAiHintOff] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      return window.localStorage.getItem('pq-compose-ai-hint-off') === '1';
-    } catch {
-      return false;
-    }
-  });
-  const dismissAiHint = useCallback(() => {
-    setAiHintOff(true);
-    try {
-      window.localStorage.setItem('pq-compose-ai-hint-off', '1');
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const uppy = useUppyUploader({
     onUploadSuccess: (result: any) => {
@@ -1026,116 +1018,6 @@ export const Editor: FC<{
                 editorRef?.current?.editor?.commands?.focus('end');
               }}
             />
-            {/* Ephemeral Connections tip — no filled panel; dismiss persists. */}
-            {!num && !aiHintOff && !valueWithoutHtml.trim() && (
-              <div className="mx-[2px] mb-[2px] mt-[10px] flex min-w-0 flex-col gap-[10px] overflow-hidden border-t border-pqLine pt-[12px]">
-                <div className="flex min-w-0 items-start gap-[12px]">
-                  <span
-                    className="grid h-[28px] w-[28px] shrink-0 place-items-center text-pqBrand"
-                    aria-hidden="true"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      fill="none"
-                    >
-                      <path
-                        d="M12 3.5 13.1 8.4 18 9.5l-4.9 1.1L12 15.5l-1.1-4.9L6 9.5l4.9-1.1L12 3.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M18.5 14.5 19.1 16.4 21 17l-1.9.6-.6 1.9-.6-1.9L16 17l1.9-.6.6-1.9Z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M5.5 15.5 5.9 16.7 7.1 17.1 5.9 17.5 5.5 18.7 5.1 17.5 3.9 17.1 5.1 16.7 5.5 15.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-                    <span className="text-[13.5px] font-[600] tracking-[-0.01em] text-pqText">
-                      {t('let_ai_write_this_post', 'Draft with your AI')}
-                    </span>
-                    <span className="break-words text-[12.5px] leading-[1.45] text-pqMuted">
-                      {t(
-                        'let_ai_write_this_post_sub',
-                        'Connect Claude, ChatGPT, OpenClaw or Hermes — then ask them to draft this post'
-                      )}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={dismissAiHint}
-                    aria-label={t('hide', 'Hide')}
-                    className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-full text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 6l12 12M18 6 6 18"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex w-full min-w-0 flex-wrap items-center gap-[6px]">
-                  {(
-                    [
-                      {
-                        id: 'claude',
-                        label: t('claude', 'Claude'),
-                        icon: '/icons/connections/claude.svg',
-                      },
-                      {
-                        id: 'chatgpt',
-                        label: t('chatgpt', 'ChatGPT'),
-                        icon: '/icons/connections/chatgpt.svg',
-                      },
-                      {
-                        id: 'openclaw',
-                        label: t('openclaw', 'OpenClaw'),
-                        icon: '/icons/connections/openclaw.svg',
-                      },
-                      {
-                        id: 'hermes',
-                        label: t('hermes', 'Hermes'),
-                        icon: '/icons/connections/hermes.svg',
-                      },
-                    ] as const
-                  ).map((tool) => (
-                    <NextLink
-                      key={tool.id}
-                      href="/connections"
-                      className="flex h-[28px] min-w-0 items-center gap-[6px] rounded-full ps-[6px] pe-[10px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
-                    >
-                      <SafeImage
-                        src={tool.icon}
-                        alt=""
-                        width={17}
-                        height={17}
-                        className="h-[17px] w-[17px] shrink-0 rounded-[5px] object-contain"
-                      />
-                      {tool.label}
-                    </NextLink>
-                  ))}
-                </div>
-              </div>
-            )}
             <div className="flex bg-pqInner rounded-b-[6px] cursor-default">
               {setImages && (
                 <MultiMediaComponent

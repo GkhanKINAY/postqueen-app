@@ -42,9 +42,12 @@ export function Login() {
     },
   });
   const fetchData = useFetch();
+  const email = form.watch('email');
+  const password = form.watch('password');
+  const canSubmit = Boolean(String(email ?? '').trim() && String(password ?? ''));
   const subtitle = t(
     'sign_in_subtitle',
-    'Welcome back. Sign in to get to your calendar.',
+    'Log in to access your account.',
   );
   // The code step replaces the password step rather than sitting inside it:
   // OtpEmailStep brings its own <form>, and nesting one form in another is
@@ -53,7 +56,7 @@ export function Login() {
     return (
       <div className="flex-1 flex">
         <AuthShell
-          title={t('sign_in', 'Sign In')}
+          title={t('welcome_back', 'Welcome back')}
           subtitle={subtitle}
           extraProviders={walletLogin ? <WalletProvider /> : undefined}
           emailStep={
@@ -131,19 +134,19 @@ export function Login() {
     <FormProvider {...form}>
       <form className="flex-1 flex" onSubmit={form.handleSubmit(onSubmit)}>
         <AuthShell
-          title={t('sign_in', 'Sign In')}
+          title={t('welcome_back', 'Welcome back')}
           subtitle={subtitle}
           extraProviders={walletLogin ? <WalletProvider /> : undefined}
           emailStep={
             <div className="flex flex-col gap-[12px]">
-              <div className="flex flex-col gap-[20px] text-textColor">
+              <div className="flex flex-col gap-[8px] text-textColor">
                 <Input
                   label="Email"
                   translationKey="label_email"
                   {...form.register('email')}
                   type="email"
                   autoFocus
-                  placeholder={t('email_address', 'Email Address')}
+                  placeholder={t('email_placeholder', 'name@example.com')}
                 />
                 <Input
                   label="Password"
@@ -151,7 +154,16 @@ export function Login() {
                   {...form.register('password')}
                   autoComplete="off"
                   type="password"
-                  placeholder={t('label_password', 'Password')}
+                  placeholder={t('password_placeholder', '••••••••')}
+                  labelAction={
+                    <Link
+                      href="/auth/forgot"
+                      data-pq="forgot-password"
+                      className="text-[14px] font-[500] text-pqText"
+                    >
+                      {t('forgot_password', 'Forgot password?')}
+                    </Link>
+                  }
                 />
               </div>
               {notActivated && (
@@ -170,33 +182,22 @@ export function Login() {
                   </Link>
                 </div>
               )}
-              <div className="w-full flex mt-[12px]">
+              <div className="w-full flex">
                 <Button
                   type="submit"
-                  className="flex-1 rounded-[10px] !h-[52px]"
+                  disabled={!canSubmit}
+                  className={
+                    canSubmit
+                      ? 'flex-1 rounded-[10px] !h-[52px]'
+                      : 'flex-1 rounded-[10px] !h-[52px] !bg-pqText'
+                  }
                   loading={loading}
                 >
                   {t('sign_in_1', 'Sign in')}
                 </Button>
               </div>
-              {/* Two links share the row only when there are two. Without the
-                  code option the single link stays centred, exactly as before,
-                  so an install that leaves the flag off sees no change here.
-
-                  Both need mail. `/auth/forgot` always answers success — it
-                  must not reveal which addresses are registered — so the screen
-                  can never discover that nothing was sent, and an install with
-                  no mail provider would send people to a link that silently
-                  goes nowhere. `passwordlessLogin` is already refused by the
-                  backend without a provider; this makes the offer match. */}
-              {!emailEnabled ? null : passwordlessLogin ? (
-                <div className="flex items-center justify-between text-[13px] mt-[8px]">
-                  <Link
-                    href="/auth/forgot"
-                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
-                  >
-                    {t('forgot_password', 'Forgot password')}
-                  </Link>
+              {emailEnabled && passwordlessLogin ? (
+                <p className="text-center text-sm mt-[8px]">
                   <button
                     type="button"
                     onClick={() => setWithCode(true)}
@@ -204,17 +205,8 @@ export function Login() {
                   >
                     {t('email_me_a_code', 'Email me a sign-in code')}
                   </button>
-                </div>
-              ) : (
-                <p className="text-center text-sm mt-[8px]">
-                  <Link
-                    href="/auth/forgot"
-                    className="underline hover:font-bold cursor-pointer text-textItemBlur"
-                  >
-                    {t('forgot_password', 'Forgot password')}
-                  </Link>
                 </p>
-              )}
+              ) : null}
             </div>
           }
         />

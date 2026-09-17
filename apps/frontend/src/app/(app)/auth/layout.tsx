@@ -16,12 +16,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Split screen: the form on a plain surface at the start edge, the product
- * still on a brand panel filling the rest. Both halves run to the edge of the
- * viewport — the card-on-a-tinted-page framing the rest of the app uses would
- * only shrink the one thing this page is here to show.
- *
- * Below `lg` the panel drops out entirely and the form takes the full width.
+ * Split screen: form and product each take half the desktop viewport.
+ * Below `lg` the panel drops out and the form takes the full width.
  */
 export default async function AuthLayout({
   children,
@@ -31,18 +27,20 @@ export default async function AuthLayout({
   return (
     <div className="bg-pqInner text-pqText flex min-h-dvh w-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <ReturnUrlComponent />
-      <div className="flex flex-1 flex-col px-[24px] py-[28px] sm:px-[40px] lg:w-[46%] lg:max-w-[640px] lg:flex-none">
-        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col">
-          <Suspense
-            fallback={
-              <header className="flex items-center">
-                <LogoTextComponent />
-              </header>
-            }
-          >
-            <AuthNav />
-          </Suspense>
-          <div className="flex flex-1 flex-col justify-center py-[40px]">
+      <div className="flex w-full flex-1 flex-col px-[24px] pb-8 pt-12 sm:px-[40px] lg:w-1/2">
+        <div className="mx-auto flex w-full max-w-[452px] flex-1 flex-col">
+          <div className="w-full shrink-0">
+            <Suspense
+              fallback={
+                <header className="flex w-full items-center">
+                  <LogoTextComponent />
+                </header>
+              }
+            >
+              <AuthNav />
+            </Suspense>
+          </div>
+          <div className="flex flex-1 flex-col justify-center py-[20px]">
             <div className="flex w-full">
               <Suspense fallback={null}>{children}</Suspense>
             </div>

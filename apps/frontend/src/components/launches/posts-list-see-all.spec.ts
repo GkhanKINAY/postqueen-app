@@ -86,6 +86,20 @@ describe('See all opens the matching Posts tab', () => {
     assert.match(calendar, /postStatesOnDay\(posts, day\.date\)/);
   });
 
+  it('paints dated drafts on the calendar grid with a Draft label', () => {
+    const getPosts = repo.slice(repo.indexOf('async getPosts('));
+    const getPostsWhere = getPosts.slice(
+      getPosts.indexOf('where: {'),
+      getPosts.indexOf('select: {'),
+    );
+    assert.doesNotMatch(getPostsWhere, /state: \{ not: State\.DRAFT \}/);
+    assert.doesNotMatch(getPostsWhere, /never paint drafts/);
+    assert.doesNotMatch(context, /p.state !== 'DRAFT' && matchChannel/);
+    assert.match(context, /return base.filter\(\(p\) => matchChannel\(p\)\)/);
+    assert.match(calendar, /state === 'DRAFT' && \(/);
+    assert.match(calendar, /t\('draft', 'Draft'\)/);
+  });
+
   it('falls back to the calendar cell when the list page has no rows for that day', () => {
     assert.match(context, /listStateMatchesPost\(p\.state, listState\)/);
     assert.doesNotMatch(

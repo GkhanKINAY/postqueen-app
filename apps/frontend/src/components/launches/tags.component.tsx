@@ -588,6 +588,7 @@ const ShowModal: FC<{
       <Input
         name="name"
         disableForm={true}
+        brandFocus={false}
         label={t('tag_name', 'Name')}
         value={tagName}
         onChange={(e) => setTagName(e.target.value)}

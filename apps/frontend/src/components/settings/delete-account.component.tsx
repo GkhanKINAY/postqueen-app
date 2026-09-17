@@ -194,7 +194,7 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
             <button
               type="button"
               onClick={closeForm}
-              className="h-[40px] w-[110px] shrink-0 rounded-[10px] bg-transparent text-[13.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover"
+              className="h-[40px] shrink-0 rounded-[10px] bg-pqBtnSimple px-[18px] text-[13.5px] font-[600] text-pqText transition-shadow hover:shadow-[inset_0_0_0_999px_var(--hover)]"
             >
               {t('cancel', 'Cancel')}
             </button>

@@ -118,4 +118,16 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /ai_copilot_unlocks_after_your_trial/);
     assert.match(assistant, /ai_lock_perk_chat/);
   });
+
+  it('opens on AI Copilot and reveals Post Preview once when text or media appears', () => {
+    assert.match(modal, /useState<StudioRail>\('assistant'\)/);
+    assert.match(modal, /previewRevealedRef/);
+    assert.match(modal, /postHasPreviewableContent/);
+    assert.match(modal, /previewRevealedRef\.current = true/);
+    assert.match(modal, /setStudioRail\('preview'\)/);
+    assert.doesNotMatch(modal, /if \(!hasChannels\) \{\s*setStudioRail\('preview'\)/);
+    assert.doesNotMatch(editor, /let_ai_write_this_post/);
+    assert.doesNotMatch(editor, /pq-compose-ai-hint-off/);
+    assert.doesNotMatch(editor, /Connect Claude, ChatGPT, OpenClaw or Hermes/);
+  });
 });

@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 type Inputs = {
   password: string;
   repeatPassword: string;
@@ -65,31 +66,33 @@ export function ForgotReturn({ token }: { token: string }) {
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-1 flex-col"
       >
-        <h1 className="text-[32px] font-[600] -tracking-[0.8px] font-display lg:text-[40px]">
+        <div className="flex flex-col gap-[4px]">
+        <h1 className={authTitleClass}>
           {t('forgot_password_1', 'Forgot password')}
         </h1>
-        <p className="mt-[10px] text-[15px] text-textItemBlur">
+        <p className={authSubtitleClass}>
           {t(
             'choose_a_new_password',
             'Choose a new password for your account.',
           )}
         </p>
+        </div>
         {!state ? (
           <>
-            <div className="mt-[28px] space-y-4 text-textColor">
+            <div className="mt-[24px] flex flex-col gap-[8px] text-textColor">
               <Input
                 label="New Password"
                 translationKey="label_new_password"
                 {...form.register('password')}
                 type="password"
-                placeholder={t('label_password', 'Password')}
+                placeholder={t('password_placeholder', '••••••••')}
               />
               <Input
                 label="Repeat Password"
                 translationKey="label_repeat_password"
                 {...form.register('repeatPassword')}
                 type="password"
-                placeholder={t('label_repeat_password', 'Repeat Password')}
+                placeholder={t('password_placeholder', '••••••••')}
               />
             </div>
             <div className="w-full flex mt-[24px]">

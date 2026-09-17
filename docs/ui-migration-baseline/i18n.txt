@@ -169,9 +169,7 @@ are_you_sure_you_want_to_logout
 assign_this_channel_to_a_customer
 assistant_initial_message
 attachments
-auth_mode
 auth_showcase_alt
-auth_showcase_body
 auth_showcase_channels
 auth_showcase_title
 authorized_on
@@ -394,7 +392,6 @@ channel_save_network_error
 channel_settings
 channels
 channels_list_empty_hint
-chatgpt
 chats
 check_circles_above
 checkout_not_finished_logout
@@ -408,7 +405,6 @@ chrome_extension_warning_intro
 chrome_extension_warning_reconnect
 chrome_extension_warning_tos
 chrome_extension_warning_unstable
-claude
 clear
 click_channel_to_customize
 click_here_to_go_back_to_login
@@ -995,8 +991,7 @@ could_not_delete_account
 could_not_save
 could_not_use_rss_feed
 create
-create_account
-create_account_tab
+create_a_new_account
 create_announcement
 create_new_post
 create_oauth_app
@@ -1005,6 +1000,7 @@ create_output
 create_post_failed
 create_post_options
 create_post_title
+create_your_account
 credentials
 current_password
 current_plan
@@ -1104,9 +1100,9 @@ edit_signature
 edit_time_slots
 editing_a_specific_network
 email
-email_address
 email_confirm_sent
 email_me_a_code
+email_placeholder
 email_update_failed
 email_updated
 enable
@@ -1286,7 +1282,6 @@ guide_x_req
 guide_youtube
 guide_youtube_req
 help
-hermes
 heygen_aspect_ratio
 heygen_fill_from_post
 heygen_filling
@@ -1360,13 +1355,10 @@ label_duet
 label_email
 label_made_with_ai
 label_nickname
-label_organization
 label_paid_partnership
-label_password
 label_post_type
 label_post_type_article
 label_post_type_post
-label_repeat_password
 label_stitch
 label_tag_color
 label_who_can_reply_to_this_post
@@ -1376,8 +1368,6 @@ language
 language_settings_description
 launches
 leave
-let_ai_write_this_post
-let_ai_write_this_post_sub
 lifetime_badge
 lifetime_deal
 lifetime_payment_pending_body
@@ -1556,11 +1546,13 @@ open_composer
 open_connections
 open_link
 open_wizard
-openclaw
 opening_composer
 or
 or_wait_unlocks_on_date
 or_wait_until_trial_ends
+organization_name
+organization_name_description
+organization_name_length
 organizations
 original_date
 original_link
@@ -1569,6 +1561,7 @@ output_format
 paid
 password
 password_confirm_sent
+password_placeholder
 password_reset_link_expired
 password_too_short
 password_update_failed
@@ -1813,6 +1806,7 @@ sign_in_with_github
 sign_in_with_password_instead
 sign_out
 sign_up
+sign_up_1
 sign_up_subtitle
 signature_delete_failed
 signature_deleted_successfully
@@ -2044,12 +2038,10 @@ webhooks_limit_reached
 webhooks_load_failed
 webhooks_quota_title
 week
+welcome_back
 what_do_you_want_to_do
 whats_new
 workspace
-workspace_name
-workspace_name_description
-workspace_name_length
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
 write_anything

@@ -146,7 +146,7 @@ export const ColorPicker: FC<{
             spellCheck={false}
             aria-label={label}
             onChange={(event) => setColor(event.target.value)}
-            className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] uppercase tracking-[0.04em] text-pqText outline-none placeholder:text-pqMuted"
+            className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] uppercase tracking-[0.04em] text-pqText outline-none placeholder:text-pqMuted focus-visible:outline-none"
           />
         </div>
       </div>

@@ -37,7 +37,8 @@ interface VariableContextInterface {
   /**
    * Where this deployment publishes its Terms and Privacy pages. Separate
    * from frontEndUrl because the app and the marketing site can live on
-   * different hosts; falls back to frontEndUrl when unset.
+   * different hosts. Hosted PostQueen (billing on) falls back to
+   * https://postqueen.ai; self-hosted stays empty unless LEGAL_URL is set.
    */
   legalUrl: string;
   /**

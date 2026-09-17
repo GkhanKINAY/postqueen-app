@@ -1,6 +1,7 @@
 'use client';
 
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Button } from '@gitroom/react/form/button';
@@ -69,16 +70,18 @@ export function Activate() {
 
   return (
     <div className="flex flex-col flex-1">
-      <h1 className="text-[32px] font-[600] -tracking-[0.8px] font-display lg:text-[40px]">
+      <div className="flex flex-col gap-[4px]">
+      <h1 className={authTitleClass}>
         {t('activate_your_account', 'Activate your account')}
       </h1>
-      <p className="mt-[10px] text-[15px] text-textItemBlur">
+      <p className={authSubtitleClass}>
         {t('thank_you_for_registering', 'Thank you for registering!')}{' '}
         {t(
           'please_check_your_email_to_activate_your_account',
           'Please check your email to activate your account.',
         )}
       </p>
+      </div>
 
       <div className="mt-8 border-t border-fifth pt-6">
         <h2 className="text-lg font-semibold mb-4">
@@ -116,7 +119,7 @@ export function Activate() {
                 translationKey="label_email"
                 {...form.register('email', { required: true })}
                 type="email"
-                placeholder={t('email_address', 'Email Address')}
+                placeholder={t('email_placeholder', 'name@example.com')}
               />
               <Button
                 type="submit"

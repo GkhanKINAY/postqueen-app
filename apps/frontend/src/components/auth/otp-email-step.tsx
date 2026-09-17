@@ -90,7 +90,7 @@ export function OtpEmailStep({ submitLabel }: { submitLabel: string }) {
             onChange={(e) => setEmail(e.target.value)}
             type="email"
             autoFocus
-            placeholder={t('email_address', 'Email Address')}
+            placeholder={t('email_placeholder', 'name@example.com')}
           />
         </div>
         {turnstileSiteKey && (

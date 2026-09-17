@@ -169,10 +169,9 @@ export class PostsRepository {
         },
         deletedAt: null,
         parentPostId: null,
-        // Owner: DRAFT lives in Posts panel only — keep publishDate for the
-        // Drafts list (`publishDate >= now`), but never paint drafts on the
-        // Day/Week/Month calendar grid.
-        state: { not: State.DRAFT },
+        // Dated drafts belong on the Day/Week/Month grid with a Draft label
+        // (same publishDate the Drafts list already shows). The Posts panel
+        // still has its own getPostsList filter.
       },
       select: {
         id: true,

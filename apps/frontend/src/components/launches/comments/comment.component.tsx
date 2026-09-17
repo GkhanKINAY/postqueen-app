@@ -323,18 +323,23 @@ export const CommentComponent: FC<{
           <Fragment key={`comment_${index}_${comment.content}`}>
             <div
               className={clsx(
-                `flex relative flex-col`,
+                `relative flex flex-col`,
                 comment?.childrenComment?.length && 'gap-[10px]'
               )}
             >
+              {comment?.childrenComment?.length ? (
+                <div
+                  className="pointer-events-none absolute start-[19px] top-[44px] bottom-0 z-[1] w-[2px] rounded-full bg-pqLine"
+                  aria-hidden="true"
+                />
+              ) : null}
               <div className="flex gap-[8px]">
-                <div className="w-[40px] flex flex-col items-center">
+                <div className="relative z-[2] flex w-[40px] shrink-0 flex-col items-center">
                   <div
-                    className={`rounded-full relative z-[2] text-blue-500 font-bold flex justify-center items-center w-[40px] h-[40px] bg-white border-tableBorder border`}
+                    className={`flex h-[40px] w-[40px] items-center justify-center rounded-full border border-tableBorder bg-white font-bold text-blue-500`}
                   >
                     {comment.user.email[0].toUpperCase()}
                   </div>
-                  <div className="flex-1 w-[2px] h-[calc(100%-10px)] bg-customColor25 absolute top-[10px] z-[1]" />
                 </div>
                 <div className="flex-1 flex flex-col gap-[4px]">
                   <div className="flex">
@@ -356,7 +361,7 @@ export const CommentComponent: FC<{
                     key={`comment2_${index2}_${childComment.content}`}
                     className={clsx(`flex gap-[8px] relative`)}
                   >
-                    <div className="w-[40px] flex flex-col items-center">
+                    <div className="relative z-[2] flex w-[40px] shrink-0 flex-col items-center">
                       <div
                         className={`rounded-full relative z-[2] text-blue-500 font-bold flex justify-center items-center w-[40px] h-[40px] bg-white border-tableBorder border`}
                       >
