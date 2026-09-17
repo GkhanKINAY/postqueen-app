@@ -152,6 +152,7 @@ const PublishingOptions: FC<{ integration: any; mutate: () => void }> = ({
   const openEditor = useCallback(() => {
     modal.openModal({
       title: t('publishing_options', 'Publishing options'),
+      compact: 420,
       children: (
         <SettingsModal
           integration={integration}
@@ -316,9 +317,9 @@ const ChannelSettingsGroups: FC<{
 
   const moveGroup = useCallback(() => {
     modal.openModal({
-      classNames: { modal: 'md' },
+      compact: 420,
       title: t('move_add_to_group', 'Move / Add to group'),
-      withCloseButton: false,
+      withCloseButton: true,
       closeOnEscape: true,
       closeOnClickOutside: true,
       children: (
@@ -336,8 +337,8 @@ const ChannelSettingsGroups: FC<{
   const openCustom = useCallback(() => {
     modal.openModal({
       title: t('custom_url', 'Custom URL'),
-      withCloseButton: false,
-      classNames: { modal: 'md' },
+      withCloseButton: true,
+      compact: 420,
       children: (
         <CustomVariables
           identifier={integration.identifier}
@@ -997,6 +998,7 @@ export const ChannelsComponent: FC = () => {
       closeOnEscape: true,
       closeOnClickOutside: true,
       askClose: false,
+      compact: 460,
       title: t('time_table_slots', 'Time Table Slots'),
       children: <TimeTable integration={current} mutate={mutate} />,
     });
@@ -1029,11 +1031,9 @@ export const ChannelsComponent: FC = () => {
   const openBot = useCallback(() => {
     if (!current) return;
     modal.openModal({
-      classNames: {
-        modal: 'w-[100%] max-w-[600px] bg-transparent text-textColor',
-      },
-      size: '100%',
-      withCloseButton: false,
+      compact: 460,
+      title: t('change_bot_picture_title', 'Change Bot Picture'),
+      withCloseButton: true,
       closeOnEscape: true,
       closeOnClickOutside: true,
       children: (
@@ -1045,7 +1045,7 @@ export const ChannelsComponent: FC = () => {
         />
       ),
     });
-  }, [current, modal, mutate]);
+  }, [current, modal, mutate, t]);
 
   const addContent = !!adding && !!providerCatalog && (
     <div

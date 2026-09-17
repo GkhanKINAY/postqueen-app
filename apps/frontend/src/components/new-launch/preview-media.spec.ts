@@ -118,6 +118,21 @@ describe('post preview media frame', () => {
     assert.doesNotMatch(instagram, /no-video-youtube/);
   });
 
+  it('opens the Media lightbox instead of a new tab', () => {
+    assert.match(frame, /<MediaLightbox/);
+    assert.match(frame, /data-pq="preview-media-enlarge"/);
+    assert.match(frame, /enlarge_image/);
+    assert.doesNotMatch(frame, /target="_blank"/);
+    assert.doesNotMatch(facebook, /target="_blank"/);
+    const tiktok = readFileSync(
+      fileURLToPath(
+        new URL('./providers/tiktok/tiktok.preview.tsx', import.meta.url)
+      ),
+      'utf8'
+    );
+    assert.doesNotMatch(tiktok, /target="_blank"/);
+  });
+
   it('uses a 14:8 mosaic for X pairs instead of a square 1:2 collage', () => {
     assert.match(frame, /PreviewMediaMosaic/);
     assert.match(frame, /X_PAIR_MOSAIC_WH/);

@@ -24,6 +24,7 @@ import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/gene
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launches/use.open.reconnect';
 
 const ALL_CHANNELS = '__all__';
 
@@ -169,23 +170,11 @@ export const PlatformAnalytics = () => {
     fallbackData: [],
   });
 
+  const openReconnectInChannels = useOpenReconnectInChannels();
+
   const openAddChannel = useCallback(() => {
     router.push('/channels?add=1');
   }, [router]);
-
-  const openReconnectInChannels = useCallback(
-    (id: string) => {
-      toaster.show(
-        t(
-          'please_reconnect_from_channels',
-          'Please reconnect this channel from Channels'
-        ),
-        'warning'
-      );
-      router.push(`/channels?focus=${encodeURIComponent(id)}`);
-    },
-    [router, t, toaster]
-  );
 
   // Design `_autoSide`: collapse under 1180 on viewport transitions only.
   useEffect(() => {
@@ -529,7 +518,7 @@ export const PlatformAnalytics = () => {
                   key={integration.id}
                   type="button"
                   onClick={() => {
-                    if (integration.refreshNeeded) {
+                    if (needsRefresh) {
                       openReconnectInChannels(integration.id);
                       return;
                     }
@@ -721,7 +710,7 @@ export const PlatformAnalytics = () => {
                   key={integration.id}
                   title={channelNameWithHandle(integration)}
                   onClick={() => {
-                    if (integration.refreshNeeded) {
+                    if (needsRefresh) {
                       openReconnectInChannels(integration.id);
                       return;
                     }

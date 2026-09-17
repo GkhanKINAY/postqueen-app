@@ -1,6 +1,9 @@
 'use client';
 
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  ModalFormActions,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Input } from '@gitroom/react/form/input';
@@ -229,10 +232,10 @@ export const CustomVariables: FC<{
   const t = useT();
 
   return (
-    <div className="rounded-[4px] relative">
+    <div className="relative">
       <FormProvider {...methods}>
         <form
-          className="gap-[8px] flex flex-col pt-[10px]"
+          className="flex flex-col gap-[12px]"
           onSubmit={methods.handleSubmit(submit)}
         >
           {variables.map((variable) => (
@@ -264,9 +267,14 @@ export const CustomVariables: FC<{
               )}
             </div>
           ))}
-          <div>
-            <Button type="submit">{t('connect', 'Connect')}</Button>
-          </div>
+          <ModalFormActions onCancel={() => modals.closeAll()}>
+            <Button
+              type="submit"
+              className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+            >
+              {t('connect', 'Connect')}
+            </Button>
+          </ModalFormActions>
         </form>
       </FormProvider>
     </div>
@@ -1055,10 +1063,8 @@ export const AddProviderComponent: FC<{
           modal.openModal({
             title: t('add_provider_title', 'Add Provider'),
             withCloseButton: true,
+            compact: 420,
             ...(touch ? { removeLayout: true, fullScreen: true } : {}),
-            classNames: {
-              modal: 'bg-transparent text-textColor',
-            },
             children: (
               <div
                 {...(touch

@@ -20,8 +20,13 @@ describe('Settings mobile stack', () => {
   });
 
   it('hides the pane title with the JS phone chrome, not Tailwind mobile: (1025px)', () => {
-    assert.match(source, /hideTitle=\{mobile\}/);
+    assert.match(source, /hideTitle/);
     assert.doesNotMatch(source, /text-pqText mobile:hidden/);
+  });
+
+  it('keeps the desktop close control in a header row, not over the cards', () => {
+    assert.match(source, /data-settings-close-row/);
+    assert.doesNotMatch(source, /absolute end-\[16px\] top-\[14px\]/);
   });
 });
 

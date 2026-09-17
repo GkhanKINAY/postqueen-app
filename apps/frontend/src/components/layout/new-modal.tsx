@@ -31,6 +31,8 @@ interface OpenModalInterface {
   classNames?: {
     modal?: string;
   };
+  /** Desktop-only width. Phone/tablet stay edge-to-edge. Opts out of the 600px floor. */
+  compact?: 400 | 420 | 460;
   size?: string | number;
   maxSize?: string | number;
   height?: string | number;
@@ -104,6 +106,16 @@ export const useModals = () => {
       }
     },
   } satisfies ModalManagerInterface;
+};
+
+export const compactModalClass = (width: 400 | 420 | 460) => {
+  if (width === 400) {
+    return '!min-w-0 [&_.font-display]:text-[20px] w-[min(400px,calc(100vw-48px))] max-w-[min(400px,calc(100vw-48px))]';
+  }
+  if (width === 420) {
+    return '!min-w-0 [&_.font-display]:text-[20px] w-[min(420px,calc(100vw-48px))] max-w-[min(420px,calc(100vw-48px))]';
+  }
+  return '!min-w-0 [&_.font-display]:text-[20px] w-[min(460px,calc(100vw-48px))] max-w-[min(460px,calc(100vw-48px))]';
 };
 
 export const Component: FC<{
@@ -249,14 +261,18 @@ export const Component: FC<{
                 'relative mx-auto flex flex-col bg-pqInner text-pqText shadow-pq',
                 edgeToEdge
                   ? 'h-dvh max-h-dvh w-full max-w-none rounded-none pb-[max(20px,env(safe-area-inset-bottom))]'
-                  : 'w-fit max-w-[min(920px,calc(100vw-48px))] rounded-[24px] min-w-[min(600px,100%)] max-h-[86vh]',
+                  : clsx(
+                      'rounded-[24px] max-h-[86vh]',
+                      modal.compact
+                        ? compactModalClass(modal.compact)
+                        : 'w-fit max-w-[min(920px,calc(100vw-48px))] min-w-[min(600px,100%)]'
+                    ),
                 modal.classNames?.modal
               )}
               {...((!!modal.size || !!modal.height || !!modal.maxSize) &&
-                !edgeToEdge && {
+                !edgeToEdge &&
+                !modal.compact && {
                 style: {
-                  // Width can be narrower on paper (420/460) but min-w above
-                  // keeps desktop cards ≥600 like the prototype.
                   ...(modal.size
                     ? {
                         width:

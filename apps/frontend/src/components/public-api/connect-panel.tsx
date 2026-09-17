@@ -38,6 +38,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import {
   buildConnectionsCatalog,
   FEATURED_IDS,
+  FEATURED_CATCHALL_ID,
   restGroupsForAllPage,
   CONNECT_AUTOMATION_SHORTCUTS,
   CONNECT_NAV_ACCOUNT,
@@ -175,7 +176,7 @@ const ApiKeyMissingNote: FC = () => {
 };
 
 const ToolChip: FC<{ name: string }> = ({ name }) => (
-  <span className="inline-flex w-fit items-center rounded-[5px] bg-pqBrandSoft px-[7px] py-[2px] font-mono text-[10.5px] font-[600] tracking-[0.02em] text-pqFocused">
+  <span className="inline-flex w-fit items-center rounded-[5px] bg-pqSettings px-[7px] py-[2px] font-mono text-[10.5px] font-[600] tracking-[0.02em] text-pqMuted">
     {name}
   </span>
 );
@@ -294,10 +295,10 @@ const ExamplesBlock: FC<{
     return (
       <article
         key={`${ex.title ?? ''}-${ex.body}-${i}`}
-        className="overflow-hidden rounded-[16px] bg-pqPop shadow-[0_10px_28px_rgba(15,10,30,0.18),inset_0_0_0_1px_var(--border)]"
+        className="overflow-hidden rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]"
       >
-        <div className="flex flex-wrap items-center gap-[8px] border-b border-pqLine bg-pqSettings px-[12px] py-[9px]">
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-pqBrand text-[11px] font-[700] text-pqOnBrand">
+        <div className="flex flex-wrap items-center gap-[8px] border-b border-pqLine px-[12px] py-[9px]">
+          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-pqSettings text-[11px] font-[700] text-pqText">
             {i + 1}
           </span>
           <div className="min-w-0 flex-1">
@@ -313,7 +314,7 @@ const ExamplesBlock: FC<{
               {channels.map((channel) => (
                 <span
                   key={channel}
-                  className="rounded-full bg-pqBrandSoft px-[8px] py-[3px] text-[10.5px] font-[700] text-pqBrand"
+                  className="rounded-full bg-pqSettings px-[8px] py-[3px] text-[10.5px] font-[700] text-pqMuted"
                 >
                   {channel}
                 </span>
@@ -322,7 +323,7 @@ const ExamplesBlock: FC<{
           )}
           <CopySample text={copyText} />
         </div>
-        <div className="bg-[linear-gradient(180deg,rgba(124,58,237,0.07),transparent_42px)] p-[12px]">
+        <div className="p-[12px]">
           {inner}
         </div>
       </article>
@@ -336,7 +337,7 @@ const ExamplesBlock: FC<{
           <div className="mb-[4px] text-end text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
             {youLabel}
           </div>
-          <div className="relative rounded-[18px_18px_6px_18px] bg-pqBrand px-[14px] py-[11px] pe-[38px] text-[13.5px] leading-[1.45] text-pqOnBrand">
+          <div className="relative rounded-[18px_18px_6px_18px] bg-pqSettings px-[14px] py-[11px] pe-[38px] text-[13.5px] leading-[1.45] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
             {ex.body}
             <button
               type="button"
@@ -345,7 +346,7 @@ const ExamplesBlock: FC<{
                 copy(ex.body);
                 toaster.show(t('conn_examples_copied', 'Copied the sample'), 'success');
               }}
-              className="absolute end-[8px] top-[8px] flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-[6px] text-pqOnBrand/70 transition-colors hover:bg-white/15 hover:text-pqOnBrand"
+              className="absolute end-[8px] top-[8px] flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-[6px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
             >
               <CopyGlyph />
             </button>
@@ -398,7 +399,7 @@ const ExamplesBlock: FC<{
                   <div className="mb-[4px] text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
                     {name}
                   </div>
-                  <div className="rounded-pqSm bg-pqBrandSoft px-[12px] py-[10px] text-[13px] leading-[1.5] text-pqText">
+                  <div className="rounded-pqSm bg-pqSettings px-[12px] py-[10px] text-[13px] leading-[1.5] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
                     {ex.reply}
                   </div>
                 </div>
@@ -470,11 +471,11 @@ const ExamplesBlock: FC<{
     );
 
   return (
-    <section className="overflow-hidden rounded-[20px] bg-pqBrandFaint shadow-[inset_0_0_0_1px_rgba(124,58,237,0.35)]">
+    <section className="overflow-hidden rounded-[16px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
       <div className="flex flex-wrap items-start justify-between gap-[10px] px-[16px] py-[14px]">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-[8px]">
-            <span className="inline-flex items-center gap-[6px] rounded-full bg-pqBrand px-[10px] py-[4px] text-[10.5px] font-[700] uppercase tracking-[0.08em] text-pqOnBrand">
+            <span className="inline-flex items-center gap-[6px] rounded-full bg-pqSettings px-[10px] py-[4px] text-[10.5px] font-[700] uppercase tracking-[0.08em] text-pqText">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
                 <path
                   d="M5 6.5h10.5A2.5 2.5 0 0 1 18 9v5a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16.5H5A2.5 2.5 0 0 1 2.5 14V9A2.5 2.5 0 0 1 5 6.5Z"
@@ -485,7 +486,7 @@ const ExamplesBlock: FC<{
               </svg>
               {t('conn_examples_eyebrow', 'Examples')}
             </span>
-            <span className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqBrand">
+            <span className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
               {t('conn_examples_not_live', 'Not a live chat')}
             </span>
           </div>
@@ -494,7 +495,7 @@ const ExamplesBlock: FC<{
             {blurb}
           </div>
         </div>
-        <span className="rounded-full bg-pqPop px-[10px] py-[4px] text-[11px] font-[700] text-pqBrand shadow-[inset_0_0_0_1px_rgba(124,58,237,0.28)]">
+        <span className="rounded-full bg-pqSettings px-[10px] py-[4px] text-[11px] font-[700] text-pqMuted">
           {total} {t('conn_examples_count_label', 'samples')}
         </span>
       </div>
@@ -906,6 +907,10 @@ export const ConnectPanel: FC<{
       FEATURED_IDS.map((id) => findConnection(groups, id)).filter(
         (c): c is Connection => !!c
       ),
+    [groups]
+  );
+  const featuredCatchall = useMemo(
+    () => findConnection(groups, FEATURED_CATCHALL_ID),
     [groups]
   );
 
@@ -1505,6 +1510,43 @@ export const ConnectPanel: FC<{
               {t('connect_featured', 'Featured')}
             </div>
             {hubGrid(featuredItems, { featured: true })}
+            {featuredCatchall && (
+              <button
+                type="button"
+                data-connector={featuredCatchall.id}
+                data-conn-card="1"
+                data-pq="featured-catchall"
+                onClick={() => selectItem(featuredCatchall.id)}
+                aria-label={`${featuredCatchall.name}, ${featuredCatchall.method}`}
+                className="flex min-w-0 cursor-pointer items-center gap-[12px] rounded-pqLg bg-pqPop px-[16px] py-[12px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
+              >
+                <ConnIcon item={featuredCatchall} size="xs" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-[600] leading-[1.25] text-pqText">
+                    {featuredCatchall.name}
+                  </span>
+                  <span className="mt-[2px] block truncate text-[12.5px] leading-[1.35] text-pqMuted">
+                    {featuredCatchall.short}
+                  </span>
+                </span>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  aria-hidden="true"
+                  className="shrink-0 text-pqSoft rtl:rotate-180"
+                >
+                  <path
+                    d="M9 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         )}
 

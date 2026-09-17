@@ -5,7 +5,7 @@ import { ReactTags } from 'react-tag-autocomplete';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { Input } from '@gitroom/react/form/input';
-import { ColorPicker } from '@gitroom/react/form/color.picker';
+import { ColorPicker, DEFAULT_COLOR } from '@gitroom/react/form/color.picker';
 import { Button } from '@gitroom/react/form/button';
 import { uniqBy } from 'lodash';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -570,7 +570,7 @@ const ShowModal: FC<{
 
   const { close, tag, resolve, color: theColor, id } = props;
   const fetch = useFetch();
-  const [color, setColor] = useState<string>(theColor || '#942828');
+  const [color, setColor] = useState<string>(theColor || DEFAULT_COLOR);
   const [tagName, setTagName] = useState<string>(tag);
   const save = useCallback(async () => {
     await fetch(id ? `/posts/tags/${id}` : '/posts/tags', {
@@ -585,17 +585,6 @@ const ShowModal: FC<{
   }, [tagName, color, id]);
   return (
     <div className="flex flex-col gap-[16px]">
-      <div className="flex items-center gap-[12px] rounded-[10px] bg-pqSettings p-[12px]">
-        <span
-          className="inline-flex min-h-[28px] max-w-full items-center truncate rounded-[8px] px-[10px] text-[13px] font-[600] text-white"
-          style={{ backgroundColor: color }}
-        >
-          {tagName.trim() || t('tag_name', 'Name')}
-        </span>
-        <span className="ms-auto font-mono text-[12px] uppercase tracking-[0.04em] text-pqMuted">
-          {color}
-        </span>
-      </div>
       <Input
         name="name"
         disableForm={true}

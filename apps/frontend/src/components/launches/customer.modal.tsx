@@ -1,7 +1,10 @@
 'use client';
 
-import React, { FC, useCallback, useEffect, useState } from 'react';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import React, { FC, useCallback, useState } from 'react';
+import {
+  ModalFormActions,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Autocomplete } from '@mantine/core';
 import useSWR from 'swr';
@@ -49,35 +52,40 @@ export const CustomerModal: FC<{
   );
   const { data } = useSWR('/customers', loadCustomers);
   return (
-    <div className="relative w-full">
-      <div className="mb-[80px]">
-        <Autocomplete
-          value={customer}
-          onChange={setCustomer}
-          classNames={{
-            label: 'text-[14px] text-pqMuted mb-[6px]',
-            input:
-              'h-[44px] rounded-[10px] border-0 bg-pqTableHeader px-[12px] text-[14px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]',
-            dropdown:
-              'bg-pqPop border border-pqBorder rounded-[10px] shadow-pqE2 overflow-hidden',
-            // `item` became `option` in Mantine 7; same element, same styling.
-            option:
-              'text-[14px] text-pqText hover:bg-pqHover data-[hovered]:bg-pqHover',
-          }}
-          label={t('select_customer_label', 'Select Customer')}
-          placeholder={t('start_typing', 'Start typing...')}
-          data={data?.map((p: any) => p.name) || []}
-        />
-      </div>
-
-      <div className="my-[16px] flex gap-[10px]">
-        <Button onClick={() => saveCustomer()}>{t('save', 'Save')}</Button>
+    <div data-pq="channel-group-form" className="flex flex-col gap-[14px]">
+      <Autocomplete
+        value={customer}
+        onChange={setCustomer}
+        classNames={{
+          label: 'text-[13px] font-[500] text-pqMuted mb-[6px]',
+          input:
+            'h-[44px] rounded-[10px] border-0 bg-pqTableHeader px-[12px] text-[14px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] placeholder:text-pqSoft focus:shadow-[inset_0_0_0_1px_var(--brand)]',
+          dropdown:
+            'bg-pqPop border border-pqLine rounded-[10px] shadow-pq overflow-hidden',
+          option:
+            'text-[14px] text-pqText hover:bg-pqHover data-[hovered]:bg-pqHover',
+        }}
+        label={t('select_customer_label', 'Select Customer')}
+        placeholder={t('start_typing', 'Start typing...')}
+        data={data?.map((p: any) => p.name) || []}
+      />
+      <ModalFormActions onCancel={() => modal.closeAll()}>
         {!!integration?.customer?.name && (
-          <Button className="bg-red-700" onClick={removeFromCustomer}>
+        <Button
+          className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+          variant="danger"
+          onClick={removeFromCustomer}
+        >
             {t('remove_from_customer', 'Remove from customer')}
           </Button>
         )}
-      </div>
+        <Button
+          onClick={() => saveCustomer()}
+          className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+        >
+          {t('save', 'Save')}
+        </Button>
+      </ModalFormActions>
     </div>
   );
 };

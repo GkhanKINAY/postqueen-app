@@ -7,6 +7,7 @@ import { textSlicer } from '@gitroom/helpers/utils/count.length';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { FC } from 'react';
 import { PreviewMediaFrame, PreviewMediaMosaic } from '@gitroom/frontend/components/new-launch/preview-media';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import {
   FEED_PREVIEW_FALLBACK_WH,
   FEED_PREVIEW_MAX_WH,
@@ -295,10 +296,15 @@ export const LinkedinPreview: FC<{
     <div className="py-[15px] flex flex-col px-[15px] w-full gap-[20px] bg-bgLinkedin rounded-[12px]">
       <div className="flex gap-[8px]">
         <div className="w-[48px] h-[48px]">
-          <img
-            src={integration?.picture || '/no-picture.jpg'}
-            alt="social"
-            className="rounded-full relative z-[2] w-[48px] h-[48px]"
+          <ChannelAvatar
+            integration={
+              integration || {
+                identifier: 'linkedin',
+              }
+            }
+            size={48}
+            rounded="full"
+            badge={false}
           />
         </div>
         <div className="flex min-w-0 flex-col leading-[16px]">
@@ -446,11 +452,16 @@ export const LinkedinPreview: FC<{
           {renderContent.slice(1).map((value, index) => (
             <div key={index} className="flex flex-col gap-[12px]">
               <div className="flex gap-[6px] leading-[17px]">
-                <div className="h-[34px]">
-                  <img
-                    src={integration?.picture || '/no-picture.jpg'}
-                    alt="social"
-                    className="rounded-full relative z-[2] h-[34px] w-[34px]"
+                <div className="h-[34px] w-[34px]">
+                  <ChannelAvatar
+                    integration={
+                      integration || {
+                        identifier: 'linkedin',
+                      }
+                    }
+                    size={34}
+                    rounded="full"
+                    badge={false}
                   />
                 </div>
                 <div className="flex flex-col gap-[12px]">

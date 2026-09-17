@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
@@ -108,6 +109,36 @@ export const withProvider = function <T extends object>(params: {
     );
     const [settingsOpen, setSettingsOpen] = useState(false);
     const showSettingsBody = !isGlobal || settingsOpen;
+    const settingsCardRef = useRef<HTMLDivElement>(null);
+
+    const revealSettingsCard = useCallback(() => {
+      const card = settingsCardRef.current;
+      const pane = document.querySelector('#social-content');
+      if (!(card instanceof HTMLElement) || !(pane instanceof HTMLElement)) {
+        return;
+      }
+      const paneRect = pane.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      if (cardRect.bottom > paneRect.bottom) {
+        pane.scrollBy({ top: cardRect.bottom - paneRect.bottom + 16 });
+      }
+      const nextTop = card.getBoundingClientRect().top;
+      if (nextTop < paneRect.top) {
+        pane.scrollBy({ top: nextTop - paneRect.top - 8 });
+      }
+    }, []);
+
+    const toggleSettings = useCallback(() => {
+      setSettingsOpen((open) => {
+        const next = !open;
+        if (next) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(revealSettingsCard);
+          });
+        }
+        return next;
+      });
+    }, [revealSettingsCard]);
 
     useEffect(() => {
       if (!setTotalChars) {
@@ -379,6 +410,7 @@ export const withProvider = function <T extends object>(params: {
                   </div>
                 ) : (
                   <div
+                    ref={settingsCardRef}
                     data-id={props.id}
                     data-pq="composer-channel-settings"
                     className={clsx(
@@ -395,7 +427,7 @@ export const withProvider = function <T extends object>(params: {
                     <button
                       type="button"
                       aria-expanded={settingsOpen}
-                      onClick={() => setSettingsOpen((open) => !open)}
+                      onClick={toggleSettings}
                       className="flex min-w-0 w-full items-center gap-[10px] px-[14px] py-[12px] text-start outline-none hover:bg-pqHover focus-visible:outline-none"
                     >
                       {settingsIdentity}

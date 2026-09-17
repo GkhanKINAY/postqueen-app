@@ -37,19 +37,29 @@ export function convertBackRegex(s: string) {
   const flags = matches?.[2] || '';
   return new RegExp(pattern, flags);
 }
+
+/** Shared modal floors at 600px; plug forms are a likes field, or likes plus a
+ *  short post. Prototype `formWidth` is 460 — likes-only can sit tighter. */
+export const plugDialogWidth = (fields: { type: string }[]): 400 | 460 =>
+  fields.some((field) => field.type === 'richtext') ? 460 : 400;
+
 export const TextArea: FC<{
   name: string;
   placeHolder: string;
+  label?: string;
 }> = (props) => {
   const form = useFormContext();
   const { onChange, onBlur, ...all } = form.register(props.name);
   const value = form.watch(props.name);
   const aiOk = useAiAvailable();
   const fieldClass = clsx(
-    '!min-h-40 !max-h-80 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-hidden placeholder:text-pqSoft w-full resize-none border-0'
+    'min-h-[110px] max-h-[180px] w-full resize-y border-0 bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none placeholder:text-pqSoft'
   );
   return (
-    <>
+    <div className="flex flex-col gap-[6px]">
+      {!!props.label && (
+        <div className="text-[13px] font-[500] text-pqMuted">{props.label}</div>
+      )}
       <textarea className="hidden" {...all}></textarea>
       <div className="overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
         {aiOk ? (
@@ -90,7 +100,7 @@ export const TextArea: FC<{
       <div className="text-[12px] text-pqWarn">
         {form?.formState?.errors?.[props.name]?.message as string}
       </div>
-    </>
+    </div>
   );
 };
 export const PlugPop: FC<{
@@ -159,13 +169,22 @@ export const PlugPop: FC<{
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(submit)}>
-        <div className="relative mx-auto flex flex-col gap-[16px]">
-          <div className="text-[14px] text-pqMuted">{plug.description}</div>
-          <div className="flex flex-col gap-[16px]">
+        <div
+          data-pq="plug-form"
+          className="relative mx-auto flex flex-col gap-[14px]"
+        >
+          <div className="text-[13px] leading-[1.5] text-pqMuted">
+            {plug.description}
+          </div>
+          <div className="flex flex-col gap-[12px]">
             {plug.fields.map((field) => (
               <div key={field.name}>
                 {field.type === 'richtext' ? (
-                  <TextArea name={field.name} placeHolder={field.placeholder} />
+                  <TextArea
+                    name={field.name}
+                    placeHolder={field.placeholder}
+                    label={field.description}
+                  />
                 ) : (
                   <Input
                     name={field.name}
@@ -319,6 +338,7 @@ export const Plug = () => {
             mutate();
           },
           title: `Auto Plug: ${p.title}`,
+          compact: plugDialogWidth(p.fields),
           children: (
             <PlugPop
               plug={p}

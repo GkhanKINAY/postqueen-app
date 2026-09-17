@@ -352,7 +352,7 @@ const ComposeAiBindingsInner: FC = () => {
         name: 'style',
         type: 'string',
         description:
-          'Optional style: Realistic, Cartoon, Anime, Fantasy, Abstract, Pixel Art, Sketch, Watercolor, Minimalist, Cyberpunk',
+          'Optional style: Realistic, Cartoon, Anime, Minimalist, Sketch, Watercolor',
         required: false,
       },
       {

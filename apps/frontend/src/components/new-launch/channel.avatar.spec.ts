@@ -32,6 +32,42 @@ const providers = readFileSync(
   ),
   'utf8'
 );
+const facebookPreview = readFileSync(
+  fileURLToPath(
+    new URL('./providers/facebook/facebook.preview.tsx', import.meta.url)
+  ),
+  'utf8'
+);
+const linkedinPreview = readFileSync(
+  fileURLToPath(
+    new URL('./providers/linkedin/linkedin.preview.tsx', import.meta.url)
+  ),
+  'utf8'
+);
+const tiktokPreview = readFileSync(
+  fileURLToPath(
+    new URL('./providers/tiktok/tiktok.preview.tsx', import.meta.url)
+  ),
+  'utf8'
+);
+const fallbackHelper = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../../../libraries/react-shared-libraries/src/helpers/image.with.fallback.tsx',
+      import.meta.url
+    )
+  ),
+  'utf8'
+);
+const safeImage = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../../../libraries/react-shared-libraries/src/helpers/safe.image.tsx',
+      import.meta.url
+    )
+  ),
+  'utf8'
+);
 
 describe('channel avatar fallback', () => {
   it('treats missing and placeholder pictures as unusable', () => {
@@ -78,6 +114,18 @@ describe('channel avatar fallback', () => {
     assert.doesNotMatch(picks, /fallbackSrc="\/no-picture\.jpg"/);
     assert.doesNotMatch(pickPlatform, /no-picture\.jpg/);
     assert.match(source, /referrerPolicy="no-referrer"/);
+    assert.match(source, /useFallbackUntilLoaded/);
+  });
+
+  it('keeps the platform icon up until a remote photo actually loads', () => {
+    assert.match(fallbackHelper, /useFallbackUntilLoaded/);
+    assert.match(fallbackHelper, /new window\.Image\(\)/);
+    assert.match(fallbackHelper, /probe\.referrerPolicy = 'no-referrer'/);
+    assert.match(safeImage, /\{\.\.\.rest\}/);
+    for (const preview of [facebookPreview, linkedinPreview, tiktokPreview]) {
+      assert.match(preview, /<ChannelAvatar/);
+      assert.doesNotMatch(preview, /no-picture\.jpg/);
+    }
   });
 
   it('draws selected channel rings with box-shadow, not a CSS border plus filter', () => {
@@ -89,7 +137,7 @@ describe('channel avatar fallback', () => {
     assert.doesNotMatch(selectCurrent, /inset_0_0_0_1\.5px_var\(--pink\)/);
     assert.match(pickPlatform, /aria-pressed=\{selected\}/);
     assert.match(pickPlatform, /ring-2 ring-pqBrand ring-offset-2/);
-    assert.match(pickPlatform, /bg-pqBrand text-white/);
+    assert.match(pickPlatform, /bg-pqBrandSoft text-pqText/);
     assert.doesNotMatch(pickPlatform, /opacity-40/);
     assert.doesNotMatch(pickPlatform, /bg-customColor29/);
   });

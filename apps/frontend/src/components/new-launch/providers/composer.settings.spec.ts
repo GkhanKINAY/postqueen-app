@@ -131,7 +131,10 @@ describe('composer channel settings controls', () => {
       hop,
       /focus-within:shadow-\[inset_0_0_0_1px_var\(--brand\)\]/,
     );
-    assert.match(hop, /focus-visible:outline-none/);
+    assert.match(hop, /revealSettingsCard/);
+    assert.match(hop, /querySelector\('#social-content'\)/);
+    assert.match(hop, /pane\.scrollBy/);
+    assert.match(hop, /toggleSettings/);
     assert.match(hop, /data-pq="preview-channel-identity"/);
     assert.match(hop, /channelPlatformLabel/);
     assert.match(hop, /data-pq="preview-channel-body"/);

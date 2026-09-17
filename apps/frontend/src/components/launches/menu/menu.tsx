@@ -233,6 +233,7 @@ export const Menu: FC<{
       closeOnEscape: true,
       closeOnClickOutside: true,
       askClose: false,
+      compact: 460,
       title: t('time_table_slots', 'Time Table Slots'),
       children: <TimeTable integration={findIntegration!} mutate={mutate} />,
     });
@@ -293,11 +294,9 @@ export const Menu: FC<{
       (integration) => integration.id === id
     );
     modal.openModal({
-      classNames: {
-        modal: 'w-[100%] max-w-[600px] bg-transparent text-textColor',
-      },
-      size: '100%',
-      withCloseButton: false,
+      compact: 460,
+      title: t('change_bot_picture_title', 'Change Bot Picture'),
+      withCloseButton: true,
       closeOnEscape: true,
       closeOnClickOutside: true,
       children: (
@@ -316,7 +315,8 @@ export const Menu: FC<{
       (integration) => integration.id === id
     );
     modal.openModal({
-      title: t('additional_settings', 'Additional Settings'),
+      title: t('publishing_options', 'Publishing options'),
+      compact: 420,
       children: (
         <SettingsModal
           // @ts-ignore
@@ -335,11 +335,9 @@ export const Menu: FC<{
       (integration) => integration.id === id
     );
     modal.openModal({
-      classNames: {
-        modal: 'md',
-      },
+      compact: 420,
       title: t('move_add_to_group', 'Move / Add to group'),
-      withCloseButton: false,
+      withCloseButton: true,
       closeOnEscape: true,
       closeOnClickOutside: true,
       children: (
@@ -358,10 +356,8 @@ export const Menu: FC<{
   const updateCredentials = useCallback(() => {
     modal.openModal({
       title: t('custom_url', 'Custom URL'),
-      withCloseButton: false,
-      classNames: {
-        modal: 'md',
-      },
+      withCloseButton: true,
+      compact: 420,
       children: (
         <CustomVariables
           identifier={findIntegration.identifier}

@@ -9,8 +9,9 @@ import { getPresetBackground } from '@gitroom/frontend/components/new-launch/pro
 import { FC } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
-import { PreviewMediaFrame, PreviewMediaMosaic } from '@gitroom/frontend/components/new-launch/preview-media';
+import { PreviewMediaFrame, PreviewMediaMosaic, PreviewLightboxButton } from '@gitroom/frontend/components/new-launch/preview-media';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import {
   FEED_PREVIEW_FALLBACK_WH,
   FEED_PREVIEW_MAX_WH,
@@ -138,10 +139,15 @@ export const FacebookPreview: FC<{
     <div className="py-[15px] flex flex-col px-[15px] w-full gap-[20px] bg-bgFacebook rounded-[12px]">
       <div className="flex gap-[8px]">
         <div className="w-[36px] h-[36px]">
-          <img
-            src={integration?.picture || '/no-picture.jpg'}
-            alt="social"
-            className="rounded-full relative z-[2] w-[36px] h-[36px]"
+          <ChannelAvatar
+            integration={
+              integration || {
+                identifier: 'facebook',
+              }
+            }
+            size={36}
+            rounded="full"
+            badge={false}
           />
         </div>
         <div className="flex min-w-0 flex-col leading-[18px]">
@@ -301,11 +307,16 @@ export const FacebookPreview: FC<{
           {renderContent.slice(1).map((value, index) => (
             <div key={index} className="flex flex-col gap-[12px]">
               <div className="flex gap-[6px] leading-[17px]">
-                <div className="h-[34px]">
-                  <img
-                    src={integration?.picture || '/no-picture.jpg'}
-                    alt="social"
-                    className="rounded-full relative z-[2] h-[34px] w-[34px]"
+                <div className="h-[34px] w-[34px]">
+                  <ChannelAvatar
+                    integration={
+                      integration || {
+                        identifier: 'facebook',
+                      }
+                    }
+                    size={34}
+                    rounded="full"
+                    badge={false}
                   />
                 </div>
                 <div className="flex flex-col gap-[6px] min-w-[150px]">
@@ -326,17 +337,16 @@ export const FacebookPreview: FC<{
                     {!!value.images?.length && (
                       <div className="h-[100px] mt-[12px] -mx-[15px] overflow-hidden flex">
                         {value.images.map((image, index) => (
-                          <a
+                          <PreviewLightboxButton
                             key={`image_${index}`}
+                            src={mediaDir.set(image.path)}
                             className="flex-1"
-                            href={mediaDir.set(image.path)}
-                            target="_blank"
                           >
                             <VideoOrImage
                               autoplay={true}
                               src={mediaDir.set(image.path)}
                             />
-                          </a>
+                          </PreviewLightboxButton>
                         ))}
                       </div>
                     )}

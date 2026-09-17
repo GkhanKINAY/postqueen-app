@@ -102,7 +102,7 @@ export const DelayComponent: FC<{
         }
         aria-label={t('delay_comment', 'Delay comment')}
         aria-expanded={isOpen}
-        data-pq={toolbar ? 'composer-comment-delay' : undefined}
+        data-pq="composer-comment-delay"
         className={clsx(
           'flex cursor-pointer items-center justify-center transition-colors',
           toolbar

@@ -8,6 +8,8 @@ import { formatChannelHandle } from '@gitroom/frontend/components/channels/chann
 import { FC, ReactNode } from 'react';
 import { SliderComponent } from '@gitroom/frontend/components/third-parties/slider.component';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
+import { PreviewLightboxButton } from '@gitroom/frontend/components/new-launch/preview-media';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 const TikTokItem: FC<{ icon: ReactNode; num: string }> = ({ icon, num }) => {
   return (
@@ -72,15 +74,13 @@ export const TiktokPreview: FC<{
         {images.length > 0 && (
           <SliderComponent
             list={images.map((image, index) => (
-              <a
+              <PreviewLightboxButton
                 key={`image_${index}`}
+                src={mediaDir.set(image.path)}
                 className="absolute inset-0 block"
-                href={mediaDir.set(image.path)}
-                target="_blank"
-                rel="noreferrer"
               >
                 <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
-              </a>
+              </PreviewLightboxButton>
             ))}
             className="absolute inset-0 h-full w-full overflow-hidden"
           />
@@ -99,10 +99,15 @@ export const TiktokPreview: FC<{
       </div>
       <div className="flex shrink-0 flex-col justify-end gap-[10px]">
         <div className="relative">
-          <img
-            src={integration?.picture || '/no-picture.jpg'}
-            alt="social"
-            className="rounded-full z-[2] w-[29px] h-[29px]"
+          <ChannelAvatar
+            integration={
+              integration || {
+                identifier: 'tiktok',
+              }
+            }
+            size={29}
+            rounded="full"
+            badge={false}
           />
           <div className="absolute left-[50%] -translate-x-[50%] bottom-0 translate-y-[50%] z-[1]">
             <svg
@@ -189,10 +194,15 @@ export const TiktokPreview: FC<{
           }
         />
         <div>
-          <img
-            src={integration?.picture || '/no-picture.jpg'}
-            alt="social"
-            className="rounded-full relative z-[2] w-[29px] h-[29px]"
+          <ChannelAvatar
+            integration={
+              integration || {
+                identifier: 'tiktok',
+              }
+            }
+            size={29}
+            rounded="full"
+            badge={false}
           />
         </div>
       </div>

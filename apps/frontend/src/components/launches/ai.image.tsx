@@ -36,17 +36,9 @@ const list = [
   'Realistic',
   'Cartoon',
   'Anime',
-  'Fantasy',
-  'Abstract',
-  'Pixel Art',
+  'Minimalist',
   'Sketch',
   'Watercolor',
-  'Minimalist',
-  'Cyberpunk',
-  'Monochromatic',
-  'Surreal',
-  'Pop Art',
-  'Fantasy Realism',
 ];
 
 const AiImageModal: FC<{
