@@ -164,8 +164,20 @@ export const withProvider = function <T extends object>(params: {
       }
 
       if (current) {
+        // Two sources used to answer "can this channel take a comment": this
+        // `params.comments` argument, written by hand in each provider's own
+        // .tsx, and `!!provider.comment` on the server. They had drifted -
+        // seven providers implement no `comment()` and never declared it here -
+        // so the server's answer is authoritative for the boolean case now.
+        //
+        // `'no-media'` stays with the provider: it is a restriction on media
+        // *within* a comment, and the server has no equivalent to contradict.
         setComments(
-          typeof params.comments === 'undefined' ? true : params.comments
+          selectedIntegration?.integration?.canComment === false
+            ? false
+            : typeof params.comments === 'undefined'
+            ? true
+            : params.comments
         );
         setEditor(selectedIntegration?.integration.editor);
         setPostComment(postComment);
@@ -179,7 +191,15 @@ export const withProvider = function <T extends object>(params: {
               )
         );
       }
-    }, [justCurrent, current, isGlobal, setTotalChars]);
+      // `canComment` now feeds setComments, so the effect has to re-run when the
+      // selected integration object changes rather than only when the tab does.
+    }, [
+      justCurrent,
+      current,
+      isGlobal,
+      setTotalChars,
+      selectedIntegration?.integration?.canComment,
+    ]);
 
     const getInternalPlugs = useCallback(async () => {
       return (

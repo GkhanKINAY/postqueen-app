@@ -110,6 +110,34 @@ export const InformationComponent: FC<{
 
   const showStripLinkWarning = stripLinkNames.length > 0;
 
+  // Channels that cannot publish this comment at all. `variant` is what makes
+  // this cheap: the comment's own counter knows it is a comment, so there is no
+  // need to count parts. In global mode the comment goes to every selected
+  // channel, and the ones without a `comment()` implementation drop it - the
+  // post workflow marks those rows ERROR, but by then the post is out and the
+  // user never asked for that.
+  //
+  // Warned rather than blocked: the same comment is going to the channels that
+  // *can* take it, and cutting them off because one channel cannot is the
+  // opposite of what this panel is for.
+  const cannotCommentNames = useMemo(() => {
+    if (variant !== 'comment') {
+      return [] as string[];
+    }
+
+    if (!isGlobal) {
+      return currentIntegration && currentIntegration.canComment === false
+        ? [currentIntegration.name]
+        : [];
+    }
+
+    return selectedIntegrations
+      .filter((p) => p.integration.canComment === false)
+      .map((p) => p.integration.name);
+  }, [variant, isGlobal, currentIntegration, selectedIntegrations]);
+
+  const showCannotCommentWarning = cannotCommentNames.length > 0;
+
   const isInternal = useMemo(() => {
     if (!isGlobal) {
       return [];
@@ -124,7 +152,7 @@ export const InformationComponent: FC<{
   }, [isGlobal, internal, selectedIntegrations]);
 
   const status: 'idle' | 'valid' | 'invalid' = useMemo(() => {
-    if (showStripLinkWarning) {
+    if (showStripLinkWarning || showCannotCommentWarning) {
       return 'invalid';
     }
 
@@ -361,6 +389,23 @@ export const InformationComponent: FC<{
             >
               {t('links_will_be_removed_from', 'Links will be removed from')}:{' '}
               {stripLinkNames.join(', ')}
+            </div>
+          )}
+          {showCannotCommentWarning && (
+            <div
+              className={clsx(
+                'text-sm text-pqWarn text-balance',
+                ((isGlobal && selectedIntegrations.length) ||
+                  showStripLinkWarning ||
+                  (requireContent && !isPicture && !totalChars)) &&
+                  'mt-[12px]'
+              )}
+            >
+              {t(
+                'comments_cannot_be_published_on',
+                'Comments cannot be published on'
+              )}
+              : {cannotCommentNames.join(', ')}
             </div>
           )}
         </div>

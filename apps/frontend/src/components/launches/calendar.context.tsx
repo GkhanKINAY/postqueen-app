@@ -316,6 +316,8 @@ export interface Integrations {
   inBetweenSteps: boolean;
   editor: 'none' | 'normal' | 'markdown' | 'html';
   stripLinks?: boolean;
+  /** `!!provider.comment` — the same signal the post workflow acts on. */
+  canComment?: boolean;
   display: string;
   identifier: string;
   type: string;
