@@ -105,6 +105,15 @@ export class IntegrationsController {
             disabled: p.disabled,
             editor: findIntegration.editor,
             stripLinks: !!findIntegration?.stripLinks?.(),
+            // Whether this channel can publish a comment at all, derived from
+            // the provider exactly as the post workflow's `isCommentable`
+            // activity derives it. The composer used to decide this from a
+            // `comments` argument hand-written in each provider's own .tsx, and
+            // the two sets had drifted: devto, dribbble, gmb, hashnode,
+            // listmonk, medium and wordpress implement no `comment()` yet never
+            // declared it, so the composer offered extra parts that the
+            // workflow then dropped.
+            canComment: !!findIntegration?.comment,
             picture: p.picture || '/no-picture.jpg',
             identifier: p.providerIdentifier,
             inBetweenSteps: p.inBetweenSteps,
