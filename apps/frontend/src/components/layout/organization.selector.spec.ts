@@ -16,13 +16,19 @@ describe('Organization switcher', () => {
     assert.match(source, /currentOrgName\(org, user\)/);
   });
 
-  it('reads as a workspace control, not a muted nav label', () => {
+  it('is a name-only rail row, not an avatar card with a Workspace caption', () => {
     assert.match(source, /data-pq="rail-org"/);
-    assert.match(source, /t\('workspace', 'Workspace'\)/);
-    assert.match(source, /bg-pqBrandSoft/);
+    assert.match(source, /bg-pqNavActive/);
+    assert.match(source, /navRowHover/);
+    assert.doesNotMatch(source, /t\('workspace', 'Workspace'\)/);
+    assert.doesNotMatch(source, /subtitle=\{t\('workspace'/);
     assert.doesNotMatch(
       source,
-      /truncate text-\[13px\] font-\[500\] text-pqMuted/
+      /grid size-\[24px\] shrink-0 place-items-center rounded-\[7px\] bg-pqBrandSoft/,
+    );
+    assert.doesNotMatch(
+      source,
+      /shadow-\[inset_0_0_0_1px_var\(--border\)\]/,
     );
   });
 });

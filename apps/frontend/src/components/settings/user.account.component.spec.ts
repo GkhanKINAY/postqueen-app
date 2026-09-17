@@ -40,5 +40,11 @@ describe('Delete account confirm', () => {
     assert.match(del, /role="alert"/);
     assert.match(del, /yes_delete_my_account/);
     assert.match(del, /\/user\/delete-account/);
+    assert.match(del, /bg-pqBtnSimple/);
+    assert.match(del, /hover:shadow-\[inset_0_0_0_999px_var\(--hover\)\]/);
+    assert.doesNotMatch(
+      del,
+      /w-\[110px\] shrink-0 rounded-\[10px\] bg-transparent/,
+    );
   });
 });

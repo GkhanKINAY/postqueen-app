@@ -595,6 +595,46 @@ describe('Connect marketplace catalog', () => {
           /Ask the client|from Copilot Chat|In Cascade,|In the Agent Panel|from Gemini CLI/i,
           `${item.id} example is a stage direction, not a prompt: ${ex.body}`
         );
+        assert.doesNotMatch(
+          ex.body,
+          /Make a short (video|clip)|Make a visual|Make one visual|make a photo and draft|Make a cafe photo|Make a 15 second|Make a product photo/i,
+          `${item.id} example is a generic make-me-a-photo prompt: ${ex.body}`
+        );
+      }
+    }
+    const mcpTools = new Set(
+      all.flatMap((item) =>
+        (item.examples || []).map((ex) => ex.tool).filter((tool): tool is string => !!tool)
+      )
+    );
+    for (const need of [
+      'schedulePostTool',
+      'generateImageTool',
+      'generateVideoTool',
+      'postsListTool',
+      'analyticsSummaryTool',
+      'analyticsPostsTool',
+    ]) {
+      assert.ok(mcpTools.has(need), `catalog examples never call ${need}`);
+    }
+    const allowedTools = new Set([
+      'schedulePostTool',
+      'generateImageTool',
+      'generateVideoTool',
+      'postsListTool',
+      'analyticsSummaryTool',
+      'analyticsPostsTool',
+      'integrationList',
+      'ask_postqueen',
+      'postSettingsTool',
+    ]);
+    for (const item of all) {
+      for (const ex of item.examples || []) {
+        if (!ex.tool) continue;
+        assert.ok(
+          allowedTools.has(ex.tool),
+          `${item.id} example uses unknown tool ${ex.tool}`
+        );
       }
     }
   });
@@ -614,9 +654,9 @@ describe('Connect marketplace catalog', () => {
       }
     }
     const claudeIg = (byId('claude-apps').examples || []).find((e) =>
-      /sunny terrace/i.test(e.body)
+      /passport stamp/i.test(e.body)
     );
-    assert.match(claudeIg?.reply || '', /terrace/i);
+    assert.match(claudeIg?.reply || '', /passport/i);
     assert.match(claudeIg?.reply || '', /Instagram/i);
     assert.match(claudeIg?.reply || '', /19:00/);
     const claudeMulti = (byId('claude-apps').examples || []).find((e) =>

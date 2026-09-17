@@ -2095,6 +2095,11 @@ const CalendarItem: FC<{
             {t('published', 'Published')}
           </span>
         )}
+        {state === 'DRAFT' && (
+          <span className="ms-auto shrink-0 whitespace-nowrap text-[8px] font-[800] uppercase tracking-[0.04em] text-pqSoft">
+            {t('draft', 'Draft')}
+          </span>
+        )}
       </div>
     );
   }

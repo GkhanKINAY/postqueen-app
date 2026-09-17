@@ -149,4 +149,20 @@ describe('post preview media frame', () => {
     assert.doesNotMatch(linkedin, /aspect-square/);
     assert.match(instagram, /SliderComponent/);
   });
+
+  it('runs the X thread stem under the avatar, not through the photo', () => {
+    assert.match(general, /data-pq="preview-thread-stem"/);
+    assert.match(general, /mt-\[4px\] w-\[2px\] min-h-\[12px\] flex-1/);
+    assert.doesNotMatch(general, /absolute top-\[10px\]/);
+    assert.doesNotMatch(general, /h-\[calc\(100%-10px\)\]/);
+    assert.doesNotMatch(general, /h-\[40px\] min-h-\[40px\]/);
+    const threads = readFileSync(
+      fileURLToPath(
+        new URL('./providers/threads/threads.preview.tsx', import.meta.url)
+      ),
+      'utf8'
+    );
+    assert.match(threads, /mt-\[6px\] w-\[2px\] flex-1 min-h-\[12px\]/);
+    assert.doesNotMatch(threads, /absolute top-\[10px\]/);
+  });
 });

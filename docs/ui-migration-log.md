@@ -29,6 +29,19 @@ change is *meant* to move a list, run `--update`, **commit the baseline**, and s
 why here and in the PR. A baseline file that is absent rather than different fails
 the check: an uncommitted one would reseed itself on every CI run and guard nothing.
 
+**Auth login/register fields.** Email and password sit closer together. Placeholders are examples (`name@example.com`, `••••••••`) rather than repeating the label (`email_address` dropped). Password fields have a show/hide toggle. Forgot password sits on the Password label row (not under Sign in). Same email example on forgot / activate / OTP. The Sign In / Create account tabs under the title are gone; login puts Create a new account next to the logo, register puts Sign In, and both sit in the same 452px column as the form and © footer. Desktop auth is a 50/50 split. Headings are Welcome back / Create your account at 28px/600 with a 16px muted subtitle 4px under the title. The register submit is Sign up (`sign_up_1`; unused `create_account`). Sign in / Sign up stay muted until the required fields are filled. Auth showcase dropped the body line under the title (`auth_showcase_body`) and shows a square still of the calendar (`/auth/calendar.svg` remains to restore). Hosted PostQueen (billing on) falls back to `https://postqueen.ai` for Terms / Privacy so signup still shows the agreement line when `LEGAL_URL` is unset. i18n +5 −4 (`email_placeholder`, `password_placeholder`, `create_a_new_account`, `welcome_back`, `create_your_account`, `sign_up_1`; unused `auth_mode`, `create_account_tab`, `create_account`, `auth_showcase_body`, plus the earlier `email_address`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
+
+**Organization name in Global Settings.** The field is labeled Organization name (not Workspace name) and matches Account: display text plus a pencil, Save only after edit. i18n +3 −3 (`organization_name`, `organization_name_description`, `organization_name_length`; unused `workspace_name`, `workspace_name_description`, `workspace_name_length`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
+
+**Create Post Copilot-first rail.** Dropped the editor “Draft with your AI” banner
+(Claude / ChatGPT / OpenClaw / Hermes chips). Create Post opens the right rail on
+AI Copilot (Connections already lives there). The first time the post has text or
+media — typed, attached, or filled by Copilot — it reveals Post Preview once; after
+that the user can switch freely. Each new Create Post starts on Copilot again.
+i18n −6 (`let_ai_write_this_post`, `let_ai_write_this_post_sub`, `claude`,
+`chatgpt`, `openclaw`, `hermes`). `scripts/ui-migration-check.sh --update` wrote
+`i18n.txt`.
+
 **Account settings layout.** Name is display text plus a pencil (Save only after edit). Email and password stay collapsed behind Change. Delete Account is a danger card with a button first; email/password and an irreversible warning appear after click, then the existing confirm dialog. i18n +1 (`delete_account_warning`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
 
 **Header founding chip.** Founding member stayed on the rail (heart row) and

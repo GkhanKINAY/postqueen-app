@@ -1,15 +1,29 @@
 'use client';
 
-// The right half of the auth split-screen: the product still that ships in the
-// README (.github/assets/calendar.svg, copied to public/auth/calendar.svg) on a
-// brand gradient, so the first thing a new account sees is the calendar it is
-// signing up for. Sample data only; no metrics or claims.
-//
-// This replaced a hand-built React calendar. The still is the same artwork the
-// README and the marketing site use, which keeps one picture of the product
-// instead of three that drift apart.
-
+// The right half of the auth split-screen. `'app'` is a dummy still of the
+// calendar chrome; `'calendar'` is the README illustration
+// (`public/auth/calendar.svg`). Flip the constant to restore the old still —
+// do not delete the SVG.
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+
+/** `'calendar'` restores `/auth/calendar.svg`. */
+const SHOWCASE_STILL: 'app' | 'calendar' = 'app';
+
+const STILLS = {
+  app: {
+    src: '/auth/app-preview.png',
+    width: 1920,
+    height: 1080,
+    className:
+      'w-full ring-1 ring-white/15 drop-shadow-[0_28px_60px_rgba(12,6,32,0.55)]',
+  },
+  calendar: {
+    src: '/auth/calendar.svg',
+    width: 660,
+    height: 430,
+    className: 'w-full max-w-[660px] drop-shadow-[0_28px_60px_rgba(12,6,32,0.55)]',
+  },
+} as const;
 
 /**
  * A sample of what the app publishes to, drawn from the icons already in
@@ -31,9 +45,10 @@ const CHANNELS = [
 
 export const ProductShowcase = () => {
   const t = useT();
+  const still = STILLS[SHOWCASE_STILL];
 
   return (
-    <aside className="relative hidden flex-1 items-center justify-center overflow-hidden lg:flex">
+    <aside className="relative hidden w-1/2 flex-1 items-center justify-center overflow-hidden lg:flex">
       {/* Brand wash. Inline rather than an arbitrary Tailwind value: the colour
           stops read better here than escaped inside a class name. */}
       <div
@@ -58,30 +73,24 @@ export const ProductShowcase = () => {
         }}
       />
 
-      <div className="relative flex w-full max-w-[760px] flex-col items-center gap-[36px] px-[40px] py-[48px] text-white">
+      <div className="relative flex w-full max-w-[920px] flex-col items-center gap-[28px] px-[32px] py-[40px] text-white">
         <div className="text-center">
           {/* text-balance so the narrowest panel width does not leave "AI"
               alone on its own line */}
           <h2 className="font-display text-balance text-[28px] font-[700] leading-[1.25] -tracking-[0.6px] xl:text-[32px]">
             {t('auth_showcase_title', 'Schedule and generate posts with AI')}
           </h2>
-          <p className="mx-auto mt-[12px] max-w-[440px] text-[15px] leading-[1.6] text-white/70">
-            {t(
-              'auth_showcase_body',
-              'Plan your whole week in one place, let AI draft what goes out, and drag any post to a better time.'
-            )}
-          </p>
         </div>
 
         <img
-          src="/auth/calendar.svg"
-          width={660}
-          height={430}
+          src={still.src}
+          width={still.width}
+          height={still.height}
           alt={t(
             'auth_showcase_alt',
             'A week of scheduled posts in the PostQueen calendar'
           )}
-          className="w-full max-w-[660px] drop-shadow-[0_28px_60px_rgba(12,6,32,0.55)]"
+          className={still.className}
         />
 
         <div className="flex flex-col items-center gap-[14px]">

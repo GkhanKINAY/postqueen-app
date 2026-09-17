@@ -150,7 +150,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           disableRegistration={isRegistrationDisabled()}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
-          legalUrl={process.env.LEGAL_URL || ''}
+          // Hosted PostQueen publishes Terms and Privacy on the marketing
+          // site. Self-hosted stays empty unless LEGAL_URL is set, otherwise
+          // signup would claim agreement while linking two 404s.
+          legalUrl={
+            process.env.LEGAL_URL ||
+            (isBillingEnabled() ? 'https://postqueen.ai' : '')
+          }
           affiliateUrl={process.env.AFFILIATE_URL || ''}
           // Our support address only on the hosted service. A self-hosted instance
           // leaves it empty unless SUPPORT_EMAIL is set, and the help menu hides the

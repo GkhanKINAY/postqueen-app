@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { classValidatorResolver } from '@hookform/resolvers/class-validator';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 type Inputs = {
   email: string;
 };
@@ -39,25 +40,27 @@ export function Forgot() {
     <div className="flex flex-1 flex-col">
       <FormProvider {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <h1 className="text-[32px] font-[600] -tracking-[0.8px] font-display lg:text-[40px]">
+          <div className="flex flex-col gap-[4px]">
+          <h1 className={authTitleClass}>
             {t('forgot_password_1', 'Forgot password')}
           </h1>
-          <p className="mt-[10px] text-[15px] text-textItemBlur">
+          <p className={authSubtitleClass}>
             {t(
               'forgot_password_subtitle',
               'Enter the email on your account and we will send a reset link.',
             )}
           </p>
+          </div>
           {!state ? (
             <>
-              <div className="mt-[28px] text-textColor">
+              <div className="mt-[24px] text-textColor">
                 <Input
                   label="Email"
                   translationKey="label_email"
                   {...form.register('email')}
                   type="email"
                   autoFocus
-                  placeholder={t('email_address', 'Email Address')}
+                  placeholder={t('email_placeholder', 'name@example.com')}
                 />
               </div>
               <div className="w-full flex mt-[24px]">

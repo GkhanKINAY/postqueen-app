@@ -297,7 +297,7 @@
   "create_one": "Create one",
   "forgot_password_subtitle": "Enter the email on your account and we will send a reset link.",
   "choose_a_new_password": "Choose a new password for your account.",
-  "forgot_password": "Forgot password",
+  "forgot_password": "Forgot password?",
   "forgot_password_1": "Forgot password",
   "send_password_reset_email": "Send reset link",
   "go_back_to_login": "Back to sign in",

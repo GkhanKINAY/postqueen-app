@@ -44,14 +44,12 @@ const currentOrgName = (
 
 const RailOrgChrome: FC<{
   name?: string;
-  subtitle: string;
   collapsed?: boolean;
   open?: boolean;
   buttonRef?: React.Ref<HTMLButtonElement>;
   onClick?: () => void;
   ariaLabel: string;
-}> = ({ name, subtitle, collapsed, open, buttonRef, onClick, ariaLabel }) => {
-  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+}> = ({ name, collapsed, open, buttonRef, onClick, ariaLabel }) => {
   return (
     <button
       type="button"
@@ -61,39 +59,28 @@ const RailOrgChrome: FC<{
       aria-haspopup="menu"
       aria-expanded={open}
       aria-label={ariaLabel}
+      title={name}
       className={clsx(
-        'flex min-h-[40px] min-w-0 w-full items-center gap-[8px] rounded-[10px] px-[6px] text-start transition-colors hover:bg-pqHover',
+        'group flex h-[34px] w-full min-w-0 items-center gap-[8px] rounded-pqSm px-[8px] text-start text-[13.5px] transition-colors',
         collapsed ? 'justify-center' : 'justify-start',
-        !collapsed && 'shadow-[inset_0_0_0_1px_var(--border)]',
-        open && 'bg-pqHover'
+        open
+          ? 'bg-pqNavActive font-[600] text-pqText'
+          : 'font-[500] text-pqMuted hover:text-pqText hover:shadow-[inset_0_0_0_999px_var(--navRowHover)]'
       )}
     >
-      <span
-        aria-hidden="true"
-        className="grid size-[24px] shrink-0 place-items-center rounded-[7px] bg-pqBrandSoft text-[11px] font-[700] leading-none text-pqText"
-      >
-        {initial}
-      </span>
-      {/* data-sbh: flex stack — data-sbl would become display:block on hover. */}
-      <span
-        data-sbh="1"
-        className="flex min-w-0 flex-1 flex-col justify-center"
-      >
-        <span className="truncate text-[13px] font-[600] leading-[1.2] text-pqText">
-          {name}
-        </span>
-        <span className="truncate text-[11px] font-[500] leading-[1.2] text-pqSoft">
-          {subtitle}
-        </span>
+      <span data-sbl="1" className="min-w-0 flex-1 truncate">
+        {name}
       </span>
       <svg
-        data-sbl="1"
         viewBox="0 0 24 24"
         width="13"
         height="13"
         fill="none"
         aria-hidden="true"
-        className="shrink-0 text-pqSoft"
+        className={clsx(
+          'shrink-0',
+          open ? 'text-pqText' : 'text-pqSoft opacity-[0.65] group-hover:opacity-100 group-hover:text-pqText'
+        )}
       >
         <path
           d="M8 10l4-4 4 4M8 14l4 4 4-4"
@@ -174,14 +161,13 @@ export const OrganizationSelector: FC<{
     if (isLoading) {
       return (
         <div
-          className="flex min-h-[40px] w-full min-w-0 items-center gap-[8px] rounded-[10px] px-[6px]"
+          className="flex h-[34px] w-full min-w-0 items-center rounded-pqSm px-[8px]"
           data-keepdrawer="1"
           aria-hidden="true"
         >
-          <Skeleton className="size-[24px] shrink-0 rounded-[7px]" />
           <Skeleton
-            data-sbh="1"
-            className="h-[12px] min-w-0 flex-1 rounded-pqSm"
+            data-sbl="1"
+            className="h-[12px] w-[88px] rounded-pqSm"
           />
         </div>
       );
@@ -194,12 +180,14 @@ export const OrganizationSelector: FC<{
       <div ref={ref} className="relative w-full" data-keepdrawer="1">
         <RailOrgChrome
           name={currentOrgName(current, user)}
-          subtitle={t('workspace', 'Workspace')}
           collapsed={collapsed}
           open={open}
           buttonRef={referenceRef}
           onClick={() => setOpen((o) => !o)}
-          ariaLabel={t('switch_organization', 'Switch organization')}
+          ariaLabel={
+            currentOrgName(current, user) ||
+            t('switch_organization', 'Switch organization')
+          }
         />
         {open && (
           <div

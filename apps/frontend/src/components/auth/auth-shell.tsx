@@ -9,10 +9,7 @@ import { GoogleProvider } from '@gitroom/frontend/components/auth/providers/goog
 import { AppleProvider } from '@gitroom/frontend/components/auth/providers/apple.provider';
 import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import { shouldShowAppleSignIn } from '@gitroom/frontend/components/auth/apple-sign-in';
-import {
-  AuthModeFooter,
-  AuthModeSwitch,
-} from '@gitroom/frontend/components/auth/auth-chrome';
+import { AuthModeFooter, authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 
 /**
  * The provider buttons (Google / Apple / OIDC / GitHub / Farcaster), stacked
@@ -56,19 +53,14 @@ export function AuthShell({
 
   return (
     <div className="flex flex-col flex-1">
-      <h1 className="text-[32px] font-[600] -tracking-[0.8px] font-display lg:text-[40px]">
-        {title}
-      </h1>
+      <div className="flex flex-col gap-[4px]">
+        <h1 className={authTitleClass}>{title}</h1>
+        {!!subtitle && <p className={authSubtitleClass}>{subtitle}</p>}
+      </div>
 
-      {!!subtitle && (
-        <p className="mt-[10px] text-[15px] text-textItemBlur">{subtitle}</p>
-      )}
-
-      <AuthModeSwitch />
-
-      <div className="mt-[28px] flex flex-col">
+      <div className="mt-[24px] flex flex-col">
         <Providers extraProviders={extraProviders} />
-        <div className="h-[20px] mb-[24px] mt-[24px] relative">
+        <div className="relative mb-[16px] mt-[16px] h-[20px]">
           <div className="absolute w-full h-[1px] bg-pqBorder top-[50%] -translate-y-[50%]" />
           <div className="absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex">
             <div className="px-[16px] bg-pqInner text-pqMuted text-[13px]">

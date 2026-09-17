@@ -69,14 +69,10 @@ export const GeneralPreviewComponent: FC<{
         {renderContent.map((value, index) => (
           <div
             key={`tweet_${index}`}
-            style={{}}
-            className={clsx(
-              `flex gap-[8px] relative`,
-              index === renderContent.length - 1 ? 'pb-[12px]' : 'pb-[24px]'
-            )}
+            className="flex gap-[8px]"
           >
-            <div className="min-w-[40px] h-[40px] min-h-[40px] w-[40px] flex flex-col items-center">
-              <div className="relative">
+            <div className="relative flex w-[40px] shrink-0 flex-col items-center self-stretch">
+              <span className="relative z-[2] shrink-0 rounded-full bg-pqInner">
                 <ChannelAvatar
                   integration={
                     integration || {
@@ -88,12 +84,20 @@ export const GeneralPreviewComponent: FC<{
                   badge={!!integration?.identifier}
                   badgeSize={16}
                 />
-              </div>
-              {index !== topValue.length - 1 && (
-                <div className="flex-1 w-[2px] h-[calc(100%-10px)] bg-customColor25 absolute top-[10px] z-[1]" />
+              </span>
+              {index !== renderContent.length - 1 && (
+                <div
+                  data-pq="preview-thread-stem"
+                  className="mt-[4px] w-[2px] min-h-[12px] flex-1 rounded-full bg-pqLine"
+                />
               )}
             </div>
-            <div className="flex-1 flex flex-col gap-[4px]">
+            <div
+              className={clsx(
+                'flex min-w-0 flex-1 flex-col gap-[4px]',
+                index === renderContent.length - 1 ? 'pb-[12px]' : 'pb-[24px]'
+              )}
+            >
               <div className="flex">
                 <div className="h-[22px] text-[15px] font-[700]">
                   {integration?.name ||

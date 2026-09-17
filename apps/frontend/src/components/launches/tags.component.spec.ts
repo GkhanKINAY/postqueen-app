@@ -18,5 +18,6 @@ describe('add new tag modal', () => {
     const colorAt = modal.indexOf("t('label_tag_color', 'Tag Color')");
     assert.ok(nameAt >= 0 && colorAt > nameAt);
     assert.doesNotMatch(modal, /text-shadow-tags/);
+    assert.match(modal, /brandFocus=\{false\}/);
   });
 });

@@ -1,9 +1,10 @@
 'use client';
 
 // The frame around every auth form: logo on top, copyright and legal links at
-// the bottom. Login / Create account switching lives next to the form
-// (AuthModeSwitch + AuthModeFooter), not in this header. Nobody looking at the
-// fields was finding the opposite action in the top-right corner.
+// the bottom. The Sign In / Create account segmented control under the title
+// read as a second form. The opposite action sits next to the logo (login →
+// create a new account, register → sign in). AuthModeFooter still offers it
+// under the submit button.
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -12,68 +13,52 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
 import { ChevronLeftIcon } from '@gitroom/frontend/components/ui/icons';
 
+const headerCtaClass =
+  'flex h-8 shrink-0 items-center rounded-[8px] border border-pqBorder px-3 text-[14px] font-[500] text-newTextColor transition-colors hover:bg-boxHover';
+
+/** 28px semibold display title, 16px muted subtitle. */
+export const authTitleClass =
+  'font-display text-pretty text-[28px] font-semibold leading-[130%] tracking-[-1.12px] text-pqText';
+export const authSubtitleClass =
+  'text-[16px] font-normal leading-[150%] text-pqMuted';
+
 export const AuthNav = () => {
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
+  const { disableRegistration } = useVariables();
   const innerAuth =
     pathname.startsWith('/auth/forgot') ||
     pathname.startsWith('/auth/activate');
-
-  return (
-    <header className="flex items-center gap-[4px]">
-      {innerAuth && (
-        <button
-          type="button"
-          onClick={() => router.push('/auth/login')}
-          aria-label={t('back', 'Back')}
-          className="-ms-[8px] flex size-[40px] shrink-0 items-center justify-center rounded-[8px] text-newTextColor hover:bg-boxHover"
-        >
-          <ChevronLeftIcon size={22} />
-        </button>
-      )}
-      <LogoTextComponent />
-    </header>
-  );
-};
-
-export const AuthModeSwitch = () => {
-  const t = useT();
-  const pathname = usePathname();
-  const { disableRegistration } = useVariables();
   const onLogin = pathname === '/auth/login';
 
-  if (disableRegistration) {
-    return null;
-  }
-
-  const tabClass = (active: boolean) =>
-    `flex h-[40px] items-center justify-center rounded-[8px] text-[14px] font-[500] transition-colors ${
-      active
-        ? 'bg-boxHover text-newTextColor'
-        : 'text-textItemBlur hover:text-newTextColor'
-    }`;
-
   return (
-    <nav
-      aria-label={t('auth_mode', 'Sign in or create an account')}
-      className="mt-[20px] grid grid-cols-2 gap-[4px] rounded-[10px] border border-pqBorder p-[4px]"
-    >
-      <Link
-        href="/auth/login"
-        className={tabClass(onLogin)}
-        aria-current={onLogin ? 'page' : undefined}
-      >
-        {t('sign_in', 'Sign In')}
-      </Link>
-      <Link
-        href="/auth"
-        className={tabClass(!onLogin)}
-        aria-current={!onLogin ? 'page' : undefined}
-      >
-        {t('create_account_tab', 'Create account')}
-      </Link>
-    </nav>
+    <header className="flex w-full items-center justify-between gap-[12px]">
+      <div className="flex min-w-0 items-center gap-[4px]">
+        {innerAuth && (
+          <button
+            type="button"
+            onClick={() => router.push('/auth/login')}
+            aria-label={t('back', 'Back')}
+            className="-ms-[8px] flex size-[40px] shrink-0 items-center justify-center rounded-[8px] text-newTextColor hover:bg-boxHover"
+          >
+            <ChevronLeftIcon size={22} />
+          </button>
+        )}
+        <LogoTextComponent />
+      </div>
+      {!innerAuth && !(disableRegistration && onLogin) && (
+        <Link
+          href={onLogin ? '/auth' : '/auth/login'}
+          data-pq="auth-header-cta"
+          className={headerCtaClass}
+        >
+          {onLogin
+            ? t('create_a_new_account', 'Create a new account')
+            : t('sign_in', 'Sign In')}
+        </Link>
+      )}
+    </header>
   );
 };
 
@@ -88,7 +73,7 @@ export const AuthModeFooter = () => {
   }
 
   return (
-    <p className="mt-[20px] text-center text-[14px] text-textItemBlur">
+    <p className="mt-[16px] text-center text-[14px] text-textItemBlur">
       {onLogin ? (
         <>
           {t('dont_have_an_account', "Don't have an account?")}{' '}

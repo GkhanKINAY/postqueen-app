@@ -67,11 +67,24 @@ import { useCalendar } from '@gitroom/frontend/components/launches/calendar.cont
 import { useClickOutside } from '@mantine/hooks';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
+import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 
 /** Side-by-side editor + preview once the viewport can hold a 420px preview. */
 export const COMPOSER_SPLIT_MIN = PQ_COMPOSER_SPLIT_MIN;
 
 export type ComposerPane = 'edit' | 'preview' | 'schedule';
+
+const postHasPreviewableContent = (
+  global: { content?: string; media?: unknown[] }[],
+  internal: { integrationValue: { content?: string; media?: unknown[] }[] }[]
+) => {
+  const items = [...global, ...internal.flatMap((item) => item.integrationValue)];
+  return items.some(
+    (item) =>
+      stripHtmlValidation('normal', item.content || '', true).trim().length >
+        0 || (item.media?.length ?? 0) > 0
+  );
+};
 
 const hideChatbaseWhileComposerOpen = () => {
   const mark = 'data-pq-cbh';
@@ -171,11 +184,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const compactFooter = touch;
   const phoneFlow = mobile;
   const [composerPane, setComposerPane] = useState<ComposerPane>('edit');
-  const [studioRail, setStudioRail] = useState<StudioRail>('preview');
+  const [studioRail, setStudioRail] = useState<StudioRail>('assistant');
   const [maximized, setMaximized] = useState(false);
-  // Desktop default: one right rail, Post Preview | AI tabs. Full screen
-  // keeps write | preview | AI as three columns.
+  // Desktop default: one right rail, AI Copilot first (Connections lives
+  // there). Post Preview is revealed once when text or media appears.
+  // Full screen keeps write | preview | AI as three columns.
   const tabbedRail = !compactChrome && !maximized;
+  const previewRevealedRef = useRef(false);
   const ref = useRef(null);
   const existingData = useExistingData();
   const [loading, setLoading] = useState(false);
@@ -217,6 +232,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     current,
     activateExitButton,
     setHide,
+    global,
+    internal,
   } = useLaunchStore(
     useShallow((state) => ({
       hide: state.hide,
@@ -233,6 +250,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       setSelectedIntegrations: state.setSelectedIntegrations,
       locked: state.locked,
       activateExitButton: state.activateExitButton,
+      global: state.global,
+      internal: state.internal,
     }))
   );
 
@@ -254,10 +273,15 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   }, [hide]);
 
   useEffect(() => {
-    if (!hasChannels) {
-      setStudioRail('preview');
+    if (previewRevealedRef.current || !hasChannels) {
+      return;
     }
-  }, [hasChannels]);
+    if (!postHasPreviewableContent(global, internal)) {
+      return;
+    }
+    previewRevealedRef.current = true;
+    setStudioRail('preview');
+  }, [global, internal, hasChannels]);
 
   useEffect(() => {
     if (!hasChannels && composerPane !== 'edit') {

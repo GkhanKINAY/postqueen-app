@@ -58,7 +58,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           disableRegistration={isRegistrationDisabled()}
           turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || ''}
           frontEndUrl={process.env.FRONTEND_URL!}
-          legalUrl={process.env.LEGAL_URL || ''}
+          legalUrl={
+            process.env.LEGAL_URL ||
+            (isBillingEnabled() ? 'https://postqueen.ai' : '')
+          }
           affiliateUrl={process.env.AFFILIATE_URL || ''}
           // Our support address only on the hosted service. A self-hosted instance
           // leaves it empty unless SUPPORT_EMAIL is set, and the help menu hides the

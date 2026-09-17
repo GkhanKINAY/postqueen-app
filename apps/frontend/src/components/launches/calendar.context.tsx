@@ -969,11 +969,7 @@ export const CalendarWeekProvider: FC<{
 
   const calendarPosts = useMemo(() => {
     const base = calendarIsLoading ? [] : internalData;
-    // Belt-and-suspenders with getPosts `state: { not: DRAFT }` — demo /
-    // optimistic / stale SWR must not leave drafts on Day/Week/Month.
-    return base.filter(
-      (p) => p.state !== 'DRAFT' && matchChannel(p)
-    );
+    return base.filter((p) => matchChannel(p));
   }, [calendarIsLoading, internalData, matchChannel]);
 
   return (

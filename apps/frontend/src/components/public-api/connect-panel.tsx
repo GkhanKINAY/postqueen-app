@@ -738,6 +738,9 @@ export const ConnectPanel: FC<{
   const [nav, setNav] = useState<ConnectNavId>('all');
   const [picked, setPicked] = useState('');
   const [keyRevealed, setKeyRevealed] = useState(false);
+  const [detailTab, setDetailTab] = useState<'connect' | 'key' | 'examples'>(
+    'connect'
+  );
   const [mobilePane, setMobilePane] = useState(false);
   const [query, setQuery] = useState('');
   const paneRef = useRef<HTMLDivElement>(null);
@@ -840,6 +843,7 @@ export const ConnectPanel: FC<{
       setNav(id);
       setPicked(auto);
       setKeyRevealed(false);
+      setDetailTab('connect');
       setMobilePane(true);
       syncUrl(id, auto);
     },
@@ -864,6 +868,7 @@ export const ConnectPanel: FC<{
       setNav(nextNav);
       setPicked(id);
       setKeyRevealed(false);
+      setDetailTab('connect');
       setMobilePane(true);
       syncUrl(nextNav, id);
     },
@@ -875,11 +880,13 @@ export const ConnectPanel: FC<{
       setNav('all');
       setPicked('');
       setKeyRevealed(false);
+      setDetailTab('connect');
       syncUrl('all', '');
       return;
     }
     setPicked('');
     setKeyRevealed(false);
+    setDetailTab('connect');
     syncUrl(nav, '');
   }, [nav, syncUrl]);
   const maskCode = useCallback(
@@ -1209,6 +1216,22 @@ export const ConnectPanel: FC<{
   };
 
   const renderDetail = (item: Connection) => {
+    const showKey = item.section !== 'media' && item.cred !== 'none';
+    const showExamples = !!item.examples?.length;
+    const tabs: { id: 'connect' | 'key' | 'examples'; label: string }[] = [
+      { id: 'connect', label: t('conn_how_to_connect', 'How to connect') },
+    ];
+    if (showKey) tabs.push({ id: 'key', label: t('api_key', 'API key') });
+    if (showExamples) {
+      tabs.push({
+        id: 'examples',
+        label: t('conn_examples_eyebrow', 'Examples'),
+      });
+    }
+    const activeTab = tabs.some((tab) => tab.id === detailTab)
+      ? detailTab
+      : tabs[0].id;
+
     return (
       <div className="flex flex-col gap-[20px]">
         {!mobile && (
@@ -1254,15 +1277,6 @@ export const ConnectPanel: FC<{
           </div>
         </div>
 
-        <div>
-          <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-            {t('conn_what_this_is', 'What this is')}
-          </div>
-          <p className="mt-[6px] text-[14px] leading-[1.65] text-pqText">
-            {item.intro}
-          </p>
-        </div>
-
         <div className="flex flex-wrap gap-[8px]">
           {item.docs.map((link) => (
             <a
@@ -1290,74 +1304,123 @@ export const ConnectPanel: FC<{
           ))}
         </div>
 
-        {item.section !== 'media' && credentialStrip(item.cred)}
-
-        {!!item.info && (
-          <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[13px] leading-[1.6] text-pqMuted">
-            {item.info}
-          </div>
-        )}
-
-        {item.section === 'media' && (
-          <Link
-            href="/settings?tab=integrations"
-            className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+        {tabs.length > 1 && (
+          <div
+            data-pq="conn-detail-tabs"
+            role="tablist"
+            aria-label={item.name}
+            className={clsx(
+              'sticky z-10 flex bg-pqInner py-[8px]',
+              mobile
+                ? 'top-[-20px] -mx-[16px] px-[16px]'
+                : 'top-[-28px] -mx-[32px] px-[32px]'
+            )}
           >
-            {t('connect_open_integrations', 'Open Integrations')} →
-          </Link>
-        )}
-
-        {item.id === 'oauth' && (
-          <button
-            type="button"
-            onClick={() => selectNav('oauth-apps')}
-            className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBtnSimple px-[14px] text-[13px] font-[600] text-pqText transition-colors hover:bg-pqHover"
-          >
-            {t('connect_open_oauth_apps', 'Open OAuth Apps')} →
-          </button>
-        )}
-
-        <div className="flex flex-col gap-[16px] rounded-[18px] bg-pqInner p-[22px] shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="text-[15px] font-[600] text-pqText">
-            {t('conn_how_to_connect', 'How to connect')}
-          </div>
-          {item.steps.map((step, index) => (
-            <div key={`${step.title}-${index}`} className="flex gap-[13px]">
-              <span className="mt-[1px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-pqBrandSoft text-[12px] font-[700] text-pqBrand">
-                {index + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-[600] text-pqText">{step.title}</div>
-                {!!step.detail && (
-                  <div className="mt-[2px] text-[13.5px] leading-[1.6] text-pqMuted">
-                    {step.detail}
-                  </div>
-                )}
-                {!!step.code && (
-                  <CodeBlock
-                    code={maskCode(step.code)}
-                    rawCode={step.code}
-                    label={item.name}
-                  />
-                )}
-              </div>
+            <div className="flex w-full rounded-pqSm bg-pqSettings p-[2px]">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  data-pq={`conn-tab-${tab.id}`}
+                  onClick={() => setDetailTab(tab.id)}
+                  className={clsx(
+                    'h-[40px] min-w-0 flex-1 cursor-pointer rounded-[6px] px-[8px] text-[12.5px] font-[600]',
+                    activeTab === tab.id
+                      ? 'bg-pqInner text-pqText shadow-pqE1'
+                      : 'text-pqSoft hover:text-pqText'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {!!item.note && (
-          <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[12.5px] leading-[1.55] text-pqMuted">
-            {item.note}
           </div>
         )}
 
-        {!!item.examples?.length && (
-          <ExamplesBlock
-            kind={item.exampleKind}
-            examples={item.examples}
-            name={item.name}
-            mask={maskCode}
-          />
+        {activeTab === 'connect' && (
+          <div className="flex flex-col gap-[16px]" data-pq="conn-pane-connect">
+            <div>
+              <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
+                {t('conn_what_this_is', 'What this is')}
+              </div>
+              <p className="mt-[6px] text-[14px] leading-[1.65] text-pqText">
+                {item.intro}
+              </p>
+            </div>
+
+            {!!item.info && (
+              <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[13px] leading-[1.6] text-pqMuted">
+                {item.info}
+              </div>
+            )}
+
+            {item.section === 'media' && (
+              <Link
+                href="/settings?tab=integrations"
+                className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+              >
+                {t('connect_open_integrations', 'Open Integrations')} →
+              </Link>
+            )}
+
+            {item.id === 'oauth' && (
+              <button
+                type="button"
+                onClick={() => selectNav('oauth-apps')}
+                className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBtnSimple px-[14px] text-[13px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+              >
+                {t('connect_open_oauth_apps', 'Open OAuth Apps')} →
+              </button>
+            )}
+
+            <div className="flex flex-col gap-[16px] rounded-[18px] bg-pqInner p-[22px] shadow-[inset_0_0_0_1px_var(--border)]">
+              {item.steps.map((step, index) => (
+                <div key={`${step.title}-${index}`} className="flex gap-[13px]">
+                  <span className="mt-[1px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-pqBrandSoft text-[12px] font-[700] text-pqBrand">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-[600] text-pqText">{step.title}</div>
+                    {!!step.detail && (
+                      <div className="mt-[2px] text-[13.5px] leading-[1.6] text-pqMuted">
+                        {step.detail}
+                      </div>
+                    )}
+                    {!!step.code && (
+                      <CodeBlock
+                        code={maskCode(step.code)}
+                        rawCode={step.code}
+                        label={item.name}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {!!item.note && (
+              <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[12.5px] leading-[1.55] text-pqMuted">
+                {item.note}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'key' && showKey && (
+          <div data-pq="conn-pane-key">{credentialStrip(item.cred)}</div>
+        )}
+
+        {activeTab === 'examples' && showExamples && (
+          <div data-pq="conn-pane-examples">
+            <ExamplesBlock
+              kind={item.exampleKind}
+              examples={item.examples || []}
+              name={item.name}
+              mask={maskCode}
+            />
+          </div>
         )}
       </div>
     );

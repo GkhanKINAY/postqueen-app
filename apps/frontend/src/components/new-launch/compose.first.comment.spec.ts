@@ -57,6 +57,7 @@ describe('composer first comment', () => {
     assert.match(source, /your_comment/);
     assert.doesNotMatch(source, /EditorContent/);
     assert.match(source, /<textarea/);
+    assert.match(source, /focus-visible:outline-none/);
     assert.match(
       source,
       /data-pq="composer-first-comment"[\s\S]{0,220}rounded-\[12px\] bg-pqInner/,
@@ -131,9 +132,14 @@ describe('composer first comment', () => {
       editor,
       /data-pq="composer-comment-thread"[\s\S]{0,220}h-\[14px\] w-px bg-pqLine/,
     );
+    assert.match(editor, /data-pq="composer-comment-stem"/);
     assert.match(
       editor,
-      /\{comments \? \(\s*<div className="self-start">\s*<AddPostButton/,
+      /offset > 0 \? \(\s*<div\s+data-pq="composer-comment-stem"/,
+    );
+    assert.match(
+      editor,
+      /\{comments \? \(\s*<div className="mt-\[10px\] self-start">\s*<AddPostButton/,
     );
     assert.doesNotMatch(editor, /wide/);
   });
