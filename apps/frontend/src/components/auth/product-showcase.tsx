@@ -43,26 +43,42 @@ const PREVIEW_POSTS = [
   {
     title: 'What we shipped this week — launches, fixes, and what is next on the roadmap',
     metric: '128',
+    comments: '16',
+    rate: '4.2%',
+    impressions: '12.4k',
     platform: 'x',
   },
   {
     title: 'A thread on the new design system tokens, spacing, and how we roll out UI changes safely',
     metric: '96',
+    comments: '11',
+    rate: '3.8%',
+    impressions: '8.1k',
     platform: 'linkedin',
   },
   {
     title: 'How we cut publishing time by 62% with templates, queues, and fewer context switches',
     metric: '74',
+    comments: '9',
+    rate: '3.1%',
+    impressions: '6.6k',
     platform: 'instagram',
   },
   {
     title: 'Inside our analytics refresh: top posts, posting days, and engagement mix in one view',
     metric: '61',
+    comments: '7',
+    rate: '2.9%',
+    impressions: '5.2k',
     platform: 'youtube',
   },
 ] as const;
 
 const PREVIEW_TOP = PREVIEW_POSTS;
+const PREVIEW_TABLE_ROWS = PREVIEW_POSTS.slice(0, 3);
+
+const PREVIEW_TABLE_COLUMNS =
+  'minmax(0,1.7fr) minmax(48px,0.38fr) minmax(48px,0.38fr) minmax(46px,0.32fr) minmax(58px,0.4fr)';
 
 /** Dummy still: a single 40px platform mark. Real PostThumb overlays a pip on
  *  a post photo; here the photo *is* the icon, so a pip would print Instagram
@@ -137,7 +153,7 @@ const AnalyticsPreview = () => {
     >
       <div
         aria-hidden="true"
-        className="flex w-full flex-col gap-[16px] p-[14px] 2xl:gap-[18px] 2xl:p-[18px]"
+        className="flex w-full flex-col gap-[12px] p-[12px] 2xl:gap-[16px] 2xl:p-[18px]"
       >
         <div className="min-w-0 shrink-0">
           <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
@@ -262,6 +278,51 @@ const AnalyticsPreview = () => {
             </div>
           </section>
         </div>
+
+        <section className="min-w-0 shrink-0 overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+          <div className="px-[12px] pb-[4px] pt-[10px] 2xl:px-[14px] 2xl:pt-[12px]">
+            <div className="font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
+              {t('performance_per_post', 'Performance per post')}
+            </div>
+          </div>
+          <div
+            className="grid items-center gap-[6px] bg-pqTableHeader px-[12px] py-[6px] text-[10px] font-[700] uppercase tracking-[0.06em] text-pqMuted 2xl:gap-[8px] 2xl:px-[14px] 2xl:py-[8px] 2xl:text-[11px]"
+            style={{ gridTemplateColumns: PREVIEW_TABLE_COLUMNS }}
+          >
+            <span>{t('post', 'Post')}</span>
+            <span className="text-end">{t('reactions', 'Reactions')}</span>
+            <span className="text-end">{t('comments', 'Comments')}</span>
+            <span className="text-end">{t('eng_rate', 'Eng. rate')}</span>
+            <span className="text-end">{t('impressions', 'Impressions')}</span>
+          </div>
+          {PREVIEW_TABLE_ROWS.map((row, index) => (
+            <div
+              key={row.title}
+              className="grid items-center gap-[6px] border-t border-pqLine px-[12px] py-[8px] text-[12px] 2xl:gap-[8px] 2xl:px-[14px] 2xl:py-[9px] 2xl:text-[13px]"
+              style={{ gridTemplateColumns: PREVIEW_TABLE_COLUMNS }}
+            >
+              <span className="flex min-w-0 items-center gap-[6px] text-pqText 2xl:gap-[8px]">
+                <span className="w-[18px] shrink-0 text-[11px] font-[700] tabular-nums text-pqMuted 2xl:w-[20px] 2xl:text-[12px]">
+                  #{index + 1}
+                </span>
+                <PreviewThumb platform={row.platform} size={28} />
+                <span className="min-w-0 truncate">{row.title}</span>
+              </span>
+              <span className="text-end tabular-nums text-pqText">
+                {row.metric}
+              </span>
+              <span className="text-end tabular-nums text-pqText">
+                {row.comments}
+              </span>
+              <span className="text-end tabular-nums text-pqText">
+                {row.rate}
+              </span>
+              <span className="text-end tabular-nums text-pqText">
+                {row.impressions}
+              </span>
+            </div>
+          ))}
+        </section>
       </div>
     </div>
   );
