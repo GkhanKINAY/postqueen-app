@@ -895,7 +895,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   className={clsx(
                     'gap-[32px] flex flex-col px-[20px] pt-[20px] pb-[32px]',
                     hasChannels || compactChrome
-                      ? 'absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner'
+                      ? 'absolute top-0 left-0 w-full h-full overflow-x-hidden overflow-y-scroll'
                       : 'overflow-visible'
                   )}
                 >
@@ -1092,7 +1092,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <Scrollable
                   scrollClasses="!pe-[20px]"
                   className={clsx(
-                    'absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner',
+                    'absolute top-0 p-[20px] pe-[8px] left-0 w-full h-full overflow-x-hidden overflow-y-scroll',
                     compactChrome
                       ? 'pb-[min(34vh,260px)] snap-y snap-proximity'
                       : 'pb-[20px]'
@@ -1186,7 +1186,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   onPane={setComposerPane}
                 />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-y-auto px-[16px] py-[12px] scrollbar scrollbar-thumb-pqColColor scrollbar-track-pqInner">
+              <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-y-auto px-[16px] py-[12px]">
                 <ComposeWhen date={date} onChange={setDate} />
                 {!dummy && selectedIntegrations.length > 0 && (
                   <ComposeNotify
@@ -1261,7 +1261,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             phoneFlow && composerPane !== 'schedule' && 'hidden',
             compactFooter
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] w-full items-center justify-between overflow-x-auto overflow-y-hidden py-[20px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent min-[1180px]:flex-row'
+              : 'min-h-[84px] w-full items-center justify-between overflow-x-auto overflow-y-hidden py-[20px] min-[1180px]:flex-row'
           )}
         >
           {!phoneFlow && (

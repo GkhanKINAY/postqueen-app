@@ -559,7 +559,7 @@ export const MediaBox: FC<{
         disabled={loading}
         noClick
         brandOverlay
-        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[22px] pb-[28px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner mobile:px-[14px]"
+        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[22px] pb-[28px] mobile:px-[14px]"
         onDrop={dragAndDrop}
       >
         {fileInput}
@@ -981,7 +981,7 @@ export const MediaBox: FC<{
         </div>
 
         <div
-          className="relative min-h-0 flex-1 overflow-y-auto p-[3px] pe-[4px] overscroll-contain scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner"
+          className="relative min-h-0 flex-1 overflow-y-auto p-[3px] pe-[4px] overscroll-contain"
           style={!touch ? { minHeight: MEDIA_LIBRARY_TWO_ROW_MIN } : undefined}
         >
           {isLoading && !data && (

@@ -297,8 +297,11 @@ export const Rail: FC<RailProps> = ({
           </span>
         </Link>
 
+        {/* Bar hidden only at 60px, where a track would eat the icon lane.
+            Expanded, a short window leaves the nav clipped above the pinned
+            footer, and without a bar nothing says it scrolls. */}
         <div
-          data-sb-scroll="1"
+          {...(rc ? { 'data-sb-scroll': '1' } : {})}
           className="mt-[10px] flex min-h-0 flex-1 flex-col gap-[10px] overflow-y-auto overflow-x-hidden overscroll-contain"
         >
           {groups.map((group) => (

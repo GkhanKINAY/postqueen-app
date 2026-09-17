@@ -52,7 +52,7 @@ export const TextArea: FC<{
   const value = form.watch(props.name);
   const aiOk = useAiAvailable();
   const fieldClass = clsx(
-    'min-h-[110px] max-h-[180px] w-full min-w-0 resize-none border-0 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden break-words placeholder:text-pqSoft scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent'
+    'min-h-[110px] max-h-[180px] w-full min-w-0 resize-none border-0 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden break-words placeholder:text-pqSoft'
   );
   return (
     <div className="flex min-w-0 flex-col gap-[6px]">

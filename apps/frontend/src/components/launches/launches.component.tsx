@@ -143,7 +143,7 @@ const LaunchesMainColumn = () => {
         className={clsx(
           'flex min-w-0',
           isList
-            ? 'min-h-0 flex-1 flex-col overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner'
+            ? 'min-h-0 flex-1 flex-col overflow-y-auto'
             : 'min-h-0 flex-1'
         )}
       >

@@ -742,7 +742,7 @@ export const DayView = () => {
         <div
           data-tour="cal-day"
           ref={setScrollerRef}
-          className="absolute inset-0 overflow-auto bg-pqInner scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner [scrollbar-gutter:stable]"
+          className="absolute inset-0 overflow-auto bg-pqInner [scrollbar-gutter:stable]"
         >
           <div className="mx-auto flex w-full max-w-[860px] flex-col px-[4px] pb-[40px] pt-[4px]">
             {hours.map((hour) => (
@@ -844,7 +844,7 @@ export const WeekView = () => {
           data-tour="cal-grid"
           ref={setScrollerRef}
           className={clsx(
-            'absolute inset-0 grid min-w-0 content-start bg-pqInner [grid-template-columns:72px_repeat(7,_minmax(84px,_1fr))] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner',
+            'absolute inset-0 grid min-w-0 content-start bg-pqInner [grid-template-columns:72px_repeat(7,_minmax(84px,_1fr))]',
             mobile
               ? 'overflow-x-auto overflow-y-auto overscroll-x-contain'
               : 'overflow-auto'
@@ -1010,7 +1010,7 @@ export const MonthView = () => {
       <div className="relative flex flex-1">
         {/* Same hairline language as the week grid: no gaps, no rounded tiles —
             the cells draw the lines with their own borders. */}
-        <div className="absolute start-0 top-0 grid h-full w-full content-start overflow-auto bg-pqInner [grid-template-columns:repeat(7,_minmax(84px,_1fr))] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner">
+        <div className="absolute start-0 top-0 grid h-full w-full content-start overflow-auto bg-pqInner [grid-template-columns:repeat(7,_minmax(84px,_1fr))]">
           {localizedDays.map((day) => (
             <div
               key={day}
@@ -3207,7 +3207,7 @@ const MobileWeekAgenda = () => {
       <div
         data-tour="cal-day"
         ref={setScrollerRef}
-        className="absolute inset-0 overflow-auto bg-pqInner scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner"
+        className="absolute inset-0 overflow-auto bg-pqInner"
       >
         <div
           data-cal-sticky-head="1"

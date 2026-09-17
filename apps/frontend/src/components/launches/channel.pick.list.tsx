@@ -120,7 +120,7 @@ export const ChannelPickList: FC<{
           {t('clear', 'Clear')}
         </button>
       </div>
-      <div className="max-h-[260px] overflow-y-auto p-[6px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner">
+      <div className="max-h-[260px] overflow-y-auto p-[6px]">
         {!filtered.length && (
           <div className="px-[8px] py-[12px] text-[12.5px] text-pqSoft">
             {/* An empty source list is not a failed search. Callers filter out

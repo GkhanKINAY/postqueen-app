@@ -283,7 +283,7 @@ export const PostsPanel: FC = () => {
           ref={dropRef}
           data-posts-drop="1"
           className={clsx(
-            'flex min-h-0 flex-1 flex-col gap-[6px] overflow-y-auto px-[12px] pb-[14px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner',
+            'flex min-h-0 flex-1 flex-col gap-[6px] overflow-y-auto px-[12px] pb-[14px]',
             isOver &&
               canDrop &&
               'bg-pqBrandSoft shadow-[inset_0_0_0_1px_var(--brand)]'

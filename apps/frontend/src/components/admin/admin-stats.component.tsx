@@ -274,7 +274,7 @@ export const AdminStatsComponent: FC = () => {
       ) : error || !data ? (
         <div className="text-red-400">Failed to load stats.</div>
       ) : (
-        <div className="overflow-x-auto pb-[8px] scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor flex flex-col gap-[16px]">
+        <div className="overflow-x-auto pb-[8px] flex flex-col gap-[16px]">
           <div className="flex gap-[12px]">
             <div className="flex-1 min-w-[220px] shrink-0">
               <SummaryCard

@@ -306,7 +306,7 @@ export const NotificationOpenComponent = forwardRef<
 
       <div
         className={clsx(
-          'flex flex-col overflow-y-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor',
+          'flex flex-col overflow-y-auto',
           embedded ? 'max-h-none' : 'max-h-[380px]'
         )}
       >

@@ -1480,3 +1480,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Auth Insights showcase, calendar draft drops, Copilot rail v3.6.57
 
 **i18n +2 −1 (`connections_sub`, `write_something` in; unused `share_with_the_world` out).** Auth login/register right panel is a live Insights still (3 top posts, engagement mix on one line) at 55% width with `min-h-dvh` shell. Copilot rail reuses `write_something` placeholder and adds `connections_sub` under the Connections card. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Scrollbars: one visible style everywhere
+
+**No baseline change.** The design's 4px thumb at 14–16% ink was too faint to tell a pane scrolls, and fifteen components still carried `tailwind-scrollbar` classes (`scrollbar scrollbar-thumb-* scrollbar-track-*`). Those set `scrollbar-color`, which in Chromium turns off the global `::-webkit-scrollbar` rules and shows a native bar with a `pqBorder` thumb that is nearly invisible in light. The classes are gone, so every pane uses the one rule in `global.css`: a 6px thumb inset in a 12px transparent track, `--scrollThumb` 28% light / 24% dark, `--scrollThumbHover` 44% / 38%. The calendar cell's 4px lane keeps its width and takes the same ink. The rail's nav lane hides its bar only when collapsed to 60px; expanded, a short window clips the nav above the pinned footer and the bar is the only sign it scrolls.
