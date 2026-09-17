@@ -15,4 +15,14 @@ describe('Organization switcher', () => {
     assert.match(source, /currentOrgName\(current, user\)/);
     assert.match(source, /currentOrgName\(org, user\)/);
   });
+
+  it('reads as a workspace control, not a muted nav label', () => {
+    assert.match(source, /data-pq="rail-org"/);
+    assert.match(source, /t\('workspace', 'Workspace'\)/);
+    assert.match(source, /bg-pqBrandSoft/);
+    assert.doesNotMatch(
+      source,
+      /truncate text-\[13px\] font-\[500\] text-pqMuted/
+    );
+  });
 });

@@ -9,7 +9,6 @@ import clsx from 'clsx';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useRouter } from 'next/navigation';
-import { useToaster } from '@gitroom/react/toaster/toaster';
 import { PlugsContext } from '@gitroom/frontend/components/plugs/plugs.context';
 import { Plug } from '@gitroom/frontend/components/plugs/plug';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -19,12 +18,13 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { TwoColumnDetailDrawer } from '@gitroom/frontend/components/layout/two-column-detail-drawer';
 import { ChannelsPageEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launches/use.open.reconnect';
 
 export const Plugs = () => {
   const fetch = useFetch();
   const router = useRouter();
   const [current, setCurrent] = useState(0);
-  const toaster = useToaster();
+  const openReconnectInChannels = useOpenReconnectInChannels();
   const { mobile, tablet, touch } = useViewport();
   const [collapseMenu, setCollapseMenu] = useCookie('collapseMenu', '0');
   const channelsCollapsed = !mobile && collapseMenu === '1';
@@ -267,14 +267,8 @@ export const Plugs = () => {
                   key={integration.id}
                   title={channelNameWithHandle(integration)}
                   onClick={() => {
-                    if (integration.refreshNeeded) {
-                      toaster.show(
-                        t(
-                          'channel_disconnected_click_to_reconnect',
-                          'Channel disconnected, click to reconnect.'
-                        ),
-                        'warning'
-                      );
+                    if (needsRefresh) {
+                      openReconnectInChannels(integration.id);
                       return;
                     }
                     setCurrent(index);

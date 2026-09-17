@@ -44,33 +44,47 @@ const currentOrgName = (
 
 const RailOrgChrome: FC<{
   name?: string;
+  subtitle: string;
   collapsed?: boolean;
   open?: boolean;
   buttonRef?: React.Ref<HTMLButtonElement>;
   onClick?: () => void;
   ariaLabel: string;
-}> = ({ name, collapsed, open, buttonRef, onClick, ariaLabel }) => {
+}> = ({ name, subtitle, collapsed, open, buttonRef, onClick, ariaLabel }) => {
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
   return (
     <button
       type="button"
       ref={buttonRef}
       onClick={onClick}
+      data-pq="rail-org"
       aria-haspopup="menu"
       aria-expanded={open}
       aria-label={ariaLabel}
       className={clsx(
-        'flex h-[34px] min-w-0 flex-1 items-center gap-[11px] rounded-pqSm px-[8px] text-start transition-colors hover:bg-pqHover',
+        'flex min-h-[40px] min-w-0 w-full items-center gap-[8px] rounded-[10px] px-[6px] text-start transition-colors hover:bg-pqHover',
         collapsed ? 'justify-center' : 'justify-start',
+        !collapsed && 'shadow-[inset_0_0_0_1px_var(--border)]',
         open && 'bg-pqHover'
       )}
     >
-      {/* Always in the DOM with data-sbl so collapsed-rail hover can reveal
-          the name the way the design does — do not unmount on collapse. */}
       <span
-        data-sbl="1"
-        className="min-w-0 flex-1 truncate text-[13px] font-[500] text-pqMuted"
+        aria-hidden="true"
+        className="grid size-[24px] shrink-0 place-items-center rounded-[7px] bg-pqBrandSoft text-[11px] font-[700] leading-none text-pqText"
       >
-        {name}
+        {initial}
+      </span>
+      {/* data-sbh: flex stack — data-sbl would become display:block on hover. */}
+      <span
+        data-sbh="1"
+        className="flex min-w-0 flex-1 flex-col justify-center"
+      >
+        <span className="truncate text-[13px] font-[600] leading-[1.2] text-pqText">
+          {name}
+        </span>
+        <span className="truncate text-[11px] font-[500] leading-[1.2] text-pqSoft">
+          {subtitle}
+        </span>
       </span>
       <svg
         data-sbl="1"
@@ -160,12 +174,13 @@ export const OrganizationSelector: FC<{
     if (isLoading) {
       return (
         <div
-          className="flex h-[34px] min-w-0 flex-1 items-center gap-[11px] rounded-pqSm px-[8px]"
+          className="flex min-h-[40px] w-full min-w-0 items-center gap-[8px] rounded-[10px] px-[6px]"
           data-keepdrawer="1"
           aria-hidden="true"
         >
+          <Skeleton className="size-[24px] shrink-0 rounded-[7px]" />
           <Skeleton
-            data-sbl="1"
+            data-sbh="1"
             className="h-[12px] min-w-0 flex-1 rounded-pqSm"
           />
         </div>
@@ -176,9 +191,10 @@ export const OrganizationSelector: FC<{
     }
 
     return (
-      <div ref={ref} className="relative flex items-center" data-keepdrawer="1">
+      <div ref={ref} className="relative w-full" data-keepdrawer="1">
         <RailOrgChrome
           name={currentOrgName(current, user)}
+          subtitle={t('workspace', 'Workspace')}
           collapsed={collapsed}
           open={open}
           buttonRef={referenceRef}

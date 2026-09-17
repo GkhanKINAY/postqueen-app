@@ -14,6 +14,14 @@ const SafeImage: FC<SafeImageProps> = ({
   height,
   className,
   style,
+  fill: _fill,
+  priority: _priority,
+  quality: _quality,
+  placeholder: _placeholder,
+  blurDataURL: _blurDataURL,
+  loader: _loader,
+  unoptimized: _unoptimized,
+  onLoadingComplete: _onLoadingComplete,
   ...rest
 }) => {
   return (
@@ -24,6 +32,7 @@ const SafeImage: FC<SafeImageProps> = ({
       height={typeof height === 'number' ? height : undefined}
       className={className}
       style={style}
+      {...rest}
     />
   );
 };

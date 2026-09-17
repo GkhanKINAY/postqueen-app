@@ -93,9 +93,17 @@ describe('All channels rail', () => {
   });
 
   it('sends a disconnected channel to Channels, not the calendar', () => {
+    const reconnect = readFileSync(
+      fileURLToPath(
+        new URL('../launches/use.open.reconnect.ts', import.meta.url)
+      ),
+      'utf8'
+    );
     assert.match(rail, /openReconnectInChannels/);
-    assert.match(rail, /please_reconnect_from_channels/);
-    assert.match(rail, /\/channels\?focus=/);
+    assert.match(rail, /useOpenReconnectInChannels/);
+    assert.match(reconnect, /please_reconnect_from_channels/);
+    assert.match(reconnect, /channelFocusPath\(\{ focus: id \}\)/);
     assert.doesNotMatch(rail, /from the calendar/);
+    assert.doesNotMatch(reconnect, /channel_disconnected_click_to_reconnect/);
   });
 });

@@ -120,6 +120,27 @@ describe('Channels OAuth landing', () => {
   });
 });
 
+describe('Off-Channels reconnect', () => {
+  it('sends Copilot and Automations rows to Channels instead of a click-again toast', () => {
+    const copilot = readFileSync(
+      fileURLToPath(new URL('../agents/agent.tsx', import.meta.url)),
+      'utf8',
+    );
+    assert.match(copilot, /useOpenReconnectInChannels/);
+    assert.match(copilot, /if \(needsAttention\(integration\)\) \{/);
+    assert.match(plugsPageSource, /useOpenReconnectInChannels/);
+    assert.match(plugsPageSource, /if \(needsRefresh\) \{/);
+    assert.doesNotMatch(
+      copilot,
+      /channel_disconnected_click_to_reconnect/,
+    );
+    assert.doesNotMatch(
+      plugsPageSource,
+      /channel_disconnected_click_to_reconnect/,
+    );
+  });
+});
+
 describe('Channel automations', () => {
   it('is opt-in per provider: no panel without a catalog match, Off until Set up plug', () => {
     // Facebook / Instagram / Instagram Standalone / YouTube have no @Plug.

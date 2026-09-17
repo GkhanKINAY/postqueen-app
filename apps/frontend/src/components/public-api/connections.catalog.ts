@@ -64,14 +64,16 @@ export const AUTOMATION_CHILD_IDS = [
 
 export type AutomationChildId = (typeof AUTOMATION_CHILD_IDS)[number];
 
-/** Featured marketplace row on All. */
+/** Featured marketplace row on All — four logo tiles. */
 export const FEATURED_IDS = [
   'claude-apps',
   'chatgpt',
   'cursor',
   'grok',
-  'other-mcp',
 ] as const;
+
+/** Catch-all under the 4-up, not a fifth tile in the same grid. */
+export const FEATURED_CATCHALL_ID = 'other-mcp';
 
 /** Category order on the Connectors hub, after Featured. */
 export const ALL_PAGE_NAV_IDS = [
@@ -425,7 +427,7 @@ const HUB_SECTIONS: SectionId[] = [
 export function restGroupsForAllPage(
   groups: Group[]
 ): { nav: (typeof ALL_PAGE_NAV_IDS)[number]; items: Connection[] }[] {
-  const featured = new Set<string>(FEATURED_IDS);
+  const featured = new Set<string>([...FEATURED_IDS, FEATURED_CATCHALL_ID]);
   return ALL_PAGE_NAV_IDS.map((nav) => ({
     nav,
     items: connectionsForNav(groups, nav).filter((c) => !featured.has(c.id)),
@@ -1341,7 +1343,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_claude_apps_short', 'Chat on claude.ai, Desktop or phone'),
           intro: t(
             'conn_claude_apps_intro',
-            'This is Anthropic\'s chat: claude.ai, Claude Desktop, iOS and Android. One custom connector follows the account. She is not in Anthropic\'s Connectors Directory, add her from Customize → Connectors when the URL is public; use mcp-remote in the Desktop config for LAN or VPN. Claude Code is a different product, use that card under Agents, like Codex vs ChatGPT.'
+            'This is Anthropic\'s chat: claude.ai, Claude Desktop, iOS and Android. PostQueen is not in Anthropic\'s Connectors Directory. You paste our public MCP URL yourself. Claude\'s UI calls that Add custom connector; that is their name for a remote MCP server, not a listing we published. One add follows the account (web, Desktop and phone). For LAN or VPN, use mcp-remote in the Desktop config instead. Claude Code is a different product, use that card under Agents, like Codex vs ChatGPT.'
           ),
           examples: [
             sample({
@@ -1365,7 +1367,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_claude_apps_note',
-            'Not listed at claude.com/connectors. Browse will not find PostQueen. A plain "url" in claude_desktop_config.json does not work. Customize → Connectors does not install Claude Code. New connectors generally cannot be created from the mobile apps, add them on the web or Desktop first.'
+            'Not listed at claude.com/connectors. Browse will not find PostQueen. Do not search the directory. A plain "url" in claude_desktop_config.json does not work. Customize → Connectors does not install Claude Code. New custom MCP entries generally cannot be created from the mobile apps, add them on the web or Desktop first.'
           ),
           docs: [
             {
@@ -1377,22 +1379,22 @@ openclaw onboard --install-daemon`,
             {
               title: t(
                 'conn_claude_apps_step_desktop',
-                'Connect Claude Desktop'
+                'Paste the MCP URL'
               ),
               detail: t(
                 'conn_claude_apps_step_desktop_detail',
-                'Customize → Connectors → + → Add custom connector (Claude Desktop may still say Settings → Connectors). Paste the MCP URL (key in the path). Leave OAuth / Advanced fields empty. For LAN or VPN instances, use Edit Config and mcp-remote instead.'
+                'Do not browse Connectors looking for PostQueen. Customize → Connectors → + → Add custom connector (Claude Desktop may still say Settings → Connectors). Name it PostQueen and paste the MCP URL (key in the path). Leave OAuth / Advanced empty; the key in the URL is the auth. On Team/Enterprise an Owner adds it under Organization settings → Connectors → Add → Custom → Web, then members click Connect. For LAN or VPN, skip that dialog: Desktop → Developer → Edit Config and mcp-remote instead.'
               ),
               code: mcpUrlWithKey,
             },
             {
               title: t(
                 'conn_claude_apps_step_web',
-                'Connect claude.ai (and mobile)'
+                'Enable it in a chat'
               ),
               detail: t(
                 'conn_claude_apps_step_web_detail',
-                'claude.ai → Customize → Connectors → + → Add custom connector. On Team/Enterprise an Owner adds it under Organization settings → Connectors → Add → Custom → Web, then members click Connect. Enable it in a chat from + → Connectors. It appears on iOS and Android after you add it on the web.'
+                'In a conversation, open + → Connectors and turn PostQueen on. One add follows the account, so Desktop, claude.ai and iOS/Android pick it up after you add it once on the web or Desktop. You generally cannot create a new custom MCP entry from the mobile apps.'
               ),
             },
             {
@@ -1417,7 +1419,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_chatgpt_short', 'Schedule posts from ChatGPT on the web'),
           intro: t(
             'conn_chatgpt_intro',
-            'ChatGPT reaches PostQueen as a custom MCP app in Developer mode. Create it under Settings → Apps, not Settings → Connectors. Web only, not the Free plan, not the mobile apps. Codex is a different product, use that card under Agents.'
+            'ChatGPT reaches PostQueen over MCP in Developer mode. She is not in the ChatGPT app store or GPT store. Create a custom MCP app under Settings → Apps, not Settings → Connectors, and paste the MCP URL; do not search Apps. Older builds still say Plugins. Web only, not the Free plan, not the mobile apps. Codex is a different product, use that card under Agents.'
           ),
           examples: [
             sample({
@@ -1441,7 +1443,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_chatgpt_note',
-            'OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as schedulePostTool may stay blocked. Authentication: No authentication, the key is already in the URL. Settings → Apps does not install Codex.'
+            'She is not listed in the ChatGPT app store. Searching Apps will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as schedulePostTool may stay blocked. Authentication: No authentication, the key is already in the URL. Settings → Apps does not install Codex.'
           ),
           docs: [
             {
@@ -1470,7 +1472,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_chatgpt_step_plugin', 'Create the app'),
               detail: t(
                 'conn_chatgpt_step_plugin_detail',
-                'Settings → Apps → Create (workspace admins: Workspace settings → Apps → Create). Older builds: Settings → Plugins or chatgpt.com/plugins → +. Name it PostQueen, paste the MCP URL, set Authentication to No authentication, then save. Enable it in a chat via + → Developer mode (or the tools menu).'
+                'Do not search the app store. Settings → Apps → Create (workspace admins: Workspace settings → Apps → Create). Older builds: Settings → Plugins or chatgpt.com/plugins → +. Name it PostQueen, paste the MCP URL, set Authentication to No authentication, then save. Enable it in a chat via + → Developer mode (or the tools menu).'
               ),
               code: mcpUrlWithKey,
             },
@@ -1493,10 +1495,10 @@ openclaw onboard --install-daemon`,
           cred: 'mcp',
           exampleKind: 'chat',
           section: 'featured',
-          short: t('conn_grok_short', 'Add a custom connector on grok.com'),
+          short: t('conn_grok_short', 'Paste the MCP URL on grok.com'),
           intro: t(
             'conn_grok_intro',
-            'Grok on the web, iOS and Android can call remote MCP servers. Add PostQueen as a custom connector at grok.com/connectors (web: + → Connectors; iOS/Android: Settings → Connectors). The server must be reachable over the public internet. Grok Bot and Grok Build are different products, use those cards.'
+            'Grok on the web, iOS and Android can call a remote MCP server. PostQueen is not in xAI\'s connector catalog. Paste the MCP URL yourself at grok.com/connectors → New Connector → Custom (web: + → Connectors; iOS/Android: Settings → Connectors). The server must be reachable over the public internet. Grok Bot and Grok Build are different products, use those cards.'
           ),
           examples: [
             sample({
@@ -1520,7 +1522,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_grok_note',
-            'On Grok Business and Enterprise, an admin must provision the connector in console.x.ai first. grok.com/connectors does not install PostQueen on Grok Bot or Grok Build.'
+            'Searching the catalog will not find PostQueen. On Grok Business and Enterprise, an admin must add a custom MCP URL in console.x.ai (Other) first. grok.com/connectors does not install PostQueen on Grok Bot or Grok Build.'
           ),
           docs: [
             {
@@ -1539,7 +1541,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_grok_step_open', 'Open Grok connectors'),
               detail: t(
                 'conn_grok_step_open_detail',
-                'Go to grok.com/connectors → New Connector → Custom.'
+                'Go to grok.com/connectors → New Connector → Custom. Do not pick a catalog connector; the next step is pasting the MCP URL.'
               ),
             },
             {
@@ -1648,7 +1650,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_cursor_short', 'Schedule from Cursor in the editor'),
           intro: t(
             'conn_cursor_intro',
-            'Cursor reads MCP servers from mcp.json. Add a remote streamable HTTP server with a url field, Cursor infers the transport. You can also add it from Customize → MCP, or Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP); all write the same file.'
+            'Cursor reads MCP servers from mcp.json. PostQueen is not in the Cursor Marketplace, so do not browse Customize → MCPs looking for her. Add a remote streamable HTTP server with a url field (Cursor infers the transport), or open Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP) and paste the JSON; all write the same file.'
           ),
           examples: [
             sample({
@@ -1666,7 +1668,7 @@ openclaw onboard --install-daemon`,
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_cursor_ex_multi', 'Make one poster and schedule it to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_cursor_ex_multi_reply', 'Poster is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm in Cursor before they go out.'),
+              reply: t('conn_cursor_ex_multi_reply', 'Poster is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar before they go out.'),
               tool: 'schedulePostTool',
             }),
           ],
@@ -1691,7 +1693,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_cursor_step_ui', 'Add the server'),
               detail: t(
                 'conn_cursor_step_ui_detail',
-                'Customize → MCP, or Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP), then add a streamable HTTP server named postqueen. Or create ~/.cursor/mcp.json (global) or .cursor/mcp.json (this project).'
+                'Do not search the Cursor Marketplace. Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP), then add a streamable HTTP server named postqueen. Or create ~/.cursor/mcp.json (global) or .cursor/mcp.json (this project).'
               ),
             },
             {
@@ -1736,20 +1738,20 @@ openclaw onboard --install-daemon`,
           examples: [
             sample({
               title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_vscode_ex', 'Make a product photo and draft it to X for 8am from Copilot Chat'),
+              body: t('conn_vscode_ex', 'Make a product photo and draft it to X for 8am'),
               reply: t('conn_vscode_ex_reply', 'Product photo is drafted to X for 08:00. Confirm it on the calendar before it publishes.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_vscode_ex_ig', 'Draft this photo to Instagram tonight at 7 from Copilot Chat'),
-              reply: t('conn_vscode_ex_ig_reply', 'Photo is saved as an Instagram draft for tonight at 19:00. Peek at it in Copilot Chat first.'),
+              body: t('conn_vscode_ex_ig', 'Save this product shot as an Instagram draft for tonight at 7'),
+              reply: t('conn_vscode_ex_ig_reply', 'Product shot is saved as an Instagram draft for tonight at 19:00. Peek at the calendar first.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_vscode_ex_multi', 'Share this visual to Instagram, X and LinkedIn Friday at 10 as drafts from Copilot Chat'),
-              reply: t('conn_vscode_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm in Copilot Chat when they look right.'),
+              body: t('conn_vscode_ex_multi', 'Schedule this campaign visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
+              reply: t('conn_vscode_ex_multi_reply', 'Campaign visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar when they look right.'),
               tool: 'schedulePostTool',
             }),
           ],
@@ -1768,7 +1770,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_vscode_step_ui', 'Add the server'),
               detail: t(
                 'conn_vscode_step_ui_detail',
-                'Command Palette → MCP: Add Server, pick HTTP, name it postqueen. Or create .vscode/mcp.json (this workspace) or run MCP: Open User Configuration for every workspace.'
+                'Do not look for PostQueen in an extension marketplace. Command Palette → MCP: Add Server, pick HTTP, name it postqueen. Or create .vscode/mcp.json (this workspace) or run MCP: Open User Configuration for every workspace.'
               ),
             },
             {
@@ -1817,20 +1819,20 @@ openclaw onboard --install-daemon`,
           examples: [
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_windsurf_ex', 'In Cascade, make a photo of the shop and save an Instagram draft for tonight at 7'),
-              reply: t('conn_windsurf_ex_reply', 'Shop photo is saved as an Instagram draft for tonight at 19:00. Open it in Cascade before it publishes.'),
+              body: t('conn_windsurf_ex', 'Make a photo of the shop and save an Instagram draft for tonight at 7'),
+              reply: t('conn_windsurf_ex_reply', 'Shop photo is saved as an Instagram draft for tonight at 19:00. Open it on the calendar before it publishes.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_windsurf_ex_x', 'In Cascade, make a short video and queue it on X tomorrow at 8am as a draft'),
-              reply: t('conn_windsurf_ex_x_reply', 'Short video is queued on X as a draft for tomorrow at 08:00. Confirm in Cascade first.'),
+              body: t('conn_windsurf_ex_x', 'Make a short clip of the storefront and queue it on X tomorrow at 8am as a draft'),
+              reply: t('conn_windsurf_ex_x_reply', 'Storefront clip is queued on X as a draft for tomorrow at 08:00. Confirm on the calendar first.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_windsurf_ex_multi', 'In Cascade, post this visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_windsurf_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm in Cascade when you are happy.'),
+              body: t('conn_windsurf_ex_multi', 'Post this campaign visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
+              reply: t('conn_windsurf_ex_multi_reply', 'Campaign visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar when you are happy.'),
               tool: 'schedulePostTool',
             }),
           ],
@@ -1849,7 +1851,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_windsurf_step_ui', 'Open MCP settings'),
               detail: t(
                 'conn_windsurf_step_ui_detail',
-                'In the Cascade panel, open MCPs, or Devin Settings → Cascade → MCP Servers. If PostQueen is not in the marketplace, edit the raw mcp_config.json.'
+                'PostQueen is not in the Windsurf marketplace. In the Cascade panel, open MCPs, or Devin Settings → Cascade → MCP Servers, then edit the raw mcp_config.json.'
               ),
             },
             {
@@ -1895,20 +1897,20 @@ openclaw onboard --install-daemon`,
           examples: [
             sample({
               title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_zed_ex', 'In the Agent Panel, what is scheduled in PostQueen this week?'),
+              body: t('conn_zed_ex', 'What is scheduled in PostQueen this week?'),
               reply: t('conn_zed_ex_reply', 'This week: Instagram Tuesday at 19:00 and X Wednesday at 08:00. Want a change?'),
               tool: 'ask_postqueen',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_zed_ex_ig', 'In the Agent Panel, make a photo and draft it to Instagram tonight at 7'),
-              reply: t('conn_zed_ex_ig_reply', 'Photo is drafted to Instagram for tonight at 19:00. Open it in the Agent Panel first.'),
+              body: t('conn_zed_ex_ig', 'Make a photo of the autumn menu and draft it to Instagram tonight at 7'),
+              reply: t('conn_zed_ex_ig_reply', 'Autumn menu photo is drafted to Instagram for tonight at 19:00. Open it on the calendar first.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_zed_ex_multi', 'In the Agent Panel, share this visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_zed_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm in the Agent Panel.'),
+              body: t('conn_zed_ex_multi', 'Queue the same visual on Instagram, X and LinkedIn Friday at 10 as drafts'),
+              reply: t('conn_zed_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar.'),
               tool: 'schedulePostTool',
             }),
           ],
@@ -1982,13 +1984,13 @@ openclaw onboard --install-daemon`,
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_gemini_ex_ig', 'Make a photo and draft it to Instagram tonight at 7 from Gemini CLI'),
-              reply: t('conn_gemini_ex_ig_reply', 'Photo is drafted to Instagram for tonight at 19:00. Check the calendar before it goes out.'),
+              body: t('conn_gemini_ex_ig', 'Make a photo of today\'s lunch special and draft it to Instagram tonight at 7'),
+              reply: t('conn_gemini_ex_ig_reply', 'Lunch special photo is drafted to Instagram for tonight at 19:00. Check the calendar before it goes out.'),
               code: 'gemini', tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_gemini_ex_multi', 'Schedule this visual to Instagram, X and LinkedIn Friday at 10 as drafts from Gemini CLI'),
+              body: t('conn_gemini_ex_multi', 'Schedule this visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
               reply: t('conn_gemini_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm when the set looks right.'),
               code: 'gemini', tool: 'schedulePostTool',
             }),
@@ -2111,26 +2113,26 @@ openclaw onboard --install-daemon`,
           examples: [
             sample({
               title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_other_mcp_ex', 'Ask the client to list your PostQueen channels'),
-              reply: t('conn_other_mcp_ex_reply', 'Channels on this account: Instagram, X, LinkedIn and YouTube.'),
+              body: t('conn_other_mcp_ex', 'What social accounts can I post to?'),
+              reply: t('conn_other_mcp_ex_reply', 'You can post to Instagram, X, LinkedIn and YouTube.'),
               tool: 'integrationList',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_other_mcp_ex_ig', 'Ask the client to make a photo and draft it to Instagram tonight at 7'),
-              reply: t('conn_other_mcp_ex_ig_reply', 'Photo is drafted to Instagram for tonight at 19:00. Open the calendar if you want a last look.'),
+              body: t('conn_other_mcp_ex_ig', 'Generate a photo of handmade ceramic mugs and draft it to Instagram tonight at 7'),
+              reply: t('conn_other_mcp_ex_ig_reply', 'Ceramic mugs photo is drafted to Instagram for tonight at 19:00. Open the calendar if you want a last look.'),
               tool: 'schedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_other_mcp_ex_multi', 'Ask the client to share this visual to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_other_mcp_ex_multi_reply', 'Visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing goes out until you confirm.'),
+              body: t('conn_other_mcp_ex_multi', 'Generate a landscape visual and schedule it to Instagram, X and LinkedIn Friday at 10 as drafts'),
+              reply: t('conn_other_mcp_ex_multi_reply', 'Landscape visual is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing goes out until you confirm.'),
               tool: 'schedulePostTool',
             }),
           ],
           note: t(
             'conn_other_mcp_note',
-            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. VS Code, Windsurf and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json; use a custom connector or mcp-remote.'
+            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. VS Code, Windsurf and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json, and do not look for PostQueen in Anthropic\'s directory; use Add custom connector with the MCP URL, or mcp-remote for LAN.'
           ),
           docs: [
             {

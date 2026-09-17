@@ -321,14 +321,17 @@ export const EditorWrapper: FC<{
 
   const addValue = useCallback(
     (index: number) => () => {
-      setTimeout(() => {
-        // scroll the the bottom
-        document.querySelector('#social-content').scrollTo({
-          top: document.querySelector('#social-content').scrollHeight,
-        });
-      }, 20);
       if (internal) {
-        return addInternalValue(index, current, [
+        addInternalValue(index, current, [
+          {
+            delay: 0,
+            content: '',
+            id: makeId(10),
+            media: [],
+          },
+        ]);
+      } else {
+        addGlobalValue(index, [
           {
             delay: 0,
             content: '',
@@ -337,15 +340,25 @@ export const EditorWrapper: FC<{
           },
         ]);
       }
-
-      return addGlobalValue(index, [
-        {
-          delay: 0,
-          content: '',
-          id: makeId(10),
-          media: [],
-        },
-      ]);
+      // Comments sit above Settings in `#social-content`. Do not send the
+      // write column to the last settings card when a comment is added.
+      setTimeout(() => {
+        const pane = document.querySelector('#social-content');
+        if (!(pane instanceof HTMLElement)) {
+          return;
+        }
+        const comments = pane.querySelectorAll(
+          '[data-pq="composer-first-comment"]'
+        );
+        const last = comments[comments.length - 1];
+        if (!(last instanceof HTMLElement)) {
+          return;
+        }
+        last.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        last
+          .querySelector('textarea')
+          ?.focus({ preventScroll: true });
+      }, 20);
     },
     [current, global, internal]
   );
@@ -563,7 +576,8 @@ export const EditorWrapper: FC<{
         >
         <div
           className={clsx(
-            'relative flex flex-col gap-[20px] flex-1 bg-pqSettings',
+            'relative flex flex-col flex-1 bg-pqSettings',
+            firstCommentMode ? 'gap-0' : 'gap-[20px]',
             index === 0 && 'rounded-t-[12px]',
             (index === items.length - 1 || !comments || firstCommentMode) &&
               'rounded-b-[12px]'
@@ -667,7 +681,15 @@ export const EditorWrapper: FC<{
           </div>
         </div>
           {firstCommentMode && index === 0 ? (
-            showComments ? (
+            <div
+              data-pq="composer-comment-thread"
+              className="flex flex-col px-[12px] pb-[12px]"
+            >
+              <div
+                className="ms-[20px] h-[14px] w-px bg-pqLine"
+                aria-hidden="true"
+              />
+              {showComments ? (
               <div
                 data-pq="composer-comments"
                 className="flex flex-col gap-[10px]"
@@ -721,7 +743,7 @@ export const EditorWrapper: FC<{
                   </div>
                 ) : null}
               </div>
-            ) : (
+              ) : (
               <div className="self-start">
                 <AddCommentTrigger
                   onClick={() => {
@@ -730,7 +752,8 @@ export const EditorWrapper: FC<{
                   }}
                 />
               </div>
-            )
+              )}
+            </div>
           ) : null}
         </div>
       );

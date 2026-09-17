@@ -28,6 +28,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
+import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launches/use.open.reconnect';
 import { ChannelsListEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
@@ -88,6 +89,7 @@ export const AgentList: FC<{
   const t = useT();
   const toast = useToaster();
   const router = useRouter();
+  const openReconnectInChannels = useOpenReconnectInChannels();
   const [selected, setSelected] = useState([]);
   const colRef = useRef<HTMLDivElement>(null);
 
@@ -167,19 +169,13 @@ export const AgentList: FC<{
         return;
       }
       if (needsAttention(integration)) {
-        toast.show(
-          t(
-            'channel_disconnected_click_to_reconnect',
-            'Channel disconnected, click to reconnect.'
-          ),
-          'warning'
-        );
+        openReconnectInChannels(integration.id);
         return;
       }
       onChange([...selected, integration]);
       setSelected([...selected, integration]);
     },
-    [selected, onChange, toast, t]
+    [selected, onChange, openReconnectInChannels]
   );
 
   const sortedIntegrations = useMemo(() => {

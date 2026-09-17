@@ -128,35 +128,88 @@ const SettingsNavIcon: FC<{ icon: string }> = ({ icon }) => (
   </svg>
 );
 
+const SettingsCloseButton: FC<{
+  onClick: () => void;
+  label: string;
+  className?: string;
+}> = ({ onClick, label, className }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={label}
+    className={clsx(
+      'grid shrink-0 place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText',
+      className
+    )}
+  >
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+      <path
+        d="M6 6l12 12M18 6 6 18"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  </button>
+);
+
 const SettingsTabPane: FC<{
   tabHeader: { title: string; desc?: string };
   /** Same `useViewport().mobile` as the back-arrow chrome — not Tailwind
    *  `mobile:` (1025px). At 761–1025 the two-column sheet is up, and hiding
    *  this heading left Account / Teams untitled. */
   hideTitle?: boolean;
+  /** Desktop puts title + close in a chrome row so cards never slide under X. */
+  hideDesc?: boolean;
   children: React.ReactNode;
-}> = ({ tabHeader, hideTitle, children }) => {
+}> = ({ tabHeader, hideTitle, hideDesc, children }) => {
   const { inEditor, chromePatch } = useSettingsTabChrome();
+  const title = chromePatch?.title ?? tabHeader.title;
+  const desc = chromePatch?.desc ?? tabHeader.desc;
   return (
     <div className="flex w-full max-w-[920px] flex-col">
-      {!inEditor && (
-        <>
-          <h3
-            className={clsx(
-              'm-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText',
-              hideTitle && 'hidden'
-            )}
-          >
-            {chromePatch?.title ?? tabHeader.title}
-          </h3>
-          {!!(chromePatch?.desc ?? tabHeader.desc) && (
-            <div className="mt-[4px] text-[14px] text-pqMuted">
-              {chromePatch?.desc ?? tabHeader.desc}
-            </div>
-          )}
-        </>
+      {!inEditor && !hideTitle && (
+        <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
+          {title}
+        </h3>
+      )}
+      {!inEditor && !!desc && !hideDesc && (
+        <div className="mt-[4px] text-[14px] text-pqMuted">{desc}</div>
       )}
       {children}
+    </div>
+  );
+};
+
+/** Title + close sit in document flow. An overlay X was covered by card edges on scroll. */
+const SettingsDesktopHeader: FC<{
+  tabHeader: { title: string; desc?: string };
+  onClose: () => void;
+}> = ({ tabHeader, onClose }) => {
+  const t = useT();
+  const { inEditor, chromePatch } = useSettingsTabChrome();
+  const title = chromePatch?.title ?? tabHeader.title;
+  const desc = chromePatch?.desc ?? tabHeader.desc;
+  return (
+    <div
+      data-settings-close-row="1"
+      className="flex shrink-0 items-start gap-[16px] border-b border-pqLine bg-pqInner px-[28px] pb-[14px] pt-[18px]"
+    >
+      {!inEditor && (
+        <div className="min-w-0 flex-1">
+          <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
+            {title}
+          </h3>
+          {!!desc && (
+            <div className="mt-[4px] pe-[8px] text-[14px] text-pqMuted">{desc}</div>
+          )}
+        </div>
+      )}
+      <SettingsCloseButton
+        onClick={onClose}
+        label={t('close', 'Close')}
+        className="ms-auto mt-[2px] size-[32px]"
+      />
     </div>
   );
 };
@@ -533,21 +586,11 @@ export const SettingsPopup: FC<{
             <div className="min-w-0 flex-1 px-[8px] text-[16px] font-[600] text-pqText">
               {t('settings', 'Settings')}
             </div>
-            <button
-              type="button"
+            <SettingsCloseButton
               onClick={onClose || close}
-              aria-label={t('close', 'Close')}
-              className="grid size-[44px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-                <path
-                  d="M6 6l12 12M18 6 6 18"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+              label={t('close', 'Close')}
+              className="size-[44px]"
+            />
           </div>
         )}
         <div className="shrink-0 p-[14px_12px_10px]">
@@ -650,7 +693,7 @@ export const SettingsPopup: FC<{
           showIndex ? 'hidden' : 'flex-1'
         )}
       >
-        {mobile ? (
+        {mobile && (
           <div className="flex h-[52px] shrink-0 items-center gap-[4px] border-b border-pqLine px-[6px]">
             <button
               type="button"
@@ -671,42 +714,31 @@ export const SettingsPopup: FC<{
             <div className="min-w-0 flex-1 truncate text-[15px] font-[600] text-pqText">
               {tabHeader.title}
             </div>
-            <button
-              type="button"
+            <SettingsCloseButton
               onClick={onClose || close}
-              aria-label={t('close', 'Close')}
-              className="grid size-[44px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-                <path
-                  d="M6 6l12 12M18 6 6 18"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+              label={t('close', 'Close')}
+              className="size-[44px]"
+            />
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onClose || close}
-            aria-label={t('close', 'Close')}
-            className="absolute end-[16px] top-[14px] z-[4] grid h-[30px] w-[30px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-          >
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-              <path
-                d="M6 6l12 12M18 6 6 18"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
         )}
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner p-[26px_28px_34px] text-pqText mobile:p-[16px_16px_28px]">
-          <SettingsTabChromeProvider key={tab}>
-            <SettingsTabPane tabHeader={tabHeader} hideTitle={mobile}>
+        <SettingsTabChromeProvider key={tab}>
+          {!mobile && (
+            <SettingsDesktopHeader
+              tabHeader={tabHeader}
+              onClose={onClose || close}
+            />
+          )}
+          <div
+            className={clsx(
+              'min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner text-pqText',
+              mobile ? 'p-[16px_16px_28px]' : 'px-[28px] pb-[34px] pt-[6px]'
+            )}
+          >
+            <SettingsTabPane
+              tabHeader={tabHeader}
+              hideTitle
+              hideDesc={!mobile}
+            >
               {tab === 'global_settings' && (
                 <div>
                   <GlobalSettings />
@@ -787,8 +819,8 @@ export const SettingsPopup: FC<{
                 </div>
               )}
             </SettingsTabPane>
-          </SettingsTabChromeProvider>
-        </div>
+          </div>
+        </SettingsTabChromeProvider>
       </div>
     </div>
   );

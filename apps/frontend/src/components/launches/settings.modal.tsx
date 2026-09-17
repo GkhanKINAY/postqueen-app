@@ -1,5 +1,8 @@
 import React, { FC, useCallback, useState } from 'react';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  ModalFormActions,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Button } from '@gitroom/react/form/button';
@@ -72,17 +75,30 @@ export const Element: FC<{
   );
   const [value, setValue] = useState(setting.value);
   return (
-    <div className="flex flex-col gap-[10px]">
-      <div className="text-pqText">{copy.title}</div>
-      <div className="text-[14px] text-pqMuted">{copy.description}</div>
-      <Slider
-        value={value === true ? 'on' : 'off'}
-        onChange={() => {
-          setValue(!value);
-          onChange(!value);
-        }}
-        fill={true}
-      />
+    <div className="flex items-start gap-[14px] rounded-[12px] bg-pqPop p-[14px] shadow-[inset_0_0_0_1px_var(--border)]">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-[8px]">
+          <div className="text-[14px] font-[600] text-pqText">{copy.title}</div>
+          {copy.status ? (
+            <span className="inline-flex h-[22px] items-center rounded-[6px] bg-pqSettings px-[8px] text-[11.5px] font-[600] tabular-nums text-pqMuted">
+              {copy.status}
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-[4px] text-[13px] leading-[1.5] text-pqMuted">
+          {copy.description}
+        </div>
+      </div>
+      <div className="shrink-0 pt-[2px]">
+        <Slider
+          value={value === true ? 'on' : 'off'}
+          onChange={() => {
+            setValue(!value);
+            onChange(!value);
+          }}
+          fill={true}
+        />
+      </div>
     </div>
   );
 };
@@ -121,20 +137,22 @@ export const SettingsModal: FC<{
     onClose();
   }, [values, integration]);
   return (
-    <div>
-      <div className="mt-[16px]">
-        {values.map((setting: any, index: number) => (
-          <Element
-            key={setting.title}
-            setting={setting}
-            onChange={changeValue(index)}
-          />
-        ))}
-      </div>
-
-      <div className="my-[16px] flex gap-[10px]">
-        <Button onClick={save}>{t('save', 'Save')}</Button>
-      </div>
+    <div data-pq="publishing-options" className="flex flex-col gap-[14px]">
+      {values.map((setting: any, index: number) => (
+        <Element
+          key={setting.title}
+          setting={setting}
+          onChange={changeValue(index)}
+        />
+      ))}
+      <ModalFormActions onCancel={() => modal.closeAll()}>
+        <Button
+          onClick={save}
+          className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+        >
+          {t('save', 'Save')}
+        </Button>
+      </ModalFormActions>
     </div>
   );
 };

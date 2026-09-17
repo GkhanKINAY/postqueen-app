@@ -88,9 +88,10 @@ export const MultiMediaComponent: FC<{
   // (Those fields also pass `dummy`, which makes Design Media a no-op, so what
   // remains there in practice is Insert media.)
   attachmentsOnly?: boolean;
-  // First Comment still hides Integrations / AI generators, but its photos
-  // should be the same 120px overlay thumbs as the post (enlarge / edit / X
-  // inside the frame). Generator forms leave this unset.
+  // Same 120px overlay thumbs as the post (enlarge / edit / X inside the
+  // frame). First Comment uses the post toolbar too — Integrations / AI
+  // generators attach to that comment's media the same way. Generator forms
+  // leave this unset so they keep the small chips.
   largeThumbs?: boolean;
   allData: {
     content: string;

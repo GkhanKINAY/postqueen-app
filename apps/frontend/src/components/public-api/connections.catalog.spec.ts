@@ -9,6 +9,7 @@ import {
   EDITORS_DISPLAY_ORDER,
   AUTOMATION_CHILD_IDS,
   FEATURED_IDS,
+  FEATURED_CATCHALL_ID,
   ALL_PAGE_NAV_IDS,
   CONNECT_AUTOMATION_SHORTCUTS,
   CONNECT_NAV_CONNECTORS,
@@ -63,6 +64,10 @@ describe('Connect marketplace catalog', () => {
       );
     }
     assert.ok(
+      !leftoverIds.includes(FEATURED_CATCHALL_ID),
+      'Any MCP client is the Featured catch-all, not a leftover card'
+    );
+    assert.ok(
       leftover.find((g) => g.nav === 'agents')?.items.some((c) => c.id === 'claude-code')
     );
     assert.ok(
@@ -92,14 +97,21 @@ describe('Connect marketplace catalog', () => {
     );
   });
 
-  it('features Claude, ChatGPT, Cursor, Grok and Any MCP client', () => {
+  it('features Claude, ChatGPT, Cursor and Grok as a 4-up; Any MCP is the catch-all', () => {
     assert.deepEqual([...FEATURED_IDS], [
       'claude-apps',
       'chatgpt',
       'cursor',
       'grok',
-      'other-mcp',
     ]);
+    assert.equal(FEATURED_CATCHALL_ID, 'other-mcp');
+    assert.ok(!(FEATURED_IDS as readonly string[]).includes(FEATURED_CATCHALL_ID));
+    const panel = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'connect-panel.tsx'),
+      'utf8'
+    );
+    assert.match(panel, /data-pq="featured-catchall"/);
+    assert.match(panel, /FEATURED_CATCHALL_ID/);
   });
 
   it('puts coding agents under Agents, bots under Bots, editors last', () => {
@@ -223,11 +235,17 @@ describe('Connect marketplace catalog', () => {
     assert.match(chatgpt.intro, /Developer mode/);
     assert.match(chatgpt.intro, /Settings → Apps/);
     assert.match(chatgpt.intro, /not Settings → Connectors/);
+    assert.match(chatgpt.intro, /not in the ChatGPT app store/);
     assert.match(
       chatgpt.steps.map((s) => s.detail).join('\n'),
       /Apps → Create/
     );
+    assert.match(
+      chatgpt.steps.map((s) => s.detail).join('\n'),
+      /Do not search the app store/
+    );
     assert.match(chatgpt.info || '', /schedulePostTool may stay blocked/);
+    assert.match(chatgpt.info || '', /not listed in the ChatGPT app store/i);
   });
 
   it('says 17 tools and points keys at API Keys', () => {
@@ -249,7 +267,17 @@ describe('Connect marketplace catalog', () => {
       /claude\.com\/connectors|claude\.ai\/directory/
     );
     assert.match(claude.intro, /not in Anthropic/);
+    assert.match(claude.intro, /paste our public MCP URL/);
     assert.match(claude.info || '', /Not listed at claude\.com\/connectors/);
+    assert.match(claude.info || '', /Do not search the directory/);
+    assert.match(
+      claude.steps.map((s) => s.detail).join('\n'),
+      /Do not browse Connectors/
+    );
+    assert.doesNotMatch(
+      claude.steps.map((s) => s.title).join('\n'),
+      /Connect Claude Desktop|Connect claude\.ai/
+    );
   });
 
   it('keeps Claude chat and Claude Code as separate products', () => {
@@ -291,8 +319,13 @@ describe('Connect marketplace catalog', () => {
     assert.equal(grokBot.method, 'MCP');
     assert.ok(!grok.steps.some((s) => /Grok Bot/i.test(s.title)));
     assert.match(grok.intro, /Grok Bot and Grok Build are different products/);
+    assert.match(grok.intro, /not in xAI/);
     assert.match(grok.info || '', /does not install PostQueen on Grok Bot or Grok Build/);
     assert.match(grok.steps.map((s) => s.detail).join('\n'), /grok\.com\/connectors/);
+    assert.match(
+      grok.steps.map((s) => s.detail).join('\n'),
+      /Do not pick a catalog connector/
+    );
     assert.match(grokBot.intro, /not grok\.com chat/);
     assert.doesNotMatch(grokBot.intro, /grok\.com\/connectors first/);
     assert.match(
@@ -330,6 +363,7 @@ describe('Connect marketplace catalog', () => {
     const vscode = byId('vscode');
     const windsurf = byId('windsurf');
     const zed = byId('zed');
+    const cursor = byId('cursor');
     const vscodeJson = vscode.steps.map((s) => s.code || '').join('\n');
     const windsurfJson = windsurf.steps.map((s) => s.code || '').join('\n');
     const zedJson = zed.steps.map((s) => s.code || '').join('\n');
@@ -339,10 +373,24 @@ describe('Connect marketplace catalog', () => {
     assert.doesNotMatch(vscodeJson, /mcpServers/);
     assert.match(vscode.intro, /not Cursor/);
     assert.match(vscode.info || '', /Copilot CLI is a different product/);
+    assert.match(
+      vscode.steps.map((s) => s.detail).join('\n'),
+      /Do not look for PostQueen in an extension marketplace/
+    );
 
     assert.match(windsurfJson, /"serverUrl"/);
     assert.match(windsurf.intro, /mcp_config\.json/);
     assert.match(windsurf.info || '', /Devin Local/);
+    assert.match(
+      windsurf.steps.map((s) => s.detail).join('\n'),
+      /not in the Windsurf marketplace/
+    );
+
+    assert.match(cursor.intro, /not in the Cursor Marketplace/);
+    assert.match(
+      cursor.steps.map((s) => s.detail).join('\n'),
+      /Do not search the Cursor Marketplace/
+    );
 
     assert.match(zedJson, /"context_servers"/);
     assert.match(zedJson, /Authorization/);
@@ -541,6 +589,11 @@ describe('Connect marketplace catalog', () => {
           `${ex.title || ''} ${ex.body} ${ex.reply || ''}`,
           /changelog|CHANGELOG|GitHub Release|README|PR title/i,
           `${item.id} example still sounds like a developer changelog`
+        );
+        assert.doesNotMatch(
+          ex.body,
+          /Ask the client|from Copilot Chat|In Cascade,|In the Agent Panel|from Gemini CLI/i,
+          `${item.id} example is a stage direction, not a prompt: ${ex.body}`
         );
       }
     }

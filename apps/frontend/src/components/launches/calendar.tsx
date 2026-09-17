@@ -74,6 +74,7 @@ import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { CalendarMoveButton } from '@gitroom/frontend/components/layout/move-post-sheet';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -2073,10 +2074,13 @@ const CalendarItem: FC<{
           alt=""
         />
         <span className="relative size-[13px] shrink-0">
-          <img
+          <ImageWithFallback
             className="size-[13px] rounded-full object-cover"
-            src={post.integration.picture! || '/no-picture.jpg'}
+            src={post.integration.picture || ''}
+            fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
             alt=""
+            width={13}
+            height={13}
           />
         </span>
         <span className="min-w-0 truncate text-[10px] font-[700] text-pqMuted">
@@ -2170,10 +2174,13 @@ const CalendarItem: FC<{
                 src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
                 alt=""
               />
-              <img
+              <ImageWithFallback
                 className="size-[16px] shrink-0 rounded-full object-cover"
-                src={post.integration.picture! || '/no-picture.jpg'}
+                src={post.integration.picture || ''}
+                fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
                 alt=""
+                width={16}
+                height={16}
               />
               <span className="min-w-0 truncate text-[11.5px] text-pqSoft">
                 {post.integration.name}
@@ -2333,10 +2340,13 @@ const CalendarItem: FC<{
               src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
               alt=""
             />
-            <img
+            <ImageWithFallback
               className="size-[16px] shrink-0 rounded-full object-cover"
-              src={post.integration.picture! || '/no-picture.jpg'}
+              src={post.integration.picture || ''}
+              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
               alt=""
+              width={16}
+              height={16}
             />
             <span className="min-w-0 truncate text-[10px] font-[700] -tracking-[0.1px] text-pqMuted">
               {/* `dayjs.utc(...).local()`, the same reading the cell above uses to
@@ -2590,10 +2600,13 @@ const ListItem: FC<{
               src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
               alt=""
             />
-            <img
+            <ImageWithFallback
               className="size-[26px] shrink-0 rounded-[8px] object-cover"
-              src={post.integration.picture! || '/no-picture.jpg'}
+              src={post.integration.picture || ''}
+              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
               alt=""
+              width={26}
+              height={26}
             />
             <span className="min-w-0 truncate text-[13px] font-[600] text-pqText">
               {post.integration.name}

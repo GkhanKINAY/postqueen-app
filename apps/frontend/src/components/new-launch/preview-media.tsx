@@ -1,13 +1,47 @@
 'use client';
 
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
+import { MediaLightbox } from '@gitroom/frontend/components/media/media.lightbox';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   FEED_PREVIEW_FALLBACK_WH,
   X_PAIR_MOSAIC_WH,
   clampPreviewAspect,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
+
+/** Open the Media lightbox over Create Post instead of a new tab. */
+export const PreviewLightboxButton: FC<{
+  src: string;
+  className?: string;
+  children: ReactNode;
+}> = ({ src, className, children }) => {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        data-pq="preview-media-enlarge"
+        className={clsx(
+          'cursor-pointer appearance-none border-0 bg-transparent p-0 text-start',
+          className
+        )}
+        onClick={() => setOpen(true)}
+        aria-label={t('enlarge_image', 'Enlarge image')}
+      >
+        {children}
+      </button>
+      {open && (
+        <MediaLightbox
+          media={{ id: src, path: src }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+};
 
 /** One complete 4:5 card fits the preview pane; stacked cards snap into view. */
 export const PREVIEW_MEDIA_MAX_HEIGHT = 'min(34vh, 300px)';
@@ -68,18 +102,13 @@ export const PreviewMediaFrame: FC<{
         width: `min(100%, calc(${maxHeight} * ${displayWH}))`,
       }}
     >
-      <a
-        href={src}
-        target="_blank"
-        rel="noreferrer"
-        className="absolute inset-0 block"
-      >
+      <PreviewLightboxButton src={src} className="absolute inset-0 block">
         <VideoOrImage
           autoplay={autoplay}
           src={src}
           onMediaReady={aspectWH == null ? onMediaReady : undefined}
         />
-      </a>
+      </PreviewLightboxButton>
     </div>
   );
 };
@@ -121,11 +150,9 @@ export const PreviewMediaMosaic: FC<{
       }}
     >
       {shown.map((src, index) => (
-        <a
+        <PreviewLightboxButton
           key={`${src}-${index}`}
-          href={src}
-          target="_blank"
-          rel="noreferrer"
+          src={src}
           className={clsx(
             'relative block h-full min-h-0 min-w-0 overflow-hidden',
             shown.length === 3 && index === 0 && 'row-span-2'
@@ -142,7 +169,7 @@ export const PreviewMediaMosaic: FC<{
               +{extra}
             </span>
           )}
-        </a>
+        </PreviewLightboxButton>
       ))}
     </div>
   );

@@ -29,6 +29,13 @@ change is *meant* to move a list, run `--update`, **commit the baseline**, and s
 why here and in the PR. A baseline file that is absent rather than different fails
 the check: an uncommitted one would reseed itself on every CI run and guard nothing.
 
+**Account settings layout.** Name is display text plus a pencil (Save only after edit). Email and password stay collapsed behind Change. Delete Account is a danger card with a button first; email/password and an irreversible warning appear after click, then the existing confirm dialog. i18n +1 (`delete_account_warning`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
+
+**Header founding chip.** Founding member stayed on the rail (heart row) and
+dropped from the header so it is not printed twice. Gates `billingEnabled`
+57 → 55, `user.isLifetime` 25 → 24. `scripts/ui-migration-check.sh --update`
+wrote `gates.txt`.
+
 **Create Post AI Copilot trial lock.** Agents already covers Copilot with `TrialLockCard variant="overlay"` until the trial ends (or founding fee is paid). The Create Post AI Copilot rail now uses the same overlay, copy, perks, and glowing End-trial button (`isTrailing` / `lifetimePaymentPending`). Overlay scrolls if the composer rail is shorter than the Agents column. Gates `isTrailing` 19 → 21, `trialLocked` 6 → 8. `scripts/ui-migration-check.sh --update` wrote `gates.txt`.
 
 **Generate AI Image prompt helper.** Dropped the unused “What should appear in the image?” line under Prompt; the Prompt label and textarea placeholder stay. i18n −1 (`ai_image_prompt_help`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
@@ -1452,3 +1459,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Composer Copilot: warmer placeholder, smaller chips
 
 **i18n +1 −1 (`share_with_the_world` in, unused `write_something` out).** Create Post → AI Copilot input placeholder is “What do you want to share with the world?” instead of “Write something …”. A new key so locale JSON still saying “write something” cannot override it. Quick Edits chips are 28px; the textarea is 72px. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Connect: MCP URL, not a marketplace listing
+
+**i18n 0.** Same keys. Claude, ChatGPT, Grok, Cursor, VS Code and Windsurf How to connect copy now says PostQueen is not in those directories/stores. You paste the MCP URL (or JSON / CLI). Claude is one account add, not a separate Desktop vs claude.ai install. Claude's UI still labels that dialog Add custom connector; that is Anthropic's name for a remote MCP server, not a listing we published.

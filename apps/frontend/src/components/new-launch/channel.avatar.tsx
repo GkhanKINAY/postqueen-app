@@ -1,7 +1,8 @@
 'use client';
 
-import { FC, useEffect, useState } from 'react';
+import { FC } from 'react';
 import clsx from 'clsx';
+import { useFallbackUntilLoaded } from '@gitroom/react/helpers/image.with.fallback';
 import {
   channelPlatformIcon,
   channelPlatformLabel,
@@ -30,16 +31,16 @@ export const ChannelAvatar: FC<{
   badge,
   badgeSize = 14,
 }) => {
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [integration.picture]);
-
-  const showPhoto = isUsableChannelPicture(integration.picture) && !failed;
+  const iconSrc = channelPlatformIcon(integration.identifier);
+  const faceSrc = useFallbackUntilLoaded(
+    isUsableChannelPicture(integration.picture)
+      ? integration.picture
+      : undefined,
+    iconSrc
+  );
+  const showPhoto = faceSrc !== iconSrc;
   const showBadge = badge ?? showPhoto;
   const radius = rounded === 'full' ? 'rounded-full' : 'rounded-[8px]';
-  const iconSrc = channelPlatformIcon(integration.identifier);
 
   return (
     <span
@@ -55,25 +56,19 @@ export const ChannelAvatar: FC<{
           radius
         )}
       >
-        {showPhoto ? (
-          <img
-            src={integration.picture!}
-            alt={integration.name || integration.identifier}
-            width={size}
-            height={size}
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <img
-            src={iconSrc}
-            alt=""
-            width={Math.round(size * 0.64)}
-            height={Math.round(size * 0.64)}
-            className="h-[64%] w-[64%] object-contain"
-          />
-        )}
+        <img
+          src={faceSrc}
+          alt={integration.name || integration.identifier}
+          width={showPhoto ? size : Math.round(size * 0.64)}
+          height={showPhoto ? size : Math.round(size * 0.64)}
+          referrerPolicy="no-referrer"
+          decoding="async"
+          className={
+            showPhoto
+              ? 'h-full w-full object-cover'
+              : 'h-[64%] w-[64%] object-contain'
+          }
+        />
       </span>
       {showBadge && (
         <img

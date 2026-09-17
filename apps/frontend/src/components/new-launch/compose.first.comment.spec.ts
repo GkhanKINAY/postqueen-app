@@ -59,7 +59,7 @@ describe('composer first comment', () => {
     assert.match(source, /<textarea/);
     assert.match(
       source,
-      /data-pq="composer-first-comment"[\s\S]{0,220}rounded-\[14px\] bg-pqInner p-\[14px\]/,
+      /data-pq="composer-first-comment"[\s\S]{0,220}rounded-\[12px\] bg-pqInner/,
     );
     assert.match(
       source,
@@ -79,26 +79,24 @@ describe('composer first comment', () => {
     assert.match(source, /applyUnicodeUnderline/);
     assert.match(source, /insert_emoji/);
     assert.match(source, /<MultiMediaComponent/);
-    assert.match(source, /attachmentsOnly/);
-    assert.match(source, /largeThumbs/);
+    assert.doesNotMatch(source, /attachmentsOnly/);
+    assert.doesNotMatch(source, /largeThumbs/);
     assert.match(bold, /export function applyUnicodeBold/);
     assert.match(underline, /export function applyUnicodeUnderline/);
   });
 
-  it('keeps delay distinct from Bold / Signature / emoji chips', () => {
-    assert.match(source, /data-pq="composer-first-comment-meta"/);
-    assert.match(source, /<DelayComponent/);
-    assert.match(source, /toolbar/);
-    assert.match(delay, /toolbar\?: boolean/);
-    assert.match(delay, /data-pq=\{toolbar \? 'composer-comment-delay'/);
-    assert.match(delay, /t\('delay_comment', 'Delay comment'\)/);
-    assert.match(delay, /data-tooltip-id=\{toolbar \? undefined : 'tooltip'\}/);
-    const toolbarClass = delay.slice(
-      delay.indexOf("toolbar\n            ? '"),
-      delay.indexOf(": 'h-[24px]"),
+  it('puts Delay next to Remove, not in the media toolbar', () => {
+    const header = source.slice(
+      source.indexOf('data-pq="composer-first-comment"'),
+      source.indexOf('data-pq="composer-first-comment-tools"'),
     );
-    assert.match(toolbarClass, /text-pqMuted/);
-    assert.doesNotMatch(toolbarClass, /bg-pqBtnSimple/);
+    assert.match(header, /<DelayComponent/);
+    assert.match(header, /toolbar/);
+    assert.match(header, /data-pq="composer-first-comment-remove"/);
+    assert.match(header, /DelayComponent[\s\S]+composer-first-comment-remove/);
+    assert.doesNotMatch(source, /data-pq="composer-first-comment-meta"/);
+    assert.match(delay, /data-pq="composer-comment-delay"/);
+    assert.match(delay, /t\('delay_comment', 'Delay comment'\)/);
   });
 
   it('reuses the post character counter — empty open comments are invalid', () => {
@@ -128,6 +126,11 @@ describe('composer first comment', () => {
       /firstCommentMode =\s*canEdit && postComment !== PostComment\.POST/,
     );
     assert.match(editor, /data-pq="composer-comments"/);
+    assert.match(editor, /data-pq="composer-comment-thread"/);
+    assert.match(
+      editor,
+      /data-pq="composer-comment-thread"[\s\S]{0,220}h-\[14px\] w-px bg-pqLine/,
+    );
     assert.match(
       editor,
       /\{comments \? \(\s*<div className="self-start">\s*<AddPostButton/,
@@ -170,6 +173,14 @@ describe('composer first comment', () => {
     assert.match(source, /onRemove \? \(/);
     assert.match(source, /t\('remove', 'Remove'\)/);
     assert.doesNotMatch(editor, /commentIndex > 1/);
+  });
+
+  it('does not jump the write pane to Settings when adding another comment', () => {
+    assert.doesNotMatch(editor, /\.scrollHeight/);
+    assert.doesNotMatch(editor, /#social-content'\)\.scrollTo/);
+    assert.match(editor, /\[data-pq="composer-first-comment"\]/);
+    assert.match(editor, /scrollIntoView\(\{ block: 'nearest'/);
+    assert.match(editor, /focus\(\{ preventScroll: true \}\)/);
   });
 
   it('does not preview or publish empty follow-up comments', () => {

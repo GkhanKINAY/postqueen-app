@@ -11,7 +11,10 @@ import timezone from 'dayjs/plugin/timezone';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 // @ts-ignore
 import useKeypress from 'react-use-keypress';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  ModalFormActions,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import { sortBy } from 'lodash';
 import { usePreventWindowUnload } from '@gitroom/react/helpers/use.prevent.window.unload';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -136,16 +139,15 @@ export const TimeTable: FC<{
   }, [currentTimes]);
 
   return (
-    <div className="relative w-full max-w-[400px] mx-auto">
-      {/* Add Time Slot Section */}
-      <div className="bg-pqInner rounded-[12px] p-[20px] border border-newTableBorder">
-        <div className="text-[15px] font-semibold mb-[16px] flex items-center gap-[8px]">
-          <DelayIcon size={18} className="text-pqBrand" />
+    <div data-pq="time-table" className="flex flex-col gap-[14px]">
+      <div className="rounded-[12px] bg-pqPop p-[14px] shadow-[inset_0_0_0_1px_var(--border)]">
+        <div className="mb-[12px] flex items-center gap-[8px] text-[14px] font-[600] text-pqText">
+          <DelayIcon size={16} className="text-pqBrand" />
           {t('add_time_slot', 'Add Time Slot')}
         </div>
 
-        <div className="flex gap-[12px] items-end">
-          <div className="flex-1">
+        <div className="flex items-end gap-[10px]">
+          <div className="min-w-0 flex-1">
             <Select
               label={t('hour', 'Hour')}
               name="hour"
@@ -161,7 +163,7 @@ export const TimeTable: FC<{
               ))}
             </Select>
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Select
               label={t('minutes', 'Minutes')}
               name="minutes"
@@ -180,7 +182,7 @@ export const TimeTable: FC<{
           <button
             type="button"
             onClick={addHour}
-            className="h-[42px] px-[16px] bg-pqBrand hover:bg-[#7640e0] transition-colors rounded-[8px] flex items-center gap-[6px] text-white text-[14px] font-medium"
+            className="flex h-[40px] shrink-0 items-center gap-[6px] rounded-[10px] bg-pqBrand px-[14px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
           >
             <PlusIcon size={14} />
             {t('add', 'Add')}
@@ -188,14 +190,13 @@ export const TimeTable: FC<{
         </div>
       </div>
 
-      {/* Time Slots List */}
-      <div className="mt-[20px]">
-        <div className="text-[14px] text-newTextColor/60 mb-[12px]">
+      <div>
+        <div className="mb-[8px] text-[12.5px] font-[500] text-pqMuted">
           {t('scheduled_times', 'Scheduled Times')} ({times.length})
         </div>
 
         {times.length === 0 ? (
-          <div className="text-center py-[32px] text-newTextColor/40 text-[14px] border border-dashed border-newTableBorder rounded-[12px]">
+          <div className="rounded-[12px] px-[14px] py-[22px] text-center text-[13px] text-pqSoft shadow-[inset_0_0_0_1px_var(--border)]">
             {t('no_time_slots', 'No time slots added yet')}
           </div>
         ) : (
@@ -204,22 +205,20 @@ export const TimeTable: FC<{
               <div
                 key={`${timeSlot.value}-${index}`}
                 className={clsx(
-                  'group flex items-center justify-between',
-                  'h-[48px] px-[16px] rounded-[8px]',
-                  'bg-pqInner border border-newTableBorder',
-                  'hover:border-[color-mix(in_srgb,var(--brand)_40%,transparent)] transition-colors'
+                  'group flex h-[44px] items-center justify-between rounded-[10px] bg-pqPop px-[14px]',
+                  'shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow] hover:shadow-[inset_0_0_0_1px_var(--brand)]'
                 )}
               >
-                <div className="flex items-center gap-[12px]">
-                  <div className="w-[8px] h-[8px] rounded-full bg-pqBrand" />
-                  <span className="text-[15px] font-medium tabular-nums">
+                <div className="flex items-center gap-[10px]">
+                  <div className="h-[8px] w-[8px] rounded-full bg-pqBrand" />
+                  <span className="text-[14px] font-[600] tabular-nums text-pqText">
                     {timeSlot.formatted}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={removeSlot(index)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-[8px] hover:bg-red-500/10 rounded-[6px] text-red-400 hover:text-red-500"
+                  className="rounded-[8px] p-[8px] text-pqMuted opacity-0 transition-opacity hover:bg-pqDangerSoft hover:text-pqDanger group-hover:opacity-100"
                 >
                   <TrashIcon size={16} />
                 </button>
@@ -229,19 +228,20 @@ export const TimeTable: FC<{
         )}
       </div>
 
-      {/* Save Button */}
-      <div className="mt-[24px]">
-        {/* A channel with no slots contributes nothing to slot-based
-            scheduling, so the API rejects an empty list — say that here
-            instead of letting the request fail. */}
-        <Button
-          type="button"
-          className="w-full rounded-[8px]"
-          onClick={save}
-          disabled={!currentTimes.length}
-        >
-          {t('save_changes', 'Save Changes')}
-        </Button>
+      {/* A channel with no slots contributes nothing to slot-based
+          scheduling, so the API rejects an empty list — say that here
+          instead of letting the request fail. */}
+      <div>
+        <ModalFormActions onCancel={closeWithoutConfirm}>
+          <Button
+            type="button"
+            className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+            onClick={save}
+            disabled={!currentTimes.length}
+          >
+            {t('save_changes', 'Save Changes')}
+          </Button>
+        </ModalFormActions>
         {!currentTimes.length && (
           <p className="mt-[8px] text-[12.5px] text-pqMuted">
             {t('time_slots_required', 'Add at least one time slot to save.')}

@@ -197,7 +197,6 @@ const HeaderIcon = ({ children }: { children: ReactNode }) => {
 const AppChrome = ({ children }: { children: ReactNode }) => {
   const t = useT();
   const user = useUser();
-  const { billingEnabled } = useVariables();
   const { mobile, tablet } = useViewport();
   // Same cookie idiom as the calendar's own collapsible column.
   const [railCookie, setRailCookie] = useCookie('railCollapsed', '0');
@@ -259,10 +258,6 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
     setDrawer(tourStep === 'connect-pq' || tourStep === 'nav-channels');
   }, [mobile, tourStep]);
 
-  // Lifetime / founding only — not ordinary trials (matches rail isFoundingRail).
-  // A hosted-service state: with billing off there is no founding to show.
-  const showFoundingChip = !mobile && billingEnabled && !!user?.isLifetime;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header
@@ -312,25 +307,6 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
         >
           <Title />
         </div>
-
-        {showFoundingChip && (
-          <span
-            data-hdr-thanks="1"
-            className="me-[2px] inline-flex h-[28px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-full bg-pqLtChipBg px-[11px] text-[12px] font-[600] text-pqLtAmber shadow-[inset_0_0_0_1px_var(--ltOutline)]"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="13"
-              height="13"
-              fill="currentColor"
-              className="shrink-0"
-              aria-hidden="true"
-            >
-              <path d="M12 20.5 4.2 13a4.6 4.6 0 0 1 6.5-6.5l1.3 1.3 1.3-1.3A4.6 4.6 0 1 1 19.8 13L12 20.5Z" />
-            </svg>
-            {t('founding_member', 'Founding member')}
-          </span>
-        )}
 
         {/* End cluster: Create Post → tools → identity. One hairline only.
             Create Post is chrome, not a page action: it is the app's primary

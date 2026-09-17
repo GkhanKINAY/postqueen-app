@@ -10,7 +10,7 @@ import {
   PlugsContext,
   PlugsInterface,
 } from '@gitroom/frontend/components/plugs/plugs.context';
-import { PlugPop } from '@gitroom/frontend/components/plugs/plug';
+import { PlugPop, plugDialogWidth } from '@gitroom/frontend/components/plugs/plug';
 import { Slider } from '@gitroom/react/form/slider';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import clsx from 'clsx';
@@ -70,6 +70,7 @@ const ChannelPlugRow: FC<{
         mutate();
       },
       title: `${t('auto_plug', 'Auto Plug')}: ${plug.title}`,
+      compact: plugDialogWidth(plug.fields),
       children: (
         <PlugPop
           plug={plug}

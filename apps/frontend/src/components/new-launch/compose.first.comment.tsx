@@ -164,30 +164,37 @@ export const ComposeFirstComment: FC<{
   return (
     <div
       data-pq="composer-first-comment"
-      className="flex min-w-0 flex-col gap-[12px] rounded-[14px] bg-pqInner p-[14px] shadow-[inset_0_0_0_1px_var(--border)]"
+      className="flex min-w-0 flex-col overflow-hidden rounded-[12px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]"
       onFocusCapture={() => {
         onActivate();
       }}
     >
-      <div className="flex items-center justify-between gap-[8px]">
+      <div className="flex items-center justify-between gap-[8px] px-[12px] pt-[12px]">
         <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
           {commentIndex === 1
             ? t('first_comment', 'First Comment')
             : t('comments', 'Comments')}
         </div>
-        {onRemove ? (
-          <button
-            type="button"
-            onClick={onRemove}
-            data-tooltip-id="tooltip"
-            data-pq="composer-first-comment-remove"
-            data-tooltip-content={t('remove', 'Remove')}
-            aria-label={t('remove', 'Remove')}
-            className="grid size-[28px] cursor-pointer place-items-center rounded-[6px] text-pqWarn transition-colors hover:bg-pqHover"
-          >
-            <TrashIcon size={16} />
-          </button>
-        ) : null}
+        <div className="flex items-center gap-[2px]">
+          <DelayComponent
+            toolbar
+            currentIndex={commentIndex}
+            currentDelay={delay}
+          />
+          {onRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              data-tooltip-id="tooltip"
+              data-pq="composer-first-comment-remove"
+              data-tooltip-content={t('remove', 'Remove')}
+              aria-label={t('remove', 'Remove')}
+              className="grid size-[36px] cursor-pointer place-items-center rounded-[8px] text-pqWarn transition-colors hover:bg-pqHover"
+            >
+              <TrashIcon size={16} />
+            </button>
+          ) : null}
+        </div>
       </div>
       <textarea
         ref={inputRef}
@@ -200,7 +207,7 @@ export const ComposeFirstComment: FC<{
             ? t('first_comment', 'First Comment')
             : t('add_comment', 'Add comment')
         }
-        className="min-h-[64px] w-full resize-none rounded-[10px] border-0 bg-pqSettings px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="min-h-[64px] w-full resize-none border-0 bg-transparent px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none placeholder:text-pqMuted"
       />
       <div
         data-pq="composer-first-comment-tools"
@@ -214,8 +221,6 @@ export const ComposeFirstComment: FC<{
         }}
       >
         <MultiMediaComponent
-          attachmentsOnly
-          largeThumbs
           mediaNotAvailable={comments === 'no-media'}
           allData={allValues}
           text={value}
@@ -291,27 +296,14 @@ export const ComposeFirstComment: FC<{
             </div>
           }
           information={
-            <div
-              data-pq="composer-first-comment-meta"
-              className="flex items-center gap-[8px] border-s border-pqLine ps-[8px]"
-              onMouseDown={() => {
-                onActivate();
-              }}
-            >
-              <DelayComponent
-                toolbar
-                currentIndex={commentIndex}
-                currentDelay={delay}
-              />
-              <InformationComponent
-                variant="comment"
-                isPicture={!!pictures?.length}
-                chars={chars}
-                totalChars={value.length}
-                totalAllowedChars={totalAllowedChars}
-                text={value}
-              />
-            </div>
+            <InformationComponent
+              variant="comment"
+              isPicture={!!pictures?.length}
+              chars={chars}
+              totalChars={value.length}
+              totalAllowedChars={totalAllowedChars}
+              text={value}
+            />
           }
           onChange={(event) => {
             setImages(event.target.value || []);

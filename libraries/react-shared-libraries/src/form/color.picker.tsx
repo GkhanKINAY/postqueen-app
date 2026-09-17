@@ -8,7 +8,7 @@ import { Button } from './button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { TranslatedLabel } from '../translation/translated-label';
 
-const COLOR_PRESETS = [
+export const COLOR_PRESETS = [
   '#7C3AED',
   '#2563EB',
   '#0EA5E9',
@@ -20,6 +20,8 @@ const COLOR_PRESETS = [
   '#6B7280',
   '#111827',
 ];
+
+export const DEFAULT_COLOR = COLOR_PRESETS[0];
 
 export const ColorPicker: FC<{
   name: string;
@@ -103,7 +105,10 @@ export const ColorPicker: FC<{
           )}
         </div>
       )}
-      <div className="flex flex-wrap gap-[8px]">
+      <div
+        data-pq="color-presets"
+        className="flex flex-wrap gap-[8px] p-[4px]"
+      >
         {COLOR_PRESETS.map((hex) => {
           const selected = current.toLowerCase() === hex.toLowerCase();
           return (
@@ -124,21 +129,26 @@ export const ColorPicker: FC<{
           );
         })}
       </div>
-      <div className="overflow-hidden rounded-[10px] [&_.react-colorful]:h-[148px] [&_.react-colorful]:w-full">
-        <HexColorPicker color={current || '#FFFFFF'} onChange={setColor} />
-      </div>
-      <div className="flex h-[40px] items-center gap-[10px] rounded-[10px] bg-pqInner px-[10px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
-        <span
-          className="size-[22px] shrink-0 rounded-[6px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_18%,transparent)]"
-          style={{ backgroundColor: current || '#FFFFFF' }}
-        />
-        <input
-          value={current}
-          spellCheck={false}
-          aria-label={label}
-          onChange={(event) => setColor(event.target.value)}
-          className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] uppercase tracking-[0.04em] text-pqText outline-none placeholder:text-pqMuted"
-        />
+      <div className="flex flex-wrap items-start gap-[12px]">
+        <div className="w-[220px] overflow-hidden rounded-[10px] [&_.react-colorful]:h-[148px] [&_.react-colorful]:w-[220px]">
+          <HexColorPicker color={current || '#FFFFFF'} onChange={setColor} />
+        </div>
+        <div
+          data-pq="color-hex"
+          className="flex h-[40px] w-[148px] shrink-0 items-center gap-[10px] rounded-[10px] bg-pqInner px-[10px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]"
+        >
+          <span
+            className="size-[22px] shrink-0 rounded-[6px] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_18%,transparent)]"
+            style={{ backgroundColor: current || '#FFFFFF' }}
+          />
+          <input
+            value={current}
+            spellCheck={false}
+            aria-label={label}
+            onChange={(event) => setColor(event.target.value)}
+            className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] uppercase tracking-[0.04em] text-pqText outline-none placeholder:text-pqMuted"
+          />
+        </div>
       </div>
     </div>
   );

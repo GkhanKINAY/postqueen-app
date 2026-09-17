@@ -1043,6 +1043,7 @@ delete_account
 delete_account_confirm
 delete_account_description
 delete_account_password_hint
+delete_account_warning
 delete_announcement
 delete_announcement_confirm
 delete_app

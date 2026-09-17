@@ -17,6 +17,32 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import DeleteAccountComponent from '@gitroom/frontend/components/settings/delete-account.component';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { isLinkOauthState } from '@gitroom/frontend/components/auth/google-login-return';
+import { modalFieldClass } from '@gitroom/frontend/components/layout/new-modal';
+import clsx from 'clsx';
+
+const quietBtn =
+  'h-[32px] shrink-0 rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover';
+
+const ghostBtn =
+  'h-[40px] shrink-0 rounded-[10px] px-[13px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText';
+
+const PencilIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="15"
+    height="15"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -91,6 +117,7 @@ export const UserAccountComponent = () => {
   const detectedTz = useMemo(() => dayjs.tz.guess(), []);
 
   const [name, setName] = useState(user?.name || '');
+  const [nameOpen, setNameOpen] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [nextEmail, setNextEmail] = useState('');
@@ -170,6 +197,10 @@ export const UserAccountComponent = () => {
 
   const saveName = useCallback(async () => {
     const fullname = name.trim();
+    if (fullname === (user?.name || '').trim()) {
+      setNameOpen(false);
+      return;
+    }
     if (fullname.length < 3) {
       toaster.show(
         t('name_too_short', 'Name must be at least 3 characters'),
@@ -189,10 +220,11 @@ export const UserAccountComponent = () => {
       }
       await revalidateIdentity({ name: fullname });
       toaster.show(t('settings_updated', 'Settings updated'), 'success');
+      setNameOpen(false);
     } finally {
       setSavingName(false);
     }
-  }, [name, fetch, toaster, t, revalidateIdentity]);
+  }, [name, user?.name, fetch, toaster, t, revalidateIdentity]);
 
   const requestEmail = useCallback(async () => {
     setSavingAuth(true);
@@ -394,8 +426,10 @@ export const UserAccountComponent = () => {
     );
   }
 
+  const nameDirty = name.trim() !== (user?.name || '').trim();
+
   return (
-    <div className="mt-[18px] flex flex-col gap-[10px]">
+    <div data-pq="account-settings" className="mt-[18px] flex flex-col gap-[10px]">
       <div className="rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
         <div className="text-[13.5px] font-[600] text-pqText">
           {t('profile', 'Profile')}
@@ -403,93 +437,161 @@ export const UserAccountComponent = () => {
         <div className="mt-[2px] text-[12px] text-pqMuted">
           {t('profile_description', 'Your name as it appears to your team.')}
         </div>
-        <label className="mt-[12px] flex flex-col gap-[5px]">
-          <span className="text-[13px] font-[500] text-pqMuted">
-            {t('name', 'Name')}
-          </span>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
-          />
-        </label>
-        <div className="mt-[12px]">
-          <Button loading={savingName} onClick={saveName}>
-            {t('save', 'Save')}
-          </Button>
-        </div>
-        <div className="mt-[16px] text-[13px] font-[500] text-pqMuted">
-          {t('email', 'Email')}
-        </div>
-        <div className="mt-[4px] text-[13.5px] font-[500] text-pqText">
-          {user?.email}
-        </div>
-        {!emailOpen ? (
-          <button
-            type="button"
-            onClick={() => setEmailOpen(true)}
-            className="mt-[10px] h-[32px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover"
+        {!nameOpen ? (
+          <div
+            data-pq="account-name"
+            className="mt-[14px] flex items-center gap-[10px]"
           >
-            {t('change', 'Change')}
-          </button>
+            <div className="min-w-0 flex-1 truncate text-[15px] font-[600] text-pqText">
+              {user?.name || t('name', 'Name')}
+            </div>
+            <button
+              type="button"
+              aria-label={t('edit', 'Edit')}
+              onClick={() => {
+                setName(user?.name || '');
+                setNameOpen(true);
+              }}
+              className="grid size-[32px] shrink-0 place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+            >
+              <PencilIcon />
+            </button>
+          </div>
         ) : (
-          <div className="mt-[12px] flex flex-col gap-[10px]">
+          <div data-pq="account-name-edit" className="mt-[14px] flex flex-col gap-[10px]">
             <input
-              type="email"
-              value={nextEmail}
-              onChange={(event) => setNextEmail(event.target.value)}
-              placeholder={t('new_email', 'New email')}
-              className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+              value={name}
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void saveName();
+                }
+                if (event.key === 'Escape') {
+                  setName(user?.name || '');
+                  setNameOpen(false);
+                }
+              }}
+              className={modalFieldClass}
             />
-            {hasPassword && (
-              <input
-                type="password"
-                value={emailPassword}
-                onChange={(event) => setEmailPassword(event.target.value)}
-                placeholder={t('current_password', 'Current password')}
-                className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
-              />
-            )}
-            <div className="flex gap-[6px]">
-              <Button loading={savingAuth} onClick={requestEmail}>
-                {t('send_confirmation', 'Send confirmation')}
+            <div className="flex flex-wrap items-center justify-end gap-[8px]">
+              <Button
+                loading={savingName}
+                disabled={!nameDirty}
+                onClick={saveName}
+                className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+              >
+                {t('save', 'Save')}
               </Button>
               <button
                 type="button"
-                onClick={() => setEmailOpen(false)}
-                className="h-[40px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqMuted"
+                onClick={() => {
+                  setName(user?.name || '');
+                  setNameOpen(false);
+                }}
+                className={ghostBtn}
               >
                 {t('cancel', 'Cancel')}
               </button>
             </div>
           </div>
         )}
+
+        <div className="mt-[16px] border-t border-pqLine pt-[16px]">
+          <div className="flex items-start justify-between gap-[12px]">
+            <div className="min-w-0">
+              <div className="text-[13px] font-[500] text-pqMuted">
+                {t('email', 'Email')}
+              </div>
+              <div className="mt-[4px] truncate text-[14px] font-[600] text-pqText">
+                {user?.email}
+              </div>
+            </div>
+            {!emailOpen && (
+              <button
+                type="button"
+                onClick={() => setEmailOpen(true)}
+                className={quietBtn}
+              >
+                {t('change', 'Change')}
+              </button>
+            )}
+          </div>
+          {emailOpen && (
+            <div className="mt-[12px] flex flex-col gap-[10px]">
+              <input
+                type="email"
+                value={nextEmail}
+                onChange={(event) => setNextEmail(event.target.value)}
+                placeholder={t('new_email', 'New email')}
+                className={modalFieldClass}
+                autoComplete="email"
+              />
+              {hasPassword && (
+                <input
+                  type="password"
+                  value={emailPassword}
+                  onChange={(event) => setEmailPassword(event.target.value)}
+                  placeholder={t('current_password', 'Current password')}
+                  className={modalFieldClass}
+                  autoComplete="current-password"
+                />
+              )}
+              <div className="flex flex-wrap items-center justify-end gap-[8px]">
+                <Button
+                  loading={savingAuth}
+                  onClick={requestEmail}
+                  className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+                >
+                  {t('send_confirmation', 'Send confirmation')}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailOpen(false);
+                    setNextEmail('');
+                    setEmailPassword('');
+                  }}
+                  className={ghostBtn}
+                >
+                  {t('cancel', 'Cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="text-[13.5px] font-[600] text-pqText">
-          {t('password', 'Password')}
+        <div className="flex items-start justify-between gap-[12px]">
+          <div className="min-w-0">
+            <div className="text-[13.5px] font-[600] text-pqText">
+              {t('password', 'Password')}
+            </div>
+            <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
+              {hasPassword
+                ? t(
+                    'change_password_description',
+                    'Changing your password signs out other sessions.'
+                  )
+                : t(
+                    'set_password_description',
+                    'Add a password so you can sign in with email as well.'
+                  )}
+            </div>
+          </div>
+          {!passwordOpen && (
+            <button
+              type="button"
+              onClick={() => setPasswordOpen(true)}
+              className={quietBtn}
+            >
+              {hasPassword ? t('change', 'Change') : t('set_password', 'Set password')}
+            </button>
+          )}
         </div>
-        <div className="mt-[2px] text-[12px] text-pqMuted">
-          {hasPassword
-            ? t(
-                'change_password_description',
-                'Changing your password signs out other sessions.'
-              )
-            : t(
-                'set_password_description',
-                'Add a password so you can sign in with email as well.'
-              )}
-        </div>
-        {!passwordOpen ? (
-          <button
-            type="button"
-            onClick={() => setPasswordOpen(true)}
-            className="mt-[12px] h-[32px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover"
-          >
-            {hasPassword ? t('change', 'Change') : t('set_password', 'Set password')}
-          </button>
-        ) : (
+        {passwordOpen && (
           <div className="mt-[12px] flex flex-col gap-[10px]">
             {hasPassword && (
               <input
@@ -497,7 +599,8 @@ export const UserAccountComponent = () => {
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
                 placeholder={t('current_password', 'Current password')}
-                className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+                className={modalFieldClass}
+                autoComplete="current-password"
               />
             )}
             <input
@@ -505,23 +608,34 @@ export const UserAccountComponent = () => {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder={t('new_password', 'New password')}
-              className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+              className={modalFieldClass}
+              autoComplete="new-password"
             />
             <input
               type="password"
               value={repeatPassword}
               onChange={(event) => setRepeatPassword(event.target.value)}
               placeholder={t('repeat_password', 'Repeat password')}
-              className="h-[40px] rounded-[10px] bg-pqTableHeader px-[12px] text-[14px] text-pqText outline-none shadow-[inset_0_0_0_1px_var(--border)] focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+              className={modalFieldClass}
+              autoComplete="new-password"
             />
-            <div className="flex gap-[6px]">
-              <Button loading={savingAuth} onClick={savePassword}>
+            <div className="flex flex-wrap items-center justify-end gap-[8px]">
+              <Button
+                loading={savingAuth}
+                onClick={savePassword}
+                className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+              >
                 {t('save', 'Save')}
               </Button>
               <button
                 type="button"
-                onClick={() => setPasswordOpen(false)}
-                className="h-[40px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqMuted"
+                onClick={() => {
+                  setPasswordOpen(false);
+                  setCurrentPassword('');
+                  setPassword('');
+                  setRepeatPassword('');
+                }}
+                className={ghostBtn}
               >
                 {t('cancel', 'Cancel')}
               </button>
@@ -535,48 +649,59 @@ export const UserAccountComponent = () => {
           <div className="text-[13.5px] font-[600] text-pqText">
             {t('connected_accounts', 'Connected accounts')}
           </div>
-          <div className="mt-[2px] text-[12px] text-pqMuted">
+          <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
             {t(
               'connected_accounts_description',
               'Link a sign-in method. You cannot unlink the last one unless a password is set.'
             )}
           </div>
           <div className="mt-[12px] flex flex-col">
-            {providers.map((row) => (
-              <div
-                key={row.provider}
-                className="flex items-center justify-between gap-[12px] border-b border-pqLine py-[10px] last:border-b-0"
-              >
-                <div>
-                  <div className="text-[13.5px] font-[600] text-pqText">
-                    {providerLabel(row.provider, t, oauthDisplayName)}
+            {providers.map((row) => {
+              const label = providerLabel(row.provider, t, oauthDisplayName);
+              return (
+                <div
+                  key={row.provider}
+                  className="flex items-center gap-[12px] border-b border-pqLine py-[10px] last:border-b-0"
+                >
+                  <span className="grid size-[36px] shrink-0 place-items-center rounded-[10px] bg-pqSettings text-[13px] font-[700] text-pqText">
+                    {label.charAt(0)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13.5px] font-[600] text-pqText">
+                      {label}
+                    </div>
+                    <div
+                      className={clsx(
+                        'mt-[1px] text-[12px]',
+                        row.linked ? 'text-pqMuted' : 'text-pqSoft'
+                      )}
+                    >
+                      {row.linked
+                        ? t('linked', 'Linked')
+                        : t('not_connected', 'Not connected')}
+                    </div>
                   </div>
-                  <div className="text-[12px] text-pqMuted">
-                    {row.linked
-                      ? t('linked', 'Linked')
-                      : t('not_connected', 'Not connected')}
-                  </div>
+                  {row.linked ? (
+                    <button
+                      type="button"
+                      onClick={() => unlinkProvider(row.provider)}
+                      disabled={!data?.canUnlink}
+                      className="h-[32px] shrink-0 rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqDanger shadow-[inset_0_0_0_1px_var(--dangerLine)] transition-colors hover:bg-pqDangerSoft disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {t('unlink', 'Unlink')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => connectProvider(row.provider)}
+                      className="h-[32px] shrink-0 rounded-pqSm bg-pqBrand px-[13px] text-[12.5px] font-[600] text-pqOnBrand hover:bg-pqBrandHover"
+                    >
+                      {t('connect', 'Connect')}
+                    </button>
+                  )}
                 </div>
-                {row.linked ? (
-                  <button
-                    type="button"
-                    onClick={() => unlinkProvider(row.provider)}
-                    disabled={!data?.canUnlink}
-                    className="h-[32px] rounded-pqSm px-[13px] text-[12.5px] font-[500] text-pqWarn shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {t('unlink', 'Unlink')}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => connectProvider(row.provider)}
-                    className="h-[32px] rounded-pqSm bg-pqBrand px-[13px] text-[12.5px] font-[600] text-pqOnBrand hover:bg-pqBrandHover"
-                  >
-                    {t('connect', 'Connect')}
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -587,13 +712,13 @@ export const UserAccountComponent = () => {
             <div className="text-[13.5px] font-[600] text-pqText">
               {t('timezone', 'Timezone')}
             </div>
-            <div className="mt-[2px] text-[12px] text-pqMuted">
+            <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
               {t(
                 'timezone_display_description',
                 'Used for notifications and how times are shown. Channel post slots keep their own offsets.'
               )}
             </div>
-            <div className="mt-[10px] text-[13px] font-[500] text-pqText">
+            <div className="mt-[10px] text-[13.5px] font-[600] text-pqText">
               {currentTz}
             </div>
             {currentTz !== detectedTz && (
