@@ -34,7 +34,8 @@ export class UploadsController {
   async serve(
     @Param('key') key: string,
     @Res() res: Response,
-    @Headers('if-none-match') ifNoneMatch?: string
+    @Headers('if-none-match') ifNoneMatch?: string,
+    @Headers('range') range?: string
   ) {
     if (
       process.env.STORAGE_PROVIDER !== 'cloudflare' ||
@@ -44,7 +45,18 @@ export class UploadsController {
       return;
     }
 
-    const object = await readFromR2(key);
+    // Range is not a nicety here. Video upload to TikTok and YouTube reads the
+    // file back through this endpoint one chunk at a time and refuses anything
+    // but a 206, because a store that answers a ranged request with the whole
+    // object would corrupt the upload at that offset. Without this, posting a
+    // video failed for every account on cloudflare storage with "the media
+    // storage did not return the requested byte range". It is also what lets a
+    // browser seek within a video instead of downloading all of it first.
+    const object = await readFromR2(key, range);
+    if (object === 'range-not-satisfiable') {
+      res.status(416).end();
+      return;
+    }
     if (!object) {
       res.status(404).end();
       return;
@@ -84,6 +96,14 @@ export class UploadsController {
     );
     if (object.contentLength) {
       res.setHeader('Content-Length', String(object.contentLength));
+    }
+
+    // Advertised even on a whole-object response, so a client knows it may ask
+    // for a part next time instead of pulling the file again to seek in it.
+    res.setHeader('Accept-Ranges', 'bytes');
+    if (object.contentRange) {
+      res.setHeader('Content-Range', object.contentRange);
+      res.status(206);
     }
 
     object.body.on('error', () => res.destroy());
