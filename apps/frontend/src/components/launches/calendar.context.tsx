@@ -46,6 +46,35 @@ function localDayKey(publishDate: string | Date) {
   return dayjs.utc(publishDate).local().format('YYYY-MM-DD');
 }
 
+// A post the platform has been handed but has not confirmed yet: QUEUE with its
+// publish time behind us, the same condition the cards paint as PUBLISHING.
+function hasPostInFlight(data?: {
+  posts?: Array<{ state?: string; publishDate?: string | Date }>;
+}) {
+  const now = dayjs();
+  return (data?.posts || []).some(
+    (p) =>
+      p?.state === 'QUEUE' &&
+      !!p?.publishDate &&
+      now.isAfter(dayjs.utc(p.publishDate))
+  );
+}
+
+/**
+ * The row goes PUBLISHED (or ERROR) on the server with nothing to tell the
+ * browser, so a card that says PUBLISHING would keep saying it until the next
+ * reload. While one is on screen the fetch is repeated often enough that the
+ * outcome lands on its own; the rest of the time it stays on the old hourly
+ * beat. `refreshWhenHidden` is false either way, so a tab left open in the
+ * background does not poll.
+ */
+const IN_FLIGHT_REFRESH = 15000;
+const IDLE_REFRESH = 3600000;
+
+function refreshFor(data: any) {
+  return hasPostInFlight(data) ? IN_FLIGHT_REFRESH : IDLE_REFRESH;
+}
+
 export type ListStateFilter = 'all' | 'scheduled' | 'draft' | 'published';
 /** Posts panel tabs — no All (design queue inventory). */
 export type PanelListStateFilter = 'scheduled' | 'draft' | 'published';
@@ -568,7 +597,7 @@ export const CalendarWeekProvider: FC<{
     filters.display !== 'list' ? `/posts-${params}` : null,
     loadData,
     {
-      refreshInterval: 3600000,
+      refreshInterval: refreshFor,
       refreshWhenOffline: false,
       refreshWhenHidden: false,
       revalidateOnFocus: false,
@@ -589,7 +618,7 @@ export const CalendarWeekProvider: FC<{
       : null,
     loadListData,
     {
-      refreshInterval: 3600000,
+      refreshInterval: refreshFor,
       refreshWhenOffline: false,
       refreshWhenHidden: false,
       revalidateOnFocus: false,
