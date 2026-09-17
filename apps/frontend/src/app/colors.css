@@ -22,7 +22,8 @@
     --hatch: rgba(255, 255, 255, 0.035);
     /* Scrollbar thumb. Design's global rule (prototype `::-webkit-scrollbar`)
        — it inks the thumb only, over a transparent track. */
-    --scrollThumb: rgba(255, 255, 255, 0.14);
+    --scrollThumb: rgba(255, 255, 255, 0.24);
+    --scrollThumbHover: rgba(255, 255, 255, 0.38);
     --bg: #0b0b0d;
     --inner: #131316;
     --line: rgba(255, 255, 255, 0.07);
@@ -192,7 +193,8 @@
   .light {
     --brandFaint: rgba(124, 58, 237, 0.05);
     --hatch: rgba(9, 9, 11, 0.05);
-    --scrollThumb: rgba(9, 9, 11, 0.16);
+    --scrollThumb: rgba(9, 9, 11, 0.28);
+    --scrollThumbHover: rgba(9, 9, 11, 0.44);
     --bg: #f1f1f4;
     --inner: #fbfbfc;
     --line: rgba(9, 9, 11, 0.07);

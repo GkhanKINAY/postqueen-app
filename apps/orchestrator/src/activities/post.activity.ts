@@ -127,12 +127,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v109, matching posts.service.ts. The recovery sweep starting an older
+      // v1010, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV109', {
+        .workflow.signalWithStart('postWorkflowV1010', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -161,8 +161,8 @@ export class PostActivity {
     }
   }
 
-  // Taken by post workflow v1.0.9 before it acts on a post: only the run that
-  // holds the claim publishes it or changes its state. `claimant` is
+  // Taken by post workflow v1.0.9 and up before it acts on a post: only the run
+  // that holds the claim publishes it or changes its state. `claimant` is
   // "<workflowId>/<runId>". Retrying is safe, the holder gets it again.
   @ActivityMethod()
   async claimPost(
@@ -618,7 +618,7 @@ export class PostActivity {
     const alreadyReported =
       reason === 'Refresh channel needed' ||
       reason === 'Channel disabled' ||
-      // v1.0.9: the first is its own pre-flight case, the second goes out
+      // v1.0.9 and up: the first is its own pre-flight case, the second goes out
       // through the "couldn't confirm, check your account" notice.
       reason === 'Channel setup not finished' ||
       reason === 'A previous publish attempt was interrupted' ||

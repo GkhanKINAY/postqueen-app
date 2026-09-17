@@ -113,7 +113,7 @@ const ThirdPartyMediaLibraryBrowser: FC<{
         {integration.title}: {integration.name}
       </div>
       <div className="flex-1 relative">
-        <div className="absolute left-0 top-0 w-full h-full overflow-x-hidden overflow-y-auto scrollbar scrollbar-thumb-newColColor scrollbar-track-newBgColorInner">
+        <div className="absolute left-0 top-0 w-full h-full overflow-x-hidden overflow-y-auto">
           {/* Three branches that have to be exhaustive as well as exclusive.
               `!data?.results?.length` rather than `!data`: with
               `keepPreviousData` a page change hands back laggy data while

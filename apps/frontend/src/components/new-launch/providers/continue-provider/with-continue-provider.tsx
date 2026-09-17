@@ -408,7 +408,7 @@ export function withContinueProvider<TItem, TSelection>(
             <div
               role="group"
               aria-label={t(titleKey, titleDefault)}
-              className="flex max-h-[360px] flex-col gap-[6px] overflow-y-auto scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner"
+              className="flex max-h-[360px] flex-col gap-[6px] overflow-y-auto"
             >
               {!visibleData.length && (
                 <div className="px-[8px] py-[16px] text-[13.5px] text-pqSoft">

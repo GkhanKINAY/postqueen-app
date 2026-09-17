@@ -310,7 +310,7 @@ const AddOrRemoveSignature: FC<{
   const aiOk = useAiAvailable();
   const autoAdd = !!useWatch({ control: form.control, name: 'autoAdd' });
   const signatureFieldClass = clsx(
-    '!min-h-28 !max-h-56 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent placeholder:text-pqSoft w-full resize-none border-0'
+    '!min-h-28 !max-h-56 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden placeholder:text-pqSoft w-full resize-none border-0'
   );
 
   return (

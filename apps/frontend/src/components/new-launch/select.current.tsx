@@ -164,7 +164,7 @@ export const SelectCurrent: FC = () => {
         <div
           ref={contentRef}
           className={clsx(
-            'flex w-full gap-[16px] overflow-x-auto ps-[8px] pe-[10px] pt-[10px] pb-[8px] -ms-[8px] -me-[8px] scrollbar scrollbar-thumb-tableBorder scrollbar-track-secondary',
+            'flex w-full gap-[16px] overflow-x-auto ps-[8px] pe-[10px] pt-[10px] pb-[8px] -ms-[8px] -me-[8px]',
             locked && 'pointer-events-none opacity-50'
           )}
         >

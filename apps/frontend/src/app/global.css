@@ -119,8 +119,9 @@ body {
    grid — fell back to the browser default, which is a fat light bar sitting on
    a dark panel.
 
-   The 10px track with a 3px transparent border and `background-clip: content-box`
-   is what makes the thumb read as a slim 4px pill inset from the edge; painting
+   The 12px track with a 3px transparent border and `background-clip: content-box`
+   is what makes the thumb read as a 6px pill inset from the edge (the design's
+   4px at 14%-16% ink was too faint to tell a pane scrolls at all); painting
    a 4px-wide bar instead would sit flush against the content. Track stays
    transparent so it disappears until there is something to drag.
 
@@ -134,8 +135,8 @@ body {
    one. Everything that actually scrolls here is inside body. */
 body::-webkit-scrollbar,
 body *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 body::-webkit-scrollbar-track,
@@ -148,6 +149,12 @@ body *::-webkit-scrollbar-thumb {
   border-radius: 8px;
   border: 3px solid transparent;
   background: var(--scrollThumb);
+  background-clip: content-box;
+}
+
+body::-webkit-scrollbar-thumb:hover,
+body *::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollThumbHover);
   background-clip: content-box;
 }
 
@@ -278,7 +285,7 @@ body *::-webkit-scrollbar-corner {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: var(--scrollThumb);
     border-radius: 4px;
     /* The global thumb insets itself with a 3px transparent border and clips to
        the content box. This lane is only 4px wide, so inheriting that would
