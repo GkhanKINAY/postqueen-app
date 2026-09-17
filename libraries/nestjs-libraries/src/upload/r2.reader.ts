@@ -30,6 +30,11 @@ function r2(): S3Client {
         accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY!,
         secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY!,
       },
+      // Fail a stuck read instead of letting the request hang with no answer.
+      requestHandler: {
+        connectionTimeout: 5000,
+        requestTimeout: 15000,
+      },
     });
   }
 

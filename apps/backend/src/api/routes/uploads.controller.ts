@@ -50,6 +50,12 @@ export class UploadsController {
       return;
     }
 
+    // The body holds one of the S3 client's pooled sockets until it is read to
+    // the end or destroyed. A 304, or a viewer that leaves mid-download, did
+    // neither, and once the pool ran dry every read queued forever, so every
+    // image on the site stopped loading until the backend restarted.
+    res.on('close', () => object.body.destroy());
+
     // Stored objects are immutable — every upload gets a fresh random name and
     // nothing ever overwrites one — so this can be cached hard. It is what
     // keeps a social network re-fetching the same image from costing us a read
