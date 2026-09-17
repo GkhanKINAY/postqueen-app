@@ -7,6 +7,10 @@ const source = readFileSync(
   fileURLToPath(new URL('./compose.first.comment.tsx', import.meta.url)),
   'utf8',
 );
+const globalCss = readFileSync(
+  fileURLToPath(new URL('../../app/global.css', import.meta.url)),
+  'utf8',
+);
 const editor = readFileSync(
   fileURLToPath(new URL('./editor.tsx', import.meta.url)),
   'utf8',
@@ -67,6 +71,18 @@ describe('composer first comment', () => {
       /data-pq="composer-first-comment"[\s\S]{0,280}shadow-\[inset_0_0_0_1px_var\(--border\)\]/,
     );
     assert.doesNotMatch(source, /border-t border-pqLine pt-\[12px\]/);
+    assert.match(
+      globalCss,
+      /\[data-pq='composer-first-comment'\] textarea:focus-visible/,
+    );
+    assert.match(
+      globalCss,
+      /\[data-pq='composer-first-comment'\] textarea:focus-visible[\s\S]{0,120}outline: none !important/,
+    );
+    assert.match(
+      globalCss,
+      /\[data-pq='composer-first-comment'\]:has\(textarea:focus-visible\)[\s\S]{0,80}inset 0 0 0 1px var\(--brand\)/,
+    );
   });
 
   it('aligns comment tools with the post toolbar icon chips', () => {

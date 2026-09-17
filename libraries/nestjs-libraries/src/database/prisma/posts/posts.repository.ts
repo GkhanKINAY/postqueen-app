@@ -597,7 +597,9 @@ export class PostsRepository {
         // 'Z'. Parsing explicitly makes the result independent of the host
         // clock instead of a property of the deployment.
         publishDate: dayjs.utc(date).toDate(),
-        // schedule: always QUEUE (draft → scheduled when dropped on calendar)
+        // schedule: always QUEUE (reschedule / republish). Drafts never take
+        // this branch — PostsService.changeDate forces action 'update' so a
+        // calendar drop cannot publish them.
         // update: don't change the state
         ...(action === 'schedule'
           ? {

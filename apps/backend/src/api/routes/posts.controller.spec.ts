@@ -28,3 +28,17 @@ describe('Create Post find-slot', () => {
     assert.match(controller, /findFreeDateTime\(org\.id, id\)/);
   });
 });
+
+describe('changeDate does not publish drafts', () => {
+  it('forces action update when the row is still a draft', () => {
+    assert.match(
+      service,
+      /if \(getPostById\?\.state === 'DRAFT'\) \{\s*action = 'update';/s
+    );
+  });
+
+  it('still starts Temporal only after a schedule date change', () => {
+    assert.match(service, /if \(action === 'schedule'\) \{/);
+    assert.match(service, /path: 'changeDate'/);
+  });
+});

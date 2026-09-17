@@ -1303,6 +1303,14 @@ export class PostsService {
   ) {
     const getPostById = await this._postRepository.getPostById(id, orgId);
 
+    // Calendar drag used to send action: 'schedule' for every drop. That
+    // promotes DRAFT → QUEUE and starts Temporal, which publishes at once if
+    // the slot is now or in the past (and emails the user on a provider
+    // error). A draft stays a draft until the composer publishes it.
+    if (getPostById?.state === 'DRAFT') {
+      action = 'update';
+    }
+
     // A `schedule` here clears releaseId/releaseURL, puts the row back in QUEUE
     // and starts the workflow — so on an already-published post it publishes
     // the same content to the customer's audience a second time. The only
@@ -1330,9 +1338,8 @@ export class PostsService {
 
     if (action === 'schedule') {
       try {
-        // Always QUEUE after a schedule changeDate — the DB row was just
-        // promoted. Passing the *old* DRAFT state made startWorkflow no-op
-        // (Drafts panel → calendar drop never started Temporal).
+        // QUEUE / republish: the repository just set state to QUEUE.
+        // Hard-code QUEUE so startWorkflow is not skipped.
         await this.startWorkflow(
           getPostById.integration.providerIdentifier
             .split('-')[0]

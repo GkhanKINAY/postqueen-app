@@ -1476,3 +1476,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Connect: MCP URL, not a marketplace listing
 
 **i18n 0.** Same keys. Claude, ChatGPT, Grok, Cursor, VS Code and Windsurf How to connect copy now says PostQueen is not in those directories/stores. You paste the MCP URL (or JSON / CLI). Claude is one account add, not a separate Desktop vs claude.ai install. Claude's UI still labels that dialog Add custom connector; that is Anthropic's name for a remote MCP server, not a listing we published.
+
+## Auth Insights showcase, calendar draft drops, Copilot rail v3.6.57
+
+**i18n +2 −1 (`connections_sub`, `write_something` in; unused `share_with_the_world` out).** Auth login/register right panel is a live Insights still (3 top posts, engagement mix on one line) at 55% width with `min-h-dvh` shell. Copilot rail reuses `write_something` placeholder and adds `connections_sub` under the Connections card. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.

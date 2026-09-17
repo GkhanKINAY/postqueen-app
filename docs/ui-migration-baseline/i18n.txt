@@ -965,6 +965,7 @@ connected
 connected_accounts
 connected_accounts_description
 connections
+connections_sub
 contact_support
 continue_to
 continue_with_apple
@@ -1784,7 +1785,6 @@ settings
 settings_update_failed
 settings_updated
 share_with_a_client
-share_with_the_world
 short_link
 short_links_statistics
 short_post
@@ -2045,6 +2045,7 @@ workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
 write_anything
+write_something
 write_your_post
 write_your_post_placeholder
 write_your_signature
