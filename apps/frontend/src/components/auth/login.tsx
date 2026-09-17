@@ -189,7 +189,7 @@ export function Login() {
                   className={
                     canSubmit
                       ? 'flex-1 rounded-[10px] !h-[52px]'
-                      : 'flex-1 rounded-[10px] !h-[52px] !bg-pqText'
+                      : 'flex-1 rounded-[10px] !h-[52px] !bg-pqBrandSoft !text-pqFocused !opacity-100'
                   }
                   loading={loading}
                 >

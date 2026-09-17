@@ -25,9 +25,11 @@ describe('auth product showcase', () => {
     assert.match(showcase, /flex h-full min-h-0 w-full flex-col/);
     assert.match(showcase, /h-full min-h-0 w-\[55%\]/);
     assert.match(showcase, /overflow-hidden p-\[14px\]/);
-    assert.match(showcase, /grid grid-cols-3 gap-\[8px\]/);
-    assert.match(showcase, /PREVIEW_TOP = PREVIEW_POSTS\.slice\(0, 3\)/);
-    assert.match(showcase, /PREVIEW_ROWS = PREVIEW_TOP/);
+    assert.match(showcase, /grid grid-cols-4 gap-\[6px\]/);
+    assert.match(showcase, /const PREVIEW_TOP = PREVIEW_POSTS;/);
+    assert.match(showcase, /line-clamp-2/);
+    assert.match(showcase, /#\{index \+ 1\}/);
+    assert.match(showcase, /2xl:min-h-\[118px\]/);
     assert.match(showcase, /grid min-w-0 shrink-0 grid-cols-2/);
     assert.match(
       showcase,
@@ -37,7 +39,10 @@ describe('auth product showcase', () => {
     assert.match(showcase, /size = 40/);
     assert.match(showcase, /width=\{size\}/);
     assert.match(showcase, /object-contain/);
-    assert.doesNotMatch(showcase, /grid grid-cols-4/);
+    assert.doesNotMatch(showcase, /performance_per_post/);
+    assert.doesNotMatch(showcase, /range_7d/);
+    assert.doesNotMatch(showcase, /range_30d/);
+    assert.doesNotMatch(showcase, /range_90d/);
     assert.doesNotMatch(showcase, /grid-cols-2 gap-\[10px\] xl:grid-cols-4/);
     assert.doesNotMatch(showcase, /flex-wrap justify-between/);
     assert.doesNotMatch(showcase, /overflow-x-hidden overflow-y-auto/);
@@ -49,6 +54,7 @@ describe('auth product showcase', () => {
     assert.match(showcase, /Analytics that show you your next move/);
     assert.match(showcase, /t\('new', 'NEW'\)/);
     assert.match(showcase, /t\('all_channels', 'All channels'\)/);
+    assert.match(showcase, /analytics_lifetime_totals_hint/);
     assert.match(showcase, /t\('posting_days', 'Posting days'\)/);
     assert.match(showcase, /t\('engagement_mix', 'Engagement mix'\)/);
     assert.match(layout, /lg:h-dvh lg:max-h-dvh lg:overflow-hidden/);

@@ -41,37 +41,28 @@ const CHANNELS = [
 
 const PREVIEW_POSTS = [
   {
-    title: 'What we shipped this week',
+    title: 'What we shipped this week — launches, fixes, and what is next on the roadmap',
     metric: '128',
-    comments: '16',
-    rate: '4.2%',
-    impressions: '12.4k',
     platform: 'x',
   },
   {
-    title: 'A thread on the new design system',
+    title: 'A thread on the new design system tokens, spacing, and how we roll out UI changes safely',
     metric: '96',
-    comments: '11',
-    rate: '3.8%',
-    impressions: '8.1k',
     platform: 'linkedin',
   },
   {
-    title: 'How we cut publishing time by 62%',
+    title: 'How we cut publishing time by 62% with templates, queues, and fewer context switches',
     metric: '74',
-    comments: '9',
-    rate: '3.1%',
-    impressions: '6.6k',
     platform: 'instagram',
+  },
+  {
+    title: 'Inside our analytics refresh: top posts, posting days, and engagement mix in one view',
+    metric: '61',
+    platform: 'youtube',
   },
 ] as const;
 
-/** 3 in a row stays readable at ~1280; 4-up truncates to crumbs. */
-const PREVIEW_TOP = PREVIEW_POSTS.slice(0, 3);
-const PREVIEW_ROWS = PREVIEW_TOP;
-
-const PREVIEW_TABLE_COLUMNS =
-  'minmax(0,1.8fr) minmax(56px,0.4fr) minmax(56px,0.4fr) minmax(52px,0.35fr) minmax(64px,0.45fr)';
+const PREVIEW_TOP = PREVIEW_POSTS;
 
 /** Dummy still: a single 40px platform mark. Real PostThumb overlays a pip on
  *  a post photo; here the photo *is* the icon, so a pip would print Instagram
@@ -81,7 +72,7 @@ const PreviewThumb = ({
   size = 40,
 }: {
   platform: string;
-  size?: 28 | 32 | 40;
+  size?: 26 | 28 | 32 | 40;
 }) => (
   <span
     className="flex shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-pqSettings"
@@ -137,7 +128,7 @@ const AnalyticsPreview = () => {
 
   return (
     <div
-      className="dark relative min-h-0 w-full flex-1 overflow-hidden rounded-3xl bg-pqInner text-pqText shadow-[var(--e2)]"
+      className="dark relative min-h-0 w-full max-w-full flex-1 overflow-hidden rounded-3xl bg-pqInner text-pqText shadow-[var(--e2)]"
       role="img"
       aria-label={t(
         'auth_showcase_alt',
@@ -148,28 +139,15 @@ const AnalyticsPreview = () => {
         aria-hidden="true"
         className="flex h-full min-h-0 w-full flex-col gap-[12px] overflow-hidden p-[14px] 2xl:gap-[14px] 2xl:p-[18px]"
       >
-        <div className="flex min-w-0 shrink-0 items-center justify-between gap-[12px]">
-          <div className="min-w-0">
-            <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
-              {t('all_channels', 'All channels')}
-            </div>
-            <div className="mt-[2px] hidden truncate text-[12.5px] text-pqMuted 2xl:block">
-              {t(
-                'analytics_lifetime_totals_hint',
-                'Posts published in this period · current totals'
-              )}
-            </div>
+        <div className="min-w-0 shrink-0">
+          <div className="font-display text-[18px] font-[600] text-pqText 2xl:text-[20px]">
+            {t('all_channels', 'All channels')}
           </div>
-          <div className="flex shrink-0 items-center gap-[3px] rounded-pqSm bg-pqSettings p-[3px]">
-            <span className="flex h-[28px] items-center rounded-[8px] bg-pqInner px-[12px] text-[13px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
-              {t('range_7d', '7d')}
-            </span>
-            <span className="flex h-[28px] items-center px-[12px] text-[13px] font-[500] text-pqMuted">
-              {t('range_30d', '30d')}
-            </span>
-            <span className="flex h-[28px] items-center px-[12px] text-[13px] font-[500] text-pqMuted">
-              {t('range_90d', '90d')}
-            </span>
+          <div className="mt-[2px] text-[12px] leading-[1.35] text-pqMuted 2xl:text-[12.5px]">
+            {t(
+              'analytics_lifetime_totals_hint',
+              'Posts published in this period · current totals'
+            )}
           </div>
         </div>
 
@@ -190,32 +168,32 @@ const AnalyticsPreview = () => {
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-[8px] 2xl:gap-[10px]">
+          <div className="grid grid-cols-4 gap-[6px] 2xl:gap-[10px]">
             {PREVIEW_TOP.map((post, index) => (
               <div
                 key={post.title}
-                className="flex min-w-0 flex-col gap-[8px] rounded-[10px] bg-pqInner p-[10px] shadow-[inset_0_0_0_1px_var(--border)]"
+                className="flex min-h-[108px] min-w-0 flex-col justify-between gap-[8px] rounded-[10px] bg-pqInner p-[9px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:min-h-[118px] 2xl:p-[11px]"
               >
-                <div className="flex min-w-0 items-start justify-between gap-[6px]">
+                <div className="flex min-w-0 items-start justify-between gap-[5px] 2xl:gap-[6px]">
                   <div className="min-w-0 flex-1">
                     <div
                       className={
                         index === 0
-                          ? 'text-[11px] font-[700] tabular-nums text-pqBrand'
-                          : 'text-[11px] font-[700] tabular-nums text-pqMuted'
+                          ? 'text-[11px] font-[700] tabular-nums text-pqBrand 2xl:text-[12px]'
+                          : 'text-[11px] font-[700] tabular-nums text-pqMuted 2xl:text-[12px]'
                       }
                     >
                       #{index + 1}
                     </div>
-                    <div className="mt-[2px] line-clamp-2 text-[12.5px] leading-[1.35] text-pqText 2xl:text-[13px]">
+                    <div className="mt-[3px] line-clamp-2 text-[11.5px] leading-[1.4] text-pqText 2xl:mt-[4px] 2xl:text-[12.5px] 2xl:leading-[1.38]">
                       {post.title}
                     </div>
                   </div>
-                  <PreviewThumb platform={post.platform} size={28} />
+                  <PreviewThumb platform={post.platform} size={26} />
                 </div>
-                <div className="truncate text-[14px] font-[600] tabular-nums text-pqText 2xl:text-[15px]">
+                <div className="text-[13px] font-[600] tabular-nums text-pqText 2xl:text-[14px]">
                   {post.metric}
-                  <span className="ms-[4px] text-[10.5px] font-[500] text-pqMuted 2xl:ms-[6px] 2xl:text-[11px]">
+                  <span className="ms-[3px] text-[10px] font-[500] text-pqMuted 2xl:ms-[4px] 2xl:text-[10.5px]">
                     {t('reactions', 'Reactions')}
                   </span>
                 </div>
@@ -224,7 +202,7 @@ const AnalyticsPreview = () => {
           </div>
         </section>
 
-        <div className="grid min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:gap-[12px]">
+        <div className="grid min-w-0 shrink-0 grid-cols-2 gap-[10px] 2xl:mt-auto 2xl:gap-[12px]">
           <section className="flex min-w-0 flex-col rounded-pqMd bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)] 2xl:p-[14px]">
             <div className="shrink-0 font-display text-[14px] font-[600] text-pqText 2xl:text-[16px]">
               {t('posting_days', 'Posting days')}
@@ -232,7 +210,7 @@ const AnalyticsPreview = () => {
             <div className="mt-[2px] hidden shrink-0 text-[12.5px] text-pqMuted 2xl:block">
               {t('posting_days_hint', 'How many posts went out each weekday')}
             </div>
-            <div className="mt-[8px] flex h-[56px] shrink-0 items-end gap-[6px] 2xl:mt-[10px] 2xl:h-[64px] 2xl:gap-[8px]">
+            <div className="mt-[8px] flex h-[56px] shrink-0 items-end gap-[6px] 2xl:mt-[10px] 2xl:h-[72px] 2xl:gap-[8px]">
               {POSTING_DAY_HEIGHTS.map((height, index) => (
                 <div
                   key={days[index]}
@@ -284,48 +262,6 @@ const AnalyticsPreview = () => {
             </div>
           </section>
         </div>
-
-        <section className="min-w-0 shrink-0 overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-          <div className="px-[14px] pb-[6px] pt-[12px]">
-            <div className="font-display text-[15px] font-[600] text-pqText 2xl:text-[16px]">
-              {t('performance_per_post', 'Performance per post')}
-            </div>
-          </div>
-          <div
-            className="grid items-center gap-[8px] bg-pqTableHeader px-[14px] py-[8px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted"
-            style={{ gridTemplateColumns: PREVIEW_TABLE_COLUMNS }}
-          >
-            <span>{t('post', 'Post')}</span>
-            <span className="text-end">{t('reactions', 'Reactions')}</span>
-            <span className="text-end">{t('comments', 'Comments')}</span>
-            <span className="text-end">{t('eng_rate', 'Eng. rate')}</span>
-            <span className="text-end">{t('impressions', 'Impressions')}</span>
-          </div>
-          {PREVIEW_ROWS.map((row, index) => (
-            <div
-              key={row.title}
-              className="grid items-center gap-[8px] border-t border-pqLine px-[14px] py-[10px] text-[13px]"
-              style={{ gridTemplateColumns: PREVIEW_TABLE_COLUMNS }}
-            >
-              <span className="flex min-w-0 items-center gap-[8px] text-pqText">
-                <PreviewThumb platform={row.platform} size={32} />
-                <span className="min-w-0 truncate">{row.title}</span>
-              </span>
-              <span className="text-end tabular-nums text-pqText">
-                {row.metric}
-              </span>
-              <span className="text-end tabular-nums text-pqText">
-                {row.comments}
-              </span>
-              <span className="text-end tabular-nums text-pqText">
-                {row.rate}
-              </span>
-              <span className="text-end tabular-nums text-pqText">
-                {row.impressions}
-              </span>
-            </div>
-          ))}
-        </section>
       </div>
     </div>
   );
