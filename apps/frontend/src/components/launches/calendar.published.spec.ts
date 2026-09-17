@@ -118,10 +118,17 @@ describe('calendar published label', () => {
     );
   });
 
-  it('still paints past QUEUE as Published', () => {
+  it('paints past QUEUE as Publishing, never as Published', () => {
     assert.match(
       calendar,
-      /if \(state === 'QUEUE' && dayjs\(\)\.isAfter\(dayjs\.utc\(publishDate\)\)\) \{\s*return 'PUBLISHED';/s,
+      /if \(state === 'QUEUE' && dayjs\(\)\.isAfter\(dayjs\.utc\(publishDate\)\)\) \{\s*return 'PUBLISHING';/s,
+    );
+    // The green badge and its measurement belong to a confirmed post only:
+    // PUBLISHING must never reach usePublishedOnHeader or the Published chip.
+    assert.match(calendar, /usePublishedOnHeader\(state === 'PUBLISHED'\)/);
+    assert.ok(
+      !/state === 'PUBLISHING'[^\n]*t\('published'/.test(calendar),
+      'Publishing never renders the Published label',
     );
   });
 

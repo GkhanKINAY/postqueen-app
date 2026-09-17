@@ -480,6 +480,8 @@ const QueueCard: FC<{
             ? t('published', 'Published')
             : state === 'DRAFT'
             ? t('draft', 'Draft')
+            : state === 'PUBLISHING'
+            ? t('publishing', 'Publishing')
             : t('scheduled', 'Scheduled')}
         </span>
       </div>

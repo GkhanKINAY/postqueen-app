@@ -112,16 +112,25 @@ export const hours = Array.from(
 );
 
 /**
- * Card chrome only: a QUEUE slot whose publish time has passed reads as
- * Published (matches the drag dialog that already treats past QUEUE as
- * "already published"). Does not change API / drag payload state.
+ * Card chrome only: a QUEUE slot whose publish time has passed is on its way
+ * out, but nothing has confirmed it landed - the row only becomes PUBLISHED
+ * once the workflow's `updatePost` runs, and for providers that publish
+ * asynchronously (TikTok returns `pending` and is polled by
+ * `checkPostStatus`) that is seconds to minutes later, or never if the
+ * platform rejects it. So it reads as Publishing, not Published: the card used
+ * to claim a post was live while it was still QUEUE and about to go to ERROR.
+ * PUBLISHING is display-only - it is not a `State` the API or the drag payload
+ * ever sees, and the drag dialog still treats past QUEUE as "already
+ * published" because republishing it is the same decision either way.
  */
+export type DisplayState = State | 'PUBLISHING';
+
 export function displayPostState(
   state: State,
   publishDate: string | Date
-): State {
+): DisplayState {
   if (state === 'QUEUE' && dayjs().isAfter(dayjs.utc(publishDate))) {
-    return 'PUBLISHED';
+    return 'PUBLISHING';
   }
   return state;
 }
@@ -2099,6 +2108,11 @@ const CalendarItem: FC<{
             {t('published', 'Published')}
           </span>
         )}
+        {state === 'PUBLISHING' && (
+          <span className="ms-auto shrink-0 whitespace-nowrap text-[8px] font-[800] uppercase tracking-[0.04em] text-pqFocused">
+            {t('publishing', 'Publishing')}
+          </span>
+        )}
         {state === 'DRAFT' && (
           <span className="ms-auto shrink-0 whitespace-nowrap text-[8px] font-[800] uppercase tracking-[0.04em] text-pqSoft">
             {t('draft', 'Draft')}
@@ -2202,13 +2216,15 @@ const CalendarItem: FC<{
             <span className="min-w-0 flex-1" />
             {/* Status chip: design only shows Draft; owner wants Scheduled too
                 (Posts panel colours). Sits before time — actions are top-end. */}
-            {state === 'QUEUE' && (
+            {(state === 'QUEUE' || state === 'PUBLISHING') && (
               <span className="flex shrink-0 items-center gap-[4px] text-[9.5px] font-[700] uppercase tracking-[0.04em] text-pqFocused">
                 <span
                   className="size-[5px] rounded-full bg-pqFocused"
                   aria-hidden
                 />
-                {t('scheduled', 'Scheduled')}
+                {state === 'PUBLISHING'
+                  ? t('publishing', 'Publishing')
+                  : t('scheduled', 'Scheduled')}
               </span>
             )}
             {state === 'DRAFT' && (
@@ -2408,13 +2424,15 @@ const CalendarItem: FC<{
               {t('published', 'Published')}
             </span>
           )}
-          {state === 'QUEUE' && (
+          {(state === 'QUEUE' || state === 'PUBLISHING') && (
             <span className="mt-[1px] flex shrink-0 items-center gap-[4px] whitespace-nowrap text-[8.5px] font-[700] uppercase tracking-[0.03em] text-pqFocused">
               <span
                 className="size-[5px] rounded-full bg-pqFocused"
                 aria-hidden
               />
-              {t('scheduled', 'Scheduled')}
+              {state === 'PUBLISHING'
+                ? t('publishing', 'Publishing')
+                : t('scheduled', 'Scheduled')}
             </span>
           )}
           {state === 'DRAFT' && (
@@ -2676,6 +2694,8 @@ const ListItem: FC<{
                 ? t('draft', 'Draft')
                 : state === 'ERROR'
                 ? t('error', 'Error')
+                : state === 'PUBLISHING'
+                ? t('publishing', 'Publishing')
                 : t('scheduled', 'Scheduled')}
             </span>
           )}
