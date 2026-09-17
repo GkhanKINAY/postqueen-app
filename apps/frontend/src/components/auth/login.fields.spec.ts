@@ -53,7 +53,11 @@ describe('auth email and password fields', () => {
     assert.match(login, /form\.watch\('password'\)/);
     assert.match(login, /disabled=\{!canSubmit\}/);
     assert.match(register, /disabled=\{!canSubmit\}/);
-    assert.match(login, /!bg-pqText/);
-    assert.match(register, /!bg-pqText/);
+    assert.match(login, /!bg-pqBrandSoft/);
+    assert.match(register, /!bg-pqBrandSoft/);
+    assert.match(login, /!text-pqFocused/);
+    assert.match(login, /!opacity-100/);
+    assert.match(login, /focus-visible:!outline-none/);
+    assert.match(login, /focus-visible:ring-0/);
   });
 });

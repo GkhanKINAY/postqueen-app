@@ -151,6 +151,13 @@ body *::-webkit-scrollbar-thumb {
   background-clip: content-box;
 }
 
+/* Default corner is canvas-white. On a dark field that is the bright square
+   where a vertical and horizontal bar meet (CopilotTextarea, long pre). */
+body::-webkit-scrollbar-corner,
+body *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Firefox has no ::-webkit pseudo-elements; this is the same intent expressed
    through the standard properties, off the same token.
 
@@ -1735,7 +1742,7 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
 
   .copilotKitInput textarea {
     width: 100%;
-    min-height: 72px;
+    min-height: 36px;
     padding: 2px;
     border: 0;
     outline: 0;
@@ -1755,6 +1762,16 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
     line-height: 1.55;
   }
 
+  .copilotKitMessageControlButton {
+    width: 28px;
+    height: 28px;
+    color: var(--muted);
+  }
+  .copilotKitMessageControlButton:hover {
+    color: var(--text);
+    background: var(--hover);
+  }
+
   .suggestions {
     padding: 0;
     background: transparent;
@@ -1762,13 +1779,13 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
 
   .copilotKitInput {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 8px;
     padding: 10px 8px 10px 12px;
   }
 
   .copilotKitInput textarea {
-    min-height: 72px;
+    min-height: 36px;
     padding: 6px 0;
   }
 
@@ -1793,6 +1810,32 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
   .copilotKitInputControlButton svg {
     display: none;
   }
+}
+
+/* Auth/settings wells: one rounded-[10px] ring on the container (input + eye),
+   not a second stadium on the native control. */
+[data-pq='form-input-well'] input:focus,
+[data-pq='form-input-well'] input:focus-visible,
+[data-pq='form-input-well'] button:focus,
+[data-pq='form-input-well'] button:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+/* First Comment: the global `body *:focus-visible` 2px offset --ring oval
+   outranks Tailwind `outline-none` (unlayered vs @layer utilities). Keep the
+   same 1px inset the card already draws, brand only while the textarea is
+   focused — not a halo around the field. */
+[data-pq='composer-first-comment'] textarea:focus,
+[data-pq='composer-first-comment'] textarea:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+[data-pq='composer-first-comment']:has(textarea:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--brand);
 }
 
 html:has([data-pq-composer-max='1']) [data-pq-composer-shell] > div.max-w-\[1400px\] {

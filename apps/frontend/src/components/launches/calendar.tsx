@@ -53,6 +53,7 @@ import {
 import { useInterval } from '@mantine/hooks';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
+import { dateChangeActionForDrop } from '@gitroom/frontend/components/launches/calendar.drop';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
@@ -1438,9 +1439,12 @@ export const CalendarColumn: FC<{
             ? getDate.startOf('day').hour(12).minute(0).second(0)
             : getDate;
 
-        // Find the post to check its state
+        // Find the post to check its state (list-rail drops carry `item.state`
+        // when the card is not in this week's `posts` array).
         const post = posts.find((p) => p.id === item.id);
-        let action: 'schedule' | 'update' = 'schedule';
+        let action: 'schedule' | 'update' = dateChangeActionForDrop(
+          post?.state || item.state
+        );
 
         // Check if post is already published or queued in the past
         if (
@@ -2844,7 +2848,9 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
           if (isBeforeNow) return;
 
           const post = posts.find((p) => p.id === item.id);
-          let action: 'schedule' | 'update' = 'schedule';
+          let action: 'schedule' | 'update' = dateChangeActionForDrop(
+            post?.state || item.state
+          );
 
           if (
             post &&

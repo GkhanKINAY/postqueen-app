@@ -19,7 +19,10 @@ import {
   RenderSuggestionsListProps,
   useChatContext,
 } from '@copilotkit/react-ui';
-import { useCopilotAction } from '@copilotkit/react-core';
+import {
+  useCopilotAction,
+  useCopilotMessagesContext,
+} from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAiAvailable, useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
@@ -105,6 +108,86 @@ const railTabClass = (active: boolean) =>
       : 'text-pqMuted hover:text-pqText'
   );
 
+/**
+ * Empty-rail hero: Connections card plus the Copilot subtitle. CopilotKit
+ * would render `labels.initial` as a chat bubble with faded controls, so this
+ * sits in the message column instead — same idea as the Agents empty overlay.
+ */
+const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
+  const t = useT();
+  return (
+    <>
+      <span className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-pqBrandSoft text-pqFocused">
+        <CopilotMark size={22} />
+      </span>
+      <div>
+        <div className="font-display text-[18px] font-[600] tracking-[-0.02em] text-pqText">
+          {t('ai_copilot', 'AI Copilot')}
+        </div>
+        <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
+          {t(
+            'assistant_initial_message',
+            'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
+          )}
+        </p>
+      </div>
+      <NextLink
+        href="/connections"
+        className="pointer-events-auto flex w-full max-w-[360px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[12px_14px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
+      >
+        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+            <path
+              d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5ZM4 15.5 12 20l8-4.5"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
+          <span className="text-[13px] font-[600] text-pqText">
+            {t('connections', 'Connections')}
+          </span>
+          <span className="text-[12px] leading-[1.45] text-pqMuted">{tip}</span>
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          className="shrink-0 text-pqSoft rtl:-scale-x-100"
+          aria-hidden="true"
+        >
+          <path
+            d="m9 6 6 6-6 6"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </NextLink>
+    </>
+  );
+};
+
+const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
+  const { messages } = useCopilotMessagesContext();
+  if (messages.length) {
+    return null;
+  }
+  return (
+    <div
+      data-copilot-empty="1"
+      className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
+    >
+      <ComposeAiEmptyHero tip={tip} />
+    </div>
+  );
+};
+
 const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
   suggestions,
   onSuggestionClick,
@@ -124,22 +207,22 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
   return (
     <div
       data-pq="composer-ai-chips"
-      className="flex flex-col gap-[8px] px-[16px] pb-[10px]"
+      className="flex flex-col gap-[8px] px-[16px] pb-[12px]"
     >
-      <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
+      <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
         {t('quick_edits', 'Quick edits')}
       </div>
-      <div className="flex flex-wrap gap-[6px]">
+      <div className="flex flex-wrap gap-[8px]">
         {suggestions.map((suggestion) => (
           <button
             key={suggestion.title}
             type="button"
             disabled={isLoading}
             onClick={() => onSuggestionClick(suggestion.message)}
-            className="flex h-[28px] items-center gap-[4px] rounded-[8px] bg-pqInner px-[8px] text-[12px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {marks[suggestion.title] ? (
-              <span aria-hidden="true" className="text-[12px] leading-none">
+              <span aria-hidden="true" className="text-[14px] leading-none">
                 {marks[suggestion.title]}
               </span>
             ) : null}
@@ -175,7 +258,7 @@ const ComposeAiInput: FC<InputProps> = ({
   const showStop = inProgress && !hideStopButton;
   return (
     <div className="copilotKitInputContainer">
-      <div className="copilotKitInput flex items-end gap-[8px]">
+      <div className="copilotKitInput flex items-center gap-[8px]">
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -187,13 +270,10 @@ const ComposeAiInput: FC<InputProps> = ({
           }}
           placeholder={
             context.labels.placeholder ||
-            t(
-              'share_with_the_world',
-              'What do you want to share with the world?'
-            )
+            t('write_something', 'Write something …')
           }
-          rows={3}
-          className="min-h-[72px] flex-1 resize-none"
+          rows={1}
+          className="min-h-[36px] flex-1 resize-none"
         />
         <button
           type="button"
@@ -490,60 +570,7 @@ const ComposeAiUnconfigured: FC<{
             data-copilot-empty="1"
             className="flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
           >
-          <span className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-pqBrandSoft text-pqFocused">
-            <CopilotMark size={22} />
-          </span>
-          <div>
-            <div className="font-display text-[18px] font-[600] tracking-[-0.02em] text-pqText">
-              {t('ai_copilot', 'AI Copilot')}
-            </div>
-            <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
-              {t(
-                'assistant_initial_message',
-                'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
-              )}
-            </p>
-          </div>
-          <NextLink
-            href="/connections"
-            className="flex w-full max-w-[360px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[12px_14px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-          >
-            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-                <path
-                  d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5ZM4 15.5 12 20l8-4.5"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-              <span className="text-[13px] font-[600] text-pqText">
-                {t('connections', 'Connections')}
-              </span>
-              <span className="text-[12px] leading-[1.45] text-pqMuted">
-                {tip}
-              </span>
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              className="shrink-0 text-pqSoft rtl:-scale-x-100"
-              aria-hidden="true"
-            >
-              <path
-                d="m9 6 6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </NextLink>
+            <ComposeAiEmptyHero tip={tip} />
           </div>
         )}
       </div>
@@ -553,7 +580,7 @@ const ComposeAiUnconfigured: FC<{
         isLoading={false}
       />
       <form className="copilotKitInputContainer" onSubmit={onSubmit}>
-        <div className="copilotKitInput flex items-end gap-[8px]">
+        <div className="copilotKitInput flex items-center gap-[8px]">
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -563,12 +590,9 @@ const ComposeAiUnconfigured: FC<{
                 send();
               }
             }}
-            placeholder={t(
-              'share_with_the_world',
-              'What do you want to share with the world?'
-            )}
-            rows={3}
-            className="min-h-[72px] flex-1 resize-none"
+            placeholder={t('write_something', 'Write something …')}
+            rows={1}
+            className="min-h-[36px] flex-1 resize-none"
           />
           <button
             type="submit"
@@ -673,17 +697,16 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
               Input={ComposeAiInput}
               labels={{
                 title: label,
-                initial: t(
-                  'assistant_initial_message',
-                  'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
-                ),
-                placeholder: t(
-                  'share_with_the_world',
-                  'What do you want to share with the world?'
-                ),
+                placeholder: t('write_something', 'Write something …'),
               }}
             />
           </div>
+          <ComposeAiEmptyOverlay
+            tip={t(
+              'connections_sub',
+              'Work with PostQueen across your favorite tools.'
+            )}
+          />
         </div>
       ) : (
         <ComposeAiUnconfigured suggestions={suggestions} />

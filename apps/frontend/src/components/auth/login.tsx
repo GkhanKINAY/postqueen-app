@@ -188,8 +188,8 @@ export function Login() {
                   disabled={!canSubmit}
                   className={
                     canSubmit
-                      ? 'flex-1 rounded-[10px] !h-[52px]'
-                      : 'flex-1 rounded-[10px] !h-[52px] !bg-pqText'
+                      ? 'flex-1 rounded-[10px] !h-[52px] focus-visible:!outline-none'
+                      : 'flex-1 rounded-[10px] !h-[52px] !bg-pqBrandSoft !text-pqFocused !opacity-100 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--brand)_28%,transparent)] focus-visible:!outline-none focus-visible:ring-0 focus-visible:ring-offset-0'
                   }
                   loading={loading}
                 >

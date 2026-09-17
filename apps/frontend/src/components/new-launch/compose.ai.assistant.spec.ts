@@ -56,7 +56,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.match(assistant, /data-pq="composer-ai-chat"/);
     assert.match(assistant, /className="copilotKitInputContainer"/);
-    assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
+    assert.match(assistant, /className="copilotKitInput flex items-center gap-\[8px\]"/);
     assert.match(assistant, /copilotKitUserMessage/);
     assert.match(assistant, /trz agent relative flex h-full min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
@@ -72,21 +72,31 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
     assert.match(assistant, /Then apply it with setPosts/);
     assert.match(assistant, /quick_edits/);
-    assert.match(assistant, /h-\[28px\].*text-\[12px\]/);
-    assert.doesNotMatch(
+    assert.match(
       assistant,
       /flex h-\[36px\] items-center gap-\[6px\] rounded-\[10px\]/,
     );
-    assert.match(assistant, /min-h-\[72px\] flex-1 resize-none/);
-    assert.match(
-      assistant,
-      /share_with_the_world[\s\S]{0,80}What do you want to share with the world\?/,
-    );
-    assert.doesNotMatch(assistant, /write_something/);
+    assert.doesNotMatch(assistant, /h-\[28px\].*text-\[12px\]/);
+    assert.match(assistant, /min-h-\[36px\] flex-1 resize-none/);
+    assert.match(assistant, /write_something[\s\S]{0,40}Write something/);
+    assert.doesNotMatch(assistant, /share_with_the_world/);
     assert.match(assistant, /🔄/);
     assert.match(assistant, /t\('send', 'Send'\)/);
     assert.match(assistant, /Input=\{ComposeAiInput\}/);
     assert.match(assistant, /data-pq="composer-ai-send"/);
+  });
+
+  it('shows the Connections card on an empty rail instead of a CopilotKit greeting bubble', () => {
+    assert.match(assistant, /useCopilotMessagesContext/);
+    assert.match(assistant, /<ComposeAiEmptyOverlay/);
+    assert.match(assistant, /<ComposeAiEmptyHero tip=\{tip\} \/>/);
+    assert.match(assistant, /href="\/connections"/);
+    assert.match(assistant, /connections_sub/);
+    assert.match(assistant, /compose_ai_unconfigured_tip/);
+    assert.doesNotMatch(
+      assistant,
+      /<CopilotChat[\s\S]{0,500}initial:/,
+    );
   });
 
   it('can rewrite the post and generate an attached image', () => {

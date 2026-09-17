@@ -45,14 +45,18 @@ const modal = readFileSync(
 );
 
 describe('plug dialog', () => {
-  it('sizes likes-only tighter than a plug-plus-post form', () => {
+  it('sizes likes-only and plug-plus-post on the same 460 card', () => {
     assert.match(source, /plugDialogWidth/);
-    assert.match(source, /\? 460 : 400/);
+    assert.match(source, /: 460 => 460/);
+    assert.doesNotMatch(source, /\? 460 : 400/);
     assert.match(source, /compact: plugDialogWidth\(p\.fields\)/);
   });
 
   it('does not leave the post field at min-h-40', () => {
     assert.match(source, /min-h-\[110px\] max-h-\[180px\]/);
+    assert.match(source, /overflow-x-hidden/);
+    assert.match(source, /resize-none/);
+    assert.doesNotMatch(source, /resize-y/);
     assert.doesNotMatch(source, /!min-h-40/);
     assert.match(source, /data-pq="plug-form"/);
   });

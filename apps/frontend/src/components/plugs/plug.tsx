@@ -38,10 +38,9 @@ export function convertBackRegex(s: string) {
   return new RegExp(pattern, flags);
 }
 
-/** Shared modal floors at 600px; plug forms are a likes field, or likes plus a
- *  short post. Prototype `formWidth` is 460 — likes-only can sit tighter. */
-export const plugDialogWidth = (fields: { type: string }[]): 400 | 460 =>
-  fields.some((field) => field.type === 'richtext') ? 460 : 400;
+/** Shared modal floors at 600px. Plug cards share the prototype `formWidth`
+ *  of 460 — likes-only used to sit at 400 and read cramped. */
+export const plugDialogWidth = (_fields: { type: string }[]): 460 => 460;
 
 export const TextArea: FC<{
   name: string;
@@ -53,15 +52,15 @@ export const TextArea: FC<{
   const value = form.watch(props.name);
   const aiOk = useAiAvailable();
   const fieldClass = clsx(
-    'min-h-[110px] max-h-[180px] w-full resize-y border-0 bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none placeholder:text-pqSoft'
+    'min-h-[110px] max-h-[180px] w-full min-w-0 resize-none border-0 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden break-words placeholder:text-pqSoft scrollbar scrollbar-thumb-pqBorder scrollbar-track-transparent'
   );
   return (
-    <div className="flex flex-col gap-[6px]">
+    <div className="flex min-w-0 flex-col gap-[6px]">
       {!!props.label && (
         <div className="text-[13px] font-[500] text-pqMuted">{props.label}</div>
       )}
       <textarea className="hidden" {...all}></textarea>
-      <div className="overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
+      <div className="min-w-0 overflow-hidden rounded-[10px] bg-pqTableHeader shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]">
         {aiOk ? (
           <CopilotTextarea
             disableBranding={true}
@@ -171,7 +170,7 @@ export const PlugPop: FC<{
       <form onSubmit={form.handleSubmit(submit)}>
         <div
           data-pq="plug-form"
-          className="relative mx-auto flex flex-col gap-[14px]"
+          className="relative mx-auto flex min-w-0 flex-col gap-[14px] overflow-x-hidden"
         >
           <div className="text-[13px] leading-[1.5] text-pqMuted">
             {plug.description}

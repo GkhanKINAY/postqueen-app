@@ -17,4 +17,12 @@ describe('password input', () => {
     assert.match(source, /t\('hide_password', 'Hide password'\)/);
     assert.match(source, /text-\[14px\] font-\[500\] text-pqMuted/);
   });
+
+  it('draws focus on the outer well only, not the native control', () => {
+    assert.match(source, /data-pq="form-input-well"/);
+    assert.match(source, /focus-within:shadow-\[inset_0_0_0_1px_var\(--brand\)\]/);
+    assert.match(source, /focus-visible:outline-none focus-visible:ring-0/);
+    assert.match(source, /appearance-none/);
+    assert.match(source, /rounded-none border-0/);
+  });
 });
