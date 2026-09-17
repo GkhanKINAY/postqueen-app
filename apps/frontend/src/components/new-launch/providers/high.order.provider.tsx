@@ -380,9 +380,13 @@ export const withProvider = function <T extends object>(params: {
                 ) : (
                   <div
                     data-id={props.id}
+                    data-pq="composer-channel-settings"
                     className={clsx(
                       isGlobal ? 'block' : 'hidden',
-                      'min-w-0 bg-pqInner'
+                      'min-w-0 overflow-hidden rounded-[14px] bg-pqInner',
+                      showSettingsBody
+                        ? 'shadow-[inset_0_0_0_1px_var(--brand)]'
+                        : 'shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1px_var(--brand)]'
                     )}
                   >
                     {isGlobal && (
@@ -392,7 +396,7 @@ export const withProvider = function <T extends object>(params: {
                       type="button"
                       aria-expanded={settingsOpen}
                       onClick={() => setSettingsOpen((open) => !open)}
-                      className="flex min-w-0 w-full items-center gap-[10px] px-[14px] py-[12px] text-start hover:bg-pqHover"
+                      className="flex min-w-0 w-full items-center gap-[10px] px-[14px] py-[12px] text-start outline-none hover:bg-pqHover focus-visible:outline-none"
                     >
                       {settingsIdentity}
                       <ChevronDownIcon

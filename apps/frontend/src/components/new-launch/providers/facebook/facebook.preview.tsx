@@ -9,12 +9,13 @@ import { getPresetBackground } from '@gitroom/frontend/components/new-launch/pro
 import { FC } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
-import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
+import { PreviewMediaFrame, PreviewMediaMosaic } from '@gitroom/frontend/components/new-launch/preview-media';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import {
   FEED_PREVIEW_FALLBACK_WH,
   FEED_PREVIEW_MAX_WH,
   FEED_PREVIEW_MIN_WH,
+  SPLIT_PAIR_MOSAIC_WH,
   STORY_PREVIEW_WH,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 
@@ -195,19 +196,13 @@ export const FacebookPreview: FC<{
             fallbackWH={isStory ? STORY_PREVIEW_WH : FEED_PREVIEW_FALLBACK_WH}
           />
         ) : (
-          <div className="aspect-square -mx-[15px] overflow-hidden flex">
-            {renderContent[0].images.map((image, index) => (
-              <a
-                key={`image_${index}`}
-                className="relative flex-1 overflow-hidden"
-                href={mediaDir.set(image.path)}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
-              </a>
-            ))}
-          </div>
+          <PreviewMediaMosaic
+            className="-mx-[15px]"
+            pairWH={SPLIT_PAIR_MOSAIC_WH}
+            srcs={renderContent[0].images.map((image) =>
+              mediaDir.set(image.path)
+            )}
+          />
         ))}
       <div className="flex text-textLinkedin text-[12px] font-[400] items-center">
         <div className="flex flex-1 gap-[10px] items-center">

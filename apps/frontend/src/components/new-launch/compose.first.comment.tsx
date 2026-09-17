@@ -1,7 +1,6 @@
 'use client';
 
 import { FC, useCallback, useMemo, useRef, useState } from 'react';
-import clsx from 'clsx';
 import EmojiPicker from 'emoji-picker-react';
 import { Theme } from 'emoji-picker-react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -165,16 +164,13 @@ export const ComposeFirstComment: FC<{
   return (
     <div
       data-pq="composer-first-comment"
-      className={clsx(
-        'flex min-w-0 flex-col gap-[8px]',
-        commentIndex > 1 && 'border-t border-pqLine pt-[12px]'
-      )}
+      className="flex min-w-0 flex-col gap-[12px] rounded-[14px] bg-pqInner p-[14px] shadow-[inset_0_0_0_1px_var(--border)]"
       onFocusCapture={() => {
         onActivate();
       }}
     >
       <div className="flex items-center justify-between gap-[8px]">
-        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
+        <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
           {commentIndex === 1
             ? t('first_comment', 'First Comment')
             : t('comments', 'Comments')}
@@ -204,7 +200,7 @@ export const ComposeFirstComment: FC<{
             ? t('first_comment', 'First Comment')
             : t('add_comment', 'Add comment')
         }
-        className="min-h-[64px] w-full resize-none rounded-[10px] border-0 bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="min-h-[64px] w-full resize-none rounded-[10px] border-0 bg-pqSettings px-[12px] py-[10px] text-[13.5px] leading-[1.45] text-pqText outline-none shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--text)_20%,transparent)] placeholder:text-pqMuted focus:shadow-[inset_0_0_0_1px_var(--brand)]"
       />
       <div
         data-pq="composer-first-comment-tools"

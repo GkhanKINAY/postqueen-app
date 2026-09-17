@@ -34,4 +34,25 @@ describe('Media library thumbnails', () => {
     assert.doesNotMatch(source, /max-h-\[min\(264px,28vh\)\]/);
     assert.doesNotMatch(source, /visibleMedia\.length > 8/);
   });
+
+  it('paints pick order as a brand chip with on-brand digits', () => {
+    assert.match(source, /data-pq="media-pick-order"/);
+    assert.match(source, /bg-pqBrand text-pqOnBrand/);
+    assert.match(source, /selectionOrder \+ 1/);
+    assert.doesNotMatch(
+      source,
+      /min-w-\[22px\].*bg-pqInner.*text-pqBrand/,
+    );
+  });
+
+  it('keeps the standalone page below the app header', () => {
+    assert.match(
+      source,
+      /standalone[\s\S]{0,400}px-\[22px\] pt-\[22px\] pb-\[28px\]/,
+    );
+    assert.doesNotMatch(
+      source,
+      /standalone[\s\S]{0,400}px-\[22px\] pt-\[8px\]/,
+    );
+  });
 });

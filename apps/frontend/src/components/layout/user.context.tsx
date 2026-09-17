@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, FC, ReactNode, useContext } from 'react';
+import { createContext, FC, ReactNode, useCallback, useContext } from 'react';
+import { useSWRConfig } from 'swr';
 import type { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import {
   AnyTier,
@@ -48,6 +49,58 @@ export const ContextWrapper: FC<{
   return <UserContext.Provider value={values}>{children}</UserContext.Provider>;
 };
 export const useUser = () => useContext(UserContext);
+
+/**
+ * Header, rail and settings all read identity from different SWR keys.
+ * `/user/self` feeds UserContext (name, email, orgName). `organizations`
+ * feeds the rail switcher, which does not revalidate on focus. After a
+ * settings save, refresh every identity surface together so chrome does not
+ * wait for a full page reload.
+ */
+export const useRevalidateIdentity = () => {
+  const { mutate } = useSWRConfig();
+  const user = useUser();
+  return useCallback(
+    async (patch?: { name?: string; email?: string; orgName?: string }) => {
+      const orgId = user?.orgId;
+      await Promise.all([
+        mutate(
+          '/user/self',
+          (curr: Record<string, unknown> | undefined) => {
+            if (!curr || !patch) {
+              return curr;
+            }
+            return {
+              ...curr,
+              ...(patch.name !== undefined ? { name: patch.name } : {}),
+              ...(patch.email !== undefined ? { email: patch.email } : {}),
+              ...(patch.orgName !== undefined ? { orgName: patch.orgName } : {}),
+            };
+          },
+          { revalidate: true }
+        ),
+        mutate(
+          'organizations',
+          (
+            list:
+              | Array<{ id: string; name: string; [key: string]: unknown }>
+              | undefined
+          ) => {
+            if (!Array.isArray(list) || !patch?.orgName || !orgId) {
+              return list;
+            }
+            return list.map((org) =>
+              org.id === orgId ? { ...org, name: patch.orgName! } : org
+            );
+          },
+          { revalidate: true }
+        ),
+        mutate('user-identities'),
+      ]);
+    },
+    [mutate, user?.orgId]
+  );
+};
 
 /**
  * Whether Copilot may be mounted for this account.

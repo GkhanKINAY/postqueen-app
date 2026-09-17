@@ -180,9 +180,11 @@ export const TrialLockCard: FC<TrialLockCardProps> = ({
     return (
       <div
         data-ai-lock="1"
-        className="absolute inset-0 z-[30] flex items-center justify-center bg-pqPopup p-[24px] backdrop-blur-[3px]"
+        className="absolute inset-0 z-[30] overflow-y-auto bg-pqPopup p-[24px] backdrop-blur-[3px]"
       >
-        {card}
+        <div className="flex min-h-full items-center justify-center">
+          {card}
+        </div>
       </div>
     );
   }

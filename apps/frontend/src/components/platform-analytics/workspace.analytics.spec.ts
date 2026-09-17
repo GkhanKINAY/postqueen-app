@@ -13,11 +13,14 @@ describe('Posting days', () => {
     assert.match(source, /data-pq="posting-days"/);
     assert.match(source, /data-pq="posting-days-count"/);
     assert.match(source, /count > 0 \? formatCount\(count\)/);
-    assert.match(source, /chartTooltipBox/);
     assert.match(source, /data-pq="chart-tooltip"/);
+    assert.match(source, /data-pq="chart-tooltip-caret"/);
+    assert.match(source, /data-pq="posting-days-mark"/);
     assert.match(source, /t\('post', 'Post'\)/);
     assert.match(source, /t\('posts', 'Posts'\)/);
     assert.match(source, /onMouseEnter/);
     assert.match(source, /aria-label/);
+    assert.doesNotMatch(source, /createPortal/);
+    assert.doesNotMatch(source, /chartTooltipBox/);
   });
 });

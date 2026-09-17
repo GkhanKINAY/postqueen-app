@@ -114,4 +114,32 @@ describe('composer modal chrome', () => {
       /id="social-settings"[\s\S]{0,220}bg-pqLine p-\[1px\]/,
     );
   });
+
+  it('drops Post now out of the Schedule split, with quiet icons on the footer actions', () => {
+    assert.match(manage, /matchWidth: true/);
+    assert.match(manage, /offsetPx: 6/);
+    assert.match(manage, /data-pq="composer-post-now-menu"/);
+    assert.match(manage, /<ScheduleIcon size=\{16\}/);
+    assert.match(manage, /<SendIcon size=\{16\}/);
+    assert.match(manage, /<DraftIcon size=\{16\}/);
+    assert.match(manage, /aria-haspopup="menu"/);
+    assert.match(manage, /rotated=\{postNowOpen\}/);
+    assert.doesNotMatch(manage, /w-\[206px\]/);
+    assert.doesNotMatch(
+      manage,
+      /data-pq="composer-post-now-menu"[\s\S]{0,180}p-\[12px\]/,
+    );
+    const popover = readFileSync(
+      fileURLToPath(new URL('./use.anchored.popover.ts', import.meta.url)),
+      'utf8',
+    );
+    assert.match(popover, /matchWidth\?: boolean/);
+    const icons = readFileSync(
+      fileURLToPath(new URL('../ui/icons/index.tsx', import.meta.url)),
+      'utf8',
+    );
+    assert.match(icons, /export const ScheduleIcon/);
+    assert.match(icons, /export const SendIcon/);
+    assert.match(icons, /export const DraftIcon/);
+  });
 });

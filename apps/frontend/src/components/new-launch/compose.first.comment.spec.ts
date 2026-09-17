@@ -57,7 +57,15 @@ describe('composer first comment', () => {
     assert.match(source, /your_comment/);
     assert.doesNotMatch(source, /EditorContent/);
     assert.match(source, /<textarea/);
-    assert.match(source, /bg-pqInner/);
+    assert.match(
+      source,
+      /data-pq="composer-first-comment"[\s\S]{0,220}rounded-\[14px\] bg-pqInner p-\[14px\]/,
+    );
+    assert.match(
+      source,
+      /data-pq="composer-first-comment"[\s\S]{0,280}shadow-\[inset_0_0_0_1px_var\(--border\)\]/,
+    );
+    assert.doesNotMatch(source, /border-t border-pqLine pt-\[12px\]/);
   });
 
   it('aligns comment tools with the post toolbar icon chips', () => {

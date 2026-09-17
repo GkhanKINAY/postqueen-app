@@ -559,7 +559,7 @@ export const MediaBox: FC<{
         disabled={loading}
         noClick
         brandOverlay
-        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[8px] pb-[28px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner mobile:px-[14px]"
+        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[22px] pb-[28px] scrollbar scrollbar-thumb-pqBorder scrollbar-track-pqInner mobile:px-[14px]"
         onDrop={dragAndDrop}
       >
         {fileInput}
@@ -1065,12 +1065,12 @@ export const MediaBox: FC<{
                     )}
                     {marked && (
                       <div
-                        // Top-start order chip — clears the top-end ⋯ menu and
-                        // the border-2 selection outline. Bare digit (no
-                        // parentheses); already-attached stays a small check.
+                        data-pq="media-pick-order"
                         className={clsx(
-                          'absolute top-[8px] start-[8px] z-[101] grid h-[22px] min-w-[22px] place-items-center rounded-[7px] bg-pqInner px-[6px] text-[11px] font-[700] leading-none tabular-nums text-pqBrand shadow-pqE2 shadow-[inset_0_0_0_1px_var(--border)]',
-                          alreadyOnPost && !isPicked && 'text-pqMuted'
+                          'absolute top-[8px] start-[8px] z-[101] grid h-[24px] min-w-[24px] place-items-center rounded-full px-[7px] text-[12px] font-[700] leading-none tabular-nums shadow-[0_1px_3px_rgba(0,0,0,0.45)]',
+                          alreadyOnPost && !isPicked
+                            ? 'bg-black/75 text-white'
+                            : 'bg-pqBrand text-pqOnBrand'
                         )}
                         title={
                           alreadyOnPost && !isPicked

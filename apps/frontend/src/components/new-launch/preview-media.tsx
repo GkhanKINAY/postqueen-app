@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
 import {
   FEED_PREVIEW_FALLBACK_WH,
+  X_PAIR_MOSAIC_WH,
   clampPreviewAspect,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 
@@ -79,6 +80,70 @@ export const PreviewMediaFrame: FC<{
           onMediaReady={aspectWH == null ? onMediaReady : undefined}
         />
       </a>
+    </div>
+  );
+};
+
+/**
+ * Timeline mosaic for 2–4 photos. X crops a pair to 7:8 each (overall 14:8)
+ * and keeps that same 14:8 frame for 3-up and 4-up (`gridWH` = pair). Facebook
+ * / LinkedIn sit two squares side by side (`pairWH={2}`) and a square 2×2
+ * after that.
+ */
+export const PreviewMediaMosaic: FC<{
+  srcs: string[];
+  pairWH?: number;
+  gridWH?: number;
+  className?: string;
+}> = ({ srcs, pairWH = X_PAIR_MOSAIC_WH, gridWH = 1, className }) => {
+  const shown = srcs.slice(0, 4);
+  const extra = srcs.length - shown.length;
+  const displayWH = shown.length === 2 ? pairWH : gridWH;
+  const maxHeight = PREVIEW_MEDIA_MAX_HEIGHT;
+
+  if (shown.length < 2) {
+    return null;
+  }
+
+  return (
+    <div
+      data-pq="preview-media-mosaic"
+      className={clsx(
+        'mx-auto grid gap-[2px] overflow-hidden bg-black/20',
+        shown.length === 2 && 'grid-cols-2 grid-rows-1',
+        shown.length >= 3 && 'grid-cols-2 grid-rows-2',
+        className
+      )}
+      style={{
+        aspectRatio: `${displayWH} / 1`,
+        maxHeight,
+        width: `min(100%, calc(${maxHeight} * ${displayWH}))`,
+      }}
+    >
+      {shown.map((src, index) => (
+        <a
+          key={`${src}-${index}`}
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          className={clsx(
+            'relative block h-full min-h-0 min-w-0 overflow-hidden',
+            shown.length === 3 && index === 0 && 'row-span-2'
+          )}
+        >
+          <VideoOrImage
+            autoplay={true}
+            src={src}
+            imageClassName="absolute inset-0 h-full w-full"
+            videoClassName="absolute inset-0 h-full w-full"
+          />
+          {extra > 0 && index === shown.length - 1 && (
+            <span className="absolute inset-0 grid place-items-center bg-black/45 text-[18px] font-[700] text-white">
+              +{extra}
+            </span>
+          )}
+        </a>
+      ))}
     </div>
   );
 };

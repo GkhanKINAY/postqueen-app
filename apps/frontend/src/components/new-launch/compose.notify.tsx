@@ -73,8 +73,8 @@ export const ComposeNotify: FC<{
       >
         <svg
           viewBox="0 0 16 16"
-          width="15"
-          height="15"
+          width="20"
+          height="20"
           fill="none"
           aria-hidden="true"
           className="shrink-0"

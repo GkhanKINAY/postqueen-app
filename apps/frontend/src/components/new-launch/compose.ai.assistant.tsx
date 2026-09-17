@@ -21,11 +21,12 @@ import {
 } from '@copilotkit/react-ui';
 import { useCopilotAction } from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
+import { useAiAvailable, useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
 
 export type StudioRail = 'preview' | 'assistant';
 
@@ -588,7 +589,10 @@ const ComposeAiUnconfigured: FC<{
  */
 export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
   const t = useT();
+  const user = useUser();
   const aiOk = useAiAvailable();
+  const trialLocked =
+    !!user?.isTrailing || !!user?.lifetimePaymentPending;
   const label = t('ai_copilot', 'AI Copilot');
   const apply = APPLY_WITH_SET_POSTS;
   const suggestions = useMemo(
@@ -632,10 +636,32 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
         } as CopilotKitCSSProperties
       }
       className={clsx(
-        'trz agent flex h-full min-h-0 flex-col bg-pqInner',
+        'trz agent relative flex h-full min-h-0 flex-col bg-pqInner',
         docked && 'border-t border-pqLine'
       )}
     >
+      {trialLocked && (
+        <TrialLockCard
+          variant="overlay"
+          name={label}
+          title={t(
+            'ai_copilot_unlocks_after_your_trial',
+            'AI Copilot unlocks after your trial'
+          )}
+          description={t(
+            'ai_lock_sub',
+            'Your channels, calendar and analytics are already live. Copilot is the one thing that waits for your first payment.'
+          )}
+          perks={[
+            t(
+              'ai_lock_perk_chat',
+              'Copilot chat that drafts and schedules for you'
+            ),
+            t('ai_lock_perk_images', '300 AI images a month'),
+            t('ai_lock_perk_videos', '30 AI videos a month'),
+          ]}
+        />
+      )}
       {aiOk ? (
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">

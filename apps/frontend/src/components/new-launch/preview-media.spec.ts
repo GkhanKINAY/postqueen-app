@@ -15,6 +15,18 @@ const facebook = readFileSync(
   ),
   'utf8',
 );
+const linkedin = readFileSync(
+  fileURLToPath(
+    new URL('./providers/linkedin/linkedin.preview.tsx', import.meta.url)
+  ),
+  'utf8',
+);
+const general = readFileSync(
+  fileURLToPath(
+    new URL('../launches/general.preview.component.tsx', import.meta.url)
+  ),
+  'utf8',
+);
 const frame = readFileSync(
   fileURLToPath(new URL('./preview-media.tsx', import.meta.url)),
   'utf8',
@@ -104,5 +116,22 @@ describe('post preview media frame', () => {
 
   it('does not paint the YouTube empty placeholder onto Instagram', () => {
     assert.doesNotMatch(instagram, /no-video-youtube/);
+  });
+
+  it('uses a 14:8 mosaic for X pairs instead of a square 1:2 collage', () => {
+    assert.match(frame, /PreviewMediaMosaic/);
+    assert.match(frame, /X_PAIR_MOSAIC_WH/);
+    assert.match(frame, /gridWH/);
+    assert.match(general, /PreviewMediaMosaic/);
+    assert.match(general, /pairWH=\{X_PAIR_MOSAIC_WH\}/);
+    assert.match(general, /gridWH=\{X_PAIR_MOSAIC_WH\}/);
+    assert.doesNotMatch(general, /aspect-square/);
+    assert.match(facebook, /PreviewMediaMosaic/);
+    assert.match(facebook, /SPLIT_PAIR_MOSAIC_WH/);
+    assert.doesNotMatch(facebook, /aspect-square/);
+    assert.match(linkedin, /PreviewMediaMosaic/);
+    assert.match(linkedin, /SPLIT_PAIR_MOSAIC_WH/);
+    assert.doesNotMatch(linkedin, /aspect-square/);
+    assert.match(instagram, /SliderComponent/);
   });
 });

@@ -50,6 +50,10 @@ import {
   ExpandIcon,
   CollapseIcon,
   TrashIcon,
+  ChevronDownIcon,
+  ScheduleIcon,
+  SendIcon,
+  DraftIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
 import { useShortlinkPreference } from '@gitroom/frontend/components/settings/shortlink-preference.component';
@@ -186,8 +190,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const { data: shortlinkPreferenceData } = useShortlinkPreference();
   const { referenceRef: postNowRef, floatingRef: postNowMenuRef } =
     useAnchoredPopover<HTMLDivElement, HTMLDivElement>(postNowOpen, 'end', {
-      offsetPx: 10,
+      offsetPx: 6,
       placement: 'top-end',
+      matchWidth: true,
     });
   const postNowClickRef = useClickOutside(() => {
     if (postNowOpen) {
@@ -959,7 +964,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     >
                       <div
                         id="social-settings"
-                        className="flex min-w-0 flex-col divide-y divide-pqLine overflow-hidden rounded-[14px] bg-pqInner text-[14px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] empty:hidden"
+                        className="flex min-w-0 flex-col gap-[8px] text-[14px] font-[500] text-pqText empty:hidden"
                       />
                       <style>
                         {`#social-settings [data-id="${current}"] {display: block !important;}`}
@@ -1339,7 +1344,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 }
                 onClick={schedule('draft')}
                 className={clsx(
-                  'relative flex h-[44px] cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-btnSimple text-[15px] font-[600] disabled:cursor-not-allowed',
+                  'relative flex h-[44px] cursor-pointer items-center justify-center gap-[8px] overflow-hidden rounded-[10px] bg-btnSimple text-[15px] font-[600] disabled:cursor-not-allowed',
                   'max-[1179px]:min-w-0 max-[1179px]:flex-1 max-[1179px]:px-[12px]',
                   touch ? 'min-w-0 flex-1 px-[12px]' : 'px-[18px]'
                 )}
@@ -1349,14 +1354,17 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     <Spinner width={20} height={20} />
                   </div>
                 )}
-                <div
+                <span
                   className={clsx(
-                    'min-w-0 truncate whitespace-nowrap',
+                    'flex min-w-0 items-center gap-[8px]',
                     loading && 'invisible'
                   )}
                 >
-                  {t('save_as_draft', 'Save as Draft')}
-                </div>
+                  <DraftIcon size={16} className="shrink-0" />
+                  <span className="min-w-0 truncate whitespace-nowrap">
+                    {t('save_as_draft', 'Save as Draft')}
+                  </span>
+                </span>
               </button>
             )}
             {addEditSets && (
@@ -1385,7 +1393,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     }
                     onClick={schedule('schedule')}
                     className={clsx(
-                      'btnSub relative flex h-[44px] min-w-0 items-center justify-center overflow-hidden bg-pqBrand text-[15px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-40',
+                      'btnSub relative flex h-[44px] min-w-0 items-center justify-center gap-[8px] overflow-hidden bg-pqBrand text-[15px] font-[600] text-white outline-none disabled:cursor-not-allowed disabled:opacity-40',
                       dummy || !hasChannels
                         ? 'rounded-[10px]'
                         : 'rounded-s-[10px]',
@@ -1402,18 +1410,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     )}
                     <span
                       className={clsx(
-                        'min-w-0 truncate whitespace-nowrap',
+                        'flex min-w-0 items-center gap-[8px]',
                         loading && 'invisible'
                       )}
                     >
-                      {selectedIntegrations.length === 0
-                        ? t('select_channels', 'Select channels')
-                        : dummy
-                        ? t('create_output', 'Create output')
-                        : existingData?.posts?.[0]?.state &&
-                          existingData.posts[0].state !== 'DRAFT'
-                        ? t('update', 'Update')
-                        : t('schedule', 'Schedule')}
+                      {hasChannels && !dummy && (
+                        <ScheduleIcon size={16} className="shrink-0" />
+                      )}
+                      <span className="min-w-0 truncate whitespace-nowrap">
+                        {selectedIntegrations.length === 0
+                          ? t('select_channels', 'Select channels')
+                          : dummy
+                          ? t('create_output', 'Create output')
+                          : existingData?.posts?.[0]?.state &&
+                            existingData.posts[0].state !== 'DRAFT'
+                          ? t('update', 'Update')
+                          : t('schedule', 'Schedule')}
+                      </span>
                     </span>
                   </button>
                   {!dummy && hasChannels && (
@@ -1423,42 +1436,36 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         selectedIntegrations.length === 0 || loading || locked
                       }
                       onClick={() => setPostNowOpen((v) => !v)}
+                      aria-haspopup="menu"
+                      aria-expanded={postNowOpen}
                       aria-label={t('post_now', 'Post Now')}
-                      className={clsx(
-                        'grid h-[44px] w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80'
-                      )}
+                      className="grid h-[44px] w-[38px] shrink-0 place-items-center rounded-e-[10px] bg-pqBrand text-white shadow-[inset_1px_0_0_rgba(255,255,255,.24)] outline-none disabled:cursor-not-allowed disabled:opacity-80"
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        className="opacity-65"
-                      >
-                        <path
-                          d="m6 9 6 6 6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <ChevronDownIcon
+                        size={16}
+                        rotated={postNowOpen}
+                        className="opacity-70"
+                      />
                     </button>
                   )}
                 </div>
                 {!dummy && hasChannels && postNowOpen && (
                   <div
                     ref={postNowMenuRef}
-                    className="z-[300] w-[206px] rounded-[8px] border border-pqBorder bg-pqInner p-[12px] shadow-pq"
+                    data-pq="composer-post-now-menu"
+                    role="menu"
+                    className="z-[300] rounded-[10px] bg-pqPop p-[4px] shadow-[var(--e3),inset_0_0_0_1px_var(--border)]"
                   >
                     <button
                       type="button"
+                      role="menuitem"
                       onClick={schedule('now')}
                       disabled={
                         selectedIntegrations.length === 0 || loading || locked
                       }
-                      className="post-now flex h-[44px] w-full items-center justify-center rounded-[8px] bg-pqPink text-[15px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-80"
+                      className="post-now flex h-[40px] w-full items-center justify-center gap-[8px] rounded-[8px] bg-pqPink text-[14px] font-[600] text-white disabled:cursor-not-allowed disabled:opacity-80"
                     >
+                      <SendIcon size={16} className="shrink-0" />
                       {t('post_now', 'Post Now')}
                     </button>
                   </div>

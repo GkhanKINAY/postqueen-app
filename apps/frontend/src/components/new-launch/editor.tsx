@@ -670,7 +670,7 @@ export const EditorWrapper: FC<{
             showComments ? (
               <div
                 data-pq="composer-comments"
-                className="flex flex-col gap-[8px]"
+                className="flex flex-col gap-[10px]"
               >
                 {(items.length > 1
                   ? items.slice(1)
