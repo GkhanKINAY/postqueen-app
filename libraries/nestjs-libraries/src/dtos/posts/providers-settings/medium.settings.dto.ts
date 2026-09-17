@@ -25,10 +25,12 @@ export class MediumSettingsDto {
   @IsDefined()
   title: string;
 
-  @IsString()
-  @MinLength(2)
-  @IsDefined()
-  subtitle: string;
+  // `subtitle` was here, required with a 2-character minimum, and
+  // `medium.provider.ts` never read it - Medium's API has no such parameter.
+  // Removing rather than relaxing is safe: settings are validated with plain
+  // `validate(..., { skipMissingProperties: false })` and the global
+  // ValidationPipe sets no `whitelist`, so a client still sending `subtitle`
+  // has it ignored exactly as the provider already ignored it.
 
   @IsOptional()
   @IsString()
