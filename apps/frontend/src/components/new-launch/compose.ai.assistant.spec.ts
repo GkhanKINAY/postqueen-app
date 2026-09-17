@@ -38,7 +38,7 @@ describe('compose AI assistant placement', () => {
     assert.match(modal, /data-pq="composer-empty"/);
     assert.match(modal, /data-pq-composer-empty/);
     assert.match(assistant, /<CopilotChat/);
-    assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
+    assert.match(assistant, /trz agent relative flex h-full min-h-0 flex-col/);
     assert.doesNotMatch(assistant, /<CopilotPopup/);
     assert.doesNotMatch(modal, /bottom-\[104px\]/);
     assert.doesNotMatch(modal, /end-\[24px\]/);
@@ -58,7 +58,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /className="copilotKitInputContainer"/);
     assert.match(assistant, /className="copilotKitInput flex items-end gap-\[8px\]"/);
     assert.match(assistant, /copilotKitUserMessage/);
-    assert.match(assistant, /trz agent flex h-full min-h-0 flex-col/);
+    assert.match(assistant, /trz agent relative flex h-full min-h-0 flex-col/);
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 
@@ -108,5 +108,14 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /text-\[14px\]/);
     assert.match(modal, /t\('ai_copilot', 'AI Copilot'\)/);
     assert.doesNotMatch(modal, /AI assistant/);
+  });
+
+  it('locks the rail with the same trial card as the Agents Copilot', () => {
+    assert.match(assistant, /<TrialLockCard/);
+    assert.match(assistant, /variant="overlay"/);
+    assert.match(assistant, /isTrailing/);
+    assert.match(assistant, /lifetimePaymentPending/);
+    assert.match(assistant, /ai_copilot_unlocks_after_your_trial/);
+    assert.match(assistant, /ai_lock_perk_chat/);
   });
 });

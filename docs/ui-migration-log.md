@@ -29,6 +29,8 @@ change is *meant* to move a list, run `--update`, **commit the baseline**, and s
 why here and in the PR. A baseline file that is absent rather than different fails
 the check: an uncommitted one would reseed itself on every CI run and guard nothing.
 
+**Create Post AI Copilot trial lock.** Agents already covers Copilot with `TrialLockCard variant="overlay"` until the trial ends (or founding fee is paid). The Create Post AI Copilot rail now uses the same overlay, copy, perks, and glowing End-trial button (`isTrailing` / `lifetimePaymentPending`). Overlay scrolls if the composer rail is shorter than the Agents column. Gates `isTrailing` 19 → 21, `trialLocked` 6 → 8. `scripts/ui-migration-check.sh --update` wrote `gates.txt`.
+
 **Generate AI Image prompt helper.** Dropped the unused “What should appear in the image?” line under Prompt; the Prompt label and textarea placeholder stay. i18n −1 (`ai_image_prompt_help`). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.
 
 **AI Copilot draft card.** `/agents` still has no Create Post Preview rail. When Copilot is ready to post, `manualPosting` now paints a chat card (text, thumbs, channel, date) with Schedule / Open composer instead of auto-opening the composer. Same commit: Create Post field chrome (Re-posters, cover thumbs, First Comment, tags, Copilot Send). i18n +5 −1 (`open_composer`, `opening_composer`, `copilot_will_schedule`, `quick_edits`, `send`; unused `editor` dropped). `scripts/ui-migration-check.sh --update` wrote `i18n.txt`.

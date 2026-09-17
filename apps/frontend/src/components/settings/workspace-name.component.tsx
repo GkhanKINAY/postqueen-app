@@ -2,18 +2,17 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { useUser, useRevalidateIdentity } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/react/form/button';
-import { useSWRConfig } from 'swr';
 
 const WorkspaceNameComponent = () => {
   const t = useT();
   const fetch = useFetch();
   const user = useUser();
   const toaster = useToaster();
-  const { mutate } = useSWRConfig();
+  const revalidateIdentity = useRevalidateIdentity();
   const [name, setName] = useState(user?.orgName || '');
   const [saving, setSaving] = useState(false);
 
@@ -48,13 +47,14 @@ const WorkspaceNameComponent = () => {
         return;
       }
       const body = await res.json();
-      setName(body.name);
-      await mutate('/user/self');
+      const saved = typeof body?.name === 'string' ? body.name : next;
+      setName(saved);
+      await revalidateIdentity({ orgName: saved });
       toaster.show(t('settings_updated', 'Settings updated'), 'success');
     } finally {
       setSaving(false);
     }
-  }, [name, fetch, toaster, t, mutate]);
+  }, [name, fetch, toaster, t, revalidateIdentity]);
 
   if (user?.role !== 'SUPERADMIN') {
     return null;

@@ -346,10 +346,10 @@ const AppChrome = ({ children }: { children: ReactNode }) => {
           <HeaderActionSlot />
           <div className="flex items-center gap-[4px] text-pqMuted">
             <StreakComponent />
-            <HelpMenu />
             <HeaderIcon>
               <NotificationComponent />
             </HeaderIcon>
+            <HelpMenu />
           </div>
           {!mobile && <HeaderDivider />}
           <UserMenu />

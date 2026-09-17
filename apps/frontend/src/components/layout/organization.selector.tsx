@@ -29,6 +29,19 @@ interface Organization {
 const orgRoleLabel = (role: 'SUPERADMIN' | 'ADMIN' | 'USER') =>
   role === 'SUPERADMIN' ? 'Super-Admin' : role === 'ADMIN' ? 'Admin' : 'User';
 
+const currentOrgName = (
+  org: { id: string; name: string } | undefined,
+  user: { orgId?: string; orgName?: string } | undefined,
+) => {
+  if (!org) {
+    return undefined;
+  }
+  if (user?.orgId === org.id && user.orgName) {
+    return user.orgName;
+  }
+  return org.name;
+};
+
 const RailOrgChrome: FC<{
   name?: string;
   collapsed?: boolean;
@@ -165,7 +178,7 @@ export const OrganizationSelector: FC<{
     return (
       <div ref={ref} className="relative flex items-center" data-keepdrawer="1">
         <RailOrgChrome
-          name={current?.name}
+          name={currentOrgName(current, user)}
           collapsed={collapsed}
           open={open}
           buttonRef={referenceRef}
@@ -196,7 +209,7 @@ export const OrganizationSelector: FC<{
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate">
-                    {org.name}
+                    {currentOrgName(org, user)}
                     {!!(org as any).users?.[0]?.role && (
                       <span className="text-pqSoft">
                         {' '}
@@ -261,8 +274,8 @@ export const OrganizationSelector: FC<{
                   fill="currentColor"
                 />
               </svg>
-              {!!current?.name && (
-                <div className="max-w-[240px] truncate">{current?.name}</div>
+              {!!currentOrgName(current, user) && (
+                <div className="max-w-[240px] truncate">{currentOrgName(current, user)}</div>
               )}
             </div>
           )}
@@ -279,7 +292,7 @@ export const OrganizationSelector: FC<{
                   onClick={changeOrg(org)}
                   className="whitespace-nowrap truncate"
                 >
-                  {org.name}
+                  {currentOrgName(org, user)}
                   {!!(org as any).users?.[0]?.role && (
                     <span className="text-pqSoft">
                       {' '}

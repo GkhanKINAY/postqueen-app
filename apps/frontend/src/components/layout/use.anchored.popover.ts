@@ -37,6 +37,8 @@ export function useAnchoredPopover<
     padding?: number;
     /** Override Floating UI placement (defaults from `align`). */
     placement?: Placement;
+    /** Stretch the panel to the anchor’s width (split-button menus). */
+    matchWidth?: boolean;
   }
 ): {
   referenceRef: RefObject<R | null>;
@@ -47,6 +49,7 @@ export function useAnchoredPopover<
   const offsetPx = options?.offsetPx ?? 6;
   const crossAxisPx = options?.crossAxisPx ?? 0;
   const padding = options?.padding ?? 8;
+  const matchWidth = options?.matchWidth ?? false;
   const placement: Placement =
     options?.placement ?? (align === 'end' ? 'bottom-end' : 'bottom-start');
 
@@ -71,11 +74,18 @@ export function useAnchoredPopover<
             padding,
             apply({
               availableWidth,
+              rects,
               elements,
             }: {
               availableWidth: number;
+              rects: { reference: { width: number } };
               elements: { floating: HTMLElement };
             }) {
+              if (matchWidth) {
+                elements.floating.style.width = `${Math.round(
+                  rects.reference.width
+                )}px`;
+              }
               elements.floating.style.maxWidth = `${Math.max(
                 0,
                 availableWidth
@@ -97,7 +107,7 @@ export function useAnchoredPopover<
     };
 
     return autoUpdate(reference, floating, update);
-  }, [open, placement, offsetPx, crossAxisPx, padding]);
+  }, [open, placement, offsetPx, crossAxisPx, padding, matchWidth]);
 
   return { referenceRef, floatingRef };
 }

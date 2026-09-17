@@ -5,7 +5,9 @@ import {
   FEED_PREVIEW_MAX_WH,
   FEED_PREVIEW_MIN_WH,
   REEL_FEED_PREVIEW_WH,
+  SPLIT_PAIR_MOSAIC_WH,
   STORY_PREVIEW_WH,
+  X_PAIR_MOSAIC_WH,
   clampPreviewAspect,
   feedPreviewAspect,
   firstPreviewableMedia,
@@ -64,6 +66,14 @@ describe('firstPreviewableMedia', () => {
       '/media/redsim.jpg'
     );
     assert.equal(firstPreviewableMedia([{ id: 'blank' }]), undefined);
+  });
+});
+
+describe('mosaic aspect', () => {
+  it('sizes an X pair to 14:8, not a square of 1:2 strips', () => {
+    assert.equal(X_PAIR_MOSAIC_WH, 14 / 8);
+    assert.notEqual(X_PAIR_MOSAIC_WH, 1);
+    assert.equal(SPLIT_PAIR_MOSAIC_WH, 2);
   });
 });
 

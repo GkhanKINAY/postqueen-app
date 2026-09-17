@@ -10,6 +10,28 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useFeatureSetupHint } from '@gitroom/frontend/components/media/feature.setup.hint';
+
+/** Same stroked sparkle as CopilotMark — kept local so this modal does not
+ *  import the Copilot rail. */
+const GenerateSparkle: FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    aria-hidden="true"
+    className="shrink-0"
+  >
+    <path
+      d="M12 3l1.9 4.8 4.8 1.9-4.8 1.9L12 16.4l-1.9-4.8L5.3 9.7l4.8-1.9L12 3ZM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const list = [
   'Realistic',
   'Cartoon',
@@ -165,7 +187,10 @@ ${style}
         onClick={generate}
         className="h-[44px] w-full text-[14.5px] font-[700]"
       >
-        {t('generate', 'Generate')}
+        <span className="flex items-center gap-[8px]">
+          <GenerateSparkle size={16} />
+          {t('generate', 'Generate')}
+        </span>
       </Button>
     </div>
   );
@@ -205,6 +230,8 @@ export const AiImage: FC<{
     }
     modals.openModal({
       title: t('generate_ai_image', 'Generate AI Image'),
+      size: 640,
+      maxSize: 640,
       children: (close) => (
         <AiImageModal
           close={close}

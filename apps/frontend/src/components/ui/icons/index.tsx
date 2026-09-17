@@ -251,6 +251,95 @@ export const CalendarIcon: FC<IconProps> = ({ className, ...props }) => (
   </svg>
 );
 
+/** 16px calendar for Schedule — the date-picker CalendarIcon is 17×19. */
+export const ScheduleIcon: FC<IconProps> = ({
+  size = 16,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M5 2.5V4.5M11 2.5V4.5M2.5 6.5H13.5M3.5 3.5H12.5C13.0523 3.5 13.5 3.94772 13.5 4.5V12.5C13.5 13.0523 13.0523 13.5 12.5 13.5H3.5C2.94772 13.5 2.5 13.0523 2.5 12.5V4.5C2.5 3.94772 2.94772 3.5 3.5 3.5Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Paper plane — Post now. */
+export const SendIcon: FC<IconProps> = ({
+  size = 16,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M2.5 8.2 13.5 3.2 8.8 13 8 9.2 2.5 8.2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8 9.2 13.5 3.2"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Document — Save as draft. */
+export const DraftIcon: FC<IconProps> = ({
+  size = 16,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M4.5 2.5H9.2L12.5 5.8V12.7C12.5 13.1418 12.1418 13.5 11.7 13.5H4.5C4.05817 13.5 3.7 13.1418 3.7 12.7V3.3C3.7 2.85817 4.05817 2.5 4.5 2.5Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9.2 2.5V5.8H12.5M6 8.5H10M6 11H10"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Repeat/Cycle Icon
 export const RepeatIcon: FC<IconProps> = ({
   size = 20,

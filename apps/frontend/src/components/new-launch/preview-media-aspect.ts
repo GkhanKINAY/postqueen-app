@@ -16,6 +16,13 @@ export const FEED_PREVIEW_MIN_WH = 4 / 5;
 export const FEED_PREVIEW_MAX_WH = 1.91;
 export const FEED_PREVIEW_FALLBACK_WH = 4 / 5;
 export const STORY_PREVIEW_WH = 9 / 16;
+/**
+ * X/Twitter 2-up: each cell is 7:8, so the mosaic is 14:8. A square flex
+ * row would crop each 1:1 file to 1:2 — that is not the timeline.
+ */
+export const X_PAIR_MOSAIC_WH = 14 / 8;
+/** Facebook / LinkedIn 2-up: two squares side by side. */
+export const SPLIT_PAIR_MOSAIC_WH = 2;
 /** Single mp4 posts publish as Reels; the home-feed card is 4:5, not 9:16. */
 export const REEL_FEED_PREVIEW_WH = 4 / 5;
 

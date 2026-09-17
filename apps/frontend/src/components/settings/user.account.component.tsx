@@ -7,9 +7,8 @@ import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import { useUser, useRevalidateIdentity } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
 import { Button } from '@gitroom/react/form/button';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -83,7 +82,7 @@ export const UserAccountComponent = () => {
   const fetch = useFetch();
   const user = useUser();
   const toaster = useToaster();
-  const { mutate: globalMutate } = useSWRConfig();
+  const revalidateIdentity = useRevalidateIdentity();
   const { data, mutate, isLoading, error } = useIdentities();
   const { oauthDisplayName, isGeneral, genericOauth } = useVariables();
   const router = useRouter();
@@ -118,7 +117,7 @@ export const UserAccountComponent = () => {
         });
         if (res.ok) {
           toaster.show(t('email_updated', 'Email updated'), 'success');
-          await globalMutate('/user/self');
+          await revalidateIdentity();
           await mutate();
         } else {
           const { message } = await res.json().catch(() => ({ message: '' }));
@@ -135,7 +134,7 @@ export const UserAccountComponent = () => {
       setPasswordOpen(true);
       router.replace('/settings?tab=account', { scroll: false });
     }
-  }, [search, fetch, toaster, t, globalMutate, mutate, router]);
+  }, [search, fetch, toaster, t, revalidateIdentity, mutate, router]);
 
   useEffect(() => {
     const code = search.get('code');
@@ -188,12 +187,12 @@ export const UserAccountComponent = () => {
         toaster.show(t('could_not_save', 'Could not save'), 'warning');
         return;
       }
-      await globalMutate('/user/self');
+      await revalidateIdentity({ name: fullname });
       toaster.show(t('settings_updated', 'Settings updated'), 'success');
     } finally {
       setSavingName(false);
     }
-  }, [name, fetch, toaster, t, globalMutate]);
+  }, [name, fetch, toaster, t, revalidateIdentity]);
 
   const requestEmail = useCallback(async () => {
     setSavingAuth(true);

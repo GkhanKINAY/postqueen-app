@@ -17,5 +17,9 @@ describe('composer notify control', () => {
     assert.match(source, /notify_quiet_hint/);
     assert.doesNotMatch(source, /post yourself/);
     assert.doesNotMatch(source, /Automatic/);
+    assert.match(
+      source,
+      /aria-label=\{triggerLabel\}[\s\S]{0,400}width="20"/,
+    );
   });
 });

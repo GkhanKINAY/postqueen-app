@@ -84,6 +84,10 @@ describe('All channels rail', () => {
   it('uses a platform mosaic and an N channels subtitle', () => {
     assert.match(rail, /all-channels-mosaic/);
     assert.match(rail, /n_channels/);
+    assert.match(rail, /data-pq="all-channels"/);
+    assert.match(rail, /bg-pqBrandSoft/);
+    assert.match(rail, /marginInlineStart/);
+    assert.doesNotMatch(rail, /grid-cols-2 grid-rows-2/);
     assert.doesNotMatch(rail, /all_channels_hint/);
     assert.equal((rail.match(/<AllChannelsMosaic /g) || []).length, 3);
   });

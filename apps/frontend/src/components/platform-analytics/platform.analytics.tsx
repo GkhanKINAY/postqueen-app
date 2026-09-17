@@ -27,29 +27,84 @@ import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/co
 
 const ALL_CHANNELS = '__all__';
 
+const uniquePlatforms = (
+  integrations: Array<{ id: string; identifier: string }>,
+  limit: number,
+) => {
+  const shown: Array<{ id: string; identifier: string }> = [];
+  const seen = new Set<string>();
+  for (const integration of integrations) {
+    if (seen.has(integration.identifier)) {
+      continue;
+    }
+    seen.add(integration.identifier);
+    shown.push(integration);
+    if (shown.length === limit) {
+      break;
+    }
+  }
+  return {
+    shown,
+    extra: Math.max(0, integrations.length - shown.length),
+  };
+};
+
 const AllChannelsMosaic: FC<{
   integrations: Array<{ id: string; identifier: string }>;
-}> = ({ integrations }) => {
-  const shown = integrations.slice(0, 4);
-  const extra = Math.max(0, integrations.length - 4);
+  compact?: boolean;
+}> = ({ integrations, compact = false }) => {
+  const { shown, extra } = uniquePlatforms(integrations, compact ? 2 : 3);
   return (
-    <span
-      data-pq="all-channels-mosaic"
-      className="relative grid size-[32px] shrink-0 grid-cols-2 grid-rows-2 gap-[1px] overflow-hidden rounded-[8px] bg-pqSettings p-[1px]"
-    >
-      {shown.map((integration) => (
-        <img
-          key={integration.id}
-          src={`/icons/platforms/${integration.identifier}.png`}
-          alt=""
-          className="size-full object-cover"
-        />
+    <span data-pq="all-channels-mosaic" className="flex shrink-0 items-center">
+      {shown.map((integration, index) => (
+        <span
+          key={integration.identifier}
+          className="relative size-[22px] overflow-hidden rounded-[6px] bg-pqSettings shadow-[0_0_0_1.5px_var(--inner)]"
+          style={{
+            marginInlineStart: index ? -7 : 0,
+            zIndex: shown.length - index,
+          }}
+        >
+          <img
+            src={`/icons/platforms/${integration.identifier}.png`}
+            alt=""
+            className="size-full object-cover"
+          />
+        </span>
       ))}
       {extra > 0 && (
-        <span className="absolute bottom-0 end-0 rounded-pqSm bg-pqInner px-[3px] text-[8px] font-[700] leading-[14px] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
+        <span
+          className="relative grid size-[22px] place-items-center rounded-[6px] bg-pqSettings text-[9px] font-[700] tabular-nums text-pqText shadow-[0_0_0_1.5px_var(--inner)]"
+          style={{
+            marginInlineStart: shown.length ? -7 : 0,
+            zIndex: 0,
+          }}
+        >
           +{extra}
         </span>
       )}
+    </span>
+  );
+};
+
+const allChannelsRowClass = (selected: boolean) =>
+  clsx(
+    'relative flex min-h-[52px] items-center gap-[10px] rounded-[12px] px-[10px] py-[8px] text-start transition-colors',
+    selected
+      ? 'bg-pqBrandSoft shadow-[inset_0_0_0_1px_var(--brand)]'
+      : 'bg-pqSettings hover:bg-pqHover',
+  );
+
+const AllChannelsLabel: FC<{ count: number }> = ({ count }) => {
+  const t = useT();
+  return (
+    <span data-crl="1" className="min-w-0 flex-1 group-[.sidebar]:hidden">
+      <span className="block truncate text-[14px] font-[600] text-pqText">
+        {t('all_channels', 'All channels')}
+      </span>
+      <span className="mt-[4px] inline-flex h-[18px] items-center rounded-full bg-pqInner px-[7px] text-[11px] font-[600] tabular-nums text-pqMuted">
+        {t('n_channels', '{count} channels').replace('{count}', String(count))}
+      </span>
     </span>
   );
 };
@@ -390,7 +445,7 @@ export const PlatformAnalytics = () => {
             className="flex min-h-[44px] items-center gap-[10px] rounded-pqSm bg-pqSettings px-[10px] text-start"
           >
             {selected === ALL_CHANNELS ? (
-              <AllChannelsMosaic integrations={sortedIntegrations} />
+              <AllChannelsMosaic compact integrations={sortedIntegrations} />
             ) : (
               <span className="relative h-[32px] w-[32px] shrink-0">
                 <ImageWithFallback
@@ -452,27 +507,18 @@ export const PlatformAnalytics = () => {
               {t('add_channel', 'Add Channel')}
             </button>
             {sortedIntegrations.length > 1 && (
-              <button
-                type="button"
-                onClick={() => selectChannel(ALL_CHANNELS)}
-                className={clsx(
-                  'flex min-h-[44px] items-center gap-[10px] rounded-pqSm px-[9px] py-[10px] text-start',
-                  selected === ALL_CHANNELS ? 'bg-pqNavActive' : 'hover:bg-pqHover'
-                )}
-              >
-                <AllChannelsMosaic integrations={sortedIntegrations} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px]">
-                    {t('all_channels', 'All channels')}
-                  </span>
-                  <span className="block truncate text-[12px] text-pqMuted">
-                    {t('n_channels', '{count} channels').replace(
-                      '{count}',
-                      String(sortedIntegrations.length)
-                    )}
-                  </span>
-                </span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-pq="all-channels"
+                  onClick={() => selectChannel(ALL_CHANNELS)}
+                  className={clsx('w-full', allChannelsRowClass(selected === ALL_CHANNELS))}
+                >
+                  <AllChannelsMosaic integrations={sortedIntegrations} />
+                  <AllChannelsLabel count={sortedIntegrations.length} />
+                </button>
+                <div className="mx-[4px] mb-[4px] mt-[2px] h-px bg-pqLine" />
+              </>
             )}
             {sortedIntegrations.map((integration) => {
               const isSelected = currentIntegration?.id === integration.id;
@@ -649,31 +695,22 @@ export const PlatformAnalytics = () => {
 
           <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
             {sortedIntegrations.length > 1 && (
-              <div
-                onClick={() => {
-                  selectChannel(ALL_CHANNELS);
-                }}
-                className={clsx(
-                  'relative flex min-h-[44px] cursor-pointer items-center gap-[10px] rounded-pqSm py-[7px] ps-[9px] pe-[6px] text-start transition-colors group-[.sidebar]:min-h-0 group-[.sidebar]:justify-center group-[.sidebar]:px-0',
-                  selected === ALL_CHANNELS ? 'bg-pqNavActive' : 'hover:bg-pqHover'
-                )}
-              >
-                <AllChannelsMosaic integrations={sortedIntegrations} />
-                <span
-                  data-crl="1"
-                  className="min-w-0 flex-1 group-[.sidebar]:hidden"
+              <>
+                <div
+                  data-pq="all-channels"
+                  onClick={() => {
+                    selectChannel(ALL_CHANNELS);
+                  }}
+                  className={clsx(
+                    'cursor-pointer group-[.sidebar]:min-h-[44px] group-[.sidebar]:justify-center group-[.sidebar]:px-[6px]',
+                    allChannelsRowClass(selected === ALL_CHANNELS),
+                  )}
                 >
-                  <span className="block truncate text-[14px]">
-                    {t('all_channels', 'All channels')}
-                  </span>
-                  <span className="block truncate text-[12px] text-pqMuted">
-                    {t('n_channels', '{count} channels').replace(
-                      '{count}',
-                      String(sortedIntegrations.length)
-                    )}
-                  </span>
-                </span>
-              </div>
+                  <AllChannelsMosaic integrations={sortedIntegrations} />
+                  <AllChannelsLabel count={sortedIntegrations.length} />
+                </div>
+                <div className="mx-[4px] mb-[6px] mt-[2px] h-px bg-pqLine group-[.sidebar]:hidden" />
+              </>
             )}
             {sortedIntegrations.map((integration) => {
               const isSelected = currentIntegration?.id === integration.id;

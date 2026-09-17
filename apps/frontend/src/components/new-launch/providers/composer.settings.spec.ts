@@ -108,7 +108,7 @@ describe('composer channel settings controls', () => {
     assert.match(manage, /t\('settings', 'Settings'\)/);
     assert.match(
       manage,
-      /id="social-settings"[\s\S]{0,280}divide-y divide-pqLine overflow-hidden rounded-\[14px\] bg-pqInner/,
+      /id="social-settings"[\s\S]{0,280}gap-\[8px\]/,
     );
     assert.match(
       manage,
@@ -116,9 +116,22 @@ describe('composer channel settings controls', () => {
     );
     assert.doesNotMatch(
       manage,
+      /id="social-settings"[\s\S]{0,280}divide-y divide-pqLine/,
+    );
+    assert.doesNotMatch(
+      manage,
       /id="social-settings"[\s\S]{0,280}bg-pqLine p-\[1px\]/,
     );
     assert.doesNotMatch(hop, /first:rounded-t-\[13px\]/);
+    assert.match(
+      hop,
+      /min-w-0 overflow-hidden rounded-\[14px\] bg-pqInner/,
+    );
+    assert.match(
+      hop,
+      /focus-within:shadow-\[inset_0_0_0_1px_var\(--brand\)\]/,
+    );
+    assert.match(hop, /focus-visible:outline-none/);
     assert.match(hop, /data-pq="preview-channel-identity"/);
     assert.match(hop, /channelPlatformLabel/);
     assert.match(hop, /data-pq="preview-channel-body"/);

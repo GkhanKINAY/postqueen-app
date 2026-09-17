@@ -132,7 +132,7 @@ describe('phone calendar and composer', () => {
     assert.match(hop, /aria-expanded=\{settingsOpen\}/);
     assert.match(hop, /const showSettingsBody = !isGlobal \|\| settingsOpen/);
     assert.match(hop, /size=\{36\}/);
-    assert.match(hop, /min-w-0 bg-pqInner/);
+    assert.match(hop, /min-w-0 overflow-hidden rounded-\[14px\] bg-pqInner/);
     assert.match(hop, /#composer-quick-settings/);
     assert.match(hop, /data-pq="composer-channel-settings"/);
   });
