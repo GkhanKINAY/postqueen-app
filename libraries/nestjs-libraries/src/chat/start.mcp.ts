@@ -80,6 +80,8 @@ export const startMcp = async (app: INestApplication) => {
       html: uploadWidgetHtml(mcpBackendUrl.trim().replace(/\/+$/, '')),
       meta: {
         csp: { connectDomains: [new URL(mcpBackendUrl).origin] },
+        // the "Copy link" button of the uploaded media
+        permissions: { clipboardWrite: {} },
         prefersBorder: true,
       },
     },
