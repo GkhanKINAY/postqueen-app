@@ -83,7 +83,6 @@ interface VariableContextInterface {
   disableXAnalytics: boolean;
   language: string;
   dub: boolean;
-  transloadit: string[];
   sentryDsn: string;
   extensionId: string;
   googleAdsId?: string;
@@ -132,7 +131,6 @@ const VariableContext = createContext({
   disableXAnalytics: false,
   language: '',
   dub: false,
-  transloadit: [],
   sentryDsn: '',
   extensionId: '',
 } as VariableContextInterface);

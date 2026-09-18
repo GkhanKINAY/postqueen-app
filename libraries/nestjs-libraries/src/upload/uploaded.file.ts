@@ -1,5 +1,16 @@
-import { createReadStream, mkdirSync, promises as fsp } from 'fs';
+import {
+  createReadStream,
+  createWriteStream,
+  mkdirSync,
+  promises as fsp,
+  statSync,
+} from 'fs';
+import { basename, dirname } from 'path';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import { tmpdir } from 'os';
+import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
+import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
@@ -118,4 +129,72 @@ export async function discardTempFile(
     return;
   }
   await fsp.unlink(file.path).catch(() => undefined);
+}
+
+/**
+ * A file already on disk, in the shape the storage providers take: what an
+ * ffmpeg output or a downloaded source is to `uploadFile`, without a request
+ * behind it. The provider streams it from `path` and reads `size` for the
+ * length, exactly as it does for a spooled upload.
+ */
+export function spooledFile(
+  path: string,
+  mimetype: string,
+  originalname: string
+): Express.Multer.File {
+  return {
+    path,
+    size: statSync(path).size,
+    mimetype,
+    originalname,
+    fieldname: 'file',
+    encoding: '',
+    destination: dirname(path),
+    filename: basename(path),
+    stream: undefined as unknown as Readable,
+    buffer: undefined as unknown as Buffer,
+  };
+}
+
+/**
+ * Streams a public https URL to a file, the way `uploadSimple` fetches one
+ * but without holding it in memory, and refuses anything past `maxBytes`
+ * whether the server said so up front or not.
+ */
+export async function downloadToFile(
+  url: string,
+  dest: string,
+  maxBytes = MAX_UPLOAD_BYTES
+): Promise<void> {
+  if (!(await isSafePublicHttpsUrl(url))) {
+    throw new Error('Unsafe URL');
+  }
+  const response = await fetch(url, {
+    // @ts-ignore — undici option, not in lib.dom fetch types
+    dispatcher: ssrfSafeDispatcher,
+    signal: AbortSignal.timeout(5 * 60 * 1000),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(`Could not download ${url}: HTTP ${response.status}`);
+  }
+  const declared = Number(response.headers.get('content-length'));
+  if (declared && declared > maxBytes) {
+    throw new Error('The file is larger than the upload limit');
+  }
+  let received = 0;
+  const counted = new Transform({
+    transform(chunk, _encoding, callback) {
+      received += chunk.length;
+      if (received > maxBytes) {
+        callback(new Error('The file is larger than the upload limit'));
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+  await pipeline(
+    Readable.fromWeb(response.body as any),
+    counted,
+    createWriteStream(dest)
+  );
 }

@@ -1,27 +1,30 @@
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import {
   ExposeVideoFunction,
-  URL,
   Video,
   VideoAbstract,
+  VideoOutput,
 } from '@gitroom/nestjs-libraries/videos/video.interface';
-import { chunk } from 'lodash';
-import { Transloadit } from 'transloadit';
-import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
-import { Readable } from 'stream';
+import { promises as fsp } from 'fs';
+import { join } from 'path';
 import { parseBuffer } from 'music-metadata';
-import { stringifySync } from 'subtitle';
 
 import pLimit from 'p-limit';
 import { FalService } from '@gitroom/nestjs-libraries/openai/fal.service';
 import { IsString } from 'class-validator';
 import { JSONSchema } from 'class-validator-jsonschema';
+import {
+  FfmpegService,
+  ffmpegInstalled,
+  SLIDES_FADE_SECONDS,
+  SLIDES_NARRATION_DELAY_SECONDS,
+  slideSchedule,
+} from '@gitroom/nestjs-libraries/media/ffmpeg.service';
+import {
+  downloadToFile,
+  uploadTempDir,
+} from '@gitroom/nestjs-libraries/upload/uploaded.file';
 const limit = pLimit(2);
-
-const transloadit = new Transloadit({
-  authKey: process.env.TRANSLOADIT_AUTH || 'just empty text',
-  authSecret: process.env.TRANSLOADIT_SECRET || 'just empty text',
-});
 
 // ElevenLabs reports quota and permission problems as 401 with the reason in
 // the body, as either { detail: { status, message } } or { detail: 'text' }
@@ -38,6 +41,11 @@ async function getAudioDuration(buffer: Buffer): Promise<number> {
   const metadata = await parseBuffer(buffer, 'audio/mpeg');
   return metadata.format.duration || 0;
 }
+
+/** Each slide stays one second past its narration before the next fades in. */
+const SLIDE_TAIL_SECONDS = 1;
+/** A generated slide image is small; anything larger is not the image we asked for. */
+const MAX_SLIDE_IMAGE_BYTES = 32 * 1024 * 1024;
 
 class ImagesSlidesParams {
   @JSONSchema({
@@ -63,19 +71,20 @@ class ImagesSlidesParams {
   tools: [{ functionName: 'loadVoices', output: 'voice id' }],
   dto: ImagesSlidesParams,
   trial: true,
+  // The video is assembled by the ffmpeg on the image; the keys are for the
+  // slide text (OpenAI), the pictures (fal) and the narration (ElevenLabs).
   available:
     !!process.env.ELEVENSLABS_API_KEY &&
-    !!process.env.TRANSLOADIT_AUTH &&
-    !!process.env.TRANSLOADIT_SECRET &&
     !!process.env.OPENAI_API_KEY &&
-    !!process.env.FAL_KEY,
+    !!process.env.FAL_KEY &&
+    ffmpegInstalled(),
 })
 export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
   override dto = ImagesSlidesParams;
-  private storage = UploadFactory.createStorage();
   constructor(
     private _openaiService: OpenaiService,
-    private _falService: FalService
+    private _falService: FalService,
+    private _ffmpeg: FfmpegService
   ) {
     super();
   }
@@ -83,179 +92,96 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
   async process(
     output: 'vertical' | 'horizontal',
     customParams: ImagesSlidesParams
-  ): Promise<URL> {
+  ): Promise<VideoOutput> {
     const list = await this._openaiService.generateSlidesFromText(
       customParams.prompt
     );
 
-    // Plain async calls so a failed image or voice request rejects Promise.all
-    // and fails the job, instead of a promise that never settles and a job that
-    // hangs until the workflow times out
-    const generated = await Promise.all(
-      list.reduce((all, current) => {
-        all.push(
-          (async () => ({
-            len: 0,
-            url: await this._falService.generateImageFromText(
-              'ideogram/v2',
-              current.imagePrompt,
-              output === 'vertical'
-            ),
-          }))()
-        );
+    // The spool directory is made on first use, as the upload interceptor does.
+    await fsp.mkdir(uploadTempDir(), { recursive: true });
+    const dir = await fsp.mkdtemp(join(uploadTempDir(), 'pq-slides-'));
+    try {
+      // Plain async calls so a failed image or voice request rejects
+      // Promise.all and fails the job, instead of a promise that never settles
+      // and a job that hangs until the workflow times out. Every input lands
+      // in the job's own directory: ffmpeg reads files, not URLs.
+      const slides = await Promise.all(
+        list.map(async (current, index) => {
+          const imagePath = join(dir, `img_${index}.jpg`);
+          const audioPath = join(dir, `aud_${index}.mp3`);
+          const [, len] = await Promise.all([
+            (async () => {
+              const url = await this._falService.generateImageFromText(
+                'ideogram/v2',
+                current.imagePrompt,
+                output === 'vertical'
+              );
+              await downloadToFile(url, imagePath, MAX_SLIDE_IMAGE_BYTES);
+            })(),
+            (async () => {
+              const response = await limit(() =>
+                fetch(
+                  `https://api.elevenlabs.io/v1/text-to-speech/${customParams.voice}?output_format=mp3_44100_128`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'xi-api-key': process.env.ELEVENSLABS_API_KEY || '',
+                    },
+                    body: JSON.stringify({
+                      text: current.voiceText,
+                      model_id: 'eleven_multilingual_v2',
+                    }),
+                    signal: AbortSignal.timeout(60000),
+                  }
+                )
+              );
 
-        all.push(
-          (async () => {
-            const response = await limit(() =>
-              fetch(
-                `https://api.elevenlabs.io/v1/text-to-speech/${customParams.voice}?output_format=mp3_44100_128`,
-                {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'xi-api-key': process.env.ELEVENSLABS_API_KEY || '',
-                  },
-                  body: JSON.stringify({
-                    text: current.voiceText,
-                    model_id: 'eleven_multilingual_v2',
-                  }),
-                  signal: AbortSignal.timeout(60000),
-                }
-              )
-            );
+              if (!response.ok) {
+                throw new Error(await elevenLabsError(response));
+              }
 
-            if (!response.ok) {
-              throw new Error(await elevenLabsError(response));
-            }
-
-            const buffer = Buffer.from(await response.arrayBuffer());
-
-            const { path } = await this.storage.uploadFile({
-              buffer,
-              mimetype: 'audio/mp3',
-              size: buffer.length,
-              path: '',
-              fieldname: '',
-              destination: '',
-              stream: new Readable(),
-              filename: '',
-              originalname: '',
-              encoding: '',
-            });
-
-            return {
-              len: await getAudioDuration(buffer),
-              url:
-                path.indexOf('http') === -1
-                  ? process.env.FRONTEND_URL +
-                    '/' +
-                    (process.env.NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY || 'uploads') +
-                    path
-                  : path,
-            };
-          })()
-        );
-
-        return all;
-      }, [] as Promise<any>[])
-    );
-
-    const split = chunk(generated, 2);
-
-    const srt = stringifySync(
-      list
-        .reduce((all, current, index) => {
-          const start = all.length ? all[all.length - 1].end : 0;
-          const end = start + split[index][1].len * 1000 + 1000;
-          all.push({
-            start: start,
-            end: end,
+              const buffer = Buffer.from(await response.arrayBuffer());
+              await fsp.writeFile(audioPath, buffer);
+              return getAudioDuration(buffer);
+            })(),
+          ]);
+          return {
+            imagePath,
+            audioPath,
+            durationSeconds: len + SLIDE_TAIL_SECONDS,
             text: current.voiceText,
-          });
+          };
+        })
+      );
 
-          return all;
-        }, [] as { start: number; end: number; text: string }[])
-        .map((item) => ({
-          type: 'cue',
-          data: item,
+      // A cue runs from the moment its narration starts (the slide has been
+      // up for the delay) to the moment the narration ends, which is where
+      // the fade into the next slide begins.
+      const { starts } = slideSchedule(slides.map((s) => s.durationSeconds));
+      const outputPath = join(dir, 'slides.mp4');
+      await this._ffmpeg.assembleSlides({
+        slides,
+        orientation: output,
+        subtitles: slides.map((slide, index) => ({
+          startSeconds: starts[index] + SLIDES_NARRATION_DELAY_SECONDS,
+          endSeconds: starts[index] + slide.durationSeconds - SLIDES_FADE_SECONDS,
+          text: slide.text,
         })),
-      { format: 'SRT' }
-    );
-
-    console.log(split);
-
-    const { results } = await transloadit.createAssembly({
-      uploads: {
-        'subtitles.srt': srt,
-      },
-      waitForCompletion: true,
-      timeout: 30 * 60 * 1000,
-      params: {
-        steps: {
-          ...split.reduce((all, current, index) => {
-            all[`image${index}`] = {
-              robot: '/http/import',
-              url: current[0].url,
-            };
-            all[`audio${index}`] = {
-              robot: '/http/import',
-              url: current[1].url,
-            };
-            all[`merge${index}`] = {
-              use: [
-                {
-                  name: `image${index}`,
-                  as: 'image',
-                },
-                {
-                  name: `audio${index}`,
-                  as: 'audio',
-                },
-              ],
-              robot: '/video/merge',
-              duration: current[1].len + 1,
-              audio_delay: 0.5,
-              preset: 'hls-1080p',
-              resize_strategy: 'min_fit',
-              loop: true,
-            };
-            return all;
-          }, {} as any),
-          concatenated: {
-            robot: '/video/concat',
-            result: false,
-            video_fade_seconds: 0.5,
-            use: split.map((p, index) => ({
-              name: `merge${index}`,
-              as: `video_${index + 1}`,
-            })),
-          },
-          subtitled: {
-            robot: '/video/subtitle',
-            result: true,
-            preset: 'hls-1080p',
-            use: {
-              bundle_steps: true,
-              steps: [
-                {
-                  name: 'concatenated',
-                  as: 'video',
-                },
-                {
-                  name: ':original',
-                  as: 'subtitles',
-                },
-              ],
-            },
-            position: 'center',
-            font_size: 8,
-            subtitles_type: 'burned',
-          },
-        },
-      },
-    });
-
-    return results.subtitled[0].url;
+        outputPath,
+      });
+      // The inputs are not needed once the video exists; the directory goes
+      // with the video when the caller has moved it into storage.
+      await Promise.all(
+        slides.flatMap((s) => [s.imagePath, s.audioPath]).map((f) =>
+          fsp.rm(f, { force: true })
+        )
+      );
+      return { localPath: outputPath };
+    } catch (err) {
+      await fsp.rm(dir, { recursive: true, force: true });
+      throw err;
+    }
   }
 
   @ExposeVideoFunction()

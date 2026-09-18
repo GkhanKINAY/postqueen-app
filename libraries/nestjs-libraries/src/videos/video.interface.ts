@@ -2,6 +2,13 @@ import { Injectable, Type, ValidationPipe } from '@nestjs/common';
 
 export type URL = string;
 
+/**
+ * What a generator hands back: a URL the app downloads into storage (a
+ * provider's own CDN), or a file it rendered itself, which the app moves
+ * into storage and then deletes with its directory.
+ */
+export type VideoOutput = URL | { localPath: string };
+
 export abstract class VideoAbstract<T> {
   dto: Type<T>;
 
@@ -23,7 +30,7 @@ export abstract class VideoAbstract<T> {
   abstract process(
     output: 'vertical' | 'horizontal',
     customParams?: T
-  ): Promise<URL>;
+  ): Promise<VideoOutput>;
 }
 
 export interface VideoParams {

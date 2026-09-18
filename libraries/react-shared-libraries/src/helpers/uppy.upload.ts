@@ -1,7 +1,6 @@
 import XHRUpload from '@uppy/xhr-upload';
 import AwsS3Multipart from '@uppy/aws-s3';
 import sha256 from 'sha256';
-import Transloadit from '@uppy/transloadit';
 const fetchUploadApiEndpoint = async (
   fetch: any,
   endpoint: string,
@@ -48,24 +47,9 @@ const readNonSecuredAuthHeaders = (): Record<string, string> => {
 export const getUppyUploadPlugin = (
   provider: string,
   fetch: any,
-  backendUrl: string,
-  transloadit: string[] = []
+  backendUrl: string
 ) => {
   switch (provider) {
-    case 'transloadit':
-      return {
-        plugin: Transloadit,
-        options: {
-          waitForEncoding: true,
-          alwaysRunAssembly: true,
-          assemblyOptions: {
-            params: {
-              auth: { key: transloadit[0] },
-              template_id: transloadit[1],
-            },
-          },
-        },
-      };
     case 'cloudflare':
       return {
         plugin: AwsS3Multipart,

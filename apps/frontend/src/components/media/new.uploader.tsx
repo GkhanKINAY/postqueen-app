@@ -12,7 +12,6 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useSaveVideoPoster } from '@gitroom/frontend/components/media/use.video.poster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import { uniqBy } from 'lodash';
 
 export class CompressionWrapper<M = any, B = any> extends Compressor<any, any> {
   override async prepareUpload(fileIDs: string[]) {
@@ -50,7 +49,6 @@ export function useUppyUploader(props: {
     uploadViaServer,
     backendUrl,
     disableImageCompression,
-    transloadit,
   } = useVariables();
   const { onUploadSuccess, allowedFileTypes } = props;
   const fetch = useFetch();
@@ -102,9 +100,6 @@ export function useUppyUploader(props: {
             ];
           }
           if (type === 'video/*') {
-            return ['video/mp4', 'video/mpeg', 'video/quicktime'];
-          }
-          if (type === 'video/mp4' && transloadit && transloadit.length > 0) {
             return ['video/mp4', 'video/mpeg', 'video/quicktime'];
           }
           return [type];
@@ -171,23 +166,16 @@ export function useUppyUploader(props: {
       });
     });
 
-    // Transloadit still wins where it is configured — it replaces storage
-    // rather than feeding it. Otherwise uploadViaServer picks the same strategy
-    // 'local' has always meant: XHR to /media/upload-server. That endpoint
-    // writes through whichever storage provider is configured, so with R2 the
-    // file still lands in the bucket — the browser just stops talking to it.
-    const uploadStrategy =
-      transloadit.length > 0
-        ? 'transloadit'
-        : uploadViaServer
-        ? 'local'
-        : storageProvider;
+    // uploadViaServer picks the strategy 'local' has always meant: XHR to
+    // /media/upload-server. That endpoint writes through whichever storage
+    // provider is configured, so with R2 the file still lands in the bucket;
+    // the browser just stops talking to it.
+    const uploadStrategy = uploadViaServer ? 'local' : storageProvider;
 
     const { plugin, options } = getUppyUploadPlugin(
       uploadStrategy,
       fetch,
-      backendUrl,
-      transloadit
+      backendUrl
     );
 
     uppy2.use(plugin, options);
@@ -254,49 +242,6 @@ export function useUppyUploader(props: {
         onUploadSuccess(
           await withPosters(sortedSuccessful.map((p) => p.response.body))
         );
-        uppy2.clear();
-        return;
-      }
-
-      if (transloadit.length > 0) {
-        // @ts-ignore
-        const allRes = result.transloadit[0].results;
-        const toSave = uniqBy<{ name: string; originalName: string; order: number }>(
-          // @ts-ignore
-          Object.values(allRes).flatMap((p: any[]) => {
-            return p.flatMap((item) => ({
-              name: item.url.split('/').pop(),
-              originalName: item.name || '',
-              order: +item.user_meta.addedOrder,
-            }));
-          }),
-          (item) => item.name
-        );
-
-        const loadAllMedia = (
-          await Promise.all(
-            toSave.map(async ({ name, originalName, order }) => ({
-              file: await (
-                await fetch('/media/save-media', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    name,
-                    originalName,
-                  }),
-                })
-              ).json(),
-              order,
-            }))
-          )
-        )
-          .sort((a, b) => {
-            return a.order - b.order;
-          })
-          .map((p) => p.file);
-
-        setLocked(false);
-        fileOrderIndex = 0;
-        onUploadSuccess(await withPosters(loadAllMedia));
         uppy2.clear();
         return;
       }

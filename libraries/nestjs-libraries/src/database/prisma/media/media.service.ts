@@ -12,6 +12,12 @@ import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
+  spooledFile,
+  uploadTempDir,
+} from '@gitroom/nestjs-libraries/upload/uploaded.file';
+import { promises as fsp } from 'fs';
+import { dirname } from 'path';
+import {
   AuthorizationActions,
   Sections,
   SubscriptionException,
@@ -182,13 +188,37 @@ export class MediaService {
         org,
         'ai_videos',
         async () => {
-          const loadedData = await video.instance.process(
+          const produced = await video.instance.process(
             body.output,
             body.customParams
           );
-
-          const file = await this.storage.uploadSimple(loadedData);
-          return this.saveFile(org.id, file.split('/').pop(), file);
+          // A provider's own URL is fetched into storage; a file the
+          // generator rendered here is moved in and its directory dropped.
+          if (typeof produced === 'string') {
+            const file = await this.storage.uploadSimple(produced);
+            return this.saveFile(org.id, file.split('/').pop(), file);
+          }
+          try {
+            // The size is read before the upload: local storage renames
+            // the file into place, so nothing is there to stat afterwards.
+            const rendered = spooledFile(produced.localPath, 'video/mp4', 'video.mp4');
+            const uploaded = await this.storage.uploadFile(rendered);
+            return this.saveFile(
+              org.id,
+              uploaded.originalname,
+              uploaded.path,
+              undefined,
+              rendered.size
+            );
+          } finally {
+            // The generator's own directory goes with the file. A file
+            // dropped straight into the spool directory takes only itself.
+            const dir = dirname(produced.localPath);
+            await fsp.rm(dir === uploadTempDir() ? produced.localPath : dir, {
+              recursive: true,
+              force: true,
+            });
+          }
         }
       );
     } catch (err) {

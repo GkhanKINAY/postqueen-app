@@ -87,7 +87,6 @@
 /media/generate-video/start
 /media/generate-video/status/${jobId}
 /media/information
-/media/save-media
 /media/upload-simple
 /media/video-options
 /media/video/function
