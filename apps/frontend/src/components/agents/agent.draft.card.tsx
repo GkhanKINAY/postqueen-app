@@ -9,11 +9,21 @@ import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/co
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
-import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { Button } from '@gitroom/react/form/button';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
+import {
+  PreviewMediaFrame,
+  PreviewMediaMosaic,
+} from '@gitroom/frontend/components/new-launch/preview-media';
+import {
+  FEED_PREVIEW_FALLBACK_WH,
+  FEED_PREVIEW_MAX_WH,
+  FEED_PREVIEW_MIN_WH,
+  X_PAIR_MOSAIC_WH,
+} from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 
 dayjs.extend(utc);
 
@@ -37,28 +47,34 @@ export type AgentDraftOutcome = 'idle' | 'composer' | 'schedule';
 const previewText = (html: string | undefined) =>
   stripHtmlValidation('none', html || '', false, true, false).trim();
 
-const DraftMedia: FC<{ path: string }> = ({ path }) => {
-  const video = hasExtension(path, 'mp4');
+/**
+ * The same frame Post Preview draws: the real aspect ratio, clamped to the
+ * feed range, one lightbox-able tile or a 2–4 mosaic. A fixed square crop
+ * here showed a 9:16 reel and a 16:9 video as the same thumbnail.
+ */
+const DraftMedia: FC<{ paths: string[] }> = ({ paths }) => {
+  const mediaDir = useMediaDirectory();
+  const srcs = paths.map((path) => mediaDir.set(path));
+  if (srcs.length === 1) {
+    return (
+      <PreviewMediaFrame
+        className="rounded-[10px]"
+        src={srcs[0]}
+        minWH={FEED_PREVIEW_MIN_WH}
+        maxWH={FEED_PREVIEW_MAX_WH}
+        fallbackWH={FEED_PREVIEW_FALLBACK_WH}
+        // A chat can hold several cards; a looping video in each is noise.
+        autoplay={false}
+      />
+    );
+  }
   return (
-    <span className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[8px] bg-pqSettings">
-      {video ? (
-        <video
-          className="h-full w-full object-cover"
-          src={`${path}#t=0.1`}
-          preload="metadata"
-          muted
-          playsInline
-          aria-hidden
-        />
-      ) : (
-        <img
-          className="h-full w-full object-cover"
-          src={path}
-          alt=""
-          decoding="async"
-        />
-      )}
-    </span>
+    <PreviewMediaMosaic
+      className="rounded-[10px]"
+      pairWH={X_PAIR_MOSAIC_WH}
+      gridWH={X_PAIR_MOSAIC_WH}
+      srcs={srcs}
+    />
   );
 };
 
@@ -128,13 +144,7 @@ const DraftRow: FC<{
       <p className="line-clamp-4 whitespace-pre-wrap break-words text-start text-[13.5px] leading-[1.5] text-pqText">
         {text || t('no_content', 'no content')}
       </p>
-      {media.length > 0 && (
-        <div className="flex flex-wrap gap-[8px]">
-          {media.map((a) => (
-            <DraftMedia key={a.id || a.path} path={a.path} />
-          ))}
-        </div>
-      )}
+      {media.length > 0 && <DraftMedia paths={media.map((a) => a.path)} />}
       {comments.length > 0 && (
         <div className="flex flex-col gap-[6px] rounded-[10px] bg-pqSettings p-[10px_12px]">
           <span className="text-[11px] font-[600] uppercase tracking-[0.04em] text-pqSoft">

@@ -1107,6 +1107,48 @@ html[dir='rtl'] .lbox {
     line-height: 1.65;
   }
 
+  /* The scroller must be allowed to shrink under a tall composer, otherwise
+     it keeps its content height and the last bubbles slide under the input. */
+  .copilotKitMessages {
+    min-height: 0;
+  }
+
+  /* The SDK types markdown at 1rem / 1.75 with a 1.25em gap after every
+     paragraph and list, which reads as double spacing next to the 13.5px
+     bubble. Inherit the bubble's type and keep a normal paragraph rhythm. */
+  .copilotKitParagraph,
+  .copilotKitMarkdownElement {
+    font-size: inherit;
+    line-height: 1.6;
+  }
+  .copilotKitParagraph:not(:last-child),
+  ul.copilotKitMarkdownElement:not(:last-child),
+  ol.copilotKitMarkdownElement:not(:last-child),
+  pre.copilotKitMarkdownElement:not(:last-child),
+  blockquote.copilotKitMarkdownElement:not(:last-child) {
+    margin-bottom: 0.55em;
+  }
+  h1.copilotKitMarkdownElement,
+  h2.copilotKitMarkdownElement,
+  h3.copilotKitMarkdownElement,
+  h4.copilotKitMarkdownElement,
+  h5.copilotKitMarkdownElement,
+  h6.copilotKitMarkdownElement {
+    font-size: 1.05em;
+    line-height: 1.4;
+  }
+  h1.copilotKitMarkdownElement:not(:last-child),
+  h2.copilotKitMarkdownElement:not(:last-child),
+  h3.copilotKitMarkdownElement:not(:last-child),
+  h4.copilotKitMarkdownElement:not(:last-child),
+  h5.copilotKitMarkdownElement:not(:last-child),
+  h6.copilotKitMarkdownElement:not(:last-child) {
+    margin-bottom: 0.35em;
+  }
+  li.copilotKitMarkdownElement .copilotKitParagraph {
+    padding: 0.1em 0;
+  }
+
   /* User bubble: brand fill, tucked corner on the sending side. Logical
      radii and margins so the bubble mirrors correctly in RTL. */
   .copilotKitMessage.copilotKitUserMessage {
@@ -1149,11 +1191,6 @@ html[dir='rtl'] .lbox {
   .copilotKitMessage img {
     width: 200px;
   }
-  [data-pq='agent-draft-card'] img,
-  [data-pq='agent-draft-card'] video {
-    width: 100%;
-    height: 100%;
-  }
   .copilotKitMessage a {
     color: var(--focused);
   }
@@ -1167,8 +1204,12 @@ html[dir='rtl'] .lbox {
      Owner inset (2026-08-06): 40px desktop so the 840 card is not edge-flush;
      mobile keeps 24 (see [data-mobile] below). */
   .copilotKitInputContainer {
+    /* The SDK's scroller carries z-index 1 and paints over a static sibling,
+       so the composer sits on its own layer with the page surface behind it. */
+    position: relative;
+    z-index: 2;
     padding: 0 40px 20px;
-    background: transparent;
+    background: var(--inner);
     border-radius: 0;
   }
   .copilotKitInput {
@@ -1182,6 +1223,10 @@ html[dir='rtl'] .lbox {
     box-shadow: inset 0 0 0 1px var(--border), var(--e1);
   }
   .copilotKitInput textarea {
+    /* The SDK gives the textarea `flex: 1` (basis 0) for its own row layout;
+       in this column layout that pinned it to `min-height`, so it scrolled
+       inside one line instead of growing to `maxRows`. */
+    flex: 0 0 auto;
     width: 100%;
     min-height: 52px;
     padding: 2px;
@@ -1229,6 +1274,15 @@ html[dir='rtl'] .lbox {
     opacity: 0.4;
     cursor: default;
   }
+}
+
+/* The empty-thread hero overlays the (empty) message column, and the column
+   owns the space from the first bubble on. CopilotKit 1.66 stopped filling
+   the messages context the overlays used to read, so the DOM decides: both
+   Copilot surfaces (the /agents page and the Create Post rail) mount under
+   `.agent`, and every bubble, ours or the SDK's, carries `.copilotKitMessage`. */
+.agent:has(.copilotKitMessage) [data-copilot-empty='1'] {
+  display: none;
 }
 
 /* Copilot composer / empty hero: keep a tighter 24px inset under 760. */
@@ -1732,6 +1786,9 @@ html:has([data-pq='composer']) iframe[src*='chatbase'] {
     gap: 12px;
   }
 
+  /* The rail root also carries `.agent`, so the markdown rhythm, the input
+     layer and the textarea sizing above apply here as well; only the inset
+     differs. */
   .copilotKitInputContainer {
     padding: 0 12px 12px;
   }

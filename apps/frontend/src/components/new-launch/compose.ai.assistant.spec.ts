@@ -87,7 +87,9 @@ describe('compose AI assistant placement', () => {
   });
 
   it('shows the Connections card on an empty rail instead of a CopilotKit greeting bubble', () => {
-    assert.match(assistant, /useCopilotMessagesContext/);
+    // CopilotKit 1.66 never fills `useCopilotMessagesContext`; the overlay is
+    // hidden by CSS from the first bubble on (agent.chat.spec pins the rule).
+    assert.doesNotMatch(assistant, /useCopilotMessagesContext\(/);
     assert.match(assistant, /<ComposeAiEmptyOverlay/);
     assert.match(assistant, /<ComposeAiEmptyHero tip=\{tip\} \/>/);
     assert.match(assistant, /href="\/connections"/);

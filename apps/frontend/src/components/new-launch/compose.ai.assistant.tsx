@@ -19,10 +19,7 @@ import {
   RenderSuggestionsListProps,
   useChatContext,
 } from '@copilotkit/react-ui';
-import {
-  useCopilotAction,
-  useCopilotMessagesContext,
-} from '@copilotkit/react-core';
+import { useCopilotAction } from '@copilotkit/react-core';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAiAvailable, useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
@@ -173,11 +170,12 @@ const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
   );
 };
 
+/**
+ * Hidden by CSS from the first bubble on (`.agent:has(.copilotKitMessage)` in
+ * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
+ * which this used to read, so it stayed up over the conversation.
+ */
 const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
-  const { messages } = useCopilotMessagesContext();
-  if (messages.length) {
-    return null;
-  }
   return (
     <div
       data-copilot-empty="1"

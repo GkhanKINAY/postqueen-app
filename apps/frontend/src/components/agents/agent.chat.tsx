@@ -48,7 +48,6 @@ import {
 } from '@gitroom/frontend/components/agents/agent.draft.card';
 import dayjs from 'dayjs';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
@@ -224,14 +223,16 @@ const EmptyStateHero: FC = () => {
  * The design's empty-thread hero, rendered instead of the old five-paragraph
  * `labels.initial` greeting (owner-approved copy change). CopilotKit would
  * render `initial` as a message, so the label is gone and this overlays the
- * top of the (empty) message column until the first message lands.
+ * top of the (empty) message column until the first message lands. Hiding it
+ * is CSS (`.agent:has(.copilotKitMessage)` in global.css): CopilotKit 1.66
+ * no longer fills `useCopilotMessagesContext`, so the messages the chat shows
+ * only exist in the DOM as far as this component is concerned.
  */
 const EmptyState: FC = () => {
-  const { messages } = useCopilotMessagesContext();
   const params = useParams<{ id: string }>();
-  // Existing threads start with an empty context while their messages load —
-  // without the id gate the hero flashes over every old conversation.
-  if (messages.length || (params.id && params.id !== 'new')) {
+  // Existing threads start empty while their history connects — without the
+  // id gate the hero flashes over every old conversation.
+  if (params.id && params.id !== 'new') {
     return null;
   }
   return (
@@ -779,81 +780,101 @@ const DraftPreview: FC<{
     [respond]
   );
 
-  const openComposer = useCallback(async () => {
+  const openComposer = useCallback(() => {
     setOutcome('composer');
-    const list = args?.list || [];
-    for (const integration of list) {
+    // Free the run first. The result means "the user took over in Create
+    // Post", whichever way the composer closes afterwards. Waiting for a save
+    // here left the card, and with it the chat input, stuck when the composer
+    // was closed unsaved.
+    finish(
+      'User opened the Create Post composer with this draft. They will edit and schedule there. Do not call schedulePostTool for this draft.'
+    );
+    const rows = (args?.list || []).flatMap((integration) => {
       const channel = usableProperties.find(
         (p) => p.id === integration.integrationId
       );
       // Skip reconnect / in-between channels — same guard as Select Channels.
-      if (!channel) {
-        continue;
-      }
-      await new Promise((res) => {
-        const group = makeId(10);
-        modals.openModal({
-          id: 'add-edit-modal',
-          closeOnClickOutside: false,
-          removeLayout: true,
-          closeOnEscape: false,
-          withCloseButton: false,
-          askClose: true,
-          size: '80%',
-          title: ``,
-          classNames: {
-            modal: 'w-[100%] max-w-[1400px] text-textColor',
-          },
-          children: (
-            <ExistingDataContextProvider
-              value={{
-                group,
-                integration: integration.integrationId,
-                integrationPicture: channel.picture || '',
-                settings: integration.settings || {},
-                posts: (integration.posts || []).map((p) => ({
-                  approvedSubmitForOrder: 'NO',
-                  content: p.content,
-                  createdAt: new Date().toISOString(),
-                  state: 'DRAFT',
-                  id: makeId(10),
-                  settings: JSON.stringify(integration.settings || {}),
-                  group,
-                  integrationId: integration.integrationId,
-                  integration: channel,
-                  publishDate: dayjs.utc(integration.date).toISOString(),
-                  image: (p.attachments || []).map((a) => ({
-                    id: a.id,
-                    path: a.path,
-                  })),
-                })),
-              }}
-            >
-              <AddEditModal
-                date={dayjs.utc(integration.date)}
-                allIntegrations={usableProperties}
-                integrations={[channel]}
-                onlyValues={(integration.posts || []).map((p) => ({
-                  content: p.content,
-                  id: makeId(10),
-                  settings: integration.settings || {},
-                  image: (p.attachments || []).map((a) => ({
-                    id: a.id,
-                    path: a.path,
-                  })),
-                }))}
-                reopenModal={() => {}}
-                mutate={() => res(true)}
-              />
-            </ExistingDataContextProvider>
-          ),
-        });
-      });
-    }
+      return channel ? [{ integration, channel }] : [];
+    });
 
-    finish(
-      'User opened the Create Post composer with this draft. They will edit and schedule there. Do not call schedulePostTool for this draft.'
-    );
+    // One composer per row, the next opening as the previous one closes.
+    // The composer closes itself with `closeAll()`, which never reaches the
+    // modal's `onClose`, so it is `customClose` (user close) and `mutate`
+    // (saved) that hand over. A save calls `mutate`, then `closeAll()`, then
+    // `customClose` two seconds later: the hand-over runs once, and the next
+    // composer opens after that `closeAll()` has cleared the stack.
+    const openRow = (index: number) => {
+      const row = rows[index];
+      if (!row) {
+        return;
+      }
+      let advanced = false;
+      const next = () => {
+        if (advanced) {
+          return;
+        }
+        advanced = true;
+        setTimeout(() => openRow(index + 1), 0);
+      };
+      const { integration, channel } = row;
+      modals.openModal({
+        id: 'add-edit-modal',
+        closeOnClickOutside: false,
+        removeLayout: true,
+        closeOnEscape: false,
+        withCloseButton: false,
+        askClose: true,
+        size: '80%',
+        title: ``,
+        classNames: {
+          modal: 'w-[100%] max-w-[1400px] text-textColor',
+        },
+        children: (
+          // A brand-new post seeded the way a saved Set is: the channel with
+          // its settings, and the thread as the global value. Not an
+          // `ExistingDataContextProvider` — that is the edit path, and it
+          // showed Delete Post for a post the server had never seen.
+          <AddEditModal
+            date={dayjs.utc(integration.date).local()}
+            allIntegrations={usableProperties}
+            integrations={usableProperties}
+            set={{
+              posts: [
+                {
+                  integration: { id: channel.id },
+                  settings: integration.settings || {},
+                  // Never an empty thread: the composer renders nothing (and
+                  // has no close button) until it has one item to edit.
+                  value: (integration.posts?.length
+                    ? integration.posts
+                    : [{ content: '', attachments: [] }]
+                  ).map((p) => ({
+                    content: p.content || '',
+                    media: (p.attachments || []).map((a) => ({
+                      id: a.id,
+                      path: a.path,
+                    })),
+                  })),
+                },
+              ],
+            }}
+            reopenModal={() => {}}
+            mutate={next}
+            customClose={() => {
+              // The user closed it unsaved: the composer leaves closing to
+              // us when `customClose` is set. After a save this fires late
+              // and must not touch the composer that is open by then.
+              if (advanced) {
+                return;
+              }
+              modals.closeAll();
+              next();
+            }}
+          />
+        ),
+      });
+    };
+    openRow(0);
   }, [args, finish, usableProperties, modals]);
 
   const schedule = useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 
 interface AutoResizingTextareaProps {
   maxRows?: number;
@@ -11,6 +11,13 @@ interface AutoResizingTextareaProps {
   autoFocus?: boolean;
 }
 
+/**
+ * Grows with its content up to `maxRows`, then scrolls. The limit is derived
+ * from the computed line height on every change rather than from a
+ * `scrollHeight` snapshot taken on mount: that snapshot was 0 whenever the
+ * chat mounted before layout, which pinned `max-height: 0` and left the box
+ * at its CSS `min-height` with the first line scrolled out of view.
+ */
 const AutoResizingTextarea = forwardRef<HTMLTextAreaElement, AutoResizingTextareaProps>(
   (
     {
@@ -26,33 +33,31 @@ const AutoResizingTextarea = forwardRef<HTMLTextAreaElement, AutoResizingTextare
     ref,
   ) => {
     const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
-    const [maxHeight, setMaxHeight] = useState<number>(0);
 
     useImperativeHandle(ref, () => internalTextareaRef.current as HTMLTextAreaElement);
 
     useEffect(() => {
-      const calculateMaxHeight = () => {
-        const textarea = internalTextareaRef.current;
-        if (textarea) {
-          textarea.style.height = "auto";
-          const singleRowHeight = textarea.scrollHeight;
-          setMaxHeight(singleRowHeight * maxRows);
-          if (autoFocus) {
-            textarea.focus();
-          }
-        }
-      };
-
-      calculateMaxHeight();
-    }, [maxRows]);
+      if (autoFocus) {
+        internalTextareaRef.current?.focus();
+      }
+    }, [autoFocus]);
 
     useEffect(() => {
       const textarea = internalTextareaRef.current;
-      if (textarea) {
-        textarea.style.height = "auto";
-        textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+      if (!textarea) {
+        return;
       }
-    }, [value, maxHeight]);
+      const style = getComputedStyle(textarea);
+      const lineHeight =
+        parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5 || 20;
+      const limit =
+        lineHeight * maxRows +
+        (parseFloat(style.paddingTop) || 0) +
+        (parseFloat(style.paddingBottom) || 0);
+      textarea.style.maxHeight = `${limit}px`;
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, limit)}px`;
+    }, [value, maxRows]);
 
     return (
       <textarea
@@ -66,7 +71,6 @@ const AutoResizingTextarea = forwardRef<HTMLTextAreaElement, AutoResizingTextare
         style={{
           overflow: "auto",
           resize: "none",
-          maxHeight: `${maxHeight}px`,
         }}
         rows={1}
       />

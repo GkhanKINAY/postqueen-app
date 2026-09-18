@@ -64,9 +64,39 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
       }),
+      cors: this.runtimeCors(),
     });
 
+    this.streamUnbuffered(res);
     return copilotRuntimeHandler(req, res);
+  }
+
+  // The runtime streams its reply as server-sent events. nginx (prod,
+  // var/docker/nginx.conf) buffers proxied responses by default and this
+  // header is how a response opts out; the gzip side is handled in main.ts.
+  // Set before the handler runs: the Node adapter copies its own headers on
+  // top and pipes without flushing, so anything set later is too late.
+  private streamUnbuffered(res: Response) {
+    res.setHeader('X-Accel-Buffering', 'no');
+  }
+
+  // The runtime answers with its own CORS headers, copied over the ones Nest
+  // already set: `Access-Control-Allow-Origin: *` next to credentials, which
+  // every browser refuses. Behind nginx the app is same-origin and never
+  // noticed; a frontend on another origin (local dev) got "Failed to fetch"
+  // on every message. Same allowlist as the Nest CORS config in main.ts.
+  private runtimeCors() {
+    const allowed = new Set(
+      [
+        process.env.FRONTEND_URL,
+        'http://localhost:6274',
+        process.env.MAIN_URL,
+      ].filter((origin): origin is string => !!origin)
+    );
+    return {
+      origin: (origin: string) => (allowed.has(origin) ? origin : undefined),
+      credentials: true,
+    };
   }
 
   @Post('/agent')
@@ -118,8 +148,10 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
       }),
+      cors: this.runtimeCors(),
     });
 
+    this.streamUnbuffered(res);
     return copilotRuntimeHandler(req, res);
   }
 
