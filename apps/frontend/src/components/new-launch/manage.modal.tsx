@@ -17,7 +17,10 @@ import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.cu
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
-import { ComposeWhen } from '@gitroom/frontend/components/new-launch/compose.when';
+import {
+  ComposePublishedAt,
+  ComposeWhen,
+} from '@gitroom/frontend/components/new-launch/compose.when';
 import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
 import {
   PQ_NOTIFY_SETTING,
@@ -56,6 +59,7 @@ import {
   ScheduleIcon,
   SendIcon,
   DraftIcon,
+  DuplicateIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
 import { useShortlinkPreference } from '@gitroom/frontend/components/settings/shortlink-preference.component';
@@ -218,7 +222,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     }
   });
 
-  const { addEditSets, mutate, customClose, dummy } = props;
+  const { addEditSets, mutate, customClose, dummy, duplicatePost } = props;
+  // A published post is already out there: Update would only rewrite our copy,
+  // and the time is history. Offer Duplicate instead of scheduling controls.
+  const publishedView =
+    existingData?.posts?.[0]?.state === 'PUBLISHED' && !!duplicatePost;
 
   const {
     selectedIntegrations,
@@ -377,6 +385,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     modal.closeAll();
     return;
   }, [existingData, mutate, modal, toaster, t, dropPostGroupFromView]);
+
+  // Carry what is in the editor, so edits made here are not dropped. If the
+  // values cannot be read, the duplicate falls back to the saved post.
+  // The composer modal holds the fixed id `add-edit-modal`, and openModal
+  // ignores an id that is already open, so this one has to close first.
+  const openDuplicate = useCallback(async () => {
+    const allValues = await ref.current?.getAllValues?.().catch((): null => null);
+    const first = allValues?.[0];
+    modal.closeAll();
+    duplicatePost?.(
+      first?.values?.map((value: any) => ({
+        content: value.content,
+        image: value.media || [],
+        settings: first.settings,
+      }))
+    );
+  }, [modal, duplicatePost]);
 
   const schedule = useCallback(
     (type: 'draft' | 'now' | 'schedule' | 'update') => async () => {
@@ -1199,14 +1224,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
               <div className="flex min-h-0 flex-1 flex-col gap-[12px] overflow-y-auto px-[16px] py-[12px]">
-                <ComposeWhen date={date} onChange={setDate} />
-                {!dummy && selectedIntegrations.length > 0 && (
+                {publishedView ? (
+                  <ComposePublishedAt date={date} />
+                ) : (
+                  <ComposeWhen date={date} onChange={setDate} />
+                )}
+                {!dummy && !publishedView && selectedIntegrations.length > 0 && (
                   <ComposeNotify
                     notify={notifyOnPublish}
                     onChange={setNotifyOnPublish}
                   />
                 )}
-                {!dummy && hasChannels && (
+                {!dummy && !publishedView && hasChannels && (
                   <div className="w-full [&>*]:w-full">
                     <TagsComponent
                       name="tags"
@@ -1218,7 +1247,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     />
                   </div>
                 )}
-                {!dummy && hasChannels && (
+                {!dummy && !publishedView && hasChannels && (
                   <div className="w-full [&>*]:w-full">
                     <RepeatComponent repeat={repeater} onChange={setRepeater} />
                   </div>
@@ -1285,7 +1314,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 : 'flex min-w-0 flex-1 items-center ps-[20px]'
             )}
           >
-            {!dummy && !compactFooter && (
+            {!dummy && !compactFooter && !publishedView && (
               <div data-pq="composer-footer-tag" className="shrink-0">
                 <TagsComponent
                   name="tags"
@@ -1298,7 +1327,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
             )}
-            {compactFooter && !dummy && hasChannels && (
+            {compactFooter && !dummy && !publishedView && hasChannels && (
               <div className={clsx('min-w-0', compactFooter && 'w-full [&>*]:w-full')}>
                 <TagsComponent
                   name="tags"
@@ -1311,12 +1340,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               </div>
             )}
 
-            {compactFooter && !dummy && hasChannels && (
+            {compactFooter && !dummy && !publishedView && hasChannels && (
               <div className={clsx('min-w-0', compactFooter && 'w-full [&>*]:w-full')}>
                 <RepeatComponent repeat={repeater} onChange={setRepeater} />
               </div>
             )}
-            {!dummy && hasChannels && !compactFooter && (
+            {!dummy && !publishedView && hasChannels && !compactFooter && (
               <div data-pq="composer-footer-repeat" className="shrink-0">
                 <RepeatComponent
                   repeat={repeater}
@@ -1325,7 +1354,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
             )}
-            {!dummy && hasChannels && !compactFooter && (
+            {!dummy && !publishedView && hasChannels && !compactFooter && (
               <div data-pq="composer-footer-notify" className="shrink-0">
                 <ComposeNotify
                   notify={notifyOnPublish}
@@ -1334,10 +1363,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 />
               </div>
             )}
-            {compactFooter && hasChannels && (
+            {compactFooter && hasChannels && publishedView && (
+              <ComposePublishedAt date={date} />
+            )}
+            {compactFooter && hasChannels && !publishedView && (
               <ComposeWhen date={date} onChange={setDate} />
             )}
-            {compactFooter && !dummy && selectedIntegrations.length > 0 && (
+            {compactFooter &&
+              !dummy &&
+              !publishedView &&
+              selectedIntegrations.length > 0 && (
               <ComposeNotify
                 notify={notifyOnPublish}
                 onChange={setNotifyOnPublish}
@@ -1353,7 +1388,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             )}
           >
             {!phoneFlow && (!compactFooter || !hasChannels) && (
-              <ComposeWhen date={date} onChange={setDate} />
+              <>
+                {publishedView ? (
+                  <ComposePublishedAt date={date} />
+                ) : (
+                  <ComposeWhen date={date} onChange={setDate} />
+                )}
+              </>
             )}
             {!phoneFlow && existingData?.integration && (
               <button
@@ -1373,7 +1414,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 phoneFlow && 'min-w-0 flex-1'
               )}
             >
-            {!addEditSets && (
+            {!addEditSets && !publishedView && (
               <button
                 disabled={
                   selectedIntegrations.length === 0 || loading || locked
@@ -1419,7 +1460,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 Save Set
               </button>
             )}
-            {!addEditSets && (
+            {publishedView && (
+              <button
+                type="button"
+                onClick={openDuplicate}
+                className={clsx(
+                  'btnSub flex h-[44px] items-center justify-center gap-[8px] rounded-[10px] bg-pqBrand text-[15px] font-[600] text-white outline-none',
+                  'max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
+                  touch ? 'min-w-0 flex-1 px-[12px]' : 'min-w-[168px] px-[18px]'
+                )}
+              >
+                <DuplicateIcon size={16} className="shrink-0" />
+                <span className="min-w-0 truncate whitespace-nowrap">
+                  {t('duplicate_post', 'Duplicate Post')}
+                </span>
+              </button>
+            )}
+            {!addEditSets && !publishedView && (
               <div className={clsx('relative', touch && 'flex min-w-0 flex-1')} ref={postNowClickRef}>
                 <div className={clsx('flex min-w-0', touch && 'w-full')} ref={postNowRef}>
                   <button

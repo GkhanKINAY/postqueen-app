@@ -340,6 +340,31 @@ export const DraftIcon: FC<IconProps> = ({
   </svg>
 );
 
+/** Two stacked sheets — Duplicate a published post. */
+export const DuplicateIcon: FC<IconProps> = ({
+  size = 16,
+  className,
+  ...props
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M5.5 5.5V3.3C5.5 2.85817 5.85817 2.5 6.3 2.5H12.7C13.1418 2.5 13.5 2.85817 13.5 3.3V9.7C13.5 10.1418 13.1418 10.5 12.7 10.5H10.5M3.3 5.5H9.7C10.1418 5.5 10.5 5.85817 10.5 6.3V12.7C10.5 13.1418 10.1418 13.5 9.7 13.5H3.3C2.85817 13.5 2.5 13.1418 2.5 12.7V6.3C2.5 5.85817 2.85817 5.5 3.3 5.5Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // Repeat/Cycle Icon
 export const RepeatIcon: FC<IconProps> = ({
   size = 20,
