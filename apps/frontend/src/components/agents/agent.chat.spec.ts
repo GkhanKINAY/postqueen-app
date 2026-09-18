@@ -41,59 +41,77 @@ const controller = readFileSync(
 );
 
 describe('AI Copilot draft preview card', () => {
-  it('shows a Post Preview card instead of auto-opening Create Post', () => {
+  it('shows a Post Preview card that never blocks the run', () => {
+    // `handler` + `render`: the card is a tool result the model gets back at
+    // once, not a `renderAndWaitForResponse` that held the run (and the chat
+    // input) until a button was pressed.
     assert.match(chat, /name: 'manualPosting'/);
-    assert.match(chat, /<AgentDraftCard/);
-    assert.match(chat, /waiting=\{status === 'executing'\}/);
-    assert.doesNotMatch(chat, /Opening the composer…/);
-    assert.doesNotMatch(chat, /useEffect\(\(\) => \{\s*startModal\(\);/);
+    assert.doesNotMatch(chat, /renderAndWaitForResponse/);
+    assert.match(chat, /handler: async \(\{ list \}\): Promise<ManualPostingResult>/);
+    assert.match(chat, /status: 'shown', cardId/);
+    assert.match(chat, /status: 'invalid', cardId, errors/);
+    assert.match(chat, /<DraftPreview/);
     assert.match(card, /data-pq="agent-draft-card"/);
     assert.match(card, /t\('post_preview', 'Post Preview'\)/);
     assert.match(card, /data-pq="agent-draft-open"/);
     assert.match(card, /data-pq="agent-draft-schedule"/);
-    assert.match(card, /t\('open_composer', 'Open composer'\)/);
+    assert.match(card, /data-pq="agent-draft-now"/);
+    assert.match(card, /data-pq="agent-draft-draft"/);
+    assert.match(card, /t\('edit_in_composer', 'Edit in Create Post'\)/);
     assert.match(card, /t\('schedule', 'Schedule'\)/);
+    assert.match(card, /t\('post_now', 'Post now'\)/);
+    assert.match(card, /t\('save_as_draft', 'Save as draft'\)/);
+    assert.doesNotMatch(card, /Opening the composer/);
   });
 
-  it('paints the draft text, channel and date, and media at its real aspect', () => {
-    assert.match(card, /stripHtmlValidation\('none'/);
-    assert.match(card, /formatDateTime\(dayjs\.utc\(item\.date\)\.local\(\)\)/);
-    assert.match(card, /ChannelMark/);
-    // The Post Preview frame, not a fixed square crop: a reel and a landscape
-    // video used to be the same 72px thumbnail.
-    assert.match(card, /<PreviewMediaFrame/);
-    assert.match(card, /<PreviewMediaMosaic/);
-    assert.match(card, /useMediaDirectory\(\)/);
+  it('draws the channel\'s own Post Preview, grouped like the composer sends it', () => {
+    // The channel's preview component from the provider registry, outside the
+    // composer, with the post in IntegrationContext and the settings in a
+    // form provider; General when the provider has no custom preview.
+    assert.match(card, /Providers\.find\(\(p\) => p\.identifier === channel\.identifier\)/);
+    assert.match(card, /getProviderSettingsMeta\(entry\.component\)/);
+    assert.match(card, /meta\?\.CustomPreviewComponent \|\| GeneralPreviewComponent/);
+    assert.match(card, /<IntegrationContext\.Provider value=\{contextValue\}>/);
+    assert.match(card, /<FormProvider \{\.\.\.form\}>/);
+    assert.doesNotMatch(card, /identifier === 'instagram'/);
+    // Rows that share a date and the same posts are one group.
+    assert.match(card, /export const groupDraftItems/);
+    assert.match(card, /JSON\.stringify\(\{ date, posts \}\)/);
+    assert.match(card, /draftSettings/);
     assert.doesNotMatch(card, /h-\[72px\] w-\[72px\]/);
-    assert.doesNotMatch(card, /object-cover/);
     assert.doesNotMatch(css, /\[data-pq='agent-draft-card'\] img/);
-    assert.match(card, /line-clamp-4/);
-    assert.match(card, /t\('comments', 'Comments'\)/);
   });
 
-  it('frees the run before Create Post opens, and opens it as a new post', () => {
-    assert.match(chat, /User confirmed\. Schedule these posts now with schedulePostTool/);
-    assert.match(
-      chat,
-      /User opened the Create Post composer with this draft/
+  it('acts from the card through the same endpoints as Create Post', () => {
+    const actions = readFileSync(
+      fileURLToPath(new URL('./agent.draft.actions.tsx', import.meta.url)),
+      'utf8',
     );
-    assert.match(chat, /Do not call schedulePostTool for this draft/);
-    assert.match(chat, /Do not call manualPosting again/);
-    assert.match(chat, /<AddEditModal/);
-    // `finish` runs before any modal opens; awaiting a save here left the card
-    // and the chat stuck when the composer was closed unsaved.
-    const opener = chat.slice(chat.indexOf('const openComposer'), chat.indexOf('const schedule ='));
-    assert.ok(opener.indexOf('finish(') < opener.indexOf('modals.openModal('));
-    assert.doesNotMatch(opener, /await new Promise/);
-    // Seeded the way a saved Set is: never the edit path, which showed Delete
-    // Post for a post the server had never seen.
-    assert.match(opener, /set=\{\{/);
-    assert.match(opener, /customClose=/);
-    assert.doesNotMatch(chat, /<ExistingDataContextProvider/);
-    assert.doesNotMatch(chat, /import \{ ExistingDataContextProvider \}/);
+    // What the card shows is what `/posts` receives; the model never re-emits
+    // a draft to publish it, and the composer opens as a new post.
+    assert.match(actions, /fetch\('\/posts\/valid'/);
+    assert.match(actions, /fetch\('\/posts', \{/);
+    assert.match(actions, /fetch\('\/posts\/find-slot'\)/);
+    assert.match(actions, /type: action/);
+    assert.match(actions, /set=\{\{/);
+    assert.match(actions, /customClose=\{/);
+    assert.doesNotMatch(actions, /ExistingDataContextProvider/);
+    assert.doesNotMatch(chat, /ExistingDataContextProvider/);
+    // Typing "post it now" goes through the same code path, and only after
+    // the person has replied since the card was shown.
+    assert.match(chat, /name: 'publishFromCard'/);
+    assert.match(chat, /registry\.current\[id\]\.userTurn >= latestUserTurn\.current/);
+    assert.match(chat, /await execute\(group, kind, date \|\| undefined\)/);
+    // Every backend tool call is a quiet step line.
+    assert.match(chat, /name: '\*'/);
+    assert.match(chat, /<ToolStep/);
+    // The prompt's UI workflow follows the card.
     assert.match(tools, /always call manualPosting/);
-    assert.match(tools, /Never call schedulePostTool for a brand-new post before manualPosting/);
-    assert.match(tools, /If it returns that the user opened the composer, do NOT call schedulePostTool/);
+    assert.match(tools, /call publishFromCard/);
+    assert.match(tools, /Never call schedulePostTool for a brand-new post in the app/);
+    assert.match(tools, /if it says the user opened the composer, do NOT call schedulePostTool/);
+    assert.match(tools, /requestContext\.get\('ui' as never\) === 'true'/);
+    assert.doesNotMatch(tools, /!!ui/);
   });
 
   it('hides the empty hero from the DOM, not from the dead messages context', () => {

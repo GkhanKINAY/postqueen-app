@@ -1,7 +1,9 @@
 'use client';
 
 import React, {
+  createContext,
   FC,
+  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -20,13 +22,15 @@ import {
   UserMessageProps,
 } from '@copilotkit/react-ui';
 import Link from 'next/link';
+import clsx from 'clsx';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
+  CatchAllActionRenderProps,
   CopilotKit,
   useCopilotAction,
   useCopilotChatInternal,
+  useLazyToolRenderer,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
@@ -37,13 +41,26 @@ import {
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { v4 as uuid } from 'uuid';
-import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import {
+  AgentDraftAction,
   AgentDraftCard,
+  AgentDraftCardState,
+  AgentDraftGroup,
   AgentDraftItem,
   AgentDraftOutcome,
+  groupDraftItems,
 } from '@gitroom/frontend/components/agents/agent.draft.card';
-import dayjs from 'dayjs';
+import {
+  DraftValidationError,
+  useDraftActions,
+} from '@gitroom/frontend/components/agents/agent.draft.actions';
+import { Spinner } from '@gitroom/react/ui/spinner';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
+import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
+import {
+  FEED_PREVIEW_MAX_WH,
+  FEED_PREVIEW_MIN_WH,
+} from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
@@ -113,42 +130,44 @@ export const AgentChat: FC = () => {
       agent="postqueen"
       properties={properties}
     >
-      <Hooks />
-      <AgentLiveBridge threadId={threadId} fresh={routeId === 'new'} />
-      <div
-        style={
-          {
-            // The SDK is themed through its own custom properties, bound to
-            // the token layer where the chat mounts. Background stays
-            // transparent so the page's own surfaces show through.
-            '--copilot-kit-primary-color': 'var(--brand)',
-            '--copilot-kit-contrast-color': 'var(--onBrand)',
-            '--copilot-kit-secondary-contrast-color': 'var(--text)',
-            '--copilot-kit-background-color': 'transparent',
-            '--copilot-kit-input-background-color': 'transparent',
-            '--copilot-kit-separator-color': 'var(--line)',
-            '--copilot-kit-muted-color': 'var(--muted)',
-          } as CopilotKitCSSProperties
-        }
-        className="trz agent bg-pqInner flex min-h-0 flex-col transition-all flex-1 relative min-w-0"
-      >
-        <div className="absolute start-0 w-full h-full">
-          <CopilotChat
-            className="w-full h-full"
-            labels={{
-              title: t('ai_copilot', 'AI Copilot'),
-              placeholder: t(
-                'agent_placeholder',
-                'Ask Copilot to draft, schedule or generate…'
-              ),
-            }}
-            AssistantMessage={AssistantMessage}
-            UserMessage={Message}
-            Input={NewInput}
-          />
-        </div>
-        <EmptyState fresh={routeId === 'new'} />
-      </div>
+      <AgentLiveBridge threadId={threadId} fresh={routeId === 'new'}>
+        <Hooks>
+          <div
+            style={
+              {
+                // The SDK is themed through its own custom properties, bound
+                // to the token layer where the chat mounts. Background stays
+                // transparent so the page's own surfaces show through.
+                '--copilot-kit-primary-color': 'var(--brand)',
+                '--copilot-kit-contrast-color': 'var(--onBrand)',
+                '--copilot-kit-secondary-contrast-color': 'var(--text)',
+                '--copilot-kit-background-color': 'transparent',
+                '--copilot-kit-input-background-color': 'transparent',
+                '--copilot-kit-separator-color': 'var(--line)',
+                '--copilot-kit-muted-color': 'var(--muted)',
+              } as CopilotKitCSSProperties
+            }
+            className="trz agent bg-pqInner flex min-h-0 flex-col transition-all flex-1 relative min-w-0"
+          >
+            <div className="absolute start-0 w-full h-full">
+              <CopilotChat
+                className="w-full h-full"
+                labels={{
+                  title: t('ai_copilot', 'AI Copilot'),
+                  placeholder: t(
+                    'agent_placeholder',
+                    'Ask Copilot to draft, schedule or generate…'
+                  ),
+                }}
+                AssistantMessage={AssistantMessage}
+                UserMessage={Message}
+                Input={NewInput}
+              />
+            </div>
+            <EmptyState fresh={routeId === 'new'} />
+          </div>
+        </Hooks>
+      </AgentLiveBridge>
     </CopilotKit>
   );
 };
@@ -482,13 +501,47 @@ const UnconfiguredAgentShell: FC = () => {
 };
 
 /**
+ * What the live chat knows, for the components that must not subscribe to
+ * it themselves: the messages (tool results for the extra tool calls), and
+ * how many turns the person has taken, which `publishFromCard` uses to tell
+ * a spoken confirmation from the model acting on its own.
+ */
+const LiveChatContext = createContext<{
+  messages: any[];
+  userTurns: number;
+}>({ messages: [], userTurns: 0 });
+
+/**
  * The design puts a 26px "PQ" tile beside assistant messages. The SDK's own
  * AssistantMessage keeps rendering the content and the regenerate / copy /
  * thumbs controls — it is only wrapped, never replaced.
  */
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
-  if (!props.message?.content) {
-    return <CopilotAssistantMessage {...props} />;
+  const { messages } = useContext(LiveChatContext);
+  const lazyRenderer = useLazyToolRenderer();
+  const message = props.message as {
+    content?: unknown;
+    toolCalls?: { id: string; function: { name: string } }[];
+  };
+  // react-ui draws only the first tool call of a message as generative UI;
+  // the Mastra bridge hangs every call of a turn on the same message, so the
+  // rest (a second card, the steps around it) are drawn here, each through
+  // the same renderer with a message that holds just that call.
+  const rest = (message?.toolCalls || []).slice(1).map((toolCall) => (
+    <React.Fragment key={toolCall.id}>
+      {lazyRenderer(
+        { ...(props.message as any), toolCalls: [toolCall] },
+        messages
+      )?.()}
+    </React.Fragment>
+  ));
+  if (!message?.content) {
+    return (
+      <>
+        <CopilotAssistantMessage {...props} />
+        {rest}
+      </>
+    );
   }
   return (
     <div className="flex items-start gap-[10px]">
@@ -497,6 +550,7 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
       </span>
       <div className="min-w-0 flex-1">
         <CopilotAssistantMessage {...props} />
+        {rest}
       </div>
     </div>
   );
@@ -513,10 +567,11 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
  * unmount, so this stays mounted for the chat's whole life and is never
  * rendered conditionally.
  */
-const AgentLiveBridge: FC<{ threadId: string; fresh: boolean }> = ({
-  threadId,
-  fresh,
-}) => {
+const AgentLiveBridge: FC<{
+  threadId: string;
+  fresh: boolean;
+  children: ReactNode;
+}> = ({ threadId, fresh, children }) => {
   const { isLoading, messages } = useCopilotChatInternal();
   const { mutate } = useCopilotThreads();
   const wasLoading = useRef(false);
@@ -545,7 +600,17 @@ const AgentLiveBridge: FC<{ threadId: string; fresh: boolean }> = ({
     []
   );
 
-  return null;
+  const value = useMemo(
+    () => ({
+      messages,
+      userTurns: messages.filter((m: any) => m.role === 'user').length,
+    }),
+    [messages]
+  );
+
+  return (
+    <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
+  );
 };
 
 /**
@@ -673,17 +738,154 @@ Use the following social media platforms: ${JSON.stringify(
   );
 };
 
-export const Hooks: FC = () => {
+/** What the `manualPosting` handler hands back to the model. */
+type ManualPostingResult =
+  | { status: 'shown'; cardId: string }
+  | { status: 'invalid'; cardId: string; errors: DraftValidationError[] };
+
+/**
+ * Cards the model can act on by name. Filled by every rendered card (so a
+ * reopened thread's cards are here too) and read by `publishFromCard`.
+ */
+const CardsContext = createContext<{
+  register: (cardId: string, groups: AgentDraftGroup[], userTurn: number) => void;
+  registry: React.MutableRefObject<
+    Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
+  >;
+}>({ register: () => {}, registry: { current: {} } });
+
+const parseResult = (result: unknown): ManualPostingResult | string | null => {
+  if (result == null) {
+    return null;
+  }
+  if (typeof result === 'object') {
+    return result as ManualPostingResult;
+  }
+  try {
+    const parsed = JSON.parse(String(result));
+    return parsed && typeof parsed === 'object' ? parsed : String(result);
+  } catch {
+    return String(result);
+  }
+};
+
+/**
+ * One quiet line per backend tool call, the way an agent product shows its
+ * steps: what is happening while the reply is still coming, a check when it
+ * is done. Generated images come back as a picture at their real aspect.
+ */
+const ToolStep: FC<{
+  name: string;
+  status: string;
+  args?: Record<string, any>;
+  result?: unknown;
+}> = ({ name, status, args, result }) => {
+  const t = useT();
+  const mediaDir = useMediaDirectory();
+  const labels: Record<string, string> = {
+    integrationSchema: t('copilot_step_rules', 'Checking channel rules'),
+    integrationList: t('copilot_step_channels', 'Listing your channels'),
+    groupList: t('copilot_step_customers', 'Listing customers'),
+    triggerTool: t('copilot_step_channel_data', 'Fetching channel data'),
+    postsListTool: t('copilot_step_calendar', 'Looking at your calendar'),
+    postSettingsTool: t('copilot_step_settings', 'Updating post settings'),
+    integrationSchedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
+    schedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
+    analyticsSummaryTool: t('copilot_step_analytics', 'Reading analytics'),
+    analyticsPostsTool: t('copilot_step_analytics', 'Reading analytics'),
+    analyticsPostTool: t('copilot_step_analytics', 'Reading analytics'),
+    generateImageTool: t('copilot_step_image', 'Generating image'),
+    generateVideoOptions: t('copilot_step_video', 'Generating video'),
+    videoFunctionTool: t('copilot_step_video', 'Generating video'),
+    generateVideoTool: t('copilot_step_video', 'Generating video'),
+    videoStatusTool: t('copilot_step_video', 'Generating video'),
+    uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
+  };
+  const label = labels[name] || t('copilot_step_working', 'Working');
+  const done = status === 'complete';
+  const parsed = done ? parseResult(result) : null;
+  const failed =
+    !!parsed && typeof parsed === 'object' && 'error' in parsed && !!(parsed as any).error;
+  const image =
+    name === 'generateImageTool' && parsed && typeof parsed === 'object'
+      ? (parsed as { path?: string }).path
+      : undefined;
+  const platform = name === 'integrationSchema' ? args?.platform : undefined;
+
+  return (
+    <div data-pq="copilot-step" data-tool={name} className="my-[4px] flex flex-col gap-[8px]">
+      <div
+        className={clsx(
+          'flex items-center gap-[8px] text-[12.5px]',
+          failed ? 'text-pqWarn' : 'text-pqSoft'
+        )}
+      >
+        {done ? (
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true" className="shrink-0">
+            {failed ? (
+              <path d="M12 8v5M12 16.5v.01M4.5 19h15L12 5.5 4.5 19Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            ) : (
+              <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            )}
+          </svg>
+        ) : (
+          <Spinner width={14} height={14} />
+        )}
+        <span>
+          {label}
+          {platform ? ` · ${platform}` : ''}
+        </span>
+      </div>
+      {image && (
+        <PreviewMediaFrame
+          className="max-w-[360px] rounded-[10px]"
+          src={mediaDir.set(image)}
+          minWH={FEED_PREVIEW_MIN_WH}
+          maxWH={FEED_PREVIEW_MAX_WH}
+          fallbackWH={1}
+          autoplay={false}
+        />
+      )}
+    </div>
+  );
+};
+
+export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
+  const { validate, execute } = useDraftActions();
+  const { cards } = useContext(PropertiesContext);
+  const { userTurns } = useContext(LiveChatContext);
+  const registry = useRef<
+    Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
+  >({});
+  const order = useRef(0);
+  const register = useCallback(
+    (cardId: string, groups: AgentDraftGroup[], userTurn: number) => {
+      if (registry.current[cardId]) {
+        return;
+      }
+      registry.current[cardId] = { groups, userTurn, order: order.current++ };
+    },
+    []
+  );
+  const { setCardOutcome } = useContext(PropertiesContext);
+  // Handlers are registered once and read the live values through refs.
+  const latestUserTurn = useRef(userTurns);
+  const latestCards = useRef(cards);
+  useEffect(() => {
+    latestUserTurn.current = userTurns;
+    latestCards.current = cards;
+  }, [userTurns, cards]);
+
   useCopilotAction({
     name: 'manualPosting',
     description:
-      'Show a Post Preview card in chat for a brand-new draft (channels, UTC dates, HTML posts, attachments, settings). Always call this before schedulePostTool. Wait for the user: they will schedule from the card or open Create Post. Do not use this to edit an existing post.',
+      "Show a Post Preview card for one or more BRAND-NEW posts. Nothing is scheduled by this call. Pass the complete draft, one row per channel; the app validates every row against the platform rules. Returns {status:'shown', cardId} once the card is on screen, or {status:'invalid', errors:[{integrationId, channel, error}]}: fix those and call again. After 'shown' answer with one short sentence and stop; the user schedules, posts, saves or edits from the card. To revise a draft, call again with the full updated draft. Never use this for an existing post.",
     parameters: [
       {
         name: 'list',
         type: 'object[]',
         description:
-          'list of posts to schedule to different social media (integration ids)',
+          'The posts to preview, one row per channel (integration id)',
         attributes: [
           {
             name: 'integrationId',
@@ -693,27 +895,33 @@ export const Hooks: FC = () => {
           {
             name: 'date',
             type: 'string',
-            description: 'UTC date of the scheduled post',
+            description:
+              'Publish time in UTC, YYYY-MM-DDTHH:mm:ss. Omit for the next free slot.',
+            required: false,
           },
           {
             name: 'settings',
             type: 'object',
-            description: 'Settings for the integration [input:settings]',
+            description:
+              'Platform settings as a key/value object from integrationSchema [input:settings]',
+            required: false,
           },
           {
             name: 'posts',
             type: 'object[]',
-            description: 'list of posts / comments (one under another)',
+            description:
+              'The post, then its comments or thread items, one under another',
             attributes: [
               {
                 name: 'content',
                 type: 'string',
-                description: 'the content of the post',
+                description: 'The content of the post, HTML',
               },
               {
                 name: 'attachments',
                 type: 'object[]',
-                description: 'list of attachments',
+                description: 'Attachments already in the media library',
+                required: false,
                 attributes: [
                   {
                     name: 'id',
@@ -732,165 +940,215 @@ export const Hooks: FC = () => {
         ],
       },
     ],
-    renderAndWaitForResponse: ({ args, status, respond }) => {
-      if (
-        status === 'inProgress' ||
-        status === 'executing' ||
-        status === 'complete'
-      ) {
-        return (
-          <DraftPreview
-            args={args}
-            respond={respond}
-            waiting={status === 'executing'}
-          />
-        );
+    handler: async ({ list }): Promise<ManualPostingResult> => {
+      const cardId = makeId(8);
+      const groups = groupDraftItems(list as AgentDraftItem[]);
+      register(cardId, groups, latestUserTurn.current);
+      // Returned, never thrown: a thrown handler ends the run and the model
+      // gets no chance to fix the draft.
+      try {
+        const errors = groups.length
+          ? await validate(groups)
+          : [{ error: 'The list is empty.' }];
+        return errors.length
+          ? { status: 'invalid', cardId, errors }
+          : { status: 'shown', cardId };
+      } catch (e: any) {
+        return {
+          status: 'invalid',
+          cardId,
+          errors: [{ error: e?.message || 'The post could not be validated.' }],
+        };
       }
+    },
+    render: ({ args, status, result }) => (
+      <DraftPreview
+        args={args as { list?: AgentDraftItem[] }}
+        status={status}
+        result={result}
+      />
+    ),
+  });
 
-      return null;
+  useCopilotAction({
+    name: 'publishFromCard',
+    description:
+      "Carry out the user's spoken decision about a Post Preview card shown earlier. Call ONLY when the user's latest message explicitly asks to schedule, post now or save as a draft. Never call it in the same turn as manualPosting. cardId defaults to the latest open card; date (UTC) only to override the card's date. Returns {status:'scheduled'|'posted'|'draft', count} or {status:'error', error}; on error explain it in one sentence.",
+    parameters: [
+      {
+        name: 'action',
+        type: 'string',
+        description: "'schedule', 'now' or 'draft'",
+      },
+      {
+        name: 'cardId',
+        type: 'string',
+        description: 'The cardId manualPosting returned. Defaults to the latest open card.',
+        required: false,
+      },
+      {
+        name: 'date',
+        type: 'string',
+        description: 'Publish time in UTC, YYYY-MM-DDTHH:mm:ss, only to override the card',
+        required: false,
+      },
+    ],
+    handler: async ({ action, cardId, date }) => {
+      const kind = ['schedule', 'now', 'draft'].includes(String(action))
+        ? (action as AgentDraftAction)
+        : null;
+      if (!kind) {
+        return { status: 'error', error: "action must be 'schedule', 'now' or 'draft'." };
+      }
+      const pendingOf = (id: string) =>
+        (registry.current[id]?.groups || []).filter((group) => {
+          const outcome = latestCards.current[id]?.[group.key] as
+            | { status?: string }
+            | undefined;
+          return !outcome || outcome.status === 'error';
+        });
+      const id =
+        cardId && registry.current[cardId]
+          ? cardId
+          : Object.entries(registry.current)
+              .sort((a, b) => b[1].order - a[1].order)
+              .find(([key]) => pendingOf(key).length)?.[0];
+      if (!id) {
+        return { status: 'error', error: 'There is no open Post Preview card to act on.' };
+      }
+      // A confirmation is something the person typed after seeing the card.
+      if (registry.current[id].userTurn >= latestUserTurn.current) {
+        return {
+          status: 'error',
+          error: 'The user has not replied since this card was shown. Wait for them to decide from the card or in chat.',
+        };
+      }
+      const pending = pendingOf(id);
+      if (!pending.length) {
+        return { status: 'error', error: 'Every post on this card is already done.' };
+      }
+      let count = 0;
+      let failure: string | undefined;
+      for (const group of pending) {
+        const outcome = await execute(group, kind, date || undefined);
+        setCardOutcome(id, group.key, outcome);
+        if (outcome.status === 'error') {
+          failure = outcome.error;
+        } else {
+          count += 1;
+        }
+      }
+      if (failure && !count) {
+        return { status: 'error', error: failure };
+      }
+      return {
+        status: kind === 'now' ? 'posted' : kind === 'draft' ? 'draft' : 'scheduled',
+        count,
+        ...(failure ? { error: failure } : {}),
+      };
     },
   });
-  return null;
+
+  // Every backend tool the agent calls, as a step line.
+  useCopilotAction({
+    name: '*',
+    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
+      <ToolStep name={name} status={status} args={args} result={result} />
+    ),
+  });
+
+  return (
+    <CardsContext.Provider value={{ register, registry }}>
+      {children}
+    </CardsContext.Provider>
+  );
 };
 
+/**
+ * The Post Preview card in the chat. Reads the draft off the tool call's
+ * arguments (streamed while the model is still typing them), the validation
+ * off its result, and what happened to each group off the thread's state, so
+ * a reopened thread shows the same card with the same outcomes.
+ */
 const DraftPreview: FC<{
-  respond: (value: any) => void;
-  waiting: boolean;
-  args?: {
-    list?: AgentDraftItem[];
-  };
-}> = ({ args, respond, waiting }) => {
-  const modals = useModals();
-  const { properties } = useContext(PropertiesContext);
-  const usableProperties = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
-  );
-  const [outcome, setOutcome] = useState<AgentDraftOutcome>('idle');
-  const responded = useRef(false);
+  args?: { list?: AgentDraftItem[] };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const { cards, setCardOutcome } = useContext(PropertiesContext);
+  const { userTurns } = useContext(LiveChatContext);
+  const { register } = useContext(CardsContext);
+  const { execute, openComposer } = useDraftActions();
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupDraftItems(args?.list), [args?.list]);
+  const parsed = status === 'complete' ? parseResult(result) : null;
+  const legacy = typeof parsed === 'string';
+  const cardId =
+    parsed && typeof parsed === 'object' && 'cardId' in parsed
+      ? parsed.cardId
+      : undefined;
+  const state: AgentDraftCardState = legacy
+    ? 'legacy'
+    : status === 'inProgress'
+    ? 'streaming'
+    : status === 'executing'
+    ? 'checking'
+    : parsed && typeof parsed === 'object' && parsed.status === 'invalid'
+    ? 'invalid'
+    : cardId
+    ? 'ready'
+    : 'legacy';
 
-  const finish = useCallback(
-    (message: string) => {
-      if (responded.current) {
+  useEffect(() => {
+    if (cardId && groups.length) {
+      register(cardId, groups, userTurns);
+    }
+    // A card registers once, when it first has an id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardId, groups]);
+
+  const outcomes = useMemo(
+    () => (cardId ? (cards[cardId] || {}) : {}) as Record<string, AgentDraftOutcome | undefined>,
+    [cards, cardId]
+  );
+
+  const run = useCallback(
+    async (group: AgentDraftGroup, work: () => Promise<AgentDraftOutcome | null>) => {
+      if (!cardId) {
         return;
       }
-      responded.current = true;
-      respond(message);
-    },
-    [respond]
-  );
-
-  const openComposer = useCallback(() => {
-    setOutcome('composer');
-    // Free the run first. The result means "the user took over in Create
-    // Post", whichever way the composer closes afterwards. Waiting for a save
-    // here left the card, and with it the chat input, stuck when the composer
-    // was closed unsaved.
-    finish(
-      'User opened the Create Post composer with this draft. They will edit and schedule there. Do not call schedulePostTool for this draft.'
-    );
-    const rows = (args?.list || []).flatMap((integration) => {
-      const channel = usableProperties.find(
-        (p) => p.id === integration.integrationId
-      );
-      // Skip reconnect / in-between channels — same guard as Select Channels.
-      return channel ? [{ integration, channel }] : [];
-    });
-
-    // One composer per row, the next opening as the previous one closes.
-    // The composer closes itself with `closeAll()`, which never reaches the
-    // modal's `onClose`, so it is `customClose` (user close) and `mutate`
-    // (saved) that hand over. A save calls `mutate`, then `closeAll()`, then
-    // `customClose` two seconds later: the hand-over runs once, and the next
-    // composer opens after that `closeAll()` has cleared the stack.
-    const openRow = (index: number) => {
-      const row = rows[index];
-      if (!row) {
-        return;
-      }
-      let advanced = false;
-      const next = () => {
-        if (advanced) {
-          return;
+      setBusy((prev) => ({ ...prev, [group.key]: true }));
+      try {
+        const outcome = await work();
+        if (outcome) {
+          setCardOutcome(cardId, group.key, outcome);
         }
-        advanced = true;
-        setTimeout(() => openRow(index + 1), 0);
-      };
-      const { integration, channel } = row;
-      modals.openModal({
-        id: 'add-edit-modal',
-        closeOnClickOutside: false,
-        removeLayout: true,
-        closeOnEscape: false,
-        withCloseButton: false,
-        askClose: true,
-        size: '80%',
-        title: ``,
-        classNames: {
-          modal: 'w-[100%] max-w-[1400px] text-textColor',
-        },
-        children: (
-          // A brand-new post seeded the way a saved Set is: the channel with
-          // its settings, and the thread as the global value. Not an
-          // `ExistingDataContextProvider` — that is the edit path, and it
-          // showed Delete Post for a post the server had never seen.
-          <AddEditModal
-            date={dayjs.utc(integration.date).local()}
-            allIntegrations={usableProperties}
-            integrations={usableProperties}
-            set={{
-              posts: [
-                {
-                  integration: { id: channel.id },
-                  settings: integration.settings || {},
-                  // Never an empty thread: the composer renders nothing (and
-                  // has no close button) until it has one item to edit.
-                  value: (integration.posts?.length
-                    ? integration.posts
-                    : [{ content: '', attachments: [] }]
-                  ).map((p) => ({
-                    content: p.content || '',
-                    media: (p.attachments || []).map((a) => ({
-                      id: a.id,
-                      path: a.path,
-                    })),
-                  })),
-                },
-              ],
-            }}
-            reopenModal={() => {}}
-            mutate={next}
-            customClose={() => {
-              // The user closed it unsaved: the composer leaves closing to
-              // us when `customClose` is set. After a save this fires late
-              // and must not touch the composer that is open by then.
-              if (advanced) {
-                return;
-              }
-              modals.closeAll();
-              next();
-            }}
-          />
-        ),
-      });
-    };
-    openRow(0);
-  }, [args, finish, usableProperties, modals]);
-
-  const schedule = useCallback(() => {
-    setOutcome('schedule');
-    finish(
-      'User confirmed. Schedule these posts now with schedulePostTool using the same channels, dates, HTML content, attachments and settings. Do not call manualPosting again.'
-    );
-  }, [finish]);
+      } finally {
+        setBusy((prev) => ({ ...prev, [group.key]: false }));
+      }
+    },
+    [cardId, setCardOutcome]
+  );
 
   return (
     <AgentDraftCard
-      list={args?.list}
-      outcome={outcome}
-      waiting={waiting}
-      onSchedule={schedule}
-      onOpenComposer={openComposer}
+      groups={groups}
+      state={state}
+      errors={
+        parsed && typeof parsed === 'object' && parsed.status === 'invalid'
+          ? parsed.errors
+          : undefined
+      }
+      outcomes={outcomes}
+      busy={busy}
+      onAction={(group, action) => void run(group, () => execute(group, action))}
+      onOpenComposer={(group) =>
+        void run(group, async () =>
+          (await openComposer(group))
+            ? { status: 'composer', at: new Date().toISOString() }
+            : null
+        )
+      }
     />
   );
 };

@@ -514,19 +514,33 @@ export const AgentList: FC<{
   );
 };
 
+/** Per card, per group: what the person did with a Post Preview. */
+export type ThreadCardOutcomes = Record<string, Record<string, unknown>>;
+
 export const PropertiesContext = createContext<{
   properties: any[];
   openChannels: () => void;
-}>({ properties: [], openChannels: () => {} });
+  /** Outcomes of the Post Preview cards in this thread, keyed by card id. */
+  cards: ThreadCardOutcomes;
+  setCardOutcome: (cardId: string, groupKey: string, outcome: unknown) => void;
+}>({
+  properties: [],
+  openChannels: () => {},
+  cards: {},
+  setCardOutcome: () => {},
+});
+
 /**
- * Keeps the channel selection with the thread. Reopening a thread restores
- * the channels that were selected while chatting, resolved against the live
- * list so a deleted channel, or one that now needs a reconnect, simply drops
- * out. Only the person's own changes are written back, and only once the
- * thread exists with a title: Mastra names a thread after its first run and
- * that write would overwrite metadata saved in between.
+ * Keeps the channel selection and the card outcomes with the thread.
+ * Reopening a thread restores the channels that were selected while
+ * chatting, resolved against the live list so a deleted channel, or one that
+ * now needs a reconnect, simply drops out. Only the person's own changes are
+ * written back. Channels wait until the thread exists with a title: Mastra
+ * names a thread after its first run and that write overwrites metadata saved
+ * in between, so card outcomes, which can happen inside that window, are
+ * written right away and once more when the title lands.
  */
-const useThreadChannels = (
+const useThreadSync = (
   routeId: string,
   properties: Integrations[],
   setProperties: (next: Integrations[]) => void
@@ -538,6 +552,32 @@ const useThreadChannels = (
   const titled = !!threads?.threads?.find((p) => p.id === routeId)?.title;
   const dirty = useRef(false);
   const restoredFor = useRef<string | null>(null);
+  const [localCards, setLocalCards] = useState<{
+    routeId: string;
+    cards: ThreadCardOutcomes;
+  }>({ routeId, cards: {} });
+  const cards = useMemo<ThreadCardOutcomes>(() => {
+    const saved = (state?.cards || {}) as ThreadCardOutcomes;
+    const local = localCards.routeId === routeId ? localCards.cards : {};
+    const merged: ThreadCardOutcomes = { ...saved };
+    for (const [cardId, groups] of Object.entries(local)) {
+      merged[cardId] = { ...(merged[cardId] || {}), ...groups };
+    }
+    return merged;
+  }, [state?.cards, localCards, routeId]);
+
+  const save = useCallback(
+    async (patch: Record<string, unknown>) => {
+      const response = await fetch(`/copilot/${routeId}/state`, {
+        method: 'POST',
+        body: JSON.stringify({ surface: 'agent', ...patch }),
+      });
+      if (response.ok) {
+        void mutateState(await response.json(), { revalidate: false });
+      }
+    },
+    [fetch, routeId, mutateState]
+  );
 
   const onChange = useCallback(
     (next: Integrations[]) => {
@@ -546,6 +586,32 @@ const useThreadChannels = (
     },
     [setProperties]
   );
+
+  const setCardOutcome = useCallback(
+    (cardId: string, groupKey: string, outcome: unknown) => {
+      const next = {
+        ...cards,
+        [cardId]: { ...(cards[cardId] || {}), [groupKey]: outcome },
+      };
+      setLocalCards({ routeId, cards: next });
+      if (routeId !== 'new') {
+        void save({ cards: next });
+      }
+    },
+    [cards, routeId, save]
+  );
+
+  // The title arriving is the one moment a write may have been lost.
+  const flushedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (routeId === 'new' || !titled || flushedFor.current === routeId) {
+      return;
+    }
+    flushedFor.current = routeId;
+    if (Object.keys(cards).length) {
+      void save({ cards });
+    }
+  }, [routeId, titled, cards, save]);
 
   useEffect(() => {
     if (routeId === 'new' || !state || !integrations?.length) {
@@ -576,29 +642,20 @@ const useThreadChannels = (
       return;
     }
     dirty.current = false;
-    const channels = properties.map((p) => p.id);
-    void (async () => {
-      const response = await fetch(`/copilot/${routeId}/state`, {
-        method: 'POST',
-        body: JSON.stringify({ surface: 'agent', channels }),
-      });
-      if (response.ok) {
-        void mutateState(await response.json(), { revalidate: false });
-      }
-    })();
-  }, [routeId, titled, properties, fetch, mutateState]);
+    void save({ channels: properties.map((p) => p.id) });
+  }, [routeId, titled, properties, save]);
 
-  return onChange;
+  return { onChange, cards, setCardOutcome };
 };
 
 export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   const [properties, setProperties] = useState<Integrations[]>([]);
   const routeId = useAgentRouteId();
-  const onChannelsChange = useThreadChannels(
-    routeId,
-    properties,
-    setProperties
-  );
+  const {
+    onChange: onChannelsChange,
+    cards,
+    setCardOutcome,
+  } = useThreadSync(routeId, properties, setProperties);
   const t = useT();
   const user = useUser();
   const { mobile } = useViewport();
@@ -669,7 +726,9 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   }, [asDrawer]);
 
   return (
-    <PropertiesContext.Provider value={{ properties, openChannels }}>
+    <PropertiesContext.Provider
+      value={{ properties, openChannels, cards, setCardOutcome }}
+    >
       <div ref={rowRef} className="relative flex min-w-0 flex-1">
         {asDrawer && panel && (
           <div

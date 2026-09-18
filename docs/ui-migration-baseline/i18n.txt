@@ -394,6 +394,7 @@ channels
 channels_list_empty_hint
 chats
 check_circles_above
+checking_channel_rules
 checkout_not_finished_logout
 choose_a_new_password
 choose_a_video_type
@@ -975,7 +976,18 @@ continue_with_google
 continue_with_wallet
 continue_without_set
 conversations
-copilot_will_schedule
+copilot_step_analytics
+copilot_step_calendar
+copilot_step_channel_data
+copilot_step_channels
+copilot_step_customers
+copilot_step_image
+copilot_step_rules
+copilot_step_scheduling
+copilot_step_settings
+copilot_step_upload
+copilot_step_video
+copilot_step_working
 copy
 copy_a_link_that_works_for_one_hour
 copy_channel_id
@@ -1085,6 +1097,12 @@ downgrade_to_plan
 download
 download_invoice
 draft
+draft_from_earlier_session
+draft_needs_a_fix
+draft_posted_now
+draft_saved_as_draft
+draft_saved_from_composer
+draft_scheduled_for
 drafts
 drop_files_here_paste_or_browse
 drop_files_here_to_upload
@@ -1095,6 +1113,7 @@ edit
 edit_app
 edit_autopost
 edit_content
+edit_in_composer
 edit_plug
 edit_post
 edit_post_title
@@ -1444,6 +1463,7 @@ monthly
 more
 more_casual
 more_formal
+more_options
 most_popular
 move
 move_add_to_group
@@ -1457,6 +1477,7 @@ n_credits_left
 n_day_posting_streak
 n_more
 n_of_m_selected
+n_posts_waiting
 n_publishing_options
 n_selected
 n_shown
@@ -1475,6 +1496,7 @@ next
 next_3_days
 next_7_days
 next_day
+next_free_slot
 next_month
 no
 no_alt_text
@@ -1544,11 +1566,9 @@ open_billing_portal
 open_calendar
 open_channel
 open_claim_page
-open_composer
 open_connections
 open_link
 open_wizard
-opening_composer
 or
 or_wait_unlocks_on_date
 or_wait_until_trial_ends
@@ -1738,6 +1758,8 @@ save_as_draft
 save_changes
 saved_as_draft
 schedule
+schedule_all
+schedule_next_free_slot
 scheduled
 scheduled_for_when
 scheduled_times

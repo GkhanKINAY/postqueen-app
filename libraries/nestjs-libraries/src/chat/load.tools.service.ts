@@ -47,7 +47,10 @@ export class LoadToolsService {
       name: 'postqueen',
       description: 'Agent that helps schedule posts and report social analytics for users',
       instructions: ({ requestContext }) => {
-        const ui: string = requestContext.get('ui' as never);
+        // 'true' from the app's Copilot controller; MCP callers set it to
+        // the string 'false' (chat/auth.context.ts), which is truthy, so the
+        // check has to be on the value, not on presence.
+        const ui = requestContext.get('ui' as never) === 'true';
         return `
       Global information:
         - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
@@ -93,13 +96,15 @@ export class LoadToolsService {
       - The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box
       ${renderArray(
         [
-          'For a brand-new post, always call manualPosting with the full draft (channels, UTC dates, HTML content, attachment ids/paths, settings) BEFORE schedulePostTool.',
-          'manualPosting shows a Post Preview card. Wait for it to return. Do not also ask the user to type yes.',
-          'If it returns that the user opened the composer, do NOT call schedulePostTool — they schedule from Create Post.',
-          'If it returns that the user confirmed scheduling, THEN call schedulePostTool with the same payload. Do not call manualPosting again.',
-          'Never call schedulePostTool for a brand-new post before manualPosting has returned.',
+          'For a brand-new post, always call manualPosting with the full draft (channels, UTC dates or no date for the next free slot, HTML content, attachment ids/paths, settings). It shows a Post Preview card; nothing is scheduled by it.',
+          'If manualPosting returns errors, fix the draft and call it again without asking the user.',
+          'If it returns shown, reply with ONE short sentence and stop. Do not repeat the post in chat. Do not ask the user to type yes. The user schedules, posts now, saves as a draft or edits from the card.',
+          'Only when the user\'s latest message asks in words ("post it now", "schedule it for Friday 10:00", "save it as a draft") call publishFromCard. Never in the same turn as manualPosting, never on your own initiative.',
+          'To revise a draft nobody acted on, call manualPosting again with the full updated draft.',
+          'Never call schedulePostTool for a brand-new post in the app. One exception: if manualPosting returns a sentence saying the user confirmed scheduling (an older app version), call schedulePostTool once with the same payload; if it says the user opened the composer, do NOT call schedulePostTool.',
+          'Cards whose posts are scheduled, published or saved are done; do not recreate them unless asked.',
         ],
-        !!ui
+        ui
       )}
 `;
       },
