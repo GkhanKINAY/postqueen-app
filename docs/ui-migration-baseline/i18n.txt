@@ -2065,6 +2065,7 @@ x_long_posts_description
 x_long_posts_disabled
 x_long_posts_enabled
 x_long_posts_hint
+x_premium_only_settings
 yes
 yes_cancel
 yes_cancel_coupon

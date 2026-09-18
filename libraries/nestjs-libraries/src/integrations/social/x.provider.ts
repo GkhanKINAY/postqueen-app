@@ -454,6 +454,46 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
+  /**
+   * What X says this account may use right now.
+   *
+   * `subscription_type` is the field that answers the question the composer
+   * actually has, and `verified` is not. `verified` is true for blue, business
+   * and government alike, while restricted reply audiences and Articles are
+   * subscription features rather than verification ones — so a verified
+   * business account with no subscription reads as entitled, and a
+   * subscriber who has not been through verification reads as not.
+   *
+   * X documents four values, `None` / `Basic` / `Premium` / `PremiumPlus`, and
+   * returns the real one only for the authenticated user, which is exactly
+   * whose token this is. Measured against a live token on 2026-09-18: a blue
+   * account answered `verified: true`, `verified_type: 'blue'`,
+   * `subscription_type: 'Premium'`.
+   *
+   * `verified` and `verifiedType` ride along because they cost nothing here
+   * and the caller can then explain *why* something is unavailable rather than
+   * only that it is.
+   */
+  async subscriptionInfo(accessToken: string) {
+    const client = await this.getClient(accessToken);
+    const { data } = await client.v2.me({
+      'user.fields': [
+        'username',
+        'verified',
+        'verified_type',
+        'subscription_type',
+      ],
+    });
+
+    return {
+      // No fallback: "X did not say" and "X said None" have to stay
+      // distinguishable, because only the second one may take an option away.
+      subscriptionType: (data as any)?.subscription_type as string | undefined,
+      verified: !!data?.verified,
+      verifiedType: (data as any)?.verified_type as string | undefined,
+    };
+  }
+
   private async getClient(accessToken: string) {
     const [accessTokenSplit, accessSecretSplit] = accessToken.split(':');
     return new TwitterApi({
