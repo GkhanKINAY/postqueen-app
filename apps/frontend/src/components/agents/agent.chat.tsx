@@ -52,6 +52,7 @@ import {
   AgentDraftGroup,
   AgentDraftItem,
   AgentDraftOutcome,
+  AgentExistingPost,
   groupDraftItems,
 } from '@gitroom/frontend/components/agents/agent.draft.card';
 import {
@@ -762,7 +763,14 @@ const NewInput: FC<InputProps> = (props) => {
 
 /** What the `manualPosting` handler hands back to the model. */
 type ManualPostingResult =
-  | { status: 'shown'; cardId: string }
+  | {
+      status: 'shown';
+      cardId: string;
+      /** By root post id: the server's state of each post the card updates. */
+      existing?: Record<string, AgentExistingPost>;
+      /** showPostCard: the rows the card draws, since its arguments hold only an id. */
+      list?: AgentDraftItem[];
+    }
   | {
       status: 'invalid';
       cardId: string;
@@ -789,8 +797,14 @@ const CardsContext = createContext<{
 
 const parseResult = (result: unknown) => parseToolResult<ManualPostingResult>(result);
 
+/** The rows a showPostCard result carries, or nothing while it runs. */
+const fromResult = (result: unknown) => {
+  const parsed = parseResult(result);
+  return parsed && typeof parsed === 'object' && parsed.status === 'shown' ? parsed : undefined;
+};
+
 export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
-  const { validate, execute } = useDraftActions();
+  const { validate, execute, readExisting } = useDraftActions();
   const { cards, setCardOutcome, setCardMedia } = useContext(PropertiesContext);
   const { userTurns } = useContext(LiveChatContext);
   const registry = useRef<
@@ -846,7 +860,7 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   useCopilotAction({
     name: 'manualPosting',
     description:
-      "Show a Post Preview card for one or more BRAND-NEW posts. Nothing is scheduled by this call. Pass the complete draft, one row per channel; the app validates every row against the platform rules. Returns {status:'shown', cardId} once the card is on screen, or {status:'invalid', errors:[{integrationId, channel, error}]}: fix those and call again. After 'shown' answer with one short sentence and stop; the user schedules, posts, saves or edits from the card. To revise a draft, call again with the full updated draft. Never use this for an existing post.",
+      "Show a Post Preview card for one or more posts. Nothing is written by this call. For a BRAND-NEW post pass the complete draft, one row per channel. To change a post the server already has (from postsListTool / postReadTool) pass ONE row with existing set to its root post id and the full updated thread; the card comes up as Update post. The app validates every row against the platform rules. Returns {status:'shown', cardId} once the card is on screen, or {status:'invalid', errors:[{integrationId, channel, error}]}: fix those and call again. After 'shown' answer with one short sentence and stop; the user schedules, posts, saves, updates or edits from the card. To revise a draft, call again with the full updated draft.",
     parameters: [
       {
         name: 'list',
@@ -858,6 +872,13 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
             name: 'integrationId',
             type: 'string',
             description: 'The integration id',
+          },
+          {
+            name: 'existing',
+            type: 'string',
+            description:
+              'The root post id when this row changes a post the server already has (from postReadTool). Omit for a new post.',
+            required: false,
           },
           {
             name: 'date',
@@ -905,6 +926,13 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
                   },
                 ],
               },
+              {
+                name: 'delay',
+                type: 'number',
+                description:
+                  'Minutes to wait after the previous item before this comment or thread item goes out; 0 or omitted for right after. Never on the first item.',
+                required: false,
+              },
             ],
           },
         ],
@@ -920,9 +948,37 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
         const errors = groups.length
           ? await validate(groups)
           : [{ error: 'The list is empty.' }];
+        // A row that updates a server post must name one that exists; the
+        // card shows that post's state beside the channel.
+        const existing: Record<string, AgentExistingPost> = {};
+        for (const group of groups) {
+          if (!group.existing) {
+            continue;
+          }
+          const current = await readExisting(group.existing);
+          if (!current) {
+            errors.push({
+              integrationId: group.integrationIds[0],
+              error: `No post with id ${group.existing}. Find it with postsListTool first.`,
+            });
+            continue;
+          }
+          if (current.integrationId && current.integrationId !== group.integrationIds[0]) {
+            errors.push({
+              integrationId: group.integrationIds[0],
+              error: 'This post belongs to another channel; keep its integrationId.',
+            });
+            continue;
+          }
+          existing[group.existing] = { state: current.state, publishDate: current.publishDate };
+        }
         if (!errors.length) {
           invalidStreak.current = { turn: latestUserTurn.current, count: 0 };
-          return { status: 'shown', cardId };
+          return {
+            status: 'shown',
+            cardId,
+            ...(Object.keys(existing).length ? { existing } : {}),
+          };
         }
         const streak =
           invalidStreak.current.turn === latestUserTurn.current
@@ -957,12 +1013,12 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   useCopilotAction({
     name: 'publishFromCard',
     description:
-      "Carry out the user's spoken decision about a Post Preview card shown earlier. Call ONLY when the user's latest message explicitly asks to schedule, post now or save as a draft. Never call it in the same turn as manualPosting. cardId defaults to the latest open card; date (UTC) only to override the card's date. Returns {status:'scheduled'|'posted'|'draft', count} or {status:'error', error}; on error explain it in one sentence.",
+      "Carry out the user's spoken decision about a Post Preview or Update post card shown earlier. Call ONLY when the user's latest message explicitly asks to schedule, post now, save as a draft or save the changes. Never call it in the same turn as manualPosting. cardId defaults to the latest open card; date (UTC) only with 'schedule', to move the post to that time. 'update' saves an existing post's changes and keeps its date and queue. Returns {status:'scheduled'|'posted'|'draft'|'updated', count} or {status:'error', error}; on error explain it in one sentence. Deleting is never done here.",
     parameters: [
       {
         name: 'action',
         type: 'string',
-        description: "'schedule', 'now' or 'draft'",
+        description: "'schedule', 'now', 'draft' or 'update'",
       },
       {
         name: 'cardId',
@@ -978,11 +1034,11 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
       },
     ],
     handler: async ({ action, cardId, date }) => {
-      const kind = ['schedule', 'now', 'draft'].includes(String(action))
+      const kind = ['schedule', 'now', 'draft', 'update'].includes(String(action))
         ? (action as AgentDraftAction)
         : null;
       if (!kind) {
-        return { status: 'error', error: "action must be 'schedule', 'now' or 'draft'." };
+        return { status: 'error', error: "action must be 'schedule', 'now', 'draft' or 'update'." };
       }
       const pendingOf = (id: string) =>
         (registry.current[id]?.groups || []).filter((group) => {
@@ -1015,6 +1071,11 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
       let failure: string | undefined;
       for (const group of pending) {
         const outcome = await execute(group, kind, date || undefined);
+        if (!outcome) {
+          // The person closed the confirmation the action asked for.
+          failure = 'The user did not confirm.';
+          continue;
+        }
         setCardOutcome(id, group.key, outcome);
         if (outcome.status === 'error') {
           failure = outcome.error;
@@ -1026,10 +1087,75 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
         return { status: 'error', error: failure };
       }
       return {
-        status: kind === 'now' ? 'posted' : kind === 'draft' ? 'draft' : 'scheduled',
+        status:
+          kind === 'now'
+            ? 'posted'
+            : kind === 'draft'
+            ? 'draft'
+            : kind === 'update'
+            ? 'updated'
+            : 'scheduled',
         count,
         ...(failure ? { error: failure } : {}),
       };
+    },
+  });
+
+  // An existing post as a card, so the person can reschedule or delete it
+  // from there. Deleting has no tool: the only way is the card's own button,
+  // behind its confirmation.
+  useCopilotAction({
+    name: 'showPostCard',
+    description:
+      "Show an existing post (from postsListTool) as an Update post card, with its state and date, so the user can save changes, schedule it again or delete it from the card. Returns {status:'shown', cardId} or {status:'error', error}. After 'shown' reply with one short sentence and stop; never say you deleted anything.",
+    parameters: [
+      {
+        name: 'id',
+        type: 'string',
+        description: 'The root post id from postsListTool',
+      },
+    ],
+    handler: async ({ id }): Promise<ManualPostingResult | { status: 'error'; error: string }> => {
+      if (typeof id !== 'string' || !id) {
+        return { status: 'error', error: 'id is the root post id from postsListTool.' };
+      }
+      const current = await readExisting(id);
+      if (!current?.integrationId) {
+        return { status: 'error', error: `No post with id ${id}. Find it with postsListTool first.` };
+      }
+      const list: AgentDraftItem[] = [
+        {
+          integrationId: current.integrationId,
+          existing: id,
+          date: current.publishDate,
+          settings: current.settings,
+          posts: current.posts.map((post, index) => ({
+            content: post.content,
+            attachments: (current.media[index] || []).map((m) => ({
+              id: m.id,
+              path: m.path,
+              ...(typeof m.thumbnail === 'string' ? { thumbnail: m.thumbnail } : {}),
+            })),
+            delay: post.delay,
+          })),
+        },
+      ];
+      const cardId = makeId(8);
+      register(cardId, groupDraftItems(list), latestUserTurn.current);
+      return {
+        status: 'shown',
+        cardId,
+        list,
+        existing: { [id]: { state: current.state, publishDate: current.publishDate } },
+      };
+    },
+    render: ({ status, result }) => {
+      const shown = fromResult(result);
+      // A failed lookup is one step line, not an empty card.
+      if (status === 'complete' && !shown) {
+        return <ToolStep name="showPostCard" status="complete" result={result} />;
+      }
+      return <DraftPreview args={{ list: shown?.list }} status={status} result={result} />;
     },
   });
 
@@ -1380,6 +1506,10 @@ const DraftPreview: FC<{
     () => (cardId ? (cards[cardId] || {}) : {}) as Record<string, AgentDraftOutcome | undefined>,
     [cards, cardId]
   );
+  const existing =
+    parsed && typeof parsed === 'object' && parsed.status === 'shown'
+      ? parsed.existing
+      : undefined;
   // An invalid draft the model already redid: a later card exists for the
   // same request. It folds to one line, like a backend step, instead of
   // stacking a full card per attempt.
@@ -1440,6 +1570,7 @@ const DraftPreview: FC<{
       stopped={!!invalid?.stop}
       outcomes={outcomes}
       busy={busy}
+      existing={existing}
       onAction={(group, action) => void run(group, () => execute(group, action))}
       onOpenComposer={(group) =>
         void run(group, async () =>

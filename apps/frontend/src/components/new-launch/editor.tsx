@@ -89,11 +89,17 @@ const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
  */
 const EditorCopilotBindings: FC<{
   contents: string[];
+  delays: number[];
   channel: { name: string; platform: string; limit?: number } | null;
-}> = ({ contents, channel }) => {
+}> = ({ contents, delays, channel }) => {
   useCopilotReadable({
     description: COPILOT_READABLE.posts,
     value: contents,
+  });
+
+  useCopilotReadable({
+    description: COPILOT_READABLE.delays,
+    value: delays,
   });
 
   useCopilotReadable({
@@ -482,6 +488,7 @@ export const EditorWrapper: FC<{
       {aiOk && (
         <EditorCopilotBindings
           contents={items.map((p) => p.content)}
+          delays={items.map((p) => p.delay || 0)}
           channel={
             current === 'global'
               ? {

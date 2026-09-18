@@ -133,7 +133,9 @@ describe('compose AI assistant placement', () => {
     // Undo on its card, anything else waits for Apply, and any card can be
     // applied again. The editor keeps its readables and writes nothing.
     assert.match(assistant, /name: 'suggestPost'/);
-    assert.match(assistant, /followUp: false/);
+    // suggestPost lets the model go on to a second tool (a comment, then its
+    // delay); the prompt keeps the spoken reply to one sentence instead.
+    assert.doesNotMatch(assistant, /name: 'suggestPost',[\s\S]{0,1600}followUp: false/);
     assert.match(assistant, /<SuggestionCard/);
     assert.match(assistant, /data-pq="composer-ai-apply"/);
     assert.match(assistant, /data-pq="composer-ai-undo"/);

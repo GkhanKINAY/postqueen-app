@@ -1211,5 +1211,22 @@
   "video_result_expired": "The result is no longer available here; a finished video is in the Media library.",
   "video_generation_unavailable": "Video generation is not available right now.",
   "video_generation_cancelled": "Video generation was cancelled.",
-  "copilot_step_video_options": "Checking video generators"
+  "copilot_step_video_options": "Checking video generators",
+  "save_changes": "Save changes",
+  "post_deleted": "Post deleted",
+  "draft_changes_saved": "Changes saved",
+  "comment_delay_after": "Comment {n}: {m} min after",
+  "delay_undone": "Delay put back",
+  "post_state_scheduled": "Scheduled",
+  "post_state_draft": "Draft",
+  "post_state_published": "Published",
+  "post_state_error": "Failed",
+  "republish_confirm": "This post was already published. Publishing it again creates a second post on the channel. Continue?",
+  "publish_again": "Publish again",
+  "already_published": "Already published",
+  "copilot_step_post": "Reading the post",
+  "post_no_longer_exists": "This post no longer exists.",
+  "post_delete_failed": "Could not delete the post.",
+  "only_existing_post": "Only an existing post can be updated or deleted.",
+  "post_date_passed": "The date of this post has passed; say when it should go out."
 }

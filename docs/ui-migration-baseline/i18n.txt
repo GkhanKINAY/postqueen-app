@@ -97,6 +97,7 @@ all_platforms
 all_previews
 already_activated
 already_have_an_account
+already_published
 already_subscribed
 alt_text
 alt_text_saved
@@ -422,6 +423,7 @@ client_secret
 close
 code_sent_to
 coming_soon
+comment_delay_after
 comment_delete_failed
 comments
 comments_cannot_be_published_on
@@ -990,6 +992,7 @@ copilot_step_channel_data
 copilot_step_channels
 copilot_step_customers
 copilot_step_image
+copilot_step_post
 copilot_step_rules
 copilot_step_scheduling
 copilot_step_settings
@@ -1057,6 +1060,7 @@ default_value_used_when_publishing_here
 delay_comment
 delay_comment_by
 delay_comment_help
+delay_undone
 delete
 delete_account
 delete_account_confirm
@@ -1106,6 +1110,7 @@ downgrade_to_plan
 download
 download_invoice
 draft
+draft_changes_saved
 draft_could_not_be_fixed
 draft_from_earlier_session
 draft_needs_a_fix
@@ -1573,6 +1578,7 @@ ok
 oldest
 one_publishing_option
 one_selected
+only_existing_post
 only_option_to_connect
 open_auto_plugs
 open_billing_portal
@@ -1673,19 +1679,26 @@ post_channel_missing
 post_channel_missing_description
 post_content
 post_content_directly_to_tiktok
+post_date_passed
 post_delete_failed
+post_deleted
 post_deleted_successfully
 post_id_copied
 post_immediately
 post_is_too_long
 post_move_failed
 post_needs_content_or_image
+post_no_longer_exists
 post_not_found
 post_now
 post_on_next_available_slot
 post_open_failed
 post_preview
 post_save_failed
+post_state_draft
+post_state_error
+post_state_published
+post_state_scheduled
 post_statistics
 post_today_to_start_your_streak
 post_validation_failed
@@ -1708,6 +1721,7 @@ provider_options_failed
 provider_unlocks_after_your_trial
 public_to_everyone
 publication_date
+publish_again
 publish_at_least_one_post_today_to_keep_the_streak_alive
 published
 publishing
@@ -1749,6 +1763,7 @@ repeat_post_every
 rephrase
 report_a_bug
 republish_at
+republish_confirm
 republish_recurring_note
 republish_the_post
 reschedule_post
@@ -2027,6 +2042,7 @@ update
 update_credentials
 update_key
 update_payment_method
+update_post
 update_webhook
 updated
 updated_successfully

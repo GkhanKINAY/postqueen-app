@@ -39,7 +39,8 @@ List the organization's posts scheduled to be published between two dates (the s
 Returns every post in the window whatever its state (scheduled, draft, published, errored).
 "startDate" and "endDate" are required (UTC) - to list all upcoming posts, pass a wide window (for example from now to a year ahead).
 Each item has an "id", its publish date, state, content, channel and current provider settings.
-Posts cannot be deleted through the PostQueen tools - if the user wants to delete a post, tell them to do it themselves in the PostQueen app; never offer to delete a post.
+To read one post in full (thread items with their ids, media, delays) use postReadTool with its id.
+Nothing here deletes a post. In the PostQueen app, showPostCard puts the post on a card and the user deletes it from there; over MCP, tell the user to delete it in the app.
 `,
       inputSchema: z.object({
         startDate: z

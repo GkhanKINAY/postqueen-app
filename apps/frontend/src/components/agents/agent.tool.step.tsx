@@ -79,6 +79,7 @@ export const ToolStep: FC<{
     groupList: t('copilot_step_customers', 'Listing customers'),
     triggerTool: t('copilot_step_channel_data', 'Fetching channel data'),
     postsListTool: t('copilot_step_calendar', 'Looking at your calendar'),
+    postReadTool: t('copilot_step_post', 'Reading the post'),
     postSettingsTool: t('copilot_step_settings', 'Updating post settings'),
     integrationSchedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
     schedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
@@ -92,6 +93,7 @@ export const ToolStep: FC<{
     videoStatusTool: t('copilot_step_video', 'Generating video'),
     uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
     publishFromCard: t('copilot_step_card', 'Updating the card'),
+    showPostCard: t('copilot_step_post', 'Reading the post'),
     attachToCard: t('copilot_step_card_image', 'Updating the card media'),
   };
   const label = labels[name] || t('copilot_step_working', 'Working');

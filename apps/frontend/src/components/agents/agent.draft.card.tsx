@@ -29,9 +29,13 @@ export type AgentDraftItem = {
   date?: string;
   /** A JSON object string from the model; older transcripts carry an object or key/value pairs. */
   settings?: string | Record<string, any> | { key: string; value: any }[];
+  /** The root post id when this row changes a post the server already has. */
+  existing?: string;
   posts: {
     content: string;
     attachments?: { id: string; path: string; thumbnail?: string }[];
+    /** Minutes after the previous item; the first item never waits. */
+    delay?: number;
   }[];
 };
 
@@ -39,6 +43,7 @@ export type AgentDraftPost = {
   content: string;
   /** `thumbnail` is a video's poster; the calendar draws it. */
   attachments: { id: string; path: string; thumbnail?: string }[];
+  delay: number;
 };
 
 /**
@@ -52,13 +57,32 @@ export type AgentDraftGroup = {
   date?: string;
   settingsById: Record<string, Record<string, any>>;
   posts: AgentDraftPost[];
+  /** The root post id of the post this group updates; one channel only. */
+  existing?: string;
 };
 
-export type AgentDraftAction = 'schedule' | 'now' | 'draft';
+/**
+ * `update` saves an existing post's changes without touching the queue;
+ * `delete` is only ever pressed on a card, never typed.
+ */
+export type AgentDraftAction = 'schedule' | 'now' | 'draft' | 'update' | 'delete';
+
+/** What the server holds for an existing post, shown on its Update post card. */
+export type AgentExistingPost = {
+  state: 'QUEUE' | 'DRAFT' | 'PUBLISHED' | 'ERROR' | string;
+  publishDate?: string;
+};
 
 /** What happened to a group, kept beside the thread so a reload shows it. */
 export type AgentDraftOutcome = {
-  status: 'scheduled' | 'posted' | 'draft' | 'composer' | 'error';
+  status:
+    | 'scheduled'
+    | 'posted'
+    | 'draft'
+    | 'composer'
+    | 'updated'
+    | 'deleted'
+    | 'error';
   at: string;
   /** The publish date that was used, UTC. */
   date?: string;
@@ -126,11 +150,12 @@ const draftPosts = (
   (Array.isArray(item.posts) && item.posts.length
     ? item.posts
     : [{ content: '', attachments: [] }]
-  ).map((post) => ({
+  ).map((post, index) => ({
     content: draftContentHtml(post?.content),
     attachments: (post?.attachments || []).filter(
       (a) => a?.path && (!streaming || completeMediaPath(a.path))
     ),
+    delay: index > 0 ? Math.max(0, Math.round(Number(post?.delay) || 0)) : 0,
   }));
 
 export const groupDraftItems = (
@@ -144,10 +169,22 @@ export const groupDraftItems = (
     }
     const posts = draftPosts(item, streaming);
     const date = item.date || undefined;
-    const signature = JSON.stringify({ date, posts });
-    const existing = groups.find(
-      (group) => group.key === signature && !group.integrationIds.includes(item.integrationId)
-    );
+    const updates = typeof item.existing === 'string' && item.existing ? item.existing : undefined;
+    // The signature is what saved outcomes hang on, so a card drawn before
+    // delays existed must hash to the same key: a delay is written into it
+    // only when there is one (and `existing`, undefined, is dropped).
+    const signature = JSON.stringify({
+      date,
+      posts: posts.map(({ delay, ...rest }) => (delay ? { ...rest, delay } : rest)),
+      existing: updates,
+    });
+    // A row that updates a server post is one channel's thread and stays on
+    // its own; new rows that share a date and posts are one thing.
+    const existing = updates
+      ? undefined
+      : groups.find(
+          (group) => group.key === signature && !group.integrationIds.includes(item.integrationId)
+        );
     if (existing) {
       existing.integrationIds.push(item.integrationId);
       existing.settingsById[item.integrationId] = draftSettings(item.settings);
@@ -159,6 +196,7 @@ export const groupDraftItems = (
       date,
       settingsById: { [item.integrationId]: draftSettings(item.settings) },
       posts,
+      ...(updates ? { existing: updates } : {}),
     });
   }
   // A short, stable key per group: its index plus a hash of the signature,
@@ -210,6 +248,7 @@ const AgentPostPreview: FC<{
         id: `${group.key}-${index}`,
         content: post.content,
         image: post.attachments,
+        delay: post.delay,
       })),
     }),
     [channel, group, allIntegrations]
@@ -272,6 +311,8 @@ const OutcomeLine: FC<{
     posted: t('draft_posted_now', 'Publishing now'),
     draft: t('draft_saved_as_draft', 'Saved as draft'),
     composer: t('draft_saved_from_composer', 'Saved from Create Post'),
+    updated: t('draft_changes_saved', 'Changes saved'),
+    deleted: t('post_deleted', 'Post deleted'),
     error: outcome.error || t('post_save_failed', 'Could not save the post, please try again'),
   }[outcome.status];
   return (
@@ -306,6 +347,8 @@ const GroupActions: FC<{
   scheduleLabel: string;
   busy: boolean;
   hasImage: boolean;
+  /** An Update post card: Save changes leads, Delete post closes the menu. */
+  existing: boolean;
   onAction: (action: AgentDraftAction) => void;
   onOpenComposer: () => void;
   onChangeImage?: () => void;
@@ -314,6 +357,7 @@ const GroupActions: FC<{
   scheduleLabel,
   busy,
   hasImage,
+  existing,
   onAction,
   onOpenComposer,
   onChangeImage,
@@ -327,13 +371,13 @@ const GroupActions: FC<{
         <Button
           type="button"
           size="sm"
-          data-pq="agent-draft-schedule"
+          data-pq={existing ? 'agent-draft-update' : 'agent-draft-schedule'}
           loading={busy}
           disabled={busy}
           className="rounded-e-none"
-          onClick={() => onAction('schedule')}
+          onClick={() => onAction(existing ? 'update' : 'schedule')}
         >
-          {scheduleLabel}
+          {existing ? t('save_changes', 'Save changes') : scheduleLabel}
         </Button>
         <button
           type="button"
@@ -351,6 +395,20 @@ const GroupActions: FC<{
             role="menu"
             className="absolute end-0 top-[calc(100%+6px)] z-[3] flex min-w-[180px] flex-col gap-[2px] rounded-[10px] bg-pqPop p-[6px] shadow-pqE2 shadow-[inset_0_0_0_1px_var(--border)]"
           >
+            {existing && (
+              <button
+                type="button"
+                role="menuitem"
+                data-pq="agent-draft-schedule"
+                onClick={() => {
+                  setOpen(false);
+                  onAction('schedule');
+                }}
+                className="rounded-[8px] px-[10px] py-[8px] text-start text-[13px] font-[600] text-pqText hover:bg-pqHover"
+              >
+                {scheduleLabel}
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -405,6 +463,20 @@ const GroupActions: FC<{
                 {t('remove_image', 'Remove image')}
               </button>
             )}
+            {existing && (
+              <button
+                type="button"
+                role="menuitem"
+                data-pq="agent-draft-delete"
+                onClick={() => {
+                  setOpen(false);
+                  onAction('delete');
+                }}
+                className="rounded-[8px] px-[10px] py-[8px] text-start text-[13px] font-[600] text-pqWarn hover:bg-pqHover"
+              >
+                {t('delete_post', 'Delete post')}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -433,6 +505,8 @@ const DraftGroupView: FC<{
   actionable: boolean;
   /** The arguments are still arriving; ids may be cut mid-string. */
   streaming: boolean;
+  /** Set on a group that updates a server post. */
+  existing?: AgentExistingPost;
   onAction: (action: AgentDraftAction) => void;
   onOpenComposer: () => void;
   onChangeImage?: () => void;
@@ -447,6 +521,7 @@ const DraftGroupView: FC<{
   busy,
   actionable,
   streaming,
+  existing,
   onAction,
   onOpenComposer,
   onChangeImage,
@@ -460,6 +535,19 @@ const DraftGroupView: FC<{
       : t('next_free_slot', 'Next free slot');
   const known = channels.filter(Boolean);
   const text = previewText(group.posts[0]?.content);
+  // An Update post card keeps the post's own date when the row carries none.
+  const date = group.date || existing?.publishDate;
+  const delayed = group.posts
+    .map((post, index) => ({ index, delay: post.delay }))
+    .filter((item) => item.index > 0 && item.delay > 0);
+  const stateLabel = existing
+    ? {
+        QUEUE: t('post_state_scheduled', 'Scheduled'),
+        DRAFT: t('post_state_draft', 'Draft'),
+        PUBLISHED: t('post_state_published', 'Published'),
+        ERROR: t('post_state_error', 'Failed'),
+      }[existing.state] || existing.state
+    : undefined;
 
   return (
     <article
@@ -484,8 +572,16 @@ const DraftGroupView: FC<{
             ? ''
             : t('unknown_channel', 'Unknown channel')}
         </span>
+        {stateLabel && (
+          <span
+            data-pq="agent-draft-state"
+            className="shrink-0 rounded-[6px] bg-pqSettings px-[6px] py-[2px] text-[11px] font-[600] text-pqMuted"
+          >
+            {stateLabel}
+          </span>
+        )}
         <span className="shrink-0 font-mono text-[11px] text-pqSoft">
-          {when(group.date)}
+          {when(date)}
         </span>
         <ChevronDownIcon
           size={14}
@@ -511,6 +607,20 @@ const DraftGroupView: FC<{
           {text || t('no_content', 'no content')}
         </p>
       )}
+      {delayed.length > 0 && (
+        <div data-pq="agent-draft-delays" className="flex flex-wrap gap-[6px]">
+          {delayed.map((item) => (
+            <span
+              key={item.index}
+              className="rounded-[6px] bg-pqSettings px-[6px] py-[2px] font-mono text-[11px] text-pqSoft"
+            >
+              {t('comment_delay_after', 'Comment {n}: {m} min after')
+                .replace('{n}', String(item.index))
+                .replace('{m}', String(item.delay))}
+            </span>
+          ))}
+        </div>
+      )}
       {outcome && outcome.status !== 'error' ? (
         <OutcomeLine outcome={outcome} when={when} />
       ) : (
@@ -521,10 +631,11 @@ const DraftGroupView: FC<{
           {actionable && (
             <GroupActions
               hasImage={group.posts.some((post) => post.attachments.length > 0)}
+              existing={!!group.existing}
               onChangeImage={onChangeImage}
               onRemoveImage={onRemoveImage}
               scheduleLabel={
-                group.date
+                date
                   ? t('schedule', 'Schedule')
                   : t('schedule_next_free_slot', 'Schedule next free slot')
               }
@@ -555,6 +666,8 @@ export const AgentDraftCard: FC<{
   stopped?: boolean;
   outcomes: Record<string, AgentDraftOutcome | undefined>;
   busy: Record<string, boolean | undefined>;
+  /** By root post id: the server's state of each post a group updates. */
+  existing?: Record<string, AgentExistingPost | undefined>;
   onAction: (group: AgentDraftGroup, action: AgentDraftAction) => void;
   onOpenComposer: (group: AgentDraftGroup) => void;
   /** Change or add the group's image through the AI image modal; absent on cards that cannot be changed. */
@@ -567,6 +680,7 @@ export const AgentDraftCard: FC<{
   stopped,
   outcomes,
   busy,
+  existing,
   onAction,
   onOpenComposer,
   onChangeImage,
@@ -599,7 +713,9 @@ export const AgentDraftCard: FC<{
     >
       <div className="flex items-center gap-[8px]">
         <div className="min-w-0 flex-1 text-[13px] font-[600] text-pqText">
-          {t('post_preview', 'Post Preview')}
+          {groups.length && groups.every((group) => group.existing)
+            ? t('update_post', 'Update post')
+            : t('post_preview', 'Post Preview')}
         </div>
         {state === 'checking' && (
           <span className="flex items-center gap-[6px] text-[12px] text-pqMuted">
@@ -639,6 +755,7 @@ export const AgentDraftCard: FC<{
               busy={!!busy[group.key]}
               actionable={actionable}
               streaming={state === 'streaming'}
+              existing={group.existing ? existing?.[group.existing] : undefined}
               onAction={(action) => onAction(group, action)}
               onOpenComposer={() => onOpenComposer(group)}
               onChangeImage={

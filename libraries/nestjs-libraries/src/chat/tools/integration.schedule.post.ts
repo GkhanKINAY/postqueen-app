@@ -1,7 +1,7 @@
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -96,6 +96,14 @@ If validation fails, the result contains output.errors describing what to fix; t
                     attachments: z
                       .array(attachmentUrl)
                       .describe('The image of the post (URLS)'),
+                    delay: z
+                      .number()
+                      .int()
+                      .min(0)
+                      .optional()
+                      .describe(
+                        'Minutes to wait after the previous item before this comment or thread item is published; 0 or omitted for right after'
+                      ),
                   })
                 )
                 .describe(
@@ -225,6 +233,24 @@ If validation fails, the result contains output.errors describing what to fix; t
           }
         }
 
+        // The dashboard's POST /posts is behind the posts policy; this path
+        // creates rows directly, so it asks the same question first, once,
+        // before any row exists. SubscriptionException (402) says only
+        // "Subscription Exception", so it is put into words here.
+        try {
+          await this._postsService.assertPostsQuota(organizationId);
+        } catch (err) {
+          if (err instanceof HttpException && err.getStatus() === 402) {
+            return {
+              output: {
+                errors:
+                  'No posts are left on this plan this month. The user can upgrade the plan in PostQueen billing; nothing was created.',
+              },
+            };
+          }
+          throw err;
+        }
+
         for (const post of inputData.socialPost) {
           const integration = integrations[post.integrationId];
 
@@ -250,10 +276,12 @@ If validation fails, the result contains output.errors describing what to fix; t
                     __type: integration.providerIdentifier,
                   } as AllProvidersSettings
                 ),
-                value: post.postsAndComments.map((p: any) => ({
+                value: post.postsAndComments.map((p: any, index: number) => ({
                   content: p.content,
                   id: makeId(10),
-                  delay: 0,
+                  // The first item is the post itself; a delay only means
+                  // something for the comments after it.
+                  delay: index > 0 ? Number(p.delay) || 0 : 0,
                   image: p.attachments.map((p: any) => ({
                     id: makeId(10),
                     path: p,
