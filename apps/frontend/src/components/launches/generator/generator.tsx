@@ -220,82 +220,65 @@ const FirstStep: FC = (props) => {
       className={loading ? 'pointer-events-none select-none opacity-75' : ''}
     >
       <FormProvider {...form}>
-        <div className="flex flex-col">
-          <div className="pb-[10px] rounded-[4px]">
-            <div className="flex">
-              <div className="flex-1">
-                {!showStep ? (
-                  <div className="loading-shimmer pb-[10px]">&nbsp;</div>
-                ) : (
-                  <div
-                    className="loading-shimmer pb-[10px]"
-                    data-text={showStep}
-                  >
-                    {showStep}
-                  </div>
-                )}
-                <Textarea
-                  label={t('write_anything', 'Write anything')}
-                  disabled={loading}
-                  placeholder={t(
-                    'you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you',
-                    'You can write anything you want, and also add links, we will do the research for you...'
-                  )}
-                  {...form.register('research')}
-                />
-                <Select
-                  label={t('output_format', 'Output format')}
-                  {...form.register('format')}
-                >
-                  <option value="one_short">
-                    {t('short_post', 'Short post')}
-                  </option>
-                  <option value="one_long">
-                    {t('long_post', 'Long post')}
-                  </option>
-                  <option value="thread_short">
-                    {t(
-                      'a_thread_with_short_posts',
-                      'A thread with short posts'
-                    )}
-                  </option>
-                  <option value="thread_long">
-                    {t('a_thread_with_long_posts', 'A thread with long posts')}
-                  </option>
-                </Select>
-                <Select
-                  // Prototype template also labels this "Output format" (bug);
-                  // field is genTone / form `tone` — use Tone.
-                  label={t('tone', 'Tone')}
-                  {...form.register('tone')}
-                >
-                  <option value="personal">
-                    {t(
-                      'personal_voice_i_am_happy_to_announce',
-                      'Personal voice ("I am happy to announce")'
-                    )}
-                  </option>
-                  <option value="company">
-                    {t(
-                      'company_voice_we_are_happy_to_announce',
-                      'Company voice ("We are happy to announce")'
-                    )}
-                  </option>
-                </Select>
-                <div
-                  className={clsx('flex items-center', loading && 'opacity-50')}
-                >
-                  <Checkbox
-                    disabled={loading}
-                    {...form.register('isPicture')}
-                    label={t('add_pictures', 'Add pictures?')}
-                  />
-                </div>
-              </div>
-            </div>
+        {/* The step line keeps its height so the form does not jump when
+            generation starts. `.loading-shimmer` paints white text, which
+            vanished on the light theme. */}
+        <div className="mb-[4px] min-h-[20px] text-[13px] text-pqPink" aria-live="polite">
+          {showStep}
+        </div>
+        <div className="flex flex-col gap-[12px]">
+          <Textarea
+            label={t('write_anything', 'Write anything')}
+            disabled={loading}
+            placeholder={t(
+              'you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you',
+              'You can write anything you want, and also add links, we will do the research for you...'
+            )}
+            {...form.register('research')}
+          />
+          <Select
+            label={t('output_format', 'Output format')}
+            className="h-[44px]"
+            {...form.register('format')}
+          >
+            <option value="one_short">{t('short_post', 'Short post')}</option>
+            <option value="one_long">{t('long_post', 'Long post')}</option>
+            <option value="thread_short">
+              {t('a_thread_with_short_posts', 'A thread with short posts')}
+            </option>
+            <option value="thread_long">
+              {t('a_thread_with_long_posts', 'A thread with long posts')}
+            </option>
+          </Select>
+          <Select
+            // Prototype template also labels this "Output format" (bug);
+            // field is genTone / form `tone` — use Tone.
+            label={t('tone', 'Tone')}
+            className="h-[44px]"
+            {...form.register('tone')}
+          >
+            <option value="personal">
+              {t(
+                'personal_voice_i_am_happy_to_announce',
+                'Personal voice ("I am happy to announce")'
+              )}
+            </option>
+            <option value="company">
+              {t(
+                'company_voice_we_are_happy_to_announce',
+                'Company voice ("We are happy to announce")'
+              )}
+            </option>
+          </Select>
+          <div className={clsx('flex items-center pt-[4px]', loading && 'opacity-50')}>
+            <Checkbox
+              disabled={loading}
+              {...form.register('isPicture')}
+              label={t('add_pictures', 'Add pictures?')}
+            />
           </div>
         </div>
-        <div className="mt-[20px] flex justify-end">
+        <div className="mt-[16px] flex justify-end">
           <Button
             type="submit"
             disabled={research.length < 10}
