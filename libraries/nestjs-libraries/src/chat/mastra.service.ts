@@ -2,18 +2,21 @@ import { Mastra } from '@mastra/core/mastra';
 import { ConsoleLogger } from '@mastra/core/logger';
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
+import {
+  CopilotSurface,
+  LoadToolsService,
+} from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import {
   MastraThreadRunner,
   mastraToAgUiMessages,
 } from '@gitroom/nestjs-libraries/chat/mastra.thread.runner';
 
+export type { CopilotSurface };
+
 /** Where PostQueen keeps its own per-thread UI state inside thread metadata. */
 const THREAD_STATE_KEY = 'pq';
 /** Selected channels plus card outcomes; anything bigger is a bug. */
 const THREAD_STATE_MAX_BYTES = 16 * 1024;
-
-export type CopilotSurface = 'agent' | 'composer';
 
 @Injectable()
 export class MastraService {

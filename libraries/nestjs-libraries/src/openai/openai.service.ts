@@ -16,16 +16,27 @@ const VoicePrompt = z.object({
   voice: z.string(),
 });
 
+/** The three sizes gpt-image renders: square feeds, portrait stories, landscape links. */
+export type ImageOrientation = 'square' | 'portrait' | 'landscape';
+
 @Injectable()
 export class OpenaiService {
-  async generateImage(prompt: string, isVertical = false) {
+  async generateImage(
+    prompt: string,
+    orientation: ImageOrientation = 'square'
+  ) {
     // gpt-image models always return base64 (b64_json) and do not accept the
     // `response_format` parameter, unlike the deprecated dall-e-3.
     const generate = (
       await openai.images.generate({
         prompt,
         model: 'chatgpt-image-latest',
-        size: isVertical ? '1024x1536' : '1024x1024',
+        size:
+          orientation === 'portrait'
+            ? '1024x1536'
+            : orientation === 'landscape'
+            ? '1536x1024'
+            : '1024x1024',
       })
     ).data[0];
 

@@ -25,6 +25,7 @@ import {
   CopilotSurface,
   MastraService,
 } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { CopilotChannel } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
@@ -35,6 +36,10 @@ export type ChannelsContext = {
   organization: string;
   ui: string;
   surface: CopilotSurface;
+  /** JSON of CopilotChannel[]: the channels selected in the app. */
+  channels: string;
+  timezone: string;
+  locale: string;
 };
 
 /**
@@ -44,12 +49,34 @@ export type ChannelsContext = {
  */
 type CopilotProperties = {
   surface?: CopilotSurface;
+  channels?: CopilotChannel[];
+  timezone?: string;
+  locale?: string;
 };
 
 const readProperties = (req: Request): CopilotProperties => {
   const pq = req?.body?.body?.forwardedProps?.pq;
   return pq && typeof pq === 'object' ? pq : {};
 };
+
+const shortString = (value: unknown, max = 64) =>
+  typeof value === 'string' ? value.slice(0, max) : '';
+
+/** Only the fields the prompt prints; the app sends nothing else, but the wire is the wire. */
+const channelsFromProperties = (channels: unknown): CopilotChannel[] =>
+  Array.isArray(channels)
+    ? channels
+        .filter((c) => c && typeof c === 'object' && typeof c.id === 'string')
+        .slice(0, 100)
+        .map((c) => ({
+          id: shortString(c.id),
+          platform: shortString(c.platform),
+          name: shortString(c.name, 80),
+          handle: shortString(c.handle),
+          format: shortString(c.format, 16),
+          customer: shortString(c.customer, 80),
+        }))
+    : [];
 
 @Controller('/copilot')
 export class CopilotController {
@@ -159,6 +186,12 @@ export class CopilotController {
     requestContext.set('organization', JSON.stringify(organization));
     requestContext.set('ui', 'true');
     requestContext.set('surface', surface);
+    requestContext.set(
+      'channels',
+      JSON.stringify(channelsFromProperties(properties.channels))
+    );
+    requestContext.set('timezone', shortString(properties.timezone));
+    requestContext.set('locale', shortString(properties.locale, 16));
 
     const agents = MastraAgent.getLocalAgents({
       resourceId: this._mastraService.resourceId(organization.id, surface),

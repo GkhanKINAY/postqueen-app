@@ -145,7 +145,7 @@ describe('AI Copilot draft preview card', () => {
     assert.match(chat, /threadId=\{threadId\}/);
     assert.match(chat, /useCopilotChatInternal\(\)/);
     assert.match(chat, /window\.history\.replaceState\(null, '', `\/agents\/\$\{threadId\}`\)/);
-    assert.match(chat, /pq: \{ surface: 'agent' \}/);
+    assert.match(chat, /pq: \{\s*surface: 'agent',/);
     assert.match(agent, /usePathname\(\)/);
     assert.match(agent, /selected=\{properties\}/);
     assert.doesNotMatch(agent, /const \[selected, setSelected\] = useState/);

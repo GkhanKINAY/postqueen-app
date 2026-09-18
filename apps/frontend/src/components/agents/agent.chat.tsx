@@ -30,6 +30,7 @@ import {
   CopilotKit,
   useCopilotAction,
   useCopilotChatInternal,
+  useCopilotReadable,
   useLazyToolRenderer,
 } from '@copilotkit/react-core';
 import {
@@ -62,7 +63,11 @@ import {
   FEED_PREVIEW_MIN_WH,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  useT,
+  useTranslationSettings,
+} from '@gitroom/react/translation/get.transation.service.client';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
@@ -109,8 +114,30 @@ export const AgentChat: FC = () => {
   const routeId = useAgentRouteId();
   const threadId = useChatThreadId(routeId);
   const t = useT();
-  // Read by the backend as `forwardedProps.pq` on every run and connect.
-  const properties = useMemo(() => ({ pq: { surface: 'agent' } }), []);
+  const { properties: selected } = useContext(PropertiesContext);
+  const i18n = useTranslationSettings();
+  // Read by the backend as `forwardedProps.pq` on every run and connect,
+  // and printed into the prompt's "Current state": the channels the person
+  // has selected right now, their timezone and the app language. This is
+  // what the `[--integrations--]` block glued onto every message used to be.
+  const properties = useMemo(
+    () => ({
+      pq: {
+        surface: 'agent',
+        channels: selectableIntegrations(selected).map((p) => ({
+          id: p.id,
+          platform: p.identifier,
+          name: p.name,
+          handle: formatChannelHandle(p.display) || undefined,
+          format: p.editor,
+          customer: p.customer?.name || undefined,
+        })),
+        timezone: getTimezone(),
+        locale: i18n.resolvedLanguage || i18n.language || 'en',
+      },
+    }),
+    [selected, i18n.resolvedLanguage, i18n.language]
+  );
 
   // Without an OpenAI key, or on a tier without AI, do not mount CopilotKit —
   // that remounts against a `/copilot/agent` that answers 503 or 402 and brings
@@ -661,14 +688,15 @@ const Message: FC<UserMessageProps> = (props) => {
     />
   );
 };
+/**
+ * The chat composer. Attached media rides inside the message as
+ * `[--Media--]` lines (the model needs the URLs); the selected channels no
+ * longer do: they reach the prompt as `properties.pq.channels` (see
+ * AgentChat), which keeps the transcript, and the thread titles, clean.
+ */
 const NewInput: FC<InputProps> = (props) => {
   const [media, setMedia] = useState([] as { path: string; id: string }[]);
   const [value, setValue] = useState('');
-  const { properties } = useContext(PropertiesContext);
-  const copilotIntegrations = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
-  );
   const setMediaFromEvent = useCallback(
     (e: {
       target: {
@@ -712,22 +740,7 @@ const NewInput: FC<InputProps> = (props) => {
                     )
                     .join('\n') +
                   '\n[--Media--]'
-                : '') +
-              `
-${
-  copilotIntegrations.length
-    ? `[--integrations--]
-Use the following social media platforms: ${JSON.stringify(
-        copilotIntegrations.map((p) => ({
-          id: p.id,
-          platform: p.identifier,
-          profilePicture: p.picture,
-          additionalSettings: p.additionalSettings,
-        }))
-      )}
-[--integrations--]`
-    : ``
-}`
+                : '')
           );
           setValue('');
           setMedia([]);
@@ -875,6 +888,26 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     latestUserTurn.current = userTurns;
     latestCards.current = cards;
   }, [userTurns, cards]);
+
+  // What happened to each card, for the prompt's "Current state": the model
+  // must not recreate a post that was scheduled from the card, and must know
+  // which card "post it now" refers to. Memoized: the SDK re-adds a changed
+  // value on every render.
+  const cardsSummary = useMemo(
+    () =>
+      Object.entries(cards).map(([cardId, groups]) => ({
+        cardId,
+        posts: Object.entries(groups).map(([group, outcome]) => ({
+          group,
+          ...(outcome as object),
+        })),
+      })),
+    [cards]
+  );
+  useCopilotReadable({
+    description: 'Post Preview cards in this chat',
+    value: cardsSummary,
+  });
 
   useCopilotAction({
     name: 'manualPosting',
