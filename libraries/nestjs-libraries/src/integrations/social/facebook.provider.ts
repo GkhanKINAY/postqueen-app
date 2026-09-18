@@ -1000,7 +1000,13 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     );
     const json = await response.json();
     this.throwIfCannotFetch(json, response.status);
-    const { data } = json;
+    const { data, error } = json;
+
+    // Throw so checkAnalytics doesn't cache the empty result for an hour.
+    if (error) {
+      console.warn('Facebook page insights returned an error:', { id, error });
+      throw new Error(error.message);
+    }
 
     // page_media_view returns paid/organic breakdowns as an object; sum them to
     // keep the single-total UI working.
