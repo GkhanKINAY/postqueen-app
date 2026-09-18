@@ -225,6 +225,55 @@ describe('AI Copilot draft preview card', () => {
     assert.match(card, /t\('draft_posted_now', 'Publishing now'\)/);
   });
 
+  it('changes a card image in place instead of drawing a new card', () => {
+    const agent = readFileSync(
+      fileURLToPath(new URL('./agent.tsx', import.meta.url)),
+      'utf8',
+    );
+    const card = readFileSync(
+      fileURLToPath(new URL('./agent.draft.card.tsx', import.meta.url)),
+      'utf8',
+    );
+    const service = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../../../libraries/nestjs-libraries/src/chat/mastra.service.ts',
+          import.meta.url,
+        ),
+      ),
+      'utf8',
+    );
+    const dto = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../../../libraries/nestjs-libraries/src/dtos/copilot/thread.state.dto.ts',
+          import.meta.url,
+        ),
+      ),
+      'utf8',
+    );
+    // Attachments put on a card later live in their own thread-state field,
+    // never in the outcome slot (whose presence marks a group as done).
+    assert.match(dto, /media\?: Record<string, unknown>/);
+    assert.match(service, /if \(body\.media !== undefined\)/);
+    assert.match(agent, /useThreadCardMap<\s*\{ id: string; path: string \}\[\]\s*>\(routeId, state\?\.media/);
+    // The overlay is applied after grouping (the key hashes the arguments),
+    // the registry keeps a card's groups current, and the tool takes a JSON
+    // string (an open object would reach the model as additionalProperties: false).
+    assert.match(chat, /const drawn = groupDraftItems\(args\?\.list, status === 'inProgress'\)/);
+    assert.match(chat, /known\.groups = groups;/);
+    assert.match(chat, /name: 'attachToCard'/);
+    assert.match(chat, /name: 'attachments',\s*type: 'string'/);
+    assert.match(chat, /name === 'generateImageTool' \? \(\s*<AgentImageCard/);
+    // The card menu can change or drop the image; the modal opens with the
+    // platform's shape.
+    assert.match(card, /data-pq="agent-draft-change-image"/);
+    assert.match(card, /data-pq="agent-draft-remove-image"/);
+    assert.match(chat, /imageOrientationForPlatforms\(/);
+    // Media markers carry the media id the model needs for attachments.
+    assert.match(chat, /Image: \$\{m\.path\} \[id:\$\{m\.id\}\]/);
+  });
+
   it('lets the composer grow to maxRows instead of scrolling inside one line', () => {
     const textarea = readFileSync(
       fileURLToPath(new URL('./agent.textarea.tsx', import.meta.url)),

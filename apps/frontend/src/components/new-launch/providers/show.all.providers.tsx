@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  getProviderSettingsMeta,
+  ImageOrientation,
+} from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import DevtoProvider from '@gitroom/frontend/components/new-launch/providers/devto/devto.provider';
 import XProvider from '@gitroom/frontend/components/new-launch/providers/x/x.provider';
 import LinkedinProvider from '@gitroom/frontend/components/new-launch/providers/linkedin/linkedin.provider';
@@ -191,6 +195,24 @@ export const Providers = [
     component: TumblrProvider,
   },
 ];
+
+/**
+ * The AI image shape the first selected platform declares in its provider
+ * meta (`withProvider({ imageOrientation })`); square when none does. Both
+ * image generators default to it, the person can still pick another.
+ */
+export const imageOrientationForPlatforms = (
+  identifiers: string[]
+): ImageOrientation => {
+  for (const identifier of identifiers) {
+    const entry = Providers.find((p) => p.identifier === identifier);
+    const orientation = getProviderSettingsMeta(entry?.component)?.imageOrientation;
+    if (orientation) {
+      return orientation;
+    }
+  }
+  return 'square';
+};
 
 /**
  * Global mode: stack every selected channel’s native preview.

@@ -41,6 +41,7 @@ const LinkedInSettings = () => {
   );
 };
 export default withProvider<LinkedinDto>({
+  imageOrientation: 'landscape',
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: LinkedInSettings,

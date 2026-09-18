@@ -1191,5 +1191,18 @@
   "draft_could_not_be_fixed": "Copilot could not fix this draft",
   "draft_redone": "Redid the draft after a channel rule failed",
   "unknown_channel": "Unknown channel",
-  "copilot_step_card": "Updating the card"
+  "copilot_step_card": "Updating the card",
+  "orientation": "Orientation",
+  "orientation_square": "Square",
+  "orientation_portrait": "Portrait",
+  "orientation_landscape": "Landscape",
+  "generating_image": "Generating image",
+  "use_in_this_post": "Use in this post",
+  "add_to_card": "Add to card",
+  "added_to_card": "Added to card",
+  "regenerate": "Regenerate",
+  "change_image": "Change image",
+  "add_image": "Add image",
+  "remove_image": "Remove image",
+  "copilot_step_card_image": "Updating the card image"
 }

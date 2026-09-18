@@ -12,8 +12,12 @@ import { CopilotSurface } from '@gitroom/helpers/utils/copilot.context';
 
 /** Where PostQueen keeps its own per-thread UI state inside thread metadata. */
 const THREAD_STATE_KEY = 'pq';
-/** Selected channels plus card outcomes; anything bigger is a bug. */
-const THREAD_STATE_MAX_BYTES = 16 * 1024;
+/**
+ * Selected channels, card outcomes and the attachments put on cards later:
+ * a long thread with an image on every card stays well under this; anything
+ * bigger is a bug, not a use.
+ */
+const THREAD_STATE_MAX_BYTES = 64 * 1024;
 
 @Injectable()
 export class MastraService {
@@ -104,7 +108,7 @@ export class MastraService {
   }
 
   /**
-   * Merges the two fields the app keeps into `metadata.pq` (the global
+   * Merges the fields the app keeps into `metadata.pq` (the global
    * ValidationPipe does not whitelist, and this lands in stored metadata).
    * A thread that has not been written by a run yet is created empty (no
    * title, so Mastra still names it on the first message). Returns null when
@@ -127,6 +131,9 @@ export class MastraService {
     }
     if (body.cards !== undefined) {
       patch.cards = body.cards;
+    }
+    if (body.media !== undefined) {
+      patch.media = body.media;
     }
     const current = thread?.metadata?.[THREAD_STATE_KEY];
     const next = {

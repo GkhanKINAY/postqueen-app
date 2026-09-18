@@ -1,5 +1,7 @@
 import { Button } from '@gitroom/react/form/button';
 import { FC, useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
+import useSWR from 'swr';
 import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -10,6 +12,8 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useFeatureSetupHint } from '@gitroom/frontend/components/media/feature.setup.hint';
+import { imageOrientationForPlatforms } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
+import { ImageOrientation } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 
 /** Same stroked sparkle as CopilotMark — kept local so this modal does not
  *  import the Copilot rail. */
@@ -41,18 +45,48 @@ const list = [
   'Watercolor',
 ];
 
+const orientations: ImageOrientation[] = ['square', 'portrait', 'landscape'];
+
 const AiImageModal: FC<{
   close: () => void;
   setLoading: (loading: boolean) => void;
   onChange: (params: { id: string; path: string }) => void;
+  /** Preselected shape; the selected channels' when absent. */
+  orientation?: ImageOrientation;
 }> = (props) => {
   const { close, setLoading, onChange } = props;
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
   const setLocked = useLaunchStore((p) => p.setLocked);
+  const selectedIntegrations = useLaunchStore((p) => p.selectedIntegrations);
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(list[0]);
+  // The first selected platform's shape (its provider meta); square outside
+  // the composer, where nothing is selected yet.
+  const [orientation, setOrientation] = useState<ImageOrientation>(
+    () =>
+      props.orientation ||
+      imageOrientationForPlatforms(
+        selectedIntegrations.map((p) => p.integration.identifier)
+      )
+  );
+  const { billingEnabled } = useVariables();
+  const loadCredits = useCallback(async () => {
+    if (!billingEnabled) {
+      return { credits: 1000000 };
+    }
+    return (
+      await fetch(`/copilot/credits?type=ai_images`, { method: 'GET' })
+    ).json();
+  }, [fetch, billingEnabled]);
+  // Same key the Polotno generate tab uses, so both read one number.
+  const { data: credits } = useSWR('copilot-credits', loadCredits);
+  const orientationLabel: Record<ImageOrientation, string> = {
+    square: t('orientation_square', 'Square'),
+    portrait: t('orientation_portrait', 'Portrait'),
+    landscape: t('orientation_landscape', 'Landscape'),
+  };
 
   const generate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -80,6 +114,7 @@ ${style}
 <!-- /style -->
 
 `,
+          orientation,
         }),
       });
 
@@ -127,6 +162,7 @@ ${style}
   }, [
     prompt,
     style,
+    orientation,
     onChange,
     fetch,
     toaster,
@@ -138,6 +174,16 @@ ${style}
 
   return (
     <div className="flex flex-col gap-[18px]">
+      {billingEnabled &&
+        createPortal(
+          <>
+            {t('n_credits_left', '{{count}} credits left', {
+              count: credits?.credits || 0,
+            })}
+          </>,
+          document.querySelector('.top-title-content') ||
+            document.createElement('div')
+        )}
       <div className="flex flex-col gap-[8px]">
         <div className="text-[12.5px] font-[600] text-pqSoft">
           {t('prompt', 'Prompt')}
@@ -174,6 +220,29 @@ ${style}
           ))}
         </div>
       </div>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[12.5px] font-[600] text-pqSoft">
+          {t('orientation', 'Orientation')}
+        </div>
+        <div className="flex flex-wrap gap-[8px]" data-pq="image-orientation">
+          {orientations.map((p) => (
+            <button
+              type="button"
+              key={p}
+              onClick={() => setOrientation(p)}
+              aria-pressed={orientation === p}
+              className={clsx(
+                'flex h-[32px] cursor-pointer items-center rounded-pqSm px-[12px] text-[12px] font-[600] transition-colors',
+                orientation === p
+                  ? 'bg-pqBrand text-pqOnBrand'
+                  : 'bg-pqSettings text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover'
+              )}
+            >
+              {orientationLabel[p]}
+            </button>
+          ))}
+        </div>
+      </div>
       <Button
         type="button"
         onClick={generate}
@@ -185,6 +254,51 @@ ${style}
         </span>
       </Button>
     </div>
+  );
+};
+
+/**
+ * Opens the AI Image modal from anywhere (the Post Preview card's menu on the
+ * Copilot page uses it); the toolbar button below is the same modal with its
+ * own gate and spinner.
+ */
+export const useAiImageModal = () => {
+  const t = useT();
+  const modals = useModals();
+  const canOpen = useOpenGuard();
+  const { aiEnabled, billingEnabled } = useVariables();
+  const setupHint = useFeatureSetupHint();
+  return useCallback(
+    (
+      onChange: (params: { id: string; path: string }) => void,
+      options?: { orientation?: ImageOrientation }
+    ) => {
+      if (!canOpen()) {
+        return;
+      }
+      if (!aiEnabled && !billingEnabled) {
+        setupHint(
+          t('generate_image', 'Generate image'),
+          'OPENAI_API_KEY',
+          'https://docs.postqueen.ai/configuration/reference'
+        );
+        return;
+      }
+      modals.openModal({
+        title: t('generate_ai_image', 'Generate AI Image'),
+        size: 640,
+        maxSize: 640,
+        children: (close) => (
+          <AiImageModal
+            close={close}
+            setLoading={() => {}}
+            onChange={onChange}
+            orientation={options?.orientation}
+          />
+        ),
+      });
+    },
+    [canOpen, aiEnabled, billingEnabled, setupHint, modals, t]
   );
 };
 

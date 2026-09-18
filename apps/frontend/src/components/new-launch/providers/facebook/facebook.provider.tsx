@@ -111,6 +111,7 @@ export const FacebookSettings = () => {
 };
 
 export default withProvider<FacebookDto>({
+  imageOrientation: 'landscape',
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: FacebookSettings,

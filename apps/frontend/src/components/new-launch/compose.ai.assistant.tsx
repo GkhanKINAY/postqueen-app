@@ -21,7 +21,13 @@ import {
   UserMessageProps,
   useChatContext,
 } from '@copilotkit/react-ui';
-import { CopilotKit, useCopilotAction } from '@copilotkit/react-core';
+import {
+  CatchAllActionRenderProps,
+  CopilotKit,
+  useCopilotAction,
+} from '@copilotkit/react-core';
+import { GeneratedMediaCard } from '@gitroom/frontend/components/media/generated.media.card';
+import { ToolStep } from '@gitroom/frontend/components/agents/agent.chat';
 import { v4 as uuid } from 'uuid';
 import {
   useT,
@@ -209,6 +215,50 @@ const restoreSuggestion = (snapshot: Values[]) => {
 
 /** Undo snapshots by key; gone with the page, which is what Undo should be. */
 const undoSnapshots = new Map<string, Values[]>();
+
+/**
+ * Attaches media to one thread item, the way the toolbar's AI Image does,
+ * and returns that item's media as it was, for Undo. Reads the store on the
+ * spot: a card's button runs long after the tool handler that drew it.
+ */
+const attachMedia = (
+  index: number,
+  media: { id: string; path: string }[]
+): { id: string; path: string }[] => {
+  const {
+    current,
+    internal,
+    global,
+    appendGlobalValueMedia,
+    appendInternalValueMedia,
+  } = useLaunchStore.getState();
+  const entry = internal.find((p) => p.integration.id === current);
+  const before = (entry ? entry.integrationValue : global)[index]?.media || [];
+  if (entry) {
+    appendInternalValueMedia(current, index, media);
+  } else {
+    appendGlobalValueMedia(index, media);
+  }
+  return before;
+};
+
+const restoreMedia = (
+  index: number,
+  snapshot: { id: string; path: string }[]
+) => {
+  const { current, internal, setGlobalValueMedia, setInternalValueMedia } =
+    useLaunchStore.getState();
+  if (internal.find((p) => p.integration.id === current)) {
+    setInternalValueMedia(current, index, snapshot);
+  } else {
+    setGlobalValueMedia(index, snapshot);
+  }
+};
+
+const mediaUndoSnapshots = new Map<
+  string,
+  { index: number; media: { id: string; path: string }[] }
+>();
 
 const triggerClassName = (open: boolean) =>
   clsx(
@@ -674,6 +724,147 @@ export const ComposeAiAssistant: FC<{
   );
 };
 
+type GeneratedImageResult =
+  | { status: 'attached'; media: { id: string; path: string }; undoKey: string }
+  | { status: 'generated'; media: { id: string; path: string } }
+  | { status: 'error'; error: string };
+
+/**
+ * One call to the image route, the way the toolbar's AI Image makes it: the
+ * brief in the description/style envelope, the orientation beside it. Out
+ * of credits comes back as a literal `false` with HTTP 200.
+ */
+const generateImage = async (
+  fetch: ReturnType<typeof useFetch>,
+  prompt: string,
+  style?: string,
+  orientation?: string
+): Promise<{ id: string; path: string } | { error: string; credits?: boolean }> => {
+  const response = await fetch('/media/generate-image-with-prompt', {
+    method: 'POST',
+    body: JSON.stringify({
+      prompt: `
+<!-- description -->
+${prompt}
+<!-- /description -->
+
+<!-- style -->
+${style || 'Realistic'}
+<!-- /style -->
+`,
+      ...(orientation ? { orientation } : {}),
+    }),
+  });
+  const image: any = await response.json().catch((): null => null);
+  if (response.ok && image?.id && image?.path) {
+    return { id: image.id, path: image.path };
+  }
+  if (image === false) {
+    return { error: 'Out of AI credits for this month.', credits: true };
+  }
+  return {
+    error:
+      typeof image?.message === 'string' ? image.message : 'Could not generate an image.',
+  };
+};
+
+/**
+ * The generated image in the rail. Attached at once when the person asked
+ * for that (Undo puts the item's media back), otherwise it waits for Use in
+ * this post; Regenerate draws the same brief again and the card swaps.
+ */
+const ComposerImageCard: FC<{
+  args?: { prompt?: string; style?: string; orientation?: string; index?: number };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const parsed = useMemo<GeneratedImageResult | null>(() => {
+    if (result == null || status !== 'complete') {
+      return null;
+    }
+    try {
+      return typeof result === 'string' ? JSON.parse(result) : (result as GeneratedImageResult);
+    } catch {
+      return null;
+    }
+  }, [result, status]);
+  // A regenerated image replaces the tool's; Use / Undo work on whichever is current.
+  const [media, setMedia] = useState<{ id: string; path: string } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [used, setUsed] = useState<{ undoKey: string } | null>(null);
+  const [undone, setUndone] = useState(false);
+  const current =
+    media || (parsed && parsed.status !== 'error' ? parsed.media : null);
+  const undoKey =
+    used?.undoKey || (parsed?.status === 'attached' && !undone ? parsed.undoKey : undefined);
+  const index = typeof args?.index === 'number' ? args.index : 0;
+
+  const use = () => {
+    if (!current) {
+      return;
+    }
+    const key = makeId(8);
+    mediaUndoSnapshots.set(key, { index, media: attachMedia(index, [current]) });
+    setUsed({ undoKey: key });
+    setUndone(false);
+  };
+  const undo = () => {
+    const snapshot = undoKey ? mediaUndoSnapshots.get(undoKey) : undefined;
+    if (snapshot) {
+      restoreMedia(snapshot.index, snapshot.media);
+      mediaUndoSnapshots.delete(undoKey as string);
+    }
+    setUsed(null);
+    setUndone(true);
+  };
+  const regenerate = async () => {
+    setBusy(true);
+    setFailed(null);
+    try {
+      const image = await generateImage(fetch, args?.prompt || '', args?.style, args?.orientation);
+      if ('error' in image) {
+        setFailed(image.error);
+      } else {
+        setMedia(image);
+        setUsed(null);
+        setUndone(true);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const state = busy
+    ? 'generating'
+    : status !== 'complete'
+    ? 'generating'
+    : failed || (parsed && parsed.status === 'error')
+    ? 'failed'
+    : current
+    ? 'ready'
+    : 'failed';
+
+  return (
+    <GeneratedMediaCard
+      prompt={args?.prompt || ''}
+      style={args?.style}
+      orientation={args?.orientation}
+      status={state}
+      media={current || undefined}
+      error={failed || (parsed?.status === 'error' ? parsed.error : undefined)}
+      used={undoKey ? 'attached' : undefined}
+      useLabel={t('use_in_this_post', 'Use in this post')}
+      onUse={use}
+      onUndo={undoKey ? undo : undefined}
+      onRegenerate={regenerate}
+      busy={busy}
+    />
+  );
+};
+
 const ComposeAiBindingsInner: FC = () => {
   const t = useT();
   const fetch = useFetch();
@@ -782,12 +973,13 @@ const ComposeAiBindingsInner: FC = () => {
   useCopilotAction({
     name: 'generateImageForPost',
     description:
-      'Generate an image from a prompt and attach it to the post. Same path as AI Image in the toolbar.',
+      "Generate ONE image from a visual brief for the post open in the composer. Returns {status:'attached', media} when apply was true (the image is on the post, the card offers Undo), {status:'generated', media} when it waits for the person to press Use in this post, or {status:'error', error}. Do not describe the image in chat; one short sentence at most.",
     parameters: [
       {
         name: 'prompt',
         type: 'string',
-        description: 'What to draw',
+        description:
+          'A visual brief, not a caption: subject, setting, composition, light, mood. No text in the image.',
         required: true,
       },
       {
@@ -798,79 +990,74 @@ const ComposeAiBindingsInner: FC = () => {
         required: false,
       },
       {
+        name: 'orientation',
+        type: 'string',
+        description:
+          'square, portrait or landscape; pick it from the channel (portrait for Instagram, TikTok, Pinterest, Reels and Stories; landscape for X, LinkedIn, YouTube, Facebook; square otherwise)',
+        required: false,
+      },
+      {
+        name: 'apply',
+        type: 'boolean',
+        description:
+          'true when the user asked to attach or add it to the post directly; false to show it and wait for Use in this post.',
+        required: false,
+      },
+      {
         name: 'index',
         type: 'number',
         description: 'Thread index, default 0',
         required: false,
       },
     ],
-    handler: async ({ prompt, style, index }) => {
+    // The image is generated here so its result is what the model reads; the
+    // card (render) shows it and owns Use / Undo / Regenerate afterwards.
+    handler: async ({ prompt, style, orientation, apply, index }) => {
       const trimmed = String(prompt || '').trim();
       if (!trimmed) {
-        toaster.show(
-          t('please_type_your_prompt', 'Please type your prompt'),
-          'warning'
-        );
-        return 'Need a prompt to generate an image.';
+        return { status: 'error', error: 'Need a prompt to generate an image.' };
       }
       setLocked(true);
       try {
-        const response = await fetch('/media/generate-image-with-prompt', {
-          method: 'POST',
-          body: JSON.stringify({
-            prompt: `
-<!-- description -->
-${trimmed}
-<!-- /description -->
-
-<!-- style -->
-${style || 'Realistic'}
-<!-- /style -->
-`,
-          }),
-        });
-        const image = await response.json();
-        if (response.ok && image?.id && image?.path) {
-          attach(typeof index === 'number' ? index : 0, [
-            { id: image.id, path: image.path },
-          ]);
-          return 'Image attached to the post.';
+        const image = await generateImage(fetch, trimmed, style, orientation);
+        if ('error' in image) {
+          if (image.credits) {
+            toaster.show(
+              t('ai_credits_exhausted', 'You are out of AI credits for this month.'),
+              'warning'
+            );
+          }
+          return { status: 'error', error: image.error };
         }
-        if (image === false) {
-          toaster.show(
-            t(
-              'ai_credits_exhausted',
-              'You are out of AI credits for this month.'
-            ),
-            'warning'
-          );
-          return 'Out of AI credits.';
+        if (apply) {
+          const undoKey = makeId(8);
+          const at = typeof index === 'number' ? index : 0;
+          mediaUndoSnapshots.set(undoKey, { index: at, media: attachMedia(at, [image]) });
+          return { status: 'attached', media: image, undoKey };
         }
-        if (!image?.cancelled) {
-          toaster.show(
-            typeof image?.message === 'string'
-              ? image.message
-              : t(
-                  'ai_generation_failed',
-                  'AI generation failed, please try again later.'
-                ),
-            'warning'
-          );
-        }
-        return 'Could not generate an image.';
+        return { status: 'generated', media: image };
       } catch {
-        toaster.show(
-          t(
-            'ai_generation_failed',
-            'AI generation failed, please try again later.'
-          ),
-          'warning'
-        );
-        return 'Could not generate an image.';
+        return { status: 'error', error: 'Could not generate an image.' };
       } finally {
         setLocked(false);
       }
     },
+    render: ({ args, status, result }) => (
+      <ComposerImageCard
+        args={args as { prompt?: string; style?: string; orientation?: string; index?: number }}
+        status={status}
+        result={result}
+      />
+    ),
+  });
+
+  // Backend tools the composer surface has (integrationSchema, uploadFromUrlTool)
+  // show as the same quiet step lines the Copilot page draws.
+  useCopilotAction({
+    name: '*',
+    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
+      <ToolStep name={name} status={status} args={args} result={result} />
+    ),
   });
 
   return null;

@@ -255,6 +255,7 @@ const SettingsComponent = () => {
 };
 
 export default withProvider({
+  imageOrientation: 'landscape',
   postComment: PostComment.POST,
   minimumCharacters: [],
   SettingsComponent: SettingsComponent,

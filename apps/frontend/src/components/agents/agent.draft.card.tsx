@@ -304,9 +304,20 @@ const OutcomeLine: FC<{
 const GroupActions: FC<{
   scheduleLabel: string;
   busy: boolean;
+  hasImage: boolean;
   onAction: (action: AgentDraftAction) => void;
   onOpenComposer: () => void;
-}> = ({ scheduleLabel, busy, onAction, onOpenComposer }) => {
+  onChangeImage?: () => void;
+  onRemoveImage?: () => void;
+}> = ({
+  scheduleLabel,
+  busy,
+  hasImage,
+  onAction,
+  onOpenComposer,
+  onChangeImage,
+  onRemoveImage,
+}) => {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
@@ -363,6 +374,36 @@ const GroupActions: FC<{
             >
               {t('save_as_draft', 'Save as draft')}
             </button>
+            {onChangeImage && (
+              <button
+                type="button"
+                role="menuitem"
+                data-pq="agent-draft-change-image"
+                onClick={() => {
+                  setOpen(false);
+                  onChangeImage();
+                }}
+                className="rounded-[8px] px-[10px] py-[8px] text-start text-[13px] font-[600] text-pqText hover:bg-pqHover"
+              >
+                {hasImage
+                  ? t('change_image', 'Change image')
+                  : t('add_image', 'Add image')}
+              </button>
+            )}
+            {onRemoveImage && hasImage && (
+              <button
+                type="button"
+                role="menuitem"
+                data-pq="agent-draft-remove-image"
+                onClick={() => {
+                  setOpen(false);
+                  onRemoveImage();
+                }}
+                className="rounded-[8px] px-[10px] py-[8px] text-start text-[13px] font-[600] text-pqText hover:bg-pqHover"
+              >
+                {t('remove_image', 'Remove image')}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -393,6 +434,8 @@ const DraftGroupView: FC<{
   streaming: boolean;
   onAction: (action: AgentDraftAction) => void;
   onOpenComposer: () => void;
+  onChangeImage?: () => void;
+  onRemoveImage?: () => void;
 }> = ({
   group,
   channels,
@@ -405,6 +448,8 @@ const DraftGroupView: FC<{
   streaming,
   onAction,
   onOpenComposer,
+  onChangeImage,
+  onRemoveImage,
 }) => {
   const t = useT();
   const { formatDateTime } = useDateFormat();
@@ -474,6 +519,9 @@ const DraftGroupView: FC<{
           )}
           {actionable && (
             <GroupActions
+              hasImage={group.posts.some((post) => post.attachments.length > 0)}
+              onChangeImage={onChangeImage}
+              onRemoveImage={onRemoveImage}
               scheduleLabel={
                 group.date
                   ? t('schedule', 'Schedule')
@@ -508,6 +556,9 @@ export const AgentDraftCard: FC<{
   busy: Record<string, boolean | undefined>;
   onAction: (group: AgentDraftGroup, action: AgentDraftAction) => void;
   onOpenComposer: (group: AgentDraftGroup) => void;
+  /** Change or add the group's image through the AI image modal; absent on cards that cannot be changed. */
+  onChangeImage?: (group: AgentDraftGroup) => void;
+  onRemoveImage?: (group: AgentDraftGroup) => void;
 }> = ({
   groups,
   state,
@@ -517,6 +568,8 @@ export const AgentDraftCard: FC<{
   busy,
   onAction,
   onOpenComposer,
+  onChangeImage,
+  onRemoveImage,
 }) => {
   const t = useT();
   // Every channel, not the current selection: a card from an earlier chat
@@ -587,6 +640,12 @@ export const AgentDraftCard: FC<{
               streaming={state === 'streaming'}
               onAction={(action) => onAction(group, action)}
               onOpenComposer={() => onOpenComposer(group)}
+              onChangeImage={
+                onChangeImage && actionable ? () => onChangeImage(group) : undefined
+              }
+              onRemoveImage={
+                onRemoveImage && actionable ? () => onRemoveImage(group) : undefined
+              }
             />
           ))}
         </div>

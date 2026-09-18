@@ -97,6 +97,7 @@ export const threadTitleWait = (id: string) => ({
 type ThreadState = {
   channels?: string[];
   cards?: Record<string, unknown>;
+  media?: Record<string, unknown>;
 };
 
 const useThreadState = (threadId: string) => {
@@ -548,6 +549,65 @@ export const AgentList: FC<{
 
 /** Per card, per group: what the person did with a Post Preview. */
 export type ThreadCardOutcomes = Record<string, Record<string, unknown>>;
+/** Per card, per group: the attachments put on it after it was drawn. */
+export type ThreadCardMedia = Record<
+  string,
+  Record<string, { id: string; path: string }[]>
+>;
+
+/**
+ * One per-card, per-group map kept with the thread (`metadata.pq[key]`):
+ * what was saved plus what this page wrote on top, scoped to the thread (a
+ * fresh chat's move from `new` to its id carries the local part over).
+ * "Schedule all" and `publishFromCard` write several entries from one
+ * closure, so the merge base is a ref updated on the spot.
+ */
+const useThreadCardMap = <T,>(
+  routeId: string,
+  saved: Record<string, Record<string, T>> | undefined,
+  key: 'cards' | 'media',
+  save: (patch: Record<string, unknown>) => Promise<void>
+) => {
+  const [local, setLocal] = useState<{
+    routeId: string;
+    entries: Record<string, Record<string, T>>;
+  }>({ routeId, entries: {} });
+  useEffect(() => {
+    if (routeId !== 'new') {
+      setLocal((prev) =>
+        prev.routeId === 'new' ? { ...prev, routeId } : prev
+      );
+    }
+  }, [routeId]);
+  const merged = useMemo<Record<string, Record<string, T>>>(() => {
+    const entries = local.routeId === routeId ? local.entries : {};
+    const out: Record<string, Record<string, T>> = { ...(saved || {}) };
+    for (const [cardId, groups] of Object.entries(entries)) {
+      out[cardId] = { ...(out[cardId] || {}), ...groups };
+    }
+    return out;
+  }, [saved, local, routeId]);
+  const latest = useRef(merged);
+  useEffect(() => {
+    latest.current = merged;
+  }, [merged]);
+  const set = useCallback(
+    (cardId: string, groupKey: string, value: T) => {
+      const base = latest.current;
+      const next = {
+        ...base,
+        [cardId]: { ...(base[cardId] || {}), [groupKey]: value },
+      };
+      latest.current = next;
+      setLocal({ routeId, entries: next });
+      if (routeId !== 'new') {
+        void save({ [key]: next });
+      }
+    },
+    [routeId, key, save]
+  );
+  return { value: merged, set };
+};
 
 export const PropertiesContext = createContext<{
   /** The channels selected in the Channels column. */
@@ -561,12 +621,21 @@ export const PropertiesContext = createContext<{
   /** Outcomes of the Post Preview cards in this thread, keyed by card id. */
   cards: ThreadCardOutcomes;
   setCardOutcome: (cardId: string, groupKey: string, outcome: unknown) => void;
+  /** Attachments put on a card's group after it was drawn (the image changed from chat or the menu). */
+  media: ThreadCardMedia;
+  setCardMedia: (
+    cardId: string,
+    groupKey: string,
+    attachments: { id: string; path: string }[]
+  ) => void;
 }>({
   properties: [],
   allChannels: [],
   openChannels: () => {},
   cards: {},
   setCardOutcome: () => {},
+  media: {},
+  setCardMedia: () => {},
 });
 
 /**
@@ -595,34 +664,6 @@ const useThreadSync = (
   const dirty = useRef(false);
   const touched = useRef(false);
   const restoredFor = useRef<string | null>(null);
-  // Outcomes set in this page, on top of the saved ones. Scoped to the
-  // thread; a fresh chat's move from `new` to its id carries them over.
-  const [localCards, setLocalCards] = useState<{
-    routeId: string;
-    cards: ThreadCardOutcomes;
-  }>({ routeId, cards: {} });
-  useEffect(() => {
-    if (routeId !== 'new') {
-      setLocalCards((prev) =>
-        prev.routeId === 'new' ? { ...prev, routeId } : prev
-      );
-    }
-  }, [routeId]);
-  const cards = useMemo<ThreadCardOutcomes>(() => {
-    const saved = (state?.cards || {}) as ThreadCardOutcomes;
-    const local = localCards.routeId === routeId ? localCards.cards : {};
-    const merged: ThreadCardOutcomes = { ...saved };
-    for (const [cardId, groups] of Object.entries(local)) {
-      merged[cardId] = { ...(merged[cardId] || {}), ...groups };
-    }
-    return merged;
-  }, [state?.cards, localCards, routeId]);
-  // "Schedule all" and `publishFromCard` write several outcomes from one
-  // closure, so the merge base is a ref updated on the spot, not `cards`.
-  const latestCards = useRef(cards);
-  useEffect(() => {
-    latestCards.current = cards;
-  }, [cards]);
 
   // Writes go out one after the other, so a later, fuller state can never
   // be overtaken by an earlier one.
@@ -652,21 +693,15 @@ const useThreadSync = (
     [setProperties]
   );
 
-  const setCardOutcome = useCallback(
-    (cardId: string, groupKey: string, outcome: unknown) => {
-      const base = latestCards.current;
-      const next = {
-        ...base,
-        [cardId]: { ...(base[cardId] || {}), [groupKey]: outcome },
-      };
-      latestCards.current = next;
-      setLocalCards({ routeId, cards: next });
-      if (routeId !== 'new') {
-        void save({ cards: next });
-      }
-    },
-    [routeId, save]
+  const { value: cards, set: setCardOutcome } = useThreadCardMap<unknown>(
+    routeId,
+    state?.cards as ThreadCardOutcomes | undefined,
+    'cards',
+    save
   );
+  const { value: media, set: setCardMedia } = useThreadCardMap<
+    { id: string; path: string }[]
+  >(routeId, state?.media as ThreadCardMedia | undefined, 'media', save);
 
   // The title arriving is the one moment a write may have been lost.
   const flushedFor = useRef<string | null>(null);
@@ -679,13 +714,16 @@ const useThreadSync = (
     if (Object.keys(cards).length) {
       patch.cards = cards;
     }
+    if (Object.keys(media).length) {
+      patch.media = media;
+    }
     if (touched.current) {
       patch.channels = properties.map((p) => p.id);
     }
     if (Object.keys(patch).length) {
       void save(patch);
     }
-  }, [routeId, titled, cards, properties, save]);
+  }, [routeId, titled, cards, media, properties, save]);
 
   // `Agent` lives in the layout, so a selection changed on one thread is
   // still "dirty" when a Chats link opens another: without this it would be
@@ -739,7 +777,14 @@ const useThreadSync = (
     void save({ channels: properties.map((p) => p.id) });
   }, [routeId, properties, save]);
 
-  return { onChange, cards, setCardOutcome, allChannels: integrations || [] };
+  return {
+    onChange,
+    cards,
+    setCardOutcome,
+    media,
+    setCardMedia,
+    allChannels: integrations || [],
+  };
 };
 
 export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
@@ -749,6 +794,8 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
     onChange: onChannelsChange,
     cards,
     setCardOutcome,
+    media,
+    setCardMedia,
     allChannels,
   } = useThreadSync(routeId, properties, setProperties);
   const t = useT();
@@ -822,7 +869,15 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <PropertiesContext.Provider
-      value={{ properties, allChannels, openChannels, cards, setCardOutcome }}
+      value={{
+        properties,
+        allChannels,
+        openChannels,
+        cards,
+        setCardOutcome,
+        media,
+        setCardMedia,
+      }}
     >
       <div ref={rowRef} className="relative flex min-w-0 flex-1">
         {asDrawer && panel && (

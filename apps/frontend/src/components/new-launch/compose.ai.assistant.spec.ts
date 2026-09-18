@@ -136,6 +136,14 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /const \[undone, setUndone\] = useState\(false\)/);
     assert.match(assistant, /stripHtmlValidation\('normal', post \|\| '', false, true\)/);
     assert.match(assistant, /enableInspector=\{false\}/);
+    // A generated image is a card with Use / Undo / Regenerate; apply=true
+    // attaches at once. The route takes the orientation the channel wants.
+    assert.match(assistant, /name: 'generateImageForPost'/);
+    assert.match(assistant, /name: 'orientation'/);
+    assert.match(assistant, /name: 'apply'/);
+    assert.match(assistant, /<ComposerImageCard/);
+    assert.match(assistant, /mediaUndoSnapshots\.set\(undoKey, \{ index: at, media: attachMedia\(at, \[image\]\) \}\)/);
+    assert.match(assistant, /name: '\*'/);
     assert.doesNotMatch(assistant, /name: 'setPosts'/);
     assert.doesNotMatch(editor, /name: 'setPosts'/);
     // The readable keys are the server prompt's, from one shared module.

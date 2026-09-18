@@ -90,6 +90,23 @@ export class MediaService {
     }
   }
 
+  /**
+   * One AI image from a brief, expanded into a full render prompt first, then
+   * hosted and saved to the media library: the path the AI Image modal, the
+   * composer's rail and the agent's tool share. Returns the media row.
+   */
+  async generateImageToLibrary(
+    org: Organization,
+    brief: string,
+    orientation?: ImageOrientation
+  ) {
+    const image = await this.generateImage(brief, org, true, orientation);
+    const file = await this.storage.uploadSimple(
+      'data:image/png;base64,' + image
+    );
+    return this.saveFile(org.id, file.split('/').pop(), file);
+  }
+
   saveFile(
     org: string,
     fileName: string,

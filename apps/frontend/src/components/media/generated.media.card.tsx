@@ -1,0 +1,153 @@
+'use client';
+
+import { FC, ReactNode, useEffect, useState } from 'react';
+import clsx from 'clsx';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/react/form/button';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
+import {
+  FEED_PREVIEW_MAX_WH,
+  FEED_PREVIEW_MIN_WH,
+} from '@gitroom/frontend/components/new-launch/preview-media-aspect';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
+
+export type GeneratedMediaStatus = 'generating' | 'ready' | 'failed';
+
+/**
+ * One AI-generated image, the same card on both Copilot surfaces: the brief
+ * it came from, the picture at its real shape, and what to do with it. Pure
+ * presentation; the surface decides what "use" means (attach to the post in
+ * the composer, add to the Post Preview card on the Copilot page).
+ */
+export const GeneratedMediaCard: FC<{
+  prompt: string;
+  style?: string;
+  orientation?: string;
+  status: GeneratedMediaStatus;
+  media?: { id: string; path: string };
+  error?: string;
+  /** What "use" did, once it happened. */
+  used?: 'attached' | 'added';
+  useLabel: string;
+  onUse?: () => void;
+  onUndo?: () => void;
+  onRegenerate?: () => void;
+  busy?: boolean;
+  /** Extra line under the actions, e.g. a billing link when credits are out. */
+  footer?: ReactNode;
+}> = ({
+  prompt,
+  style,
+  orientation,
+  status,
+  media,
+  error,
+  used,
+  useLabel,
+  onUse,
+  onUndo,
+  onRegenerate,
+  busy,
+  footer,
+}) => {
+  const t = useT();
+  const mediaDir = useMediaDirectory();
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (status !== 'generating') {
+      return;
+    }
+    setSeconds(0);
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [status]);
+  const meta = [style, orientation].filter(Boolean).join(' · ');
+
+  return (
+    <div
+      data-pq="generated-media-card"
+      data-state={status}
+      className="my-[6px] flex w-full flex-col gap-[10px] rounded-[12px] bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)]"
+    >
+      <div className="flex flex-col gap-[2px]">
+        <div className="line-clamp-2 text-[12.5px] text-pqMuted">{prompt}</div>
+        {meta && (
+          <div className="font-mono text-[11px] text-pqSoft">{meta}</div>
+        )}
+      </div>
+      {status === 'generating' && (
+        <div className="flex flex-col gap-[8px]">
+          <Skeleton className="aspect-[4/3] w-full max-w-[360px] rounded-[10px]" />
+          <div className="text-[12px] text-pqSoft">
+            {t('generating_image', 'Generating image')} · {seconds}s
+          </div>
+        </div>
+      )}
+      {status === 'ready' && media && (
+        <PreviewMediaFrame
+          className="max-w-[360px] rounded-[10px]"
+          src={mediaDir.set(media.path)}
+          minWH={FEED_PREVIEW_MIN_WH}
+          maxWH={FEED_PREVIEW_MAX_WH}
+          fallbackWH={1}
+          autoplay={false}
+        />
+      )}
+      {status === 'failed' && (
+        <div className="text-[12.5px] text-pqWarn">
+          {error || t('ai_generation_failed', 'AI generation failed, please try again later.')}
+        </div>
+      )}
+      {status !== 'generating' && (
+        <div className="flex flex-wrap items-center gap-[8px]">
+          {status === 'ready' && used && (
+            <span className="text-[12.5px] font-[600] text-pqMuted">
+              {used === 'attached'
+                ? t('suggestion_applied', 'Applied')
+                : t('added_to_card', 'Added to card')}
+            </span>
+          )}
+          {status === 'ready' && used && onUndo && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-pq="generated-media-undo"
+              disabled={busy}
+              onClick={onUndo}
+            >
+              {t('undo', 'Undo')}
+            </Button>
+          )}
+          {status === 'ready' && onUse && (
+            <Button
+              type="button"
+              size="sm"
+              variant={used ? 'ghost' : undefined}
+              data-pq="generated-media-use"
+              disabled={busy}
+              onClick={onUse}
+            >
+              {used ? t('apply_again', 'Apply again') : useLabel}
+            </Button>
+          )}
+          {onRegenerate && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-pq="generated-media-regenerate"
+              disabled={busy}
+              onClick={onRegenerate}
+              className={clsx(status === 'failed' && 'text-pqText')}
+            >
+              {t('regenerate', 'Regenerate')}
+            </Button>
+          )}
+        </div>
+      )}
+      {footer}
+    </div>
+  );
+};

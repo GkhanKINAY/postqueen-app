@@ -11,6 +11,7 @@ const SettingsComponent = () => {
 };
 
 export default withProvider({
+  imageOrientation: 'square',
   postComment: PostComment.POST,
   minimumCharacters: [],
   SettingsComponent: SettingsComponent,

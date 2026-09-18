@@ -79,6 +79,7 @@ const YoutubeSettings: FC = () => {
   );
 };
 export default withProvider({
+  imageOrientation: 'landscape',
   postComment: PostComment.COMMENT,
   comments: false,
   minimumCharacters: [],

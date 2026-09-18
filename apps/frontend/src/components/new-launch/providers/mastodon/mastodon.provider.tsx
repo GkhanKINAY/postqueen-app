@@ -5,6 +5,7 @@ import {
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 export default withProvider({
+  imageOrientation: 'landscape',
   postComment: PostComment.POST,
   minimumCharacters: [],
   SettingsComponent: null,

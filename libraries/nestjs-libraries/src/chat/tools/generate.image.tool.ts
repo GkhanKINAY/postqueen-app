@@ -3,14 +3,12 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
-import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
-  private storage = UploadFactory.createStorage();
 
   constructor(
     private _mediaService: MediaService,
@@ -53,6 +51,8 @@ export class GenerateImageTool implements AgentToolInterface {
       outputSchema: z.object({
         id: z.string().optional(),
         path: z.string().optional(),
+        alt: z.string().nullable().optional(),
+        thumbnail: z.string().nullable().optional(),
         error: z.string().optional(),
       }),
       execute: async (inputData, context) => {
@@ -71,7 +71,8 @@ export class GenerateImageTool implements AgentToolInterface {
           // The same envelope and prompt expansion as the dashboard's AI
           // Image (media.controller.ts /generate-image-with-prompt): a short
           // brief becomes a full render prompt before the image is drawn.
-          const image = await this._mediaService.generateImage(
+          return await this._mediaService.generateImageToLibrary(
+            org,
             `
 <!-- description -->
 ${inputData.prompt}
@@ -81,19 +82,7 @@ ${inputData.prompt}
 ${inputData.style || 'Realistic'}
 <!-- /style -->
 `,
-            org,
-            true,
             inputData.orientation
-          );
-
-          const file = await this.storage.uploadSimple(
-            'data:image/png;base64,' + image
-          );
-
-          return await this._mediaService.saveFile(
-            org.id,
-            file.split('/').pop(),
-            file
           );
         } catch (err) {
           return {

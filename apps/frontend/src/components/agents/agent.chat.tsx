@@ -74,6 +74,11 @@ import {
 } from '@gitroom/react/translation/get.transation.service.client';
 import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { useToaster } from '@gitroom/react/toaster/toaster';
+import { GeneratedMediaCard } from '@gitroom/frontend/components/media/generated.media.card';
+import { useAiImageModal } from '@gitroom/frontend/components/launches/ai.image';
+import { imageOrientationForPlatforms } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
@@ -349,8 +354,8 @@ const UnconfiguredAgentShell: FC = () => {
           media
             .map((m) =>
               hasExtension(m.path, 'mp4')
-                ? `Video: ${m.path}`
-                : `Image: ${m.path}`
+                ? `Video: ${m.path} [id:${m.id}]`
+                : `Image: ${m.path} [id:${m.id}]`
             )
             .join('\n') +
           '\n[--Media--]'
@@ -678,10 +683,12 @@ const contentToText = (
 const Message: FC<UserMessageProps> = (props) => {
   const convertContentToImagesAndVideo = useMemo(() => {
     return contentToText(props.message?.content)
-      .replace(/Video: (http.*mp4\n)/g, (match: string, p1: string) => {
+      // `[id:<media id>]` after the url is for the model (attachments need
+      // the id); the bubble shows the file.
+      .replace(/Video: (http\S*mp4)(?: \[id:[^\]]*\])?\n/g, (match: string, p1: string) => {
         return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
       })
-      .replace(/Image: (http.*\n)/g, (match: string, p1: string) => {
+      .replace(/Image: (http\S*)(?: \[id:[^\]]*\])?\n/g, (match: string, p1: string) => {
         return `<img src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full rounded-[8px]" />`;
       })
       .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match: string, p1: string) => {
@@ -748,8 +755,8 @@ const NewInput: FC<InputProps> = (props) => {
                   media
                     .map((m) =>
                       hasExtension(m.path, 'mp4')
-                        ? `Video: ${m.path}`
-                        : `Image: ${m.path}`
+                        ? `Video: ${m.path} [id:${m.id}]`
+                        : `Image: ${m.path} [id:${m.id}]`
                     )
                     .join('\n') +
                   '\n[--Media--]'
@@ -811,7 +818,7 @@ const parseResult = (result: unknown): ManualPostingResult | string | null => {
  * steps: what is happening while the reply is still coming, a check when it
  * is done. Generated images come back as a picture at their real aspect.
  */
-const ToolStep: FC<{
+export const ToolStep: FC<{
   name: string;
   status: string;
   args?: Record<string, any>;
@@ -838,6 +845,7 @@ const ToolStep: FC<{
     videoStatusTool: t('copilot_step_video', 'Generating video'),
     uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
     publishFromCard: t('copilot_step_card', 'Updating the card'),
+    attachToCard: t('copilot_step_card_image', 'Updating the card image'),
   };
   const label = labels[name] || t('copilot_step_working', 'Working');
   const done = status === 'complete';
@@ -893,7 +901,7 @@ const ToolStep: FC<{
 
 export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   const { validate, execute } = useDraftActions();
-  const { cards, setCardOutcome } = useContext(PropertiesContext);
+  const { cards, setCardOutcome, setCardMedia } = useContext(PropertiesContext);
   const { userTurns } = useContext(LiveChatContext);
   const registry = useRef<
     Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
@@ -902,7 +910,11 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   const [registered, setRegistered] = useState(0);
   const register = useCallback(
     (cardId: string, groups: AgentDraftGroup[], userTurn: number) => {
-      if (registry.current[cardId]) {
+      const known = registry.current[cardId];
+      if (known) {
+        // The card re-registers when its attachments change, so a typed
+        // "post it now" publishes what the card shows, not the first draft.
+        known.groups = groups;
         return;
       }
       registry.current[cardId] = { groups, userTurn, order: order.current++ };
@@ -1131,18 +1143,229 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     },
   });
 
-  // Every backend tool the agent calls, as a step line.
+  /**
+   * Puts attachments on a card's groups, in place: the thread state keeps
+   * them (`media`), the card re-renders its preview from them, and the
+   * registry is rewritten so a later typed action publishes them. Shared by
+   * the `attachToCard` tool, the image card's "Add to card" and the menu.
+   */
+  const attachToCard = useCallback(
+    (
+      cardId: string | undefined,
+      groupIndex: number | undefined,
+      attachments: { id: string; path: string }[],
+      replace: boolean
+    ): { status: 'attached'; cardId: string; count: number } | { status: 'error'; error: string } => {
+      const id =
+        cardId && registry.current[cardId]
+          ? cardId
+          : Object.entries(registry.current)
+              .sort((a, b) => b[1].order - a[1].order)
+              .find(([key]) => registry.current[key].groups.length)?.[0];
+      if (!id) {
+        return { status: 'error', error: 'There is no Post Preview card to attach to.' };
+      }
+      const groups = registry.current[id].groups.filter(
+        (_, index) => groupIndex === undefined || index === groupIndex
+      );
+      if (!groups.length) {
+        return { status: 'error', error: 'That card has no such post.' };
+      }
+      for (const group of groups) {
+        const current = group.posts[0]?.attachments || [];
+        setCardMedia(id, group.key, replace ? attachments : [...current, ...attachments]);
+      }
+      return { status: 'attached', cardId: id, count: groups.length };
+    },
+    [setCardMedia]
+  );
+
+  useCopilotAction({
+    name: 'attachToCard',
+    description:
+      "Put media (an image from generateImageTool or the media library) on a Post Preview card shown earlier, in place: the card's preview updates and a later schedule uses it. Use this to change or add a card's image instead of calling manualPosting again. cardId defaults to the latest card; groupIndex to every post on the card. Returns {status:'attached', cardId, count} or {status:'error', error}.",
+    parameters: [
+      {
+        name: 'attachments',
+        type: 'string',
+        description:
+          'ONE JSON array string of {id, path} media library items, e.g. [{"id":"...","path":"https://..."}]',
+      },
+      {
+        name: 'cardId',
+        type: 'string',
+        description: 'The cardId manualPosting returned. Defaults to the latest card.',
+        required: false,
+      },
+      {
+        name: 'groupIndex',
+        type: 'number',
+        description: 'Which post on the card (0-based). Omit for all of them.',
+        required: false,
+      },
+      {
+        name: 'replace',
+        type: 'boolean',
+        description: 'true replaces the current attachments (default); false adds to them.',
+        required: false,
+      },
+    ],
+    handler: async ({ attachments, cardId, groupIndex, replace }) => {
+      let list: { id: string; path: string }[] = [];
+      try {
+        const parsed = JSON.parse(String(attachments || '[]'));
+        list = (Array.isArray(parsed) ? parsed : []).filter(
+          (a) => a && typeof a.id === 'string' && typeof a.path === 'string'
+        );
+      } catch {
+        return { status: 'error', error: 'attachments must be a JSON array of {id, path}.' };
+      }
+      if (!list.length) {
+        return { status: 'error', error: 'attachments is empty; pass {id, path} items from the media library.' };
+      }
+      return attachToCard(
+        cardId || undefined,
+        typeof groupIndex === 'number' ? groupIndex : undefined,
+        list,
+        replace !== false
+      );
+    },
+  });
+
+  // Every backend tool the agent calls, as a step line; a generated image
+  // as a card the person can put on the Post Preview.
   useCopilotAction({
     name: '*',
-    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
-      <ToolStep name={name} status={status} args={args} result={result} />
-    ),
+    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) =>
+      name === 'generateImageTool' ? (
+        <AgentImageCard
+          args={args}
+          status={status}
+          result={result}
+          onAdd={(media) => attachToCard(undefined, undefined, [media], true)}
+        />
+      ) : (
+        <ToolStep name={name} status={status} args={args} result={result} />
+      ),
   });
 
   return (
     <CardsContext.Provider value={{ register, registry, registered }}>
       {children}
     </CardsContext.Provider>
+  );
+};
+
+/**
+ * The image generateImageTool made, on the Copilot page: at its real shape,
+ * with Add to card (the latest Post Preview) and Regenerate. The model gets
+ * the same {id, path} and usually attaches it itself; this is the person's
+ * hand on the same lever.
+ */
+const AgentImageCard: FC<{
+  args?: { prompt?: string; style?: string; orientation?: string };
+  status: string;
+  result?: unknown;
+  onAdd: (media: { id: string; path: string }) => { status: string; error?: string };
+}> = ({ args, status, result, onAdd }) => {
+  const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const { media: cardMedia } = useContext(PropertiesContext);
+  const { registry } = useContext(CardsContext);
+  const parsed = status === 'complete' ? parseResult(result) : null;
+  const fromTool =
+    parsed && typeof parsed === 'object' && 'path' in parsed && (parsed as any).path
+      ? { id: String((parsed as any).id || ''), path: String((parsed as any).path) }
+      : null;
+  const [media, setMedia] = useState<{ id: string; path: string } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
+  const current = media || fromTool;
+  // On a card already, whether the model attached it (manualPosting's
+  // arguments, attachToCard) or the person did: the same "Added to card".
+  const onCard =
+    !!current &&
+    (Object.values(cardMedia).some((groups) =>
+      Object.values(groups).some((list) => list.some((m) => m.id === current.id))
+    ) ||
+      Object.values(registry.current).some((card) =>
+        card.groups.some((group) =>
+          group.posts.some((post) => post.attachments.some((a) => a.id === current.id))
+        )
+      ));
+  const error =
+    failed ||
+    (parsed && typeof parsed === 'object' && 'error' in parsed
+      ? String((parsed as any).error)
+      : undefined);
+  const regenerate = async () => {
+    setBusy(true);
+    setFailed(null);
+    try {
+      const response = await fetch('/media/generate-image-with-prompt', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: `
+<!-- description -->
+${args?.prompt || ''}
+<!-- /description -->
+
+<!-- style -->
+${args?.style || 'Realistic'}
+<!-- /style -->
+`,
+          ...(args?.orientation ? { orientation: args.orientation } : {}),
+        }),
+      });
+      const image: any = await response.json().catch((): null => null);
+      if (response.ok && image?.id && image?.path) {
+        setMedia({ id: image.id, path: image.path });
+        setAdded(false);
+      } else {
+        setFailed(
+          image === false
+            ? t('ai_credits_exhausted', 'You are out of AI credits for this month.')
+            : typeof image?.message === 'string'
+            ? image.message
+            : t('ai_generation_failed', 'AI generation failed, please try again later.')
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <GeneratedMediaCard
+      prompt={args?.prompt || ''}
+      style={args?.style}
+      orientation={args?.orientation}
+      status={
+        busy || status !== 'complete'
+          ? 'generating'
+          : error || !current
+          ? 'failed'
+          : 'ready'
+      }
+      media={current || undefined}
+      error={error}
+      used={added || onCard ? 'added' : undefined}
+      useLabel={t('add_to_card', 'Add to card')}
+      onUse={() => {
+        if (!current) {
+          return;
+        }
+        const outcome = onAdd(current);
+        if (outcome.status === 'attached') {
+          setAdded(true);
+        } else {
+          toaster.show(outcome.error || t('ai_generation_failed', 'AI generation failed, please try again later.'), 'warning');
+        }
+      }}
+      onRegenerate={regenerate}
+      busy={busy}
+    />
   );
 };
 
@@ -1158,23 +1381,41 @@ const DraftPreview: FC<{
   result?: unknown;
 }> = ({ args, status, result }) => {
   const t = useT();
-  const { cards, setCardOutcome } = useContext(PropertiesContext);
+  const { cards, setCardOutcome, media, setCardMedia, allChannels } =
+    useContext(PropertiesContext);
   const { userTurns } = useContext(LiveChatContext);
   // The context value changes on every registration, so this re-renders
   // when a later card for the same request appears (the registry is a ref).
   const { register, registry } = useContext(CardsContext);
   const { execute, openComposer } = useDraftActions();
+  const openImageModal = useAiImageModal();
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const groups = useMemo(
-    () => groupDraftItems(args?.list, status === 'inProgress'),
-    [args?.list, status]
-  );
   const parsed = status === 'complete' ? parseResult(result) : null;
   const legacy = typeof parsed === 'string';
   const cardId =
     parsed && typeof parsed === 'object' && 'cardId' in parsed
       ? parsed.cardId
       : undefined;
+  // Attachments put on the card after it was drawn ride over the tool
+  // call's arguments, per group key: applied after grouping, because the
+  // key hashes the arguments and a saved outcome hangs on it.
+  const overlay = cardId ? media[cardId] : undefined;
+  const groups = useMemo(() => {
+    const drawn = groupDraftItems(args?.list, status === 'inProgress');
+    if (!overlay) {
+      return drawn;
+    }
+    return drawn.map((group) =>
+      overlay[group.key]
+        ? {
+            ...group,
+            posts: group.posts.map((post, index) =>
+              index === 0 ? { ...post, attachments: overlay[group.key] } : post
+            ),
+          }
+        : group
+    );
+  }, [args?.list, status, overlay]);
   const state: AgentDraftCardState = legacy
     ? 'legacy'
     : status === 'inProgress'
@@ -1265,6 +1506,21 @@ const DraftPreview: FC<{
             ? { status: 'composer', at: new Date().toISOString() }
             : null
         )
+      }
+      onChangeImage={
+        cardId
+          ? (group) =>
+              openImageModal((image) => setCardMedia(cardId, group.key, [image]), {
+                orientation: imageOrientationForPlatforms(
+                  group.integrationIds
+                    .map((id) => allChannels.find((c) => c.id === id)?.identifier)
+                    .filter((p): p is string => !!p)
+                ),
+              })
+          : undefined
+      }
+      onRemoveImage={
+        cardId ? (group) => setCardMedia(cardId, group.key, []) : undefined
       }
     />
   );
