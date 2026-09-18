@@ -1314,7 +1314,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 : 'flex min-w-0 flex-1 items-center ps-[20px]'
             )}
           >
-            {!dummy && !publishedView && !compactFooter && (
+            {!dummy && !compactFooter && !publishedView && (
               <div data-pq="composer-footer-tag" className="shrink-0">
                 <TagsComponent
                   name="tags"
@@ -1387,13 +1387,15 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               phoneFlow && 'flex-row'
             )}
           >
-            {!phoneFlow &&
-              (!compactFooter || !hasChannels) &&
-              (publishedView ? (
-                <ComposePublishedAt date={date} />
-              ) : (
-                <ComposeWhen date={date} onChange={setDate} />
-              ))}
+            {!phoneFlow && (!compactFooter || !hasChannels) && (
+              <>
+                {publishedView ? (
+                  <ComposePublishedAt date={date} />
+                ) : (
+                  <ComposeWhen date={date} onChange={setDate} />
+                )}
+              </>
+            )}
             {!phoneFlow && existingData?.integration && (
               <button
                 onClick={deletePost}
