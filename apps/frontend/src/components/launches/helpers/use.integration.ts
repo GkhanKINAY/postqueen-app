@@ -14,6 +14,8 @@ export type IntegrationContextType = {
     image?: Array<{
       path: string;
       id: string;
+      /** A video's poster, when it has one. */
+      thumbnail?: string;
     }>;
   }>;
 };

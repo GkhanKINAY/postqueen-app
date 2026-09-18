@@ -1,5 +1,5 @@
 import { Button } from '@gitroom/react/form/button';
-import React, { FC, useCallback, useState } from 'react';
+import React, { FC, useCallback, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -15,17 +15,28 @@ import { createPortal } from 'react-dom';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import {
+  isVideoJobStart,
+  useStartVideo,
+  useVideoStartFailureCopy,
+} from '@gitroom/frontend/components/media/use.generate.video';
+import {
+  useVideoJobResult,
+  VideoJobMedia,
+} from '@gitroom/frontend/components/media/video.job.card';
 
 export const Modal: FC<{
   close: () => void;
   type: any;
   setLoading: (loading: boolean) => void;
-  onChange: (params: { id: string; path: string }) => void;
+  /** The job was started; the opener follows it to the video. */
+  onStarted: (jobId: string) => void;
 }> = (props) => {
-  const { type, onChange, close, setLoading } = props;
+  const { type, onStarted, close, setLoading } = props;
   const t = useT();
   const fetch = useFetch();
-  const setLocked = useLaunchStore((state) => state.setLocked);
+  const startVideo = useStartVideo();
+  const startFailureCopy = useVideoStartFailureCopy();
   const form = useForm();
   const [position, setPosition] = useState('vertical');
   const [submitting, setSubmitting] = useState(false);
@@ -116,30 +127,27 @@ export const Modal: FC<{
       return;
     }
 
-    close();
-    setLocked(true);
-
+    // Start the job and hand it to the opener: the request returns at once
+    // with a job id instead of staying open for the minutes a provider
+    // takes, which proxies cut and a closed tab lost.
     try {
-      const response = await fetch(`/media/generate-video`, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: type.identifier,
-          output: position,
-          customParams,
-        }),
-      });
-
-      const video = await response.json();
-      if (response.ok && video?.id) {
-        onChange(video);
-      } else {
-        fail(video);
+      const started = await startVideo(
+        type.identifier,
+        position as 'vertical' | 'horizontal',
+        customParams
+      );
+      if (isVideoJobStart(started)) {
+        close();
+        onStarted(started.jobId);
+        return;
+      }
+      if (started.reason !== 'cancelled') {
+        toaster.show(startFailureCopy(started), 'warning');
       }
     } catch (e) {
       fail();
     }
-
-    setLocked(false);
+    setSubmitting(false);
     setLoading(false);
   }, [
     submitting,
@@ -149,9 +157,11 @@ export const Modal: FC<{
     fetch,
     fail,
     close,
-    onChange,
+    onStarted,
     setLoading,
-    setLocked,
+    startVideo,
+    startFailureCopy,
+    toaster,
   ]);
 
   return (
@@ -223,9 +233,9 @@ const AiVideoModal: FC<{
   list: any[];
   close: () => void;
   setLoading: (loading: boolean) => void;
-  onChange: (params: { id: string; path: string }) => void;
+  onStarted: (jobId: string) => void;
 }> = (props) => {
-  const { list, close, setLoading, onChange } = props;
+  const { list, close, setLoading, onStarted } = props;
   const t = useT();
   const [type, setType] = useState<any | null>(
     list.length === 1 ? list[0] : null
@@ -266,7 +276,7 @@ const AiVideoModal: FC<{
       type={type}
       close={close}
       setLoading={setLoading}
-      onChange={onChange}
+      onStarted={onStarted}
     />
   );
 };
@@ -286,6 +296,35 @@ export const AiVideo: FC<{
   const fetch = useFetch();
   const modals = useModals();
   const canOpen = useOpenGuard();
+  const toaster = useToaster();
+  const setLocked = useLaunchStore((state) => state.setLocked);
+  // The job the modal started. The button spins while it runs and the video
+  // is attached when it lands; the editor stays usable in between.
+  const [jobId, setJobId] = useState<string | undefined>(undefined);
+  const onReady = useCallback(
+    (media: VideoJobMedia) => {
+      onChange(media);
+      toaster.show(t('video_ready', 'Video ready and added to the post.'));
+      setJobId(undefined);
+      setLoading(false);
+    },
+    [onChange, toaster, t]
+  );
+  const onFailed = useCallback(
+    (failure: string) => {
+      toaster.show(failure, 'warning');
+      setJobId(undefined);
+      setLoading(false);
+    },
+    [toaster]
+  );
+  useVideoJobResult(jobId, { onReady, onFailed });
+  useEffect(() => {
+    // The channel picker stays dimmed while a video is on the way, as it was
+    // for the sync call: the video lands on the editor that asked for it.
+    setLocked(!!jobId);
+    return () => setLocked(false);
+  }, [jobId, setLocked]);
 
   const loadVideoList = useCallback(async () => {
     const options = await (await fetch('/media/video-options')).json();
@@ -327,13 +366,13 @@ export const AiVideo: FC<{
       children: (close) => (
         <AiVideoModal
           list={data || []}
-          onChange={onChange}
+          onStarted={setJobId}
           setLoading={setLoading}
           close={close}
         />
       ),
     });
-  }, [loading, isLoading, canOpen, data, onChange, modals, t]);
+  }, [loading, isLoading, canOpen, data, modals, t]);
 
   return (
     <div className="relative">

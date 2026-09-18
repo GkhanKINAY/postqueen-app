@@ -1,7 +1,9 @@
 'use client';
 
-import { FC } from 'react';
+import React, { createContext, FC, useContext } from 'react';
 import clsx from 'clsx';
+import { useLazyToolRenderer } from '@copilotkit/react-core';
+import { AssistantMessageProps } from '@copilotkit/react-ui';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
@@ -10,6 +12,36 @@ import {
   FEED_PREVIEW_MAX_WH,
   FEED_PREVIEW_MIN_WH,
 } from '@gitroom/frontend/components/new-launch/preview-media-aspect';
+
+/**
+ * The live message list of a chat, from the one `useCopilotChatInternal`
+ * call each surface makes in a component that stays mounted (the hook
+ * connects on mount and detaches the run on unmount).
+ */
+export const LiveMessagesContext = createContext<{ messages: any[] }>({
+  messages: [],
+});
+
+/**
+ * react-ui draws only the first tool call of a message as generative UI;
+ * the Mastra bridge hangs every call of a turn on the same message, so the
+ * rest (a card after a lookup, the steps around it) are drawn by the
+ * surface's AssistantMessage through this, each with a message that holds
+ * just that call. Without it a video card that follows the generator lookup
+ * never appears.
+ */
+export const useExtraToolCalls = (props: AssistantMessageProps) => {
+  const { messages } = useContext(LiveMessagesContext);
+  const lazyRenderer = useLazyToolRenderer();
+  const message = props.message as {
+    toolCalls?: { id: string; function: { name: string } }[];
+  };
+  return (message?.toolCalls || []).slice(1).map((toolCall) => (
+    <React.Fragment key={toolCall.id}>
+      {lazyRenderer({ ...(props.message as any), toolCalls: [toolCall] }, messages)?.()}
+    </React.Fragment>
+  ));
+};
 
 /** A tool result as the runtime hands it over: an object, or JSON in a string. */
 export const parseToolResult = <T,>(result: unknown): T | string | null => {
@@ -54,13 +86,13 @@ export const ToolStep: FC<{
     analyticsPostsTool: t('copilot_step_analytics', 'Reading analytics'),
     analyticsPostTool: t('copilot_step_analytics', 'Reading analytics'),
     generateImageTool: t('copilot_step_image', 'Generating image'),
-    generateVideoOptions: t('copilot_step_video', 'Generating video'),
-    videoFunctionTool: t('copilot_step_video', 'Generating video'),
+    generateVideoOptions: t('copilot_step_video_options', 'Checking video generators'),
+    videoFunctionTool: t('copilot_step_video_options', 'Checking video generators'),
     generateVideoTool: t('copilot_step_video', 'Generating video'),
     videoStatusTool: t('copilot_step_video', 'Generating video'),
     uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
     publishFromCard: t('copilot_step_card', 'Updating the card'),
-    attachToCard: t('copilot_step_card_image', 'Updating the card image'),
+    attachToCard: t('copilot_step_card_image', 'Updating the card media'),
   };
   const label = labels[name] || t('copilot_step_working', 'Working');
   const done = status === 'complete';

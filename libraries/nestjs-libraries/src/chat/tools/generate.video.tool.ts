@@ -2,15 +2,7 @@ import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.in
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { HttpException, Injectable } from '@nestjs/common';
-import {
-  IntegrationManager,
-  socialIntegrationList,
-} from '@gitroom/nestjs-libraries/integrations/integration.manager';
-import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
-import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { timer } from '@gitroom/helpers/utils/timer';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
-import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 
@@ -34,21 +26,25 @@ export class GenerateVideoTool implements AgentToolInterface {
           openWorldHint: true,
         },
       },
-      description: `Generate video to use in a post,
-                    in case the user specified a platform that requires attachment and attachment was not provided,
-                    ask if they want to generate a picture of a video.
-                    In many cases 'videoFunctionTool' will need to be called first, to get things like voice id
-                    Generating takes a few minutes, so this only starts the generation and returns a jobId:
-                    poll 'videoStatusTool' with it until the status is "completed" to get the video url.
-                    Here are the type of video that can be generated:
+      description: `Start generating a video for a post. Call generateVideoOptions first for the identifiers and the customParams each generator needs; when a generator lists tools, get those values with videoFunctionTool.
+                    Generating takes minutes and uses one video credit, so this only starts the job and returns a jobId.
+                    In the PostQueen app the chat shows the job as a card that waits for the result: reply with one short sentence (never the job id) and stop; do not poll.
+                    Over MCP or an API client, poll videoStatusTool with the jobId until the status is completed to get the video url.
+                    Available generators:
                     ${this._videoManager
                       .getAllVideos()
-                      .map((p) => "-" + p.title)
+                      .map((p) => `- ${p.identifier}: ${p.title}`)
                       .join('\n')}
       `,
       inputSchema: z.object({
-        identifier: z.string(),
-        output: z.enum(['vertical', 'horizontal']),
+        identifier: z
+          .string()
+          .describe('The generator identifier from generateVideoOptions'),
+        output: z
+          .enum(['vertical', 'horizontal'])
+          .describe(
+            'vertical for Reels, Stories, TikTok and Shorts; horizontal for X, LinkedIn, YouTube and Facebook'
+          ),
         customParams: z.array(
           z.object({
             key: z.string().describe('Name of the settings key to pass'),

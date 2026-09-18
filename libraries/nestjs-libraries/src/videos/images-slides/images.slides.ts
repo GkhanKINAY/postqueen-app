@@ -41,13 +41,15 @@ async function getAudioDuration(buffer: Buffer): Promise<number> {
 
 class ImagesSlidesParams {
   @JSONSchema({
-    description: 'Elevenlabs voice id, use a special tool to get it, this is a required filed',
+    description:
+      'An ElevenLabs voice id from the loadVoices helper (videoFunctionTool). Required.',
   })
   @IsString()
   voice: string;
 
   @JSONSchema({
-    description: 'Simple string of the prompt, not a json',
+    description:
+      'What the video should say and show, as plain text: the narration is written from it and each sentence becomes a slide with a generated image. Not JSON.',
   })
   @IsString()
   prompt: string;

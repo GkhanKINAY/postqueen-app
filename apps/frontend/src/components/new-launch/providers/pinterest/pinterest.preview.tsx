@@ -149,6 +149,11 @@ export const PinterestPreview: FC<{
             videoClassName="w-full aspect-[calc(16/9)] bg-black"
             autoplay={true}
             src={mediaDir.set(renderContent?.[0]?.images?.[0]?.path || '')}
+            poster={
+              renderContent?.[0]?.images?.[0]?.thumbnail
+                ? mediaDir.set(renderContent[0].images[0].thumbnail)
+                : undefined
+            }
           />
         )}
       </div>

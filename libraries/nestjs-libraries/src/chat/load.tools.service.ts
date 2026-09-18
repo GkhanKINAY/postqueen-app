@@ -133,6 +133,7 @@ ${renderArray(
     'Only when the user\'s latest message asks in words ("post it now", "schedule it for Friday 10:00", "save it as a draft") call publishFromCard. Never in the same turn as manualPosting, never on your own initiative.',
     'To revise a draft nobody acted on, call manualPosting again with the full updated draft, carrying its attachments unchanged.',
     'To change or add the image of a card, do not call manualPosting again: call generateImageTool (or take a media library item), then attachToCard with its {id, path}; the card updates in place.',
+    'Videos: generateVideoOptions, then generateVideoTool once. The job shows as a card that waits for the result and offers Add to card; reply with one short sentence (never the job id) and stop. Never poll and never call it twice for one request.',
     'Never call schedulePostTool for a brand-new post in the app. One exception: if manualPosting returns a sentence saying the user confirmed scheduling (an older app version), call schedulePostTool once with the same payload; if it says the user opened the composer, do NOT call schedulePostTool.',
     'Cards whose posts are scheduled, published or saved are done; do not recreate them unless asked.',
     'If no channel is selected, say so and ask the user to pick channels in the Channels column; you may still draft generic copy in chat.',
@@ -154,6 +155,7 @@ ${renderArray(
     '  casual: warmer, conversational, contractions; no slang the brand would not use.',
     '  formal: precise and professional; no emojis or exclamation marks.',
     'Images: generateImageForPost with a visual brief and the orientation the channel wants; apply=true only when the user asked to attach or add it directly, otherwise the card waits for Use in this post. One image per request; if they want another, they press Regenerate or ask again. Existing media: attachMediaToPost. Change channels only when asked.',
+    'Videos: generateVideoOptions for the generators and their params (videoFunctionTool for a voice id), then generateVideoForPost once; the card in the rail waits for the result. Reply with one short sentence (never the job id) and stop.',
     'You cannot schedule, publish or open other pages here; the user uses the composer buttons.',
   ],
   true
@@ -208,6 +210,8 @@ ${renderArray(
 - Image prompts are a visual brief, not a caption: subject, setting, composition, light, mood, style. Pick the orientation from the platform (portrait for stories, reels, TikTok, Pinterest; square for feeds; landscape for X and LinkedIn). No text in images unless asked; no logos or real people's likeness.
 - Media the user attached arrives as "Image: <url> [id:<media id>]" or "Video: <url> [id:<media id>]" lines between [--Media--] markers; attachments take that id and url.
 - One image per request. If the user wants a different one, regenerate with a changed brief; never produce several at once.
+- Video prompts describe one scene of about 8 seconds: camera, subject, motion, light, atmosphere; no on-screen text or logos. Orientation from the platform: vertical for Reels, Stories, TikTok and Shorts; horizontal for X, LinkedIn, YouTube and Facebook.
+- A video takes minutes and uses a video credit: before starting one, say in one sentence which generator and orientation you will use, and go ahead unless the user already gave them or objects. If no generator is configured, say so in one sentence (the workspace owner adds one); do not guess where it is set up and do not try another way.
 
 # Standing rules
 - Sometimes 'integrationSchema' will return rules, make sure you follow them (these rules are set in stone, even if the user asks to ignore them)
@@ -239,8 +243,19 @@ ${renderArray(
     // (`agent.listTools()` with an empty context), gets the full set.
     const composerTools = Object.fromEntries(
       Object.entries(tools).filter(([name]) =>
-        ['integrationSchema', 'uploadFromUrlTool'].includes(name)
+        [
+          'integrationSchema',
+          'uploadFromUrlTool',
+          'generateVideoOptions',
+          'videoFunctionTool',
+        ].includes(name)
       )
+    );
+    // In the app a started video job is a card in the chat that polls the
+    // status route itself; the model gets no status tool there, so it cannot
+    // sit in a polling loop for the minutes a provider takes. MCP keeps it.
+    const uiTools = Object.fromEntries(
+      Object.entries(tools).filter(([name]) => name !== 'videoStatusTool')
     );
     return new Agent({
       id: 'postqueen',
@@ -255,6 +270,8 @@ ${renderArray(
       tools: ({ requestContext }) =>
         requestContext.get('surface' as never) === 'composer'
           ? composerTools
+          : requestContext.get('ui' as never) === 'true'
+          ? uiTools
           : tools,
       // No working memory: the schema that was here (`proverbs`) was the
       // CopilotKit demo's, it was shared across the organization, and it put

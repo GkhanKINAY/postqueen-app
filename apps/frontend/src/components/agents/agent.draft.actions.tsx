@@ -34,7 +34,11 @@ const postsPayload = (group: AgentDraftGroup, postGroup: string) =>
     value: group.posts.map((post) => ({
       content: post.content,
       delay: 0,
-      image: post.attachments.map((a) => ({ id: a.id, path: a.path })),
+      image: post.attachments.map((a) => ({
+        id: a.id,
+        path: a.path,
+        ...(a.thumbnail ? { thumbnail: a.thumbnail } : {}),
+      })),
     })),
   }));
 

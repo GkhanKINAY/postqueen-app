@@ -6,6 +6,7 @@ import { useFormContext } from 'react-hook-form';
 import { Button } from '@gitroom/react/form/button';
 import clsx from 'clsx';
 import { useVideo } from '@gitroom/frontend/components/videos/video.context.wrapper';
+import { Textarea } from '@gitroom/react/form/textarea';
 
 export interface Voices {
   voices: Voice[];
@@ -23,11 +24,6 @@ const VoiceSelector: FC = () => {
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { value } = useVideo();
-
-  register('prompt', {
-    value,
-  });
 
   const loadVideos = useCallback(() => {
     return videoFunction('loadVoices', {});
@@ -165,8 +161,27 @@ const VoiceSelector: FC = () => {
   );
 };
 
+// The prompt is what the narration and the slides are written from. It used
+// to be registered with no field to type into, so every slides video was
+// generated from an empty string.
 const ImageSlidesComponent = () => {
-  return <VoiceSelector />;
+  const { register, formState } = useFormContext();
+  const { value } = useVideo();
+  return (
+    <div>
+      <Textarea
+        label="Prompt"
+        name="prompt"
+        {...register('prompt', {
+          required: true,
+          minLength: 5,
+          value,
+        })}
+        error={formState?.errors?.prompt?.message}
+      />
+      <VoiceSelector />
+    </div>
+  );
 };
 
 videoWrapper('image-text-slides', ImageSlidesComponent);

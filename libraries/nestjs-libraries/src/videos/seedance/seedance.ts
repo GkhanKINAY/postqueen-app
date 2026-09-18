@@ -6,6 +6,7 @@ import {
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ArrayMaxSize, IsArray, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { JSONSchema } from 'class-validator-jsonschema';
 
 class Image {
   @IsString()
@@ -15,9 +16,17 @@ class Image {
   path: string;
 }
 class SeedanceParams {
+  @JSONSchema({
+    description:
+      'One scene of about 8 seconds as a visual brief: camera, subject, motion, light, atmosphere. Plain text, no JSON, no on-screen text or logos.',
+  })
   @IsString()
   prompt: string;
 
+  @JSONSchema({
+    description:
+      'Up to three reference images from the media library as {id, path}; an empty array for text to video.',
+  })
   @Type(() => Image)
   @ValidateNested({ each: true })
   @IsArray()

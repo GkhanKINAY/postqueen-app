@@ -30,7 +30,6 @@ import {
   useCopilotAction,
   useCopilotChatInternal,
   useCopilotReadable,
-  useLazyToolRenderer,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
@@ -76,9 +75,15 @@ import {
   useGenerateImageFailureCopy,
 } from '@gitroom/frontend/components/media/use.generate.image';
 import {
+  LiveMessagesContext,
   ToolStep,
   parseToolResult,
+  useExtraToolCalls,
 } from '@gitroom/frontend/components/agents/agent.tool.step';
+import {
+  VideoJobCard,
+  VideoJobMedia,
+} from '@gitroom/frontend/components/media/video.job.card';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
@@ -557,24 +562,8 @@ const LiveChatContext = createContext<{
  * thumbs controls — it is only wrapped, never replaced.
  */
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
-  const { messages } = useContext(LiveChatContext);
-  const lazyRenderer = useLazyToolRenderer();
-  const message = props.message as {
-    content?: unknown;
-    toolCalls?: { id: string; function: { name: string } }[];
-  };
-  // react-ui draws only the first tool call of a message as generative UI;
-  // the Mastra bridge hangs every call of a turn on the same message, so the
-  // rest (a second card, the steps around it) are drawn here, each through
-  // the same renderer with a message that holds just that call.
-  const rest = (message?.toolCalls || []).slice(1).map((toolCall) => (
-    <React.Fragment key={toolCall.id}>
-      {lazyRenderer(
-        { ...(props.message as any), toolCalls: [toolCall] },
-        messages
-      )?.()}
-    </React.Fragment>
-  ));
+  const message = props.message as { content?: unknown };
+  const rest = useExtraToolCalls(props);
   if (!message?.content) {
     return (
       <>
@@ -654,7 +643,9 @@ const AgentLiveBridge: FC<{
   const value = useMemo(() => ({ messages, userTurns }), [messages, userTurns]);
 
   return (
-    <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
+    <LiveMessagesContext.Provider value={value}>
+      <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
+    </LiveMessagesContext.Provider>
   );
 };
 
@@ -1054,7 +1045,7 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     (
       cardId: string | undefined,
       groupIndex: number | undefined,
-      attachments: { id: string; path: string }[],
+      attachments: { id: string; path: string; thumbnail?: string }[],
       replace: boolean
     ): { status: 'attached'; cardId: string; count: number } | { status: 'error'; error: string } => {
       const id =
@@ -1134,12 +1125,19 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   });
 
   // Every backend tool the agent calls, as a step line; a generated image
-  // as a card the person can put on the Post Preview.
+  // or a started video job as a card the person can put on the Post Preview.
   useCopilotAction({
     name: '*',
     render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) =>
       name === 'generateImageTool' ? (
         <AgentImageCard
+          args={args}
+          status={status}
+          result={result}
+          onAdd={(media) => attachToCard(undefined, undefined, [media], true)}
+        />
+      ) : name === 'generateVideoTool' ? (
+        <AgentVideoCard
           args={args}
           status={status}
           result={result}
@@ -1154,6 +1152,27 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     <CardsContext.Provider value={{ register, registry, registered }}>
       {children}
     </CardsContext.Provider>
+  );
+};
+
+/**
+ * Whether a media item is on a Post Preview already, whether the model
+ * attached it (manualPosting's arguments, attachToCard) or the person did:
+ * the same "Added to card" either way.
+ */
+const useOnCard = (mediaId?: string) => {
+  const { media: cardMedia } = useContext(PropertiesContext);
+  const { registry } = useContext(CardsContext);
+  return (
+    !!mediaId &&
+    (Object.values(cardMedia).some((groups) =>
+      Object.values(groups).some((list) => list.some((m) => m.id === mediaId))
+    ) ||
+      Object.values(registry.current).some((card) =>
+        card.groups.some((group) =>
+          group.posts.some((post) => post.attachments.some((a) => a.id === mediaId))
+        )
+      ))
   );
 };
 
@@ -1173,8 +1192,6 @@ const AgentImageCard: FC<{
   const generateImage = useGenerateImage();
   const failureCopy = useGenerateImageFailureCopy();
   const toaster = useToaster();
-  const { media: cardMedia } = useContext(PropertiesContext);
-  const { registry } = useContext(CardsContext);
   const parsed = status === 'complete' ? parseResult(result) : null;
   const fromTool =
     parsed && typeof parsed === 'object' && 'path' in parsed && (parsed as any).path
@@ -1185,18 +1202,7 @@ const AgentImageCard: FC<{
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState(false);
   const current = media || fromTool;
-  // On a card already, whether the model attached it (manualPosting's
-  // arguments, attachToCard) or the person did: the same "Added to card".
-  const onCard =
-    !!current &&
-    (Object.values(cardMedia).some((groups) =>
-      Object.values(groups).some((list) => list.some((m) => m.id === current.id))
-    ) ||
-      Object.values(registry.current).some((card) =>
-        card.groups.some((group) =>
-          group.posts.some((post) => post.attachments.some((a) => a.id === current.id))
-        )
-      ));
+  const onCard = useOnCard(current?.id);
   const error =
     failed ||
     (parsed && typeof parsed === 'object' && 'error' in parsed
@@ -1246,6 +1252,62 @@ const AgentImageCard: FC<{
       }}
       onRegenerate={regenerate}
       busy={busy}
+    />
+  );
+};
+
+/**
+ * The video generateVideoTool started, on the Copilot page: the job card
+ * polls until the video lands, then Add to card puts it on the latest Post
+ * Preview. The model only learns the job id; the card is the person's side.
+ */
+const AgentVideoCard: FC<{
+  args?: {
+    identifier?: string;
+    output?: string;
+    customParams?: { key: string; value: unknown }[];
+  };
+  status: string;
+  result?: unknown;
+  onAdd: (media: VideoJobMedia) => { status: string; error?: string };
+}> = ({ args, status, result, onAdd }) => {
+  const t = useT();
+  const toaster = useToaster();
+  const parsed = status === 'complete' ? parseResult(result) : null;
+  const jobId =
+    parsed && typeof parsed === 'object' && typeof (parsed as any).jobId === 'string'
+      ? String((parsed as any).jobId)
+      : undefined;
+  const error =
+    parsed && typeof parsed === 'object' && (parsed as any).error
+      ? String((parsed as any).error)
+      : undefined;
+  const params = Array.isArray(args?.customParams) ? args.customParams : [];
+  const prompt = params.find((p) => p?.key === 'prompt')?.value;
+  const [media, setMedia] = useState<VideoJobMedia | null>(null);
+  const [added, setAdded] = useState(false);
+  const onCard = useOnCard(media?.id);
+  return (
+    <VideoJobCard
+      jobId={jobId}
+      error={error}
+      prompt={typeof prompt === 'string' ? prompt : args?.identifier || ''}
+      provider={args?.identifier}
+      orientation={args?.output}
+      used={added || onCard ? 'added' : undefined}
+      useLabel={t('add_to_card', 'Add to card')}
+      onReady={setMedia}
+      onUse={(video) => {
+        const outcome = onAdd(video);
+        if (outcome.status === 'attached') {
+          setAdded(true);
+        } else {
+          toaster.show(
+            outcome.error || t('ai_generation_failed', 'AI generation failed, please try again later.'),
+            'warning'
+          );
+        }
+      }}
     />
   );
 };

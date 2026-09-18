@@ -14,6 +14,8 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import clsx from 'clsx';
 import NextLink from 'next/link';
 import {
+  AssistantMessage as CopilotAssistantMessage,
+  AssistantMessageProps,
   CopilotChat,
   CopilotKitCSSProperties,
   InputProps,
@@ -25,15 +27,30 @@ import {
   CatchAllActionRenderProps,
   CopilotKit,
   useCopilotAction,
+  useCopilotChatInternal,
 } from '@copilotkit/react-core';
 import { GeneratedMediaCard } from '@gitroom/frontend/components/media/generated.media.card';
-import { ToolStep } from '@gitroom/frontend/components/agents/agent.tool.step';
+import {
+  LiveMessagesContext,
+  ToolStep,
+  useExtraToolCalls,
+} from '@gitroom/frontend/components/agents/agent.tool.step';
 import {
   GenerateImageFailure,
   isGeneratedImage,
   useGenerateImage,
   useGenerateImageFailureCopy,
 } from '@gitroom/frontend/components/media/use.generate.image';
+import {
+  isVideoJobStart,
+  useStartVideo,
+  useVideoStartFailureCopy,
+  VideoJobStartFailure,
+} from '@gitroom/frontend/components/media/use.generate.video';
+import {
+  VideoJobCard,
+  VideoJobMedia,
+} from '@gitroom/frontend/components/media/video.job.card';
 import { v4 as uuid } from 'uuid';
 import {
   useT,
@@ -228,8 +245,8 @@ const undoSnapshots = new Map<string, Values[]>();
  */
 const attachMedia = (
   index: number,
-  media: { id: string; path: string }[]
-): { id: string; path: string }[] => {
+  media: { id: string; path: string; thumbnail?: string }[]
+): { id: string; path: string; thumbnail?: string }[] => {
   const {
     current,
     internal,
@@ -254,7 +271,7 @@ const attachMedia = (
 
 const restoreMedia = (
   index: number,
-  snapshot: { id: string; path: string }[]
+  snapshot: { id: string; path: string; thumbnail?: string }[]
 ) => {
   const { current, internal, setGlobalValueMedia, setInternalValueMedia } =
     useLaunchStore.getState();
@@ -267,7 +284,7 @@ const restoreMedia = (
 
 const mediaUndoSnapshots = new Map<
   string,
-  { index: number; media: { id: string; path: string }[] }
+  { index: number; media: { id: string; path: string; thumbnail?: string }[] }
 >();
 
 const triggerClassName = (open: boolean) =>
@@ -379,6 +396,32 @@ const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
  * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
  * which this used to read, so it stayed up over the conversation.
  */
+/**
+ * The one place the rail watches the live chat, mounted exactly as long as
+ * the chat is (`useCopilotChatInternal` connects on mount and detaches the
+ * run on unmount), so every tool call of a turn can be drawn.
+ */
+const ComposerLiveBridge: FC<{ children: ReactNode }> = ({ children }) => {
+  const { messages } = useCopilotChatInternal();
+  const value = useMemo(() => ({ messages }), [messages]);
+  return (
+    <LiveMessagesContext.Provider value={value}>
+      {children}
+    </LiveMessagesContext.Provider>
+  );
+};
+
+/** The SDK's assistant message plus the tool calls it would not draw. */
+const ComposeAiAssistantMessage: FC<AssistantMessageProps> = (props) => {
+  const rest = useExtraToolCalls(props);
+  return (
+    <>
+      <CopilotAssistantMessage {...props} />
+      {rest}
+    </>
+  );
+};
+
 const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
   return (
     <div
@@ -865,10 +908,99 @@ const ComposerImageCard: FC<{
   );
 };
 
+type GeneratedVideoResult =
+  | { status: 'started'; jobId: string }
+  | { status: 'error'; error: string; failure?: VideoJobStartFailure };
+
+const videoFailureForModel = (failure: VideoJobStartFailure) =>
+  failure.reason === 'unavailable'
+    ? 'Video generation is not available on this installation.'
+    : failure.reason === 'cancelled'
+    ? 'The person cancelled the video generation.'
+    : failure.message || 'Could not start the video.';
+
+/** The brief inside the generator's customParams, for the card's first line. */
+const videoPrompt = (customParams?: string) => {
+  try {
+    const params = JSON.parse(customParams || '{}');
+    return typeof params?.prompt === 'string' ? params.prompt : '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * The video job in the rail. The card polls until the video lands; when the
+ * person asked for it on the post it is attached then (Undo puts the item's
+ * media back), otherwise it waits for Use in this post.
+ */
+const ComposerVideoCard: FC<{
+  args?: {
+    identifier?: string;
+    output?: string;
+    customParams?: string;
+    apply?: boolean;
+    index?: number;
+  };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const t = useT();
+  const failureCopy = useVideoStartFailureCopy();
+  const parsed = useMemo<GeneratedVideoResult | null>(() => {
+    if (result == null || status !== 'complete') {
+      return null;
+    }
+    try {
+      return typeof result === 'string' ? JSON.parse(result) : (result as GeneratedVideoResult);
+    } catch {
+      return null;
+    }
+  }, [result, status]);
+  const prompt = videoPrompt(args?.customParams);
+  const index = typeof args?.index === 'number' ? args.index : 0;
+  const [used, setUsed] = useState<{ undoKey: string } | null>(null);
+  const attach = (media: VideoJobMedia) => {
+    const key = makeId(8);
+    mediaUndoSnapshots.set(key, { index, media: attachMedia(index, [media]) });
+    setUsed({ undoKey: key });
+  };
+  const undo = () => {
+    const snapshot = used ? mediaUndoSnapshots.get(used.undoKey) : undefined;
+    if (snapshot) {
+      restoreMedia(snapshot.index, snapshot.media);
+      mediaUndoSnapshots.delete(used?.undoKey as string);
+    }
+    setUsed(null);
+  };
+  const error =
+    parsed?.status === 'error'
+      ? parsed.failure
+        ? failureCopy(parsed.failure)
+        : parsed.error
+      : undefined;
+
+  return (
+    <VideoJobCard
+      jobId={parsed?.status === 'started' ? parsed.jobId : undefined}
+      error={error}
+      prompt={prompt || args?.identifier || ''}
+      provider={args?.identifier}
+      orientation={args?.output}
+      used={used ? 'attached' : undefined}
+      useLabel={t('use_in_this_post', 'Use in this post')}
+      onReady={args?.apply ? attach : undefined}
+      onUse={attach}
+      onUndo={used ? undo : undefined}
+    />
+  );
+};
+
 const ComposeAiBindingsInner: FC = () => {
   const toaster = useToaster();
   const generateImage = useGenerateImage();
   const failureCopy = useGenerateImageFailureCopy();
+  const startVideo = useStartVideo();
   const setLocked = useLaunchStore((state) => state.setLocked);
 
   // The model's way of changing the post. It replaced the old `setPosts`,
@@ -1028,8 +1160,81 @@ const ComposeAiBindingsInner: FC = () => {
     ),
   });
 
-  // Backend tools the composer surface has (integrationSchema, uploadFromUrlTool)
-  // show as the same quiet step lines the Copilot page draws.
+  useCopilotAction({
+    name: 'generateVideoForPost',
+    description:
+      "Start generating ONE video for the post open in the composer, with a generator from generateVideoOptions. Returns {status:'started', jobId} (a card in the rail waits for the video; do not poll, do not call again) or {status:'error', error}. Reply with one short sentence and stop.",
+    parameters: [
+      {
+        name: 'identifier',
+        type: 'string',
+        description: 'The generator identifier from generateVideoOptions',
+        required: true,
+      },
+      {
+        name: 'output',
+        type: 'string',
+        description:
+          'vertical for Reels, Stories, TikTok and Shorts; horizontal for X, LinkedIn, YouTube and Facebook',
+        required: true,
+      },
+      {
+        name: 'customParams',
+        type: 'string',
+        description:
+          'ONE JSON object string with the customParams the generator lists (its prompt is a visual brief of one scene: camera, subject, motion, light, atmosphere)',
+        required: true,
+      },
+      {
+        name: 'apply',
+        type: 'boolean',
+        description:
+          'true when the user asked for the video on the post directly; false to wait for Use in this post.',
+        required: false,
+      },
+      {
+        name: 'index',
+        type: 'number',
+        description: 'Thread index, default 0',
+        required: false,
+      },
+    ],
+    handler: async ({ identifier, output, customParams }) => {
+      let params: Record<string, unknown> = {};
+      try {
+        params = JSON.parse(String(customParams || '{}'));
+      } catch {
+        return { status: 'error', error: 'customParams must be a JSON object string.' };
+      }
+      if (output !== 'vertical' && output !== 'horizontal') {
+        return { status: 'error', error: 'output must be vertical or horizontal.' };
+      }
+      const started = await startVideo(String(identifier || ''), output, params);
+      if (isVideoJobStart(started)) {
+        return { status: 'started', jobId: started.jobId };
+      }
+      return { status: 'error', error: videoFailureForModel(started), failure: started };
+    },
+    render: ({ args, status, result }) => (
+      <ComposerVideoCard
+        args={
+          args as {
+            identifier?: string;
+            output?: string;
+            customParams?: string;
+            apply?: boolean;
+            index?: number;
+          }
+        }
+        status={status}
+        result={result}
+      />
+    ),
+  });
+
+  // Backend tools the composer surface has (integrationSchema, uploadFromUrlTool,
+  // generateVideoOptions, videoFunctionTool) show as the same quiet step
+  // lines the Copilot page draws.
   useCopilotAction({
     name: '*',
     render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
@@ -1209,17 +1414,20 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
       {aiOk ? (
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">
-            <CopilotChat
-              className="h-full w-full"
-              suggestions={suggestions}
-              RenderSuggestionsList={ComposeAiSuggestionList}
-              Input={ComposeAiInput}
-              UserMessage={ComposeAiUserMessage}
-              labels={{
-                title: label,
-                placeholder: t('write_something', 'Write something …'),
-              }}
-            />
+            <ComposerLiveBridge>
+              <CopilotChat
+                className="h-full w-full"
+                suggestions={suggestions}
+                RenderSuggestionsList={ComposeAiSuggestionList}
+                Input={ComposeAiInput}
+                UserMessage={ComposeAiUserMessage}
+                AssistantMessage={ComposeAiAssistantMessage}
+                labels={{
+                  title: label,
+                  placeholder: t('write_something', 'Write something …'),
+                }}
+              />
+            </ComposerLiveBridge>
           </div>
           <ComposeAiEmptyOverlay
             tip={t(

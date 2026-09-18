@@ -489,7 +489,10 @@ export const MultiMediaComponent: FC<{
                   >
                     <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
                       {hasExtension(media?.path, 'mp4') ? (
-                        <VideoFrame url={mediaDirectory.set(media?.path)} />
+                        <VideoFrame
+                          url={mediaDirectory.set(media?.path)}
+                          poster={(media as { thumbnail?: string }).thumbnail}
+                        />
                       ) : (
                         <img
                           className="h-full w-full object-cover"
@@ -787,6 +790,7 @@ export const MediaComponent: FC<{
     path: string;
     id: string;
     alt?: string;
+    thumbnail?: string;
   };
   name: string;
   onChange: (event: {
@@ -928,7 +932,10 @@ export const MediaComponent: FC<{
           >
             <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
               {hasExtension(currentMedia.path, 'mp4') ? (
-                <VideoFrame url={mediaDirectory.set(currentMedia.path)} />
+                <VideoFrame
+                  url={mediaDirectory.set(currentMedia.path)}
+                  poster={currentMedia.thumbnail}
+                />
               ) : (
                 <img
                   className="h-full w-full object-cover"

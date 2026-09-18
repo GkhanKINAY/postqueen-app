@@ -53,6 +53,26 @@ export class MediaController {
     return this._mediaService.generateVideo(org, body);
   }
 
+  // The app's own path to a video: start the job the MCP tools already use
+  // and poll it, instead of holding one request open for the minutes a
+  // provider takes (the sync route above outlived proxies and lost the
+  // result on a reload).
+  @Post('/generate-video/start')
+  startGenerateVideo(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: VideoDto
+  ) {
+    return this._mediaService.startGenerateVideo(org, body);
+  }
+
+  @Get('/generate-video/status/:jobId')
+  generateVideoStatus(
+    @GetOrgFromRequest() org: Organization,
+    @Param('jobId') jobId: string
+  ) {
+    return this._mediaService.getGenerateVideoStatus(org, jobId);
+  }
+
   @Post('/generate-image')
   async generateImage(
     @GetOrgFromRequest() org: Organization,

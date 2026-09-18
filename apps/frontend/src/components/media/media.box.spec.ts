@@ -18,11 +18,26 @@ describe('Media library thumbnails', () => {
   it('crops the drop-zone and picker grids with object-cover', () => {
     assert.match(source, /data-pq="media-grid"/);
     assert.match(source, /data-pq="media-library-grid"/);
+    // Two real thumbs plus the uploading tile's skeleton, which fills the
+    // same frame so the grid does not shift when the file lands.
     assert.equal(
       source.split('className={MEDIA_LIBRARY_THUMB_FILL}').length - 1,
-      2
+      3
     );
     assert.match(source, /className="h-full w-full object-cover"/);
+  });
+
+  it('shows a file on its way in as a tile with its percentage, in both grids', () => {
+    assert.match(source, /data-pq="media-uploading"/);
+    assert.match(source, /uppy\.on\('upload-progress', progress\)/);
+    assert.match(source, /uppy\.off\('upload-progress', progress\)/);
+    assert.equal(source.split('<UploadingTile key={upload.id}').length - 1, 2);
+    // The empty state waits for uploads too, and the tiles clear once the
+    // list has been refetched, not before.
+    assert.match(source, /visibleMedia\.length === 0 && uploads\.length === 0/);
+    assert.match(source, /await mutate\(\);\n\s+setUploads\(\[\]\)/);
+    // A video tile draws its saved poster instead of a grey frame.
+    assert.match(source, /poster=\{media\.thumbnail \? mediaDirectory\.set\(media\.thumbnail\) : undefined\}/);
   });
 
   it('lets the composer picker fill two full square rows instead of a 264px cap', () => {

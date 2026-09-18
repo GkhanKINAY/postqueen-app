@@ -9,6 +9,8 @@ export const VideoOrImage: FC<{
   isContain?: boolean;
   imageClassName?: string;
   videoClassName?: string;
+  /** The frame a video shows before it plays; without one it sits grey. */
+  poster?: string;
   onMediaReady?: (width: number, height: number) => void;
 }> = (props) => {
   const {
@@ -17,6 +19,7 @@ export const VideoOrImage: FC<{
     isContain,
     imageClassName,
     videoClassName,
+    poster,
     onMediaReady,
   } = props;
   const ready = (width: number, height: number) => {
@@ -26,6 +29,7 @@ export const VideoOrImage: FC<{
     return (
       <video
         src={src}
+        poster={poster || undefined}
         autoPlay={autoplay}
         playsInline
         className={clsx(

@@ -54,6 +54,8 @@ export const PreviewMediaFrame: FC<{
   aspectWH?: number;
   className?: string;
   autoplay?: boolean;
+  /** A video's poster, so the frame is not grey before it plays. */
+  poster?: string;
   onAspect?: (ratio: number) => void;
 }> = ({
   src,
@@ -63,6 +65,7 @@ export const PreviewMediaFrame: FC<{
   aspectWH,
   className,
   autoplay = true,
+  poster,
   onAspect,
 }) => {
   const [ratio, setRatio] = useState(fallbackWH);
@@ -106,6 +109,7 @@ export const PreviewMediaFrame: FC<{
         <VideoOrImage
           autoplay={autoplay}
           src={src}
+          poster={poster}
           onMediaReady={aspectWH == null ? onMediaReady : undefined}
         />
       </PreviewLightboxButton>

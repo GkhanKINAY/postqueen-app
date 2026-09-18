@@ -5,6 +5,7 @@ export const useFormatting = (
     image?: Array<{
       id: string;
       path: string;
+      thumbnail?: string;
     }>;
     id?: string;
   }>,

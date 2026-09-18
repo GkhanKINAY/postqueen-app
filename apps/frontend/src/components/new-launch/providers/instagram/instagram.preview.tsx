@@ -110,6 +110,7 @@ export const InstagramPreview: FC<{
             <PreviewMediaFrame
               key={`image_${index}`}
               src={mediaDir.set(image.path)}
+              poster={image.thumbnail ? mediaDir.set(image.thumbnail) : undefined}
               minWH={range.minWH}
               maxWH={range.maxWH}
               fallbackWH={range.fallbackWH}
