@@ -39,6 +39,7 @@ import {
   ComposeAiAssistant,
   ComposeAiBindings,
   ComposeAiRail,
+  ComposerCopilotProvider,
   CopilotMark,
   StudioRail,
   StudioRailProvider,
@@ -794,6 +795,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   );
 
   return (
+    <ComposerCopilotProvider>
     <StudioRailProvider rail={studioRail} setRail={setRail}>
     <div
       id="add-edit-modal"
@@ -1502,6 +1504,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       </div>
     </div>
     </StudioRailProvider>
+    </ComposerCopilotProvider>
   );
 };
 

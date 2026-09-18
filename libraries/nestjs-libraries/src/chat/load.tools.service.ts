@@ -231,13 +231,26 @@ ${renderArray(
 
   async agent() {
     const tools = await this.loadTools();
+    // Create Post edits one post through the app's own frontend tools
+    // (suggestPost, generateImageForPost, attachMediaToPost); the backend
+    // only lends it the platform rules and a way to bring an external URL
+    // into the media library. Everything else, including MCP
+    // (`agent.listTools()` with an empty context), gets the full set.
+    const composerTools = Object.fromEntries(
+      Object.entries(tools).filter(([name]) =>
+        ['integrationSchema', 'uploadFromUrlTool'].includes(name)
+      )
+    );
     return new Agent({
       id: 'postqueen',
       name: 'postqueen',
       description: 'Agent that helps schedule posts and report social analytics for users',
       instructions: ({ requestContext }) => this.instructions(requestContext),
       model: openai('gpt-5.2'),
-      tools,
+      tools: ({ requestContext }) =>
+        requestContext.get('surface' as never) === 'composer'
+          ? composerTools
+          : tools,
       // No working memory: the schema that was here (`proverbs`) was the
       // CopilotKit demo's, it was shared across the organization, and it put
       // an extra tool and a block of instructions in front of every turn.

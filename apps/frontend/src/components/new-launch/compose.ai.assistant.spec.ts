@@ -62,7 +62,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 
-  it('sends Rephrase / Shorten / Expand chips as Copilot commands that call setPosts', () => {
+  it('sends Rephrase / Shorten / Expand chips as quick edits the server prompt keys on', () => {
     assert.match(assistant, /data-pq="composer-ai-chips"/);
     assert.match(assistant, /t\('rephrase', 'Rephrase'\)/);
     assert.match(assistant, /t\('shorten', 'Shorten'\)/);
@@ -70,7 +70,13 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /t\('more_casual', 'More Casual'\)/);
     assert.match(assistant, /t\('more_formal', 'More Formal'\)/);
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
-    assert.match(assistant, /Then apply it with setPosts/);
+    // The label in the person's language plus a marker; the rules live in
+    // chat/load.tools.service.ts, and the marker never shows in the bubble.
+    assert.match(assistant, /\[quick-edit:\$\{kind\}\]/);
+    assert.match(assistant, /UserMessage=\{ComposeAiUserMessage\}/);
+    assert.match(assistant, /replace\(QUICK_EDIT_MARK, ''\)/);
+    assert.doesNotMatch(assistant, /Then apply it with setPosts/);
+    assert.doesNotMatch(assistant, /COPILOT_INSTRUCTIONS/);
     assert.match(assistant, /quick_edits/);
     assert.match(
       assistant,
@@ -78,6 +84,7 @@ describe('compose AI assistant placement', () => {
     );
     assert.doesNotMatch(assistant, /h-\[28px\].*text-\[12px\]/);
     assert.match(assistant, /min-h-\[36px\] flex-1 resize-none/);
+    assert.match(assistant, /<AutoResizingTextarea/);
     assert.match(assistant, /write_something[\s\S]{0,40}Write something/);
     assert.doesNotMatch(assistant, /share_with_the_world/);
     assert.match(assistant, /🔄/);
@@ -101,11 +108,33 @@ describe('compose AI assistant placement', () => {
     );
   });
 
-  it('can rewrite the post and generate an attached image', () => {
+  it('can rewrite the post through an Apply / Undo card and generate an attached image', () => {
     assert.match(assistant, /generateImageForPost/);
     assert.match(assistant, /attachMediaToPost/);
     assert.match(assistant, /\/media\/generate-image-with-prompt/);
-    assert.match(assistant, /setPosts/);
+    // `suggestPost` replaced `setPosts`: a quick edit applies at once with
+    // Undo on its card, anything else waits for Apply, and any card can be
+    // applied again. The editor keeps its readables and writes nothing.
+    assert.match(assistant, /name: 'suggestPost'/);
+    assert.match(assistant, /followUp: false/);
+    assert.match(assistant, /<SuggestionCard/);
+    assert.match(assistant, /data-pq="composer-ai-apply"/);
+    assert.match(assistant, /data-pq="composer-ai-undo"/);
+    assert.match(assistant, /data-pq="composer-ai-apply-again"/);
+    assert.match(assistant, /undoSnapshots\.set\(undoKey, applySuggestion\(list\)\)/);
+    assert.doesNotMatch(assistant, /name: 'setPosts'/);
+    assert.doesNotMatch(editor, /name: 'setPosts'/);
+    assert.match(editor, /description: 'Composer channel'/);
+  });
+
+  it('runs Create Post on the same agent as the Copilot page, in its own thread', () => {
+    // A nested provider per composer: the layout-level `/copilot/chat` one
+    // served every post ever opened from one shared, promptless chat.
+    assert.match(assistant, /export const ComposerCopilotProvider/);
+    assert.match(assistant, /runtimeUrl=\{backendUrl \+ '\/copilot\/agent'\}/);
+    assert.match(assistant, /surface: 'composer'/);
+    assert.match(assistant, /useState\(\(\) => uuid\(\)\)/);
+    assert.match(modal, /<ComposerCopilotProvider>/);
   });
 
   it('labels the rail AI Copilot and uses the Agents sparkle, not a filled stand-in', () => {

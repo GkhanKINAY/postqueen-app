@@ -124,6 +124,7 @@ apple
 applies_to_every_post_on_this_channel
 apply
 apply_50_discount_3_months
+apply_again
 apply_coupon
 apply_coupon_applied
 apply_coupon_failed
@@ -1876,6 +1877,7 @@ subtitle_posts
 subtitle_settings
 success_emails
 success_emails_description
+suggestion_applied
 super_admin
 support_mail_body
 support_mail_subject
@@ -1995,6 +1997,7 @@ two_weeks
 type_your_email
 ui_demo_post_readonly
 understanding_the_category
+undo
 unlink
 unlink_account_confirm
 unlock_team_members

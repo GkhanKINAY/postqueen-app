@@ -7,7 +7,7 @@ import { createRef, RefObject } from 'react';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/post-comment.enum';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
-interface Values {
+export interface Values {
   id: string;
   content: string;
   delay: number;

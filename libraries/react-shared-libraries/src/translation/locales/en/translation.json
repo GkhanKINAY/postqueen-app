@@ -995,7 +995,7 @@
   "post_preview": "Post Preview",
   "check_circles_above": "Check the circles above to pick a channel",
   "create_output": "Create output",
-  "assistant_initial_message": "Hi! I can refine or rewrite your post text. I cannot generate images — use AI Image / AI Video in the toolbar for that.",
+  "assistant_initial_message": "Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.",
   "no_longer_global_mode": "No longer in global mode",
   "two_days": "Two Days",
   "three_days": "Three Days",
@@ -1184,5 +1184,8 @@
   "copilot_step_image": "Generating image",
   "copilot_step_video": "Generating video",
   "copilot_step_upload": "Uploading media",
-  "copilot_step_working": "Working"
+  "copilot_step_working": "Working",
+  "suggestion_applied": "Applied",
+  "undo": "Undo",
+  "apply_again": "Apply again"
 }
