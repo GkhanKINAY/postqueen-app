@@ -172,6 +172,22 @@ Also left out of commits that were otherwise taken: `chatgpt-app-submission.json
 (`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing
 for their hosted service.
 
+**Media is a permanent divergence (2026-09-18).** This fork has no Transloadit:
+no `transloadit` / `@uppy/transloadit` package, no `TRANSLOADIT_*` env, no
+`transloadit` strategy in `uppy.upload.ts`, no `POST /media/save-media`, and
+the Image Text Slides generator assembles its video with the ffmpeg on the
+image (`libraries/nestjs-libraries/src/media/ffmpeg.service.ts`). Upstream kept
+Transloadit and on 2026-09-16 (`e2d5b9c5`, `914b29f0`, `b3cace23`, `118d89c0`)
+added a paid RunPod service that normalizes uploaded video. We take the shape
+of that work (`processMediaWorkflow({ mediaId })`, `media_<id>` workflow ids,
+`Media.status` / `processingError`, `GET /media/:id/status`, the Uppy
+`WaitForMediaProcessing` plugin, the repository method names) but run ffmpeg in
+our own container on a `media` task queue. So: skip any upstream commit that
+touches the Transloadit assembly in `images.slides.ts`, `media.processor.interface.ts`,
+`runpod*`, `createProcessor`, `RUNPOD_*` env or the uploader image; map a change
+to their `checkProcessing` onto `normalizeMedia`; and take their `Media` status
+and route changes only where the names already match ours.
+
 Move the watermark every time a sync PR merges. It is the only cheap way to
 answer "are we current?" — see the trap below.
 

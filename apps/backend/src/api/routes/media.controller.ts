@@ -133,34 +133,6 @@ export class MediaController {
     }
   }
 
-  @Post('/save-media')
-  async saveMedia(
-    @GetOrgFromRequest() org: Organization,
-    @Req() req: Request,
-    @Body('name') name: string,
-    @Body('originalName') originalName: string
-  ) {
-    if (!name) {
-      return false;
-    }
-
-    // Whatever arrives here is concatenated onto the public bucket URL and
-    // stored as a media address — one that later gets handed to the social
-    // networks. Storage only ever produces names like "aB3xY9pQr7.png", so
-    // anything with a slash, a scheme or a query in it did not come from
-    // storage and has no business becoming a URL.
-    if (!/^[A-Za-z0-9._-]{1,128}$/.test(name)) {
-      return false;
-    }
-
-    return this._mediaService.saveFile(
-      org.id,
-      name,
-      process.env.CLOUDFLARE_BUCKET_URL + '/' + name,
-      originalName || undefined
-    );
-  }
-
   @Post('/information')
   saveMediaInformation(
     @GetOrgFromRequest() org: Organization,

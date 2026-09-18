@@ -75,7 +75,7 @@ describe('Video generation as a job', () => {
     assert.match(poster, /if \(media\.thumbnail \|\| !\/\\\.\(mp4\|webm\)/);
     // Uploaded videos get one too, in every upload strategy, before the
     // caller hears about them.
-    assert.equal(uploader.split('await withPosters(').length - 1, 3);
+    assert.equal(uploader.split('await withPosters(').length - 1, 2);
   });
 
   it('draws the poster wherever a video frame is drawn', () => {

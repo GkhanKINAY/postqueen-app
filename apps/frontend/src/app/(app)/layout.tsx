@@ -189,14 +189,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           googleAdsId={process.env.NEXT_PUBLIC_GTM_ID}
           googleAdsTrialTracking={process.env.NEXT_PUBLIC_TRACKING_TRIAL}
           language={language}
-          transloadit={
-            process.env.TRANSLOADIT_AUTH && process.env.TRANSLOADIT_TEMPLATE
-              ? [
-                  process.env.TRANSLOADIT_AUTH!,
-                  process.env.TRANSLOADIT_TEMPLATE!,
-                ]
-              : []
-          }
         >
           <SentryComponent>
             {/*<SetTimezone />*/}
