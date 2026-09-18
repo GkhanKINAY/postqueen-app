@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useSaveVideoPoster } from '@gitroom/frontend/components/media/use.video.poster';
 
 export type VideoJobStart = { jobId: string };
 
@@ -23,8 +24,13 @@ export type VideoJobStatus = {
   status: 'pending' | 'completed' | 'failed' | 'expired';
   id?: string;
   path?: string;
+  /** From the live media row, so a card drawn again keeps the poster it has. */
+  thumbnail?: string | null;
+  alt?: string | null;
   error?: string;
 };
+
+export type VideoJobMedia = { id: string; path: string; thumbnail?: string };
 
 /**
  * Starts a video job on `/media/generate-video/start`, the async path the
@@ -82,6 +88,12 @@ export const useVideoStartFailureCopy = () => {
   );
 };
 
+// One function for SWR's whole life: an inline arrow is a new value on every
+// render, and SWR restarts its poll timer whenever it changes, so a card that
+// re-renders on each streamed token would never reach the five seconds.
+const videoJobInterval = (latest?: VideoJobStatus) =>
+  !latest || latest.status === 'pending' ? 5000 : 0;
+
 /**
  * The state of one video job, polled every few seconds while it is pending
  * and left alone once it is done. The job id is the key, so a card that is
@@ -105,12 +117,79 @@ export const useVideoJob = (jobId?: string) => {
     return body as VideoJobStatus;
   }, [fetch, jobId]);
   return useSWR<VideoJobStatus>(jobId ? `video-job-${jobId}` : null, load, {
-    refreshInterval: (latest) =>
-      !latest || latest.status === 'pending' ? 5000 : 0,
+    refreshInterval: videoJobInterval,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     // A finished job never changes; a card drawn again reads it, not refetches.
     revalidateIfStale: false,
     dedupingInterval: 4000,
   });
+};
+
+/**
+ * One video job followed to its end: polls while it runs, and when the video
+ * lands gives it a poster (unless the row has one already) before handing it
+ * over, so whatever attaches it carries a thumbnail. `onReady` and `onFailed`
+ * fire once per job per mount, whatever the caller re-renders. A lookup that
+ * throws is not the job failing: SWR retries it and the job goes on, so only
+ * the runner's own `failed` and `expired` answers settle the card. The
+ * toolbar's Generate video and the chat cards share it.
+ */
+export const useVideoJobResult = (
+  jobId: string | undefined,
+  callbacks?: {
+    onReady?: (media: VideoJobMedia) => void;
+    /** Once per job, with the line the person reads. */
+    onFailed?: (failure: string) => void;
+  }
+) => {
+  const t = useT();
+  const { data } = useVideoJob(jobId);
+  const savePoster = useSaveVideoPoster();
+  // Keyed by job, so a new job id never shows the previous job's video.
+  const [ready, setReady] = useState<{ jobId: string; media: VideoJobMedia } | null>(null);
+  const media = ready && ready.jobId === jobId ? ready.media : null;
+  const settledFor = useRef<string | null>(null);
+  const callbacksRef = useRef(callbacks);
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  });
+  const done = data?.status === 'completed' && data.id && data.path ? data : undefined;
+  const failure =
+    data?.status === 'failed'
+      ? data.error || t('ai_generation_failed', 'AI generation failed, please try again later.')
+      : data?.status === 'expired'
+      ? t(
+          'video_result_expired',
+          'The result is no longer available here; a finished video is in the Media library.'
+        )
+      : undefined;
+
+  useEffect(() => {
+    if (!jobId || settledFor.current === jobId) {
+      return;
+    }
+    if (failure) {
+      settledFor.current = jobId;
+      callbacksRef.current?.onFailed?.(failure);
+      return;
+    }
+    if (!done) {
+      return;
+    }
+    settledFor.current = jobId;
+    const row = {
+      id: done.id as string,
+      path: done.path as string,
+      thumbnail: done.thumbnail || undefined,
+      alt: done.alt || undefined,
+    };
+    savePoster(row).then((thumbnail) => {
+      const result = thumbnail ? { id: row.id, path: row.path, thumbnail } : { id: row.id, path: row.path };
+      setReady({ jobId, media: result });
+      callbacksRef.current?.onReady?.(result);
+    });
+  }, [jobId, done, failure, savePoster]);
+
+  return { media, failure, pending: !!jobId && !media && !failure };
 };

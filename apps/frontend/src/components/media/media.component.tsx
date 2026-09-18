@@ -104,6 +104,8 @@ export const MultiMediaComponent: FC<{
   value?: Array<{
     path: string;
     id: string;
+    /** A video's poster, when it has one. */
+    thumbnail?: string;
   }>;
   text: string;
   name: string;
@@ -491,7 +493,7 @@ export const MultiMediaComponent: FC<{
                       {hasExtension(media?.path, 'mp4') ? (
                         <VideoFrame
                           url={mediaDirectory.set(media?.path)}
-                          poster={(media as { thumbnail?: string }).thumbnail}
+                          poster={media?.thumbnail ? mediaDirectory.set(media.thumbnail) : undefined}
                         />
                       ) : (
                         <img
@@ -934,7 +936,11 @@ export const MediaComponent: FC<{
               {hasExtension(currentMedia.path, 'mp4') ? (
                 <VideoFrame
                   url={mediaDirectory.set(currentMedia.path)}
-                  poster={currentMedia.thumbnail}
+                  poster={
+                    currentMedia.thumbnail
+                      ? mediaDirectory.set(currentMedia.thumbnail)
+                      : undefined
+                  }
                 />
               ) : (
                 <img

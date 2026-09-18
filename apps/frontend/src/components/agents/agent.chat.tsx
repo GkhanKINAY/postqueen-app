@@ -80,10 +80,8 @@ import {
   parseToolResult,
   useExtraToolCalls,
 } from '@gitroom/frontend/components/agents/agent.tool.step';
-import {
-  VideoJobCard,
-  VideoJobMedia,
-} from '@gitroom/frontend/components/media/video.job.card';
+import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card';
+import { VideoJobMedia } from '@gitroom/frontend/components/media/use.generate.video';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';

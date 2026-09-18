@@ -45,12 +45,10 @@ import {
   isVideoJobStart,
   useStartVideo,
   useVideoStartFailureCopy,
+  VideoJobMedia,
   VideoJobStartFailure,
 } from '@gitroom/frontend/components/media/use.generate.video';
-import {
-  VideoJobCard,
-  VideoJobMedia,
-} from '@gitroom/frontend/components/media/video.job.card';
+import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card';
 import { v4 as uuid } from 'uuid';
 import {
   useT,
@@ -287,6 +285,14 @@ const mediaUndoSnapshots = new Map<
   { index: number; media: { id: string; path: string; thumbnail?: string }[] }
 >();
 
+/**
+ * Video jobs this page started with apply=true and has not attached yet. An
+ * image is attached inside its handler, once; a video lands minutes later in
+ * the card, which is drawn again on every remount of the rail, so the
+ * attach-on-arrival must remember it already happened. Gone with the page.
+ */
+const videoJobsToAttach = new Set<string>();
+
 const triggerClassName = (open: boolean) =>
   clsx(
     'flex h-[36px] shrink-0 cursor-pointer items-center gap-[6px] whitespace-nowrap rounded-[8px] bg-pqBrandSoft px-[10px] text-[12.5px] font-[600] text-pqFocused transition-colors',
@@ -392,11 +398,6 @@ const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
 };
 
 /**
- * Hidden by CSS from the first bubble on (`.agent:has(.copilotKitMessage)` in
- * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
- * which this used to read, so it stayed up over the conversation.
- */
-/**
  * The one place the rail watches the live chat, mounted exactly as long as
  * the chat is (`useCopilotChatInternal` connects on mount and detaches the
  * run on unmount), so every tool call of a turn can be drawn.
@@ -422,6 +423,11 @@ const ComposeAiAssistantMessage: FC<AssistantMessageProps> = (props) => {
   );
 };
 
+/**
+ * Hidden by CSS from the first bubble on (`.agent:has(.copilotKitMessage)` in
+ * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
+ * which this used to read, so it stayed up over the conversation.
+ */
 const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
   return (
     <div
@@ -959,11 +965,18 @@ const ComposerVideoCard: FC<{
   }, [result, status]);
   const prompt = videoPrompt(args?.customParams);
   const index = typeof args?.index === 'number' ? args.index : 0;
+  const jobId = parsed?.status === 'started' ? parsed.jobId : undefined;
   const [used, setUsed] = useState<{ undoKey: string } | null>(null);
   const attach = (media: VideoJobMedia) => {
     const key = makeId(8);
     mediaUndoSnapshots.set(key, { index, media: attachMedia(index, [media]) });
     setUsed({ undoKey: key });
+  };
+  const attachOnArrival = (media: VideoJobMedia) => {
+    if (!jobId || !videoJobsToAttach.delete(jobId)) {
+      return;
+    }
+    attach(media);
   };
   const undo = () => {
     const snapshot = used ? mediaUndoSnapshots.get(used.undoKey) : undefined;
@@ -982,14 +995,14 @@ const ComposerVideoCard: FC<{
 
   return (
     <VideoJobCard
-      jobId={parsed?.status === 'started' ? parsed.jobId : undefined}
+      jobId={jobId}
       error={error}
       prompt={prompt || args?.identifier || ''}
       provider={args?.identifier}
       orientation={args?.output}
       used={used ? 'attached' : undefined}
       useLabel={t('use_in_this_post', 'Use in this post')}
-      onReady={args?.apply ? attach : undefined}
+      onReady={attachOnArrival}
       onUse={attach}
       onUndo={used ? undo : undefined}
     />
@@ -1199,7 +1212,7 @@ const ComposeAiBindingsInner: FC = () => {
         required: false,
       },
     ],
-    handler: async ({ identifier, output, customParams }) => {
+    handler: async ({ identifier, output, customParams, apply }) => {
       let params: Record<string, unknown> = {};
       try {
         params = JSON.parse(String(customParams || '{}'));
@@ -1211,6 +1224,9 @@ const ComposeAiBindingsInner: FC = () => {
       }
       const started = await startVideo(String(identifier || ''), output, params);
       if (isVideoJobStart(started)) {
+        if (apply) {
+          videoJobsToAttach.add(started.jobId);
+        }
         return { status: 'started', jobId: started.jobId };
       }
       return { status: 'error', error: videoFailureForModel(started), failure: started };

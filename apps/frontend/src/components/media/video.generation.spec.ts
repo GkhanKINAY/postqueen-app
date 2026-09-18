@@ -27,6 +27,9 @@ const uploads = read('../../app/(app)/api/uploads/[[...path]]/route.ts');
 const repository = read(
   '../../../../../libraries/nestjs-libraries/src/database/prisma/media/media.repository.ts'
 );
+const controllerService = read(
+  '../../../../../libraries/nestjs-libraries/src/database/prisma/media/media.service.ts'
+);
 
 describe('Video generation as a job', () => {
   it('starts on the async route and polls the status route until the job settles', () => {
@@ -40,7 +43,9 @@ describe('Video generation as a job', () => {
     assert.match(hooks, /\/media\/generate-video\/start/);
     assert.match(hooks, /\/media\/generate-video\/status\/\$\{jobId\}/);
     // Polling stops by itself; a finished job is read, not refetched.
-    assert.match(hooks, /refreshInterval: \(latest\) =>\s*!latest \|\| latest\.status === 'pending' \? 5000 : 0/);
+    // A module-level function: an inline arrow restarts SWR's timer on every render.
+    assert.match(hooks, /const videoJobInterval = \(latest\?: VideoJobStatus\) =>\s*!latest \|\| latest\.status === 'pending' \? 5000 : 0/);
+    assert.match(hooks, /refreshInterval: videoJobInterval/);
     assert.match(hooks, /revalidateIfStale: false/);
     assert.match(hooks, /response\.status === 404[\s\S]{0,40}status: 'expired'/);
     // The sync route that held a request open for minutes is no longer called.
@@ -50,16 +55,24 @@ describe('Video generation as a job', () => {
   });
 
   it('gives a finished video its poster once, before anyone can attach it', () => {
-    assert.match(card, /savePoster\(base\)\.then\(\(thumbnail\) =>/);
-    assert.match(card, /settledFor\.current === jobId/);
-    assert.match(card, /callbacksRef\.current\?\.onReady\?\.\(done\)/);
-    assert.match(card, /callbacksRef\.current\?\.onFailed\?\.\(failure\)/);
+    assert.match(hooks, /savePoster\(row\)\.then\(\(thumbnail\) =>/);
+    assert.match(hooks, /settledFor\.current === jobId/);
+    assert.match(hooks, /callbacksRef\.current\?\.onReady\?\.\(result\)/);
+    assert.match(hooks, /callbacksRef\.current\?\.onFailed\?\.\(failure\)/);
+    // A card drawn again for a finished job keeps the poster the row has
+    // (the status route returns it), and a thrown lookup is not a failure.
+    assert.match(hooks, /thumbnail: done\.thumbnail \|\| undefined/);
+    assert.doesNotMatch(hooks, /lookupError/);
+    assert.match(controllerService, /thumbnail: row\?\.thumbnail \?\? null/);
+    // The composer attaches on arrival once per started job, not on every remount.
+    assert.match(composer, /videoJobsToAttach\.delete\(jobId\)/);
+    assert.match(composer, /videoJobsToAttach\.add\(started\.jobId\)/);
     // The same capture the thumbnail picker makes, saved the same way.
     assert.match(capture, /video\.crossOrigin = 'anonymous'/);
     assert.match(capture, /canvas\.toBlob\(\(blob\) => finish\(blob \|\| undefined\), 'image\/jpeg', 0\.8\)/);
     assert.match(poster, /formData\.append\('preventSave', 'true'\)/);
     assert.match(poster, /\/media\/information/);
-    assert.match(poster, /if \(media\.thumbnail \|\| !hasExtension\(media\.path, 'mp4'\)\)/);
+    assert.match(poster, /if \(media\.thumbnail \|\| !\/\\\.\(mp4\|webm\)/);
     // Uploaded videos get one too, in every upload strategy, before the
     // caller hears about them.
     assert.equal(uploader.split('await withPosters(').length - 1, 3);

@@ -18,12 +18,10 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import {
   isVideoJobStart,
   useStartVideo,
-  useVideoStartFailureCopy,
-} from '@gitroom/frontend/components/media/use.generate.video';
-import {
   useVideoJobResult,
+  useVideoStartFailureCopy,
   VideoJobMedia,
-} from '@gitroom/frontend/components/media/video.job.card';
+} from '@gitroom/frontend/components/media/use.generate.video';
 
 export const Modal: FC<{
   close: () => void;
@@ -322,7 +320,12 @@ export const AiVideo: FC<{
   useEffect(() => {
     // The channel picker stays dimmed while a video is on the way, as it was
     // for the sync call: the video lands on the editor that asked for it.
-    setLocked(!!jobId);
+    // Only around a job of this button's own: the lock is shared with the
+    // uploaders and the other generators.
+    if (!jobId) {
+      return;
+    }
+    setLocked(true);
     return () => setLocked(false);
   }, [jobId, setLocked]);
 

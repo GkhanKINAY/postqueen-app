@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { captureVideoPoster } from '@gitroom/react/helpers/video.poster';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
-import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 export type PosterMedia = {
   id: string;
@@ -26,7 +25,9 @@ export const useSaveVideoPoster = () => {
   const mediaDirectory = useMediaDirectory();
   return useCallback(
     async (media: PosterMedia): Promise<string | undefined> => {
-      if (media.thumbnail || !hasExtension(media.path, 'mp4')) {
+      // Only what a browser decodes: mp4 and webm, the same two the media
+      // grid treats as video. A mov is stored as one but cannot be drawn.
+      if (media.thumbnail || !/\.(mp4|webm)(\?|#|$)/i.test(media.path)) {
         return media.thumbnail || undefined;
       }
       const blob = await captureVideoPoster(mediaDirectory.set(media.path));

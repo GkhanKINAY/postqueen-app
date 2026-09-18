@@ -1,73 +1,11 @@
 'use client';
 
-import { FC, useEffect, useRef, useState } from 'react';
-import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { FC } from 'react';
 import { GeneratedMediaCard } from '@gitroom/frontend/components/media/generated.media.card';
-import { useVideoJob } from '@gitroom/frontend/components/media/use.generate.video';
-import { useSaveVideoPoster } from '@gitroom/frontend/components/media/use.video.poster';
-
-export type VideoJobMedia = { id: string; path: string; thumbnail?: string };
-
-/**
- * One video job followed to its end: polls while it runs, and when the video
- * lands gives it a poster before handing it over, so whatever attaches it
- * carries a thumbnail. `onReady` fires once per job, whatever the caller
- * re-renders. The toolbar's Generate video and the chat cards share it.
- */
-export const useVideoJobResult = (
-  jobId: string | undefined,
-  callbacks?: {
-    onReady?: (media: VideoJobMedia) => void;
-    /** Once per job, with the line the person reads. */
-    onFailed?: (failure: string) => void;
-  }
-) => {
-  const t = useT();
-  const { data, error: lookupError } = useVideoJob(jobId);
-  const savePoster = useSaveVideoPoster();
-  const [media, setMedia] = useState<VideoJobMedia | null>(null);
-  const settledFor = useRef<string | null>(null);
-  const callbacksRef = useRef(callbacks);
-  useEffect(() => {
-    callbacksRef.current = callbacks;
-  });
-  const doneId = data?.status === 'completed' ? data.id : undefined;
-  const donePath = data?.status === 'completed' ? data.path : undefined;
-  const failure =
-    data?.status === 'failed'
-      ? data.error || t('ai_generation_failed', 'AI generation failed, please try again later.')
-      : data?.status === 'expired'
-      ? t(
-          'video_result_expired',
-          'The result is no longer available here; a finished video is in the Media library.'
-        )
-      : lookupError
-      ? String(lookupError.message || lookupError)
-      : undefined;
-
-  useEffect(() => {
-    if (!jobId || settledFor.current === jobId) {
-      return;
-    }
-    if (failure) {
-      settledFor.current = jobId;
-      callbacksRef.current?.onFailed?.(failure);
-      return;
-    }
-    if (!doneId || !donePath) {
-      return;
-    }
-    settledFor.current = jobId;
-    const base = { id: doneId, path: donePath };
-    savePoster(base).then((thumbnail) => {
-      const done = thumbnail ? { ...base, thumbnail } : base;
-      setMedia(done);
-      callbacksRef.current?.onReady?.(done);
-    });
-  }, [jobId, doneId, donePath, failure, savePoster]);
-
-  return { media, failure, pending: !!jobId && !media && !failure };
-};
+import {
+  useVideoJobResult,
+  VideoJobMedia,
+} from '@gitroom/frontend/components/media/use.generate.video';
 
 /**
  * One video job as a card, on both Copilot surfaces: the brief, a waiting

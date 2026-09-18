@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, ReactNode, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/react/form/button';
@@ -56,19 +56,24 @@ export const GeneratedMediaCard: FC<{
 }) => {
   const t = useT();
   const mediaDir = useMediaDirectory();
-  const [seconds, setSeconds] = useState(0);
-  const startedAt = useRef(0);
+  // The clock restarts with every wait (Regenerate too): a status change
+  // clears it during render, the way state is adjusted when a prop changes,
+  // and each tick carries its own start, so no tick shows the previous count.
+  const [clock, setClock] = useState<{ startedAt: number; now: number } | null>(null);
+  const [seenStatus, setSeenStatus] = useState(status);
+  if (seenStatus !== status) {
+    setSeenStatus(status);
+    setClock(null);
+  }
   useEffect(() => {
     if (status !== 'generating') {
       return;
     }
-    startedAt.current = Date.now();
-    const timer = setInterval(
-      () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
-      1000
-    );
+    const startedAt = Date.now();
+    const timer = setInterval(() => setClock({ startedAt, now: Date.now() }), 1000);
     return () => clearInterval(timer);
   }, [status]);
+  const seconds = clock ? Math.floor((clock.now - clock.startedAt) / 1000) : 0;
   const meta = [style, orientation].filter(Boolean).join(' · ');
   const elapsed =
     kind === 'video'
