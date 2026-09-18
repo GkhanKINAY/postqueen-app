@@ -53,7 +53,14 @@ describe('plug dialog', () => {
   });
 
   it('does not leave the post field at min-h-40', () => {
-    assert.match(source, /min-h-\[110px\] max-h-\[180px\]/);
+    // Important, not plain: CopilotTextarea's Slate `Editable` writes the
+    // measured placeholder height back as an inline `style.minHeight` while
+    // the field is empty, and an inline declaration beats a stylesheet rule
+    // that is not important. A plain `min-h-*` here painted tall and then
+    // collapsed to one line. `autopost.tsx` and `signatures.component.tsx`
+    // mark theirs the same way.
+    assert.match(source, /!min-h-\[110px\] !max-h-\[180px\]/);
+    assert.doesNotMatch(source, /[^!]min-h-\[110px\]/);
     assert.match(source, /overflow-x-hidden/);
     assert.match(source, /resize-none/);
     assert.doesNotMatch(source, /resize-y/);

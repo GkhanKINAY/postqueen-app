@@ -51,8 +51,19 @@ export const TextArea: FC<{
   const { onChange, onBlur, ...all } = form.register(props.name);
   const value = form.watch(props.name);
   const aiOk = useAiAvailable();
+  // The two height classes have to be `!important`, the way `autopost.tsx` and
+  // `signatures.component.tsx` already mark theirs.
+  //
+  // `CopilotTextarea` renders a Slate `Editable`, and while a placeholder is
+  // showing — which is exactly the state this dialog opens in — Slate measures
+  // that placeholder and writes its height back as an *inline*
+  // `style.minHeight` (`placeHolderResizeHandler` in slate-react). An inline
+  // declaration beats any stylesheet rule that is not important, so a plain
+  // `min-h-*` lost: the field painted at 110px on first render, then collapsed
+  // to one line the moment the measurement landed. That flash-then-shrink was
+  // the bug, and the field was too short to write a post in afterwards.
   const fieldClass = clsx(
-    'min-h-[110px] max-h-[180px] w-full min-w-0 resize-none border-0 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden break-words placeholder:text-pqSoft'
+    '!min-h-[110px] !max-h-[180px] w-full min-w-0 resize-none border-0 !bg-transparent p-[10px_12px] text-[14px] leading-[1.55] text-pqText outline-none overflow-x-hidden break-words placeholder:text-pqSoft'
   );
   return (
     <div className="flex min-w-0 flex-col gap-[6px]">
