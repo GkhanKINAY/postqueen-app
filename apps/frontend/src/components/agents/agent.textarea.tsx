@@ -55,6 +55,13 @@ const AutoResizingTextarea = forwardRef<HTMLTextAreaElement, AutoResizingTextare
         (parseFloat(style.paddingTop) || 0) +
         (parseFloat(style.paddingBottom) || 0);
       textarea.style.maxHeight = `${limit}px`;
+      if (!value) {
+        // Empty: the stylesheet's min-height is the whole answer. Measuring
+        // here ran before the chat had its final layout on some widths and
+        // pinned the box at the limit until the first keystroke.
+        textarea.style.height = "";
+        return;
+      }
       textarea.style.height = "auto";
       textarea.style.height = `${Math.min(textarea.scrollHeight, limit)}px`;
     }, [value, maxRows]);
