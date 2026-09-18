@@ -644,6 +644,7 @@ const TikTokSettings: FC<{
   );
 };
 export default withProvider({
+  imageOrientation: 'portrait',
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: TikTokSettings,

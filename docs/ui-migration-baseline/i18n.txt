@@ -44,6 +44,7 @@ add_comment
 add_comment_or_post
 add_community
 add_free_subscription
+add_image
 add_integration
 add_integration_api_hint
 add_member_copy_hint
@@ -58,9 +59,11 @@ add_signature
 add_subreddit
 add_team_member
 add_time_slot
+add_to_card
 add_webhook
 add_your_first_channel
 added_successfully
+added_to_card
 adding_channel
 additional_settings
 admin
@@ -78,6 +81,7 @@ ai
 ai_copilot
 ai_copilot_unlocks_after_your_trial
 ai_credits_exhausted
+ai_generation_cancelled
 ai_generation_failed
 ai_lock_perk_chat
 ai_lock_perk_images
@@ -370,6 +374,7 @@ change
 change_alt_text
 change_bot
 change_bot_picture_title
+change_image
 change_language
 change_password
 change_password_description
@@ -980,6 +985,7 @@ conversations
 copilot_step_analytics
 copilot_step_calendar
 copilot_step_card
+copilot_step_card_image
 copilot_step_channel_data
 copilot_step_channels
 copilot_step_customers
@@ -1214,6 +1220,7 @@ generate_posts
 generate_video
 generating_content
 generating_hook
+generating_image
 generating_pictures
 generation_failed
 get_lifetime_for_amount
@@ -1580,6 +1587,10 @@ organization_name
 organization_name_description
 organization_name_length
 organizations
+orientation
+orientation_landscape
+orientation_portrait
+orientation_square
 original_date
 original_link
 other_sessions_signed_out
@@ -1719,6 +1730,7 @@ refreshing_analytics
 refund_selected
 refund_selected_confirm
 refunded
+regenerate
 register_agent
 registering_agent
 registration_is_disabled
@@ -1727,6 +1739,7 @@ remove
 remove_channel
 remove_delay
 remove_from_customer
+remove_image
 remove_social_account
 removes_the_channel_and_its_scheduled_posts
 repeat_password
@@ -2032,6 +2045,7 @@ uploading_media
 uploading_pictures
 use
 use_a_different_email
+use_in_this_post
 use_it_with_the_api_mcp_or_the_cli
 use_signature
 use_this_media

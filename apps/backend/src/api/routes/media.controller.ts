@@ -26,6 +26,7 @@ import {
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
+import { GenerateImageDto } from '@gitroom/nestjs-libraries/dtos/media/generate.image.dto';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.function.dto';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
@@ -74,17 +75,18 @@ export class MediaController {
   @Post('/generate-image-with-prompt')
   async generateImageFromText(
     @GetOrgFromRequest() org: Organization,
-    @Req() req: Request,
-    @Body('prompt') prompt: string
+    @Body() body: GenerateImageDto
   ) {
-    const image = await this.generateImage(org, req, prompt, true);
-    if (!image) {
+    const total = await this._subscriptionService.checkCredits(org);
+    if (isBillingEnabled() && total.credits <= 0) {
       return false;
     }
 
-    const file = await this.storage.uploadSimple(image.output);
-
-    return this._mediaService.saveFile(org.id, file.split('/').pop(), file);
+    return this._mediaService.generateImageToLibrary(
+      org,
+      body.prompt,
+      body.orientation
+    );
   }
 
   @Post('/upload-server')

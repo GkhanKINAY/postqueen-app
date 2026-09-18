@@ -15,6 +15,10 @@ const editor = readFileSync(
   fileURLToPath(new URL('./editor.tsx', import.meta.url)),
   'utf8',
 );
+const generateImage = readFileSync(
+  fileURLToPath(new URL('../media/use.generate.image.tsx', import.meta.url)),
+  'utf8',
+);
 const context = readFileSync(
   fileURLToPath(
     new URL(
@@ -120,7 +124,11 @@ describe('compose AI assistant placement', () => {
   it('can rewrite the post through an Apply / Undo card and generate an attached image', () => {
     assert.match(assistant, /generateImageForPost/);
     assert.match(assistant, /attachMediaToPost/);
-    assert.match(assistant, /\/media\/generate-image-with-prompt/);
+    // One route call for the AI Image modal, the rail's tool and the Copilot
+    // page's card: the hook, not a fetch of its own in each.
+    assert.match(generateImage, /\/media\/generate-image-with-prompt/);
+    assert.doesNotMatch(assistant, /\/media\/generate-image-with-prompt/);
+    assert.match(assistant, /useGenerateImage\(\)/);
     // `suggestPost` replaced `setPosts`: a quick edit applies at once with
     // Undo on its card, anything else waits for Apply, and any card can be
     // applied again. The editor keeps its readables and writes nothing.
@@ -136,6 +144,14 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /const \[undone, setUndone\] = useState\(false\)/);
     assert.match(assistant, /stripHtmlValidation\('normal', post \|\| '', false, true\)/);
     assert.match(assistant, /enableInspector=\{false\}/);
+    // A generated image is a card with Use / Undo / Regenerate; apply=true
+    // attaches at once. The route takes the orientation the channel wants.
+    assert.match(assistant, /name: 'generateImageForPost'/);
+    assert.match(assistant, /name: 'orientation'/);
+    assert.match(assistant, /name: 'apply'/);
+    assert.match(assistant, /<ComposerImageCard/);
+    assert.match(assistant, /mediaUndoSnapshots\.set\(undoKey, \{ index: at, media: attachMedia\(at, \[image\]\) \}\)/);
+    assert.match(assistant, /name: '\*'/);
     assert.doesNotMatch(assistant, /name: 'setPosts'/);
     assert.doesNotMatch(editor, /name: 'setPosts'/);
     // The readable keys are the server prompt's, from one shared module.

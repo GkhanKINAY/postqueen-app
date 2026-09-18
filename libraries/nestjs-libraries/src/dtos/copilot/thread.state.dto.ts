@@ -27,4 +27,9 @@ export class ThreadStateDto {
   @IsOptional()
   @IsObject()
   cards?: Record<string, unknown>;
+
+  /** Attachments the person put on a card's group after it was drawn, by card id then group key. */
+  @IsOptional()
+  @IsObject()
+  media?: Record<string, unknown>;
 }

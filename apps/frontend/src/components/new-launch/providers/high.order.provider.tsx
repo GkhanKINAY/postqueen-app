@@ -43,6 +43,9 @@ interface CharacterCondition {
   maximumCharacters: number;
 }
 
+/** Same three values `/media/generate-image-with-prompt` accepts. */
+export type ImageOrientation = 'square' | 'portrait' | 'landscape';
+
 export const withProvider = function <T extends object>(params: {
   comments?: boolean | 'no-media';
   postComment: PostComment;
@@ -55,6 +58,8 @@ export const withProvider = function <T extends object>(params: {
   }>;
   dto?: any;
   maximumCharacters?: number | ((settings: any) => number);
+  /** The shape an AI image should be generated in for this platform's feed. */
+  imageOrientation?: ImageOrientation;
 }) {
   const {
     postComment,
@@ -62,6 +67,7 @@ export const withProvider = function <T extends object>(params: {
     CustomPreviewComponent,
     dto,
     maximumCharacters,
+    imageOrientation,
   } = params;
 
   const Wrapped = forwardRef((props: { id: string }, ref) => {
@@ -497,6 +503,7 @@ export const withProvider = function <T extends object>(params: {
     dto,
     postComment,
     maximumCharacters,
+    imageOrientation,
   };
 
   return Wrapped;
@@ -511,6 +518,7 @@ export const getProviderSettingsMeta = (component: unknown) => {
         dto?: any;
         postComment: PostComment;
         maximumCharacters?: number | ((settings: any) => number);
+        imageOrientation?: ImageOrientation;
       }
     | undefined;
 };

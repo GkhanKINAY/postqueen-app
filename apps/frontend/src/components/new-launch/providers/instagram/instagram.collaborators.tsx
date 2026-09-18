@@ -100,6 +100,7 @@ const InstagramCollaborators: FC<{
   );
 };
 export default withProvider<InstagramDto>({
+  imageOrientation: 'portrait',
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: InstagramCollaborators,

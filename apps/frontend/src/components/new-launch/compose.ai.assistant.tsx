@@ -21,7 +21,19 @@ import {
   UserMessageProps,
   useChatContext,
 } from '@copilotkit/react-ui';
-import { CopilotKit, useCopilotAction } from '@copilotkit/react-core';
+import {
+  CatchAllActionRenderProps,
+  CopilotKit,
+  useCopilotAction,
+} from '@copilotkit/react-core';
+import { GeneratedMediaCard } from '@gitroom/frontend/components/media/generated.media.card';
+import { ToolStep } from '@gitroom/frontend/components/agents/agent.tool.step';
+import {
+  GenerateImageFailure,
+  isGeneratedImage,
+  useGenerateImage,
+  useGenerateImageFailureCopy,
+} from '@gitroom/frontend/components/media/use.generate.image';
 import { v4 as uuid } from 'uuid';
 import {
   useT,
@@ -30,7 +42,6 @@ import {
 import { useAiAvailable, useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useLaunchStore, Values } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
-import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -209,6 +220,55 @@ const restoreSuggestion = (snapshot: Values[]) => {
 
 /** Undo snapshots by key; gone with the page, which is what Undo should be. */
 const undoSnapshots = new Map<string, Values[]>();
+
+/**
+ * Attaches media to one thread item, the way the toolbar's AI Image does,
+ * and returns that item's media as it was, for Undo. Reads the store on the
+ * spot: a card's button runs long after the tool handler that drew it.
+ */
+const attachMedia = (
+  index: number,
+  media: { id: string; path: string }[]
+): { id: string; path: string }[] => {
+  const {
+    current,
+    internal,
+    global,
+    appendGlobalValueMedia,
+    appendInternalValueMedia,
+  } = useLaunchStore.getState();
+  const entry = internal.find((p) => p.integration.id === current);
+  const before = (entry ? entry.integrationValue : global)[index]?.media || [];
+  // Apply again on an image that is still on the post adds nothing twice.
+  const fresh = media.filter((m) => !before.some((b) => b.id === m.id));
+  if (!fresh.length) {
+    return before;
+  }
+  if (entry) {
+    appendInternalValueMedia(current, index, fresh);
+  } else {
+    appendGlobalValueMedia(index, fresh);
+  }
+  return before;
+};
+
+const restoreMedia = (
+  index: number,
+  snapshot: { id: string; path: string }[]
+) => {
+  const { current, internal, setGlobalValueMedia, setInternalValueMedia } =
+    useLaunchStore.getState();
+  if (internal.find((p) => p.integration.id === current)) {
+    setInternalValueMedia(current, index, snapshot);
+  } else {
+    setGlobalValueMedia(index, snapshot);
+  }
+};
+
+const mediaUndoSnapshots = new Map<
+  string,
+  { index: number; media: { id: string; path: string }[] }
+>();
 
 const triggerClassName = (open: boolean) =>
   clsx(
@@ -674,31 +734,142 @@ export const ComposeAiAssistant: FC<{
   );
 };
 
-const ComposeAiBindingsInner: FC = () => {
-  const t = useT();
-  const fetch = useFetch();
-  const toaster = useToaster();
-  const {
-    current,
-    appendGlobalValueMedia,
-    appendInternalValueMedia,
-    setLocked,
-  } = useLaunchStore(
-    useShallow((state) => ({
-      current: state.current,
-      appendGlobalValueMedia: state.appendGlobalValueMedia,
-      appendInternalValueMedia: state.appendInternalValueMedia,
-      setLocked: state.setLocked,
-    }))
-  );
+type GeneratedImageResult =
+  | { status: 'attached'; media: { id: string; path: string }; undoKey: string }
+  | { status: 'generated'; media: { id: string; path: string } }
+  | { status: 'error'; error: string; failure?: GenerateImageFailure };
 
-  const attach = (index: number, media: { id: string; path: string }[]) => {
-    if (current !== 'global') {
-      appendInternalValueMedia(current, index, media);
+/** The model's reading of a failure; the person gets the translated copy. */
+const imageFailureForModel = (failure: GenerateImageFailure) =>
+  failure.reason === 'credits'
+    ? 'Out of AI credits for this month.'
+    : failure.reason === 'cancelled'
+    ? 'The person cancelled the image generation.'
+    : failure.message || 'Could not generate an image.';
+
+/**
+ * The generated image in the rail. Attached at once when the person asked
+ * for that (Undo puts the item's media back), otherwise it waits for Use in
+ * this post; Regenerate draws the same brief again and the card swaps, and
+ * an attached image is swapped on the post too.
+ */
+const ComposerImageCard: FC<{
+  args?: { prompt?: string; style?: string; orientation?: string; index?: number };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const t = useT();
+  const generateImage = useGenerateImage();
+  const failureCopy = useGenerateImageFailureCopy();
+  const parsed = useMemo<GeneratedImageResult | null>(() => {
+    if (result == null || status !== 'complete') {
+      return null;
+    }
+    try {
+      return typeof result === 'string' ? JSON.parse(result) : (result as GeneratedImageResult);
+    } catch {
+      return null;
+    }
+  }, [result, status]);
+  // A regenerated image replaces the tool's; Use / Undo work on whichever is current.
+  const [media, setMedia] = useState<{ id: string; path: string } | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [used, setUsed] = useState<{ undoKey: string } | null>(null);
+  const [undone, setUndone] = useState(false);
+  const current =
+    media || (parsed && parsed.status !== 'error' ? parsed.media : null);
+  const undoKey =
+    used?.undoKey || (parsed?.status === 'attached' && !undone ? parsed.undoKey : undefined);
+  const index = typeof args?.index === 'number' ? args.index : 0;
+
+  const use = () => {
+    if (!current) {
       return;
     }
-    appendGlobalValueMedia(index, media);
+    const key = makeId(8);
+    mediaUndoSnapshots.set(key, { index, media: attachMedia(index, [current]) });
+    setUsed({ undoKey: key });
+    setUndone(false);
   };
+  const undo = () => {
+    const snapshot = undoKey ? mediaUndoSnapshots.get(undoKey) : undefined;
+    if (snapshot) {
+      restoreMedia(snapshot.index, snapshot.media);
+      mediaUndoSnapshots.delete(undoKey as string);
+    }
+    setUsed(null);
+    setUndone(true);
+  };
+  const regenerate = async () => {
+    setBusy(true);
+    setFailed(null);
+    // An image that is on the post stays there while the next one draws, so
+    // a failure changes nothing; when the new one is ready it takes the old
+    // one's place, since the person asked for the image on the post.
+    const attached = !!undoKey;
+    try {
+      const image = await generateImage(args?.prompt || '', args?.style, args?.orientation);
+      if (!isGeneratedImage(image)) {
+        setFailed(failureCopy(image));
+        return;
+      }
+      setMedia(image);
+      if (attached) {
+        undo();
+        const key = makeId(8);
+        mediaUndoSnapshots.set(key, { index, media: attachMedia(index, [image]) });
+        setUsed({ undoKey: key });
+        setUndone(false);
+      } else {
+        setUsed(null);
+        setUndone(true);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const state = busy
+    ? 'generating'
+    : status !== 'complete'
+    ? 'generating'
+    : failed || (parsed && parsed.status === 'error')
+    ? 'failed'
+    : current
+    ? 'ready'
+    : 'failed';
+
+  return (
+    <GeneratedMediaCard
+      prompt={args?.prompt || ''}
+      style={args?.style}
+      orientation={args?.orientation}
+      status={state}
+      media={current || undefined}
+      error={
+        failed ||
+        (parsed?.status === 'error'
+          ? parsed.failure
+            ? failureCopy(parsed.failure)
+            : parsed.error
+          : undefined)
+      }
+      used={undoKey ? 'attached' : undefined}
+      useLabel={t('use_in_this_post', 'Use in this post')}
+      onUse={use}
+      onUndo={undoKey ? undo : undefined}
+      onRegenerate={regenerate}
+      busy={busy}
+    />
+  );
+};
+
+const ComposeAiBindingsInner: FC = () => {
+  const toaster = useToaster();
+  const generateImage = useGenerateImage();
+  const failureCopy = useGenerateImageFailureCopy();
+  const setLocked = useLaunchStore((state) => state.setLocked);
 
   // The model's way of changing the post. It replaced the old `setPosts`,
   // which overwrote the editor silently with no way back: a quick edit
@@ -775,19 +946,20 @@ const ComposeAiBindingsInner: FC = () => {
       },
     ],
     handler: async ({ id, path, index }) => {
-      attach(typeof index === 'number' ? index : 0, [{ id, path }]);
+      attachMedia(typeof index === 'number' ? index : 0, [{ id, path }]);
     },
   });
 
   useCopilotAction({
     name: 'generateImageForPost',
     description:
-      'Generate an image from a prompt and attach it to the post. Same path as AI Image in the toolbar.',
+      "Generate ONE image from a visual brief for the post open in the composer. Returns {status:'attached', media} when apply was true (the image is on the post, the card offers Undo), {status:'generated', media} when it waits for the person to press Use in this post, or {status:'error', error}. Do not describe the image in chat; one short sentence at most.",
     parameters: [
       {
         name: 'prompt',
         type: 'string',
-        description: 'What to draw',
+        description:
+          'A visual brief, not a caption: subject, setting, composition, light, mood. No text in the image.',
         required: true,
       },
       {
@@ -798,79 +970,71 @@ const ComposeAiBindingsInner: FC = () => {
         required: false,
       },
       {
+        name: 'orientation',
+        type: 'string',
+        description:
+          'square, portrait or landscape; pick it from the channel (portrait for Instagram, TikTok, Pinterest, Reels and Stories; landscape for X, LinkedIn, YouTube, Facebook; square otherwise)',
+        required: false,
+      },
+      {
+        name: 'apply',
+        type: 'boolean',
+        description:
+          'true when the user asked to attach or add it to the post directly; false to show it and wait for Use in this post.',
+        required: false,
+      },
+      {
         name: 'index',
         type: 'number',
         description: 'Thread index, default 0',
         required: false,
       },
     ],
-    handler: async ({ prompt, style, index }) => {
+    // The image is generated here so its result is what the model reads; the
+    // card (render) shows it and owns Use / Undo / Regenerate afterwards.
+    handler: async ({ prompt, style, orientation, apply, index }) => {
       const trimmed = String(prompt || '').trim();
       if (!trimmed) {
-        toaster.show(
-          t('please_type_your_prompt', 'Please type your prompt'),
-          'warning'
-        );
-        return 'Need a prompt to generate an image.';
+        return { status: 'error', error: 'Need a prompt to generate an image.' };
       }
       setLocked(true);
       try {
-        const response = await fetch('/media/generate-image-with-prompt', {
-          method: 'POST',
-          body: JSON.stringify({
-            prompt: `
-<!-- description -->
-${trimmed}
-<!-- /description -->
-
-<!-- style -->
-${style || 'Realistic'}
-<!-- /style -->
-`,
-          }),
-        });
-        const image = await response.json();
-        if (response.ok && image?.id && image?.path) {
-          attach(typeof index === 'number' ? index : 0, [
-            { id: image.id, path: image.path },
-          ]);
-          return 'Image attached to the post.';
+        const image = await generateImage(trimmed, style, orientation);
+        if (!isGeneratedImage(image)) {
+          if (image.reason === 'credits') {
+            toaster.show(failureCopy(image), 'warning');
+          }
+          return { status: 'error', error: imageFailureForModel(image), failure: image };
         }
-        if (image === false) {
-          toaster.show(
-            t(
-              'ai_credits_exhausted',
-              'You are out of AI credits for this month.'
-            ),
-            'warning'
-          );
-          return 'Out of AI credits.';
+        if (apply) {
+          const undoKey = makeId(8);
+          const at = typeof index === 'number' ? index : 0;
+          mediaUndoSnapshots.set(undoKey, { index: at, media: attachMedia(at, [image]) });
+          return { status: 'attached', media: image, undoKey };
         }
-        if (!image?.cancelled) {
-          toaster.show(
-            typeof image?.message === 'string'
-              ? image.message
-              : t(
-                  'ai_generation_failed',
-                  'AI generation failed, please try again later.'
-                ),
-            'warning'
-          );
-        }
-        return 'Could not generate an image.';
+        return { status: 'generated', media: image };
       } catch {
-        toaster.show(
-          t(
-            'ai_generation_failed',
-            'AI generation failed, please try again later.'
-          ),
-          'warning'
-        );
-        return 'Could not generate an image.';
+        return { status: 'error', error: 'Could not generate an image.' };
       } finally {
         setLocked(false);
       }
     },
+    render: ({ args, status, result }) => (
+      <ComposerImageCard
+        args={args as { prompt?: string; style?: string; orientation?: string; index?: number }}
+        status={status}
+        result={result}
+      />
+    ),
+  });
+
+  // Backend tools the composer surface has (integrationSchema, uploadFromUrlTool)
+  // show as the same quiet step lines the Copilot page draws.
+  useCopilotAction({
+    name: '*',
+    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
+      <ToolStep name={name} status={status} args={args} result={result} />
+    ),
   });
 
   return null;
