@@ -61,6 +61,15 @@ import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { weightedLength } from '@gitroom/helpers/utils/count.length';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
+import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import {
+  AuthorizationActions,
+  Sections,
+  SubscriptionException,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 type PostWithConditionals = Post & {
   integration?: Integration;
@@ -78,8 +87,49 @@ export class PostsService {
     private _shortLinkService: ShortLinkService,
     private _openaiService: OpenaiService,
     private _temporalService: TemporalService,
-    private _refreshIntegrationService: RefreshIntegrationService
+    private _refreshIntegrationService: RefreshIntegrationService,
+    private _subscriptionService: SubscriptionService,
+    private _organizationService: OrganizationService
   ) {}
+
+  /**
+   * The monthly posts allowance, the way `POST /posts` checks it through its
+   * policy (`PermissionsService`, which lives in the backend app and cannot
+   * be reached from here): posts counted from the subscription's monthly
+   * anniversary, against the tier's `posts_per_month`. For the MCP schedule
+   * tool, which creates rows without passing that controller.
+   */
+  async assertPostsQuota(orgId: string) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+    const subscription =
+      await this._subscriptionService.getSubscriptionByOrganizationId(orgId);
+    const tier = subscription?.subscriptionTier || 'FREE';
+    const limit = pricing[tier].posts_per_month;
+    const refuse = () => {
+      throw new SubscriptionException({
+        action: AuthorizationActions.Create,
+        section: Sections.POSTS_PER_MONTH,
+      });
+    };
+    // FREE has no posts at all; no need to count.
+    if (limit <= 0) {
+      refuse();
+    }
+    const createdAt =
+      subscription?.createdAt ||
+      (await this._organizationService.getOrgById(orgId))?.createdAt ||
+      new Date();
+    const monthsPast = Math.abs(dayjs(createdAt).diff(dayjs(), 'month'));
+    const count = await this.countPostsFromDay(
+      orgId,
+      dayjs(createdAt).add(monthsPast, 'month').toDate()
+    );
+    if (count >= limit) {
+      refuse();
+    }
+  }
 
   searchForMissingThreeHoursPosts() {
     return this._postRepository.searchForMissingThreeHoursPosts();
@@ -571,6 +621,11 @@ export class PostsService {
 
   async getPost(orgId: string, id: string, convertToJPEG = false) {
     const posts = await this.getPostsRecursively(id, true, orgId, true);
+    // An unknown id, or a comment's id, used to reach `posts[0].integrationId`
+    // below and answer with a TypeError as a 500.
+    if (!posts.length) {
+      throw new NotFoundException('Post not found');
+    }
     const list = {
       group: posts?.[0]?.group,
       posts: await Promise.all(

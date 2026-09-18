@@ -267,6 +267,27 @@ const attachMedia = (
   return before;
 };
 
+/**
+ * Sets how long a comment waits after the item before it, the way the
+ * clock button under a comment does, and returns what it was, for Undo.
+ * Index 0 is the post and never waits.
+ */
+const setCommentDelay = (index: number, minutes: number): number => {
+  const { current, internal, global, setGlobalDelay, setInternalDelay } =
+    useLaunchStore.getState();
+  const entry = internal.find((p) => p.integration.id === current);
+  const before = (entry ? entry.integrationValue : global)[index]?.delay || 0;
+  if (entry) {
+    setInternalDelay(current, index, minutes);
+  } else {
+    setGlobalDelay(index, minutes);
+  }
+  return before;
+};
+
+/** Undo snapshots for delays, by key, like the media ones. */
+const delayUndoSnapshots = new Map<string, { index: number; minutes: number }>();
+
 const restoreMedia = (
   index: number,
   snapshot: { id: string; path: string; thumbnail?: string }[]
@@ -914,6 +935,71 @@ const ComposerImageCard: FC<{
   );
 };
 
+type CommentDelayResult =
+  | { status: 'applied'; index: number; minutes: number; undoKey: string }
+  | { status: 'error'; error: string };
+
+/** One line for a delay the model set, with Undo, like a quick edit's card. */
+const CommentDelayCard: FC<{ status: string; result?: unknown }> = ({ status, result }) => {
+  const t = useT();
+  const parsed = useMemo<CommentDelayResult | null>(() => {
+    if (result == null || status !== 'complete') {
+      return null;
+    }
+    try {
+      return typeof result === 'string' ? JSON.parse(result) : (result as CommentDelayResult);
+    } catch {
+      return null;
+    }
+  }, [result, status]);
+  const [undone, setUndone] = useState(false);
+  // Undo only while this page still holds the snapshot: a reopened thread
+  // draws the card again with nothing to put back.
+  const canUndo = !undone && !!parsed && parsed.status === 'applied' && delayUndoSnapshots.has(parsed.undoKey);
+  if (!parsed) {
+    return (
+      <ToolStep name="setCommentDelay" status={status} result={result} />
+    );
+  }
+  if (parsed.status === 'error') {
+    return <ToolStep name="setCommentDelay" status="complete" result={parsed} />;
+  }
+  const undo = () => {
+    const snapshot = delayUndoSnapshots.get(parsed.undoKey);
+    if (snapshot) {
+      setCommentDelay(snapshot.index, snapshot.minutes);
+      delayUndoSnapshots.delete(parsed.undoKey);
+    }
+    setUndone(true);
+  };
+  return (
+    <div
+      data-pq="composer-ai-delay"
+      data-state={undone ? 'undone' : 'applied'}
+      className="my-[6px] flex flex-wrap items-center gap-[8px] rounded-[12px] bg-pqPop p-[10px_12px] text-[12.5px] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]"
+    >
+      <span className="flex-1">
+        {undone
+          ? t('delay_undone', 'Delay put back')
+          : t('comment_delay_after', 'Comment {n}: {m} min after')
+              .replace('{n}', String(parsed.index))
+              .replace('{m}', String(parsed.minutes))}
+      </span>
+      {canUndo && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-pq="composer-ai-delay-undo"
+          onClick={undo}
+        >
+          {t('undo', 'Undo')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 type GeneratedVideoResult =
   | { status: 'started'; jobId: string }
   | { status: 'error'; error: string; failure?: VideoJobStartFailure };
@@ -1042,7 +1128,9 @@ const ComposeAiBindingsInner: FC = () => {
         required: false,
       },
     ],
-    followUp: false,
+    // The model speaks again after a suggestion (the prompt keeps it to one
+    // sentence) so a request that needs two steps, such as adding a comment
+    // and then setting its delay, can go on to the second tool.
     handler: async ({ posts, apply }): Promise<SuggestPostResult> => {
       const list = Array.isArray(posts)
         ? posts.filter((p) => typeof p === 'string')
@@ -1246,6 +1334,42 @@ const ComposeAiBindingsInner: FC = () => {
         result={result}
       />
     ),
+  });
+
+  useCopilotAction({
+    name: 'setCommentDelay',
+    description:
+      "Set how many minutes a comment or thread item waits after the item before it, for the post open in the composer: the only way to change timing. index is the thread position in the current content of posts (1 is the first comment; 0 is the post and cannot wait); an item the user applied from a suggestion card counts. Applies at once; the card offers Undo. Returns {status:'applied', index, minutes} or {status:'error', error}. One short sentence after; do not restate the delay.",
+    parameters: [
+      {
+        name: 'index',
+        type: 'number',
+        description: 'Thread index of the comment, 1 or more',
+        required: true,
+      },
+      {
+        name: 'minutes',
+        type: 'number',
+        description: 'Minutes to wait after the previous item; 0 removes the wait',
+        required: true,
+      },
+    ],
+    handler: async ({ index, minutes }): Promise<CommentDelayResult> => {
+      const at = Math.round(Number(index));
+      const wait = Math.max(0, Math.round(Number(minutes)));
+      if (!Number.isFinite(at) || at < 1) {
+        return { status: 'error', error: 'index must be 1 or more; the post itself cannot wait.' };
+      }
+      const { current, internal, global } = useLaunchStore.getState();
+      const entry = internal.find((p) => p.integration.id === current);
+      if (!(entry ? entry.integrationValue : global)[at]) {
+        return { status: 'error', error: `There is no thread item ${at}; add the comment first with suggestPost.` };
+      }
+      const undoKey = makeId(8);
+      delayUndoSnapshots.set(undoKey, { index: at, minutes: setCommentDelay(at, wait) });
+      return { status: 'applied', index: at, minutes: wait, undoKey };
+    },
+    render: ({ status, result }) => <CommentDelayCard status={status} result={result} />,
   });
 
   // Backend tools the composer surface has (integrationSchema, uploadFromUrlTool,

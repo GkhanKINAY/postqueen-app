@@ -29,13 +29,14 @@ export type CopilotProperties = {
 
 /**
  * `useCopilotReadable` descriptions the prompt prints. The SDK forwards every
- * readable as `{description, value}`; the server prints only these three and
+ * readable as `{description, value}`; the server prints only these four and
  * ignores the rest.
  */
 export const COPILOT_READABLE = {
   cards: 'Post Preview cards in this chat',
   posts: 'Current content of posts',
   channel: 'Composer channel',
+  delays: 'Comment delays',
 } as const;
 
 /**

@@ -48,7 +48,7 @@ describe('AI Copilot draft preview card', () => {
     assert.match(chat, /name: 'manualPosting'/);
     assert.doesNotMatch(chat, /renderAndWaitForResponse/);
     assert.match(chat, /handler: async \(\{ list \}\): Promise<ManualPostingResult>/);
-    assert.match(chat, /status: 'shown', cardId/);
+    assert.match(chat, /status: 'shown',\s*cardId,/);
     assert.match(chat, /status: 'invalid', cardId, errors/);
     assert.match(chat, /<DraftPreview/);
     assert.match(card, /data-pq="agent-draft-card"/);
@@ -76,7 +76,7 @@ describe('AI Copilot draft preview card', () => {
     assert.doesNotMatch(card, /identifier === 'instagram'/);
     // Rows that share a date and the same posts are one group.
     assert.match(card, /export const groupDraftItems/);
-    assert.match(card, /JSON\.stringify\(\{ date, posts \}\)/);
+    assert.match(card, /const signature = JSON\.stringify\(\{\s*date,\s*posts: posts\.map/);
     assert.match(card, /draftSettings/);
     assert.doesNotMatch(card, /h-\[72px\] w-\[72px\]/);
     assert.doesNotMatch(css, /\[data-pq='agent-draft-card'\] img/);
@@ -93,9 +93,11 @@ describe('AI Copilot draft preview card', () => {
     assert.match(actions, /fetch\('\/posts', \{/);
     assert.match(actions, /fetch\('\/posts\/find-slot'\)/);
     assert.match(actions, /type: action/);
-    assert.match(actions, /set=\{\{/);
+    assert.match(actions, /set: \{\s*posts: known\.map/);
     assert.match(actions, /customClose=\{/);
-    assert.doesNotMatch(actions, /ExistingDataContextProvider/);
+    // A new draft opens the composer as a new post; only an existing post
+    // (an Update post card) opens the calendar's edit path.
+    assert.match(actions, /const wrapExisting = \(existing: any, modal: ReactElement\)/);
     assert.doesNotMatch(chat, /ExistingDataContextProvider/);
     // Typing "post it now" goes through the same code path, and only after
     // the person has replied since the card was shown.

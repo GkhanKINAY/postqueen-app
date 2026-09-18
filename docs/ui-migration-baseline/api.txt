@@ -96,7 +96,9 @@
 /notifications/read
 /oauth/authorize
 /posts
+/posts/${current.group}
 /posts/${existingData.group}
+/posts/${id}
 /posts/${item.id}/date
 /posts/${item.id}/status
 /posts/${post.group}
@@ -109,6 +111,7 @@
 /posts/find-slot/${current.id}
 /posts/find-slot/${integration.id}
 /posts/generator
+/posts/group/${current.group}
 /posts/group/${post.group}
 /posts/group/${post.group}/debug-export
 /posts/list
