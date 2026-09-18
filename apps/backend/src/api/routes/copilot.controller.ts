@@ -80,6 +80,32 @@ export class CopilotController {
           }))
       : [];
   }
+
+  /**
+   * The client sends the whole transcript on every run. The Mastra bridge
+   * keeps only what memory does not have yet, matched by message id, but a
+   * tool result is stored inside its assistant message, never as a message
+   * of its own, and the reply that follows a tool call is stored under the
+   * assistant message's continuation id while the client keeps it under a
+   * fresh one. So every past tool result and follow-up reply read as new on
+   * every run and were saved again: Mastra merged the repeats into the
+   * thread's first assistant message, a reopened thread showed that card
+   * once per later turn and every reply twice. Completed turns are already
+   * in memory; only the current turn, everything from the last user message
+   * on, is still owed to it. Earlier user messages are kept (known ids, and
+   * the whole history is the safe input when the thread does not exist yet).
+   */
+  private currentTurnMessages(messages: unknown) {
+    if (!Array.isArray(messages)) {
+      return messages;
+    }
+    const lastUser = messages
+      .map((m) => m?.role)
+      .lastIndexOf('user');
+    return messages.filter(
+      (m, index) => m?.role === 'user' || index >= lastUser
+    );
+  }
   // The only route in this controller that carried no policy, so a FREE org
   // got a working OpenAI runtime and we got the bill. Added together with the
   // tier condition on the three <CopilotKit> mounts: CopilotKit talks GraphQL
@@ -168,6 +194,9 @@ export class CopilotController {
     // replays from it. Either way an id that already belongs to another
     // organization is refused here, before the runtime sees it.
     const threadId = req?.body?.body?.threadId;
+    if (req?.body?.body?.messages) {
+      req.body.body.messages = this.currentTurnMessages(req.body.body.messages);
+    }
     if (
       typeof threadId === 'string' &&
       (await this._mastraService.isForeignThread(organization.id, threadId))

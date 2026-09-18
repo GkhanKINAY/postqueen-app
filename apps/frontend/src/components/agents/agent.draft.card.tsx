@@ -111,24 +111,37 @@ export const draftContentHtml = (content: string | undefined) => {
         .join('');
 };
 
-const draftPosts = (item: AgentDraftItem): AgentDraftPost[] =>
+/**
+ * While the arguments stream, an attachment path arrives a few characters at
+ * a time and the preview would request every prefix (`/uploads/2026/09/18/pe`
+ * ...) as an image. A media path is complete once it ends in its extension.
+ */
+const completeMediaPath = (path: string) => /\.[a-z0-9]{2,5}$/i.test(path);
+
+const draftPosts = (
+  item: AgentDraftItem,
+  streaming: boolean
+): AgentDraftPost[] =>
   (Array.isArray(item.posts) && item.posts.length
     ? item.posts
     : [{ content: '', attachments: [] }]
   ).map((post) => ({
     content: draftContentHtml(post?.content),
-    attachments: (post?.attachments || []).filter((a) => a?.path),
+    attachments: (post?.attachments || []).filter(
+      (a) => a?.path && (!streaming || completeMediaPath(a.path))
+    ),
   }));
 
 export const groupDraftItems = (
-  list: AgentDraftItem[] | undefined
+  list: AgentDraftItem[] | undefined,
+  streaming = false
 ): AgentDraftGroup[] => {
   const groups: AgentDraftGroup[] = [];
   for (const item of Array.isArray(list) ? list : []) {
     if (!item?.integrationId) {
       continue;
     }
-    const posts = draftPosts(item);
+    const posts = draftPosts(item, streaming);
     const date = item.date || undefined;
     const signature = JSON.stringify({ date, posts });
     const existing = groups.find(
@@ -254,7 +267,8 @@ const OutcomeLine: FC<{
       '{when}',
       when(outcome.date)
     ),
-    posted: t('draft_posted_now', 'Published now'),
+    // The post is queued with a date of now; the platform confirms later.
+    posted: t('draft_posted_now', 'Publishing now'),
     draft: t('draft_saved_as_draft', 'Saved as draft'),
     composer: t('draft_saved_from_composer', 'Saved from Create Post'),
     error: outcome.error || t('post_save_failed', 'Could not save the post, please try again'),

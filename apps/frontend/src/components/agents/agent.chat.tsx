@@ -1165,7 +1165,10 @@ const DraftPreview: FC<{
   const { register, registry } = useContext(CardsContext);
   const { execute, openComposer } = useDraftActions();
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const groups = useMemo(() => groupDraftItems(args?.list), [args?.list]);
+  const groups = useMemo(
+    () => groupDraftItems(args?.list, status === 'inProgress'),
+    [args?.list, status]
+  );
   const parsed = status === 'complete' ? parseResult(result) : null;
   const legacy = typeof parsed === 'string';
   const cardId =

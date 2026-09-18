@@ -207,6 +207,24 @@ describe('AI Copilot draft preview card', () => {
     assert.match(agent, /if \(touched\.current\) \{\s*patch\.channels/);
   });
 
+  it('keeps what the live audit found from coming back', () => {
+    const card = readFileSync(
+      fileURLToPath(new URL('./agent.draft.card.tsx', import.meta.url)),
+      'utf8',
+    );
+    // Completed turns are already in Mastra memory; the bridge only gets the
+    // current turn (plus user messages), or old tool results and follow-up
+    // replies are saved again into the wrong message.
+    assert.match(controller, /private currentTurnMessages\(/);
+    assert.match(controller, /m\?\.role === 'user' \|\| index >= lastUser/);
+    assert.match(controller, /req\.body\.body\.messages = this\.currentTurnMessages/);
+    // A half-streamed attachment path is not requested as an image.
+    assert.match(card, /const completeMediaPath = /);
+    assert.match(chat, /groupDraftItems\(args\?\.list, status === 'inProgress'\)/);
+    // Post now queues the post; the platform confirms later.
+    assert.match(card, /t\('draft_posted_now', 'Publishing now'\)/);
+  });
+
   it('lets the composer grow to maxRows instead of scrolling inside one line', () => {
     const textarea = readFileSync(
       fileURLToPath(new URL('./agent.textarea.tsx', import.meta.url)),
