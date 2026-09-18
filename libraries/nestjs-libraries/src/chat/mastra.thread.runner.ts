@@ -115,14 +115,20 @@ export const mastraToAgUiMessages = (
           arguments: asJson(invocation.args),
         },
       });
-      if ('result' in invocation && invocation.result !== undefined) {
-        results.push({
-          id: `${invocation.toolCallId}-result`,
-          role: 'tool',
-          toolCallId: invocation.toolCallId,
-          content: asJson(invocation.result),
-        });
-      }
+      // A call that never got its result (an aborted run, or the old
+      // blocking card nobody answered) would replay as a step that spins
+      // forever, and the model would see an open call on the next turn. It
+      // closes as interrupted; the bridge sends that result on with the
+      // next message, which heals the stored history too.
+      results.push({
+        id: `${invocation.toolCallId}-result`,
+        role: 'tool',
+        toolCallId: invocation.toolCallId,
+        content:
+          'result' in invocation && invocation.result !== undefined
+            ? asJson(invocation.result)
+            : asJson({ status: 'interrupted' }),
+      });
     }
     if (head.content || head.toolCalls?.length) {
       out.push(head);

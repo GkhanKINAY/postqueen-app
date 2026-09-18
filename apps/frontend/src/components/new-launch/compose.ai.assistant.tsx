@@ -41,6 +41,7 @@ import { Button } from '@gitroom/react/form/button';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
+import { draftContentHtml } from '@gitroom/frontend/components/agents/agent.draft.card';
 
 export type StudioRail = 'preview' | 'assistant';
 
@@ -175,18 +176,6 @@ const QUICK_EDIT_MARKS: Record<QuickEditKind, string> = {
 };
 
 /**
- * Same normalisation as add.edit.modal.tsx: the model writes `<p>` HTML, a
- * plain-text answer becomes one paragraph per line.
- */
-const suggestionHtml = (content: string) =>
-  content.indexOf('<p>') > -1
-    ? content
-    : content
-        .split('\n')
-        .map((line) => `<p>${line}</p>`)
-        .join('');
-
-/**
  * Replaces the thread the editor shows with `posts`, the way the old
  * `setPosts` did: new ids so TipTap remounts (it reads `content` once), the
  * media of each item kept by index. Returns what was there, for Undo.
@@ -200,7 +189,7 @@ const applySuggestion = (posts: string[]): Values[] => {
     id: makeId(10),
     delay: items[index]?.delay || 0,
     media: items[index]?.media || [],
-    content: suggestionHtml(content),
+    content: draftContentHtml(content),
   }));
   if (entry) {
     setInternalValue(current, next);

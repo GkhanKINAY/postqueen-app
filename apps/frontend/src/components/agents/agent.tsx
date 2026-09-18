@@ -552,10 +552,19 @@ const useThreadSync = (
   const titled = !!threads?.threads?.find((p) => p.id === routeId)?.title;
   const dirty = useRef(false);
   const restoredFor = useRef<string | null>(null);
+  // Outcomes set in this page, on top of the saved ones. Scoped to the
+  // thread; a fresh chat's move from `new` to its id carries them over.
   const [localCards, setLocalCards] = useState<{
     routeId: string;
     cards: ThreadCardOutcomes;
   }>({ routeId, cards: {} });
+  useEffect(() => {
+    if (routeId !== 'new') {
+      setLocalCards((prev) =>
+        prev.routeId === 'new' ? { ...prev, routeId } : prev
+      );
+    }
+  }, [routeId]);
   const cards = useMemo<ThreadCardOutcomes>(() => {
     const saved = (state?.cards || {}) as ThreadCardOutcomes;
     const local = localCards.routeId === routeId ? localCards.cards : {};
@@ -565,16 +574,28 @@ const useThreadSync = (
     }
     return merged;
   }, [state?.cards, localCards, routeId]);
+  // "Schedule all" and `publishFromCard` write several outcomes from one
+  // closure, so the merge base is a ref updated on the spot, not `cards`.
+  const latestCards = useRef(cards);
+  useEffect(() => {
+    latestCards.current = cards;
+  }, [cards]);
 
+  // Writes go out one after the other, so a later, fuller state can never
+  // be overtaken by an earlier one.
+  const queue = useRef(Promise.resolve());
   const save = useCallback(
-    async (patch: Record<string, unknown>) => {
-      const response = await fetch(`/copilot/${routeId}/state`, {
-        method: 'POST',
-        body: JSON.stringify({ surface: 'agent', ...patch }),
+    (patch: Record<string, unknown>) => {
+      queue.current = queue.current.then(async () => {
+        const response = await fetch(`/copilot/${routeId}/state`, {
+          method: 'POST',
+          body: JSON.stringify({ surface: 'agent', ...patch }),
+        });
+        if (response.ok) {
+          void mutateState(await response.json(), { revalidate: false });
+        }
       });
-      if (response.ok) {
-        void mutateState(await response.json(), { revalidate: false });
-      }
+      return queue.current;
     },
     [fetch, routeId, mutateState]
   );
@@ -589,16 +610,18 @@ const useThreadSync = (
 
   const setCardOutcome = useCallback(
     (cardId: string, groupKey: string, outcome: unknown) => {
+      const base = latestCards.current;
       const next = {
-        ...cards,
-        [cardId]: { ...(cards[cardId] || {}), [groupKey]: outcome },
+        ...base,
+        [cardId]: { ...(base[cardId] || {}), [groupKey]: outcome },
       };
+      latestCards.current = next;
       setLocalCards({ routeId, cards: next });
       if (routeId !== 'new') {
         void save({ cards: next });
       }
     },
-    [cards, routeId, save]
+    [routeId, save]
   );
 
   // The title arriving is the one moment a write may have been lost.
@@ -612,6 +635,23 @@ const useThreadSync = (
       void save({ cards });
     }
   }, [routeId, titled, cards, save]);
+
+  // `Agent` lives in the layout, so a selection changed on one thread is
+  // still "dirty" when a Chats link opens another: without this it would be
+  // written into that thread before its own channels arrive. A fresh chat's
+  // move to its id is not a navigation (the list does not know the id yet).
+  const knownThreads = useRef(threads);
+  useEffect(() => {
+    knownThreads.current = threads;
+  }, [threads]);
+  useEffect(() => {
+    if (
+      routeId !== 'new' &&
+      knownThreads.current?.threads?.some((p) => p.id === routeId)
+    ) {
+      dirty.current = false;
+    }
+  }, [routeId]);
 
   useEffect(() => {
     if (routeId === 'new' || !state || !integrations?.length) {

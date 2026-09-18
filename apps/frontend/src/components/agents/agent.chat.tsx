@@ -602,14 +602,24 @@ const AgentLiveBridge: FC<{
   const { isLoading, messages } = useCopilotChatInternal();
   const { mutate } = useCopilotThreads();
   const wasLoading = useRef(false);
+  const ownRun = useRef(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    const finished = wasLoading.current && !isLoading && messages.length > 0;
+    // Only a run this page started counts: it begins right after the
+    // person's message is appended. A history replay on connect also flips
+    // `isLoading`, with no user message at the end, and must not move the
+    // address or refetch the rail.
+    const last = messages[messages.length - 1] as { role?: string } | undefined;
+    if (isLoading && !wasLoading.current && last?.role === 'user') {
+      ownRun.current = true;
+    }
+    const finished = wasLoading.current && !isLoading && ownRun.current;
     wasLoading.current = isLoading;
     if (!finished) {
       return;
     }
+    ownRun.current = false;
     if (fresh) {
       // Moves the address only; the page tree (and this chat) stays mounted.
       window.history.replaceState(null, '', `/agents/${threadId}`);
@@ -620,7 +630,7 @@ const AgentLiveBridge: FC<{
         void mutate();
       }, ms)
     );
-  }, [isLoading, messages.length, fresh, threadId, mutate]);
+  }, [isLoading, messages, fresh, threadId, mutate]);
 
   useEffect(
     () => () => timers.current.forEach((timer) => clearTimeout(timer)),
@@ -818,7 +828,10 @@ const ToolStep: FC<{
   const done = status === 'complete';
   const parsed = done ? parseResult(result) : null;
   const failed =
-    !!parsed && typeof parsed === 'object' && 'error' in parsed && !!(parsed as any).error;
+    !!parsed &&
+    typeof parsed === 'object' &&
+    (('error' in parsed && !!(parsed as any).error) ||
+      (parsed as any).status === 'interrupted');
   const image =
     name === 'generateImageTool' && parsed && typeof parsed === 'object'
       ? (parsed as { path?: string }).path
@@ -1132,13 +1145,12 @@ const DraftPreview: FC<{
     ? 'ready'
     : 'legacy';
 
+  // `register` ignores an id it already knows, so a card registers once.
   useEffect(() => {
     if (cardId && groups.length) {
       register(cardId, groups, userTurns);
     }
-    // A card registers once, when it first has an id.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardId, groups]);
+  }, [cardId, groups, register, userTurns]);
 
   const outcomes = useMemo(
     () => (cardId ? (cards[cardId] || {}) : {}) as Record<string, AgentDraftOutcome | undefined>,

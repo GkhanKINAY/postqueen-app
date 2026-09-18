@@ -69,7 +69,7 @@ describe('Mastra history to AG-UI messages', () => {
     ]);
   });
 
-  it('keeps a call without a result, with valid JSON arguments', () => {
+  it('closes a call without a result as interrupted, with valid JSON arguments', () => {
     const out = mastraToAgUiMessages([
       stored('a1', 'assistant', [
         {
@@ -82,10 +82,16 @@ describe('Mastra history to AG-UI messages', () => {
         },
       ]),
     ]);
-    assert.equal(out.length, 1);
+    assert.equal(out.length, 2);
     const head = out[0] as any;
     assert.equal(head.toolCalls[0].function.arguments, '{}');
     assert.doesNotThrow(() => JSON.parse(head.toolCalls[0].function.arguments));
+    assert.deepEqual(out[1], {
+      id: 'call_2-result',
+      role: 'tool',
+      toolCallId: 'call_2',
+      content: '{"status":"interrupted"}',
+    });
   });
 
   it('skips system and signal messages and empty assistant turns', () => {

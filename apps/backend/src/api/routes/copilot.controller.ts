@@ -272,11 +272,19 @@ export class CopilotController {
     @Param('thread') threadId: string,
     @Body() body: ThreadStateDto
   ) {
-    const { surface, ...patch } = body;
+    // Only the two fields the app keeps; the global ValidationPipe does not
+    // whitelist, and this is merged straight into stored metadata.
+    const patch: Record<string, unknown> = {};
+    if (body.channels !== undefined) {
+      patch.channels = body.channels;
+    }
+    if (body.cards !== undefined) {
+      patch.cards = body.cards;
+    }
     const saved = await this._mastraService.saveThreadState(
       organization.id,
       threadId,
-      surface === 'composer' ? 'composer' : 'agent',
+      body.surface === 'composer' ? 'composer' : 'agent',
       patch
     );
     if (!saved) {
