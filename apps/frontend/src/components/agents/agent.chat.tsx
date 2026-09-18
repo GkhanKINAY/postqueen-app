@@ -26,20 +26,17 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
   CopilotKit,
   useCopilotAction,
-  useCopilotMessagesContext,
+  useCopilotChatInternal,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
   PropertiesContext,
+  useAgentRouteId,
+  useCopilotThreads,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
-import { useParams } from 'next/navigation';
-import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import {
-  Message as CopilotMessage,
-  TextMessage,
-} from '@copilotkit/runtime-client-gql';
+import { v4 as uuid } from 'uuid';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import {
   AgentDraftCard,
@@ -71,16 +68,32 @@ const selectableIntegrations = (
     ? integrations.filter((p) => !needsAttention(p))
     : [];
 
+/**
+ * The thread the chat runs in. `/agents/new` mints its own id so the chat
+ * always has an explicit thread: the runtime replays a thread's history on
+ * connect and the app keeps per-thread state, both keyed by this id. Landing
+ * on `new` again (New chat) mints a fresh one.
+ */
+const useChatThreadId = (routeId: string) => {
+  const [minted, setMinted] = useState(() => uuid());
+  const previous = useRef(routeId);
+  useEffect(() => {
+    if (routeId === 'new' && previous.current !== 'new') {
+      setMinted(uuid());
+    }
+    previous.current = routeId;
+  }, [routeId]);
+  return routeId === 'new' ? minted : routeId;
+};
+
 export const AgentChat: FC = () => {
   const { backendUrl } = useVariables();
   const aiOk = useAiAvailable();
-  const params = useParams<{ id: string }>();
-  const { properties } = useContext(PropertiesContext);
+  const routeId = useAgentRouteId();
+  const threadId = useChatThreadId(routeId);
   const t = useT();
-  const copilotIntegrations = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
-  );
+  // Read by the backend as `forwardedProps.pq` on every run and connect.
+  const properties = useMemo(() => ({ pq: { surface: 'agent' } }), []);
 
   // Without an OpenAI key, or on a tier without AI, do not mount CopilotKit —
   // that remounts against a `/copilot/agent` that answers 503 or 402 and brings
@@ -93,17 +106,15 @@ export const AgentChat: FC = () => {
 
   return (
     <CopilotKit
-      {...(params.id === 'new' ? {} : { threadId: params.id })}
+      threadId={threadId}
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
       agent="postqueen"
-      properties={{
-        integrations: copilotIntegrations,
-      }}
+      properties={properties}
     >
       <Hooks />
-      <LoadMessages id={params.id} />
+      <AgentLiveBridge threadId={threadId} fresh={routeId === 'new'} />
       <div
         style={
           {
@@ -136,7 +147,7 @@ export const AgentChat: FC = () => {
             Input={NewInput}
           />
         </div>
-        <EmptyState />
+        <EmptyState fresh={routeId === 'new'} />
       </div>
     </CopilotKit>
   );
@@ -228,11 +239,10 @@ const EmptyStateHero: FC = () => {
  * no longer fills `useCopilotMessagesContext`, so the messages the chat shows
  * only exist in the DOM as far as this component is concerned.
  */
-const EmptyState: FC = () => {
-  const params = useParams<{ id: string }>();
+const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
   // Existing threads start empty while their history connects — without the
-  // id gate the hero flashes over every old conversation.
-  if (params.id && params.id !== 'new') {
+  // route gate the hero flashes over every old conversation.
+  if (!fresh) {
     return null;
   }
   return (
@@ -492,58 +502,48 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
   );
 };
 
-const LoadMessages: FC<{ id: string }> = ({ id }) => {
-  const { messages, setMessages } = useCopilotMessagesContext();
-  const fetch = useFetch();
-  const currentId = useRef<string | null>(null);
-  const loaded = useRef<{ id: string; messages: CopilotMessage[] } | null>(
-    null
+/**
+ * The one place that watches the live chat. History no longer needs loading
+ * here: the runtime replays a reopened thread from Mastra memory on connect
+ * (chat/mastra.thread.runner.ts). What is left is bookkeeping after a run:
+ * a fresh thread's URL becomes its id, and the Chats rail is refreshed until
+ * Mastra has named the thread (the title is generated after the run).
+ *
+ * `useCopilotChatInternal` connects on mount and detaches the live run on
+ * unmount, so this stays mounted for the chat's whole life and is never
+ * rendered conditionally.
+ */
+const AgentLiveBridge: FC<{ threadId: string; fresh: boolean }> = ({
+  threadId,
+  fresh,
+}) => {
+  const { isLoading, messages } = useCopilotChatInternal();
+  const { mutate } = useCopilotThreads();
+  const wasLoading = useRef(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    const finished = wasLoading.current && !isLoading && messages.length > 0;
+    wasLoading.current = isLoading;
+    if (!finished) {
+      return;
+    }
+    if (fresh) {
+      // Moves the address only; the page tree (and this chat) stays mounted.
+      window.history.replaceState(null, '', `/agents/${threadId}`);
+    }
+    timers.current.forEach((timer) => clearTimeout(timer));
+    timers.current = [1500, 5000, 12000].map((ms) =>
+      setTimeout(() => {
+        void mutate();
+      }, ms)
+    );
+  }, [isLoading, messages.length, fresh, threadId, mutate]);
+
+  useEffect(
+    () => () => timers.current.forEach((timer) => clearTimeout(timer)),
+    []
   );
-
-  const loadMessages = useCallback(async (idToSet: string) => {
-    const data = await (await fetch(`/copilot/${idToSet}/list`)).json();
-    const list = data.messages.map((p: any) => {
-      return new TextMessage({
-        content: p.content.content,
-        role: p.role,
-      });
-    });
-
-    if (currentId.current !== idToSet) {
-      return;
-    }
-
-    loaded.current = { id: idToSet, messages: list };
-    setMessages(list);
-  }, []);
-
-  useEffect(() => {
-    currentId.current = id;
-    if (id === 'new') {
-      loaded.current = { id, messages: [] };
-      setMessages([]);
-      return;
-    }
-    loaded.current = null;
-    loadMessages(id);
-  }, [id]);
-
-  // CopilotKit resolves loadAgentState to an empty list for Mastra local agents
-  // and can clobber the messages we hold, depending on which request resolves last
-  useEffect(() => {
-    if (loaded.current?.id !== id) {
-      return;
-    }
-
-    if (messages.length) {
-      loaded.current.messages = messages;
-      return;
-    }
-
-    if (loaded.current.messages.length) {
-      setMessages(loaded.current.messages);
-    }
-  }, [messages, id]);
 
   return null;
 };

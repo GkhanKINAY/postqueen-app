@@ -38,6 +38,43 @@ const needsAttention = (integration: {
   inBetweenSteps?: boolean;
 }) => !!(integration.refreshNeeded || integration.inBetweenSteps);
 
+/**
+ * The thread this page shows, read from the URL. `usePathname`, not
+ * `useParams`: after the first message the chat moves `/agents/new` to
+ * `/agents/<id>` with `history.replaceState`, which updates the pathname
+ * but leaves `useParams` at `new`.
+ */
+export const useAgentRouteId = () => {
+  const pathname = usePathname();
+  return pathname?.split('/').filter(Boolean).pop() || 'new';
+};
+
+/** The Chats rail. The chat refreshes it after a fresh thread's first run. */
+export const useCopilotThreads = () => {
+  const fetch = useFetch();
+  return useSWR<{ threads: { id: string; title?: string }[] }>(
+    'threads',
+    async () => (await fetch('/copilot/list')).json()
+  );
+};
+
+/**
+ * What PostQueen keeps beside a thread's transcript: the channels that were
+ * selected while chatting, and what happened to each Post Preview card.
+ */
+type ThreadState = {
+  channels?: string[];
+  cards?: Record<string, unknown>;
+};
+
+const useThreadState = (threadId: string) => {
+  const fetch = useFetch();
+  return useSWR<ThreadState>(
+    threadId === 'new' ? null : `thread-state-${threadId}`,
+    async () => (await fetch(`/copilot/${threadId}/state`)).json()
+  );
+};
+
 export const MediaPortal: FC<{
   media: { path: string; id: string }[];
   value: string;
@@ -79,18 +116,20 @@ export const MediaPortal: FC<{
 };
 
 export const AgentList: FC<{
+  /** The selection lives in `Agent` (one source for the list, the pills
+   *  and the chat); this column only paints and toggles it. */
+  selected: Integrations[];
   onChange: (arr: any[]) => void;
   /** Bumped when the composer empty CTA asks to focus this column. */
   expandNonce?: number;
   /** Channel ⋮ menu — same Menu as Channels; stopPropagation keeps row select. */
   showKebab?: boolean;
-}> = ({ onChange, expandNonce = 0, showKebab = true }) => {
+}> = ({ selected, onChange, expandNonce = 0, showKebab = true }) => {
   const fetch = useFetch();
   const t = useT();
   const toast = useToaster();
   const router = useRouter();
   const openReconnectInChannels = useOpenReconnectInChannels();
-  const [selected, setSelected] = useState([]);
   const colRef = useRef<HTMLDivElement>(null);
 
   const { mobile, tablet } = useViewport();
@@ -139,6 +178,8 @@ export const AgentList: FC<{
     router.push('/channels?add=1');
   }, [router]);
 
+  // A channel that was deleted, or now needs a reconnect, leaves the
+  // selection the moment the live list says so.
   const pruneSelected = useCallback(
     (
       prev: Integrations[],
@@ -156,7 +197,6 @@ export const AgentList: FC<{
       if (next.length !== prev.length) {
         onChange(next);
       }
-      return next;
     },
     [onChange]
   );
@@ -165,7 +205,6 @@ export const AgentList: FC<{
     (integration: Integrations) => () => {
       if (selected.some((p) => p.id === integration.id)) {
         onChange(selected.filter((p) => p.id !== integration.id));
-        setSelected(selected.filter((p) => p.id !== integration.id));
         return;
       }
       if (needsAttention(integration)) {
@@ -173,7 +212,6 @@ export const AgentList: FC<{
         return;
       }
       onChange([...selected, integration]);
-      setSelected([...selected, integration]);
     },
     [selected, onChange, openReconnectInChannels]
   );
@@ -222,17 +260,17 @@ export const AgentList: FC<{
 
   useEffect(() => {
     if (!data?.length) return;
-    setSelected((prev) => pruneSelected(prev, data));
-  }, [data, pruneSelected]);
+    pruneSelected(selected, data);
+  }, [data, selected, pruneSelected]);
 
   const onMenuChange = useCallback(
     (shouldReload: boolean) => {
       void mutate().then((fresh) => {
         if (!shouldReload || !fresh) return;
-        setSelected((prev) => pruneSelected(prev, fresh));
+        pruneSelected(selected, fresh);
       });
     },
-    [mutate, pruneSelected]
+    [mutate, selected, pruneSelected]
   );
 
   return (
@@ -480,8 +518,87 @@ export const PropertiesContext = createContext<{
   properties: any[];
   openChannels: () => void;
 }>({ properties: [], openChannels: () => {} });
+/**
+ * Keeps the channel selection with the thread. Reopening a thread restores
+ * the channels that were selected while chatting, resolved against the live
+ * list so a deleted channel, or one that now needs a reconnect, simply drops
+ * out. Only the person's own changes are written back, and only once the
+ * thread exists with a title: Mastra names a thread after its first run and
+ * that write would overwrite metadata saved in between.
+ */
+const useThreadChannels = (
+  routeId: string,
+  properties: Integrations[],
+  setProperties: (next: Integrations[]) => void
+) => {
+  const fetch = useFetch();
+  const { data: integrations } = useIntegrationList();
+  const { data: threads } = useCopilotThreads();
+  const { data: state, mutate: mutateState } = useThreadState(routeId);
+  const titled = !!threads?.threads?.find((p) => p.id === routeId)?.title;
+  const dirty = useRef(false);
+  const restoredFor = useRef<string | null>(null);
+
+  const onChange = useCallback(
+    (next: Integrations[]) => {
+      dirty.current = true;
+      setProperties(next);
+    },
+    [setProperties]
+  );
+
+  useEffect(() => {
+    if (routeId === 'new' || !state || !integrations?.length) {
+      return;
+    }
+    if (restoredFor.current === routeId) {
+      return;
+    }
+    restoredFor.current = routeId;
+    if (!Array.isArray(state.channels)) {
+      return;
+    }
+    const saved = state.channels;
+    // Same resolution as add.edit.modal.tsx: find each saved id in the live
+    // list and keep only the channels that can still post.
+    setProperties(
+      saved
+        .map((id) => integrations.find((p: Integrations) => p.id === id))
+        .filter(
+          (p): p is Integrations & { refreshNeeded?: boolean } =>
+            !!p && !needsAttention(p)
+        )
+    );
+  }, [routeId, state, integrations, setProperties]);
+
+  useEffect(() => {
+    if (routeId === 'new' || !titled || !dirty.current) {
+      return;
+    }
+    dirty.current = false;
+    const channels = properties.map((p) => p.id);
+    void (async () => {
+      const response = await fetch(`/copilot/${routeId}/state`, {
+        method: 'POST',
+        body: JSON.stringify({ surface: 'agent', channels }),
+      });
+      if (response.ok) {
+        void mutateState(await response.json(), { revalidate: false });
+      }
+    })();
+  }, [routeId, titled, properties, fetch, mutateState]);
+
+  return onChange;
+};
+
 export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
-  const [properties, setProperties] = useState([]);
+  const [properties, setProperties] = useState<Integrations[]>([]);
+  const routeId = useAgentRouteId();
+  const onChannelsChange = useThreadChannels(
+    routeId,
+    properties,
+    setProperties
+  );
   const t = useT();
   const user = useUser();
   const { mobile } = useViewport();
@@ -569,7 +686,8 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
           label={t('select_channels', 'Select Channels')}
         >
           <AgentList
-            onChange={setProperties}
+            selected={properties}
+            onChange={onChannelsChange}
             expandNonce={channelExpandNonce}
             showKebab
           />
@@ -666,16 +784,19 @@ const AgentDrawer: FC<{
 };
 
 const Threads: FC = () => {
-  const fetch = useFetch();
-  const router = useRouter();
-  const pathname = usePathname();
   const t = useT();
-  const threads = useCallback(async () => {
-    return (await fetch('/copilot/list')).json();
-  }, []);
-  const { id } = useParams<{ id: string }>();
+  // From the pathname, so the row lights up once a fresh thread's address
+  // has been moved to its id.
+  const id = useAgentRouteId();
 
-  const { data, isLoading } = useSWR('threads', threads);
+  const { data, isLoading } = useCopilotThreads();
+  // A thread is named after its first run finishes; until then, and for the
+  // runs that failed before a reply, there is nothing to show but a blank
+  // row. The chat refreshes this list until the title arrives.
+  const threads = useMemo(
+    () => (data?.threads || []).filter((p) => !!p.title),
+    [data]
+  );
   const { mobile } = useViewport();
   const [collapseRail, setCollapseRail] = useCookie('agentRailCollapse', '0');
   // The pin toggle only means anything on desktop — in the mobile drawer
@@ -799,7 +920,7 @@ const Threads: FC = () => {
               )}
             />
           ))}
-        {!isLoading && !data?.threads?.length && (
+        {!isLoading && !threads.length && (
           <div className="flex flex-col items-center gap-[8px] px-[8px] py-[28px] text-center">
             <span className="grid size-[36px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -817,7 +938,7 @@ const Threads: FC = () => {
             </div>
           </div>
         )}
-        {data?.threads?.map((p: any) => (
+        {threads.map((p) => (
           <Link
             className={clsx(
               'overflow-hidden text-ellipsis whitespace-nowrap rounded-pqSm p-[7px_9px] text-[12.5px] hover:bg-pqHover hover:text-pqText',

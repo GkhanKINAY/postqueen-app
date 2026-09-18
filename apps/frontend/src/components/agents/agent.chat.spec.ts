@@ -114,6 +114,30 @@ describe('AI Copilot draft preview card', () => {
     );
   });
 
+  it('replays history from the backend and keeps the channels with the thread', () => {
+    const agent = readFileSync(
+      fileURLToPath(new URL('./agent.tsx', import.meta.url)),
+      'utf8',
+    );
+    // The chat always runs in an explicit thread: `/agents/new` mints one,
+    // the address moves to it after the first reply, and the runtime replays
+    // a reopened thread on connect, so the old frontend reload is gone.
+    assert.doesNotMatch(chat, /LoadMessages/);
+    assert.doesNotMatch(chat, /\/copilot\/\$\{idToSet\}\/list/);
+    assert.match(chat, /threadId=\{threadId\}/);
+    assert.match(chat, /useCopilotChatInternal\(\)/);
+    assert.match(chat, /window\.history\.replaceState\(null, '', `\/agents\/\$\{threadId\}`\)/);
+    assert.match(chat, /pq: \{ surface: 'agent' \}/);
+    assert.match(agent, /usePathname\(\)/);
+    assert.match(agent, /selected=\{properties\}/);
+    assert.doesNotMatch(agent, /const \[selected, setSelected\] = useState/);
+    assert.match(agent, /\/copilot\/\$\{routeId\}\/state/);
+    assert.match(agent, /\/copilot\/\$\{threadId\}\/state/);
+    assert.match(agent, /filter\(\(p\) => !!p\.title\)/);
+    assert.match(controller, /runner: await this\._mastraService\.threadRunner\(organization\.id\)/);
+    assert.match(controller, /@Post\('\/:thread\/state'\)/);
+  });
+
   it('lets the composer grow to maxRows instead of scrolling inside one line', () => {
     const textarea = readFileSync(
       fileURLToPath(new URL('./agent.textarea.tsx', import.meta.url)),

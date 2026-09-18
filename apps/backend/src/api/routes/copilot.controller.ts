@@ -8,6 +8,8 @@ import {
   Res,
   Query,
   Param,
+  Body,
+  HttpException,
 } from '@nestjs/common';
 import {
   CopilotRuntime,
@@ -19,16 +21,34 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MastraAgent } from '@ag-ui/mastra';
-import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import {
+  CopilotSurface,
+  MastraService,
+} from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 export type ChannelsContext = {
-  integrations: string;
   organization: string;
   ui: string;
+  surface: CopilotSurface;
+};
+
+/**
+ * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
+ * request as `forwardedProps` (the v1 `variables.properties` path the old
+ * code read no longer exists on the single-route runtime).
+ */
+type CopilotProperties = {
+  surface?: CopilotSurface;
+};
+
+const readProperties = (req: Request): CopilotProperties => {
+  const pq = req?.body?.body?.forwardedProps?.pq;
+  return pq && typeof pq === 'object' ? pq : {};
 };
 
 @Controller('/copilot')
@@ -116,24 +136,39 @@ export class CopilotController {
       });
       return;
     }
+    const properties = readProperties(req);
+    const surface: CopilotSurface =
+      properties.surface === 'composer' ? 'composer' : 'agent';
+
+    // A thread id is client-minted, so a run or a connect can name any id.
+    // Runs create the thread under this organization's resource; a connect
+    // replays from it. Either way an id that already belongs to another
+    // organization is refused here, before the runtime sees it.
+    const threadId = req?.body?.body?.threadId;
+    if (
+      typeof threadId === 'string' &&
+      (await this._mastraService.threadOwnedBy(organization.id, threadId)) ===
+        undefined
+    ) {
+      res.status(HttpStatus.FORBIDDEN).json({ msg: 'Not your thread.' });
+      return;
+    }
+
     const mastra = await this._mastraService.mastra();
     const requestContext = new RequestContext<ChannelsContext>();
-    requestContext.set(
-      'integrations',
-      req?.body?.variables?.properties?.integrations || []
-    );
-
     requestContext.set('organization', JSON.stringify(organization));
     requestContext.set('ui', 'true');
+    requestContext.set('surface', surface);
 
     const agents = MastraAgent.getLocalAgents({
-      resourceId: organization.id,
+      resourceId: this._mastraService.resourceId(organization.id, surface),
       mastra,
       requestContext: requestContext as any,
     });
 
     const runtime = new CopilotRuntime({
       agents,
+      runner: await this._mastraService.threadRunner(organization.id),
     });
 
     // The Nest integration, not the Next.js App Router one this used to call.
@@ -183,6 +218,38 @@ export class CopilotController {
       Logger.warn(`Could not recall messages for thread ${threadId}: ${err}`);
       return { messages: [] };
     }
+  }
+
+  // The UI state that lives beside a thread's transcript (selected channels,
+  // what happened to each Post Preview card). Kept in the thread's metadata,
+  // so it survives a reload and a backend restart like the messages do.
+  @Get('/:thread/state')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  getThreadState(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string
+  ) {
+    return this._mastraService.getThreadState(organization.id, threadId);
+  }
+
+  @Post('/:thread/state')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async saveThreadState(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string,
+    @Body() body: ThreadStateDto
+  ) {
+    const { surface, ...patch } = body;
+    const saved = await this._mastraService.saveThreadState(
+      organization.id,
+      threadId,
+      surface === 'composer' ? 'composer' : 'agent',
+      patch
+    );
+    if (!saved) {
+      throw new HttpException('Not your thread.', HttpStatus.FORBIDDEN);
+    }
+    return saved;
   }
 
   @Get('/list')
