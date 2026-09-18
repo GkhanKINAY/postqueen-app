@@ -1,7 +1,9 @@
 'use client';
 
 import React, {
+  createContext,
   FC,
+  ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -20,36 +22,57 @@ import {
   UserMessageProps,
 } from '@copilotkit/react-ui';
 import Link from 'next/link';
+import clsx from 'clsx';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import {
+  CatchAllActionRenderProps,
   CopilotKit,
   useCopilotAction,
-  useCopilotMessagesContext,
+  useCopilotChatInternal,
+  useCopilotReadable,
+  useLazyToolRenderer,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
   PropertiesContext,
+  threadTitleWait,
+  useAgentRouteId,
+  useCopilotThreads,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
-import { useParams } from 'next/navigation';
-import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { v4 as uuid } from 'uuid';
 import {
-  Message as CopilotMessage,
-  TextMessage,
-} from '@copilotkit/runtime-client-gql';
-import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+  COPILOT_READABLE,
+  CopilotProperties,
+} from '@gitroom/helpers/utils/copilot.context';
 import {
+  AgentDraftAction,
   AgentDraftCard,
+  AgentDraftCardState,
+  AgentDraftGroup,
   AgentDraftItem,
   AgentDraftOutcome,
+  groupDraftItems,
 } from '@gitroom/frontend/components/agents/agent.draft.card';
-import dayjs from 'dayjs';
+import {
+  DraftValidationError,
+  useDraftActions,
+} from '@gitroom/frontend/components/agents/agent.draft.actions';
+import { Spinner } from '@gitroom/react/ui/spinner';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
+import { PreviewMediaFrame } from '@gitroom/frontend/components/new-launch/preview-media';
+import {
+  FEED_PREVIEW_MAX_WH,
+  FEED_PREVIEW_MIN_WH,
+} from '@gitroom/frontend/components/new-launch/preview-media-aspect';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  useT,
+  useTranslationSettings,
+} from '@gitroom/react/translation/get.transation.service.client';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
@@ -72,15 +95,53 @@ const selectableIntegrations = (
     ? integrations.filter((p) => !needsAttention(p))
     : [];
 
+/**
+ * The thread the chat runs in. `/agents/new` mints its own id so the chat
+ * always has an explicit thread: the runtime replays a thread's history on
+ * connect and the app keeps per-thread state, both keyed by this id. Landing
+ * on `new` again (New chat) mints a fresh one.
+ */
+const useChatThreadId = (routeId: string) => {
+  const [minted, setMinted] = useState(() => uuid());
+  const previous = useRef(routeId);
+  useEffect(() => {
+    if (routeId === 'new' && previous.current !== 'new') {
+      setMinted(uuid());
+    }
+    previous.current = routeId;
+  }, [routeId]);
+  return routeId === 'new' ? minted : routeId;
+};
+
 export const AgentChat: FC = () => {
   const { backendUrl } = useVariables();
   const aiOk = useAiAvailable();
-  const params = useParams<{ id: string }>();
-  const { properties } = useContext(PropertiesContext);
+  const routeId = useAgentRouteId();
+  const threadId = useChatThreadId(routeId);
   const t = useT();
-  const copilotIntegrations = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
+  const { properties: selected } = useContext(PropertiesContext);
+  const i18n = useTranslationSettings();
+  // Read by the backend as `forwardedProps.pq` on every run and connect,
+  // and printed into the prompt's "Current state": the channels the person
+  // has selected right now, their timezone and the app language. This is
+  // what the `[--integrations--]` block glued onto every message used to be.
+  const properties = useMemo(
+    (): { pq: CopilotProperties } => ({
+      pq: {
+        surface: 'agent',
+        channels: selectableIntegrations(selected).map((p) => ({
+          id: p.id,
+          platform: p.identifier,
+          name: p.name,
+          handle: formatChannelHandle(p.display) || undefined,
+          format: p.editor,
+          customer: p.customer?.name || undefined,
+        })),
+        timezone: getTimezone(),
+        locale: i18n.resolvedLanguage || i18n.language || 'en',
+      },
+    }),
+    [selected, i18n.resolvedLanguage, i18n.language]
   );
 
   // Without an OpenAI key, or on a tier without AI, do not mount CopilotKit —
@@ -94,51 +155,54 @@ export const AgentChat: FC = () => {
 
   return (
     <CopilotKit
-      {...(params.id === 'new' ? {} : { threadId: params.id })}
+      threadId={threadId}
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
+      // Separate switch from the console in 1.66, on by default on
+      // localhost: a floating CopilotKit button with its own announcements.
+      enableInspector={false}
       agent="postqueen"
-      properties={{
-        integrations: copilotIntegrations,
-      }}
+      properties={properties}
     >
-      <Hooks />
-      <LoadMessages id={params.id} />
-      <div
-        style={
-          {
-            // The SDK is themed through its own custom properties, bound to
-            // the token layer where the chat mounts. Background stays
-            // transparent so the page's own surfaces show through.
-            '--copilot-kit-primary-color': 'var(--brand)',
-            '--copilot-kit-contrast-color': 'var(--onBrand)',
-            '--copilot-kit-secondary-contrast-color': 'var(--text)',
-            '--copilot-kit-background-color': 'transparent',
-            '--copilot-kit-input-background-color': 'transparent',
-            '--copilot-kit-separator-color': 'var(--line)',
-            '--copilot-kit-muted-color': 'var(--muted)',
-          } as CopilotKitCSSProperties
-        }
-        className="trz agent bg-pqInner flex min-h-0 flex-col transition-all flex-1 relative min-w-0"
-      >
-        <div className="absolute start-0 w-full h-full">
-          <CopilotChat
-            className="w-full h-full"
-            labels={{
-              title: t('ai_copilot', 'AI Copilot'),
-              placeholder: t(
-                'agent_placeholder',
-                'Ask Copilot to draft, schedule or generate…'
-              ),
-            }}
-            AssistantMessage={AssistantMessage}
-            UserMessage={Message}
-            Input={NewInput}
-          />
-        </div>
-        <EmptyState />
-      </div>
+      <AgentLiveBridge threadId={threadId} fresh={routeId === 'new'}>
+        <Hooks>
+          <div
+            style={
+              {
+                // The SDK is themed through its own custom properties, bound
+                // to the token layer where the chat mounts. Background stays
+                // transparent so the page's own surfaces show through.
+                '--copilot-kit-primary-color': 'var(--brand)',
+                '--copilot-kit-contrast-color': 'var(--onBrand)',
+                '--copilot-kit-secondary-contrast-color': 'var(--text)',
+                '--copilot-kit-background-color': 'transparent',
+                '--copilot-kit-input-background-color': 'transparent',
+                '--copilot-kit-separator-color': 'var(--line)',
+                '--copilot-kit-muted-color': 'var(--muted)',
+              } as CopilotKitCSSProperties
+            }
+            className="trz agent bg-pqInner flex min-h-0 flex-col transition-all flex-1 relative min-w-0"
+          >
+            <div className="absolute start-0 w-full h-full">
+              <CopilotChat
+                className="w-full h-full"
+                labels={{
+                  title: t('ai_copilot', 'AI Copilot'),
+                  placeholder: t(
+                    'agent_placeholder',
+                    'Ask Copilot to draft, schedule or generate…'
+                  ),
+                }}
+                AssistantMessage={AssistantMessage}
+                UserMessage={Message}
+                Input={NewInput}
+              />
+            </div>
+            <EmptyState fresh={routeId === 'new'} />
+          </div>
+        </Hooks>
+      </AgentLiveBridge>
     </CopilotKit>
   );
 };
@@ -224,14 +288,15 @@ const EmptyStateHero: FC = () => {
  * The design's empty-thread hero, rendered instead of the old five-paragraph
  * `labels.initial` greeting (owner-approved copy change). CopilotKit would
  * render `initial` as a message, so the label is gone and this overlays the
- * top of the (empty) message column until the first message lands.
+ * top of the (empty) message column until the first message lands. Hiding it
+ * is CSS (`.agent:has(.copilotKitMessage)` in global.css): CopilotKit 1.66
+ * no longer fills `useCopilotMessagesContext`, so the messages the chat shows
+ * only exist in the DOM as far as this component is concerned.
  */
-const EmptyState: FC = () => {
-  const { messages } = useCopilotMessagesContext();
-  const params = useParams<{ id: string }>();
-  // Existing threads start with an empty context while their messages load —
-  // without the id gate the hero flashes over every old conversation.
-  if (messages.length || (params.id && params.id !== 'new')) {
+const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
+  // Existing threads start empty while their history connects — without the
+  // route gate the hero flashes over every old conversation.
+  if (!fresh) {
     return null;
   }
   return (
@@ -471,13 +536,47 @@ const UnconfiguredAgentShell: FC = () => {
 };
 
 /**
+ * What the live chat knows, for the components that must not subscribe to
+ * it themselves: the messages (tool results for the extra tool calls), and
+ * how many turns the person has taken, which `publishFromCard` uses to tell
+ * a spoken confirmation from the model acting on its own.
+ */
+const LiveChatContext = createContext<{
+  messages: any[];
+  userTurns: number;
+}>({ messages: [], userTurns: 0 });
+
+/**
  * The design puts a 26px "PQ" tile beside assistant messages. The SDK's own
  * AssistantMessage keeps rendering the content and the regenerate / copy /
  * thumbs controls — it is only wrapped, never replaced.
  */
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
-  if (!props.message?.content) {
-    return <CopilotAssistantMessage {...props} />;
+  const { messages } = useContext(LiveChatContext);
+  const lazyRenderer = useLazyToolRenderer();
+  const message = props.message as {
+    content?: unknown;
+    toolCalls?: { id: string; function: { name: string } }[];
+  };
+  // react-ui draws only the first tool call of a message as generative UI;
+  // the Mastra bridge hangs every call of a turn on the same message, so the
+  // rest (a second card, the steps around it) are drawn here, each through
+  // the same renderer with a message that holds just that call.
+  const rest = (message?.toolCalls || []).slice(1).map((toolCall) => (
+    <React.Fragment key={toolCall.id}>
+      {lazyRenderer(
+        { ...(props.message as any), toolCalls: [toolCall] },
+        messages
+      )?.()}
+    </React.Fragment>
+  ));
+  if (!message?.content) {
+    return (
+      <>
+        <CopilotAssistantMessage {...props} />
+        {rest}
+      </>
+    );
   }
   return (
     <div className="flex items-start gap-[10px]">
@@ -486,65 +585,72 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
       </span>
       <div className="min-w-0 flex-1">
         <CopilotAssistantMessage {...props} />
+        {rest}
       </div>
     </div>
   );
 };
 
-const LoadMessages: FC<{ id: string }> = ({ id }) => {
-  const { messages, setMessages } = useCopilotMessagesContext();
-  const fetch = useFetch();
-  const currentId = useRef<string | null>(null);
-  const loaded = useRef<{ id: string; messages: CopilotMessage[] } | null>(
-    null
+/**
+ * The one place that watches the live chat. History no longer needs loading
+ * here: the runtime replays a reopened thread from Mastra memory on connect
+ * (chat/mastra.thread.runner.ts). What is left is bookkeeping after a run:
+ * a fresh thread's URL becomes its id, and the Chats rail is refreshed until
+ * Mastra has named the thread (the title is generated after the run).
+ *
+ * `useCopilotChatInternal` connects on mount and detaches the live run on
+ * unmount, so this stays mounted for the chat's whole life and is never
+ * rendered conditionally.
+ */
+const AgentLiveBridge: FC<{
+  threadId: string;
+  fresh: boolean;
+  children: ReactNode;
+}> = ({ threadId, fresh, children }) => {
+  const { isLoading, messages } = useCopilotChatInternal();
+  const userTurns = useMemo(
+    () => messages.filter((m: any) => m.role === 'user').length,
+    [messages]
   );
-
-  const loadMessages = useCallback(async (idToSet: string) => {
-    const data = await (await fetch(`/copilot/${idToSet}/list`)).json();
-    const list = data.messages.map((p: any) => {
-      return new TextMessage({
-        content: p.content.content,
-        role: p.role,
-      });
-    });
-
-    if (currentId.current !== idToSet) {
-      return;
-    }
-
-    loaded.current = { id: idToSet, messages: list };
-    setMessages(list);
-  }, []);
+  const [awaitTitle, setAwaitTitle] = useState<
+    ReturnType<typeof threadTitleWait> | undefined
+  >();
+  useCopilotThreads(awaitTitle);
+  const wasLoading = useRef(false);
+  // User turns on screen when the previous run ended. A history replay on
+  // connect also flips `isLoading`; it must not move the address or refetch
+  // the rail, so a run counts as this page's own only when it left more user
+  // turns than the last one did. A fresh thread has no history, so its first
+  // run is its own. (Reading the last message's role at the rising edge was
+  // not reliable: the message and the loading flag do not land in one render.)
+  const settledTurns = useRef<number | null>(null);
 
   useEffect(() => {
-    currentId.current = id;
-    if (id === 'new') {
-      loaded.current = { id, messages: [] };
-      setMessages([]);
+    const ended = wasLoading.current && !isLoading;
+    wasLoading.current = isLoading;
+    if (!ended) {
       return;
     }
-    loaded.current = null;
-    loadMessages(id);
-  }, [id]);
-
-  // CopilotKit resolves loadAgentState to an empty list for Mastra local agents
-  // and can clobber the messages we hold, depending on which request resolves last
-  useEffect(() => {
-    if (loaded.current?.id !== id) {
+    const own =
+      settledTurns.current === null
+        ? fresh && userTurns > 0
+        : userTurns > settledTurns.current;
+    settledTurns.current = userTurns;
+    if (!own) {
       return;
     }
-
-    if (messages.length) {
-      loaded.current.messages = messages;
-      return;
+    if (fresh) {
+      // Moves the address only; the page tree (and this chat) stays mounted.
+      window.history.replaceState(null, '', `/agents/${threadId}`);
     }
+    setAwaitTitle(threadTitleWait(threadId));
+  }, [isLoading, userTurns, fresh, threadId]);
 
-    if (loaded.current.messages.length) {
-      setMessages(loaded.current.messages);
-    }
-  }, [messages, id]);
+  const value = useMemo(() => ({ messages, userTurns }), [messages, userTurns]);
 
-  return null;
+  return (
+    <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
+  );
 };
 
 /**
@@ -595,14 +701,15 @@ const Message: FC<UserMessageProps> = (props) => {
     />
   );
 };
+/**
+ * The chat composer. Attached media rides inside the message as
+ * `[--Media--]` lines (the model needs the URLs); the selected channels no
+ * longer do: they reach the prompt as `properties.pq.channels` (see
+ * AgentChat), which keeps the transcript, and the thread titles, clean.
+ */
 const NewInput: FC<InputProps> = (props) => {
   const [media, setMedia] = useState([] as { path: string; id: string }[]);
   const [value, setValue] = useState('');
-  const { properties } = useContext(PropertiesContext);
-  const copilotIntegrations = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
-  );
   const setMediaFromEvent = useCallback(
     (e: {
       target: {
@@ -646,22 +753,7 @@ const NewInput: FC<InputProps> = (props) => {
                     )
                     .join('\n') +
                   '\n[--Media--]'
-                : '') +
-              `
-${
-  copilotIntegrations.length
-    ? `[--integrations--]
-Use the following social media platforms: ${JSON.stringify(
-        copilotIntegrations.map((p) => ({
-          id: p.id,
-          platform: p.identifier,
-          profilePicture: p.picture,
-          additionalSettings: p.additionalSettings,
-        }))
-      )}
-[--integrations--]`
-    : ``
-}`
+                : '')
           );
           setValue('');
           setMedia([]);
@@ -672,17 +764,193 @@ Use the following social media platforms: ${JSON.stringify(
   );
 };
 
-export const Hooks: FC = () => {
+/** What the `manualPosting` handler hands back to the model. */
+type ManualPostingResult =
+  | { status: 'shown'; cardId: string }
+  | {
+      status: 'invalid';
+      cardId: string;
+      errors: DraftValidationError[];
+      /** Set on the last try the card takes; the model must stop and ask. */
+      stop?: string;
+    };
+
+/** Invalid drafts the card accepts for one request before it tells the model to stop. */
+const MAX_INVALID_DRAFTS = 3;
+
+/**
+ * Cards the model can act on by name. Filled by every rendered card (so a
+ * reopened thread's cards are here too) and read by `publishFromCard`.
+ */
+const CardsContext = createContext<{
+  register: (cardId: string, groups: AgentDraftGroup[], userTurn: number) => void;
+  registry: React.MutableRefObject<
+    Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
+  >;
+  /** Bumps on every registration, so a card can react to a later one. */
+  registered: number;
+}>({ register: () => {}, registry: { current: {} }, registered: 0 });
+
+const parseResult = (result: unknown): ManualPostingResult | string | null => {
+  if (result == null) {
+    return null;
+  }
+  if (typeof result === 'object') {
+    return result as ManualPostingResult;
+  }
+  try {
+    const parsed = JSON.parse(String(result));
+    return parsed && typeof parsed === 'object' ? parsed : String(result);
+  } catch {
+    return String(result);
+  }
+};
+
+/**
+ * One quiet line per backend tool call, the way an agent product shows its
+ * steps: what is happening while the reply is still coming, a check when it
+ * is done. Generated images come back as a picture at their real aspect.
+ */
+const ToolStep: FC<{
+  name: string;
+  status: string;
+  args?: Record<string, any>;
+  result?: unknown;
+}> = ({ name, status, args, result }) => {
+  const t = useT();
+  const mediaDir = useMediaDirectory();
+  const labels: Record<string, string> = {
+    integrationSchema: t('copilot_step_rules', 'Checking channel rules'),
+    integrationList: t('copilot_step_channels', 'Listing your channels'),
+    groupList: t('copilot_step_customers', 'Listing customers'),
+    triggerTool: t('copilot_step_channel_data', 'Fetching channel data'),
+    postsListTool: t('copilot_step_calendar', 'Looking at your calendar'),
+    postSettingsTool: t('copilot_step_settings', 'Updating post settings'),
+    integrationSchedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
+    schedulePostTool: t('copilot_step_scheduling', 'Scheduling'),
+    analyticsSummaryTool: t('copilot_step_analytics', 'Reading analytics'),
+    analyticsPostsTool: t('copilot_step_analytics', 'Reading analytics'),
+    analyticsPostTool: t('copilot_step_analytics', 'Reading analytics'),
+    generateImageTool: t('copilot_step_image', 'Generating image'),
+    generateVideoOptions: t('copilot_step_video', 'Generating video'),
+    videoFunctionTool: t('copilot_step_video', 'Generating video'),
+    generateVideoTool: t('copilot_step_video', 'Generating video'),
+    videoStatusTool: t('copilot_step_video', 'Generating video'),
+    uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
+    publishFromCard: t('copilot_step_card', 'Updating the card'),
+  };
+  const label = labels[name] || t('copilot_step_working', 'Working');
+  const done = status === 'complete';
+  const parsed = done ? parseResult(result) : null;
+  const failed =
+    !!parsed &&
+    typeof parsed === 'object' &&
+    (('error' in parsed && !!(parsed as any).error) ||
+      (parsed as any).status === 'interrupted');
+  const image =
+    name === 'generateImageTool' && parsed && typeof parsed === 'object'
+      ? (parsed as { path?: string }).path
+      : undefined;
+  const platform = name === 'integrationSchema' ? args?.platform : undefined;
+
+  return (
+    <div data-pq="copilot-step" data-tool={name} className="my-[4px] flex flex-col gap-[8px]">
+      <div
+        className={clsx(
+          'flex items-center gap-[8px] text-[12.5px]',
+          failed ? 'text-pqWarn' : 'text-pqSoft'
+        )}
+      >
+        {done ? (
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true" className="shrink-0">
+            {failed ? (
+              <path d="M12 8v5M12 16.5v.01M4.5 19h15L12 5.5 4.5 19Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            ) : (
+              <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            )}
+          </svg>
+        ) : (
+          <Spinner width={14} height={14} />
+        )}
+        <span>
+          {label}
+          {platform ? ` · ${platform}` : ''}
+        </span>
+      </div>
+      {image && (
+        <PreviewMediaFrame
+          className="max-w-[360px] rounded-[10px]"
+          src={mediaDir.set(image)}
+          minWH={FEED_PREVIEW_MIN_WH}
+          maxWH={FEED_PREVIEW_MAX_WH}
+          fallbackWH={1}
+          autoplay={false}
+        />
+      )}
+    </div>
+  );
+};
+
+export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
+  const { validate, execute } = useDraftActions();
+  const { cards, setCardOutcome } = useContext(PropertiesContext);
+  const { userTurns } = useContext(LiveChatContext);
+  const registry = useRef<
+    Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
+  >({});
+  const order = useRef(0);
+  const [registered, setRegistered] = useState(0);
+  const register = useCallback(
+    (cardId: string, groups: AgentDraftGroup[], userTurn: number) => {
+      if (registry.current[cardId]) {
+        return;
+      }
+      registry.current[cardId] = { groups, userTurn, order: order.current++ };
+      setRegistered((n) => n + 1);
+    },
+    []
+  );
+  // Invalid drafts in a row for the current request. A model that keeps
+  // sending the same broken settings would otherwise call this forever.
+  const invalidStreak = useRef({ turn: -1, count: 0 });
+  // Handlers are registered once and read the live values through refs.
+  const latestUserTurn = useRef(userTurns);
+  const latestCards = useRef(cards);
+  useEffect(() => {
+    latestUserTurn.current = userTurns;
+    latestCards.current = cards;
+  }, [userTurns, cards]);
+
+  // What happened to each card, for the prompt's "Current state": the model
+  // must not recreate a post that was scheduled from the card, and must know
+  // which card "post it now" refers to. Memoized: the SDK re-adds a changed
+  // value on every render.
+  const cardsSummary = useMemo(
+    () =>
+      Object.entries(cards).map(([cardId, groups]) => ({
+        cardId,
+        posts: Object.entries(groups).map(([group, outcome]) => ({
+          group,
+          ...(outcome as object),
+        })),
+      })),
+    [cards]
+  );
+  useCopilotReadable({
+    description: COPILOT_READABLE.cards,
+    value: cardsSummary,
+  });
+
   useCopilotAction({
     name: 'manualPosting',
     description:
-      'Show a Post Preview card in chat for a brand-new draft (channels, UTC dates, HTML posts, attachments, settings). Always call this before schedulePostTool. Wait for the user: they will schedule from the card or open Create Post. Do not use this to edit an existing post.',
+      "Show a Post Preview card for one or more BRAND-NEW posts. Nothing is scheduled by this call. Pass the complete draft, one row per channel; the app validates every row against the platform rules. Returns {status:'shown', cardId} once the card is on screen, or {status:'invalid', errors:[{integrationId, channel, error}]}: fix those and call again. After 'shown' answer with one short sentence and stop; the user schedules, posts, saves or edits from the card. To revise a draft, call again with the full updated draft. Never use this for an existing post.",
     parameters: [
       {
         name: 'list',
         type: 'object[]',
         description:
-          'list of posts to schedule to different social media (integration ids)',
+          'The posts to preview, one row per channel (integration id)',
         attributes: [
           {
             name: 'integrationId',
@@ -692,27 +960,36 @@ export const Hooks: FC = () => {
           {
             name: 'date',
             type: 'string',
-            description: 'UTC date of the scheduled post',
+            description:
+              'Publish time in UTC, YYYY-MM-DDTHH:mm:ss. Omit for the next free slot.',
+            required: false,
           },
           {
+            // A string on purpose: an open `object` parameter arrives at the
+            // model as `additionalProperties: false` after the runtime's
+            // schema round trip, and the model can then only send {} or null.
             name: 'settings',
-            type: 'object',
-            description: 'Settings for the integration [input:settings]',
+            type: 'string',
+            description:
+              'The platform settings for this channel as ONE JSON object string, e.g. {"who_can_reply_post":"everyone"}: every key integrationSchema marks required or gives a default for, with the values it allows. Omit only when integrationSchema says no settings are needed.',
+            required: false,
           },
           {
             name: 'posts',
             type: 'object[]',
-            description: 'list of posts / comments (one under another)',
+            description:
+              'The post, then its comments or thread items, one under another',
             attributes: [
               {
                 name: 'content',
                 type: 'string',
-                description: 'the content of the post',
+                description: 'The content of the post, HTML',
               },
               {
                 name: 'attachments',
                 type: 'object[]',
-                description: 'list of attachments',
+                description: 'Attachments already in the media library',
+                required: false,
                 attributes: [
                   {
                     name: 'id',
@@ -731,145 +1008,261 @@ export const Hooks: FC = () => {
         ],
       },
     ],
-    renderAndWaitForResponse: ({ args, status, respond }) => {
-      if (
-        status === 'inProgress' ||
-        status === 'executing' ||
-        status === 'complete'
-      ) {
-        return (
-          <DraftPreview
-            args={args}
-            respond={respond}
-            waiting={status === 'executing'}
-          />
-        );
+    handler: async ({ list }): Promise<ManualPostingResult> => {
+      const cardId = makeId(8);
+      const groups = groupDraftItems(list as AgentDraftItem[]);
+      register(cardId, groups, latestUserTurn.current);
+      // Returned, never thrown: a thrown handler ends the run and the model
+      // gets no chance to fix the draft.
+      try {
+        const errors = groups.length
+          ? await validate(groups)
+          : [{ error: 'The list is empty.' }];
+        if (!errors.length) {
+          invalidStreak.current = { turn: latestUserTurn.current, count: 0 };
+          return { status: 'shown', cardId };
+        }
+        const streak =
+          invalidStreak.current.turn === latestUserTurn.current
+            ? invalidStreak.current.count + 1
+            : 1;
+        invalidStreak.current = { turn: latestUserTurn.current, count: streak };
+        return streak >= MAX_INVALID_DRAFTS
+          ? {
+              status: 'invalid',
+              cardId,
+              errors,
+              stop: 'Do not call manualPosting again for this request. Tell the user in one sentence which setting is missing or invalid and ask them for it.',
+            }
+          : { status: 'invalid', cardId, errors };
+      } catch (e: any) {
+        return {
+          status: 'invalid',
+          cardId,
+          errors: [{ error: e?.message || 'The post could not be validated.' }],
+        };
       }
+    },
+    render: ({ args, status, result }) => (
+      <DraftPreview
+        args={args as { list?: AgentDraftItem[] }}
+        status={status}
+        result={result}
+      />
+    ),
+  });
 
-      return null;
+  useCopilotAction({
+    name: 'publishFromCard',
+    description:
+      "Carry out the user's spoken decision about a Post Preview card shown earlier. Call ONLY when the user's latest message explicitly asks to schedule, post now or save as a draft. Never call it in the same turn as manualPosting. cardId defaults to the latest open card; date (UTC) only to override the card's date. Returns {status:'scheduled'|'posted'|'draft', count} or {status:'error', error}; on error explain it in one sentence.",
+    parameters: [
+      {
+        name: 'action',
+        type: 'string',
+        description: "'schedule', 'now' or 'draft'",
+      },
+      {
+        name: 'cardId',
+        type: 'string',
+        description: 'The cardId manualPosting returned. Defaults to the latest open card.',
+        required: false,
+      },
+      {
+        name: 'date',
+        type: 'string',
+        description: 'Publish time in UTC, YYYY-MM-DDTHH:mm:ss, only to override the card',
+        required: false,
+      },
+    ],
+    handler: async ({ action, cardId, date }) => {
+      const kind = ['schedule', 'now', 'draft'].includes(String(action))
+        ? (action as AgentDraftAction)
+        : null;
+      if (!kind) {
+        return { status: 'error', error: "action must be 'schedule', 'now' or 'draft'." };
+      }
+      const pendingOf = (id: string) =>
+        (registry.current[id]?.groups || []).filter((group) => {
+          const outcome = latestCards.current[id]?.[group.key] as
+            | { status?: string }
+            | undefined;
+          return !outcome || outcome.status === 'error';
+        });
+      const id =
+        cardId && registry.current[cardId]
+          ? cardId
+          : Object.entries(registry.current)
+              .sort((a, b) => b[1].order - a[1].order)
+              .find(([key]) => pendingOf(key).length)?.[0];
+      if (!id) {
+        return { status: 'error', error: 'There is no open Post Preview card to act on.' };
+      }
+      // A confirmation is something the person typed after seeing the card.
+      if (registry.current[id].userTurn >= latestUserTurn.current) {
+        return {
+          status: 'error',
+          error: 'The user has not replied since this card was shown. Wait for them to decide from the card or in chat.',
+        };
+      }
+      const pending = pendingOf(id);
+      if (!pending.length) {
+        return { status: 'error', error: 'Every post on this card is already done.' };
+      }
+      let count = 0;
+      let failure: string | undefined;
+      for (const group of pending) {
+        const outcome = await execute(group, kind, date || undefined);
+        setCardOutcome(id, group.key, outcome);
+        if (outcome.status === 'error') {
+          failure = outcome.error;
+        } else {
+          count += 1;
+        }
+      }
+      if (failure && !count) {
+        return { status: 'error', error: failure };
+      }
+      return {
+        status: kind === 'now' ? 'posted' : kind === 'draft' ? 'draft' : 'scheduled',
+        count,
+        ...(failure ? { error: failure } : {}),
+      };
     },
   });
-  return null;
+
+  // Every backend tool the agent calls, as a step line.
+  useCopilotAction({
+    name: '*',
+    render: ({ name, status, args, result }: CatchAllActionRenderProps<any>) => (
+      <ToolStep name={name} status={status} args={args} result={result} />
+    ),
+  });
+
+  return (
+    <CardsContext.Provider value={{ register, registry, registered }}>
+      {children}
+    </CardsContext.Provider>
+  );
 };
 
+/**
+ * The Post Preview card in the chat. Reads the draft off the tool call's
+ * arguments (streamed while the model is still typing them), the validation
+ * off its result, and what happened to each group off the thread's state, so
+ * a reopened thread shows the same card with the same outcomes.
+ */
 const DraftPreview: FC<{
-  respond: (value: any) => void;
-  waiting: boolean;
-  args?: {
-    list?: AgentDraftItem[];
-  };
-}> = ({ args, respond, waiting }) => {
-  const modals = useModals();
-  const { properties } = useContext(PropertiesContext);
-  const usableProperties = useMemo(
-    () => selectableIntegrations(properties),
-    [properties]
-  );
-  const [outcome, setOutcome] = useState<AgentDraftOutcome>('idle');
-  const responded = useRef(false);
+  args?: { list?: AgentDraftItem[] };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const t = useT();
+  const { cards, setCardOutcome } = useContext(PropertiesContext);
+  const { userTurns } = useContext(LiveChatContext);
+  // The context value changes on every registration, so this re-renders
+  // when a later card for the same request appears (the registry is a ref).
+  const { register, registry } = useContext(CardsContext);
+  const { execute, openComposer } = useDraftActions();
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const groups = useMemo(() => groupDraftItems(args?.list), [args?.list]);
+  const parsed = status === 'complete' ? parseResult(result) : null;
+  const legacy = typeof parsed === 'string';
+  const cardId =
+    parsed && typeof parsed === 'object' && 'cardId' in parsed
+      ? parsed.cardId
+      : undefined;
+  const state: AgentDraftCardState = legacy
+    ? 'legacy'
+    : status === 'inProgress'
+    ? 'streaming'
+    : status === 'executing'
+    ? 'checking'
+    : parsed && typeof parsed === 'object' && parsed.status === 'invalid'
+    ? 'invalid'
+    : cardId
+    ? 'ready'
+    : 'legacy';
 
-  const finish = useCallback(
-    (message: string) => {
-      if (responded.current) {
+  // `register` ignores an id it already knows, so a card registers once.
+  useEffect(() => {
+    if (cardId && groups.length) {
+      register(cardId, groups, userTurns);
+    }
+  }, [cardId, groups, register, userTurns]);
+
+  const outcomes = useMemo(
+    () => (cardId ? (cards[cardId] || {}) : {}) as Record<string, AgentDraftOutcome | undefined>,
+    [cards, cardId]
+  );
+  // An invalid draft the model already redid: a later card exists for the
+  // same request. It folds to one line, like a backend step, instead of
+  // stacking a full card per attempt.
+  const mine = cardId ? registry.current[cardId] : undefined;
+  const superseded =
+    state === 'invalid' &&
+    !!mine &&
+    Object.values(registry.current).some(
+      (card) => card.userTurn === mine.userTurn && card.order > mine.order
+    );
+
+  const run = useCallback(
+    async (group: AgentDraftGroup, work: () => Promise<AgentDraftOutcome | null>) => {
+      if (!cardId) {
         return;
       }
-      responded.current = true;
-      respond(message);
+      setBusy((prev) => ({ ...prev, [group.key]: true }));
+      try {
+        const outcome = await work();
+        if (outcome) {
+          setCardOutcome(cardId, group.key, outcome);
+        }
+      } finally {
+        setBusy((prev) => ({ ...prev, [group.key]: false }));
+      }
     },
-    [respond]
+    [cardId, setCardOutcome]
   );
 
-  const openComposer = useCallback(async () => {
-    setOutcome('composer');
-    const list = args?.list || [];
-    for (const integration of list) {
-      const channel = usableProperties.find(
-        (p) => p.id === integration.integrationId
-      );
-      // Skip reconnect / in-between channels — same guard as Select Channels.
-      if (!channel) {
-        continue;
-      }
-      await new Promise((res) => {
-        const group = makeId(10);
-        modals.openModal({
-          id: 'add-edit-modal',
-          closeOnClickOutside: false,
-          removeLayout: true,
-          closeOnEscape: false,
-          withCloseButton: false,
-          askClose: true,
-          size: '80%',
-          title: ``,
-          classNames: {
-            modal: 'w-[100%] max-w-[1400px] text-textColor',
-          },
-          children: (
-            <ExistingDataContextProvider
-              value={{
-                group,
-                integration: integration.integrationId,
-                integrationPicture: channel.picture || '',
-                settings: integration.settings || {},
-                posts: (integration.posts || []).map((p) => ({
-                  approvedSubmitForOrder: 'NO',
-                  content: p.content,
-                  createdAt: new Date().toISOString(),
-                  state: 'DRAFT',
-                  id: makeId(10),
-                  settings: JSON.stringify(integration.settings || {}),
-                  group,
-                  integrationId: integration.integrationId,
-                  integration: channel,
-                  publishDate: dayjs.utc(integration.date).toISOString(),
-                  image: (p.attachments || []).map((a) => ({
-                    id: a.id,
-                    path: a.path,
-                  })),
-                })),
-              }}
-            >
-              <AddEditModal
-                date={dayjs.utc(integration.date)}
-                allIntegrations={usableProperties}
-                integrations={[channel]}
-                onlyValues={(integration.posts || []).map((p) => ({
-                  content: p.content,
-                  id: makeId(10),
-                  settings: integration.settings || {},
-                  image: (p.attachments || []).map((a) => ({
-                    id: a.id,
-                    path: a.path,
-                  })),
-                }))}
-                reopenModal={() => {}}
-                mutate={() => res(true)}
-              />
-            </ExistingDataContextProvider>
-          ),
-        });
-      });
-    }
+  const invalid =
+    parsed && typeof parsed === 'object' && parsed.status === 'invalid'
+      ? parsed
+      : null;
 
-    finish(
-      'User opened the Create Post composer with this draft. They will edit and schedule there. Do not call schedulePostTool for this draft.'
+  if (superseded) {
+    return (
+      <div
+        data-pq="copilot-step"
+        data-tool="manualPosting"
+        className="my-[4px] flex items-center gap-[8px] text-[12.5px] text-pqSoft"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true" className="shrink-0">
+          <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="truncate">
+          {t('draft_redone', 'Redid the draft after a channel rule failed')}
+          {invalid?.errors?.[0]?.error ? ` · ${invalid.errors[0].error}` : ''}
+        </span>
+      </div>
     );
-  }, [args, finish, usableProperties, modals]);
-
-  const schedule = useCallback(() => {
-    setOutcome('schedule');
-    finish(
-      'User confirmed. Schedule these posts now with schedulePostTool using the same channels, dates, HTML content, attachments and settings. Do not call manualPosting again.'
-    );
-  }, [finish]);
+  }
 
   return (
     <AgentDraftCard
-      list={args?.list}
-      outcome={outcome}
-      waiting={waiting}
-      onSchedule={schedule}
-      onOpenComposer={openComposer}
+      groups={groups}
+      state={state}
+      errors={invalid?.errors}
+      stopped={!!invalid?.stop}
+      outcomes={outcomes}
+      busy={busy}
+      onAction={(group, action) => void run(group, () => execute(group, action))}
+      onOpenComposer={(group) =>
+        void run(group, async () =>
+          (await openComposer(group))
+            ? { status: 'composer', at: new Date().toISOString() }
+            : null
+        )
+      }
     />
   );
 };

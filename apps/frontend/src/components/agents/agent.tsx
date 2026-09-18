@@ -38,6 +38,75 @@ const needsAttention = (integration: {
   inBetweenSteps?: boolean;
 }) => !!(integration.refreshNeeded || integration.inBetweenSteps);
 
+/**
+ * The thread this page shows, read from the URL. `usePathname`, not
+ * `useParams`: after the first message the chat moves `/agents/new` to
+ * `/agents/<id>` with `history.replaceState`, which updates the pathname
+ * but leaves `useParams` at `new`.
+ */
+export const useAgentRouteId = () => {
+  const pathname = usePathname();
+  return pathname?.split('/').filter(Boolean).pop() || 'new';
+};
+
+type ThreadList = { threads: { id: string; title?: string }[] };
+
+/** How often the Chats rail asks for a fresh thread's title, and for how long. */
+const THREAD_TITLE_POLL_MS = 2000;
+const THREAD_TITLE_POLL_FOR_MS = 30_000;
+
+/**
+ * The Chats rail. Mastra names a thread after its first run, so a fresh
+ * thread's title lands a few seconds after its reply: the chat passes that
+ * thread and the list polls until the title is in it, then switches itself
+ * off (the way notifications/live.bridge.tsx does), or gives up after
+ * `THREAD_TITLE_POLL_FOR_MS` when naming failed.
+ */
+export const useCopilotThreads = (awaitTitle?: { id: string; until: number }) => {
+  const fetch = useFetch();
+  const load = useCallback(async (): Promise<ThreadList> => {
+    // `customFetch` resolves 4xx/5xx, so without this a failed list would
+    // parse as an account with no chats and paint the empty state.
+    const response = await fetch('/copilot/list');
+    if (!response.ok) {
+      throw new Error('Could not load chats');
+    }
+    return response.json();
+  }, [fetch]);
+  const refreshInterval = useCallback(
+    (latest?: ThreadList) =>
+      awaitTitle &&
+      Date.now() < awaitTitle.until &&
+      !latest?.threads?.some((p) => p.id === awaitTitle.id && p.title)
+        ? THREAD_TITLE_POLL_MS
+        : 0,
+    [awaitTitle]
+  );
+  return useSWR<ThreadList>('threads', load, { refreshInterval });
+};
+
+export const threadTitleWait = (id: string) => ({
+  id,
+  until: Date.now() + THREAD_TITLE_POLL_FOR_MS,
+});
+
+/**
+ * What PostQueen keeps beside a thread's transcript: the channels that were
+ * selected while chatting, and what happened to each Post Preview card.
+ */
+type ThreadState = {
+  channels?: string[];
+  cards?: Record<string, unknown>;
+};
+
+const useThreadState = (threadId: string) => {
+  const fetch = useFetch();
+  return useSWR<ThreadState>(
+    threadId === 'new' ? null : `thread-state-${threadId}`,
+    async () => (await fetch(`/copilot/${threadId}/state`)).json()
+  );
+};
+
 export const MediaPortal: FC<{
   media: { path: string; id: string }[];
   value: string;
@@ -79,18 +148,20 @@ export const MediaPortal: FC<{
 };
 
 export const AgentList: FC<{
+  /** The selection lives in `Agent` (one source for the list, the pills
+   *  and the chat); this column only paints and toggles it. */
+  selected: Integrations[];
   onChange: (arr: any[]) => void;
   /** Bumped when the composer empty CTA asks to focus this column. */
   expandNonce?: number;
   /** Channel ⋮ menu — same Menu as Channels; stopPropagation keeps row select. */
   showKebab?: boolean;
-}> = ({ onChange, expandNonce = 0, showKebab = true }) => {
+}> = ({ selected, onChange, expandNonce = 0, showKebab = true }) => {
   const fetch = useFetch();
   const t = useT();
   const toast = useToaster();
   const router = useRouter();
   const openReconnectInChannels = useOpenReconnectInChannels();
-  const [selected, setSelected] = useState([]);
   const colRef = useRef<HTMLDivElement>(null);
 
   const { mobile, tablet } = useViewport();
@@ -139,6 +210,8 @@ export const AgentList: FC<{
     router.push('/channels?add=1');
   }, [router]);
 
+  // A channel that was deleted, or now needs a reconnect, leaves the
+  // selection the moment the live list says so.
   const pruneSelected = useCallback(
     (
       prev: Integrations[],
@@ -156,7 +229,6 @@ export const AgentList: FC<{
       if (next.length !== prev.length) {
         onChange(next);
       }
-      return next;
     },
     [onChange]
   );
@@ -165,7 +237,6 @@ export const AgentList: FC<{
     (integration: Integrations) => () => {
       if (selected.some((p) => p.id === integration.id)) {
         onChange(selected.filter((p) => p.id !== integration.id));
-        setSelected(selected.filter((p) => p.id !== integration.id));
         return;
       }
       if (needsAttention(integration)) {
@@ -173,7 +244,6 @@ export const AgentList: FC<{
         return;
       }
       onChange([...selected, integration]);
-      setSelected([...selected, integration]);
     },
     [selected, onChange, openReconnectInChannels]
   );
@@ -222,17 +292,17 @@ export const AgentList: FC<{
 
   useEffect(() => {
     if (!data?.length) return;
-    setSelected((prev) => pruneSelected(prev, data));
-  }, [data, pruneSelected]);
+    pruneSelected(selected, data);
+  }, [data, selected, pruneSelected]);
 
   const onMenuChange = useCallback(
     (shouldReload: boolean) => {
       void mutate().then((fresh) => {
         if (!shouldReload || !fresh) return;
-        setSelected((prev) => pruneSelected(prev, fresh));
+        pruneSelected(selected, fresh);
       });
     },
-    [mutate, pruneSelected]
+    [mutate, selected, pruneSelected]
   );
 
   return (
@@ -476,12 +546,211 @@ export const AgentList: FC<{
   );
 };
 
+/** Per card, per group: what the person did with a Post Preview. */
+export type ThreadCardOutcomes = Record<string, Record<string, unknown>>;
+
 export const PropertiesContext = createContext<{
+  /** The channels selected in the Channels column. */
   properties: any[];
+  /**
+   * Every channel of the account. A Post Preview card from an earlier chat
+   * names its channel from here, whether or not it is selected right now.
+   */
+  allChannels: any[];
   openChannels: () => void;
-}>({ properties: [], openChannels: () => {} });
+  /** Outcomes of the Post Preview cards in this thread, keyed by card id. */
+  cards: ThreadCardOutcomes;
+  setCardOutcome: (cardId: string, groupKey: string, outcome: unknown) => void;
+}>({
+  properties: [],
+  allChannels: [],
+  openChannels: () => {},
+  cards: {},
+  setCardOutcome: () => {},
+});
+
+/**
+ * Keeps the channel selection and the card outcomes with the thread.
+ * Reopening a thread restores the channels that were selected while
+ * chatting, resolved against the live list so a deleted channel, or one that
+ * now needs a reconnect, simply drops out. Only the person's own changes are
+ * written back. Mastra names a thread after its first run and that write
+ * overwrites metadata saved in between, so both channels and card outcomes
+ * are written as soon as the thread has an id and once more when the title
+ * lands.
+ */
+const useThreadSync = (
+  routeId: string,
+  properties: Integrations[],
+  setProperties: (next: Integrations[]) => void
+) => {
+  const fetch = useFetch();
+  const { data: integrations } = useIntegrationList();
+  const { data: threads } = useCopilotThreads();
+  const { data: state, mutate: mutateState } = useThreadState(routeId);
+  const titled = !!threads?.threads?.find((p) => p.id === routeId)?.title;
+  // `dirty`: a selection change not written yet. `touched`: the person
+  // changed the selection of this thread at all, so the title-time flush
+  // may write it (a restored selection is never written back by itself).
+  const dirty = useRef(false);
+  const touched = useRef(false);
+  const restoredFor = useRef<string | null>(null);
+  // Outcomes set in this page, on top of the saved ones. Scoped to the
+  // thread; a fresh chat's move from `new` to its id carries them over.
+  const [localCards, setLocalCards] = useState<{
+    routeId: string;
+    cards: ThreadCardOutcomes;
+  }>({ routeId, cards: {} });
+  useEffect(() => {
+    if (routeId !== 'new') {
+      setLocalCards((prev) =>
+        prev.routeId === 'new' ? { ...prev, routeId } : prev
+      );
+    }
+  }, [routeId]);
+  const cards = useMemo<ThreadCardOutcomes>(() => {
+    const saved = (state?.cards || {}) as ThreadCardOutcomes;
+    const local = localCards.routeId === routeId ? localCards.cards : {};
+    const merged: ThreadCardOutcomes = { ...saved };
+    for (const [cardId, groups] of Object.entries(local)) {
+      merged[cardId] = { ...(merged[cardId] || {}), ...groups };
+    }
+    return merged;
+  }, [state?.cards, localCards, routeId]);
+  // "Schedule all" and `publishFromCard` write several outcomes from one
+  // closure, so the merge base is a ref updated on the spot, not `cards`.
+  const latestCards = useRef(cards);
+  useEffect(() => {
+    latestCards.current = cards;
+  }, [cards]);
+
+  // Writes go out one after the other, so a later, fuller state can never
+  // be overtaken by an earlier one.
+  const queue = useRef(Promise.resolve());
+  const save = useCallback(
+    (patch: Record<string, unknown>) => {
+      queue.current = queue.current.then(async () => {
+        const response = await fetch(`/copilot/${routeId}/state`, {
+          method: 'POST',
+          body: JSON.stringify({ surface: 'agent', ...patch }),
+        });
+        if (response.ok) {
+          void mutateState(await response.json(), { revalidate: false });
+        }
+      });
+      return queue.current;
+    },
+    [fetch, routeId, mutateState]
+  );
+
+  const onChange = useCallback(
+    (next: Integrations[]) => {
+      dirty.current = true;
+      touched.current = true;
+      setProperties(next);
+    },
+    [setProperties]
+  );
+
+  const setCardOutcome = useCallback(
+    (cardId: string, groupKey: string, outcome: unknown) => {
+      const base = latestCards.current;
+      const next = {
+        ...base,
+        [cardId]: { ...(base[cardId] || {}), [groupKey]: outcome },
+      };
+      latestCards.current = next;
+      setLocalCards({ routeId, cards: next });
+      if (routeId !== 'new') {
+        void save({ cards: next });
+      }
+    },
+    [routeId, save]
+  );
+
+  // The title arriving is the one moment a write may have been lost.
+  const flushedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (routeId === 'new' || !titled || flushedFor.current === routeId) {
+      return;
+    }
+    flushedFor.current = routeId;
+    const patch: Record<string, unknown> = {};
+    if (Object.keys(cards).length) {
+      patch.cards = cards;
+    }
+    if (touched.current) {
+      patch.channels = properties.map((p) => p.id);
+    }
+    if (Object.keys(patch).length) {
+      void save(patch);
+    }
+  }, [routeId, titled, cards, properties, save]);
+
+  // `Agent` lives in the layout, so a selection changed on one thread is
+  // still "dirty" when a Chats link opens another: without this it would be
+  // written into that thread before its own channels arrive. A fresh chat's
+  // move to its id is not a navigation (the list does not know the id yet).
+  const knownThreads = useRef(threads);
+  useEffect(() => {
+    knownThreads.current = threads;
+  }, [threads]);
+  useEffect(() => {
+    if (
+      routeId !== 'new' &&
+      knownThreads.current?.threads?.some((p) => p.id === routeId)
+    ) {
+      dirty.current = false;
+      touched.current = false;
+    }
+  }, [routeId]);
+
+  useEffect(() => {
+    if (routeId === 'new' || !state || !integrations?.length) {
+      return;
+    }
+    if (restoredFor.current === routeId) {
+      return;
+    }
+    restoredFor.current = routeId;
+    if (!Array.isArray(state.channels)) {
+      return;
+    }
+    const saved = state.channels;
+    // Same resolution as add.edit.modal.tsx: find each saved id in the live
+    // list and keep only the channels that can still post.
+    setProperties(
+      saved
+        .map((id) => integrations.find((p: Integrations) => p.id === id))
+        .filter(
+          (p): p is Integrations & { refreshNeeded?: boolean } =>
+            !!p && !needsAttention(p)
+        )
+    );
+  }, [routeId, state, integrations, setProperties]);
+
+  // Written as soon as the thread has an id (its first run created it);
+  // the flush above repeats it once the title is in.
+  useEffect(() => {
+    if (routeId === 'new' || !dirty.current) {
+      return;
+    }
+    dirty.current = false;
+    void save({ channels: properties.map((p) => p.id) });
+  }, [routeId, properties, save]);
+
+  return { onChange, cards, setCardOutcome, allChannels: integrations || [] };
+};
+
 export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
-  const [properties, setProperties] = useState([]);
+  const [properties, setProperties] = useState<Integrations[]>([]);
+  const routeId = useAgentRouteId();
+  const {
+    onChange: onChannelsChange,
+    cards,
+    setCardOutcome,
+    allChannels,
+  } = useThreadSync(routeId, properties, setProperties);
   const t = useT();
   const user = useUser();
   const { mobile } = useViewport();
@@ -552,7 +821,9 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   }, [asDrawer]);
 
   return (
-    <PropertiesContext.Provider value={{ properties, openChannels }}>
+    <PropertiesContext.Provider
+      value={{ properties, allChannels, openChannels, cards, setCardOutcome }}
+    >
       <div ref={rowRef} className="relative flex min-w-0 flex-1">
         {asDrawer && panel && (
           <div
@@ -569,7 +840,8 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
           label={t('select_channels', 'Select Channels')}
         >
           <AgentList
-            onChange={setProperties}
+            selected={properties}
+            onChange={onChannelsChange}
             expandNonce={channelExpandNonce}
             showKebab
           />
@@ -666,16 +938,19 @@ const AgentDrawer: FC<{
 };
 
 const Threads: FC = () => {
-  const fetch = useFetch();
-  const router = useRouter();
-  const pathname = usePathname();
   const t = useT();
-  const threads = useCallback(async () => {
-    return (await fetch('/copilot/list')).json();
-  }, []);
-  const { id } = useParams<{ id: string }>();
+  // From the pathname, so the row lights up once a fresh thread's address
+  // has been moved to its id.
+  const id = useAgentRouteId();
 
-  const { data, isLoading } = useSWR('threads', threads);
+  const { data, isLoading } = useCopilotThreads();
+  // A thread is named after its first run finishes; until then, and for the
+  // runs that failed before a reply, there is nothing to show but a blank
+  // row. The chat refreshes this list until the title arrives.
+  const threads = useMemo(
+    () => (data?.threads || []).filter((p) => !!p.title),
+    [data]
+  );
   const { mobile } = useViewport();
   const [collapseRail, setCollapseRail] = useCookie('agentRailCollapse', '0');
   // The pin toggle only means anything on desktop — in the mobile drawer
@@ -799,7 +1074,7 @@ const Threads: FC = () => {
               )}
             />
           ))}
-        {!isLoading && !data?.threads?.length && (
+        {!isLoading && !threads.length && (
           <div className="flex flex-col items-center gap-[8px] px-[8px] py-[28px] text-center">
             <span className="grid size-[36px] place-items-center rounded-pqMd bg-pqSettings text-pqSoft">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -817,7 +1092,7 @@ const Threads: FC = () => {
             </div>
           </div>
         )}
-        {data?.threads?.map((p: any) => (
+        {threads.map((p) => (
           <Link
             className={clsx(
               'overflow-hidden text-ellipsis whitespace-nowrap rounded-pqSm p-[7px_9px] text-[12.5px] hover:bg-pqHover hover:text-pqText',

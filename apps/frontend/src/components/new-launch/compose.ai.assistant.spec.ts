@@ -15,6 +15,15 @@ const editor = readFileSync(
   fileURLToPath(new URL('./editor.tsx', import.meta.url)),
   'utf8',
 );
+const context = readFileSync(
+  fileURLToPath(
+    new URL(
+      '../../../../../libraries/helpers/src/utils/copilot.context.ts',
+      import.meta.url,
+    ),
+  ),
+  'utf8',
+);
 
 describe('compose AI assistant placement', () => {
   it('fills the Post Preview rail on every viewport, not a dock under the editor', () => {
@@ -62,7 +71,7 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /data-pq-compose-ai-trigger/);
   });
 
-  it('sends Rephrase / Shorten / Expand chips as Copilot commands that call setPosts', () => {
+  it('sends Rephrase / Shorten / Expand chips as quick edits the server prompt keys on', () => {
     assert.match(assistant, /data-pq="composer-ai-chips"/);
     assert.match(assistant, /t\('rephrase', 'Rephrase'\)/);
     assert.match(assistant, /t\('shorten', 'Shorten'\)/);
@@ -70,7 +79,13 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /t\('more_casual', 'More Casual'\)/);
     assert.match(assistant, /t\('more_formal', 'More Formal'\)/);
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
-    assert.match(assistant, /Then apply it with setPosts/);
+    // The label in the person's language plus a marker; the rules live in
+    // chat/load.tools.service.ts, and the marker never shows in the bubble.
+    assert.match(assistant, /\[quick-edit:\$\{kind\}\]/);
+    assert.match(assistant, /UserMessage=\{ComposeAiUserMessage\}/);
+    assert.match(assistant, /replace\(QUICK_EDIT_MARK, ''\)/);
+    assert.doesNotMatch(assistant, /Then apply it with setPosts/);
+    assert.doesNotMatch(assistant, /COPILOT_INSTRUCTIONS/);
     assert.match(assistant, /quick_edits/);
     assert.match(
       assistant,
@@ -78,6 +93,7 @@ describe('compose AI assistant placement', () => {
     );
     assert.doesNotMatch(assistant, /h-\[28px\].*text-\[12px\]/);
     assert.match(assistant, /min-h-\[36px\] flex-1 resize-none/);
+    assert.match(assistant, /<AutoResizingTextarea/);
     assert.match(assistant, /write_something[\s\S]{0,40}Write something/);
     assert.doesNotMatch(assistant, /share_with_the_world/);
     assert.match(assistant, /🔄/);
@@ -87,7 +103,9 @@ describe('compose AI assistant placement', () => {
   });
 
   it('shows the Connections card on an empty rail instead of a CopilotKit greeting bubble', () => {
-    assert.match(assistant, /useCopilotMessagesContext/);
+    // CopilotKit 1.66 never fills `useCopilotMessagesContext`; the overlay is
+    // hidden by CSS from the first bubble on (agent.chat.spec pins the rule).
+    assert.doesNotMatch(assistant, /useCopilotMessagesContext\(/);
     assert.match(assistant, /<ComposeAiEmptyOverlay/);
     assert.match(assistant, /<ComposeAiEmptyHero tip=\{tip\} \/>/);
     assert.match(assistant, /href="\/connections"/);
@@ -99,11 +117,58 @@ describe('compose AI assistant placement', () => {
     );
   });
 
-  it('can rewrite the post and generate an attached image', () => {
+  it('can rewrite the post through an Apply / Undo card and generate an attached image', () => {
     assert.match(assistant, /generateImageForPost/);
     assert.match(assistant, /attachMediaToPost/);
     assert.match(assistant, /\/media\/generate-image-with-prompt/);
-    assert.match(assistant, /setPosts/);
+    // `suggestPost` replaced `setPosts`: a quick edit applies at once with
+    // Undo on its card, anything else waits for Apply, and any card can be
+    // applied again. The editor keeps its readables and writes nothing.
+    assert.match(assistant, /name: 'suggestPost'/);
+    assert.match(assistant, /followUp: false/);
+    assert.match(assistant, /<SuggestionCard/);
+    assert.match(assistant, /data-pq="composer-ai-apply"/);
+    assert.match(assistant, /data-pq="composer-ai-undo"/);
+    assert.match(assistant, /data-pq="composer-ai-apply-again"/);
+    assert.match(assistant, /undoSnapshots\.set\(undoKey, applySuggestion\(list\)\)/);
+    // Undo of a quick edit the handler applied re-renders through `undone`
+    // (`applied` is already null there), and the card keeps paragraph breaks.
+    assert.match(assistant, /const \[undone, setUndone\] = useState\(false\)/);
+    assert.match(assistant, /stripHtmlValidation\('normal', post \|\| '', false, true\)/);
+    assert.match(assistant, /enableInspector=\{false\}/);
+    assert.doesNotMatch(assistant, /name: 'setPosts'/);
+    assert.doesNotMatch(editor, /name: 'setPosts'/);
+    // The readable keys are the server prompt's, from one shared module.
+    assert.match(editor, /description: COPILOT_READABLE\.posts/);
+    assert.match(editor, /description: COPILOT_READABLE\.channel/);
+    assert.match(context, /cards: 'Post Preview cards in this chat'/);
+    assert.match(context, /posts: 'Current content of posts'/);
+    assert.match(context, /channel: 'Composer channel'/);
+  });
+
+  it('runs Create Post on the same agent as the Copilot page, in its own thread', () => {
+    // A nested provider per composer: the layout-level `/copilot/chat` one
+    // served every post ever opened from one shared, promptless chat.
+    assert.match(assistant, /export const ComposerCopilotProvider/);
+    assert.match(assistant, /runtimeUrl=\{backendUrl \+ '\/copilot\/agent'\}/);
+    assert.match(assistant, /surface: 'composer'/);
+    assert.match(assistant, /uuid\(\)/);
+    const addEdit = readFileSync(
+      fileURLToPath(new URL('./add.edit.modal.tsx', import.meta.url)),
+      'utf8',
+    );
+    assert.match(addEdit, /<ComposerCopilotProvider>\s*<ManageModal/);
+  });
+
+  it('keeps the composer chat with the post it wrote', () => {
+    // The thread id rides on the post's provider settings like `pq_notify`:
+    // written only once the chat was used, never for Sets or the JSON mode,
+    // and read back to reopen a draft on the same thread.
+    assert.match(context, /export const PQ_AI_THREAD_SETTING = 'pq_ai_thread'/);
+    assert.match(assistant, /existingData\?\.settings\?\.\[PQ_AI_THREAD_SETTING\]/);
+    assert.match(modal, /!addEditSets && !dummy && copilotThread\.used\(\)/);
+    assert.match(modal, /\[PQ_AI_THREAD_SETTING\]: copilotThread\.threadId/);
+    assert.match(modal, /\.\.\.copilotThreadSetting,/);
   });
 
   it('labels the rail AI Copilot and uses the Agents sparkle, not a filled stand-in', () => {

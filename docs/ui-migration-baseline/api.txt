@@ -45,7 +45,8 @@
 /comments/${comment.id}
 /comments/${date.utc().format(
 /comments/${id}
-/copilot/${idToSet}/list
+/copilot/${routeId}/state
+/copilot/${threadId}/state
 /copilot/credits
 /copilot/list
 /customers

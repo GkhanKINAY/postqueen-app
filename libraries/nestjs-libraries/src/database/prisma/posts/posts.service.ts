@@ -881,6 +881,7 @@ export class PostsService {
         // Settings DTO validation — mirrors the client `form.trigger()`.
         let valid = true;
         let settingsError = '';
+        let settingsErrorKey = '';
         if (provider?.dto) {
           const instance = plainToInstance(provider.dto, settings, {
             enableImplicitConversion: false,
@@ -889,6 +890,7 @@ export class PostsService {
             skipMissingProperties: false,
           });
           settingsError = this.firstValidationError(validationErrors);
+          settingsErrorKey = this.firstValidationErrorKey(validationErrors);
           valid = validationErrors.length === 0;
         }
 
@@ -927,6 +929,9 @@ export class PostsService {
           name: integration.name,
           valid,
           settingsError,
+          // The setting the first error is about, so a client that built the
+          // settings itself (the Copilot card) can say which key to add.
+          settingsErrorKey,
           errors,
           emptyContent,
           tooLong,
@@ -947,6 +952,21 @@ export class PostsService {
         : '';
       if (child) {
         return child;
+      }
+    }
+    return '';
+  }
+
+  private firstValidationErrorKey(errors: any[]): string {
+    for (const e of errors || []) {
+      if (e?.constraints) {
+        return String(e.property || '');
+      }
+      const child = e?.children?.length
+        ? this.firstValidationErrorKey(e.children)
+        : '';
+      if (child) {
+        return `${e.property}.${child}`;
       }
     }
     return '';

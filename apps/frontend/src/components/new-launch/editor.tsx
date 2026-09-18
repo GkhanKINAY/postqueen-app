@@ -29,7 +29,8 @@ import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.co
 import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
+import { useCopilotReadable } from '@copilotkit/react-core';
+import { COPILOT_READABLE } from '@gitroom/helpers/utils/copilot.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
@@ -80,29 +81,24 @@ import {
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
 
-/** Copilot bindings only mount when AI is configured (needs CopilotKit provider). */
+/**
+ * What the editor tells Copilot (only mounts when AI is configured, it needs
+ * the CopilotKit provider). The descriptions are the keys the server prompt
+ * prints under "Current state" (chat/load.tools.service.ts). Writing back
+ * happens through `suggestPost` in compose.ai.assistant.tsx, with a card.
+ */
 const EditorCopilotBindings: FC<{
   contents: string[];
-  setValue: (content: string[]) => void;
-}> = ({ contents, setValue }) => {
+  channel: { name: string; platform: string; limit?: number } | null;
+}> = ({ contents, channel }) => {
   useCopilotReadable({
-    description: 'Current content of posts',
+    description: COPILOT_READABLE.posts,
     value: contents,
   });
 
-  useCopilotAction({
-    name: 'setPosts',
-    description: 'a thread of posts',
-    parameters: [
-      {
-        name: 'content',
-        type: 'string[]',
-        description: 'a thread of posts',
-      },
-    ],
-    handler: async ({ content }) => {
-      setValue(content);
-    },
+  useCopilotReadable({
+    description: COPILOT_READABLE.channel,
+    value: channel,
   });
 
   return null;
@@ -232,27 +228,6 @@ export const EditorWrapper: FC<{
 
     return global;
   }, [internal, global]);
-
-  const setValue = useCallback(
-    (value: string[]) => {
-      const newValue = value.map((p, index) => {
-        return {
-          id: makeId(10),
-          delay: 0,
-          ...(items?.[index]?.media
-            ? { media: items[index].media }
-            : { media: [] }),
-          content: p,
-        };
-      });
-      if (internal) {
-        return setInternalValue(current, newValue);
-      }
-
-      return setGlobalValue(newValue);
-    },
-    [internal, items]
-  );
 
   const aiOk = useAiAvailable();
 
@@ -507,7 +482,21 @@ export const EditorWrapper: FC<{
       {aiOk && (
         <EditorCopilotBindings
           contents={items.map((p) => p.content)}
-          setValue={setValue}
+          channel={
+            current === 'global'
+              ? {
+                  name: 'Global',
+                  platform: 'all selected channels',
+                  limit: totalChars || undefined,
+                }
+              : internalFromAll
+              ? {
+                  name: internalFromAll.name,
+                  platform: internalFromAll.identifier,
+                  limit: chars[current] || totalChars || undefined,
+                }
+              : null
+          }
         />
       )}
       {isCreateSet && current !== 'global' && (

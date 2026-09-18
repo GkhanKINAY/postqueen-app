@@ -8,6 +8,8 @@ import {
   Res,
   Query,
   Param,
+  Body,
+  HttpException,
 } from '@nestjs/common';
 import {
   CopilotRuntime,
@@ -20,15 +22,25 @@ import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generate
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import {
+  CopilotChannel,
+  CopilotProperties,
+  CopilotSurface,
+} from '@gitroom/helpers/utils/copilot.context';
+import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 export type ChannelsContext = {
-  integrations: string;
   organization: string;
   ui: string;
+  surface: CopilotSurface;
+  /** JSON of CopilotChannel[]: the channels selected in the app. */
+  channels: string;
+  timezone: string;
+  locale: string;
 };
 
 @Controller('/copilot')
@@ -37,6 +49,37 @@ export class CopilotController {
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService
   ) {}
+
+  /**
+   * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
+   * request as `forwardedProps` (the v1 `variables.properties` path the old
+   * code read no longer exists on the single-route runtime).
+   */
+  private readProperties(req: Request): Partial<CopilotProperties> {
+    const pq = req?.body?.body?.forwardedProps?.pq;
+    return pq && typeof pq === 'object' ? pq : {};
+  }
+
+  private shortString(value: unknown, max = 64) {
+    return typeof value === 'string' ? value.slice(0, max) : '';
+  }
+
+  /** Only the fields the prompt prints; the app sends nothing else, but the wire is the wire. */
+  private channelsFromProperties(channels: unknown): CopilotChannel[] {
+    return Array.isArray(channels)
+      ? channels
+          .filter((c) => c && typeof c === 'object' && typeof c.id === 'string')
+          .slice(0, 100)
+          .map((c) => ({
+            id: this.shortString(c.id),
+            platform: this.shortString(c.platform),
+            name: this.shortString(c.name, 80),
+            handle: this.shortString(c.handle),
+            format: this.shortString(c.format, 16),
+            customer: this.shortString(c.customer, 80),
+          }))
+      : [];
+  }
   // The only route in this controller that carried no policy, so a FREE org
   // got a working OpenAI runtime and we got the bill. Added together with the
   // tier condition on the three <CopilotKit> mounts: CopilotKit talks GraphQL
@@ -64,9 +107,39 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
       }),
+      cors: this.runtimeCors(),
     });
 
+    this.streamUnbuffered(res);
     return copilotRuntimeHandler(req, res);
+  }
+
+  // The runtime streams its reply as server-sent events. nginx (prod,
+  // var/docker/nginx.conf) buffers proxied responses by default and this
+  // header is how a response opts out; the gzip side is handled in main.ts.
+  // Set before the handler runs: the Node adapter copies its own headers on
+  // top and pipes without flushing, so anything set later is too late.
+  private streamUnbuffered(res: Response) {
+    res.setHeader('X-Accel-Buffering', 'no');
+  }
+
+  // The runtime answers with its own CORS headers, copied over the ones Nest
+  // already set: `Access-Control-Allow-Origin: *` next to credentials, which
+  // every browser refuses. Behind nginx the app is same-origin and never
+  // noticed; a frontend on another origin (local dev) got "Failed to fetch"
+  // on every message. Same allowlist as the Nest CORS config in main.ts.
+  private runtimeCors() {
+    const allowed = new Set(
+      [
+        process.env.FRONTEND_URL,
+        'http://localhost:6274',
+        process.env.MAIN_URL,
+      ].filter((origin): origin is string => !!origin)
+    );
+    return {
+      origin: (origin: string) => (allowed.has(origin) ? origin : undefined),
+      credentials: true,
+    };
   }
 
   @Post('/agent')
@@ -86,24 +159,44 @@ export class CopilotController {
       });
       return;
     }
+    const properties = this.readProperties(req);
+    const surface: CopilotSurface =
+      properties.surface === 'composer' ? 'composer' : 'agent';
+
+    // A thread id is client-minted, so a run or a connect can name any id.
+    // Runs create the thread under this organization's resource; a connect
+    // replays from it. Either way an id that already belongs to another
+    // organization is refused here, before the runtime sees it.
+    const threadId = req?.body?.body?.threadId;
+    if (
+      typeof threadId === 'string' &&
+      (await this._mastraService.isForeignThread(organization.id, threadId))
+    ) {
+      res.status(HttpStatus.FORBIDDEN).json({ msg: 'Not your thread.' });
+      return;
+    }
+
     const mastra = await this._mastraService.mastra();
     const requestContext = new RequestContext<ChannelsContext>();
-    requestContext.set(
-      'integrations',
-      req?.body?.variables?.properties?.integrations || []
-    );
-
     requestContext.set('organization', JSON.stringify(organization));
     requestContext.set('ui', 'true');
+    requestContext.set('surface', surface);
+    requestContext.set(
+      'channels',
+      JSON.stringify(this.channelsFromProperties(properties.channels))
+    );
+    requestContext.set('timezone', this.shortString(properties.timezone));
+    requestContext.set('locale', this.shortString(properties.locale, 16));
 
     const agents = MastraAgent.getLocalAgents({
-      resourceId: organization.id,
+      resourceId: this._mastraService.resourceId(organization.id, surface),
       mastra,
       requestContext: requestContext as any,
     });
 
     const runtime = new CopilotRuntime({
       agents,
+      runner: await this._mastraService.threadRunner(organization.id),
     });
 
     // The Nest integration, not the Next.js App Router one this used to call.
@@ -118,8 +211,10 @@ export class CopilotController {
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
       }),
+      cors: this.runtimeCors(),
     });
 
+    this.streamUnbuffered(res);
     return copilotRuntimeHandler(req, res);
   }
 
@@ -151,6 +246,36 @@ export class CopilotController {
       Logger.warn(`Could not recall messages for thread ${threadId}: ${err}`);
       return { messages: [] };
     }
+  }
+
+  // The UI state that lives beside a thread's transcript (selected channels,
+  // what happened to each Post Preview card). Kept in the thread's metadata,
+  // so it survives a reload and a backend restart like the messages do.
+  @Get('/:thread/state')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  getThreadState(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string
+  ) {
+    return this._mastraService.getThreadState(organization.id, threadId);
+  }
+
+  @Post('/:thread/state')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async saveThreadState(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string,
+    @Body() body: ThreadStateDto
+  ) {
+    const saved = await this._mastraService.saveThreadState(
+      organization.id,
+      threadId,
+      body
+    );
+    if (!saved) {
+      throw new HttpException('Not your thread.', HttpStatus.FORBIDDEN);
+    }
+    return saved;
   }
 
   @Get('/list')

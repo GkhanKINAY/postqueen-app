@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { FC, useEffect } from 'react';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ManageModal } from '@gitroom/frontend/components/new-launch/manage.modal';
+import { ComposerCopilotProvider } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import { useShallow } from 'zustand/react/shallow';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
@@ -306,7 +307,12 @@ export const AddEditModalInnerInner: FC<AddEditModalProps> = (props) => {
     return null;
   }
 
+  // Above ManageModal, which reads the thread back into the post's settings
+  // when it saves; the store is hydrated by now, so the selected channels
+  // reach the prompt.
   return (
-    <ManageModal {...props} />
+    <ComposerCopilotProvider>
+      <ManageModal {...props} />
+    </ComposerCopilotProvider>
   );
 };

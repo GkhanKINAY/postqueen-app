@@ -7,6 +7,7 @@ import {
   ReactNode,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -17,21 +18,120 @@ import {
   CopilotKitCSSProperties,
   InputProps,
   RenderSuggestionsListProps,
+  UserMessageProps,
   useChatContext,
 } from '@copilotkit/react-ui';
+import { CopilotKit, useCopilotAction } from '@copilotkit/react-core';
+import { v4 as uuid } from 'uuid';
 import {
-  useCopilotAction,
-  useCopilotMessagesContext,
-} from '@copilotkit/react-core';
-import { useT } from '@gitroom/react/translation/get.transation.service.client';
+  useT,
+  useTranslationSettings,
+} from '@gitroom/react/translation/get.transation.service.client';
 import { useAiAvailable, useUser } from '@gitroom/frontend/components/layout/user.context';
-import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
+import { useLaunchStore, Values } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
+import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import { Button } from '@gitroom/react/form/button';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
+import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
+import { draftContentHtml } from '@gitroom/frontend/components/agents/agent.draft.card';
+import {
+  CopilotProperties,
+  PQ_AI_THREAD_SETTING,
+} from '@gitroom/helpers/utils/copilot.context';
 
 export type StudioRail = 'preview' | 'assistant';
+
+const ComposerThreadContext = createContext<{
+  threadId: string;
+  /** Whether a message was sent in this composer; the setting is written only then. */
+  used: () => boolean;
+  markUsed: () => void;
+}>({ threadId: '', used: () => false, markUsed: () => {} });
+
+export const useComposerThread = () => useContext(ComposerThreadContext);
+
+/**
+ * Create Post's own CopilotKit provider: the same `postqueen` agent as the
+ * Copilot page, in a thread of its own per composer, with the surface and
+ * the selected channels in `properties.pq` for the prompt. The layout-level
+ * provider (`/copilot/chat`, no thread) used to serve every composer ever
+ * opened in the session from one shared conversation.
+ */
+export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const aiOk = useAiAvailable();
+  const { backendUrl } = useVariables();
+  const i18n = useTranslationSettings();
+  const existingData = useExistingData();
+  // A post that was written with Copilot reopens on its own thread.
+  const [threadId] = useState(() => {
+    const saved = existingData?.settings?.[PQ_AI_THREAD_SETTING];
+    return typeof saved === 'string' && saved ? saved : uuid();
+  });
+  const usedRef = useRef(false);
+  const thread = useMemo(
+    () => ({
+      threadId,
+      used: () => usedRef.current,
+      markUsed: () => {
+        usedRef.current = true;
+      },
+    }),
+    [threadId]
+  );
+  const selectedIntegrations = useLaunchStore(
+    (state) => state.selectedIntegrations
+  );
+  const properties = useMemo(
+    (): { pq: CopilotProperties } => ({
+      pq: {
+        surface: 'composer',
+        channels: selectedIntegrations.map(({ integration }) => ({
+          id: integration.id,
+          platform: integration.identifier,
+          name: integration.name,
+          handle: formatChannelHandle(integration.display) || undefined,
+          format: integration.editor,
+          customer: integration.customer?.name || undefined,
+        })),
+        timezone: getTimezone(),
+        locale: i18n.resolvedLanguage || i18n.language || 'en',
+      },
+    }),
+    [selectedIntegrations, i18n.resolvedLanguage, i18n.language]
+  );
+  if (!aiOk) {
+    return (
+      <ComposerThreadContext.Provider value={thread}>
+        {children}
+      </ComposerThreadContext.Provider>
+    );
+  }
+  return (
+    <ComposerThreadContext.Provider value={thread}>
+      <CopilotKit
+        threadId={threadId}
+        credentials="include"
+        runtimeUrl={backendUrl + '/copilot/agent'}
+        showDevConsole={false}
+        enableInspector={false}
+        agent="postqueen"
+        properties={properties}
+      >
+        {children}
+      </CopilotKit>
+    </ComposerThreadContext.Provider>
+  );
+};
 
 const StudioRailContext = createContext<{
   rail: StudioRail;
@@ -53,21 +153,62 @@ export const StudioRailProvider: FC<{
 
 export const useStudioRail = () => useContext(StudioRailContext);
 
-const COPILOT_INSTRUCTIONS = `
-You are an assistant that helps the user write this social media post in Create Post.
-You can:
-- Rewrite or replace the post text with setPosts (pass the full thread as a string array)
-- Generate an image and attach it to the post with generateImageForPost
-- Attach existing media with attachMediaToPost when you already have an id and path
+/**
+ * A quick edit is the chip's label in the user's language plus a marker the
+ * server prompt keys the rewrite rules on. The label is what the person sees
+ * in their bubble; the marker is stripped there (`ComposeAiUserMessage`).
+ */
+type QuickEditKind = 'rephrase' | 'shorten' | 'expand' | 'casual' | 'formal';
+const QUICK_EDIT_MARK = /\s*\[quick-edit:[a-z]+\]/g;
+const quickEditMessage = (title: string, kind: QuickEditKind) =>
+  `${title} [quick-edit:${kind}]`;
+const quickEditKind = (message: string) =>
+  (message.match(/\[quick-edit:([a-z]+)\]/)?.[1] || '') as QuickEditKind | '';
+const QUICK_EDIT_MARKS: Record<QuickEditKind, string> = {
+  rephrase: '🔄',
+  shorten: '✂️',
+  expand: '➕',
+  casual: '😊',
+  formal: '💼',
+};
 
-When the user asks to rephrase, shorten, expand, or change tone, apply the new text with setPosts immediately. Do not only propose it in chat. Keep the same number of thread items unless they ask otherwise.
+/**
+ * Replaces the thread the editor shows with `posts`, the way the old
+ * `setPosts` did: new ids so TipTap remounts (it reads `content` once), the
+ * media of each item kept by index. Returns what was there, for Undo.
+ */
+const applySuggestion = (posts: string[]): Values[] => {
+  const { current, internal, global, setGlobalValue, setInternalValue } =
+    useLaunchStore.getState();
+  const entry = internal.find((p) => p.integration.id === current);
+  const items = entry ? entry.integrationValue : global;
+  const next: Values[] = posts.map((content, index) => ({
+    id: makeId(10),
+    delay: items[index]?.delay || 0,
+    media: items[index]?.media || [],
+    content: draftContentHtml(content),
+  }));
+  if (entry) {
+    setInternalValue(current, next);
+  } else {
+    setGlobalValue(next);
+  }
+  return items;
+};
 
-You cannot schedule, publish, or open other pages. The user uses Schedule / Post Now for that.
-After changing the post, keep replies short.
-`;
+const restoreSuggestion = (snapshot: Values[]) => {
+  const { current, internal, setGlobalValue, setInternalValue } =
+    useLaunchStore.getState();
+  const entry = internal.find((p) => p.integration.id === current);
+  if (entry) {
+    setInternalValue(current, snapshot);
+  } else {
+    setGlobalValue(snapshot);
+  }
+};
 
-const APPLY_WITH_SET_POSTS =
-  'Then apply it with setPosts (the full thread as a string array).';
+/** Undo snapshots by key; gone with the page, which is what Undo should be. */
+const undoSnapshots = new Map<string, Values[]>();
 
 const triggerClassName = (open: boolean) =>
   clsx(
@@ -173,11 +314,12 @@ const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
   );
 };
 
+/**
+ * Hidden by CSS from the first bubble on (`.agent:has(.copilotKitMessage)` in
+ * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
+ * which this used to read, so it stayed up over the conversation.
+ */
 const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
-  const { messages } = useCopilotMessagesContext();
-  if (messages.length) {
-    return null;
-  }
   return (
     <div
       data-copilot-empty="1"
@@ -194,13 +336,7 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
   isLoading,
 }) => {
   const t = useT();
-  const marks: Record<string, string> = {
-    [t('rephrase', 'Rephrase')]: '🔄',
-    [t('shorten', 'Shorten')]: '✂️',
-    [t('expand', 'Expand')]: '➕',
-    [t('more_casual', 'More Casual')]: '😊',
-    [t('more_formal', 'More Formal')]: '💼',
-  };
+  const { markUsed } = useComposerThread();
   if (!suggestions.length) {
     return null;
   }
@@ -213,22 +349,31 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
         {t('quick_edits', 'Quick edits')}
       </div>
       <div className="flex flex-wrap gap-[8px]">
-        {suggestions.map((suggestion) => (
-          <button
-            key={suggestion.title}
-            type="button"
-            disabled={isLoading}
-            onClick={() => onSuggestionClick(suggestion.message)}
-            className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {marks[suggestion.title] ? (
-              <span aria-hidden="true" className="text-[14px] leading-none">
-                {marks[suggestion.title]}
-              </span>
-            ) : null}
-            {suggestion.title}
-          </button>
-        ))}
+        {suggestions.map((suggestion) => {
+          // The emoji follows the edit kind in the message, not the
+          // translated title, so it survives every locale.
+          const kind = quickEditKind(suggestion.message);
+          const mark = kind ? QUICK_EDIT_MARKS[kind] : undefined;
+          return (
+            <button
+              key={suggestion.title}
+              type="button"
+              disabled={isLoading}
+              onClick={() => {
+                markUsed();
+                onSuggestionClick(suggestion.message);
+              }}
+              className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {mark ? (
+                <span aria-hidden="true" className="text-[14px] leading-none">
+                  {mark}
+                </span>
+              ) : null}
+              {suggestion.title}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -243,6 +388,7 @@ const ComposeAiInput: FC<InputProps> = ({
 }) => {
   const t = useT();
   const context = useChatContext();
+  const { markUsed } = useComposerThread();
   const [text, setText] = useState('');
   if (!isVisible) {
     return null;
@@ -252,29 +398,31 @@ const ComposeAiInput: FC<InputProps> = ({
     if (inProgress || !next) {
       return;
     }
+    markUsed();
     onSend(text);
     setText('');
   };
   const showStop = inProgress && !hideStopButton;
   return (
     <div className="copilotKitInputContainer">
-      <div className="copilotKitInput flex items-center gap-[8px]">
-        <textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              send();
+      <div className="copilotKitInput flex items-end gap-[8px]">
+        <div className="min-h-[36px] flex-1 resize-none">
+          <AutoResizingTextarea
+            maxRows={5}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                send();
+              }
+            }}
+            placeholder={
+              context.labels.placeholder ||
+              t('write_something', 'Write something …')
             }
-          }}
-          placeholder={
-            context.labels.placeholder ||
-            t('write_something', 'Write something …')
-          }
-          rows={1}
-          className="min-h-[36px] flex-1 resize-none"
-        />
+          />
+        </div>
         <button
           type="button"
           disabled={!showStop && !text.trim()}
@@ -285,6 +433,170 @@ const ComposeAiInput: FC<InputProps> = ({
           {showStop ? t('stop', 'Stop') : t('send', 'Send')}
         </button>
       </div>
+    </div>
+  );
+};
+
+/**
+ * The person's bubble in the rail: the quick-edit marker the chips append
+ * is for the prompt, not for reading.
+ */
+const ComposeAiUserMessage: FC<UserMessageProps> = ({ message }) => {
+  const content = message?.content;
+  const text = (
+    typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+      ? content
+          .map((part: any) => (part?.type === 'text' ? part.text : ''))
+          .join('')
+      : ''
+  ).replace(QUICK_EDIT_MARK, '');
+  return (
+    <div className="copilotKitMessage copilotKitUserMessage whitespace-pre-wrap">
+      {text}
+    </div>
+  );
+};
+
+type SuggestPostResult =
+  | { status: 'applied'; undoKey: string }
+  | { status: 'shown' }
+  | { status: 'error'; error: string };
+
+/**
+ * A proposed text for the post, in the rail. Apply replaces the editor with
+ * it (and can be pressed again later, so an earlier version is one click
+ * back); Undo restores what the editor held right before this card applied.
+ */
+const SuggestionCard: FC<{
+  args?: { posts?: string[]; note?: string; apply?: boolean };
+  status: string;
+  result?: unknown;
+}> = ({ args, status, result }) => {
+  const t = useT();
+  const { current, chars, totalChars } = useLaunchStore(
+    useShallow((state) => ({
+      current: state.current,
+      chars: state.chars,
+      totalChars: state.totalChars,
+    }))
+  );
+  const parsed = useMemo<SuggestPostResult | null>(() => {
+    if (result == null || status !== 'complete') {
+      return null;
+    }
+    try {
+      return typeof result === 'string' ? JSON.parse(result) : (result as SuggestPostResult);
+    } catch {
+      return null;
+    }
+  }, [result, status]);
+  const [applied, setApplied] = useState<{ undoKey: string } | null>(null);
+  // Undo of a quick edit the handler applied: `applied` is already null
+  // there, so clearing it would not re-render and the button would stay.
+  const [undone, setUndone] = useState(false);
+  const undoKey =
+    applied?.undoKey || (parsed?.status === 'applied' ? parsed.undoKey : undefined);
+  const canUndo = !!undoKey && !undone && undoSnapshots.has(undoKey);
+  const posts = Array.isArray(args?.posts) ? args.posts : [];
+  const limit = current === 'global' ? totalChars : chars[current] || totalChars;
+  const streaming = status !== 'complete';
+
+  const apply = () => {
+    const key = makeId(8);
+    undoSnapshots.set(key, applySuggestion(posts));
+    setApplied({ undoKey: key });
+    setUndone(false);
+  };
+  const undo = () => {
+    if (!undoKey) {
+      return;
+    }
+    const snapshot = undoSnapshots.get(undoKey);
+    if (snapshot) {
+      restoreSuggestion(snapshot);
+      undoSnapshots.delete(undoKey);
+    }
+    setApplied(null);
+    setUndone(true);
+  };
+
+  return (
+    <div
+      data-pq="composer-ai-suggestion"
+      className="my-[6px] flex w-full flex-col gap-[10px] rounded-[12px] bg-pqPop p-[12px] shadow-[inset_0_0_0_1px_var(--border)]"
+    >
+      {args?.note && (
+        <div className="text-[12.5px] text-pqMuted">{args.note}</div>
+      )}
+      {posts.length === 0 ? (
+        <Skeleton className="h-[52px] w-full" />
+      ) : (
+        posts.map((post, index) => {
+          // 'normal' turns each <p> into a line, so paragraphs do not run
+          // into one another; 'none' strips the tags and nothing else.
+          const text = stripHtmlValidation('normal', post || '', false, true);
+          const over = !!limit && text.length > limit;
+          return (
+            <div key={index} className="flex flex-col gap-[4px]">
+              <div className="whitespace-pre-wrap break-words rounded-[8px] bg-pqInner p-[10px] text-[13px] leading-[1.55] text-pqText">
+                {text}
+              </div>
+              <div
+                className={clsx(
+                  'text-end font-mono text-[11px]',
+                  over ? 'text-pqWarn' : 'text-pqSoft'
+                )}
+              >
+                {limit ? `${text.length}/${limit}` : text.length}
+              </div>
+            </div>
+          );
+        })
+      )}
+      {!streaming && posts.length > 0 && (
+        <div className="flex items-center gap-[8px]">
+          {undoKey ? (
+            <>
+              {!undone && (
+                <span className="text-[12.5px] font-[600] text-pqMuted">
+                  {t('suggestion_applied', 'Applied')}
+                </span>
+              )}
+              {canUndo && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-pq="composer-ai-undo"
+                  onClick={undo}
+                >
+                  {t('undo', 'Undo')}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-pq="composer-ai-apply-again"
+                onClick={apply}
+              >
+                {t('apply_again', 'Apply again')}
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              data-pq="composer-ai-apply"
+              onClick={apply}
+            >
+              {t('apply', 'Apply')}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -387,6 +699,56 @@ const ComposeAiBindingsInner: FC = () => {
     }
     appendGlobalValueMedia(index, media);
   };
+
+  // The model's way of changing the post. It replaced the old `setPosts`,
+  // which overwrote the editor silently with no way back: a quick edit
+  // still applies at once (with Undo on its card), anything else waits for
+  // Apply, and every card can be applied again later.
+  useCopilotAction({
+    name: 'suggestPost',
+    description:
+      "Propose new text for the post open in the composer. Pass the FULL thread as HTML strings, one per thread item, same count as the current post unless the user asked to add or remove items. apply=false shows a suggestion card with an Apply button. apply=true applies immediately and the card offers Undo; use it only for quick edits or when the user said to apply directly. note is one short sentence in the user's language shown on the card. Returns {status:'shown'|'applied'}. Do not repeat the text in chat.",
+    parameters: [
+      {
+        name: 'posts',
+        type: 'string[]',
+        description: 'The full thread, one HTML string per item',
+      },
+      {
+        name: 'apply',
+        type: 'boolean',
+        description: 'true to apply at once (quick edits), false to wait for Apply',
+      },
+      {
+        name: 'note',
+        type: 'string',
+        description: 'One short sentence about what changed, in the user\'s language',
+        required: false,
+      },
+    ],
+    followUp: false,
+    handler: async ({ posts, apply }): Promise<SuggestPostResult> => {
+      const list = Array.isArray(posts)
+        ? posts.filter((p) => typeof p === 'string')
+        : [];
+      if (!list.length) {
+        return { status: 'error', error: 'posts must hold at least one item.' };
+      }
+      if (!apply) {
+        return { status: 'shown' };
+      }
+      const undoKey = makeId(8);
+      undoSnapshots.set(undoKey, applySuggestion(list));
+      return { status: 'applied', undoKey };
+    },
+    render: ({ args, status, result }) => (
+      <SuggestionCard
+        args={args as { posts?: string[]; note?: string; apply?: boolean }}
+        status={status}
+        result={result}
+      />
+    ),
+  });
 
   useCopilotAction({
     name: 'attachMediaToPost',
@@ -618,30 +980,24 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
   const trialLocked =
     !!user?.isTrailing || !!user?.lifetimePaymentPending;
   const label = t('ai_copilot', 'AI Copilot');
-  const apply = APPLY_WITH_SET_POSTS;
+  // The label goes as the message, in the person's language, plus the
+  // marker the server prompt keys the rewrite rules on (shorten keeps the
+  // hook and the CTA, formal drops emojis, every kind keeps the language,
+  // facts, links and item count). Nothing about tools rides in the message.
   const suggestions = useMemo(
-    () => [
-      {
-        title: t('rephrase', 'Rephrase'),
-        message: `Rephrase this post. Keep the same meaning and facts. ${apply}`,
-      },
-      {
-        title: t('shorten', 'Shorten'),
-        message: `Shorten this post. Keep the same meaning. ${apply}`,
-      },
-      {
-        title: t('expand', 'Expand'),
-        message: `Expand this post with more useful detail, in the same voice. ${apply}`,
-      },
-      {
-        title: t('more_casual', 'More Casual'),
-        message: `Rewrite this post in a more casual, conversational voice. ${apply}`,
-      },
-      {
-        title: t('more_formal', 'More Formal'),
-        message: `Rewrite this post in a more formal, professional voice. ${apply}`,
-      },
-    ],
+    () =>
+      (
+        [
+          ['rephrase', t('rephrase', 'Rephrase')],
+          ['shorten', t('shorten', 'Shorten')],
+          ['expand', t('expand', 'Expand')],
+          ['casual', t('more_casual', 'More Casual')],
+          ['formal', t('more_formal', 'More Formal')],
+        ] as [QuickEditKind, string][]
+      ).map(([kind, title]) => ({
+        title,
+        message: quickEditMessage(title, kind),
+      })),
     [t]
   );
 
@@ -691,10 +1047,10 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
           <div className="absolute inset-0">
             <CopilotChat
               className="h-full w-full"
-              instructions={COPILOT_INSTRUCTIONS}
               suggestions={suggestions}
               RenderSuggestionsList={ComposeAiSuggestionList}
               Input={ComposeAiInput}
+              UserMessage={ComposeAiUserMessage}
               labels={{
                 title: label,
                 placeholder: t('write_something', 'Write something …'),

@@ -69,7 +69,20 @@ async function start() {
   });
 
   app.use(cookieParser());
-  app.use(compression());
+  app.use(
+    compression({
+      // The Copilot runtime answers with a text/event-stream and never calls
+      // res.flush(), so gzip held every token in its window and the reply
+      // landed in bursts. The filter runs at header time, when the handler
+      // has already set the content type.
+      filter: (req, res) =>
+        String(res.getHeader('Content-Type') || '').includes(
+          'text/event-stream'
+        )
+          ? false
+          : compression.filter(req, res),
+    })
+  );
   app.useGlobalFilters(new SubscriptionExceptionFilter());
   app.useGlobalFilters(new PostValidationExceptionFilter());
   app.useGlobalFilters(new HttpExceptionFilter());

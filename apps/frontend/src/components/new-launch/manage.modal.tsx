@@ -43,7 +43,9 @@ import {
   StudioRail,
   StudioRailProvider,
   StudioRailTabs,
+  useComposerThread,
 } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
+import { PQ_AI_THREAD_SETTING } from '@gitroom/helpers/utils/copilot.context';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
   CloseIcon,
@@ -193,6 +195,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const previewRevealedRef = useRef(false);
   const ref = useRef(null);
   const existingData = useExistingData();
+  const copilotThread = useComposerThread();
   const [loading, setLoading] = useState(false);
   const [postNowOpen, setPostNowOpen] = useState(false);
   const [notifyOnPublish, setNotifyOnPublish] = useState(() =>
@@ -487,6 +490,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
       const group = existingData.group || makeId(10);
 
+      // The Copilot thread this post was written with, kept like the notify
+      // flag so reopening the draft brings the chat back. Only once the chat
+      // was used, and never for Sets or the standalone JSON mode.
+      const copilotThreadSetting =
+        !addEditSets && !dummy && copilotThread.used()
+          ? { [PQ_AI_THREAD_SETTING]: copilotThread.threadId }
+          : {};
+
       const posts = allValues.map((post: any) => ({
         integration: {
           id: post.id,
@@ -495,6 +506,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         settings: {
           ...(post.settings || {}),
           [PQ_NOTIFY_SETTING]: notifyOnPublish,
+          ...copilotThreadSetting,
         },
         value: post.values.map((value: any) => ({
           ...(value.id ? { id: value.id } : {}),
