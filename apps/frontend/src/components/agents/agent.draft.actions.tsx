@@ -52,18 +52,32 @@ export type DraftValidationError = {
 export const useDraftActions = () => {
   const fetch = useFetch();
   const modals = useModals();
-  const { properties } = useContext(PropertiesContext);
-  const channels = useMemo(
+  const { properties, allChannels } = useContext(PropertiesContext);
+  // A new draft may only target the channels selected in the Channels
+  // column (that is what the prompt lists); a card from an earlier chat can
+  // still be scheduled, posted or opened on any channel that can post.
+  const selected = useMemo(
     () =>
       (Array.isArray(properties) ? properties : []).filter(
         (p: AgentChannel) => !needsAttention(p)
       ) as AgentChannel[],
     [properties]
   );
+  const channels = useMemo(
+    () =>
+      (Array.isArray(allChannels) ? allChannels : []).filter(
+        (p: AgentChannel) => !needsAttention(p)
+      ) as AgentChannel[],
+    [allChannels]
+  );
 
   const channel = useCallback(
     (id: string) => channels.find((p) => p.id === id),
     [channels]
+  );
+  const selectedChannel = useCallback(
+    (id: string) => selected.find((p) => p.id === id),
+    [selected]
   );
 
   /**
@@ -74,7 +88,7 @@ export const useDraftActions = () => {
     async (groups: AgentDraftGroup[]): Promise<DraftValidationError[]> => {
       const errors: DraftValidationError[] = [];
       for (const group of groups) {
-        const unknown = group.integrationIds.filter((id) => !channel(id));
+        const unknown = group.integrationIds.filter((id) => !selectedChannel(id));
         for (const id of unknown) {
           errors.push({
             integrationId: id,
@@ -82,7 +96,7 @@ export const useDraftActions = () => {
               'This channel is not selected in the Channels column, or it needs a reconnect. Use only the channels in the current state.',
           });
         }
-        const known = { ...group, integrationIds: group.integrationIds.filter((id) => channel(id)) };
+        const known = { ...group, integrationIds: group.integrationIds.filter((id) => selectedChannel(id)) };
         if (!known.integrationIds.length) {
           continue;
         }
@@ -103,11 +117,22 @@ export const useDraftActions = () => {
           continue;
         }
         for (const item of checked) {
-          const name = item.name || channel(item.id)?.name;
+          const name = item.name || selectedChannel(item.id)?.name;
           if (item.emptyContent) {
             errors.push({ integrationId: item.id, channel: name, error: 'The post needs at least one character or one image.' });
           } else if (item.valid === false) {
-            errors.push({ integrationId: item.id, channel: name, error: item.settingsError || 'The settings are invalid; get the schema with integrationSchema.' });
+            // class-validator words a missing key like a wrong value; say
+            // which key to add, or the model resends the same settings.
+            const key = String(item.settingsErrorKey || '');
+            const missing =
+              key && !(key.split('.')[0] in (group.settingsById[item.id] || {}));
+            errors.push({
+              integrationId: item.id,
+              channel: name,
+              error: missing
+                ? `settings.${key} is missing. ${item.settingsError}`
+                : item.settingsError || 'The settings are invalid; get the schema with integrationSchema.',
+            });
           } else if (item.errors !== true) {
             errors.push({ integrationId: item.id, channel: name, error: String(item.errors) });
           } else if (item.tooLong) {
@@ -117,7 +142,7 @@ export const useDraftActions = () => {
       }
       return errors;
     },
-    [fetch, channel]
+    [fetch, selectedChannel]
   );
 
   /** Schedule, publish now or save as a draft, exactly what the card shows. */
@@ -185,13 +210,20 @@ export const useDraftActions = () => {
    * person saved from there, `false` when they closed it.
    */
   const openComposer = useCallback(
-    (group: AgentDraftGroup) =>
-      new Promise<boolean>((resolve) => {
-        const known = group.integrationIds.filter((id) => channel(id));
-        if (!known.length) {
-          resolve(false);
-          return;
-        }
+    async (group: AgentDraftGroup) => {
+      const known = group.integrationIds.filter((id) => channel(id));
+      if (!known.length) {
+        return false;
+      }
+      // A card on "Next free slot" opens the composer on that slot, the way
+      // the header's Create Post does; if the lookup fails the person picks
+      // a date there.
+      let date = group.date;
+      if (!date) {
+        const slot = await fetch('/posts/find-slot');
+        date = slot.ok ? (await slot.json().catch(() => ({})))?.date : undefined;
+      }
+      return new Promise<boolean>((resolve) => {
         let settled = false;
         const settle = (saved: boolean) => {
           if (settled) {
@@ -214,7 +246,7 @@ export const useDraftActions = () => {
           },
           children: (
             <AddEditModal
-              date={group.date ? dayjs.utc(group.date).local() : dayjs()}
+              date={date ? dayjs.utc(date).local() : dayjs()}
               allIntegrations={channels}
               integrations={channels}
               set={{
@@ -246,8 +278,9 @@ export const useDraftActions = () => {
             />
           ),
         });
-      }),
-    [modals, channels, channel]
+      });
+    },
+    [fetch, modals, channels, channel]
   );
 
   return { validate, execute, openComposer, channels };

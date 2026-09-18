@@ -131,6 +131,11 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /data-pq="composer-ai-undo"/);
     assert.match(assistant, /data-pq="composer-ai-apply-again"/);
     assert.match(assistant, /undoSnapshots\.set\(undoKey, applySuggestion\(list\)\)/);
+    // Undo of a quick edit the handler applied re-renders through `undone`
+    // (`applied` is already null there), and the card keeps paragraph breaks.
+    assert.match(assistant, /const \[undone, setUndone\] = useState\(false\)/);
+    assert.match(assistant, /stripHtmlValidation\('normal', post \|\| '', false, true\)/);
+    assert.match(assistant, /enableInspector=\{false\}/);
     assert.doesNotMatch(assistant, /name: 'setPosts'/);
     assert.doesNotMatch(editor, /name: 'setPosts'/);
     // The readable keys are the server prompt's, from one shared module.

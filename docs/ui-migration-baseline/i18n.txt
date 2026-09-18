@@ -979,6 +979,7 @@ continue_without_set
 conversations
 copilot_step_analytics
 copilot_step_calendar
+copilot_step_card
 copilot_step_channel_data
 copilot_step_channels
 copilot_step_customers
@@ -1098,9 +1099,11 @@ downgrade_to_plan
 download
 download_invoice
 draft
+draft_could_not_be_fixed
 draft_from_earlier_session
 draft_needs_a_fix
 draft_posted_now
+draft_redone
 draft_saved_as_draft
 draft_saved_from_composer
 draft_scheduled_for
@@ -1998,6 +2001,7 @@ type_your_email
 ui_demo_post_readonly
 understanding_the_category
 undo
+unknown_channel
 unlink
 unlink_account_confirm
 unlock_team_members

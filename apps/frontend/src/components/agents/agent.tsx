@@ -550,13 +550,20 @@ export const AgentList: FC<{
 export type ThreadCardOutcomes = Record<string, Record<string, unknown>>;
 
 export const PropertiesContext = createContext<{
+  /** The channels selected in the Channels column. */
   properties: any[];
+  /**
+   * Every channel of the account. A Post Preview card from an earlier chat
+   * names its channel from here, whether or not it is selected right now.
+   */
+  allChannels: any[];
   openChannels: () => void;
   /** Outcomes of the Post Preview cards in this thread, keyed by card id. */
   cards: ThreadCardOutcomes;
   setCardOutcome: (cardId: string, groupKey: string, outcome: unknown) => void;
 }>({
   properties: [],
+  allChannels: [],
   openChannels: () => {},
   cards: {},
   setCardOutcome: () => {},
@@ -567,10 +574,10 @@ export const PropertiesContext = createContext<{
  * Reopening a thread restores the channels that were selected while
  * chatting, resolved against the live list so a deleted channel, or one that
  * now needs a reconnect, simply drops out. Only the person's own changes are
- * written back. Channels wait until the thread exists with a title: Mastra
- * names a thread after its first run and that write overwrites metadata saved
- * in between, so card outcomes, which can happen inside that window, are
- * written right away and once more when the title lands.
+ * written back. Mastra names a thread after its first run and that write
+ * overwrites metadata saved in between, so both channels and card outcomes
+ * are written as soon as the thread has an id and once more when the title
+ * lands.
  */
 const useThreadSync = (
   routeId: string,
@@ -582,7 +589,11 @@ const useThreadSync = (
   const { data: threads } = useCopilotThreads();
   const { data: state, mutate: mutateState } = useThreadState(routeId);
   const titled = !!threads?.threads?.find((p) => p.id === routeId)?.title;
+  // `dirty`: a selection change not written yet. `touched`: the person
+  // changed the selection of this thread at all, so the title-time flush
+  // may write it (a restored selection is never written back by itself).
   const dirty = useRef(false);
+  const touched = useRef(false);
   const restoredFor = useRef<string | null>(null);
   // Outcomes set in this page, on top of the saved ones. Scoped to the
   // thread; a fresh chat's move from `new` to its id carries them over.
@@ -635,6 +646,7 @@ const useThreadSync = (
   const onChange = useCallback(
     (next: Integrations[]) => {
       dirty.current = true;
+      touched.current = true;
       setProperties(next);
     },
     [setProperties]
@@ -663,10 +675,17 @@ const useThreadSync = (
       return;
     }
     flushedFor.current = routeId;
+    const patch: Record<string, unknown> = {};
     if (Object.keys(cards).length) {
-      void save({ cards });
+      patch.cards = cards;
     }
-  }, [routeId, titled, cards, save]);
+    if (touched.current) {
+      patch.channels = properties.map((p) => p.id);
+    }
+    if (Object.keys(patch).length) {
+      void save(patch);
+    }
+  }, [routeId, titled, cards, properties, save]);
 
   // `Agent` lives in the layout, so a selection changed on one thread is
   // still "dirty" when a Chats link opens another: without this it would be
@@ -682,6 +701,7 @@ const useThreadSync = (
       knownThreads.current?.threads?.some((p) => p.id === routeId)
     ) {
       dirty.current = false;
+      touched.current = false;
     }
   }, [routeId]);
 
@@ -709,15 +729,17 @@ const useThreadSync = (
     );
   }, [routeId, state, integrations, setProperties]);
 
+  // Written as soon as the thread has an id (its first run created it);
+  // the flush above repeats it once the title is in.
   useEffect(() => {
-    if (routeId === 'new' || !titled || !dirty.current) {
+    if (routeId === 'new' || !dirty.current) {
       return;
     }
     dirty.current = false;
     void save({ channels: properties.map((p) => p.id) });
-  }, [routeId, titled, properties, save]);
+  }, [routeId, properties, save]);
 
-  return { onChange, cards, setCardOutcome };
+  return { onChange, cards, setCardOutcome, allChannels: integrations || [] };
 };
 
 export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
@@ -727,6 +749,7 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
     onChange: onChannelsChange,
     cards,
     setCardOutcome,
+    allChannels,
   } = useThreadSync(routeId, properties, setProperties);
   const t = useT();
   const user = useUser();
@@ -799,7 +822,7 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <PropertiesContext.Provider
-      value={{ properties, openChannels, cards, setCardOutcome }}
+      value={{ properties, allChannels, openChannels, cards, setCardOutcome }}
     >
       <div ref={rowRef} className="relative flex min-w-0 flex-1">
         {asDrawer && panel && (

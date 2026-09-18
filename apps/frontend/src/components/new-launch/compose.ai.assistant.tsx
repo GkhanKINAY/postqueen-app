@@ -123,6 +123,7 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
         credentials="include"
         runtimeUrl={backendUrl + '/copilot/agent'}
         showDevConsole={false}
+        enableInspector={false}
         agent="postqueen"
         properties={properties}
       >
@@ -492,9 +493,12 @@ const SuggestionCard: FC<{
     }
   }, [result, status]);
   const [applied, setApplied] = useState<{ undoKey: string } | null>(null);
+  // Undo of a quick edit the handler applied: `applied` is already null
+  // there, so clearing it would not re-render and the button would stay.
+  const [undone, setUndone] = useState(false);
   const undoKey =
     applied?.undoKey || (parsed?.status === 'applied' ? parsed.undoKey : undefined);
-  const canUndo = !!undoKey && undoSnapshots.has(undoKey);
+  const canUndo = !!undoKey && !undone && undoSnapshots.has(undoKey);
   const posts = Array.isArray(args?.posts) ? args.posts : [];
   const limit = current === 'global' ? totalChars : chars[current] || totalChars;
   const streaming = status !== 'complete';
@@ -503,6 +507,7 @@ const SuggestionCard: FC<{
     const key = makeId(8);
     undoSnapshots.set(key, applySuggestion(posts));
     setApplied({ undoKey: key });
+    setUndone(false);
   };
   const undo = () => {
     if (!undoKey) {
@@ -514,6 +519,7 @@ const SuggestionCard: FC<{
       undoSnapshots.delete(undoKey);
     }
     setApplied(null);
+    setUndone(true);
   };
 
   return (
@@ -528,7 +534,9 @@ const SuggestionCard: FC<{
         <Skeleton className="h-[52px] w-full" />
       ) : (
         posts.map((post, index) => {
-          const text = stripHtmlValidation('none', post || '', false, true, false);
+          // 'normal' turns each <p> into a line, so paragraphs do not run
+          // into one another; 'none' strips the tags and nothing else.
+          const text = stripHtmlValidation('normal', post || '', false, true);
           const over = !!limit && text.length > limit;
           return (
             <div key={index} className="flex flex-col gap-[4px]">
@@ -551,9 +559,11 @@ const SuggestionCard: FC<{
         <div className="flex items-center gap-[8px]">
           {undoKey ? (
             <>
-              <span className="text-[12.5px] font-[600] text-pqMuted">
-                {t('suggestion_applied', 'Applied')}
-              </span>
+              {!undone && (
+                <span className="text-[12.5px] font-[600] text-pqMuted">
+                  {t('suggestion_applied', 'Applied')}
+                </span>
+              )}
               {canUndo && (
                 <Button
                   type="button"

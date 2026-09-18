@@ -446,6 +446,7 @@ const LayoutBody = ({
             credentials="include"
             runtimeUrl={backendUrl + '/copilot/chat'}
             showDevConsole={false}
+            enableInspector={false}
           >
             {chrome}
           </CopilotKit>

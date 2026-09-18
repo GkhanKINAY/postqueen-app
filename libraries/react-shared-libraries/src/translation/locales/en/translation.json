@@ -1187,5 +1187,9 @@
   "copilot_step_working": "Working",
   "suggestion_applied": "Applied",
   "undo": "Undo",
-  "apply_again": "Apply again"
+  "apply_again": "Apply again",
+  "draft_could_not_be_fixed": "Copilot could not fix this draft",
+  "draft_redone": "Redid the draft after a channel rule failed",
+  "unknown_channel": "Unknown channel",
+  "copilot_step_card": "Updating the card"
 }

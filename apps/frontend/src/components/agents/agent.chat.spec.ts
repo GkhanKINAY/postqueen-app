@@ -165,6 +165,48 @@ describe('AI Copilot draft preview card', () => {
     assert.match(chat, /description: COPILOT_READABLE\.cards/);
   });
 
+  it('keeps what the live model pass found from coming back', () => {
+    const agent = readFileSync(
+      fileURLToPath(new URL('./agent.tsx', import.meta.url)),
+      'utf8',
+    );
+    const card = readFileSync(
+      fileURLToPath(new URL('./agent.draft.card.tsx', import.meta.url)),
+      'utf8',
+    );
+    const service = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../../../libraries/nestjs-libraries/src/chat/load.tools.service.ts',
+          import.meta.url,
+        ),
+      ),
+      'utf8',
+    );
+    // An open `object` parameter reaches the model as `additionalProperties:
+    // false`, so settings are a JSON string the card parses.
+    assert.match(chat, /name: 'settings',\s*type: 'string'/);
+    assert.match(card, /typeof settings === 'string'/);
+    // Three invalid drafts, then the model is told to stop; the agent has a
+    // step cap so no loop can run away.
+    assert.match(chat, /const MAX_INVALID_DRAFTS = 3/);
+    assert.match(chat, /stop: 'Do not call manualPosting again/);
+    assert.match(service, /defaultOptions: \{ maxSteps: 12 \}/);
+    // The card rule opens the prompt, ahead of the style section.
+    assert.ok(
+      service.indexOf('Post text is never written in chat') <
+        service.indexOf('# Conversation style'),
+    );
+    // Redone attempts fold to a step line; ids never show while streaming.
+    assert.match(chat, /const superseded =/);
+    assert.match(card, /streaming \? \(\s*<Skeleton/);
+    // CopilotKit's inspector is a separate switch, on by default on localhost.
+    assert.match(chat, /enableInspector=\{false\}/);
+    // Channels are written as soon as the thread has an id, and again on title.
+    assert.match(agent, /if \(routeId === 'new' \|\| !dirty\.current\)/);
+    assert.match(agent, /if \(touched\.current\) \{\s*patch\.channels/);
+  });
+
   it('lets the composer grow to maxRows instead of scrolling inside one line', () => {
     const textarea = readFileSync(
       fileURLToPath(new URL('./agent.textarea.tsx', import.meta.url)),

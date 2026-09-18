@@ -22,6 +22,11 @@ export class XDto {
 
   @ValidateIf((o) => o.post_type !== 'article')
   @IsIn(['everyone', 'following', 'mentionedUsers', 'subscribers', 'verified'])
+  @JSONSchema({
+    description:
+      'Required for a regular post (any post_type other than article). Use everyone unless the user asks to limit replies.',
+    default: 'everyone',
+  })
   who_can_reply_post:
     | 'everyone'
     | 'following'

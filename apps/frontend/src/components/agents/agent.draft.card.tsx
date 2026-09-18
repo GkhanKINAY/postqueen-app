@@ -27,7 +27,8 @@ dayjs.extend(utc);
 export type AgentDraftItem = {
   integrationId: string;
   date?: string;
-  settings?: Record<string, any> | { key: string; value: any }[];
+  /** A JSON object string from the model; older transcripts carry an object or key/value pairs. */
+  settings?: string | Record<string, any> | { key: string; value: any }[];
   posts: {
     content: string;
     attachments?: { id: string; path: string }[];
@@ -75,6 +76,18 @@ type AgentChannel = Integrations & {
 export const draftSettings = (
   settings: AgentDraftItem['settings']
 ): Record<string, any> => {
+  // The tool takes settings as a JSON string: an open object parameter
+  // reaches the model as `additionalProperties: false` after the runtime's
+  // schema round trip, so it could never put a key inside it. A string that
+  // is still streaming does not parse yet and reads as empty.
+  if (typeof settings === 'string') {
+    try {
+      const parsed = JSON.parse(settings);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
   if (Array.isArray(settings)) {
     return settings.reduce(
       (all, current) =>
@@ -362,6 +375,8 @@ const DraftGroupView: FC<{
   outcome?: AgentDraftOutcome;
   busy: boolean;
   actionable: boolean;
+  /** The arguments are still arriving; ids may be cut mid-string. */
+  streaming: boolean;
   onAction: (action: AgentDraftAction) => void;
   onOpenComposer: () => void;
 }> = ({
@@ -373,6 +388,7 @@ const DraftGroupView: FC<{
   outcome,
   busy,
   actionable,
+  streaming,
   onAction,
   onOpenComposer,
 }) => {
@@ -398,13 +414,15 @@ const DraftGroupView: FC<{
       >
         {known.length ? (
           <ChannelStack channels={known} />
-        ) : (
-          <span className="text-[13px] font-[600] text-pqMuted">
-            {group.integrationIds.join(', ')}
-          </span>
-        )}
+        ) : streaming ? (
+          <Skeleton className="size-[24px] shrink-0 rounded-full" />
+        ) : null}
         <span className="min-w-0 flex-1 truncate text-[13px] font-[600] text-pqText">
-          {known.map((c) => c.name).join(', ')}
+          {known.length
+            ? known.map((c) => c.name).join(', ')
+            : streaming
+            ? ''
+            : t('unknown_channel', 'Unknown channel')}
         </span>
         <span className="shrink-0 font-mono text-[11px] text-pqSoft">
           {when(group.date)}
@@ -470,16 +488,29 @@ export const AgentDraftCard: FC<{
   state: AgentDraftCardState;
   /** Validation errors the model is about to fix; shown, never actionable. */
   errors?: { channel?: string; error: string }[];
+  /** The card told the model to stop trying; the person has to answer. */
+  stopped?: boolean;
   outcomes: Record<string, AgentDraftOutcome | undefined>;
   busy: Record<string, boolean | undefined>;
   onAction: (group: AgentDraftGroup, action: AgentDraftAction) => void;
   onOpenComposer: (group: AgentDraftGroup) => void;
-}> = ({ groups, state, errors, outcomes, busy, onAction, onOpenComposer }) => {
+}> = ({
+  groups,
+  state,
+  errors,
+  stopped,
+  outcomes,
+  busy,
+  onAction,
+  onOpenComposer,
+}) => {
   const t = useT();
-  const { properties } = useContext(PropertiesContext);
+  // Every channel, not the current selection: a card from an earlier chat
+  // still names its channel after the selection changed.
+  const { allChannels } = useContext(PropertiesContext);
   const channels = useMemo(
-    () => (Array.isArray(properties) ? properties : []) as AgentChannel[],
-    [properties]
+    () => (Array.isArray(allChannels) ? allChannels : []) as AgentChannel[],
+    [allChannels]
   );
   // The first group opens on its preview; the rest fold to a row, the way
   // the design lists drafts, and open on a click.
@@ -539,6 +570,7 @@ export const AgentDraftCard: FC<{
               outcome={outcomes[group.key]}
               busy={!!busy[group.key]}
               actionable={actionable}
+              streaming={state === 'streaming'}
               onAction={(action) => onAction(group, action)}
               onOpenComposer={() => onOpenComposer(group)}
             />
@@ -551,7 +583,9 @@ export const AgentDraftCard: FC<{
           className="flex flex-col gap-[4px] rounded-[10px] bg-pqSettings p-[10px_12px] text-[12.5px] text-pqMuted"
         >
           <span className="font-[600] text-pqText">
-            {t('draft_needs_a_fix', 'Copilot is fixing this draft')}
+            {stopped
+              ? t('draft_could_not_be_fixed', 'Copilot could not fix this draft')
+              : t('draft_needs_a_fix', 'Copilot is fixing this draft')}
           </span>
           {(errors || []).slice(0, 3).map((item, index) => (
             <span key={index}>

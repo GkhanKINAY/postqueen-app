@@ -46,6 +46,7 @@ export const PreviewWrapper = ({ children }: { children: ReactNode }) => {
           credentials="include"
           runtimeUrl={backendUrl + '/copilot/chat'}
           showDevConsole={false}
+          enableInspector={false}
         >
           {chrome}
         </CopilotKit>

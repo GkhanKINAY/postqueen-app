@@ -124,7 +124,13 @@ export const GeneralPreviewComponent: FC<{
                 </div>
               </div>
               <div
-                className={clsx('text-wrap whitespace-pre', 'preview')}
+                // `whitespace-pre` plus `text-wrap` reads as "keep the
+                // breaks, wrap the lines", but Chrome treats `white-space:
+                // pre` as a shorthand that also sets `text-wrap-mode:
+                // nowrap`, and it is emitted after `.text-wrap`, so a long
+                // line ran off the card. `pre-wrap` is that intent in one
+                // property.
+                className={clsx('whitespace-pre-wrap', 'preview')}
                 dangerouslySetInnerHTML={{
                   __html: sanitizePreviewHtml(value.text),
                 }}

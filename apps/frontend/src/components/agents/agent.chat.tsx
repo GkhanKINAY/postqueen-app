@@ -159,6 +159,9 @@ export const AgentChat: FC = () => {
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
+      // Separate switch from the console in 1.66, on by default on
+      // localhost: a floating CopilotKit button with its own announcements.
+      enableInspector={false}
       agent="postqueen"
       properties={properties}
     >
@@ -605,42 +608,45 @@ const AgentLiveBridge: FC<{
   children: ReactNode;
 }> = ({ threadId, fresh, children }) => {
   const { isLoading, messages } = useCopilotChatInternal();
+  const userTurns = useMemo(
+    () => messages.filter((m: any) => m.role === 'user').length,
+    [messages]
+  );
   const [awaitTitle, setAwaitTitle] = useState<
     ReturnType<typeof threadTitleWait> | undefined
   >();
   useCopilotThreads(awaitTitle);
   const wasLoading = useRef(false);
-  const ownRun = useRef(false);
+  // User turns on screen when the previous run ended. A history replay on
+  // connect also flips `isLoading`; it must not move the address or refetch
+  // the rail, so a run counts as this page's own only when it left more user
+  // turns than the last one did. A fresh thread has no history, so its first
+  // run is its own. (Reading the last message's role at the rising edge was
+  // not reliable: the message and the loading flag do not land in one render.)
+  const settledTurns = useRef<number | null>(null);
 
   useEffect(() => {
-    // Only a run this page started counts: it begins right after the
-    // person's message is appended. A history replay on connect also flips
-    // `isLoading`, with no user message at the end, and must not move the
-    // address or refetch the rail.
-    const last = messages[messages.length - 1] as { role?: string } | undefined;
-    if (isLoading && !wasLoading.current && last?.role === 'user') {
-      ownRun.current = true;
-    }
-    const finished = wasLoading.current && !isLoading && ownRun.current;
+    const ended = wasLoading.current && !isLoading;
     wasLoading.current = isLoading;
-    if (!finished) {
+    if (!ended) {
       return;
     }
-    ownRun.current = false;
+    const own =
+      settledTurns.current === null
+        ? fresh && userTurns > 0
+        : userTurns > settledTurns.current;
+    settledTurns.current = userTurns;
+    if (!own) {
+      return;
+    }
     if (fresh) {
       // Moves the address only; the page tree (and this chat) stays mounted.
       window.history.replaceState(null, '', `/agents/${threadId}`);
     }
     setAwaitTitle(threadTitleWait(threadId));
-  }, [isLoading, messages, fresh, threadId]);
+  }, [isLoading, userTurns, fresh, threadId]);
 
-  const value = useMemo(
-    () => ({
-      messages,
-      userTurns: messages.filter((m: any) => m.role === 'user').length,
-    }),
-    [messages]
-  );
+  const value = useMemo(() => ({ messages, userTurns }), [messages, userTurns]);
 
   return (
     <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
@@ -761,7 +767,16 @@ const NewInput: FC<InputProps> = (props) => {
 /** What the `manualPosting` handler hands back to the model. */
 type ManualPostingResult =
   | { status: 'shown'; cardId: string }
-  | { status: 'invalid'; cardId: string; errors: DraftValidationError[] };
+  | {
+      status: 'invalid';
+      cardId: string;
+      errors: DraftValidationError[];
+      /** Set on the last try the card takes; the model must stop and ask. */
+      stop?: string;
+    };
+
+/** Invalid drafts the card accepts for one request before it tells the model to stop. */
+const MAX_INVALID_DRAFTS = 3;
 
 /**
  * Cards the model can act on by name. Filled by every rendered card (so a
@@ -772,7 +787,9 @@ const CardsContext = createContext<{
   registry: React.MutableRefObject<
     Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
   >;
-}>({ register: () => {}, registry: { current: {} } });
+  /** Bumps on every registration, so a card can react to a later one. */
+  registered: number;
+}>({ register: () => {}, registry: { current: {} }, registered: 0 });
 
 const parseResult = (result: unknown): ManualPostingResult | string | null => {
   if (result == null) {
@@ -820,6 +837,7 @@ const ToolStep: FC<{
     generateVideoTool: t('copilot_step_video', 'Generating video'),
     videoStatusTool: t('copilot_step_video', 'Generating video'),
     uploadFromUrlTool: t('copilot_step_upload', 'Uploading media'),
+    publishFromCard: t('copilot_step_card', 'Updating the card'),
   };
   const label = labels[name] || t('copilot_step_working', 'Working');
   const done = status === 'complete';
@@ -881,15 +899,20 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
   >({});
   const order = useRef(0);
+  const [registered, setRegistered] = useState(0);
   const register = useCallback(
     (cardId: string, groups: AgentDraftGroup[], userTurn: number) => {
       if (registry.current[cardId]) {
         return;
       }
       registry.current[cardId] = { groups, userTurn, order: order.current++ };
+      setRegistered((n) => n + 1);
     },
     []
   );
+  // Invalid drafts in a row for the current request. A model that keeps
+  // sending the same broken settings would otherwise call this forever.
+  const invalidStreak = useRef({ turn: -1, count: 0 });
   // Handlers are registered once and read the live values through refs.
   const latestUserTurn = useRef(userTurns);
   const latestCards = useRef(cards);
@@ -942,10 +965,13 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
             required: false,
           },
           {
+            // A string on purpose: an open `object` parameter arrives at the
+            // model as `additionalProperties: false` after the runtime's
+            // schema round trip, and the model can then only send {} or null.
             name: 'settings',
-            type: 'object',
+            type: 'string',
             description:
-              'Platform settings as a key/value object from integrationSchema [input:settings]',
+              'The platform settings for this channel as ONE JSON object string, e.g. {"who_can_reply_post":"everyone"}: every key integrationSchema marks required or gives a default for, with the values it allows. Omit only when integrationSchema says no settings are needed.',
             required: false,
           },
           {
@@ -992,9 +1018,23 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
         const errors = groups.length
           ? await validate(groups)
           : [{ error: 'The list is empty.' }];
-        return errors.length
-          ? { status: 'invalid', cardId, errors }
-          : { status: 'shown', cardId };
+        if (!errors.length) {
+          invalidStreak.current = { turn: latestUserTurn.current, count: 0 };
+          return { status: 'shown', cardId };
+        }
+        const streak =
+          invalidStreak.current.turn === latestUserTurn.current
+            ? invalidStreak.current.count + 1
+            : 1;
+        invalidStreak.current = { turn: latestUserTurn.current, count: streak };
+        return streak >= MAX_INVALID_DRAFTS
+          ? {
+              status: 'invalid',
+              cardId,
+              errors,
+              stop: 'Do not call manualPosting again for this request. Tell the user in one sentence which setting is missing or invalid and ask them for it.',
+            }
+          : { status: 'invalid', cardId, errors };
       } catch (e: any) {
         return {
           status: 'invalid',
@@ -1100,7 +1140,7 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   });
 
   return (
-    <CardsContext.Provider value={{ register, registry }}>
+    <CardsContext.Provider value={{ register, registry, registered }}>
       {children}
     </CardsContext.Provider>
   );
@@ -1117,9 +1157,12 @@ const DraftPreview: FC<{
   status: string;
   result?: unknown;
 }> = ({ args, status, result }) => {
+  const t = useT();
   const { cards, setCardOutcome } = useContext(PropertiesContext);
   const { userTurns } = useContext(LiveChatContext);
-  const { register } = useContext(CardsContext);
+  // The context value changes on every registration, so this re-renders
+  // when a later card for the same request appears (the registry is a ref).
+  const { register, registry } = useContext(CardsContext);
   const { execute, openComposer } = useDraftActions();
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const groups = useMemo(() => groupDraftItems(args?.list), [args?.list]);
@@ -1152,6 +1195,16 @@ const DraftPreview: FC<{
     () => (cardId ? (cards[cardId] || {}) : {}) as Record<string, AgentDraftOutcome | undefined>,
     [cards, cardId]
   );
+  // An invalid draft the model already redid: a later card exists for the
+  // same request. It folds to one line, like a backend step, instead of
+  // stacking a full card per attempt.
+  const mine = cardId ? registry.current[cardId] : undefined;
+  const superseded =
+    state === 'invalid' &&
+    !!mine &&
+    Object.values(registry.current).some(
+      (card) => card.userTurn === mine.userTurn && card.order > mine.order
+    );
 
   const run = useCallback(
     async (group: AgentDraftGroup, work: () => Promise<AgentDraftOutcome | null>) => {
@@ -1171,15 +1224,35 @@ const DraftPreview: FC<{
     [cardId, setCardOutcome]
   );
 
+  const invalid =
+    parsed && typeof parsed === 'object' && parsed.status === 'invalid'
+      ? parsed
+      : null;
+
+  if (superseded) {
+    return (
+      <div
+        data-pq="copilot-step"
+        data-tool="manualPosting"
+        className="my-[4px] flex items-center gap-[8px] text-[12.5px] text-pqSoft"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true" className="shrink-0">
+          <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="truncate">
+          {t('draft_redone', 'Redid the draft after a channel rule failed')}
+          {invalid?.errors?.[0]?.error ? ` · ${invalid.errors[0].error}` : ''}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <AgentDraftCard
       groups={groups}
       state={state}
-      errors={
-        parsed && typeof parsed === 'object' && parsed.status === 'invalid'
-          ? parsed.errors
-          : undefined
-      }
+      errors={invalid?.errors}
+      stopped={!!invalid?.stop}
       outcomes={outcomes}
       busy={busy}
       onAction={(group, action) => void run(group, () => execute(group, action))}
