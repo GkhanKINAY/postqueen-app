@@ -6,23 +6,15 @@ import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import dayjs from 'dayjs';
+import {
+  COPILOT_READABLE,
+  CopilotChannel,
+  CopilotSurface,
+} from '@gitroom/helpers/utils/copilot.context';
 
 const renderArray = (list: string[], show: boolean) => {
   if (!show) return '';
   return list.map((p) => `- ${p}`).join('\n');
-};
-
-/** Which app surface is talking: the Copilot page, Create Post, or none (MCP). */
-export type CopilotSurface = 'agent' | 'composer';
-
-/** A channel the app selected, as `properties.pq.channels` sends it. */
-export type CopilotChannel = {
-  id: string;
-  platform: string;
-  name?: string;
-  handle?: string;
-  format?: string;
-  customer?: string;
 };
 
 /**
@@ -30,9 +22,10 @@ export type CopilotChannel = {
  * these descriptions reach the prompt; anything else the SDK adds stays out.
  */
 const READABLE_SECTIONS: Record<string, string> = {
-  'Post Preview cards in this chat': 'Post Preview cards (what the user did with each)',
-  'Current content of posts': 'The post open in the editor (HTML, one entry per thread item)',
-  'Composer channel': 'The editor tab (channel and character limit)',
+  [COPILOT_READABLE.cards]: 'Post Preview cards (what the user did with each)',
+  [COPILOT_READABLE.posts]:
+    'The post open in the editor (HTML, one entry per thread item)',
+  [COPILOT_READABLE.channel]: 'The editor tab (channel and character limit)',
 };
 
 const readableBlock = (requestContext: {

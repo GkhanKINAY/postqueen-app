@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import {
   AGUI_TEXT_CONTINUATION,
   mastraToAgUiMessages,
@@ -104,16 +105,19 @@ describe('Mastra history to AG-UI messages', () => {
     assert.deepEqual(out, [{ id: 'u1', role: 'user', content: 'hi' }]);
   });
 
+  // The bridge gives text that follows a tool call its own message id with
+  // this suffix; replaying history under a different one would make the
+  // client re-send it. Resolved through the package entry, not a build hash.
   it('uses the same continuation suffix as the installed @ag-ui/mastra bridge', () => {
-    const bridge = readFileSync(
-      fileURLToPath(
-        new URL(
-          '../../../../node_modules/@ag-ui/mastra/dist/mastra-CSCQQcep.mjs',
-          import.meta.url
-        )
-      ),
-      'utf8'
+    const dist = dirname(createRequire(import.meta.url).resolve('@ag-ui/mastra'));
+    const chunks = readdirSync(dist).filter((file) =>
+      /^mastra-.*\.js$/.test(file)
     );
-    assert.ok(bridge.includes(AGUI_TEXT_CONTINUATION));
+    assert.ok(chunks.length, 'no mastra chunk in the bridge build');
+    assert.ok(
+      chunks.some((file) =>
+        readFileSync(join(dist, file), 'utf8').includes(AGUI_TEXT_CONTINUATION)
+      )
+    );
   });
 });

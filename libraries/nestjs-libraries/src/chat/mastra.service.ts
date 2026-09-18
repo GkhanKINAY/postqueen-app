@@ -2,16 +2,13 @@ import { Mastra } from '@mastra/core/mastra';
 import { ConsoleLogger } from '@mastra/core/logger';
 import { pStore } from '@gitroom/nestjs-libraries/chat/mastra.store';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import {
-  CopilotSurface,
-  LoadToolsService,
-} from '@gitroom/nestjs-libraries/chat/load.tools.service';
+import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import {
   MastraThreadRunner,
   mastraToAgUiMessages,
 } from '@gitroom/nestjs-libraries/chat/mastra.thread.runner';
-
-export type { CopilotSurface };
+import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
+import { CopilotSurface } from '@gitroom/helpers/utils/copilot.context';
 
 /** Where PostQueen keeps its own per-thread UI state inside thread metadata. */
 const THREAD_STATE_KEY = 'pq';
@@ -54,23 +51,26 @@ export class MastraService {
     return mastra.getAgent('postqueen').getMemory();
   }
 
-  /** The thread when it exists and belongs to this organization, else null. */
-  private async ownedThread(organizationId: string, threadId: string) {
+  /**
+   * Thread ids are minted by the client, so any id can name a thread that
+   * another organization already owns. `thread` is this organization's
+   * thread or null; `foreign` says the id is taken by someone else's.
+   */
+  private async findThread(organizationId: string, threadId: string) {
     const memory = await this.memory();
     const thread = await memory.getThreadById({ threadId });
-    if (!thread) {
-      return null;
-    }
-    const owners = [
-      this.resourceId(organizationId, 'agent'),
-      this.resourceId(organizationId, 'composer'),
-    ];
-    return owners.includes(thread.resourceId) ? thread : undefined;
+    const owned =
+      !!thread &&
+      [
+        this.resourceId(organizationId, 'agent'),
+        this.resourceId(organizationId, 'composer'),
+      ].includes(thread.resourceId);
+    return { thread: owned ? thread : null, foreign: !!thread && !owned };
   }
 
-  /** null: no such thread. undefined: exists, but not this organization's. */
-  async threadOwnedBy(organizationId: string, threadId: string) {
-    return this.ownedThread(organizationId, threadId);
+  async isForeignThread(organizationId: string, threadId: string) {
+    const { foreign } = await this.findThread(organizationId, threadId);
+    return foreign;
   }
 
   /**
@@ -80,7 +80,7 @@ export class MastraService {
   async threadRunner(organizationId: string) {
     return new MastraThreadRunner({
       load: async (threadId) => {
-        const thread = await this.ownedThread(organizationId, threadId);
+        const { thread } = await this.findThread(organizationId, threadId);
         if (!thread) {
           return null;
         }
@@ -96,7 +96,7 @@ export class MastraService {
   }
 
   async getThreadState(organizationId: string, threadId: string) {
-    const thread = await this.ownedThread(organizationId, threadId);
+    const { thread } = await this.findThread(organizationId, threadId);
     const state = thread?.metadata?.[THREAD_STATE_KEY];
     return state && typeof state === 'object'
       ? (state as Record<string, unknown>)
@@ -104,20 +104,29 @@ export class MastraService {
   }
 
   /**
-   * Merges a partial state into `metadata.pq`. A thread that has not been
-   * written by a run yet is created empty (no title, so Mastra still names
-   * it on the first message). Returns null when the thread is someone
-   * else's.
+   * Merges the two fields the app keeps into `metadata.pq` (the global
+   * ValidationPipe does not whitelist, and this lands in stored metadata).
+   * A thread that has not been written by a run yet is created empty (no
+   * title, so Mastra still names it on the first message). Returns null when
+   * the thread is someone else's.
    */
   async saveThreadState(
     organizationId: string,
     threadId: string,
-    surface: CopilotSurface,
-    patch: Record<string, unknown>
+    body: ThreadStateDto
   ) {
-    const thread = await this.ownedThread(organizationId, threadId);
-    if (thread === undefined) {
+    const { thread, foreign } = await this.findThread(organizationId, threadId);
+    if (foreign) {
       return null;
+    }
+    const surface: CopilotSurface =
+      body.surface === 'composer' ? 'composer' : 'agent';
+    const patch: Record<string, unknown> = {};
+    if (body.channels !== undefined) {
+      patch.channels = body.channels;
+    }
+    if (body.cards !== undefined) {
+      patch.cards = body.cards;
     }
     const current = thread?.metadata?.[THREAD_STATE_KEY];
     const next = {

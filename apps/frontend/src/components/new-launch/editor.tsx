@@ -30,6 +30,7 @@ import { UpDownArrow } from '@gitroom/frontend/components/launches/up.down.arrow
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useCopilotReadable } from '@copilotkit/react-core';
+import { COPILOT_READABLE } from '@gitroom/helpers/utils/copilot.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { useDropzone } from 'react-dropzone';
 import { useUppyUploader } from '@gitroom/frontend/components/media/new.uploader';
@@ -91,12 +92,12 @@ const EditorCopilotBindings: FC<{
   channel: { name: string; platform: string; limit?: number } | null;
 }> = ({ contents, channel }) => {
   useCopilotReadable({
-    description: 'Current content of posts',
+    description: COPILOT_READABLE.posts,
     value: contents,
   });
 
   useCopilotReadable({
-    description: 'Composer channel',
+    description: COPILOT_READABLE.channel,
     value: channel,
   });
 

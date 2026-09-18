@@ -40,12 +40,12 @@ import {
   ComposeAiBindings,
   ComposeAiRail,
   CopilotMark,
-  PQ_AI_THREAD_SETTING,
   StudioRail,
   StudioRailProvider,
   StudioRailTabs,
   useComposerThread,
 } from '@gitroom/frontend/components/new-launch/compose.ai.assistant';
+import { PQ_AI_THREAD_SETTING } from '@gitroom/helpers/utils/copilot.context';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import {
   CloseIcon,

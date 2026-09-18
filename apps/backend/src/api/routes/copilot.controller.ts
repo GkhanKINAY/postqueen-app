@@ -21,11 +21,12 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MastraAgent } from '@ag-ui/mastra';
+import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import {
+  CopilotChannel,
+  CopilotProperties,
   CopilotSurface,
-  MastraService,
-} from '@gitroom/nestjs-libraries/chat/mastra.service';
-import { CopilotChannel } from '@gitroom/nestjs-libraries/chat/load.tools.service';
+} from '@gitroom/helpers/utils/copilot.context';
 import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
@@ -42,48 +43,43 @@ export type ChannelsContext = {
   locale: string;
 };
 
-/**
- * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
- * request as `forwardedProps` (the v1 `variables.properties` path the old
- * code read no longer exists on the single-route runtime).
- */
-type CopilotProperties = {
-  surface?: CopilotSurface;
-  channels?: CopilotChannel[];
-  timezone?: string;
-  locale?: string;
-};
-
-const readProperties = (req: Request): CopilotProperties => {
-  const pq = req?.body?.body?.forwardedProps?.pq;
-  return pq && typeof pq === 'object' ? pq : {};
-};
-
-const shortString = (value: unknown, max = 64) =>
-  typeof value === 'string' ? value.slice(0, max) : '';
-
-/** Only the fields the prompt prints; the app sends nothing else, but the wire is the wire. */
-const channelsFromProperties = (channels: unknown): CopilotChannel[] =>
-  Array.isArray(channels)
-    ? channels
-        .filter((c) => c && typeof c === 'object' && typeof c.id === 'string')
-        .slice(0, 100)
-        .map((c) => ({
-          id: shortString(c.id),
-          platform: shortString(c.platform),
-          name: shortString(c.name, 80),
-          handle: shortString(c.handle),
-          format: shortString(c.format, 16),
-          customer: shortString(c.customer, 80),
-        }))
-    : [];
-
 @Controller('/copilot')
 export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService
   ) {}
+
+  /**
+   * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
+   * request as `forwardedProps` (the v1 `variables.properties` path the old
+   * code read no longer exists on the single-route runtime).
+   */
+  private readProperties(req: Request): Partial<CopilotProperties> {
+    const pq = req?.body?.body?.forwardedProps?.pq;
+    return pq && typeof pq === 'object' ? pq : {};
+  }
+
+  private shortString(value: unknown, max = 64) {
+    return typeof value === 'string' ? value.slice(0, max) : '';
+  }
+
+  /** Only the fields the prompt prints; the app sends nothing else, but the wire is the wire. */
+  private channelsFromProperties(channels: unknown): CopilotChannel[] {
+    return Array.isArray(channels)
+      ? channels
+          .filter((c) => c && typeof c === 'object' && typeof c.id === 'string')
+          .slice(0, 100)
+          .map((c) => ({
+            id: this.shortString(c.id),
+            platform: this.shortString(c.platform),
+            name: this.shortString(c.name, 80),
+            handle: this.shortString(c.handle),
+            format: this.shortString(c.format, 16),
+            customer: this.shortString(c.customer, 80),
+          }))
+      : [];
+  }
   // The only route in this controller that carried no policy, so a FREE org
   // got a working OpenAI runtime and we got the bill. Added together with the
   // tier condition on the three <CopilotKit> mounts: CopilotKit talks GraphQL
@@ -163,7 +159,7 @@ export class CopilotController {
       });
       return;
     }
-    const properties = readProperties(req);
+    const properties = this.readProperties(req);
     const surface: CopilotSurface =
       properties.surface === 'composer' ? 'composer' : 'agent';
 
@@ -174,8 +170,7 @@ export class CopilotController {
     const threadId = req?.body?.body?.threadId;
     if (
       typeof threadId === 'string' &&
-      (await this._mastraService.threadOwnedBy(organization.id, threadId)) ===
-        undefined
+      (await this._mastraService.isForeignThread(organization.id, threadId))
     ) {
       res.status(HttpStatus.FORBIDDEN).json({ msg: 'Not your thread.' });
       return;
@@ -188,10 +183,10 @@ export class CopilotController {
     requestContext.set('surface', surface);
     requestContext.set(
       'channels',
-      JSON.stringify(channelsFromProperties(properties.channels))
+      JSON.stringify(this.channelsFromProperties(properties.channels))
     );
-    requestContext.set('timezone', shortString(properties.timezone));
-    requestContext.set('locale', shortString(properties.locale, 16));
+    requestContext.set('timezone', this.shortString(properties.timezone));
+    requestContext.set('locale', this.shortString(properties.locale, 16));
 
     const agents = MastraAgent.getLocalAgents({
       resourceId: this._mastraService.resourceId(organization.id, surface),
@@ -272,20 +267,10 @@ export class CopilotController {
     @Param('thread') threadId: string,
     @Body() body: ThreadStateDto
   ) {
-    // Only the two fields the app keeps; the global ValidationPipe does not
-    // whitelist, and this is merged straight into stored metadata.
-    const patch: Record<string, unknown> = {};
-    if (body.channels !== undefined) {
-      patch.channels = body.channels;
-    }
-    if (body.cards !== undefined) {
-      patch.cards = body.cards;
-    }
     const saved = await this._mastraService.saveThreadState(
       organization.id,
       threadId,
-      body.surface === 'composer' ? 'composer' : 'agent',
-      patch
+      body
     );
     if (!saved) {
       throw new HttpException('Not your thread.', HttpStatus.FORBIDDEN);

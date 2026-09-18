@@ -154,6 +154,15 @@ describe('AI Copilot draft preview card', () => {
     assert.match(agent, /filter\(\(p\) => !!p\.title\)/);
     assert.match(controller, /runner: await this\._mastraService\.threadRunner\(organization\.id\)/);
     assert.match(controller, /@Post\('\/:thread\/state'\)/);
+    // The Chats rail polls for a fresh thread's title through SWR's own
+    // interval, which switches itself off; no timer arrays in the chat.
+    assert.match(agent, /refreshInterval/);
+    assert.match(chat, /setAwaitTitle\(threadTitleWait\(threadId\)\)/);
+    assert.doesNotMatch(chat, /setTimeout\(\(\) => \{\s*void mutate\(\)/);
+    // A failed list must not paint the "no chats yet" empty state.
+    assert.match(agent, /if \(!response\.ok\) \{\s*throw new Error\('Could not load chats'\)/);
+    // The readable the prompt prints is named once, in the shared module.
+    assert.match(chat, /description: COPILOT_READABLE\.cards/);
   });
 
   it('lets the composer grow to maxRows instead of scrolling inside one line', () => {

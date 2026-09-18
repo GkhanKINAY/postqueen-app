@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { CopilotSurface } from '@gitroom/helpers/utils/copilot.context';
 
 /**
  * The per-thread UI state a Copilot surface keeps beside the transcript:
@@ -15,7 +16,7 @@ import {
 export class ThreadStateDto {
   @IsOptional()
   @IsIn(['agent', 'composer'])
-  surface?: 'agent' | 'composer';
+  surface?: CopilotSurface;
 
   @IsOptional()
   @IsArray()

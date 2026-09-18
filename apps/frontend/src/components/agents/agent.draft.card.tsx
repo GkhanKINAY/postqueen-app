@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, ReactNode, useContext, useMemo, useState } from 'react';
+import { FC, useContext, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -474,8 +474,6 @@ export const AgentDraftCard: FC<{
   busy: Record<string, boolean | undefined>;
   onAction: (group: AgentDraftGroup, action: AgentDraftAction) => void;
   onOpenComposer: (group: AgentDraftGroup) => void;
-  /** Above the groups: what the person typed to get here, if anything. */
-  children?: ReactNode;
 }> = ({ groups, state, errors, outcomes, busy, onAction, onOpenComposer }) => {
   const t = useT();
   const { properties } = useContext(PropertiesContext);

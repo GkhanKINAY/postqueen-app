@@ -49,14 +49,46 @@ export const useAgentRouteId = () => {
   return pathname?.split('/').filter(Boolean).pop() || 'new';
 };
 
-/** The Chats rail. The chat refreshes it after a fresh thread's first run. */
-export const useCopilotThreads = () => {
+type ThreadList = { threads: { id: string; title?: string }[] };
+
+/** How often the Chats rail asks for a fresh thread's title, and for how long. */
+const THREAD_TITLE_POLL_MS = 2000;
+const THREAD_TITLE_POLL_FOR_MS = 30_000;
+
+/**
+ * The Chats rail. Mastra names a thread after its first run, so a fresh
+ * thread's title lands a few seconds after its reply: the chat passes that
+ * thread and the list polls until the title is in it, then switches itself
+ * off (the way notifications/live.bridge.tsx does), or gives up after
+ * `THREAD_TITLE_POLL_FOR_MS` when naming failed.
+ */
+export const useCopilotThreads = (awaitTitle?: { id: string; until: number }) => {
   const fetch = useFetch();
-  return useSWR<{ threads: { id: string; title?: string }[] }>(
-    'threads',
-    async () => (await fetch('/copilot/list')).json()
+  const load = useCallback(async (): Promise<ThreadList> => {
+    // `customFetch` resolves 4xx/5xx, so without this a failed list would
+    // parse as an account with no chats and paint the empty state.
+    const response = await fetch('/copilot/list');
+    if (!response.ok) {
+      throw new Error('Could not load chats');
+    }
+    return response.json();
+  }, [fetch]);
+  const refreshInterval = useCallback(
+    (latest?: ThreadList) =>
+      awaitTitle &&
+      Date.now() < awaitTitle.until &&
+      !latest?.threads?.some((p) => p.id === awaitTitle.id && p.title)
+        ? THREAD_TITLE_POLL_MS
+        : 0,
+    [awaitTitle]
   );
+  return useSWR<ThreadList>('threads', load, { refreshInterval });
 };
+
+export const threadTitleWait = (id: string) => ({
+  id,
+  until: Date.now() + THREAD_TITLE_POLL_FOR_MS,
+});
 
 /**
  * What PostQueen keeps beside a thread's transcript: the channels that were

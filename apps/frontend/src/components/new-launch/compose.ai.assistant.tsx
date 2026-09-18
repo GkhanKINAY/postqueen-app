@@ -42,16 +42,12 @@ import { Skeleton } from '@gitroom/react/ui/skeleton';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { draftContentHtml } from '@gitroom/frontend/components/agents/agent.draft.card';
+import {
+  CopilotProperties,
+  PQ_AI_THREAD_SETTING,
+} from '@gitroom/helpers/utils/copilot.context';
 
 export type StudioRail = 'preview' | 'assistant';
-
-/**
- * The composer's Copilot thread, kept on the post's provider `settings`
- * JSON (same trick as `pq_notify`, no schema change) so a draft opened again
- * shows the chat and the cards it was written with. Only written once the
- * chat was used, never for Sets or the standalone JSON mode.
- */
-export const PQ_AI_THREAD_SETTING = 'pq_ai_thread';
 
 const ComposerThreadContext = createContext<{
   threadId: string;
@@ -96,7 +92,7 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
     (state) => state.selectedIntegrations
   );
   const properties = useMemo(
-    () => ({
+    (): { pq: CopilotProperties } => ({
       pq: {
         surface: 'composer',
         channels: selectedIntegrations.map(({ integration }) => ({

@@ -36,12 +36,17 @@ import {
 import {
   MediaPortal,
   PropertiesContext,
+  threadTitleWait,
   useAgentRouteId,
   useCopilotThreads,
 } from '@gitroom/frontend/components/agents/agent';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
 import { v4 as uuid } from 'uuid';
+import {
+  COPILOT_READABLE,
+  CopilotProperties,
+} from '@gitroom/helpers/utils/copilot.context';
 import {
   AgentDraftAction,
   AgentDraftCard,
@@ -121,7 +126,7 @@ export const AgentChat: FC = () => {
   // has selected right now, their timezone and the app language. This is
   // what the `[--integrations--]` block glued onto every message used to be.
   const properties = useMemo(
-    () => ({
+    (): { pq: CopilotProperties } => ({
       pq: {
         surface: 'agent',
         channels: selectableIntegrations(selected).map((p) => ({
@@ -600,10 +605,12 @@ const AgentLiveBridge: FC<{
   children: ReactNode;
 }> = ({ threadId, fresh, children }) => {
   const { isLoading, messages } = useCopilotChatInternal();
-  const { mutate } = useCopilotThreads();
+  const [awaitTitle, setAwaitTitle] = useState<
+    ReturnType<typeof threadTitleWait> | undefined
+  >();
+  useCopilotThreads(awaitTitle);
   const wasLoading = useRef(false);
   const ownRun = useRef(false);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     // Only a run this page started counts: it begins right after the
@@ -624,18 +631,8 @@ const AgentLiveBridge: FC<{
       // Moves the address only; the page tree (and this chat) stays mounted.
       window.history.replaceState(null, '', `/agents/${threadId}`);
     }
-    timers.current.forEach((timer) => clearTimeout(timer));
-    timers.current = [1500, 5000, 12000].map((ms) =>
-      setTimeout(() => {
-        void mutate();
-      }, ms)
-    );
-  }, [isLoading, messages, fresh, threadId, mutate]);
-
-  useEffect(
-    () => () => timers.current.forEach((timer) => clearTimeout(timer)),
-    []
-  );
+    setAwaitTitle(threadTitleWait(threadId));
+  }, [isLoading, messages, fresh, threadId]);
 
   const value = useMemo(
     () => ({
@@ -878,7 +875,7 @@ const ToolStep: FC<{
 
 export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
   const { validate, execute } = useDraftActions();
-  const { cards } = useContext(PropertiesContext);
+  const { cards, setCardOutcome } = useContext(PropertiesContext);
   const { userTurns } = useContext(LiveChatContext);
   const registry = useRef<
     Record<string, { groups: AgentDraftGroup[]; userTurn: number; order: number }>
@@ -893,7 +890,6 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     },
     []
   );
-  const { setCardOutcome } = useContext(PropertiesContext);
   // Handlers are registered once and read the live values through refs.
   const latestUserTurn = useRef(userTurns);
   const latestCards = useRef(cards);
@@ -918,7 +914,7 @@ export const Hooks: FC<{ children?: ReactNode }> = ({ children }) => {
     [cards]
   );
   useCopilotReadable({
-    description: 'Post Preview cards in this chat',
+    description: COPILOT_READABLE.cards,
     value: cardsSummary,
   });
 
