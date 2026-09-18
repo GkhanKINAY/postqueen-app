@@ -330,8 +330,15 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       return;
     }
 
+    // Nothing picked and nothing written: there is no data to lose, so the
+    // confirmation would only be in the way.
+    const nothingToLose =
+      selectedIntegrations.length === 0 &&
+      !postHasPreviewableContent(global, internal);
+
     if (
-      await deleteDialog(
+      nothingToLose ||
+      (await deleteDialog(
         t(
           'are_you_sure_you_want_to_close_this_modal_all_data_will_be_lost',
           'Are you sure you want to close this modal? (all data will be lost)'
@@ -340,7 +347,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         undefined,
         undefined,
         false
-      )
+      ))
     ) {
       if (customClose) {
         customClose();
@@ -348,7 +355,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       }
       modal.closeAll();
     }
-  }, [activateExitButton, dummy]);
+  }, [activateExitButton, dummy, selectedIntegrations, global, internal]);
 
   const deletePost = useCallback(async () => {
     setLoading(true);
