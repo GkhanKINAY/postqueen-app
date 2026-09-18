@@ -7,6 +7,7 @@ import {
   ReactNode,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -39,8 +40,26 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { Button } from '@gitroom/react/form/button';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
+import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 
 export type StudioRail = 'preview' | 'assistant';
+
+/**
+ * The composer's Copilot thread, kept on the post's provider `settings`
+ * JSON (same trick as `pq_notify`, no schema change) so a draft opened again
+ * shows the chat and the cards it was written with. Only written once the
+ * chat was used, never for Sets or the standalone JSON mode.
+ */
+export const PQ_AI_THREAD_SETTING = 'pq_ai_thread';
+
+const ComposerThreadContext = createContext<{
+  threadId: string;
+  /** Whether a message was sent in this composer; the setting is written only then. */
+  used: () => boolean;
+  markUsed: () => void;
+}>({ threadId: '', used: () => false, markUsed: () => {} });
+
+export const useComposerThread = () => useContext(ComposerThreadContext);
 
 /**
  * Create Post's own CopilotKit provider: the same `postqueen` agent as the
@@ -55,7 +74,23 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
   const aiOk = useAiAvailable();
   const { backendUrl } = useVariables();
   const i18n = useTranslationSettings();
-  const [threadId] = useState(() => uuid());
+  const existingData = useExistingData();
+  // A post that was written with Copilot reopens on its own thread.
+  const [threadId] = useState(() => {
+    const saved = existingData?.settings?.[PQ_AI_THREAD_SETTING];
+    return typeof saved === 'string' && saved ? saved : uuid();
+  });
+  const usedRef = useRef(false);
+  const thread = useMemo(
+    () => ({
+      threadId,
+      used: () => usedRef.current,
+      markUsed: () => {
+        usedRef.current = true;
+      },
+    }),
+    [threadId]
+  );
   const selectedIntegrations = useLaunchStore(
     (state) => state.selectedIntegrations
   );
@@ -78,19 +113,25 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
     [selectedIntegrations, i18n.resolvedLanguage, i18n.language]
   );
   if (!aiOk) {
-    return <>{children}</>;
+    return (
+      <ComposerThreadContext.Provider value={thread}>
+        {children}
+      </ComposerThreadContext.Provider>
+    );
   }
   return (
-    <CopilotKit
-      threadId={threadId}
-      credentials="include"
-      runtimeUrl={backendUrl + '/copilot/agent'}
-      showDevConsole={false}
-      agent="postqueen"
-      properties={properties}
-    >
-      {children}
-    </CopilotKit>
+    <ComposerThreadContext.Provider value={thread}>
+      <CopilotKit
+        threadId={threadId}
+        credentials="include"
+        runtimeUrl={backendUrl + '/copilot/agent'}
+        showDevConsole={false}
+        agent="postqueen"
+        properties={properties}
+      >
+        {children}
+      </CopilotKit>
+    </ComposerThreadContext.Provider>
   );
 };
 
@@ -309,6 +350,7 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
   isLoading,
 }) => {
   const t = useT();
+  const { markUsed } = useComposerThread();
   if (!suggestions.length) {
     return null;
   }
@@ -331,7 +373,10 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
               key={suggestion.title}
               type="button"
               disabled={isLoading}
-              onClick={() => onSuggestionClick(suggestion.message)}
+              onClick={() => {
+                markUsed();
+                onSuggestionClick(suggestion.message);
+              }}
               className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {mark ? (
@@ -357,6 +402,7 @@ const ComposeAiInput: FC<InputProps> = ({
 }) => {
   const t = useT();
   const context = useChatContext();
+  const { markUsed } = useComposerThread();
   const [text, setText] = useState('');
   if (!isVisible) {
     return null;
@@ -366,6 +412,7 @@ const ComposeAiInput: FC<InputProps> = ({
     if (inProgress || !next) {
       return;
     }
+    markUsed();
     onSend(text);
     setText('');
   };

@@ -133,8 +133,23 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /export const ComposerCopilotProvider/);
     assert.match(assistant, /runtimeUrl=\{backendUrl \+ '\/copilot\/agent'\}/);
     assert.match(assistant, /surface: 'composer'/);
-    assert.match(assistant, /useState\(\(\) => uuid\(\)\)/);
-    assert.match(modal, /<ComposerCopilotProvider>/);
+    assert.match(assistant, /uuid\(\)/);
+    const addEdit = readFileSync(
+      fileURLToPath(new URL('./add.edit.modal.tsx', import.meta.url)),
+      'utf8',
+    );
+    assert.match(addEdit, /<ComposerCopilotProvider>\s*<ManageModal/);
+  });
+
+  it('keeps the composer chat with the post it wrote', () => {
+    // The thread id rides on the post's provider settings like `pq_notify`:
+    // written only once the chat was used, never for Sets or the JSON mode,
+    // and read back to reopen a draft on the same thread.
+    assert.match(assistant, /export const PQ_AI_THREAD_SETTING = 'pq_ai_thread'/);
+    assert.match(assistant, /existingData\?\.settings\?\.\[PQ_AI_THREAD_SETTING\]/);
+    assert.match(modal, /!addEditSets && !dummy && copilotThread\.used\(\)/);
+    assert.match(modal, /\[PQ_AI_THREAD_SETTING\]: copilotThread\.threadId/);
+    assert.match(modal, /\.\.\.copilotThreadSetting,/);
   });
 
   it('labels the rail AI Copilot and uses the Agents sparkle, not a filled stand-in', () => {
