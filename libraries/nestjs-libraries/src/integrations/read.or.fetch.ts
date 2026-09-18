@@ -15,7 +15,7 @@ const insideUploads = (path: string) => {
 
 // This instance's own local-storage URL (FRONTEND_URL + /uploads/...) as the
 // file it names on disk.
-const ownUpload = (url: string) => {
+export const ownUploadPath = (url: string) => {
   const origin = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
   const prefix = `${origin}/uploads/`;
   if (!origin || !url.startsWith(prefix)) {
@@ -39,7 +39,7 @@ const ownUpload = (url: string) => {
  */
 export const readOrFetch = async (path: string) => {
   if (path.indexOf('http') === 0) {
-    const own = ownUpload(path);
+    const own = ownUploadPath(path);
     if (own && existsSync(own)) {
       return readFileSync(own);
     }

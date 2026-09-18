@@ -1013,7 +1013,9 @@ could_not_add_member
 could_not_add_provider
 could_not_connect_platform
 could_not_connect_to_platform
+could_not_convert_file
 could_not_delete_account
+could_not_optimize_file
 could_not_save
 could_not_use_rss_feed
 create
@@ -1712,6 +1714,7 @@ previous
 previous_day
 privacy
 privacy_policy
+processing
 profile
 profile_description
 profile_picture

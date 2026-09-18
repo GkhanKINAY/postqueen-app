@@ -2,13 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { execFile, spawnSync } from 'child_process';
 import { promises as fsp } from 'fs';
 import { setPriority } from 'os';
+import { basename } from 'path';
 
 /**
- * Everything the app asks of ffmpeg, in one place: what a video is, and the
- * slides video the Image Text Slides generator assembles. ffmpeg and ffprobe
- * are the binaries on the image (Debian's, with libass for burned subtitles);
- * outside the image `FFMPEG_PATH` / `FFPROBE_PATH` point at a build that has
- * it.
+ * Everything the app asks of ffmpeg, in one place: what a video is, whether
+ * the platforms can take it as is, the remux or transcode that makes it so,
+ * a poster frame, and the slides video the Image Text Slides generator
+ * assembles. ffmpeg and ffprobe are the binaries on the image (Debian's, with
+ * libass for burned subtitles and libzimg for HDR tone mapping); outside the
+ * image `FFMPEG_PATH` / `FFPROBE_PATH` point at a build that has them.
  *
  * Nothing here knows about storage, media rows or providers: paths in,
  * paths out.
@@ -17,18 +19,49 @@ import { setPriority } from 'os';
 export type MediaProbe = {
   /** ffprobe's format_name, e.g. "mov,mp4,m4a,3gp,3g2,mj2". */
   container: string;
+  /** "qt  " for a QuickTime file, "isom"/"mp42" for an mp4. */
+  majorBrand?: string;
   vcodec?: string;
+  profile?: string;
   pixfmt?: string;
   width: number;
   height: number;
+  /** 0, 90, 180 or 270: the display rotation the container asks for. */
+  rotation: number;
   fps: number;
+  /** "arib-std-b67" (HLG) and "smpte2084" (PQ) mean HDR. */
+  colorTransfer?: string;
   acodec?: string;
+  audioChannels?: number;
   sampleRate?: number;
   duration: number;
   size: number;
   /** The moov atom sits before the media data, so playback can start at once. */
   faststart: boolean;
 };
+
+/** What every uploaded video is brought to; a platform's own need lives in its provider. */
+export type VideoRules = {
+  shortSideMax: number;
+  longSideMax: number;
+  fpsMax: number;
+  crf: number;
+  preset: string;
+  audioBitrateKbps: number;
+  audioSampleRate: number;
+};
+
+export const VIDEO_RULES: VideoRules = {
+  shortSideMax: 1080,
+  longSideMax: 1920,
+  fpsMax: 60,
+  crf: 23,
+  preset: 'veryfast',
+  audioBitrateKbps: 128,
+  audioSampleRate: 48000,
+};
+
+export type NormalizeAction = 'none' | 'remux' | 'transcode';
 
 export type SlidesAssembly = {
   slides: { imagePath: string; audioPath: string; durationSeconds: number }[];
@@ -50,6 +83,7 @@ export class FfmpegError extends Error {
   }
 }
 
+const HDR_TRANSFERS = new Set(['arib-std-b67', 'smpte2084']);
 const STDERR_TAIL_BYTES = 4096;
 /** Seconds of cross-fade between two slides. */
 export const SLIDES_FADE_SECONDS = 0.5;
@@ -74,6 +108,47 @@ export const ffmpegInstalled = (): boolean => {
     encoding: 'utf8',
   });
   return result.status === 0 && /\bsubtitles\b/.test(result.stdout || '');
+};
+
+/**
+ * Keeps aspect, never upscales, caps the short side and the long side, and
+ * lands on even dimensions (libx264 refuses odd ones). `iw`/`ih` are already
+ * the rotated dimensions because ffmpeg autorotates by default.
+ */
+export const scaleFilter = (rules: VideoRules = VIDEO_RULES) => {
+  const ratio = `min(1,min(${rules.shortSideMax}/min(iw,ih),${rules.longSideMax}/max(iw,ih)))`;
+  return `scale=w='trunc(iw*${ratio}/2)*2':h='trunc(ih*${ratio}/2)*2'`;
+};
+
+/**
+ * Whether the platforms can take the file as it is (nothing), whether only
+ * its container needs fixing (a remux copies the streams in seconds), or
+ * whether it has to be re-encoded.
+ */
+export const decideAction = (
+  probe: MediaProbe,
+  sourceExt: string,
+  rules: VideoRules = VIDEO_RULES
+): NormalizeAction => {
+  const shortSide = Math.min(probe.width, probe.height);
+  const longSide = Math.max(probe.width, probe.height);
+  const compliantVideo =
+    probe.vcodec === 'h264' &&
+    probe.pixfmt === 'yuv420p' &&
+    probe.rotation === 0 &&
+    probe.fps > 0 &&
+    probe.fps <= rules.fpsMax &&
+    shortSide <= rules.shortSideMax &&
+    longSide <= rules.longSideMax &&
+    !HDR_TRANSFERS.has(probe.colorTransfer || '');
+  const compliantAudio = !probe.acodec || probe.acodec === 'aac';
+  if (!compliantVideo || !compliantAudio) {
+    return 'transcode';
+  }
+  if (sourceExt.toLowerCase() !== '.mp4' || probe.majorBrand?.trim() === 'qt') {
+    return 'remux';
+  }
+  return probe.faststart ? 'none' : 'remux';
 };
 
 /**
@@ -200,7 +275,7 @@ export const subtitlesScript = (
 @Injectable()
 export class FfmpegService {
   private readonly logger = new Logger(FfmpegService.name);
-  private capabilities?: Promise<{ ok: boolean; subtitles: boolean; version: string }>;
+  private capabilities?: Promise<{ ok: boolean; subtitles: boolean; zscale: boolean; version: string }>;
 
   /** What this ffmpeg can do; asked once per process. */
   available() {
@@ -212,10 +287,11 @@ export class FfmpegService {
           return {
             ok: true,
             subtitles: /\bsubtitles\b/.test(filters),
+            zscale: /\bzscale\b/.test(filters),
             version: version.split('\n')[0] || '',
           };
         } catch {
-          return { ok: false, subtitles: false, version: '' };
+          return { ok: false, subtitles: false, zscale: false, version: '' };
         }
       })();
     }
@@ -227,7 +303,7 @@ export class FfmpegService {
       '-v',
       'error',
       '-show_entries',
-      'format=format_name,duration,size:stream=codec_type,codec_name,pix_fmt,width,height,avg_frame_rate,r_frame_rate,sample_rate',
+      'format=format_name,duration,size:format_tags=major_brand:stream=index,codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate,r_frame_rate,sample_rate,channels,color_transfer:stream_tags=rotate:stream_side_data=rotation',
       '-of',
       'json',
       input,
@@ -240,19 +316,137 @@ export class FfmpegService {
       const [num, den] = String(value || '0/1').split('/').map(Number);
       return den ? num / den : num || 0;
     };
+    const sideRotation = (video?.side_data_list || []).find(
+      (s: any) => typeof s?.rotation === 'number'
+    )?.rotation;
+    const rawRotation = Number(sideRotation ?? video?.tags?.rotate ?? 0) || 0;
     return {
       container: parsed.format?.format_name || '',
+      majorBrand: parsed.format?.tags?.major_brand,
       vcodec: video?.codec_name,
+      profile: video?.profile,
       pixfmt: video?.pix_fmt,
       width: Number(video?.width) || 0,
       height: Number(video?.height) || 0,
+      rotation: ((Math.round(rawRotation / 90) * 90) % 360 + 360) % 360,
       fps: rate(video?.avg_frame_rate) || rate(video?.r_frame_rate),
+      colorTransfer: video?.color_transfer,
       acodec: audio?.codec_name,
+      audioChannels: audio ? Number(audio.channels) || undefined : undefined,
       sampleRate: audio ? Number(audio.sample_rate) || undefined : undefined,
       duration: Number(parsed.format?.duration) || 0,
       size: Number(parsed.format?.size) || 0,
       faststart: await isFastStart(input).catch(() => false),
     };
+  }
+
+  /**
+   * Copies the streams into an mp4 with the moov atom first. The explicit
+   * maps drop the data streams an iPhone puts in a .mov (they cannot go in
+   * an mp4), the metadata flag drops GPS tags.
+   */
+  remuxFaststart(input: string, output: string) {
+    return this.run([
+      ...this.leading(),
+      '-i',
+      input,
+      ...this.streamMaps(),
+      '-c',
+      'copy',
+      '-movflags',
+      '+faststart',
+      '-f',
+      'mp4',
+      output,
+    ]);
+  }
+
+  /** Re-encodes to h264/yuv420p/aac within the rules, upright, fast start. */
+  async transcode(
+    input: string,
+    output: string,
+    probe: MediaProbe,
+    rules: VideoRules = VIDEO_RULES,
+    onProgress?: (percent: number) => void
+  ) {
+    const { zscale } = await this.available();
+    const hdr = HDR_TRANSFERS.has(probe.colorTransfer || '');
+    if (hdr && !zscale) {
+      this.logger.warn('HDR source without zscale: colours will look flat');
+    }
+    const tonemap =
+      hdr && zscale
+        ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,'
+        : '';
+    return this.run(
+      [
+        ...this.leading(),
+        '-progress',
+        'pipe:1',
+        '-nostats',
+        '-i',
+        input,
+        ...this.streamMaps(),
+        '-vf',
+        `${tonemap}${scaleFilter(rules)},format=yuv420p`,
+        '-fps_mode',
+        'cfr',
+        ...(probe.fps > rules.fpsMax ? ['-r', String(rules.fpsMax)] : []),
+        // An output option, so it caps the encoder and leaves the rest of
+        // the worker's cores to its other activities.
+        '-threads',
+        '2',
+        '-c:v',
+        'libx264',
+        '-preset',
+        rules.preset,
+        '-crf',
+        String(rules.crf),
+        '-profile:v',
+        'high',
+        '-pix_fmt',
+        'yuv420p',
+        ...(hdr ? ['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709'] : []),
+        '-c:a',
+        'aac',
+        '-b:a',
+        `${rules.audioBitrateKbps}k`,
+        '-ar',
+        String(rules.audioSampleRate),
+        '-ac',
+        '2',
+        '-movflags',
+        '+faststart',
+        '-max_muxing_queue_size',
+        '1024',
+        '-f',
+        'mp4',
+        output,
+      ],
+      { onProgress, durationSeconds: probe.duration }
+    );
+  }
+
+  /** One frame as a JPEG at the frame size the rules allow. */
+  poster(input: string, output: string, atSeconds: number, rules: VideoRules = VIDEO_RULES) {
+    return this.run([
+      ...this.leading(),
+      '-ss',
+      atSeconds.toFixed(3),
+      '-i',
+      input,
+      '-frames:v',
+      '1',
+      '-vf',
+      scaleFilter(rules),
+      '-q:v',
+      '4',
+      '-update',
+      '1',
+      '-f',
+      'image2',
+      output,
+    ]);
   }
 
   /**
@@ -353,11 +547,23 @@ export class FfmpegService {
     return ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y'];
   }
 
+  private streamMaps() {
+    return ['-map', '0:v:0', '-map', '0:a:0?', '-sn', '-dn', '-map_metadata', '-1', '-map_chapters', '-1'];
+  }
+
   private capture(bin: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
       execFile(bin, args, { timeout: 30000, maxBuffer: 4 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {
-          reject(new FfmpegError(`${bin} failed: ${error.message}`, String(stderr).slice(-STDERR_TAIL_BYTES)));
+          // Not error.message: that is the whole command line, paths included.
+          reject(
+            new FfmpegError(
+              `${basename(bin)} could not read the file`,
+              String(stderr).slice(-STDERR_TAIL_BYTES),
+              false,
+              typeof (error as any).code === 'number' ? (error as any).code : null
+            )
+          );
           return;
         }
         resolve(String(stdout));
@@ -367,10 +573,13 @@ export class FfmpegService {
 
   /**
    * Runs ffmpeg at low priority with the wall-clock cap, keeping the tail of
-   * stderr for the error and the log; the caller's message to the user says
-   * only that the render failed.
+   * stderr for the error and the log (the caller's message to the user says
+   * only that it failed), and reading `-progress` lines for a percentage.
    */
-  private run(args: string[]): Promise<void> {
+  private run(
+    args: string[],
+    options: { onProgress?: (percent: number) => void; durationSeconds?: number } = {}
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       let stderr = '';
       let timedOut = false;
@@ -407,6 +616,22 @@ export class FfmpegService {
       }
       child.stderr?.on('data', (chunk) => {
         stderr = (stderr + chunk).slice(-STDERR_TAIL_BYTES * 2);
+      });
+      child.stdout?.on('data', (chunk) => {
+        if (!options.onProgress || !options.durationSeconds) {
+          return;
+        }
+        const match = /out_time_us=(\d+)/g;
+        let last: RegExpExecArray | null = null;
+        let found: RegExpExecArray | null;
+        const text = String(chunk);
+        while ((found = match.exec(text))) {
+          last = found;
+        }
+        if (last) {
+          const seconds = Number(last[1]) / 1_000_000;
+          options.onProgress(Math.max(0, Math.min(100, Math.round((seconds / options.durationSeconds) * 100))));
+        }
       });
     });
   }

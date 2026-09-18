@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import {
   ImageOrientation,
@@ -12,11 +12,19 @@ import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
+  downloadToFile,
   spooledFile,
   uploadTempDir,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
-import { promises as fsp } from 'fs';
-import { dirname } from 'path';
+import {
+  decideAction,
+  FfmpegService,
+  NormalizeAction,
+  VIDEO_RULES,
+} from '@gitroom/nestjs-libraries/media/ffmpeg.service';
+import { createWriteStream, promises as fsp } from 'fs';
+import { pipeline } from 'stream/promises';
+import { dirname, extname, join } from 'path';
 import {
   AuthorizationActions,
   Sections,
@@ -48,16 +56,40 @@ const isTrialLocked = (
   org: { isTrailing?: boolean }
 ) => isBillingEnabled() && !video.trial && !!org.isTrailing;
 
+/**
+ * Uploaded videos are normalized in the background (h264 / yuv420p / aac,
+ * 1080p at most, upright, fast start, a poster) so every platform takes the
+ * file as it is. Images are left alone: the browser already sizes them.
+ */
+const PROCESSABLE_EXTENSIONS = new Set(['.mp4', '.mov']);
+/** Of those, what a platform can be handed unconverted when no normalizer is there. */
+const USABLE_AS_IS = new Set(['.mp4']);
+const PROCESS_MEDIA_WORKFLOW = 'processMediaWorkflow';
+const NO_PROCESSOR = 'No media processor is available to convert this file';
+/** How much scratch space a normalize needs beside the source: the output and the poster. */
+const SCRATCH_FACTOR = 2.5;
+const SCRATCH_FLOOR_BYTES = 100 * 1024 * 1024;
+
+/** A file the normalizer cannot make anything of; retrying would not change that. */
+export class MediaProcessingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MediaProcessingError';
+  }
+}
+
 @Injectable()
 export class MediaService {
   private storage = UploadFactory.createStorage();
+  private readonly logger = new Logger(MediaService.name);
 
   constructor(
     private _mediaRepository: MediaRepository,
     private _openAi: OpenaiService,
     private _subscriptionService: SubscriptionService,
     private _videoManager: VideoManager,
-    private _temporalService: TemporalService
+    private _temporalService: TemporalService,
+    private _ffmpeg: FfmpegService
   ) {}
 
   async deleteMedia(org: string, id: string) {
@@ -70,6 +102,10 @@ export class MediaService {
 
   getMediaById(id: string) {
     return this._mediaRepository.getMediaById(id);
+  }
+
+  getMediaByIds(ids: string[]) {
+    return ids.length ? this._mediaRepository.getMediaByIds(ids) : Promise.resolve([]);
   }
 
   async generateImage(
@@ -118,15 +154,227 @@ export class MediaService {
     fileName: string,
     filePath: string,
     originalName?: string,
-    fileSize?: number
+    fileSize?: number,
+    thumbnail?: string
   ) {
     return this._mediaRepository.saveFile(
       org,
       fileName,
       filePath,
       originalName,
-      fileSize
+      fileSize,
+      thumbnail
     );
+  }
+
+  /**
+   * The row for a file that has just landed in storage. A video is handed to
+   * the normalizer and comes back as `processing`; the uploader then waits
+   * on `getMediaStatus` until the row is `ready` (or `failed`). Anything
+   * else is ready at once, the way `saveFile` always was.
+   */
+  async saveUploadedFile(
+    org: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    fileSize?: number
+  ) {
+    const media = await this.saveFile(org, fileName, filePath, originalName, fileSize);
+    const ext = extname(fileName || '').toLowerCase();
+    if (!PROCESSABLE_EXTENSIONS.has(ext)) {
+      return media;
+    }
+
+    const client = this._temporalService.client.getRawClient();
+    if (!client) {
+      return this.releaseUnprocessed(org, media, ext);
+    }
+    await this._mediaRepository.startProcessing(org, media.id);
+    try {
+      await client.workflow.start(PROCESS_MEDIA_WORKFLOW, {
+        workflowId: `media_${media.id}`,
+        taskQueue: 'main',
+        args: [{ mediaId: media.id }],
+        typedSearchAttributes: new TypedSearchAttributes([
+          {
+            key: organizationId,
+            value: org,
+          },
+        ]),
+      });
+    } catch (err) {
+      this.logger.error(`Could not start ${PROCESS_MEDIA_WORKFLOW} for media ${media.id}`, err);
+      return this.releaseUnprocessed(org, media, ext);
+    }
+    return { ...media, status: 'processing' };
+  }
+
+  /**
+   * No workflow could be started: an mp4 is offered as it came, a .mov is of
+   * no use to any platform and is dropped with the reason on its row.
+   */
+  private async releaseUnprocessed(
+    org: string,
+    media: Awaited<ReturnType<MediaService['saveFile']>>,
+    ext: string
+  ) {
+    if (USABLE_AS_IS.has(ext)) {
+      this.logger.warn(`Media ${media.id} is offered without normalizing: ${NO_PROCESSOR}`);
+      return this._mediaRepository.finishProcessing(org, media.id, {});
+    }
+    return this.failProcessing(media.id, NO_PROCESSOR);
+  }
+
+  async getMediaStatus(org: string, id: string) {
+    const media = await this._mediaRepository.getMediaStatus(org, id);
+    if (!media) {
+      throw new HttpException('Media not found', 404);
+    }
+    return media;
+  }
+
+  /**
+   * The body of the `normalizeMedia` activity. Reads the upload back out of
+   * storage, brings it to the rules, cuts a poster, and writes the result on
+   * the row. Idempotent: a row that is no longer `processing` was finished by
+   * an earlier attempt and is returned as it is. A re-encoded file gets a new
+   * key (the uploads route serves objects as immutable, so nothing is ever
+   * overwritten in place) and the original is removed afterwards.
+   */
+  async normalizeMedia(mediaId: string, onProgress?: (stage: string) => void) {
+    const media = await this._mediaRepository.getMediaById(mediaId);
+    if (!media) {
+      throw new MediaProcessingError(`Media ${mediaId} does not exist`);
+    }
+    if (media.status !== 'processing') {
+      return media;
+    }
+    const org = media.organizationId;
+    const ext = extname(media.name).toLowerCase();
+    await this.sweepScratch(mediaId);
+    await fsp.mkdir(uploadTempDir(), { recursive: true });
+    const dir = await fsp.mkdtemp(join(uploadTempDir(), `pq-media-${mediaId}-`));
+    try {
+      const sourcePath = join(dir, `source${ext}`);
+      onProgress?.('download');
+      await pipeline(await this.storage.readFile(media.path), createWriteStream(sourcePath));
+      await this.assertScratchSpace(dir, (await fsp.stat(sourcePath)).size);
+
+      const result = await this.normalizeLocalFile(dir, sourcePath, ext, onProgress);
+      onProgress?.('upload');
+      const thumbnail = await this.uploadPoster(result.posterPath);
+      if (result.action === 'none') {
+        this.logger.log(`Media ${mediaId}: action=none, poster only`);
+        return this._mediaRepository.finishProcessing(org, mediaId, { thumbnail });
+      }
+
+      const rendered = spooledFile(result.outputPath, 'video/mp4', 'video.mp4');
+      const uploaded = await this.storage.uploadFile(rendered);
+      const row = await this._mediaRepository.finishProcessing(org, mediaId, {
+        name: uploaded.originalname,
+        path: uploaded.path,
+        thumbnail,
+        fileSize: rendered.size,
+      });
+      this.logger.log(`Media ${mediaId}: action=${result.action}, ${media.name} -> ${uploaded.originalname}`);
+      // The original is of no use once the row points elsewhere; a failure
+      // here leaves an orphan object, not a broken media row.
+      await this.storage.removeFile(media.path).catch((err) => {
+        this.logger.warn(`Media ${mediaId}: could not remove the original ${media.path}`, err);
+      });
+      return row;
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Probe, then the least that makes the file compliant (nothing, a remux,
+   * or a transcode), then a poster. The shared step between an uploaded
+   * video and a generated one.
+   */
+  async normalizeLocalFile(
+    dir: string,
+    sourcePath: string,
+    ext: string,
+    onProgress?: (stage: string) => void
+  ): Promise<{ action: NormalizeAction; outputPath: string; posterPath: string }> {
+    const probe = await this._ffmpeg.probe(sourcePath);
+    if (!probe.vcodec || !probe.width || !probe.height) {
+      throw new MediaProcessingError('The file has no video stream');
+    }
+    const action = decideAction(probe, ext, VIDEO_RULES);
+    let outputPath = sourcePath;
+    if (action === 'remux') {
+      onProgress?.('remux');
+      outputPath = join(dir, 'normalized.mp4');
+      await this._ffmpeg.remuxFaststart(sourcePath, outputPath);
+    } else if (action === 'transcode') {
+      onProgress?.('transcode 0%');
+      outputPath = join(dir, 'normalized.mp4');
+      await this._ffmpeg.transcode(sourcePath, outputPath, probe, VIDEO_RULES, (percent) =>
+        onProgress?.(`transcode ${percent}%`)
+      );
+    }
+    // The same frame the browser's poster capture takes.
+    const posterPath = join(dir, 'poster.jpg');
+    await this._ffmpeg.poster(outputPath, posterPath, Math.min(0.5, probe.duration * 0.1));
+    return { action, outputPath, posterPath };
+  }
+
+  /** The normalizer gave up: the row says why, and a file no platform can use is dropped. */
+  async failProcessing(mediaId: string, error: string) {
+    const media = await this._mediaRepository.getMediaById(mediaId);
+    if (!media) {
+      return null;
+    }
+    // Finished by an attempt that outlived its heartbeat on another worker:
+    // the row is right as it is.
+    if (media.status !== 'processing') {
+      return media;
+    }
+    const org = media.organizationId;
+    const row = await this._mediaRepository.finishProcessing(org, mediaId, { error });
+    if (!USABLE_AS_IS.has(extname(media.name).toLowerCase())) {
+      await this._mediaRepository.deleteMedia(org, mediaId);
+      await this.storage.removeFile(media.path).catch((err) => {
+        this.logger.warn(`Media ${mediaId}: could not remove ${media.path}`, err);
+      });
+    }
+    return row;
+  }
+
+  private async uploadPoster(posterPath: string) {
+    const uploaded = await this.storage.uploadFile(
+      spooledFile(posterPath, 'image/jpeg', 'poster.jpg')
+    );
+    return uploaded.path as string;
+  }
+
+  /** A worker that died mid-job left its directory behind; a retry starts clean. */
+  private async sweepScratch(mediaId: string) {
+    const prefix = `pq-media-${mediaId}-`;
+    const entries = await fsp.readdir(uploadTempDir()).catch(() => [] as string[]);
+    await Promise.all(
+      entries
+        .filter((name) => name.startsWith(prefix))
+        .map((name) => fsp.rm(join(uploadTempDir(), name), { recursive: true, force: true }))
+    );
+  }
+
+  private async assertScratchSpace(dir: string, sourceBytes: number) {
+    const stats = await fsp.statfs(dir).catch(() => null);
+    if (!stats) {
+      return;
+    }
+    const free = Number(stats.bavail) * Number(stats.bsize);
+    const needed = sourceBytes * SCRATCH_FACTOR + SCRATCH_FLOOR_BYTES;
+    if (free < needed) {
+      throw new MediaProcessingError(
+        `Not enough scratch space to convert this file (${Math.round(free / 1048576)} MB free, ${Math.round(needed / 1048576)} MB needed)`
+      );
+    }
   }
 
   getMedia(org: string, page: number, search?: string) {
@@ -192,32 +440,42 @@ export class MediaService {
             body.output,
             body.customParams
           );
-          // A provider's own URL is fetched into storage; a file the
-          // generator rendered here is moved in and its directory dropped.
-          if (typeof produced === 'string') {
-            const file = await this.storage.uploadSimple(produced);
-            return this.saveFile(org.id, file.split('/').pop(), file);
-          }
+          // A provider's own URL is downloaded beside a file the generator
+          // rendered here; either is brought to the rules and given a poster
+          // before it goes into storage, the way an upload is, and the
+          // directory is dropped afterwards.
+          await fsp.mkdir(uploadTempDir(), { recursive: true });
+          const dir =
+            typeof produced === 'string' || dirname(produced.localPath) === uploadTempDir()
+              ? await fsp.mkdtemp(join(uploadTempDir(), 'pq-video-'))
+              : dirname(produced.localPath);
           try {
+            let sourcePath: string;
+            if (typeof produced === 'string') {
+              sourcePath = join(dir, 'source.mp4');
+              await downloadToFile(produced, sourcePath);
+            } else {
+              sourcePath = produced.localPath;
+            }
+            const result = await this.normalizeLocalFile(dir, sourcePath, extname(sourcePath));
             // The size is read before the upload: local storage renames
             // the file into place, so nothing is there to stat afterwards.
-            const rendered = spooledFile(produced.localPath, 'video/mp4', 'video.mp4');
+            const rendered = spooledFile(result.outputPath, 'video/mp4', 'video.mp4');
             const uploaded = await this.storage.uploadFile(rendered);
+            const thumbnail = await this.uploadPoster(result.posterPath);
             return this.saveFile(
               org.id,
               uploaded.originalname,
               uploaded.path,
               undefined,
-              rendered.size
+              rendered.size,
+              thumbnail
             );
           } finally {
-            // The generator's own directory goes with the file. A file
-            // dropped straight into the spool directory takes only itself.
-            const dir = dirname(produced.localPath);
-            await fsp.rm(dir === uploadTempDir() ? produced.localPath : dir, {
-              recursive: true,
-              force: true,
-            });
+            await fsp.rm(dir, { recursive: true, force: true });
+            if (typeof produced !== 'string') {
+              await fsp.rm(produced.localPath, { force: true });
+            }
           }
         }
       );

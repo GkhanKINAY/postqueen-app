@@ -39,6 +39,13 @@ export const getTemporalModule = (
       ? {
           workers: [
             { identifier: 'main', maxConcurrentJob: undefined },
+            // Video normalizing: one encode at a time by default, so the
+            // cores stay with the publish activities. Raise it on a server
+            // with cores to spare, or pin it with EXCLUDE_QUEUE=media.
+            {
+              identifier: 'media',
+              maxConcurrentJob: Number(process.env.MEDIA_PROCESSING_CONCURRENCY) || 1,
+            },
             ...socialIntegrationList,
           ]
             .filter((f) => f.identifier.indexOf('-') === -1)

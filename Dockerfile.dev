@@ -6,9 +6,10 @@ ARG NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 # procps provides `ps`, which pm2 needs to kill a process tree. Without it
 # `pm2 restart` stopped only the pnpm wrapper and the old node kept the port.
-# ffmpeg renders the Image Text Slides video; Debian's build carries libass
-# for the burned captions. fonts-dejavu-core is the caption font: with
-# --no-install-recommends libass pulls in no font of its own.
+# ffmpeg renders the Image Text Slides video and normalizes uploaded video;
+# Debian's build carries libass (burned captions) and libzimg (HDR tone
+# mapping). fonts-dejavu-core is the caption font: with --no-install-recommends
+# libass pulls in no font of its own.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     g++ \

@@ -139,37 +139,49 @@ const MediaThumb: FC<{ media: MediaRow; className?: string }> = ({
   );
 };
 
-type UploadTile = { id: string; name: string; percent: number };
+type UploadTile = {
+  id: string;
+  name: string;
+  percent: number;
+  /** The bytes are in; the server is converting the video before it is offered. */
+  processing?: boolean;
+};
 
 /**
  * A file on its way into the library, drawn where its tile will land: the
  * ghost of a thumbnail with the percentage in it and the file name under it.
  * Before this the grid showed nothing until the upload finished; a large
  * video sat behind a progress strip with no sign of where it was going.
+ * Once the bytes are in and the server is converting a video, the
+ * percentage gives way to "Processing".
  */
 const UploadingTile: FC<{ upload: UploadTile; className?: string }> = ({
   upload,
   className,
-}) => (
-  <div
-    data-pq="media-uploading"
-    className={clsx('flex flex-col gap-0.5', className)}
-    aria-busy="true"
-  >
+}) => {
+  const t = useT();
+  return (
     <div
-      className={clsx(
-        'relative w-full overflow-hidden rounded-[10px]',
-        MEDIA_LIBRARY_THUMB_ASPECT
-      )}
+      data-pq="media-uploading"
+      data-state={upload.processing ? 'processing' : 'uploading'}
+      className={clsx('flex flex-col gap-0.5', className)}
+      aria-busy="true"
     >
-      <Skeleton className={MEDIA_LIBRARY_THUMB_FILL} />
-      <span className="absolute inset-0 grid place-items-center font-mono text-[13px] font-[600] tabular-nums text-pqText">
-        {upload.percent}%
-      </span>
+      <div
+        className={clsx(
+          'relative w-full overflow-hidden rounded-[10px]',
+          MEDIA_LIBRARY_THUMB_ASPECT
+        )}
+      >
+        <Skeleton className={MEDIA_LIBRARY_THUMB_FILL} />
+        <span className="absolute inset-0 grid place-items-center font-mono text-[13px] font-[600] tabular-nums text-pqText">
+          {upload.processing ? t('processing', 'Processing') : `${upload.percent}%`}
+        </span>
+      </div>
+      <div className="truncate px-[2px] text-[12px] text-pqSoft">{upload.name}</div>
     </div>
-    <div className="truncate px-[2px] text-[12px] text-pqSoft">{upload.name}</div>
-  </div>
-);
+  );
+};
 
 export const MediaBox: FC<{
   setMedia: (params: { id: string; path: string; thumbnail?: string }[]) => void;
@@ -312,13 +324,26 @@ export const MediaBox: FC<{
     const removed = (file: { id: string }) =>
       setUploads((list) => list.filter((u) => u.id !== file.id));
     const cleared = () => setUploads([]);
+    // The bytes are in; a video then waits on the server's conversion.
+    const uploaded = (file: { id: string } | undefined) =>
+      file &&
+      setUploads((list) => list.map((u) => (u.id === file.id ? { ...u, percent: 100 } : u)));
+    const processing = (file: { id: string } | undefined) =>
+      file &&
+      setUploads((list) =>
+        list.map((u) => (u.id === file.id ? { ...u, processing: true } : u))
+      );
     uppy.on('file-added', added);
     uppy.on('upload-progress', progress);
+    uppy.on('upload-success', uploaded);
+    uppy.on('postprocess-progress', processing);
     uppy.on('file-removed', removed);
     uppy.on('error', cleared);
     return () => {
       uppy.off('file-added', added);
       uppy.off('upload-progress', progress);
+      uppy.off('upload-success', uploaded);
+      uppy.off('postprocess-progress', processing);
       uppy.off('file-removed', removed);
       uppy.off('error', cleared);
     };
@@ -537,8 +562,8 @@ export const MediaBox: FC<{
         type == 'image'
           ? 'image/*'
           : type == 'video'
-          ? 'video/mp4'
-          : 'image/*,video/mp4'
+          ? 'video/mp4,video/quicktime,.mov'
+          : 'image/*,video/mp4,video/quicktime,.mov'
       }
     />
   );

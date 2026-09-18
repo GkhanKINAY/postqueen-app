@@ -11,7 +11,8 @@ export class MediaRepository {
     fileName: string,
     filePath: string,
     originalName?: string,
-    fileSize?: number
+    fileSize?: number,
+    thumbnail?: string
   ) {
     return this._media.model.media.create({
       data: {
@@ -31,6 +32,7 @@ export class MediaRepository {
         // unknown" and the Media list view's size line was dead code. The
         // uploader has the number; it just was not being passed along.
         ...(fileSize ? { fileSize } : {}),
+        ...(thumbnail ? { thumbnail } : {}),
       },
       select: {
         id: true,
@@ -39,7 +41,82 @@ export class MediaRepository {
         path: true,
         thumbnail: true,
         alt: true,
+        status: true,
       },
+    });
+  }
+
+  startProcessing(org: string, id: string) {
+    return this._media.model.media.update({
+      where: { id, organizationId: org },
+      data: { status: 'processing', processingError: null },
+      select: { id: true, status: true },
+    });
+  }
+
+  /**
+   * The row as the normalizer left it: a new name and path when the file was
+   * re-encoded, the poster, the size; or the error, which marks it failed.
+   */
+  finishProcessing(
+    org: string,
+    id: string,
+    result: {
+      name?: string;
+      path?: string;
+      thumbnail?: string;
+      fileSize?: number;
+      error?: string;
+    }
+  ) {
+    return this._media.model.media.update({
+      where: { id, organizationId: org },
+      data: {
+        status: result.error ? 'failed' : 'ready',
+        processingError: result.error ? result.error.slice(0, 2000) : null,
+        ...(result.name ? { name: result.name } : {}),
+        ...(result.path ? { path: result.path } : {}),
+        ...(result.thumbnail ? { thumbnail: result.thumbnail } : {}),
+        ...(result.fileSize ? { fileSize: result.fileSize } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        originalName: true,
+        path: true,
+        thumbnail: true,
+        alt: true,
+        status: true,
+        processingError: true,
+      },
+    });
+  }
+
+  /**
+   * No `deletedAt` filter: a .mov that could not be converted is soft-deleted
+   * as it fails, and the uploader polling it still has to read the reason.
+   */
+  getMediaStatus(org: string, id: string) {
+    return this._media.model.media.findFirst({
+      where: { id, organizationId: org },
+      select: {
+        id: true,
+        name: true,
+        originalName: true,
+        path: true,
+        thumbnail: true,
+        alt: true,
+        status: true,
+        processingError: true,
+      },
+    });
+  }
+
+  /** The live rows for a post's media, so a stale path on the post can be replaced. */
+  getMediaByIds(ids: string[]) {
+    return this._media.model.media.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, path: true, thumbnail: true, alt: true },
     });
   }
 
@@ -113,12 +190,15 @@ export class MediaRepository {
           },
         }
       : {};
+    // A video still being normalized is not offered yet: the uploader that
+    // sent it is waiting on its status, and its path may still change.
     const query = {
       where: {
         organization: {
           id: org,
         },
         deletedAt: null,
+        status: { not: 'processing' },
         ...searchFilter,
       },
     };
@@ -127,6 +207,7 @@ export class MediaRepository {
       where: {
         organizationId: org,
         deletedAt: null,
+        status: { not: 'processing' },
         ...searchFilter,
       },
       orderBy: {
