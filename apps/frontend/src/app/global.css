@@ -33,10 +33,10 @@
 
    The JavaScript config is kept rather than translated to `@theme`. It carries
    the whole pq token alias table, the `mobile:` / `tablet:` screens that 88
-   call sites depend on, and the `child` / `child-hover` variants — and `@config`
-   loads its `plugins` too, so `tailwind-scrollbar` still runs. None of the
-   three options v4 dropped from legacy configs (`corePlugins`, `safelist`,
-   `separator`) appear in it. */
+   call sites depend on, and the `child` / `child-hover` variants — `@config`
+   loads its `plugins` too, which is where those variants are registered. None
+   of the three options v4 dropped from legacy configs (`corePlugins`,
+   `safelist`, `separator`) appear in it. */
 @import 'tailwindcss';
 @config '../../tailwind.config.cjs';
 
