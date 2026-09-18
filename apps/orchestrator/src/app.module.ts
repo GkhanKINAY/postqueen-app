@@ -9,6 +9,7 @@ import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrati
 import { VideoActivity } from '@gitroom/orchestrator/activities/video.activity';
 import { FoundingFeeActivity } from '@gitroom/orchestrator/activities/founding.fee.activity';
 import { PostMetricsActivity } from '@gitroom/orchestrator/activities/post-metrics.activity';
+import { MediaActivity } from '@gitroom/orchestrator/activities/media.activity';
 import { VideoModule } from '@gitroom/nestjs-libraries/videos/video.module';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
@@ -25,6 +26,7 @@ const activities = [
   VideoActivity,
   FoundingFeeActivity,
   PostMetricsActivity,
+  MediaActivity,
 ];
 @Module({
   imports: [

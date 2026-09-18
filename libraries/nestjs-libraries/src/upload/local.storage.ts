@@ -1,12 +1,15 @@
 import { IUploadProvider } from './upload.interface';
 import {
   copyFileSync,
+  createReadStream,
   mkdirSync,
+  promises as fsp,
   renameSync,
-  unlink,
   writeFileSync,
 } from 'fs';
+import { Readable } from 'stream';
 import { detectUploadType } from '@gitroom/nestjs-libraries/upload/uploaded.file';
+import { ownUploadPath } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
@@ -35,6 +38,9 @@ const LOCAL_STORAGE_ALLOWED_MIME = new Set<string>([
   'image/bmp',
   'image/tiff',
   'video/mp4',
+  // Accepted only to be converted: the normalizer turns it into an mp4 and
+  // the original is removed. Nothing ever serves a .mov.
+  'video/quicktime',
   'audio/mpeg',
   'audio/mp4',
   'audio/wav',
@@ -139,16 +145,21 @@ export class LocalStorage implements IUploadProvider {
     }
   }
 
-  async removeFile(filePath: string): Promise<void> {
-    // Logic to remove the file from the filesystem goes here
-    return new Promise((resolve, reject) => {
-      unlink(filePath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+  // Both take the public URL the row carries and map it back inside
+  // UPLOAD_DIRECTORY, the way readOrFetch does; anything else is refused.
+  async readFile(path: string): Promise<Readable> {
+    const file = ownUploadPath(path);
+    if (!file) {
+      throw new Error('Not a file of this storage');
+    }
+    return createReadStream(file);
+  }
+
+  async removeFile(path: string): Promise<void> {
+    const file = ownUploadPath(path);
+    if (!file) {
+      throw new Error('Not a file of this storage');
+    }
+    await fsp.rm(file, { force: true });
   }
 }

@@ -35,14 +35,15 @@ describe('Image Text Slides without Transloadit', () => {
     assert.match(videoModule, /providers: \[FfmpegService, ImagesSlides, Seedance, VideoManager\]/);
   });
 
-  it('moves a rendered file into storage and drops its directory, a URL as before', () => {
-    assert.match(mediaService, /if \(typeof produced === 'string'\) \{\n\s+const file = await this\.storage\.uploadSimple\(produced\);/);
-    assert.match(mediaService, /spooledFile\(produced\.localPath, 'video\/mp4', 'video\.mp4'\)/);
+  it('brings a rendered file or a downloaded URL to the rules, then into storage, and drops the directory', () => {
+    assert.match(mediaService, /if \(typeof produced === 'string'\) \{\n\s+sourcePath = join\(dir, 'source\.mp4'\);\n\s+await downloadToFile\(produced, sourcePath\);/);
+    assert.match(mediaService, /const result = await this\.normalizeLocalFile\(dir, sourcePath, extname\(sourcePath\)\);/);
     // Size read before the upload: local storage renames the file away.
-    assert.match(mediaService, /const rendered = spooledFile\(produced\.localPath, 'video\/mp4', 'video\.mp4'\);\n\s+const uploaded = await this\.storage\.uploadFile\(rendered\);/);
-    assert.match(mediaService, /rendered\.size\n/);
+    assert.match(mediaService, /const rendered = spooledFile\(result\.outputPath, 'video\/mp4', 'video\.mp4'\);\n\s+const uploaded = await this\.storage\.uploadFile\(rendered\);/);
+    assert.match(mediaService, /rendered\.size,\n\s+thumbnail\n/);
     assert.doesNotMatch(mediaService, /statSync\(produced/);
-    assert.match(mediaService, /dir === uploadTempDir\(\) \? produced\.localPath : dir/);
+    // A file dropped straight into the spool directory gets its own directory; the spool itself is never removed.
+    assert.match(mediaService, /dirname\(produced\.localPath\) === uploadTempDir\(\)\n\s+\? await fsp\.mkdtemp/);
   });
 
   it('leaves no Transloadit behind: packages, env, route, uploader, layouts', () => {

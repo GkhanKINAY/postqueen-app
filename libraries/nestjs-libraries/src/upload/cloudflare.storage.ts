@@ -1,5 +1,11 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import 'multer';
+import { Readable } from 'stream';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import mime from 'mime-types';
 import { IUploadProvider } from './upload.interface';
@@ -24,11 +30,18 @@ const ALLOWED_MIME_TYPES = new Set<string>([
   'image/bmp',
   'image/tiff',
   'video/mp4',
+  // Accepted only to be converted: the normalizer turns it into an mp4 and
+  // the original is removed. The uploads route never serves a .mov.
+  'video/quicktime',
   'audio/mpeg',
   'audio/mp4',
   'audio/wav',
   'audio/ogg',
 ]);
+
+// Keys as this storage writes them: makeId(10) plus an extension. The saved
+// URL's last segment is only ever used as a key when it has this shape.
+const KEY = /^[A-Za-z0-9_-]{1,120}\.[a-z0-9]{1,5}$/i;
 
 class CloudflareStorage implements IUploadProvider {
   private _client: S3Client;
@@ -161,14 +174,31 @@ class CloudflareStorage implements IUploadProvider {
     }
   }
 
-  // Implement the removeFile method from IUploadProvider
-  async removeFile(filePath: string): Promise<void> {
-    // const fileName = filePath.split('/').pop(); // Extract the filename from the path
-    // const command = new DeleteObjectCommand({
-    //   Bucket: this._bucketName,
-    //   Key: fileName,
-    // });
-    // await this._client.send(command);
+  // The saved URL names the object by its last segment, whichever host the
+  // upload URL pointed at when the row was written (the bucket, or our own
+  // /uploads route in front of it).
+  private keyOf(path: string) {
+    const key = path.split(/[?#]/)[0].split('/').pop() || '';
+    if (!KEY.test(key)) {
+      throw new Error('Not a file of this storage');
+    }
+    return key;
+  }
+
+  async readFile(path: string): Promise<Readable> {
+    const object = await this._client.send(
+      new GetObjectCommand({ Bucket: this._bucketName, Key: this.keyOf(path) })
+    );
+    if (!object.Body) {
+      throw new Error('The file is not in storage');
+    }
+    return object.Body as Readable;
+  }
+
+  async removeFile(path: string): Promise<void> {
+    await this._client.send(
+      new DeleteObjectCommand({ Bucket: this._bucketName, Key: this.keyOf(path) })
+    );
   }
 }
 

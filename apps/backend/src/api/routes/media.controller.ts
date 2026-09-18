@@ -45,6 +45,13 @@ export class MediaController {
     return this._mediaService.deleteMedia(org.id, id);
   }
 
+  // An uploaded video comes back `processing` while it is normalized in the
+  // background; the uploader polls here until the row is ready or failed.
+  @Get('/:id/status')
+  getMediaStatus(@GetOrgFromRequest() org: Organization, @Param('id') id: string) {
+    return this._mediaService.getMediaStatus(org.id, id);
+  }
+
   @Post('/generate-video')
   generateVideo(
     @GetOrgFromRequest() org: Organization,
@@ -119,7 +126,7 @@ export class MediaController {
     try {
       const originalName = file?.originalname || '';
       const uploadedFile = await this.storage.uploadFile(file);
-      return await this._mediaService.saveFile(
+      return await this._mediaService.saveUploadedFile(
         org.id,
         uploadedFile.originalname,
         uploadedFile.path,
@@ -158,7 +165,7 @@ export class MediaController {
         return { path };
       }
 
-      return await this._mediaService.saveFile(
+      return await this._mediaService.saveUploadedFile(
         org.id,
         getFile.originalname,
         getFile.path,
@@ -193,7 +200,7 @@ export class MediaController {
     const name = upload.Location.split('/').pop();
     const originalName = req.body?.file?.name;
 
-    const saveFile = await this._mediaService.saveFile(
+    const saveFile = await this._mediaService.saveUploadedFile(
       org.id,
       name,
       // @ts-ignore

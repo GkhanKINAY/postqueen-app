@@ -426,6 +426,12 @@ export class PostsService {
   async updateMedia(id: string, imagesList: any[], convertToJPEG = false) {
     try {
       let imageUpdateNeeded = false;
+      // A video attached while it was still being normalized was saved with
+      // the path its row had then; the row is what is current. One query for
+      // the whole list, and a row that is gone leaves the post's copy alone.
+      const liveRows = await this._mediaService.getMediaByIds(
+        (imagesList || []).map((p: any) => p?.id).filter(Boolean)
+      );
       const getImageList = await Promise.all(
         (
           await Promise.all(
@@ -433,6 +439,18 @@ export class PostsService {
               if (!p.path && p.id) {
                 imageUpdateNeeded = true;
                 return this._mediaService.getMediaById(p.id);
+              }
+
+              // Only a video: an image's path can differ on purpose (the
+              // JPEG a provider converted it to was written back here).
+              const live = p.id ? liveRows.find((row) => row.id === p.id) : undefined;
+              if (live && hasExtension(live.path, 'mp4') && live.path !== p.path) {
+                imageUpdateNeeded = true;
+                return {
+                  ...p,
+                  path: live.path,
+                  ...(live.thumbnail ? { thumbnail: live.thumbnail } : {}),
+                };
               }
 
               return p;

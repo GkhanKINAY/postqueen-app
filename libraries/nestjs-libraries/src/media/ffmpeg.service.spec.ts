@@ -5,11 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  decideAction,
   FfmpegService,
   ffmpegInstalled,
   isFastStart,
+  MediaProbe,
+  scaleFilter,
   slideSchedule,
   subtitlesScript,
+  VIDEO_RULES,
 } from './ffmpeg.service';
 
 const box = (type: string, payload = 0) => {
@@ -36,7 +40,45 @@ const withFile = async (content: Buffer, run: (path: string) => Promise<void>) =
   }
 };
 
+const compliant: MediaProbe = {
+  container: 'mov,mp4,m4a,3gp,3g2,mj2',
+  majorBrand: 'isom',
+  vcodec: 'h264',
+  pixfmt: 'yuv420p',
+  width: 1920,
+  height: 1080,
+  rotation: 0,
+  fps: 30,
+  acodec: 'aac',
+  duration: 10,
+  size: 1000,
+  faststart: true,
+};
+
 describe('ffmpeg service', () => {
+  it('scales down to the rules, never up, on even dimensions', () => {
+    assert.equal(
+      scaleFilter(),
+      "scale=w='trunc(iw*min(1,min(1080/min(iw,ih),1920/max(iw,ih)))/2)*2':h='trunc(ih*min(1,min(1080/min(iw,ih),1920/max(iw,ih)))/2)*2'"
+    );
+  });
+
+  it('leaves a compliant mp4 alone, remuxes a container problem, transcodes the rest', () => {
+    assert.equal(decideAction(compliant, '.mp4'), 'none');
+    assert.equal(decideAction({ ...compliant, faststart: false }, '.mp4'), 'remux');
+    assert.equal(decideAction({ ...compliant, majorBrand: 'qt  ' }, '.mov'), 'remux');
+    assert.equal(decideAction({ ...compliant, vcodec: 'hevc' }, '.mov'), 'transcode');
+    assert.equal(decideAction({ ...compliant, width: 3840, height: 2160 }, '.mp4'), 'transcode');
+    assert.equal(decideAction({ ...compliant, rotation: 90 }, '.mp4'), 'transcode');
+    assert.equal(decideAction({ ...compliant, fps: 120 }, '.mp4'), 'transcode');
+    assert.equal(decideAction({ ...compliant, acodec: 'pcm_s16le' }, '.mp4'), 'transcode');
+    assert.equal(decideAction({ ...compliant, colorTransfer: 'arib-std-b67' }, '.mp4'), 'transcode');
+    assert.equal(decideAction({ ...compliant, pixfmt: 'yuv420p10le' }, '.mp4'), 'transcode');
+    // No audio track is as good as aac.
+    assert.equal(decideAction({ ...compliant, acodec: undefined }, '.mp4'), 'none');
+    assert.equal(VIDEO_RULES.shortSideMax, 1080);
+  });
+
   it('schedules slides so each cross-fade overlaps the end of the slide before', () => {
     const { starts, total } = slideSchedule([4, 5, 6]);
     assert.deepEqual(starts, [0, 3.5, 8]);
@@ -125,6 +167,11 @@ describe('ffmpeg service', () => {
         assert.ok(Math.abs(probe.duration - 8) < 0.25, `duration ${probe.duration}`);
         // The caption script is not left beside the video.
         assert.equal(existsSync(`${outputPath}.ass`), false);
+        // What the generator makes needs no normalizing, and a poster is cut at the frame size.
+        assert.equal(decideAction(probe, '.mp4'), 'none');
+        const posterPath = join(dir, 'poster.jpg');
+        await service.poster(outputPath, posterPath, 0.5);
+        assert.equal((await service.probe(posterPath)).width, 1080);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }

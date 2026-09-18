@@ -3,7 +3,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Uppy, { BasePlugin, UploadResult, UppyFile } from '@uppy/core';
 // @ts-ignore
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { getUppyUploadPlugin } from '@gitroom/react/helpers/uppy.upload';
+import {
+  getUppyUploadPlugin,
+  WaitForMediaProcessing,
+} from '@gitroom/react/helpers/uppy.upload';
 
 // Uppy styles
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -102,6 +105,11 @@ export function useUppyUploader(props: {
           if (type === 'video/*') {
             return ['video/mp4', 'video/mpeg', 'video/quicktime'];
           }
+          // A .mov is taken wherever an mp4 is: the server converts it
+          // before it is offered, so the platforms never see it.
+          if (type === 'video/mp4') {
+            return ['video/mp4', 'video/quicktime'];
+          }
           return [type];
         });
 
@@ -179,6 +187,18 @@ export function useUppyUploader(props: {
     );
 
     uppy2.use(plugin, options);
+    // A video answers with `status: "processing"` while the server
+    // normalizes it; the upload stays open until the row is final.
+    uppy2.use(WaitForMediaProcessing, {
+      fetch,
+      processingMessage: t('processing', 'Processing'),
+      fallbackMessage: t(
+        'could_not_optimize_file',
+        'The video could not be optimized and was kept as it came.'
+      ),
+      failedMessage: t('could_not_convert_file', 'The video could not be converted.'),
+      notify: (message) => toast.show(message, 'warning'),
+    });
     if (!disableImageCompression) {
       uppy2.use(CompressionWrapper, {
         convertTypes: ['image/jpeg', 'image/png', 'image/webp'],

@@ -29,6 +29,8 @@ const ALLOWED_EXT_TO_MIME: Record<string, string> = {
   '.tif': 'image/tiff',
   '.tiff': 'image/tiff',
   '.mp4': 'video/mp4',
+  // Converted to an mp4 once it is in the bucket; see MediaService.saveUploadedFile.
+  '.mov': 'video/quicktime',
 };
 
 // What the browser gets when a storage call fails. It used to be the SDK's

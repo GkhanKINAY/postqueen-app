@@ -18,6 +18,8 @@ const ALLOWED_MIME_TYPES = new Set<string>([
   'image/bmp',
   'image/tiff',
   'video/mp4',
+  // Converted to an mp4 in the background; see MediaService.saveUploadedFile.
+  'video/quicktime',
 ]);
 
 @Injectable()

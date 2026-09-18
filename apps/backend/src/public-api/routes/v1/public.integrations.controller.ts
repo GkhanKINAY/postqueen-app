@@ -55,6 +55,8 @@ const PUBLIC_API_ALLOWED_MIME = new Set<string>([
   'image/bmp',
   'image/tiff',
   'video/mp4',
+  // Converted to an mp4 in the background; the row is `processing` until then.
+  'video/quicktime',
 ]);
 import * as Sentry from '@sentry/nestjs';
 import {
@@ -97,7 +99,7 @@ export class PublicIntegrationsController {
 
     try {
       const getFile = await this.storage.uploadFile(file);
-      return await this._mediaService.saveFile(
+      return await this._mediaService.saveUploadedFile(
         org.id,
         getFile.originalname,
         getFile.path
@@ -105,6 +107,17 @@ export class PublicIntegrationsController {
     } finally {
       await discardTempFile(file);
     }
+  }
+
+  // A video answers the two upload routes with `status: "processing"`; it is
+  // ready to put on a post once this says so (a few seconds to a few minutes).
+  @Get('/media/:id/status')
+  async mediaStatus(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    return this._mediaService.getMediaStatus(org.id, id);
   }
 
   @Post('/upload-from-url')
@@ -164,7 +177,7 @@ export class PublicIntegrationsController {
       encoding: '',
     });
 
-    return this._mediaService.saveFile(
+    return this._mediaService.saveUploadedFile(
       org.id,
       getFile.originalname,
       getFile.path

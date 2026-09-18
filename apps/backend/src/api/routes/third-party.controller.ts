@@ -100,7 +100,7 @@ export class ThirdPartyController {
     );
 
     const file = await this.storage.uploadSimple(loadedData);
-    return this._mediaService.saveFile(
+    return this._mediaService.saveUploadedFile(
       organization.id,
       file.split('/').pop(),
       file
@@ -195,10 +195,11 @@ export class ThirdPartyController {
     const results = [];
     for (const item of downloadUrls) {
       const file = await this.storage.uploadSimple(item.url);
-      const saved = await this._mediaService.saveFile(
+      const saved = await this._mediaService.saveUploadedFile(
         organization.id,
-        item.name || file.split('/').pop(),
-        file
+        file.split('/').pop(),
+        file,
+        item.name || undefined
       );
       results.push(saved);
     }

@@ -1228,5 +1228,8 @@
   "post_no_longer_exists": "This post no longer exists.",
   "post_delete_failed": "Could not delete the post.",
   "only_existing_post": "Only an existing post can be updated or deleted.",
-  "post_date_passed": "The date of this post has passed; say when it should go out."
+  "post_date_passed": "The date of this post has passed; say when it should go out.",
+  "processing": "Processing",
+  "could_not_optimize_file": "The video could not be optimized and was kept as it came.",
+  "could_not_convert_file": "The video could not be converted."
 }
