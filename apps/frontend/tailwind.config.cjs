@@ -424,7 +424,19 @@ module.exports = {
     },
   },
   plugins: [
-    require('tailwind-scrollbar'),
+    // `tailwind-scrollbar` used to be here. The fifteen components that carried
+    // its classes (`scrollbar scrollbar-thumb-* scrollbar-track-*`) lost them
+    // when every pane moved to the one rule in `global.css` — those classes set
+    // `scrollbar-color`, which in Chromium switches off the
+    // `::-webkit-scrollbar` rules that rule is made of. Rendering `global.css`
+    // through PostCSS with and without it differs by 923 bytes, and every one
+    // of them was dead: a `.scrollbar` rule; `scrollbar-thumb-pqBorder` /
+    // `scrollbar-track-pqInner`, which Tailwind 4.3 ships itself and this
+    // plugin was shadowing, emitted at all only because a spec names the old
+    // class string in the assertion guarding its return; and a `base` reset of
+    // `scrollbar-color` on `*` that the unlayered `body, body *` rule in
+    // `global.css` outranks.
+    //
     // `tailwindcss-rtl` used to be here. It generated nothing Tailwind does not
     // generate itself: logical utilities — ms/me, ps/pe, start/end, text-start,
     // rounded-s, border-s, float-start, clear-start — have been core since 3.3,
