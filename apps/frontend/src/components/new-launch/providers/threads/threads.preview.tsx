@@ -101,6 +101,7 @@ const ShareIcon = () => (
 type PreviewSlide = {
   path: string;
   id: string;
+  thumbnail?: string;
 };
 
 const ThreadsMedia: FC<{ images?: PreviewSlide[] }> = ({ images }) => {
@@ -113,6 +114,7 @@ const ThreadsMedia: FC<{ images?: PreviewSlide[] }> = ({ images }) => {
     <PreviewMediaFrame
       key={image.id || `threads-media-${index}`}
       src={mediaDir.set(image.path)}
+      poster={image.thumbnail ? mediaDir.set(image.thumbnail) : undefined}
       minWH={FEED_PREVIEW_MIN_WH}
       maxWH={FEED_PREVIEW_MAX_WH}
       fallbackWH={FEED_PREVIEW_FALLBACK_WH}

@@ -79,7 +79,11 @@ export const TiktokPreview: FC<{
                 src={mediaDir.set(image.path)}
                 className="absolute inset-0 block"
               >
-                <VideoOrImage autoplay={true} src={mediaDir.set(image.path)} />
+                <VideoOrImage
+                  autoplay={true}
+                  src={mediaDir.set(image.path)}
+                  poster={image.thumbnail ? mediaDir.set(image.thumbnail) : undefined}
+                />
               </PreviewLightboxButton>
             ))}
             className="absolute inset-0 h-full w-full overflow-hidden"

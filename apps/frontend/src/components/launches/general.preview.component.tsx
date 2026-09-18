@@ -140,6 +140,11 @@ export const GeneralPreviewComponent: FC<{
                   <PreviewMediaFrame
                     className="mt-[12px] rounded-[16px]"
                     src={mediaDir.set(value.images[0].path)}
+                    poster={
+                      value.images[0].thumbnail
+                        ? mediaDir.set(value.images[0].thumbnail)
+                        : undefined
+                    }
                     minWH={FEED_PREVIEW_MIN_WH}
                     maxWH={FEED_PREVIEW_MAX_WH}
                     fallbackWH={FEED_PREVIEW_FALLBACK_WH}

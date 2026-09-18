@@ -7,7 +7,9 @@ export class SaveMediaInformationDto {
   @IsString()
   alt: string;
 
-  @IsUrl()
+  // A self-hosted install serves uploads from a host without a TLD
+  // (localhost, a LAN name); the default check refused every poster there.
+  @IsUrl({ require_tld: false })
   @ValidateIf((o) => !!o.thumbnail)
   thumbnail: string;
 

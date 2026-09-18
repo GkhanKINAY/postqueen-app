@@ -120,7 +120,10 @@ const MediaThumb: FC<{ media: MediaRow; className?: string }> = ({
   if (video) {
     return (
       <div className={clsx('h-full w-full', className)}>
-        <VideoFrame url={mediaDirectory.set(media.path)} />
+        <VideoFrame
+          url={mediaDirectory.set(media.path)}
+          poster={media.thumbnail ? mediaDirectory.set(media.thumbnail) : undefined}
+        />
       </div>
     );
   }
@@ -136,8 +139,40 @@ const MediaThumb: FC<{ media: MediaRow; className?: string }> = ({
   );
 };
 
+type UploadTile = { id: string; name: string; percent: number };
+
+/**
+ * A file on its way into the library, drawn where its tile will land: the
+ * ghost of a thumbnail with the percentage in it and the file name under it.
+ * Before this the grid showed nothing until the upload finished; a large
+ * video sat behind a progress strip with no sign of where it was going.
+ */
+const UploadingTile: FC<{ upload: UploadTile; className?: string }> = ({
+  upload,
+  className,
+}) => (
+  <div
+    data-pq="media-uploading"
+    className={clsx('flex flex-col gap-0.5', className)}
+    aria-busy="true"
+  >
+    <div
+      className={clsx(
+        'relative w-full overflow-hidden rounded-[10px]',
+        MEDIA_LIBRARY_THUMB_ASPECT
+      )}
+    >
+      <Skeleton className={MEDIA_LIBRARY_THUMB_FILL} />
+      <span className="absolute inset-0 grid place-items-center font-mono text-[13px] font-[600] tabular-nums text-pqText">
+        {upload.percent}%
+      </span>
+    </div>
+    <div className="truncate px-[2px] text-[12px] text-pqSoft">{upload.name}</div>
+  </div>
+);
+
 export const MediaBox: FC<{
-  setMedia: (params: { id: string; path: string }[]) => void;
+  setMedia: (params: { id: string; path: string; thumbnail?: string }[]) => void;
   /** Already on the post — shown selected; cannot be re-added. */
   attachedMedia?: Array<{ id: string; path: string }>;
   standalone?: boolean;
@@ -164,9 +199,10 @@ export const MediaBox: FC<{
   const uploaderRef = useRef<HTMLInputElement>(null);
   const mediaDirectory = useMediaDirectory();
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<{ id: string; path: string }[]>(
-    []
-  );
+  const [selected, setSelected] = useState<
+    { id: string; path: string; thumbnail?: string }[]
+  >([]);
+  const [uploads, setUploads] = useState<UploadTile[]>([]);
   const attachedIds = useMemo(
     () => new Set((attachedMedia || []).map((m) => m.id)),
     [attachedMedia]
@@ -205,6 +241,7 @@ export const MediaBox: FC<{
         : 'image/*,video/mp4',
     onUploadSuccess: async (arr) => {
       await mutate();
+      setUploads([]);
       const uploaded = Array.isArray(arr) ? arr.length : 0;
       if (uploaded > 0) {
         toaster.show(
@@ -224,7 +261,7 @@ export const MediaBox: FC<{
       // Auto-select fresh uploads (no hard picker cap — matches origin/main).
       setSelected((prevSelected) => {
         const fresh = (
-          arr as Array<{ id: string; path: string }>
+          arr as Array<{ id: string; path: string; thumbnail?: string }>
         ).filter(
           (a: { id: string; path: string }) =>
             !attachedIds.has(a.id) &&
@@ -232,9 +269,10 @@ export const MediaBox: FC<{
         );
         return [
           ...prevSelected,
-          ...fresh.map((a: { id: string; path: string }) => ({
+          ...fresh.map((a: { id: string; path: string; thumbnail?: string }) => ({
             id: a.id,
             path: a.path,
+            ...(a.thumbnail ? { thumbnail: a.thumbnail } : {}),
           })),
         ];
       });
@@ -242,6 +280,49 @@ export const MediaBox: FC<{
     onStart: () => setLoading(true),
     onEnd: () => setLoading(false),
   });
+
+  // The uploader instance is fixed for the box's life, so its events are
+  // listened to here rather than through callbacks it would close over once.
+  useEffect(() => {
+    const added = (file: { id: string; name?: string }) =>
+      setUploads((list) => [
+        ...list.filter((u) => u.id !== file.id),
+        { id: file.id, name: file.name || '', percent: 0 },
+      ]);
+    const progress = (
+      file: { id: string } | undefined,
+      state: { bytesUploaded?: number; bytesTotal?: number | null }
+    ) =>
+      file &&
+      setUploads((list) =>
+        list.map((u) =>
+          u.id === file.id
+            ? {
+                ...u,
+                percent: Math.min(
+                  99,
+                  Math.round(
+                    ((state?.bytesUploaded || 0) / (state?.bytesTotal || 1)) * 100
+                  )
+                ),
+              }
+            : u
+        )
+      );
+    const removed = (file: { id: string }) =>
+      setUploads((list) => list.filter((u) => u.id !== file.id));
+    const cleared = () => setUploads([]);
+    uppy.on('file-added', added);
+    uppy.on('upload-progress', progress);
+    uppy.on('file-removed', removed);
+    uppy.on('error', cleared);
+    return () => {
+      uppy.off('file-added', added);
+      uppy.off('upload-progress', progress);
+      uppy.off('file-removed', removed);
+      uppy.off('error', cleared);
+    };
+  }, [uppy]);
 
   const enqueueFiles = useCallback(
     (files: File[]) => {
@@ -550,7 +631,8 @@ export const MediaBox: FC<{
     </div>
   );
 
-  const showEmptyState = !isLoading && visibleMedia.length === 0;
+  const showEmptyState =
+    !isLoading && visibleMedia.length === 0 && uploads.length === 0;
 
   // --- Standalone /media page (design pagesVals isMedia) -------------------
   if (standalone) {
@@ -697,6 +779,9 @@ export const MediaBox: FC<{
                     )}
                     data-pq="media-grid"
                   >
+                    {uploads.map((upload) => (
+                      <UploadingTile key={upload.id} upload={upload} />
+                    ))}
                     {visibleMedia.map((media) => {
                       const menuOpenForItem = menuMedia?.id === media.id;
                       return (
@@ -1002,7 +1087,7 @@ export const MediaBox: FC<{
               ))}
             </div>
           )}
-          {!isLoading && visibleMedia.length === 0 && (
+          {showEmptyState && (
             <div className="flex flex-col items-center gap-[14px] py-[32px] text-center">
               <NoChannelsArt className="h-auto w-[160px]" />
               <div className="flex max-w-[280px] flex-col gap-[6px]">
@@ -1029,6 +1114,9 @@ export const MediaBox: FC<{
             className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] items-start gap-x-[14px] gap-y-[12px]"
             data-pq="media-library-grid"
           >
+            {uploads.map((upload) => (
+              <UploadingTile key={upload.id} upload={upload} />
+            ))}
             {visibleMedia.map((media) => {
               const alreadyOnPost = attachedIds.has(media.id);
               const selectionOrder = selected.findIndex(

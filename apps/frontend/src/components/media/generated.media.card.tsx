@@ -15,17 +15,19 @@ import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 export type GeneratedMediaStatus = 'generating' | 'ready' | 'failed';
 
 /**
- * One AI-generated image, the same card on both Copilot surfaces: the brief
- * it came from, the picture at its real shape, and what to do with it. Pure
- * presentation; the surface decides what "use" means (attach to the post in
- * the composer, add to the Post Preview card on the Copilot page).
+ * One AI-generated image or video, the same card on both Copilot surfaces:
+ * the brief it came from, the result at its real shape, and what to do with
+ * it. Pure presentation; the surface decides what "use" means (attach to the
+ * post in the composer, add to the Post Preview card on the Copilot page).
  */
 export const GeneratedMediaCard: FC<{
   prompt: string;
   style?: string;
   orientation?: string;
+  /** Sets the waiting line; a video counts minutes, an image seconds. */
+  kind?: 'image' | 'video';
   status: GeneratedMediaStatus;
-  media?: { id: string; path: string };
+  media?: { id: string; path: string; thumbnail?: string };
   error?: string;
   /** What "use" did, once it happened. */
   used?: 'attached' | 'added';
@@ -40,6 +42,7 @@ export const GeneratedMediaCard: FC<{
   prompt,
   style,
   orientation,
+  kind = 'image',
   status,
   media,
   error,
@@ -53,16 +56,29 @@ export const GeneratedMediaCard: FC<{
 }) => {
   const t = useT();
   const mediaDir = useMediaDirectory();
-  const [seconds, setSeconds] = useState(0);
+  // The clock restarts with every wait (Regenerate too): a status change
+  // clears it during render, the way state is adjusted when a prop changes,
+  // and each tick carries its own start, so no tick shows the previous count.
+  const [clock, setClock] = useState<{ startedAt: number; now: number } | null>(null);
+  const [seenStatus, setSeenStatus] = useState(status);
+  if (seenStatus !== status) {
+    setSeenStatus(status);
+    setClock(null);
+  }
   useEffect(() => {
     if (status !== 'generating') {
       return;
     }
-    setSeconds(0);
-    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const startedAt = Date.now();
+    const timer = setInterval(() => setClock({ startedAt, now: Date.now() }), 1000);
     return () => clearInterval(timer);
   }, [status]);
+  const seconds = clock ? Math.floor((clock.now - clock.startedAt) / 1000) : 0;
   const meta = [style, orientation].filter(Boolean).join(' · ');
+  const elapsed =
+    kind === 'video'
+      ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+      : `${seconds}s`;
 
   return (
     <div
@@ -78,9 +94,19 @@ export const GeneratedMediaCard: FC<{
       </div>
       {status === 'generating' && (
         <div className="flex flex-col gap-[8px]">
-          <Skeleton className="aspect-[4/3] w-full max-w-[360px] rounded-[10px]" />
+          <Skeleton
+            className={clsx(
+              'w-full rounded-[10px]',
+              kind === 'video' && orientation === 'vertical'
+                ? 'aspect-[3/4] max-w-[240px]'
+                : 'aspect-[4/3] max-w-[360px]'
+            )}
+          />
           <div className="text-[12px] text-pqSoft">
-            {t('generating_image', 'Generating image')} · {seconds}s
+            {kind === 'video'
+              ? t('generating_video', 'Generating video')
+              : t('generating_image', 'Generating image')}{' '}
+            · {elapsed}
           </div>
         </div>
       )}
@@ -88,9 +114,10 @@ export const GeneratedMediaCard: FC<{
         <PreviewMediaFrame
           className="max-w-[360px] rounded-[10px]"
           src={mediaDir.set(media.path)}
+          poster={media.thumbnail ? mediaDir.set(media.thumbnail) : undefined}
           minWH={FEED_PREVIEW_MIN_WH}
           maxWH={FEED_PREVIEW_MAX_WH}
-          fallbackWH={1}
+          fallbackWH={kind === 'video' && orientation === 'vertical' ? 9 / 16 : 1}
           autoplay={false}
         />
       )}

@@ -197,6 +197,11 @@ export const FacebookPreview: FC<{
           <PreviewMediaFrame
             className="-mx-[15px]"
             src={mediaDir.set(renderContent[0].images[0].path)}
+            poster={
+              renderContent[0].images[0].thumbnail
+                ? mediaDir.set(renderContent[0].images[0].thumbnail)
+                : undefined
+            }
             minWH={isStory ? STORY_PREVIEW_WH : FEED_PREVIEW_MIN_WH}
             maxWH={isStory ? STORY_PREVIEW_WH : FEED_PREVIEW_MAX_WH}
             fallbackWH={isStory ? STORY_PREVIEW_WH : FEED_PREVIEW_FALLBACK_WH}

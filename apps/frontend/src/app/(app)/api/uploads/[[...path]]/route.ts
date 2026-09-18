@@ -36,6 +36,21 @@ function iteratorToStream(iterator: any) {
     },
   });
 }
+
+/**
+ * One `bytes=start-end` range against a file size, or nothing when the
+ * header is absent or malformed. A range past the end is the 416 case.
+ */
+const parseRange = (header: string | null, size: number) => {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header || '');
+  if (!match || (!match[1] && !match[2])) {
+    return undefined;
+  }
+  const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  const end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+  return { start, end, satisfiable: start <= end && start < size };
+};
+
 export const GET = async (
   request: NextRequest,
   context: {
@@ -61,20 +76,40 @@ export const GET = async (
   } catch {
     return new NextResponse('Not found', { status: 404 });
   }
-  const response = createReadStream(filePath);
   const ext = filePath.split('.').pop()?.toLowerCase() || '';
   const contentType = CONTENT_TYPE[ext] || 'application/octet-stream';
+  const headers: Record<string, string> = {
+    'Content-Type': contentType,
+    'Last-Modified': fileStats.mtime.toUTCString(),
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    // Browsers seek a video by asking for byte ranges; without this they
+    // download the whole file to reach the first frame, and a poster capture
+    // or a scrub on a self-hosted upload waited on the entire clip.
+    'Accept-Ranges': 'bytes',
+  };
+  const range = parseRange(request.headers.get('range'), fileStats.size);
+  if (range && !range.satisfiable) {
+    return new NextResponse(null, {
+      status: 416,
+      headers: { ...headers, 'Content-Range': `bytes */${fileStats.size}` },
+    });
+  }
+  const response = range
+    ? createReadStream(filePath, { start: range.start, end: range.end })
+    : createReadStream(filePath);
   const iterator = nodeStreamToIterator(response);
   const webStream = iteratorToStream(iterator);
+  if (range) {
+    return new Response(webStream, {
+      status: 206,
+      headers: {
+        ...headers,
+        'Content-Length': String(range.end - range.start + 1),
+        'Content-Range': `bytes ${range.start}-${range.end}/${fileStats.size}`,
+      },
+    });
+  }
   return new Response(webStream, {
-    headers: {
-      'Content-Type': contentType,
-      // Set the appropriate content-type header
-      'Content-Length': fileStats.size.toString(),
-      // Set the content-length header
-      'Last-Modified': fileStats.mtime.toUTCString(),
-      // Set the last-modified header
-      'Cache-Control': 'public, max-age=31536000, immutable', // Example cache-control header
-    },
+    headers: { ...headers, 'Content-Length': fileStats.size.toString() },
   });
 };

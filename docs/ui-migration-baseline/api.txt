@@ -83,8 +83,10 @@
 /media/${media.id}
 /media/generate-image
 /media/generate-image-with-prompt
-/media/generate-video
 /media/generate-video/${type.identifier}/allowed
+/media/generate-video/start
+/media/generate-video/status/${jobId}
+/media/information
 /media/save-media
 /media/upload-simple
 /media/video-options

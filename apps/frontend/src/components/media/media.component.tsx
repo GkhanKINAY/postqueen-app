@@ -104,6 +104,8 @@ export const MultiMediaComponent: FC<{
   value?: Array<{
     path: string;
     id: string;
+    /** A video's poster, when it has one. */
+    thumbnail?: string;
   }>;
   text: string;
   name: string;
@@ -489,7 +491,10 @@ export const MultiMediaComponent: FC<{
                   >
                     <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
                       {hasExtension(media?.path, 'mp4') ? (
-                        <VideoFrame url={mediaDirectory.set(media?.path)} />
+                        <VideoFrame
+                          url={mediaDirectory.set(media?.path)}
+                          poster={media?.thumbnail ? mediaDirectory.set(media.thumbnail) : undefined}
+                        />
                       ) : (
                         <img
                           className="h-full w-full object-cover"
@@ -787,6 +792,7 @@ export const MediaComponent: FC<{
     path: string;
     id: string;
     alt?: string;
+    thumbnail?: string;
   };
   name: string;
   onChange: (event: {
@@ -928,7 +934,14 @@ export const MediaComponent: FC<{
           >
             <div className="relative h-full w-full overflow-hidden rounded-[inherit]">
               {hasExtension(currentMedia.path, 'mp4') ? (
-                <VideoFrame url={mediaDirectory.set(currentMedia.path)} />
+                <VideoFrame
+                  url={mediaDirectory.set(currentMedia.path)}
+                  poster={
+                    currentMedia.thumbnail
+                      ? mediaDirectory.set(currentMedia.thumbnail)
+                      : undefined
+                  }
+                />
               ) : (
                 <img
                   className="h-full w-full object-cover"

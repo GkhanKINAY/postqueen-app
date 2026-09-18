@@ -552,7 +552,7 @@ export type ThreadCardOutcomes = Record<string, Record<string, unknown>>;
 /** Per card, per group: the attachments put on it after it was drawn. */
 export type ThreadCardMedia = Record<
   string,
-  Record<string, { id: string; path: string }[]>
+  Record<string, { id: string; path: string; thumbnail?: string }[]>
 >;
 
 /**

@@ -31,13 +31,14 @@ export type AgentDraftItem = {
   settings?: string | Record<string, any> | { key: string; value: any }[];
   posts: {
     content: string;
-    attachments?: { id: string; path: string }[];
+    attachments?: { id: string; path: string; thumbnail?: string }[];
   }[];
 };
 
 export type AgentDraftPost = {
   content: string;
-  attachments: { id: string; path: string }[];
+  /** `thumbnail` is a video's poster; the calendar draws it. */
+  attachments: { id: string; path: string; thumbnail?: string }[];
 };
 
 /**

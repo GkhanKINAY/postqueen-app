@@ -68,6 +68,11 @@ export const YoutubePreview: FC<{
             autoplay={true}
             isContain={true}
             src={mediaDir.set(renderContent?.[0]?.images?.[0]?.path || '')}
+            poster={
+              renderContent?.[0]?.images?.[0]?.thumbnail
+                ? mediaDir.set(renderContent[0].images[0].thumbnail)
+                : undefined
+            }
           />
         )}
       </div>

@@ -239,6 +239,9 @@ export class MediaService {
     status: 'pending' | 'completed' | 'failed';
     id?: string;
     path?: string;
+    /** From the live row: a poster made by an earlier reader stays. */
+    thumbnail?: string | null;
+    alt?: string | null;
     error?: string;
   }> {
     // the job id carries the organization, so one org can't poll another's job
@@ -262,7 +265,17 @@ export class MediaService {
       const media = (await handle.result()) as Awaited<
         ReturnType<MediaService['saveFile']>
       >;
-      return { status: 'completed', id: media.id, path: media.path };
+      // The workflow's result is the row as it was saved; the poster and alt
+      // text written since live on the row, and a card drawn again for a
+      // finished job must not make a second poster over them.
+      const row = await this._mediaRepository.getMediaById(media.id);
+      return {
+        status: 'completed',
+        id: media.id,
+        path: media.path,
+        thumbnail: row?.thumbnail ?? null,
+        alt: row?.alt ?? null,
+      };
     } catch (err) {
       // the workflow failure wraps the activity failure which wraps the actual error
       let cause: any = err;

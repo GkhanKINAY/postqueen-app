@@ -10,6 +10,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import Compressor from '@uppy/compressor';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useSaveVideoPoster } from '@gitroom/frontend/components/media/use.video.poster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { uniqBy } from 'lodash';
 
@@ -53,6 +54,19 @@ export function useUppyUploader(props: {
   } = useVariables();
   const { onUploadSuccess, allowedFileTypes } = props;
   const fetch = useFetch();
+  const savePoster = useSaveVideoPoster();
+  // A video that comes back without a poster gets one before anyone sees
+  // it, so its tile, chip and calendar entry are a frame and not grey.
+  const withPosters = async (rows: any[]) =>
+    Promise.all(
+      (rows || []).map(async (row) => {
+        if (!row?.id || !row?.path || row.thumbnail) {
+          return row;
+        }
+        const thumbnail = await savePoster(row);
+        return thumbnail ? { ...row, thumbnail } : row;
+      })
+    );
   return useMemo(() => {
     // Track file order to maintain original sequence after upload
     let fileOrderIndex = 0;
@@ -237,7 +251,9 @@ export function useUppyUploader(props: {
       if (uploadStrategy === 'local') {
         setLocked(false);
         fileOrderIndex = 0;
-        onUploadSuccess(sortedSuccessful.map((p) => p.response.body));
+        onUploadSuccess(
+          await withPosters(sortedSuccessful.map((p) => p.response.body))
+        );
         uppy2.clear();
         return;
       }
@@ -280,14 +296,16 @@ export function useUppyUploader(props: {
 
         setLocked(false);
         fileOrderIndex = 0;
-        onUploadSuccess(loadAllMedia);
+        onUploadSuccess(await withPosters(loadAllMedia));
         uppy2.clear();
         return;
       }
 
       setLocked(false);
       fileOrderIndex = 0;
-      onUploadSuccess(sortedSuccessful.map((p) => p.response.body.saved));
+      onUploadSuccess(
+        await withPosters(sortedSuccessful.map((p) => p.response.body.saved))
+      );
       uppy2.clear();
     });
     uppy2.on('upload-success', (file, response) => {

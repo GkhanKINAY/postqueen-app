@@ -16,7 +16,9 @@ export class GenerateVideoOptionsTool implements AgentToolInterface {
   run() {
     return createTool({
       id: 'generateVideoOptions',
-      description: `All the options to generate videos, some tools might require another call to generateVideoFunction`,
+      description: `The video generators this installation can use, with the identifier generateVideoTool takes, what each one makes, whether a trial account may use it, and the customParams it needs (a JSON schema).
+                    When a generator lists tools, call videoFunctionTool with that identifier and functionName first to get the value the schema asks for (a voice id, for example).
+                    Call this before generateVideoTool; an empty list means no video generator is configured and the user should be told so.`,
       inputSchema: z.object({
         reasoning: z
           .string()
@@ -37,7 +39,10 @@ export class GenerateVideoOptionsTool implements AgentToolInterface {
       outputSchema: z.object({
         video: z.array(
           z.object({
-            type: z.string(),
+            identifier: z.string(),
+            title: z.string(),
+            description: z.string(),
+            trial: z.boolean(),
             output: z.string(),
             tools: z.array(
               z.object({
@@ -52,32 +57,16 @@ export class GenerateVideoOptionsTool implements AgentToolInterface {
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
         const videos = this._videoManagerService.getAllVideos();
-        console.log(
-          JSON.stringify(
-            {
-              video: videos.map((p) => {
-                return {
-                  type: p.identifier,
-                  output: 'vertical|horizontal',
-                  tools: p.tools,
-                  customParams: getValidationSchemas()[p.dto.name],
-                };
-              }),
-            },
-            null,
-            2
-          )
-        );
-
         return {
-          video: videos.map((p) => {
-            return {
-              type: p.identifier,
-              output: 'vertical|horizontal',
-              tools: p.tools,
-              customParams: getValidationSchemas()[p.dto.name],
-            };
-          }),
+          video: videos.map((p) => ({
+            identifier: p.identifier,
+            title: p.title,
+            description: p.description,
+            trial: p.trial,
+            output: 'vertical|horizontal',
+            tools: p.tools,
+            customParams: getValidationSchemas()[p.dto.name],
+          })),
         };
       },
     });

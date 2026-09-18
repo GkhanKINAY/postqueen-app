@@ -995,6 +995,7 @@ copilot_step_scheduling
 copilot_step_settings
 copilot_step_upload
 copilot_step_video
+copilot_step_video_options
 copilot_step_working
 copy
 copy_a_link_that_works_for_one_hour
@@ -1222,6 +1223,7 @@ generating_content
 generating_hook
 generating_image
 generating_pictures
+generating_video
 generation_failed
 get_lifetime_for_amount
 getting_started
@@ -2053,10 +2055,14 @@ user
 user_1
 validation_details
 video
+video_generation_cancelled
+video_generation_unavailable
 video_horizontal
 video_made_with_ai
 video_providers_are_not_configured
 video_providers_not_configured_description
+video_ready
+video_result_expired
 video_vertical
 view_errors
 view_founding_membership

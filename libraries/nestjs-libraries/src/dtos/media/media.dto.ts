@@ -17,6 +17,6 @@ export class MediaDto {
   alt?: string;
 
   @ValidateIf((o) => o.thumbnail)
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   thumbnail?: string;
 }

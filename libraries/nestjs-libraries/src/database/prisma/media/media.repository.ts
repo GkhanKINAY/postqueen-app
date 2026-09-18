@@ -23,6 +23,9 @@ export class MediaRepository {
         name: fileName,
         path: filePath,
         originalName: originalName || null,
+        // The column defaulted every row to "image", videos included; the
+        // extension is what every reader of a media row goes by anyway.
+        ...(/\.(mp4|mov|webm|m4v)$/i.test(fileName || '') ? { type: 'video' } : {}),
         // The column has existed with a default of 0 since before this
         // migration and nothing ever wrote to it, so every row read as "size
         // unknown" and the Media list view's size line was dead code. The

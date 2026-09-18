@@ -1204,6 +1204,12 @@
   "change_image": "Change image",
   "add_image": "Add image",
   "remove_image": "Remove image",
-  "copilot_step_card_image": "Updating the card image",
-  "ai_generation_cancelled": "Image generation was cancelled."
+  "copilot_step_card_image": "Updating the card media",
+  "ai_generation_cancelled": "Image generation was cancelled.",
+  "generating_video": "Generating video",
+  "video_ready": "Video ready and added to the post.",
+  "video_result_expired": "The result is no longer available here; a finished video is in the Media library.",
+  "video_generation_unavailable": "Video generation is not available right now.",
+  "video_generation_cancelled": "Video generation was cancelled.",
+  "copilot_step_video_options": "Checking video generators"
 }

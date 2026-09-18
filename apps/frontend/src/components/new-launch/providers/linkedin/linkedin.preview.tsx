@@ -347,6 +347,11 @@ export const LinkedinPreview: FC<{
           <PreviewMediaFrame
             className="-mx-[15px]"
             src={mediaDir.set(renderContent[0].images[0].path)}
+            poster={
+              renderContent[0].images[0].thumbnail
+                ? mediaDir.set(renderContent[0].images[0].thumbnail)
+                : undefined
+            }
             minWH={FEED_PREVIEW_MIN_WH}
             maxWH={FEED_PREVIEW_MAX_WH}
             fallbackWH={FEED_PREVIEW_FALLBACK_WH}
