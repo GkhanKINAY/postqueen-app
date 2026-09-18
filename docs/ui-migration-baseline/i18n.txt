@@ -81,6 +81,7 @@ ai
 ai_copilot
 ai_copilot_unlocks_after_your_trial
 ai_credits_exhausted
+ai_generation_cancelled
 ai_generation_failed
 ai_lock_perk_chat
 ai_lock_perk_images

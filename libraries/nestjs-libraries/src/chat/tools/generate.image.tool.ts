@@ -9,7 +9,6 @@ import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
-
   constructor(
     private _mediaService: MediaService,
     private _subscriptionService: SubscriptionService

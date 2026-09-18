@@ -1204,5 +1204,6 @@
   "change_image": "Change image",
   "add_image": "Add image",
   "remove_image": "Remove image",
-  "copilot_step_card_image": "Updating the card image"
+  "copilot_step_card_image": "Updating the card image",
+  "ai_generation_cancelled": "Image generation was cancelled."
 }

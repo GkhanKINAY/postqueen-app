@@ -14,6 +14,11 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useFeatureSetupHint } from '@gitroom/frontend/components/media/feature.setup.hint';
 import { imageOrientationForPlatforms } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { ImageOrientation } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
+import {
+  isGeneratedImage,
+  useGenerateImage,
+  useGenerateImageFailureCopy,
+} from '@gitroom/frontend/components/media/use.generate.image';
 
 /** Same stroked sparkle as CopilotMark — kept local so this modal does not
  *  import the Copilot rail. */
@@ -57,6 +62,8 @@ const AiImageModal: FC<{
   const { close, setLoading, onChange } = props;
   const t = useT();
   const fetch = useFetch();
+  const generateImage = useGenerateImage();
+  const failureCopy = useGenerateImageFailureCopy();
   const toaster = useToaster();
   const setLocked = useLaunchStore((p) => p.setLocked);
   const selectedIntegrations = useLaunchStore((p) => p.selectedIntegrations);
@@ -101,52 +108,15 @@ const AiImageModal: FC<{
     close();
     setLocked(true);
     try {
-      const response = await fetch('/media/generate-image-with-prompt', {
-        method: 'POST',
-        body: JSON.stringify({
-          prompt: `
-<!-- description -->
-${prompt}
-<!-- /description -->
-
-<!-- style -->
-${style}
-<!-- /style -->
-
-`,
-          orientation,
-        }),
-      });
-
-      // A failure still returns a JSON body ({ statusCode, message }), and it is
-      // truthy — handing it straight to onChange attached that error object to
-      // the post as if it were media, silently. Only a saved Media row counts.
-      const image = await response.json();
-      if (response.ok && image?.id) {
+      // Only a saved Media row reaches onChange: the hook sorts a failure body
+      // ({ statusCode, message }), the literal `false` of no credits, and the
+      // synthetic `cancelled` body customFetch returns when someone dismisses
+      // the billing dialog (their own choice, not a failure) into reasons.
+      const image = await generateImage(prompt, style, orientation);
+      if (isGeneratedImage(image)) {
         onChange(image);
-      } else if (image === false) {
-        // Out of credits is the one failure the endpoint reports as 200 with a
-        // body of literal `false` (`media.controller.ts`), so it never carries a
-        // message and would otherwise read as a generic breakage.
-        toaster.show(
-          t(
-            'ai_credits_exhausted',
-            'You are out of AI credits for this month.'
-          ),
-          'warning'
-        );
-      } else if (!image?.cancelled) {
-        // `cancelled` is the synthetic body customFetch returns when someone
-        // dismisses the billing dialog — their own choice, not a failure.
-        toaster.show(
-          typeof image?.message === 'string'
-            ? image.message
-            : t(
-                'ai_generation_failed',
-                'AI generation failed, please try again later.'
-              ),
-          'warning'
-        );
+      } else if (image.reason !== 'cancelled') {
+        toaster.show(failureCopy(image), 'warning');
       }
     } catch (e) {
       toaster.show(
@@ -164,7 +134,8 @@ ${style}
     style,
     orientation,
     onChange,
-    fetch,
+    generateImage,
+    failureCopy,
     toaster,
     t,
     close,
@@ -271,11 +242,18 @@ export const useAiImageModal = () => {
   return useCallback(
     (
       onChange: (params: { id: string; path: string }) => void,
-      options?: { orientation?: ImageOrientation }
+      options?: {
+        orientation?: ImageOrientation;
+        /** The opener's spinner while the image generates. */
+        setLoading?: (loading: boolean) => void;
+      }
     ) => {
       if (!canOpen()) {
         return;
       }
+      // Self-host without a key: keep the button (same row as AI Video) and
+      // explain how to switch it on. Hosted always opens the generator: the
+      // plan already paid for AI, and a missing frontend flag must not hide it.
       if (!aiEnabled && !billingEnabled) {
         setupHint(
           t('generate_image', 'Generate image'),
@@ -285,13 +263,20 @@ export const useAiImageModal = () => {
         return;
       }
       modals.openModal({
-        title: t('generate_ai_image', 'Generate AI Image'),
+        title: (
+          <div className="flex items-baseline gap-[10px]">
+            <span>{t('generate_ai_image', 'Generate AI Image')}</span>
+            {/* Credits slot: the modal portals "N credits left" in here under
+                billing, the way Generate video does. */}
+            <span className="top-title-content text-[13px] font-[500] text-pqMuted" />
+          </div>
+        ),
         size: 640,
         maxSize: 640,
         children: (close) => (
           <AiImageModal
             close={close}
-            setLoading={() => {}}
+            setLoading={options?.setLoading || (() => {})}
             onChange={onChange}
             orientation={options?.orientation}
           />
@@ -314,39 +299,14 @@ export const AiImage: FC<{
   const t = useT();
   const { onChange, ghost, compact } = props;
   const [loading, setLoading] = useState(false);
-  const modals = useModals();
-  const canOpen = useOpenGuard();
-  const { aiEnabled, billingEnabled } = useVariables();
-  const setupHint = useFeatureSetupHint();
+  const openModal = useAiImageModal();
 
   const openImageModal = useCallback(() => {
-    if (loading || !canOpen()) {
+    if (loading) {
       return;
     }
-    // Self-host without a key: keep the button (same row as AI Video) and
-    // explain how to switch it on. Hosted always opens the generator — the
-    // plan already paid for AI, and a missing frontend flag must not hide it.
-    if (!aiEnabled && !billingEnabled) {
-      setupHint(
-        t('generate_image', 'Generate image'),
-        'OPENAI_API_KEY',
-        'https://docs.postqueen.ai/configuration/reference'
-      );
-      return;
-    }
-    modals.openModal({
-      title: t('generate_ai_image', 'Generate AI Image'),
-      size: 640,
-      maxSize: 640,
-      children: (close) => (
-        <AiImageModal
-          close={close}
-          setLoading={setLoading}
-          onChange={onChange}
-        />
-      ),
-    });
-  }, [loading, canOpen, onChange, modals, t, aiEnabled, billingEnabled, setupHint]);
+    openModal(onChange, { setLoading });
+  }, [loading, openModal, onChange]);
 
   return (
     <div className="relative">
