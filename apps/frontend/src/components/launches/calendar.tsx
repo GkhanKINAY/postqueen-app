@@ -56,7 +56,10 @@ import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missi
 import { dateChangeActionForDrop } from '@gitroom/frontend/components/launches/calendar.drop';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
-import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
+import {
+  AddEditModal,
+  AddEditModalProps,
+} from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -342,7 +345,12 @@ export const usePostActions = (
   }, [reloadCalendarView, onMutate]);
 
   const editPost = useCallback(
-    (loadPost: any, isDuplicate?: boolean) => async () => {
+    (
+      loadPost: any,
+      isDuplicate?: boolean,
+      values?: AddEditModalProps['onlyValues']
+    ) =>
+    async () => {
       const post = {
         ...loadPost,
         publishDate: loadPost.actualDate || loadPost.publishDate,
@@ -397,7 +405,7 @@ export const usePostActions = (
             <AddEditModal
               {...(isDuplicate
                 ? {
-                    onlyValues: data.posts.map(
+                    onlyValues: values?.length ? values : data.posts.map(
                       ({ image, settings, content }: any) => ({
                         image,
                         settings,
@@ -408,6 +416,11 @@ export const usePostActions = (
                 : {})}
               allIntegrations={integrations.map((p) => ({ ...p }))}
               reopenModal={editPost(post)}
+              duplicatePost={
+                isDuplicate
+                  ? undefined
+                  : (current) => editPost(post, true, current)()
+              }
               mutate={mutate}
               integrations={
                 isDuplicate
