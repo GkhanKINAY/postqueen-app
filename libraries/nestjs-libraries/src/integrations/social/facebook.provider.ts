@@ -7,7 +7,10 @@ import {
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { mapFacebookPostInsights } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
+import {
+  mapFacebookPostInsights,
+  mapFacebookVideoInsights,
+} from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
 import {
@@ -1131,6 +1134,27 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
 
     for (const postId of platformPostIds) {
       try {
+        // A bare id is a reel, video or story, which has no `insights` edge
+        // (see postAnalytics). Stories have no video_insights either, so that
+        // one error stays quiet instead of being logged on every sync.
+        if (!postId.includes('_')) {
+          const { data, error } = await (
+            await fetch(
+              `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=total_video_impressions,total_video_reactions_by_type_total&access_token=${accessToken}`
+            )
+          ).json();
+          if (error && !/nonexisting field/i.test(error.message || '')) {
+            console.warn('Facebook video_insights returned an error:', {
+              postId,
+              error,
+            });
+          }
+          if (data?.length) {
+            rows.push(mapFacebookVideoInsights(postId, data));
+          }
+          continue;
+        }
+
         const response = await this.fetch(
           `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/insights?metric=post_total_media_view_unique,post_reactions_by_type_total,post_clicks,post_clicks_by_type&access_token=${accessToken}`,
           {},

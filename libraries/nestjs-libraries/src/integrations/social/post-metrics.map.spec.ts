@@ -6,6 +6,7 @@ import {
   hasKnownPostMetric,
   insightTimeSeries,
   mapFacebookPostInsights,
+  mapFacebookVideoInsights,
   mapInstagramMediaInsights,
   mapLinkedInShareStats,
   mapPinterestSummaryMetrics,
@@ -188,6 +189,20 @@ describe('platform field maps', () => {
     ]);
     assert.equal(mapped.impressions, 900);
     assert.equal(mapped.reactions, 12);
+    assert.equal(mapped.comments, null);
+    assert.equal(mapped.shares, null);
+  });
+
+  it('maps Facebook video insights and sums reactions by type', () => {
+    const mapped = mapFacebookVideoInsights('fbv1', [
+      { name: 'total_video_impressions', values: [{ value: 450 }] },
+      {
+        name: 'total_video_reactions_by_type_total',
+        values: [{ value: { like: 4, wow: 1 } }],
+      },
+    ]);
+    assert.equal(mapped.impressions, 450);
+    assert.equal(mapped.reactions, 5);
     assert.equal(mapped.comments, null);
     assert.equal(mapped.shares, null);
   });

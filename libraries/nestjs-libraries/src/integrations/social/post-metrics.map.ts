@@ -220,6 +220,22 @@ export function mapFacebookPostInsights(
   });
 }
 
+// Reels and videos have no `insights` edge. Their numbers come from
+// `/{videoId}/video_insights`, the same edge FacebookProvider.postAnalytics
+// reads for them; reactions arrive as an object keyed by type.
+export function mapFacebookVideoInsights(
+  platformPostId: string,
+  data: GraphInsight[] | null | undefined
+): NormalizedPostMetrics {
+  const byName = insightsByName(data);
+  return row(platformPostId, {
+    impressions: asCount(byName.total_video_impressions),
+    reactions: asCount(byName.total_video_reactions_by_type_total),
+    comments: null,
+    shares: null,
+  });
+}
+
 export function mapTikTokVideoStats(
   platformPostId: string,
   video: {
