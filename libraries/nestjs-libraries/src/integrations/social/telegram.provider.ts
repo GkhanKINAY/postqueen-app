@@ -22,6 +22,41 @@ const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5000';
 const mediaStorage = process.env.STORAGE_PROVIDER || 'local';
 
+// What Telegram receives as the text or caption: HTML parse mode, with
+// <strong> as <b> and each paragraph on its own line.
+const telegramText = (message: string) =>
+  striptags(message || '', ['u', 'strong', 'p'])
+    .replace(/<strong>/g, '<b>')
+    .replace(/<\/strong>/g, '</b>')
+    .replace(/<p>(.*?)<\/p>/g, '$1\n');
+
+// One file, through the method its type needs. A module function rather than
+// a method: /integrations/function can call any provider method by name, and
+// this one sends whatever path it is given.
+const sendSingleMedia = (
+  chatId: string,
+  media: {
+    type: 'photo' | 'video' | 'document';
+    media: string;
+    fileOptions: { filename: string; contentType: string };
+  },
+  options: {
+    caption?: string;
+    parse_mode?: 'HTML';
+    reply_to_message_id?: number;
+  }
+) =>
+  media.type === 'video'
+    ? telegramBot.sendVideo(chatId, media.media, options, media.fileOptions)
+    : media.type === 'photo'
+    ? telegramBot.sendPhoto(chatId, media.media, options, media.fileOptions)
+    : telegramBot.sendDocument(
+        chatId,
+        media.media,
+        options,
+        media.fileOptions
+      );
+
 export class TelegramProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Telegram has moderate bot API limits
   identifier = 'telegram';
@@ -37,7 +72,8 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
   // 4,096 is a text message. Once a message carries a photo, a video or a
   // file, the text goes out as its caption, which Telegram caps at 1,024
-  // (sendPhoto, sendVideo, sendDocument and sendMediaGroup alike).
+  // (sendPhoto, sendVideo, sendDocument and sendMediaGroup alike), counted
+  // as displayed: the markup of the HTML parse mode is not counted.
   override async checkValidity(
     posts: Array<ValidityMedia[]>,
     settings: any,
@@ -47,7 +83,8 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     if (
       (posts || []).some(
         (media, index) =>
-          (media?.length ?? 0) > 0 && (texts[index] || '').length > 1024
+          (media?.length ?? 0) > 0 &&
+          striptags(telegramText(texts[index] || '')).length > 1024
       )
     ) {
       return 'Telegram captions can be at most 1,024 characters when the message has media';
@@ -230,10 +267,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   ): Promise<number | null> {
     let messageId: number | null = null;
     const mediaFiles = message.media || [];
-    const text = striptags(message.message || '', ['u', 'strong', 'p'])
-      .replace(/<strong>/g, '<b>')
-      .replace(/<\/strong>/g, '</b>')
-      .replace(/<p>(.*?)<\/p>/g, '$1\n');
+    const text = telegramText(message.message);
 
     console.log(text);
     const processedMedia = this.processMedia(mediaFiles);
@@ -248,7 +282,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     }
     // if there's only one media, bot sends the media with the text message as caption
     else if (processedMedia.length === 1) {
-      const response = await this.sendSingleMedia(
+      const response = await sendSingleMedia(
         accessToken,
         processedMedia[0],
         {
@@ -269,7 +303,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         // are 10 + 1) goes out on its own, like the groups after the first:
         // no caption, no reply.
         if (mediaGroups[i].length === 1) {
-          await this.sendSingleMedia(accessToken, mediaGroups[i][0], {});
+          await sendSingleMedia(accessToken, mediaGroups[i][0], {});
           continue;
         }
 
@@ -356,42 +390,6 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
     return [];
   }
-  // One file, through the method its type needs.
-  private sendSingleMedia(
-    accessToken: string,
-    media: {
-      type: 'photo' | 'video' | 'document';
-      media: string;
-      fileOptions: { filename: string; contentType: string };
-    },
-    options: {
-      caption?: string;
-      parse_mode?: 'HTML';
-      reply_to_message_id?: number;
-    }
-  ) {
-    return media.type === 'video'
-      ? telegramBot.sendVideo(
-          accessToken,
-          media.media,
-          options,
-          media.fileOptions
-        )
-      : media.type === 'photo'
-      ? telegramBot.sendPhoto(
-          accessToken,
-          media.media,
-          options,
-          media.fileOptions
-        )
-      : telegramBot.sendDocument(
-          accessToken,
-          media.media,
-          options,
-          media.fileOptions
-        );
-  }
-
   // chunkMedia is used to split media into groups of "size". 10 is used here because telegram api allows a maximum of 10 media per group
   private chunkMedia(media: { type: string; media: string }[], size: number) {
     const result = [];
