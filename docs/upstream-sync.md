@@ -157,8 +157,14 @@ Lessons, in the order they cost time:
 here or empty, 10 skipped, 18 left for an owner decision.** One branch,
 `sync/upstream-2026-09`, picked in `git log --reverse` order. Every taken
 commit carries its upstream hash; the ones that needed more than a conflict
-resolution say how in an "Adapted for this fork" paragraph. Two follow-up
-commits carry an upstream fix into code only this fork has.
+resolution say how in an "Adapted for this fork" paragraph. Commits of our
+own follow the picks: one carries an upstream fix into code only this fork
+has (Facebook per-post video statistics), and the rest answer a review of the
+picked code. The review found upstream's signer throttle keyed on a header
+the client writes, so it could be bypassed; a closed Farcaster approval view
+that kept polling and later closed whatever modal was open; a Threads preview
+still cropping by characters; and mixed forms of address in German and
+Spanish.
 
 Measured first, because it was asked: a trial `git merge-tree` of
 `upstream/main` into `main` conflicts in 145 files, and would also have added
@@ -181,9 +187,17 @@ Lessons, in the order they cost time:
 
 - **A fix can target code the redesign removed.** `ed721b4f` fixes the
   launches channel menu, which this fork no longer renders. The same bug lived
-  in the Channels page's reconnect, so that is where it went. Three more copies
-  of that reconnect (agent, platform analytics, render analytics) still have
-  it; one shared hook would close all three.
+  in the Channels page's reconnect, so that is where it went. Most other
+  surfaces already send a reconnect to that page through
+  `useOpenReconnectInChannels`; three refresh-URL factories remain
+  (`agents/agent.tsx`, `platform-analytics/platform.analytics.tsx`,
+  `platform-analytics/render.analytics.tsx`) and would pick the fix up by
+  switching to that hook.
+- **Read a picked guard as if it were ours.** `889f87f4`'s throttle trusted
+  the first `X-Forwarded-For` entry, which our own
+  `ThrottlerBehindProxyGuard` comment already warns against; our nginx
+  appends to that header, so the last entry is the only one a client cannot
+  write.
 - **This fork has some paths twice.** Pinterest and Facebook each have
   upstream's single-post `postAnalytics` and our per-post `postsAnalytics`
   (the statistics tables). Both upstream fixes touched only the first, so both
