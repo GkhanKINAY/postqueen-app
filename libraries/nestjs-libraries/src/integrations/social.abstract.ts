@@ -230,10 +230,10 @@ export abstract class SocialAbstract {
    *
    * `posts` mirrors the client shape: the outer array is the main post followed
    * by each comment, the inner array is the media items for that entry.
-   * `texts` has the same order and holds each entry's plain text (HTML
-   * stripped, as the character-limit check measures it), for rules a platform
-   * applies to the words rather than the files: hashtag and link counts, byte
-   * lengths, a shorter limit once media is attached.
+   * `texts` has the same order and holds each entry's text as `post` /
+   * `comment` will receive it in `message`, for rules a platform applies to
+   * the words rather than the files: hashtag and link counts, byte lengths, a
+   * shorter limit once media is attached.
    *
    * Note: video-duration validations that used to run in the browser are not
    * re-implemented here (no ffmpeg dependency). Image-dimension checks use sharp.

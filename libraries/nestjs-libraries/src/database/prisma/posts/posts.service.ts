@@ -490,25 +490,35 @@ export class PostsService {
               return m;
             }
 
-            // Every image that is not already a JPEG, not only PNG: the
-            // library also takes WebP, GIF, AVIF, BMP and TIFF, and a provider
-            // that asks for JPEG accepts none of them as they are.
+            // Every image format the library takes besides JPEG, not only
+            // PNG: a provider that asks for JPEG accepts none of them as they
+            // are. Named formats only, so a path with no known extension is
+            // never downloaded on a guess. (BMP is left out: sharp cannot
+            // read it, and the providers that convert refuse it up front.)
             if (
               m.type === 'image' &&
-              !hasExtension(m.path, 'jpg') &&
-              !hasExtension(m.path, 'jpeg')
+              ['png', 'webp', 'gif', 'avif', 'tif'].some((ext) =>
+                hasExtension(m.path, ext)
+              )
             ) {
               // The stored path can name any host, so it goes through the same
-              // guarded reader the providers use.
-              const imageBuffer = Buffer.from(await readOrFetch(m.url));
-
-              // sharp cannot decode every format the library accepts (BMP).
-              // Such a file goes out as it is, and the rest of the list is
+              // guarded reader the providers use. A file that cannot be read
+              // or decoded goes out as it is, and the rest of the list is
               // still converted instead of the whole list being dropped.
-              const buffer = await sharp(imageBuffer)
-                .jpeg({ quality: 100 })
-                .toBuffer()
-                .catch((): null => null);
+              const imageBuffer = await readOrFetch(m.url).catch(
+                (): null => null
+              );
+              // Transparency is laid on white: JPEG has no alpha, and sharp
+              // would otherwise fill it with black. rotate() applies the EXIF
+              // orientation first, since the JPEG is written without it.
+              const buffer = imageBuffer
+                ? await sharp(Buffer.from(imageBuffer))
+                    .rotate()
+                    .flatten({ background: '#ffffff' })
+                    .jpeg({ quality: 100 })
+                    .toBuffer()
+                    .catch((): null => null)
+                : null;
               if (!buffer) {
                 return m;
               }
@@ -963,10 +973,22 @@ export class PostsService {
 
         const settings = post.settings || {};
         const media = (post.value || []).map((p) => p.image || []);
-        // One stripped text per entry, shared by the provider's own rules and
-        // the empty / too-long checks below, so both measure the same string.
+        // One stripped text per entry for the empty / too-long checks below.
         const texts = (post.value || []).map((p) =>
           stripHtmlValidation('normal', p.content || '', true)
+        );
+        // And, for the provider's own rules, each entry exactly as the
+        // publish activity will hand it over as `message`: stripped for the
+        // provider's editor, plain text passed through as it came.
+        const messages = (post.value || []).map((p) =>
+          stripHtmlValidation(
+            provider.editor,
+            p.content || '',
+            true,
+            false,
+            !/<\/?[a-z][\s\S]*>/i.test(p.content || ''),
+            provider.mentionFormat
+          )
         );
 
         // Settings DTO validation — mirrors the client `form.trigger()`.
@@ -992,7 +1014,7 @@ export class PostsService {
             media,
             settings,
             additionalSettings,
-            texts
+            messages
           );
         } catch (err: any) {
           errors = err?.message || 'Invalid media';

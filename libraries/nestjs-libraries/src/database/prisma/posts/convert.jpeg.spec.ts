@@ -13,21 +13,68 @@ const updateMedia = service.slice(
   service.indexOf('async getPostGroupDebugExport(')
 );
 
-describe('convertToJPEG converts every image that is not a JPEG', () => {
-  it('picks images by "not a JPEG", not by "is a PNG"', () => {
+describe('convertToJPEG converts every image format that is not a JPEG', () => {
+  it('picks the named formats, not "is a PNG" and not "anything else"', () => {
     assert.match(
       updateMedia,
-      /m\.type === 'image' &&\s*!hasExtension\(m\.path, 'jpg'\) &&\s*!hasExtension\(m\.path, 'jpeg'\)/
+      /m\.type === 'image' &&\s*\['png', 'webp', 'gif', 'avif', 'tif'\]\.some\(\(ext\) =>\s*hasExtension\(m\.path, ext\)/
     );
-    assert.doesNotMatch(updateMedia, /hasExtension\(m\.path, 'png'\)/);
   });
 
-  it('leaves a file sharp cannot read as it is, without dropping the list', () => {
-    assert.match(updateMedia, /\.catch\(\(\): null => null\);\s*if \(!buffer\) \{\s*return m;/);
+  it('leaves a file it cannot read or decode as it is, without dropping the list', () => {
+    assert.match(updateMedia, /readOrFetch\(m\.url\)\.catch\(\s*\(\): null => null\s*\)/);
+    assert.match(updateMedia, /\.toBuffer\(\)\s*\.catch\(\(\): null => null\)/);
+    assert.match(updateMedia, /if \(!buffer\) \{\s*return m;/);
     // The write-back flag is only raised once a converted file exists.
-    assert.ok(
-      updateMedia.indexOf('imageUpdateNeeded = true;\n              const { path') > -1
+    assert.match(
+      updateMedia,
+      /if \(!buffer\) \{\s*return m;\s*\}\s*imageUpdateNeeded = true;/
     );
+  });
+
+  it('lays transparency on white', async () => {
+    assert.match(updateMedia, /\.flatten\(\{ background: '#ffffff' \}\)/);
+    const clear = await sharp({
+      create: {
+        width: 2,
+        height: 2,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const jpeg = await sharp(clear)
+      .flatten({ background: '#ffffff' })
+      .jpeg({ quality: 100 })
+      .toBuffer();
+    const pixel = await sharp(jpeg).raw().toBuffer();
+    assert.deepEqual([...pixel.subarray(0, 3)], [255, 255, 255]);
+  });
+
+  it('keeps a rotated photo upright', async () => {
+    assert.match(
+      updateMedia,
+      /sharp\(Buffer\.from\(imageBuffer\)\)\s*\.rotate\(\)\s*\.flatten\(/
+    );
+    // 2x1 pixels stored sideways, tagged "rotate 90 degrees" (orientation 6).
+    const sideways = await sharp({
+      create: { width: 2, height: 1, channels: 3, background: '#e11d48' },
+    })
+      .withMetadata({ orientation: 6 })
+      .webp()
+      .toBuffer();
+    const jpeg = await sharp(sideways)
+      .rotate()
+      .flatten({ background: '#ffffff' })
+      .jpeg({ quality: 100 })
+      .toBuffer();
+    const { width, height, orientation } = await sharp(jpeg).metadata();
+    assert.deepEqual({ width, height, orientation }, {
+      width: 1,
+      height: 2,
+      orientation: undefined,
+    });
   });
 
   it('can turn each format the library accepts, except BMP, into a JPEG', async () => {

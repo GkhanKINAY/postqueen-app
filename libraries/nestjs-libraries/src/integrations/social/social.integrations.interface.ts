@@ -195,9 +195,10 @@ export interface SocialProvider
   dto?: any;
   maxLength: (additionalSettings?: any, settings?: any) => number;
   /**
-   * `texts` runs parallel to `posts`: the plain text of the main post and of
-   * each comment, HTML already stripped, exactly as the `maxLength` check
-   * measures it. Optional, so a provider that only looks at media ignores it.
+   * `texts` runs parallel to `posts`: the text of the main post and of each
+   * comment exactly as `post` / `comment` will receive it in `message` (so an
+   * `html` editor still gets its markup). Optional, so a provider that only
+   * looks at media ignores it.
    */
   checkValidity(
     posts: Array<{ path: string; thumbnail?: string }[]>,
