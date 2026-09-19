@@ -20,7 +20,7 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
 const instagramProvider = new InstagramProvider();
 
 @Rules(
-  "Instagram should have at least one attachment, if it's a story, it can have only one picture"
+  "Instagram should have at least one attachment, if it's a story, each attachment is published as its own separate story"
 )
 export class InstagramStandaloneProvider
   extends SocialAbstract

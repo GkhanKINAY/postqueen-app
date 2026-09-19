@@ -841,7 +841,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     identifier: 'bluesky-autoRepostPost',
     title: 'Auto Repost Posts',
     description:
-      'When a post reached a certain number of likes, repost it to increase engagement (1 week old posts)',
+      'When a post reaches a certain number of likes, repost it to increase engagement (checked three times, the first about 6 hours after it is published)',
     runEveryMilliseconds: 21600000,
     totalRuns: 3,
     fields: [

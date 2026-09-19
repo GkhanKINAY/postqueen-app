@@ -225,7 +225,7 @@ const RedditSettings: FC = () => {
   );
 };
 export default withProvider({
-  postComment: PostComment.POST,
+  postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: RedditSettings,
   CustomPreviewComponent: undefined,

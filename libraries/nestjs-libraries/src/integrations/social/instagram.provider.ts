@@ -26,7 +26,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 @Rules(
-  "Instagram should have at least one attachment, if it's a story, it can have only one picture"
+  "Instagram should have at least one attachment, if it's a story, each attachment is published as its own separate story"
 )
 export class InstagramProvider
   extends SocialAbstract
@@ -321,7 +321,7 @@ export class InstagramProvider
       return {
         type: 'bad-body' as const,
         value:
-          'You have reached the maximum of 25 posts per day, allowed for your account',
+          'You have reached the maximum number of posts per day allowed for your account',
       };
     }
 
