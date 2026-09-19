@@ -470,6 +470,14 @@ export class ClippingService {
       throw new ClippingStop('Clipping not found');
     }
 
+    // An attempt that died after charging (below) would otherwise read its own
+    // charge as spent and refuse the video it already paid for as too long.
+    // This attempt charges again, under the same id, once it knows the length
+    await this._subscriptionService.refundCredits(
+      clipping.organizationId,
+      clippingId
+    );
+
     const minutes = Math.min(
       await this.balance(clipping.organizationId),
       MAX_SOURCE_MINUTES
