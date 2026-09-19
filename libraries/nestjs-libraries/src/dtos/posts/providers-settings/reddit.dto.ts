@@ -33,9 +33,9 @@ export class RedditSettingsDtoInner {
   })
   subreddit: string;
 
+  // Reddit's /api/submit refuses a title over 300 characters.
   @IsString()
   @MinLength(2)
-  // Reddit's /api/submit refuses a title over 300 characters.
   @MaxLength(300)
   @IsDefined()
   title: string;
