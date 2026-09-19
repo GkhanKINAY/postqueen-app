@@ -122,6 +122,15 @@ export function extractBasicCredentials(
   }
 }
 
+/**
+ * Appends a path to a base URL without dropping the base's own path.
+ * new URL('/mcp-oauth', 'https://example.com/api') resolves to
+ * https://example.com/mcp-oauth, outside the base.
+ */
+export function joinBaseUrl(baseUrl: string, path: string): string {
+  return new URL(`${baseUrl.trim().replace(/\/+$/, '')}${path}`).toString();
+}
+
 export function extractBearerToken(authHeader: string | null | undefined): string | undefined {
   if (!authHeader) return undefined;
 
