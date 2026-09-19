@@ -99,6 +99,15 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     ) {
       return 'Can have maximum 1 media when selecting a video.';
     }
+    // A multi-image post takes 2 to 20 images (MultiImage API). The carousel
+    // option sends the pictures as one PDF document instead, so it is not
+    // held to this.
+    if (
+      !this.assetBoolean(vals?.post_as_images_carousel) &&
+      (firstPost?.length ?? 0) > 20
+    ) {
+      return 'LinkedIn multi-image posts can have up to 20 images.';
+    }
     if (restPosts?.some((p) => (p?.length ?? 0) > 0)) {
       return 'Comments can only contain text.';
     }
