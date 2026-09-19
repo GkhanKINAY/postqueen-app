@@ -61,6 +61,19 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
       stop.current = true;
     };
   }, []);
+  // Without a bot name there is nothing to add to the group, and the connect
+  // button would poll for a /connect message that can never arrive. Say so
+  // instead of rendering "Please add @" with an empty handle.
+  if (!telegramBotName) {
+    return (
+      <div className="pt-[16px] text-center">
+        {t(
+          'telegram_bot_missing',
+          'Telegram cannot be connected yet because no Telegram bot is set up on this installation. If you run PostQueen yourself, set TELEGRAM_TOKEN and TELEGRAM_BOT_NAME on the server and restart it. Otherwise, contact support.'
+        )}
+      </div>
+    );
+  }
   return (
     <>
       <div className="justify-center items-center flex flex-col pt-[16px]">

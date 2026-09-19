@@ -96,6 +96,30 @@ export const useProviderGuides = (): {
           'TikTok reviews new posting apps per account; the first post may need to be made public from the app before scheduling works.'
         ),
       },
+      'tiktok-business': {
+        summary: t(
+          'guide_tiktok_business',
+          "Connects a TikTok account through TikTok's Business API. It is a separate connection from the TikTok tile."
+        ),
+      },
+      linkedin: {
+        summary: t(
+          'guide_linkedin',
+          'Connects your personal LinkedIn profile. For a company page, use LinkedIn Page instead.'
+        ),
+      },
+      threads: {
+        summary: t(
+          'guide_threads',
+          'Connects your Threads profile. You will be sent to Threads to sign in and approve access.'
+        ),
+      },
+      tumblr: {
+        summary: t(
+          'guide_tumblr',
+          'Connects your Tumblr account. After you sign in, you choose which of your blogs to post to.'
+        ),
+      },
       pinterest: {
         summary: t(
           'guide_pinterest',
@@ -126,7 +150,11 @@ export const useProviderGuides = (): {
       mastodon: {
         summary: t(
           'guide_mastodon',
-          'Connects a Mastodon account on any instance.'
+          'Connects a Mastodon account on the one server this installation is set up for (mastodon.social by default).'
+        ),
+        requirement: t(
+          'guide_mastodon_req',
+          'Accounts on other Mastodon servers cannot be connected here.'
         ),
       },
       slack: {
@@ -150,11 +178,11 @@ export const useProviderGuides = (): {
       bluesky: {
         summary: t(
           'guide_bluesky',
-          'Bluesky uses an app password — a separate password you create for tools, which you can revoke without changing your own.'
+          'Bluesky connects with an app password: a separate password you create for tools and can revoke without changing your own.'
         ),
         requirement: t(
           'guide_bluesky_req',
-          'Two-factor authentication is not supported yet. If it is on, turn it off before connecting.'
+          'Use an app password, not your account password. App passwords work even when two-factor authentication is on.'
         ),
         steps: [
           t('guide_bluesky_s1', 'Open Bluesky → Settings → App Passwords.'),
@@ -164,7 +192,7 @@ export const useProviderGuides = (): {
           ),
           t(
             'guide_bluesky_s3',
-            'Paste your handle and that app password below — not your account password.'
+            'Paste your handle and that app password below.'
           ),
         ],
         link: {
@@ -324,21 +352,21 @@ export const useProviderGuides = (): {
       wrapcast: {
         summary: t(
           'guide_wrapcast',
-          'Connects a Farcaster account by signing with your wallet.'
+          'Connects a Farcaster account through a signer you approve in the Farcaster app.'
         ),
         requirement: t(
           'guide_wrapcast_req',
-          'You will be asked to sign a message. Signing proves the account is yours; it does not move funds.'
+          'A QR code appears here: scan it with your phone, or copy the link and open it there, then approve PostQueen in the Farcaster app.'
         ),
       },
       moltbook: {
         summary: t(
           'guide_moltbook',
-          'Connects Moltbook by signing with your wallet.'
+          'PostQueen registers a Moltbook agent under the name you choose and gives you a claim link.'
         ),
         requirement: t(
           'guide_moltbook_req',
-          'You will be asked to sign a message. Signing proves the account is yours; it does not move funds.'
+          'Open the claim link and finish the steps on Moltbook. The channel connects once Moltbook marks the agent as claimed.'
         ),
       },
       skool: {

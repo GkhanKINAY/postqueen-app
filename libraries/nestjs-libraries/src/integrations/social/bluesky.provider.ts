@@ -238,7 +238,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
   category = 'social' as const;
   name = 'Bluesky';
   toolTip =
-    'We don’t currently support two-factor authentication. If it’s enabled on Bluesky, you’ll need to disable it.';
+    'Use a Bluesky app password, not your account password. App passwords work even when two-factor authentication is on.';
   isBetweenSteps = false;
   scopes = ['write:statuses', 'profile', 'write:media'];
   editor = 'normal' as const;
