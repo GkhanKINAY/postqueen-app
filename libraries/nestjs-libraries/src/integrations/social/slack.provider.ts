@@ -5,11 +5,15 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  ValidityMedia,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SlackDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/slack.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 export class SlackProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Slack has moderate API limits
@@ -28,8 +32,68 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
   ];
   dto = SlackDto;
 
+  // A message holds at most 50 blocks and a section block at most 3,000
+  // characters (Block Kit reference), so no text longer than 50 full
+  // sections can be sent.
   maxLength() {
-    return 400000;
+    return 150000;
+  }
+
+  // Long text is cut into several sections, at a line break when one is in
+  // reach so a paragraph is not split mid-sentence; a surrogate pair is never
+  // split. Text that fits stays one section, exactly as it was sent before.
+  sectionBlocks(text: string) {
+    const parts: string[] = [];
+    let rest = text;
+    while (rest.length > 3000) {
+      let cut = rest.lastIndexOf('\n', 3000);
+      if (cut <= 0) {
+        cut = /[\uD800-\uDBFF]/.test(rest[2999]) ? 2999 : 3000;
+      }
+      parts.push(rest.slice(0, cut));
+      rest = rest.slice(cut).replace(/^\n/, '');
+    }
+    parts.push(rest);
+
+    return parts.map((part) => ({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: part,
+      },
+    }));
+  }
+
+  // Every entry is its own message: the post, then each thread reply.
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>,
+    settings: any,
+    additionalSettings: any[],
+    texts: string[] = []
+  ): Promise<string | true> {
+    // Pictures go out as image blocks; Slack has no video block, and a video
+    // sent as one fails. Uploading files would need files:write, which
+    // existing connections were never granted.
+    if (
+      (posts || []).some((media) =>
+        media?.some((m) => hasExtension(m?.path, 'mp4'))
+      )
+    ) {
+      return 'Slack posts can include pictures but not videos';
+    }
+
+    if (
+      (posts || []).some(
+        (media, index) =>
+          this.sectionBlocks(texts[index] || '').length +
+            (media?.length ?? 0) >
+          50
+      )
+    ) {
+      return 'A Slack message can hold at most 50 blocks: each picture is one, and the text takes one per 3,000 characters';
+    }
+
+    return true;
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
@@ -166,13 +230,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
           username: integration.name,
           icon_url: integration.picture,
           blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: firstPost.message,
-              },
-            },
+            ...this.sectionBlocks(firstPost.message),
             ...(firstPost.media?.length
               ? firstPost.media.map((m) => ({
                   type: 'image',
@@ -234,13 +292,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
           icon_url: integration.picture,
           thread_ts: threadTs,
           blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: commentPost.message,
-              },
-            },
+            ...this.sectionBlocks(commentPost.message),
             ...(commentPost.media?.length
               ? commentPost.media.map((m) => ({
                   type: 'image',
