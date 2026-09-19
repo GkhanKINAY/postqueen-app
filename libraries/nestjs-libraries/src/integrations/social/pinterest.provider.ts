@@ -67,8 +67,9 @@ export class PinterestProvider
     'user_accounts:read',
   ];
   override maxConcurrentJob = 3; // Pinterest has more lenient rate limits
+  // Create Pin takes a description of up to 800 characters.
   maxLength() {
-    return 500;
+    return 800;
   }
 
   dto = PinterestSettingsDto;
