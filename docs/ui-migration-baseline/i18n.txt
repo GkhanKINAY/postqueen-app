@@ -1278,6 +1278,7 @@ guide_gmb
 guide_gmb_req
 guide_hashnode
 guide_hashnode_link
+guide_hashnode_req
 guide_hashnode_s1
 guide_hashnode_s2
 guide_instagram
