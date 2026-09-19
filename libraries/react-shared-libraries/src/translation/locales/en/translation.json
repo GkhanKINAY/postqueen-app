@@ -1237,5 +1237,6 @@
   "post_date_passed": "The date of this post has passed; say when it should go out.",
   "processing": "Processing",
   "could_not_optimize_file": "The video could not be optimized and was kept as it came.",
-  "could_not_convert_file": "The video could not be converted."
+  "could_not_convert_file": "The video could not be converted.",
+  "tiktok_video_too_long": "This video is {{duration}} seconds long and this TikTok account can post videos of up to {{max}} seconds. TikTok will refuse it, so trim it or choose a shorter video."
 }

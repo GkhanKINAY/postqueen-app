@@ -96,6 +96,11 @@ export class TiktokBusinessProvider
     if ((firstItems?.length ?? 0) > 35) {
       return 'You can select up to 35 pictures';
     }
+    // Photos are converted to JPEG before publishing (convertToJPEG), and
+    // sharp cannot read a BMP, so it would reach TikTok unconverted.
+    if (firstItems?.some((p) => hasExtension(p?.path, 'bmp'))) {
+      return 'TikTok only accepts JPEG or WebP pictures and BMP files cannot be converted, please use a JPEG or PNG';
+    }
     return true;
   }
 

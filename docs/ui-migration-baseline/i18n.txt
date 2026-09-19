@@ -1976,6 +1976,7 @@ tiktok_restriction_upload_video
 tiktok_search_location
 tiktok_search_music
 tiktok_video_features
+tiktok_video_too_long
 tiktok_video_volume
 time_slots_required
 time_table_slots
