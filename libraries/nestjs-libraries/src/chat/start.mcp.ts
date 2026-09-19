@@ -6,6 +6,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { OAuthService } from '@gitroom/nestjs-libraries/database/prisma/oauth/oauth.service';
 import { runWithContext } from './async.storage';
 import { createOAuthMiddleware } from './oauth-middleware';
+import { joinBaseUrl } from './oauth-types';
 const fixAcceptHeader = (req: Request) => {
   const value = 'application/json, text/event-stream';
   req.headers.accept = value;
@@ -81,15 +82,24 @@ export const startMcp = async (app: INestApplication) => {
     tools: claudeTools,
   });
 
-  const oauthResource = new URL('/mcp-oauth', process.env.NEXT_PUBLIC_BACKEND_URL!).toString();
+  // Everything the OAuth discovery advertises (resource, issuer, endpoints)
+  // hangs off one base, joined without dropping its path: in production
+  // NEXT_PUBLIC_BACKEND_URL is https://app.postqueen.ai/api
+  const mcpBackendUrl =
+    process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL!;
+  const oauthResource = joinBaseUrl(mcpBackendUrl, '/mcp-oauth');
 
   // Every OAuth-protected MCP path is its own RFC 9728 protected resource, but
   // they all share the /mcp-oauth authorization server (the token endpoint
   // ignores the RFC 8707 resource param, so one AS covers all of them)
   const createResourceMiddleware = (mcpPath: string) =>
     createOAuthMiddleware({
+      resourceMetadataUrl: joinBaseUrl(
+        mcpBackendUrl,
+        `/.well-known/oauth-protected-resource${mcpPath}`
+      ),
       oauth: {
-        resource: new URL(mcpPath, process.env.NEXT_PUBLIC_BACKEND_URL!).toString(),
+        resource: joinBaseUrl(mcpBackendUrl, mcpPath),
         authorizationServers: [oauthResource],
         scopesSupported: oauthScopes,
         validateToken: async (token: string) => {
@@ -133,6 +143,11 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    // Unlike the advertised URLs above, the request urls built in this file keep
+    // new URL(): only their pathname is read, matched against the paths mounted
+    // here, which never carry the base path (the proxy strips /api first). With
+    // it kept they would stop matching, and the OAuth middleware would let
+    // /mcp-oauth past the token check
     const url = new URL('/.well-known/oauth-protected-resource', process.env.NEXT_PUBLIC_BACKEND_URL);
     await resource.middleware(req, res, url);
   });
@@ -158,10 +173,10 @@ export const startMcp = async (app: INestApplication) => {
       // belongs to the path-based issuer <backend>/mcp-oauth
       issuer: oauthResource,
       authorization_endpoint: `${process.env.FRONTEND_URL}/oauth/authorize`,
-      token_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/token`,
-      registration_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/register`,
+      token_endpoint: `${mcpBackendUrl}/oauth/token`,
+      registration_endpoint: `${mcpBackendUrl}/oauth/register`,
       ...(enableOidcEmailClaims && {
-        userinfo_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/userinfo`,
+        userinfo_endpoint: `${mcpBackendUrl}/oauth/userinfo`,
       }),
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code'],
@@ -190,9 +205,9 @@ export const startMcp = async (app: INestApplication) => {
     res.json({
       issuer: oauthResource,
       authorization_endpoint: `${process.env.FRONTEND_URL}/oauth/authorize`,
-      token_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/token`,
-      registration_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/register`,
-      userinfo_endpoint: `${process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/userinfo`,
+      token_endpoint: `${mcpBackendUrl}/oauth/token`,
+      registration_endpoint: `${mcpBackendUrl}/oauth/register`,
+      userinfo_endpoint: `${mcpBackendUrl}/oauth/userinfo`,
       response_types_supported: ['code'],
       grant_types_supported: ['authorization_code'],
       token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
