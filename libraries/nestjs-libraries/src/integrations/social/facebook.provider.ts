@@ -1138,12 +1138,23 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         // (see postAnalytics). Stories have no video_insights either, so that
         // one error stays quiet instead of being logged on every sync.
         if (!postId.includes('_')) {
-          const { data, error } = await (
-            await fetch(
-              `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=total_video_impressions,total_video_reactions_by_type_total&access_token=${accessToken}`
-            )
-          ).json();
+          const response = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=total_video_impressions,total_video_reactions_by_type_total&access_token=${accessToken}`
+          );
+          const json = await response.text();
+          const { data, error } = JSON.parse(json || '{}');
           if (error && !/nonexisting field/i.test(error.message || '')) {
+            // A dead token must still flag the channel, as this.fetch does on
+            // the feed path below, even for a channel that only posts reels.
+            const handled = this.handleErrors(json, response.status);
+            if (handled?.type === 'refresh-token') {
+              throw new RefreshToken(
+                this.identifier,
+                json,
+                {} as BodyInit,
+                handled.value
+              );
+            }
             console.warn('Facebook video_insights returned an error:', {
               postId,
               error,
