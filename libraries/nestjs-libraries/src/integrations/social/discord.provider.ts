@@ -61,12 +61,19 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
       username: '',
     };
   }
+  // Bot permissions asked for on install: View Channel (1 << 10), Send
+  // Messages (1 << 11), Embed Links (1 << 14), Attach Files (1 << 15),
+  // Create Public / Private Threads (1 << 35, 1 << 36) and Send Messages in
+  // Threads (1 << 38). The first, third and fourth were missing, so a server
+  // whose roles did not already grant them refused media and link previews.
+  // Only new installs (or a reconnect) see this; an existing install keeps
+  // the permissions its server gave it.
   async generateAuthUrl() {
     const state = makeId(6);
     return {
       url: `https://discord.com/oauth2/authorize?client_id=${
         process.env.DISCORD_CLIENT_ID
-      }&permissions=377957124096&response_type=code&redirect_uri=${encodeURIComponent(
+      }&permissions=377957174272&response_type=code&redirect_uri=${encodeURIComponent(
         `${process.env.FRONTEND_URL}/integrations/social/discord`
       )}&integration_type=0&scope=bot+identify+guilds&state=${state}`,
       codeVerifier: makeId(10),
@@ -129,8 +136,11 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
       })
     ).json();
 
+    // Text (0) and announcement (5) channels. A forum (15) only takes new
+    // threads, never a plain message, and posting uses Create Message, so
+    // a forum picked here failed at publish time.
     return list
-      .filter((p: any) => p.type === 0 || p.type === 5 || p.type === 15)
+      .filter((p: any) => p.type === 0 || p.type === 5)
       .map((p: any) => ({
         id: String(p.id),
         name: p.name,
@@ -224,8 +234,11 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     const channel = commentPost.settings.channel;
 
     // For Discord, we create a thread from the original message for comments
-    // If we don't have a thread yet, create one
-    let threadChannel = channel;
+    // If we don't have a thread yet, create one. A thread started from a
+    // message takes that message's id as its own, so every later comment
+    // goes to the thread whose id is the post's; it used to fall back to the
+    // channel and leave the thread after the first comment.
+    let threadChannel = lastCommentId ? postId : channel;
 
     // Create thread if this is the first comment
     if (!lastCommentId) {
