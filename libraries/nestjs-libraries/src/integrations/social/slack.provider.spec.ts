@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { SlackProvider } from './slack.provider.ts';
+import { SlackProvider, slackSectionBlocks } from './slack.provider.ts';
 
 const provider = new SlackProvider();
 const texts = (blocks: Array<{ text: { text: string } }>) =>
@@ -11,27 +11,28 @@ const texts = (blocks: Array<{ text: { text: string } }>) =>
 
 describe('Slack section blocks', () => {
   it('keeps text that fits as one section, byte for byte', () => {
-    assert.deepEqual(texts(provider.sectionBlocks('')), ['']);
+    // A media-only post has no text, and Slack refuses an empty section.
+    assert.deepEqual(slackSectionBlocks(''), []);
     const short = 'Hello *team*\nsecond line';
-    assert.deepEqual(provider.sectionBlocks(short), [
+    assert.deepEqual(slackSectionBlocks(short), [
       { type: 'section', text: { type: 'mrkdwn', text: short } },
     ]);
-    assert.equal(provider.sectionBlocks('a'.repeat(3000)).length, 1);
+    assert.equal(slackSectionBlocks('a'.repeat(3000)).length, 1);
   });
 
   it('cuts long text into sections of at most 3,000, at a line break', () => {
     const paragraph = 'word '.repeat(400).trim(); // 1,999 characters
     const text = [paragraph, paragraph, paragraph].join('\n');
-    const parts = texts(provider.sectionBlocks(text));
+    const parts = texts(slackSectionBlocks(text));
     assert.deepEqual(parts, [paragraph, paragraph, paragraph]);
   });
 
   it('cuts hard at 3,000 when there is no line break, never inside an emoji', () => {
-    const parts = texts(provider.sectionBlocks('a'.repeat(7000)));
+    const parts = texts(slackSectionBlocks('a'.repeat(7000)));
     assert.deepEqual(parts.map((p) => p.length), [3000, 3000, 1000]);
 
     const emoji = `${'a'.repeat(2999)}😀${'b'.repeat(10)}`;
-    const [first, second] = texts(provider.sectionBlocks(emoji));
+    const [first, second] = texts(slackSectionBlocks(emoji));
     assert.equal(first, 'a'.repeat(2999));
     assert.equal(second, `😀${'b'.repeat(10)}`);
   });

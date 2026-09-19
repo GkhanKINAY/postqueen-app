@@ -15,6 +15,40 @@ import { SlackDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-setting
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+// A section block holds at most 3,000 characters (Block Kit reference), so
+// long text is cut into several sections, at a line break when one is in
+// reach so a paragraph is not split mid-sentence; a surrogate pair is never
+// split. Text that fits stays one section, exactly as it was sent before.
+// No text, as on a media-only post, is no section: Slack refuses a section
+// whose text is empty.
+// Kept outside the class on purpose: /integrations/function can call any
+// provider method by name with the channel token as the first argument, and
+// this one would hand that token straight back.
+export const slackSectionBlocks = (text: string) => {
+  if (!text) {
+    return [];
+  }
+  const parts: string[] = [];
+  let rest = text;
+  while (rest.length > 3000) {
+    let cut = rest.lastIndexOf('\n', 3000);
+    if (cut <= 0) {
+      cut = /[\uD800-\uDBFF]/.test(rest[2999]) ? 2999 : 3000;
+    }
+    parts.push(rest.slice(0, cut));
+    rest = rest.slice(cut).replace(/^\n/, '');
+  }
+  parts.push(rest);
+
+  return parts.map((part) => ({
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: part,
+    },
+  }));
+};
+
 export class SlackProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3; // Slack has moderate API limits
   identifier = 'slack';
@@ -39,31 +73,6 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
     return 150000;
   }
 
-  // Long text is cut into several sections, at a line break when one is in
-  // reach so a paragraph is not split mid-sentence; a surrogate pair is never
-  // split. Text that fits stays one section, exactly as it was sent before.
-  sectionBlocks(text: string) {
-    const parts: string[] = [];
-    let rest = text;
-    while (rest.length > 3000) {
-      let cut = rest.lastIndexOf('\n', 3000);
-      if (cut <= 0) {
-        cut = /[\uD800-\uDBFF]/.test(rest[2999]) ? 2999 : 3000;
-      }
-      parts.push(rest.slice(0, cut));
-      rest = rest.slice(cut).replace(/^\n/, '');
-    }
-    parts.push(rest);
-
-    return parts.map((part) => ({
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: part,
-      },
-    }));
-  }
-
   // Every entry is its own message: the post, then each thread reply.
   override async checkValidity(
     posts: Array<ValidityMedia[]>,
@@ -85,7 +94,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
     if (
       (posts || []).some(
         (media, index) =>
-          this.sectionBlocks(texts[index] || '').length +
+          slackSectionBlocks(texts[index] || '').length +
             (media?.length ?? 0) >
           50
       )
@@ -230,7 +239,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
           username: integration.name,
           icon_url: integration.picture,
           blocks: [
-            ...this.sectionBlocks(firstPost.message),
+            ...slackSectionBlocks(firstPost.message),
             ...(firstPost.media?.length
               ? firstPost.media.map((m) => ({
                   type: 'image',
@@ -292,7 +301,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
           icon_url: integration.picture,
           thread_ts: threadTs,
           blocks: [
-            ...this.sectionBlocks(commentPost.message),
+            ...slackSectionBlocks(commentPost.message),
             ...(commentPost.media?.length
               ? commentPost.media.map((m) => ({
                   type: 'image',
