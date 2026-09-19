@@ -218,22 +218,6 @@ export const useProviderGuides = (): {
           href: 'https://hashnode.com/settings/developer',
         },
       },
-      medium: {
-        summary: t(
-          'guide_medium',
-          'Medium publishes through an integration token from your account settings.'
-        ),
-        requirement: t(
-          'guide_medium_req',
-          'Medium stopped issuing new integration tokens in January 2025 and no longer allows new integrations. Tokens created before then still work — so if you already have one, paste it. If you have never made one, Medium will not give you one now.'
-        ),
-        fields: {
-          apiKey: t(
-            'guide_medium_f_key',
-            'Your existing Medium integration token.'
-          ),
-        },
-      },
       wordpress: {
         summary: t(
           'guide_wordpress',

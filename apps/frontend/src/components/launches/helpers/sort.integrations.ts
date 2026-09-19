@@ -31,7 +31,6 @@ export const PROVIDER_DISPLAY_ORDER = [
   'telegram',
   'nostr',
   'vk',
-  'medium',
   'devto',
   'hashnode',
   'wordpress',
