@@ -950,6 +950,11 @@ export class PostsService {
 
         const settings = post.settings || {};
         const media = (post.value || []).map((p) => p.image || []);
+        // One stripped text per entry, shared by the provider's own rules and
+        // the empty / too-long checks below, so both measure the same string.
+        const texts = (post.value || []).map((p) =>
+          stripHtmlValidation('normal', p.content || '', true)
+        );
 
         // Settings DTO validation — mirrors the client `form.trigger()`.
         let valid = true;
@@ -973,7 +978,8 @@ export class PostsService {
           errors = await provider.checkValidity(
             media,
             settings,
-            additionalSettings
+            additionalSettings,
+            texts
           );
         } catch (err: any) {
           errors = err?.message || 'Invalid media';
@@ -981,14 +987,13 @@ export class PostsService {
 
         const maximumCharacters = provider.maxLength(additionalSettings, settings);
 
-        const emptyContent = (post.value || []).some((a) => {
-          const strip = stripHtmlValidation('normal', a.content || '', true);
+        const emptyContent = (post.value || []).some((a, index) => {
+          const strip = texts[index];
           const length = countLength(integration.providerIdentifier, strip);
           return length === 0 && (a.image || []).length === 0;
         });
 
-        const tooLong = (post.value || []).some((a) => {
-          const strip = stripHtmlValidation('normal', a.content || '', true);
+        const tooLong = texts.some((strip) => {
           const counted = countLength(integration.providerIdentifier, strip);
           return counted > (maximumCharacters || 1000000);
         });

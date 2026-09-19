@@ -194,10 +194,16 @@ export interface SocialProvider
   refreshCron?: boolean;
   dto?: any;
   maxLength: (additionalSettings?: any, settings?: any) => number;
+  /**
+   * `texts` runs parallel to `posts`: the plain text of the main post and of
+   * each comment, HTML already stripped, exactly as the `maxLength` check
+   * measures it. Optional, so a provider that only looks at media ignores it.
+   */
   checkValidity(
     posts: Array<{ path: string; thumbnail?: string }[]>,
     settings: any,
     additionalSettings: any[],
+    texts?: string[],
   ): Promise<string | true>;
   checkPostStatus(
     accessToken: string,
