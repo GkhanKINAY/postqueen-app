@@ -39,6 +39,8 @@ export class InstagramStandaloneProvider
     'instagram_business_manage_insights',
   ];
     override maxConcurrentJob = 200; // Instagram standalone has stricter limits
+  // Same JPEG-only publishing as the Facebook-login tile.
+  convertToJPEG = true;
   dto = InstagramDto;
 
   editor = 'normal' as const;
@@ -48,10 +50,20 @@ export class InstagramStandaloneProvider
 
   override async checkValidity(
     [firstPost]: Array<ValidityMedia[]>,
-    settings: any
+    settings: any,
+    additionalSettings: any[],
+    [caption]: string[] = []
   ): Promise<string | true> {
     if (!firstPost?.length) {
       return 'Should have at least one media';
+    }
+    const shared = instagramProvider.checkMediaAndCaption(
+      firstPost,
+      caption,
+      settings?.post_type
+    );
+    if (shared !== true) {
+      return shared;
     }
     if (settings?.post_type === 'reel') {
       if ((firstPost?.length ?? 0) !== 1) {

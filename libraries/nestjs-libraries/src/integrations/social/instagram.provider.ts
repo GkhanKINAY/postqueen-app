@@ -48,21 +48,64 @@ export class InstagramProvider
     'instagram_manage_insights',
   ];
   override maxConcurrentJob = 400;
+  // Instagram publishes JPEG only; every other image format is converted
+  // before it is handed over (posts.service updateMedia).
+  convertToJPEG = true;
   editor = 'normal' as const;
   dto = InstagramDto;
   maxLength() {
     return 2200;
   }
 
+  /**
+   * The rules both Instagram tiles share, so the standalone one delegates here
+   * the same way it delegates `handleErrors`: images the JPEG conversion can
+   * read (sharp has no BMP decoder), and for a post or a reel at most 10 items
+   * and Instagram's caps of 30 hashtags and 20 @mentions per caption. A story
+   * publishes each item as its own story and carries no caption, so neither
+   * cap applies to it.
+   */
+  checkMediaAndCaption(
+    media: ValidityMedia[],
+    caption = '',
+    postType?: string
+  ): string | true {
+    if (media.some((m) => hasExtension(m?.path, 'bmp'))) {
+      return 'Instagram only accepts JPEG images and BMP files cannot be converted, please use a JPEG or PNG';
+    }
+    if (postType === 'story') {
+      return true;
+    }
+    if (media.length > 10) {
+      return 'Instagram carousel only supports up to 10 media attachments';
+    }
+    const hashtags = caption.match(/(^|[^\p{L}\p{N}_&])#[\p{L}\p{N}_]+/gu);
+    if ((hashtags?.length ?? 0) > 30) {
+      return 'Instagram allows up to 30 hashtags in a caption';
+    }
+    const mentions = caption.match(/(^|[^\p{L}\p{N}_.])@[A-Za-z0-9._]+/gu);
+    if ((mentions?.length ?? 0) > 20) {
+      return 'Instagram allows up to 20 @mentions in a caption';
+    }
+    return true;
+  }
+
   override async checkValidity(
     [firstPost]: Array<ValidityMedia[]>,
-    settings: any
+    settings: any,
+    additionalSettings: any[],
+    [caption]: string[] = []
   ): Promise<string | true> {
     if (!firstPost?.length) {
       return 'Should have at least one media';
     }
-    if (firstPost.length > 10) {
-      return 'Instagram carousel only supports up to 10 media attachments';
+    const shared = this.checkMediaAndCaption(
+      firstPost,
+      caption,
+      settings?.post_type
+    );
+    if (shared !== true) {
+      return shared;
     }
     if (settings?.post_type === 'reel') {
       if ((firstPost?.length ?? 0) !== 1) {
