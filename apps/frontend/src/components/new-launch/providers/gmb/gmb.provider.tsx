@@ -11,6 +11,7 @@ import { Input } from '@gitroom/react/form/input';
 import { FormChoice } from '@gitroom/react/form/form.choice';
 import { FormSection } from '@gitroom/react/form/form.section';
 import { useWatch } from 'react-hook-form';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 const topicTypes = [
   {
@@ -53,19 +54,25 @@ const callToActionTypes = [
     value: 'SIGN_UP',
   },
   {
-    label: 'Get Offer',
-    value: 'GET_OFFER',
-  },
-  {
     label: 'Call',
     value: 'CALL',
   },
 ];
 
 const GmbSettings: FC = () => {
+  const t = useT();
   const { register, control } = useSettings();
   const topicType = useWatch({ control, name: 'topicType' });
   const callToActionType = useWatch({ control, name: 'callToActionType' });
+
+  // An event and an offer both run between two dates, which Google reads
+  // from the same `event` field, so they share these inputs.
+  const dates = (topicType === 'EVENT' || topicType === 'OFFER') && (
+    <div className="grid grid-cols-2 gap-[10px]">
+      <Input label="Start Date" type="date" {...register('eventStartDate')} />
+      <Input label="End Date" type="date" {...register('eventEndDate')} />
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -77,15 +84,20 @@ const GmbSettings: FC = () => {
         options={topicTypes}
       />
 
-      <FormChoice
-        name="callToActionType"
-        icon="post"
-        label="Call to Action"
-        defaultValue="NONE"
-        options={callToActionTypes}
-      />
+      {/* Google ignores a call to action on an offer and shows its own
+          "View offer" button instead. */}
+      {topicType !== 'OFFER' && (
+        <FormChoice
+          name="callToActionType"
+          icon="post"
+          label="Call to Action"
+          defaultValue="NONE"
+          options={callToActionTypes}
+        />
+      )}
 
-      {callToActionType &&
+      {topicType !== 'OFFER' &&
+        callToActionType &&
         callToActionType !== 'NONE' &&
         callToActionType !== 'CALL' && (
           <Input
@@ -102,14 +114,7 @@ const GmbSettings: FC = () => {
             placeholder="Event name"
             {...register('eventTitle')}
           />
-          <div className="grid grid-cols-2 gap-[10px]">
-            <Input
-              label="Start Date"
-              type="date"
-              {...register('eventStartDate')}
-            />
-            <Input label="End Date" type="date" {...register('eventEndDate')} />
-          </div>
+          {dates}
           <div className="grid grid-cols-2 gap-[10px]">
             <Input
               label="Start Time (optional)"
@@ -127,6 +132,8 @@ const GmbSettings: FC = () => {
 
       {topicType === 'OFFER' && (
         <FormSection icon="offer" title="Offer Details">
+          <Input label={t('title', 'Title')} {...register('eventTitle')} />
+          {dates}
           <Input
             label="Coupon Code (optional)"
             placeholder="SAVE20"
