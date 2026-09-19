@@ -276,6 +276,13 @@ touches the Transloadit assembly in `images.slides.ts`, `media.processor.interfa
 to their `checkProcessing` onto `normalizeMedia`; and take their `Media` status
 and route changes only where the names already match ours.
 
+**Medium is gone from this fork (2026-09-19).** Medium's API is archived and it
+issues no new integration tokens, so the channel was removed whole:
+`medium.provider.ts`, `medium.settings.dto.ts`, the composer's `medium/` folder,
+its guide, icons and i18n keys. Upstream still has it, so a commit of theirs
+that touches any of those files is a modify/delete conflict: drop it, do not
+restore the provider.
+
 Move the watermark every time a sync PR merges. It is the only cheap way to
 answer "are we current?" — see the trap below.
 

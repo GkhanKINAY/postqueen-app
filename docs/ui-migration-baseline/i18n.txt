@@ -1319,9 +1319,6 @@ guide_listmonk_f_url
 guide_listmonk_f_user
 guide_mastodon
 guide_mastodon_req
-guide_medium
-guide_medium_f_key
-guide_medium_req
 guide_moltbook
 guide_moltbook_req
 guide_nostr

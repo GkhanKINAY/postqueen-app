@@ -110,7 +110,7 @@ export class IntegrationsController {
             // activity derives it. The composer used to decide this from a
             // `comments` argument hand-written in each provider's own .tsx, and
             // the two sets had drifted: devto, dribbble, gmb, hashnode,
-            // listmonk, medium and wordpress implement no `comment()` yet never
+            // listmonk and wordpress implement no `comment()` yet never
             // declared it, so the composer offered extra parts that the
             // workflow then dropped.
             canComment: !!findIntegration?.comment,

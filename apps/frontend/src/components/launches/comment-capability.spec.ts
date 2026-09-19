@@ -75,7 +75,7 @@ describe('the composer says which channels will drop a comment', () => {
 });
 
 describe('the drift this closes', () => {
-  // Measured, not assumed: these seven implement no `comment()` server-side and
+  // Measured, not assumed: these six implement no `comment()` server-side and
   // never declared `comments: false` in their composer component, so the
   // composer offered extra parts that the workflow silently dropped — in the
   // per-channel tab, not only in global mode.
@@ -85,7 +85,6 @@ describe('the drift this closes', () => {
     ['gmb.provider.ts', 'gmb/gmb.provider.tsx'],
     ['hashnode.provider.ts', 'hashnode/hashnode.provider.tsx'],
     ['listmonk.provider.ts', 'listmonk/listmonk.provider.tsx'],
-    ['medium.provider.ts', 'medium/medium.provider.tsx'],
     ['wordpress.provider.ts', 'wordpress/wordpress.provider.tsx'],
   ] as const;
 
@@ -97,7 +96,7 @@ describe('the drift this closes', () => {
       assert.doesNotMatch(provider, /^\s*(override )?async comment\(/m);
 
       // Left declaring nothing on purpose: the server flag covers them, so
-      // seven files did not need touching. If someone later adds
+      // six files did not need touching. If someone later adds
       // `comments: false` here it is harmless, but it is no longer required —
       // which is the point of having one source.
       const component = read(`../new-launch/providers/${client}`);

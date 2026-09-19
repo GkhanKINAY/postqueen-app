@@ -47,7 +47,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   gmb: 'Google Business',
   devto: 'Dev.to',
   hashnode: 'Hashnode',
-  medium: 'Medium',
   wordpress: 'WordPress',
   dribbble: 'Dribbble',
   lemmy: 'Lemmy',

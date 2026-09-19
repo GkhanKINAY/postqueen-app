@@ -5,7 +5,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { ReactTags } from 'react-tag-autocomplete';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
-export const MediumTags: FC<{
+export const YoutubeTags: FC<{
   name: string;
   label: string;
   onChange: (event: {
@@ -66,7 +66,7 @@ export const MediumTags: FC<{
     ].filter((f) => f.label);
   }, [suggestions, tagValue]);
   return (
-    <div className="medium-tags">
+    <div className="youtube-tags">
       <div className="mb-[6px] text-[14px] text-pqMuted">{label}</div>
       <ReactTags
         placeholderText={t('add_a_tag', 'Add a tag')}
