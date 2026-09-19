@@ -1966,7 +1966,7 @@ team_invite_failed
 team_members
 team_members_will_be_removed
 teams
-telegram_bot_missing
+telegram_unavailable
 terms
 terms_of_service
 thank_you_for_registering

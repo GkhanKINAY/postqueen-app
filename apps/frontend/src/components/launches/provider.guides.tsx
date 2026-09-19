@@ -111,7 +111,7 @@ export const useProviderGuides = (): {
       threads: {
         summary: t(
           'guide_threads',
-          'Connects your Threads profile. You will be sent to Threads to sign in and approve access.'
+          'Connects your Threads profile so PostQueen can publish posts and replies and read their insights.'
         ),
       },
       tumblr: {

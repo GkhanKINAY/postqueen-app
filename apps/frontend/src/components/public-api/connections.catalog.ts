@@ -754,18 +754,6 @@ openclaw onboard --install-daemon`,
             },
             ...skillInstall,
             {
-              title: t('conn_openclaw_step_mcp', 'Or connect over MCP'),
-              detail: t(
-                'conn_openclaw_step_mcp_detail',
-                'OpenClaw has its own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Settings → API Keys.'
-              ),
-              code: `openclaw mcp set postqueen '${JSON.stringify({
-                url: mcpUrlWithKey,
-                transport: 'streamable-http',
-              })}'
-openclaw mcp probe postqueen`,
-            },
-            {
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_openclaw_verify',
@@ -780,6 +768,18 @@ openclaw mcp probe postqueen`,
                 'openclaw channels add installs the plugin and starts that channel\'s setup. Restart the Gateway after a plugin install. Full pairing: docs.postqueen.ai/agents/chat-channels.'
               ),
               code: 'openclaw channels add',
+            },
+            {
+              title: t('conn_openclaw_step_mcp', 'Or connect over MCP'),
+              detail: t(
+                'conn_openclaw_step_mcp_detail',
+                'Instead of the skill, you can use OpenClaw\'s own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Settings → API Keys.'
+              ),
+              code: `openclaw mcp set postqueen '${JSON.stringify({
+                url: mcpUrlWithKey,
+                transport: 'streamable-http',
+              })}'
+openclaw mcp probe postqueen`,
             },
           ],
         },
@@ -855,22 +855,22 @@ openclaw mcp probe postqueen`,
     - ~/.agents/skills`,
             },
             {
-              title: t('conn_hermes_step_mcp', 'Or connect over MCP'),
-              detail: t(
-                'conn_hermes_step_mcp_detail',
-                'MCP support ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open. Get the key from Settings → API Keys.'
-              ),
-              code: `mcp_servers:
-  postqueen:
-    url: "${mcpUrlWithKey}"`,
-            },
-            {
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_hermes_verify',
                 'A JSON list of your channels means Hermes can drive PostQueen. Then give it a brief, or hook a chat app with hermes gateway setup.'
               ),
               code: 'postqueen integrations:list',
+            },
+            {
+              title: t('conn_hermes_step_mcp', 'Or connect over MCP'),
+              detail: t(
+                'conn_hermes_step_mcp_detail',
+                'Instead of the skill, you can use the MCP client that ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open, and ask it to list your connected channels. Get the key from Settings → API Keys.'
+              ),
+              code: `mcp_servers:
+  postqueen:
+    url: "${mcpUrlWithKey}"`,
             },
           ],
         },
@@ -1081,7 +1081,7 @@ openclaw mcp probe postqueen`,
               code: 'codex "list my social media integrations"',
             },
             {
-              title: t('conn_codex_step_cli', 'Optional: the skill and CLI'),
+              title: t('conn_codex_step_cli', 'Or add the skill and CLI'),
               detail: t(
                 'conn_codex_step_cli_detail',
                 'Codex runs shell commands with network access turned off by default, so every postqueen CLI call asks for your approval. To allow it, set network_access = true under [sandbox_workspace_write] in ~/.codex/config.toml. The MCP server above does not need this.'
@@ -1914,7 +1914,7 @@ openclaw mcp probe postqueen`,
         {
           id: 'windsurf',
           name: 'Devin Desktop',
-          glyph: 'Ws',
+          glyph: 'Dv',
           icon: '/icons/connections/windsurf.svg',
           kind: 'MCP',
           method: 'MCP',

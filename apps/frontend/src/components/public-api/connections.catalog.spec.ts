@@ -236,9 +236,6 @@ describe('Connect marketplace catalog', () => {
     assert.match(gemini.intro, /httpUrl key still works but is deprecated/);
     assert.match(gemini.intro, /not gemini\.google\.com/);
 
-    // OpenAI replaced the App Directory with the Plugin Directory on
-    // 2026-07-09; its developer-mode guide puts the switch under Security
-    // and login and the create form at chatgpt.com/plugins.
     const chatgpt = byId('chatgpt');
     const chatgptSteps = chatgpt.steps.map((s) => s.detail).join('\n');
     assert.match(chatgpt.intro, /Developer mode/);
@@ -337,8 +334,6 @@ describe('Connect marketplace catalog', () => {
     );
     assert.match(grokBot.intro, /not grok\.com chat/);
     assert.doesNotMatch(grokBot.intro, /grok\.com\/connectors first/);
-    // Owner-tested 2026-09-19: the Bot takes the bare URL in chat and asks
-    // for the key through its secure prompt, so the key never enters the chat.
     assert.match(
       grokBot.steps.map((s) => s.detail).join('\n'),
       /secure prompt, never into the chat/
@@ -398,8 +393,6 @@ describe('Connect marketplace catalog', () => {
       /Do not look for PostQueen in an extension marketplace/
     );
 
-    // Windsurf is Devin Desktop since 2026-06-02 and Cascade was removed in
-    // September; Devin Local reads ~/.config/devin/mcp_config.json.
     assert.equal(windsurf.name, 'Devin Desktop');
     assert.match(windsurfJson, /devin mcp add -s user postqueen/);
     assert.match(windsurfJson, /"url"/);
@@ -426,8 +419,6 @@ describe('Connect marketplace catalog', () => {
     assert.doesNotMatch(zedJson, /mcpServers/);
     assert.match(zed.intro, /context_servers/);
     assert.doesNotMatch(zed.intro, /OAuth/);
-    // Zed starts OAuth only on a 401 (crates/context_server/src/transport/http.rs);
-    // the key-in-path URL answers 200.
     assert.match(zed.info || '', /OAuth/);
     assert.match(zed.info || '', /only when a server answers 401/);
     assert.doesNotMatch(zed.info || '', /not enough on its own/);
@@ -500,7 +491,6 @@ describe('Connect marketplace catalog', () => {
 
     const openclawCode = openclaw.steps.map((s) => s.code || '').join('\n');
     assert.match(openclawCode, /openclaw mcp set postqueen '/);
-    // OpenClaw falls back to SSE when transport is left out.
     assert.match(openclawCode, /"transport":"streamable-http"/);
     assert.match(openclawCode, /openclaw mcp probe postqueen/);
     assert.doesNotMatch(openclaw.intro, /not MCP/);

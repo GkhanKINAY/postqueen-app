@@ -11,9 +11,11 @@ import copy from 'copy-to-clipboard';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
   const { onComplete, nonce } = props;
-  const { telegramBotName } = useVariables();
+  const { telegramBotName, billingEnabled } = useVariables();
+  const user = useUser();
   const fetch = useFetch();
   const word = useRef(makeId(4));
   const stop = useRef(false);
@@ -63,14 +65,32 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
   }, []);
   // Without a bot name there is nothing to add to the group, and the connect
   // button would poll for a /connect message that can never arrive. Say so
-  // instead of rendering "Please add @" with an empty handle.
+  // instead of rendering "Please add @" with an empty handle. A self-hosted
+  // instance gets the same admin / member split as FeatureSetupHint; on the
+  // hosted service the customer cannot fix it, so it only says so.
   if (!telegramBotName) {
+    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
     return (
       <div className="pt-[16px] text-center">
-        {t(
-          'telegram_bot_missing',
-          'Telegram cannot be connected yet because no Telegram bot is set up on this installation. If you run PostQueen yourself, set TELEGRAM_TOKEN and TELEGRAM_BOT_NAME on the server and restart it. Otherwise, contact support.'
-        )}
+        {billingEnabled
+          ? t(
+              'telegram_unavailable',
+              'Telegram cannot be connected right now. Please contact support.'
+            )
+          : isAdmin
+          ? t(
+              'feature_setup_admin',
+              '{{feature}} is not set up on this installation. Add {{env}} to the server environment and restart PostQueen.',
+              {
+                feature: 'Telegram',
+                env: 'TELEGRAM_TOKEN and TELEGRAM_BOT_NAME',
+              }
+            )
+          : t(
+              'feature_setup_member',
+              '{{feature}} is not set up on this installation yet. Ask a workspace admin to turn it on.',
+              { feature: 'Telegram' }
+            )}
       </div>
     );
   }
