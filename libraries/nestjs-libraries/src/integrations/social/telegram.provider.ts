@@ -6,7 +6,10 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  ValidityMedia,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 //@ts-ignore
 import mime from 'mime';
 import TelegramBot from 'node-telegram-bot-api';
@@ -30,6 +33,26 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
   editor = 'html' as const;
   maxLength() {
     return 4096;
+  }
+
+  // 4,096 is a text message. Once a message carries a photo, a video or a
+  // file, the text goes out as its caption, which Telegram caps at 1,024
+  // (sendPhoto, sendVideo, sendDocument and sendMediaGroup alike).
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>,
+    settings: any,
+    additionalSettings: any[],
+    texts: string[] = []
+  ): Promise<string | true> {
+    if (
+      (posts || []).some(
+        (media, index) =>
+          (media?.length ?? 0) > 0 && (texts[index] || '').length > 1024
+      )
+    ) {
+      return 'Telegram captions can be at most 1,024 characters when the message has media';
+    }
+    return true;
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
@@ -225,39 +248,31 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     }
     // if there's only one media, bot sends the media with the text message as caption
     else if (processedMedia.length === 1) {
-      const media = processedMedia[0];
-      const options = {
-        caption: text,
-        parse_mode: 'HTML' as const,
-        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
-      };
-      const response =
-        media.type === 'video'
-          ? await telegramBot.sendVideo(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            )
-          : media.type === 'photo'
-          ? await telegramBot.sendPhoto(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            )
-          : await telegramBot.sendDocument(
-              accessToken,
-              media.media,
-              options,
-              media.fileOptions
-            );
+      const response = await this.sendSingleMedia(
+        accessToken,
+        processedMedia[0],
+        {
+          caption: text,
+          parse_mode: 'HTML' as const,
+          ...(replyToMessageId
+            ? { reply_to_message_id: replyToMessageId }
+            : {}),
+        }
+      );
       messageId = response.message_id;
     }
     // if there are multiple media, bot sends them as a media group - max 10 media per group - with the text as a caption (if there are more than 1 group, the caption will only be sent with the first group)
     else {
       const mediaGroups = this.chunkMedia(processedMedia, 10);
       for (let i = 0; i < mediaGroups.length; i++) {
+        // sendMediaGroup takes 2 to 10 items, so a lone leftover (11 files
+        // are 10 + 1) goes out on its own, like the groups after the first:
+        // no caption, no reply.
+        if (mediaGroups[i].length === 1) {
+          await this.sendSingleMedia(accessToken, mediaGroups[i][0], {});
+          continue;
+        }
+
         const mediaGroup = mediaGroups[i].map((m, index) => ({
           type: m.type === 'document' ? 'document' : m.type, // Documents are not allowed in media groups
           media: m.media,
@@ -341,6 +356,42 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
 
     return [];
   }
+  // One file, through the method its type needs.
+  private sendSingleMedia(
+    accessToken: string,
+    media: {
+      type: 'photo' | 'video' | 'document';
+      media: string;
+      fileOptions: { filename: string; contentType: string };
+    },
+    options: {
+      caption?: string;
+      parse_mode?: 'HTML';
+      reply_to_message_id?: number;
+    }
+  ) {
+    return media.type === 'video'
+      ? telegramBot.sendVideo(
+          accessToken,
+          media.media,
+          options,
+          media.fileOptions
+        )
+      : media.type === 'photo'
+      ? telegramBot.sendPhoto(
+          accessToken,
+          media.media,
+          options,
+          media.fileOptions
+        )
+      : telegramBot.sendDocument(
+          accessToken,
+          media.media,
+          options,
+          media.fileOptions
+        );
+  }
+
   // chunkMedia is used to split media into groups of "size". 10 is used here because telegram api allows a maximum of 10 media per group
   private chunkMedia(media: { type: string; media: string }[], size: number) {
     const result = [];
