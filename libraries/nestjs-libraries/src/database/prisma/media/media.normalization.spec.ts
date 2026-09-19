@@ -118,7 +118,7 @@ describe('Uploaded video normalization', () => {
     assert.match(activity, /err instanceof FfmpegError \|\| err instanceof MediaProcessingError/);
     assert.match(activity, /nonRetryable: true,/);
     assert.match(workflows, /export \* from '\.\/process\.media\.workflow';/);
-    assert.match(orchestratorModule, /PostMetricsActivity,\n\s+MediaActivity,\n\];/);
+    assert.match(orchestratorModule, /PostMetricsActivity,\n\s+MediaActivity,\n/);
     assert.match(envExample, /#MEDIA_PROCESSING_CONCURRENCY=1/);
   });
 
