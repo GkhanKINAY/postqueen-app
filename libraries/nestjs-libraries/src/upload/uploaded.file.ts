@@ -157,16 +157,34 @@ export function spooledFile(
 }
 
 /**
+ * What `downloadToFile` throws for a body past `maxBytes`, declared or
+ * counted, so a caller can tell "too large" apart from "could not fetch".
+ */
+export class DownloadTooLargeError extends Error {
+  constructor() {
+    super('The file is larger than the upload limit');
+  }
+}
+
+/**
  * Streams a public https URL to a file, the way `uploadSimple` fetches one
  * but without holding it in memory, and refuses anything past `maxBytes`
  * whether the server said so up front or not.
+ *
+ * `allowHttp` is passed by MediaService.uploadFromUrl, which serves the public
+ * /upload-from-url route (its DTO already requires https) and the agent's
+ * uploadFromUrlTool, which has always taken a plain http URL: that one skips
+ * the https pre-check and relies on the SSRF-safe dispatcher alone, which
+ * checks every address it connects to.
  */
 export async function downloadToFile(
   url: string,
   dest: string,
-  maxBytes = MAX_UPLOAD_BYTES
+  maxBytes = MAX_UPLOAD_BYTES,
+  options: { allowHttp?: boolean } = {}
 ): Promise<void> {
-  if (!(await isSafePublicHttpsUrl(url))) {
+  const plainHttp = options.allowHttp && /^http:\/\//i.test(url);
+  if (!plainHttp && !(await isSafePublicHttpsUrl(url))) {
     throw new Error('Unsafe URL');
   }
   const response = await fetch(url, {
@@ -179,14 +197,16 @@ export async function downloadToFile(
   }
   const declared = Number(response.headers.get('content-length'));
   if (declared && declared > maxBytes) {
-    throw new Error('The file is larger than the upload limit');
+    // Let go of the connection instead of leaving the body unread
+    await response.body.cancel().catch(() => undefined);
+    throw new DownloadTooLargeError();
   }
   let received = 0;
   const counted = new Transform({
     transform(chunk, _encoding, callback) {
       received += chunk.length;
       if (received > maxBytes) {
-        callback(new Error('The file is larger than the upload limit'));
+        callback(new DownloadTooLargeError());
         return;
       }
       callback(null, chunk);

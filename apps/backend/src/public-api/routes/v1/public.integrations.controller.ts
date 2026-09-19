@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,10 +13,7 @@ import {
   UseInterceptors,
   UsePipes,
 } from '@nestjs/common';
-import {
-  CustomFileValidationPipe,
-  getMaxSize,
-} from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
+import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { ApiTags } from '@nestjs/swagger';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
@@ -42,22 +40,6 @@ import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.fu
 import { UploadDto } from '@gitroom/nestjs-libraries/dtos/media/upload.dto';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { GetNotificationsDto } from '@gitroom/nestjs-libraries/dtos/notifications/get.notifications.dto';
-import { Readable } from 'stream';
-import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { fileTypeFromBuffer } from 'file-type';
-
-const PUBLIC_API_ALLOWED_MIME = new Set<string>([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/avif',
-  'image/bmp',
-  'image/tiff',
-  'video/mp4',
-  // Converted to an mp4 in the background; the row is `processing` until then.
-  'video/quicktime',
-]);
 import * as Sentry from '@sentry/nestjs';
 import {
   socialIntegrationList,
@@ -126,62 +108,15 @@ export class PublicIntegrationsController {
     @Body() body: UploadDto
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    let response: globalThis.Response;
     try {
-      response = await fetch(body.url, {
-        // @ts-ignore — undici option, not in lib.dom fetch types
-        dispatcher: ssrfSafeDispatcher,
-      });
-    } catch {
-      // Network-level failure (DNS, connection refused, SSRF block, etc.) —
-      // fetch rejects rather than returning a non-ok response.
-      throw new HttpException({ msg: 'Failed to fetch URL' }, 400);
+      return await this._mediaService.uploadFromUrl(org.id, body.url);
+    } catch (err) {
+      // Validation failures keep this route's { msg } error shape
+      if (err instanceof BadRequestException) {
+        throw new HttpException({ msg: err.message }, 400);
+      }
+      throw err;
     }
-    if (!response.ok) {
-      throw new HttpException({ msg: 'Failed to fetch URL' }, 400);
-    }
-
-    // Guard against OOM: bail out before buffering the whole body into memory.
-    // Content-Length may be absent or wrong, so we re-check the real size after
-    // download too. The type isn't known yet (sniffed below), so the pre-check
-    // uses the largest allowed cap (video).
-    const maxDownloadSize = getMaxSize('video/mp4');
-    const declaredSize = Number(response.headers.get('content-length'));
-    if (declaredSize && declaredSize > maxDownloadSize) {
-      throw new HttpException({ msg: 'File is too large.' }, 400);
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const detected = await fileTypeFromBuffer(buffer);
-    if (!detected || !PUBLIC_API_ALLOWED_MIME.has(detected.mime)) {
-      throw new HttpException({ msg: 'Unsupported file type.' }, 400);
-    }
-
-    if (buffer.length > getMaxSize(detected.mime)) {
-      throw new HttpException({ msg: 'File is too large.' }, 400);
-    }
-
-    const mimetype = detected.mime;
-    const ext = detected.ext;
-
-    const getFile = await this.storage.uploadFile({
-      buffer,
-      mimetype,
-      size: buffer.length,
-      path: '',
-      fieldname: '',
-      destination: '',
-      stream: new Readable(),
-      filename: '',
-      originalname: `upload.${ext}`,
-      encoding: '',
-    });
-
-    return this._mediaService.saveUploadedFile(
-      org.id,
-      getFile.originalname,
-      getFile.path
-    );
   }
 
   @Get('/find-slot/:id')

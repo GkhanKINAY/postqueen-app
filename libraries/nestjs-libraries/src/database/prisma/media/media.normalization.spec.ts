@@ -49,8 +49,11 @@ describe('Uploaded video normalization', () => {
 
   it('routes every upload through saveUploadedFile and only videos into the workflow', () => {
     assert.equal(count(mediaController, 'saveUploadedFile('), 3);
-    assert.equal(count(publicController, 'saveUploadedFile('), 2);
-    assert.equal(count(uploadTool, 'saveUploadedFile('), 1);
+    assert.equal(count(publicController, 'saveUploadedFile('), 1);
+    // Both URL uploads share one path, and it ends where a multipart one does
+    assert.equal(count(publicController, 'this._mediaService.uploadFromUrl('), 1);
+    assert.equal(count(uploadTool, 'this._mediaService.uploadFromUrl('), 1);
+    assert.match(service, /async uploadFromUrl\(org: string, url: string\) \{[\s\S]*?return await this\.saveUploadedFile\(/);
     assert.equal(count(thirdParty, 'saveUploadedFile('), 2);
     assert.match(service, /const PROCESSABLE_EXTENSIONS = new Set\(\['\.mp4', '\.mov'\]\);/);
     assert.match(service, /const USABLE_AS_IS = new Set\(\['\.mp4'\]\);/);
@@ -90,9 +93,11 @@ describe('Uploaded video normalization', () => {
     assert.match(cloudflare, /new DeleteObjectCommand\(\{ Bucket: this\._bucketName, Key: this\.keyOf\(path\) \}\)/);
     assert.match(cloudflare, /const KEY = \/\^\[A-Za-z0-9_-\]\{1,120\}\\\.\[a-z0-9\]\{1,5\}\$\/i;/);
     // .mov is accepted everywhere an mp4 is, on the way in only.
-    for (const source of [localStorage, cloudflare, validation, publicController, uploadTool]) {
+    for (const source of [localStorage, cloudflare, validation]) {
       assert.match(source, /'video\/quicktime'/);
     }
+    // The URL uploads take the multipart allow-list rather than a copy of it
+    assert.match(service, /UPLOAD_ALLOWED_MIME\.has\(detected\.mime\)/);
     assert.match(r2Uploader, /'\.mov': 'video\/quicktime'/);
   });
 

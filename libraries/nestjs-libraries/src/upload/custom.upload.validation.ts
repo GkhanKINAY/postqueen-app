@@ -9,7 +9,9 @@ import {
   MAX_UPLOAD_BYTES,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
 
-const ALLOWED_MIME_TYPES = new Set<string>([
+// What users may put in the media library, whether by multipart upload or
+// from a remote URL; narrower than what storage itself accepts (no audio)
+export const UPLOAD_ALLOWED_MIME = new Set<string>([
   'image/jpeg',
   'image/png',
   'image/gif',
@@ -46,7 +48,7 @@ export class CustomFileValidationPipe implements PipeTransform {
       }
 
       const detected = await detectUploadType(value);
-      if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
+      if (!detected || !UPLOAD_ALLOWED_MIME.has(detected.mime)) {
         throw new BadRequestException('Unsupported file type.');
       }
 

@@ -1,4 +1,9 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import {
   ImageOrientation,
@@ -12,10 +17,17 @@ import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
+  detectUploadType,
+  DownloadTooLargeError,
   downloadToFile,
+  MAX_UPLOAD_BYTES,
   spooledFile,
   uploadTempDir,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
+import {
+  getMaxSize,
+  UPLOAD_ALLOWED_MIME,
+} from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import {
   decideAction,
   FfmpegService,
@@ -147,6 +159,60 @@ export class MediaService {
       'data:image/png;base64,' + image
     );
     return this.saveFile(org.id, file.split('/').pop(), file);
+  }
+
+  /**
+   * A remote image or video into the library: the public API's
+   * /upload-from-url and the agent's uploadFromUrlTool. Both used to read the
+   * whole body into memory before looking at it. Now it is streamed to a
+   * spooled file under the upload cap, and from there it goes the way a
+   * multipart upload goes: the type sniffed from the bytes, the allow-list,
+   * storage, and the normalizer for a video. Rejections are
+   * BadRequestException with the messages the routes answered before.
+   */
+  async uploadFromUrl(org: string, url: string) {
+    await fsp.mkdir(uploadTempDir(), { recursive: true });
+    const dir = await fsp.mkdtemp(join(uploadTempDir(), 'url-'));
+    const path = join(dir, 'download');
+    try {
+      try {
+        await downloadToFile(url, path, MAX_UPLOAD_BYTES, { allowHttp: true });
+      } catch (err) {
+        // Network-level failures (DNS, connection refused, SSRF block, ...)
+        // reject rather than answer; keep the real reason reachable for
+        // callers that want to surface it
+        throw new BadRequestException(
+          err instanceof DownloadTooLargeError
+            ? 'File is too large.'
+            : 'Failed to fetch URL',
+          { cause: err }
+        );
+      }
+
+      const file = spooledFile(path, '', 'upload');
+      const detected = await detectUploadType(file);
+      if (!detected || !UPLOAD_ALLOWED_MIME.has(detected.mime)) {
+        throw new BadRequestException('Unsupported file type.');
+      }
+      if (file.size > getMaxSize(detected.mime)) {
+        throw new BadRequestException('File is too large.');
+      }
+
+      const stored = await this.storage.uploadFile({
+        ...file,
+        mimetype: detected.mime,
+        originalname: `upload.${detected.ext}`,
+      });
+      return await this.saveUploadedFile(
+        org,
+        stored.originalname,
+        stored.path,
+        undefined,
+        file.size
+      );
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
   }
 
   saveFile(

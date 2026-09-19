@@ -3,34 +3,13 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
-import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
-import { getMaxSize } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { Readable } from 'stream';
-import { fileTypeFromBuffer } from 'file-type';
 
-// Same allow-list as the public API /upload-from-url route.
 /** How long the tool waits for a .mov to become an mp4 before answering. */
 const MOV_WAIT_MS = 4 * 60 * 1000;
 
-const ALLOWED_MIME = new Set<string>([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/avif',
-  'image/bmp',
-  'image/tiff',
-  'video/mp4',
-  // Converted to an mp4 in the background; the row is `processing` until then.
-  'video/quicktime',
-]);
-
 @Injectable()
 export class UploadFromUrlTool implements AgentToolInterface {
-  private storage = UploadFactory.createStorage();
-
   constructor(private _mediaService: MediaService) {}
   name = 'uploadFromUrlTool';
 
@@ -74,57 +53,11 @@ A video is converted for the platforms in the background: an mp4 comes back with
             (context?.requestContext as any)?.get('organization') as string
           );
 
-          const response = await fetch(inputData.url, {
-            // @ts-ignore — undici option, not in lib.dom fetch types
-            dispatcher: ssrfSafeDispatcher,
-          });
-
-          if (!response.ok) {
-            return { error: 'Failed to fetch URL' };
-          }
-
-          // Guard against OOM: bail out before buffering the whole body into
-          // memory. Content-Length may be absent or wrong, so we re-check the
-          // real size after download too. The type isn't known yet (sniffed
-          // below), so the pre-check uses the largest allowed cap (video).
-          const maxDownloadSize = getMaxSize('video/mp4');
-          const declaredSize = Number(response.headers.get('content-length'));
-          if (declaredSize && declaredSize > maxDownloadSize) {
-            return {
-              error: `File is too large: ${declaredSize} bytes (max ${maxDownloadSize} bytes).`,
-            };
-          }
-
-          const buffer = Buffer.from(await response.arrayBuffer());
-          const detected = await fileTypeFromBuffer(buffer);
-          if (!detected || !ALLOWED_MIME.has(detected.mime)) {
-            return { error: 'Unsupported file type.' };
-          }
-
-          const maxSize = getMaxSize(detected.mime);
-          if (buffer.length > maxSize) {
-            return {
-              error: `File is too large: ${buffer.length} bytes (max ${maxSize} bytes).`,
-            };
-          }
-
-          const getFile = await this.storage.uploadFile({
-            buffer,
-            mimetype: detected.mime,
-            size: buffer.length,
-            path: '',
-            fieldname: '',
-            destination: '',
-            stream: new Readable(),
-            filename: '',
-            originalname: `upload.${detected.ext}`,
-            encoding: '',
-          });
-
-          const saved = await this._mediaService.saveUploadedFile(
+          // Same path as the public API's /upload-from-url: streamed to a
+          // spooled file, sniffed, allow-listed and stored
+          const saved = await this._mediaService.uploadFromUrl(
             org.id,
-            getFile.originalname,
-            getFile.path
+            inputData.url
           );
           if (saved.status !== 'processing' || /\.mp4$/i.test(saved.name)) {
             return saved;
@@ -147,20 +80,23 @@ A video is converted for the platforms in the background: an mp4 comes back with
         } catch (err) {
           // undici's fetch rejects with a generic TypeError('fetch failed')
           // and hides the real reason (DNS, TLS, SSRF block, ...) in
-          // err.cause, so surface it for the agent. Error.cause isn't in the
-          // es2020 lib typings this repo compiles against, hence the cast.
-          const cause =
-            err instanceof Error
-              ? (err as Error & { cause?: unknown }).cause
-              : undefined;
-          const causeText =
-            cause instanceof Error && cause.message
-              ? ` (${cause.message})`
-              : '';
+          // err.cause, which the service wraps once more, so walk the chain
+          // and surface it for the agent. Error.cause isn't in the es2020
+          // lib typings this repo compiles against, hence the cast
+          const message =
+            err instanceof Error ? err.message : 'Unexpected error';
+          const causes: string[] = [];
+          let cause = (err as Error & { cause?: unknown })?.cause;
+          while (cause instanceof Error) {
+            if (cause.message) {
+              causes.push(cause.message);
+            }
+            cause = (cause as Error & { cause?: unknown }).cause;
+          }
+          const causeText = causes.length ? ` (${causes.join(': ')})` : '';
+
           return {
-            error: `Failed to upload media from URL: ${
-              err instanceof Error ? err.message : 'Unexpected error'
-            }${causeText}`,
+            error: `Failed to upload media from URL: ${message}${causeText}`,
           };
         }
       },
