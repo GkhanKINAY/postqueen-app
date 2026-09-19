@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -27,16 +27,20 @@ export const FarcasterProvider = () => {
           t('oauth_start_failed', 'Could not start sign-in, please try again'),
           'warning'
         );
+        // The approval already went through and polling has stopped, so the
+        // modal would otherwise sit on "Waiting for your approval" for good.
+        modal.closeCurrent();
         return;
       }
       window.location.href = `/auth?provider=FARCASTER&code=${encodeURIComponent(code)}&state=${state}`;
     },
-    [fetch, toaster, t]
+    [fetch, toaster, t, modal]
   );
   const open = useCallback(() => {
     modal.openModal({
       title: t('farcaster', 'Farcaster'),
       withCloseButton: true,
+      compact: 420,
       children: (close) => (
         <FarcasterApproval login={gotoLogin} onFail={close} />
       ),
@@ -84,7 +88,6 @@ export const FarcasterApproval: FC<{
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
-  const activeSigner = useRef('');
   const [approvalUrl, setApprovalUrl] = useState('');
   const [qrCode, setQrCode] = useState('');
 
@@ -105,12 +108,11 @@ export const FarcasterApproval: FC<{
     }
   }
 
-  const poll = async (signerUuid: string) => {
-    activeSigner.current = signerUuid;
+  const poll = async (signerUuid: string, isActive: () => boolean) => {
     const startedAt = Date.now();
     const generator = load(signerUuid);
     for await (const data of generator) {
-      if (activeSigner.current !== signerUuid) {
+      if (!isActive()) {
         return;
       }
       if (data.status === 'approved') {
@@ -143,11 +145,14 @@ export const FarcasterApproval: FC<{
     }
   };
 
-  const start = async () => {
+  const start = async (isActive: () => boolean) => {
     try {
       const data = await (
         await fetch('/auth/farcaster/signer', { method: 'POST' })
       ).json();
+      if (!isActive()) {
+        return;
+      }
       if (!data.approvalUrl) {
         toaster.show(
           data.error ||
@@ -162,8 +167,11 @@ export const FarcasterApproval: FC<{
       }
       setApprovalUrl(data.approvalUrl);
       setQrCode(data.qrCode);
-      poll(data.signerUuid);
+      poll(data.signerUuid, isActive);
     } catch (err) {
+      if (!isActive()) {
+        return;
+      }
       toaster.show(
         t('farcaster_signer_failed', 'Failed to start the Farcaster connection'),
         'warning'
@@ -180,17 +188,22 @@ export const FarcasterApproval: FC<{
     );
   }, [approvalUrl, t, toaster]);
 
+  // Every await in start and poll checks this run is still mounted. Without
+  // it a closed view kept polling for ten minutes and its timeout called
+  // onFail, which in the channel-connect flow is modals.closeCurrent: it
+  // closed whatever modal was open by then.
   useEffect(() => {
-    start();
+    let active = true;
+    start(() => active);
     return () => {
-      activeSigner.current = '';
+      active = false;
     };
   }, []);
 
   if (!approvalUrl) {
     return (
       <div className="flex justify-center py-[20px]">
-        <Spinner width={40} height={40} />
+        <Spinner width={40} height={40} label={t('loading', 'Loading')} />
       </div>
     );
   }
@@ -211,7 +224,7 @@ export const FarcasterApproval: FC<{
       <Button onClick={copyLink}>
         {t('farcaster_copy_link', 'Copy Farcaster link')}
       </Button>
-      <div className="flex items-center gap-[8px] text-sm opacity-70">
+      <div className="flex items-center gap-[8px] text-sm text-pqMuted">
         <Spinner width={20} height={20} />
         {t('farcaster_waiting_for_approval', 'Waiting for your approval...')}
       </div>
