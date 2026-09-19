@@ -178,7 +178,7 @@ export const FarcasterApproval: FC<{
       t('link_copied_to_clipboard', 'Link copied to clipboard'),
       'success'
     );
-  }, [approvalUrl]);
+  }, [approvalUrl, t, toaster]);
 
   useEffect(() => {
     start();
