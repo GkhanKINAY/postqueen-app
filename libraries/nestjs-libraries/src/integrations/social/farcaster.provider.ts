@@ -50,13 +50,19 @@ export class FarcasterProvider
   scopes = [] as string[];
   override maxConcurrentJob = 3; // Farcaster has moderate limits
   editor = 'normal' as const;
+  // A cast is measured in bytes: up to 1,024 for a long cast (Snapchain
+  // cast.rs). checkValidity holds the text to that; this is the most it can
+  // be when every character is one byte.
   maxLength() {
-    return 800;
+    return 1024;
   }
   dto = FarcasterDto;
 
   override async checkValidity(
-    list: Array<ValidityMedia[]>
+    list: Array<ValidityMedia[]>,
+    settings: any,
+    additionalSettings: any[],
+    texts: string[] = []
   ): Promise<string | true> {
     if (
       list?.some((item) =>
@@ -64,6 +70,13 @@ export class FarcasterProvider
       )
     ) {
       return 'Can only accept images';
+    }
+    // Every image is an embed, and a cast takes at most 4 (engine V20).
+    if (list?.some((item) => (item?.length ?? 0) > 4)) {
+      return 'Farcaster casts can have up to 4 images';
+    }
+    if (texts.some((text) => Buffer.byteLength(text, 'utf8') > 1024)) {
+      return 'Farcaster casts can be at most 1,024 bytes, and accented letters, emoji and non-Latin scripts take 2 to 4 bytes each';
     }
     return true;
   }
