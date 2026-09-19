@@ -37,8 +37,9 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
       firstItems?.length &&
       (firstItems?.[0]?.path?.indexOf?.('png') ?? -1) === -1 &&
       (firstItems?.[0]?.path?.indexOf?.('jpg') ?? -1) === -1 &&
-      (firstItems?.[0]?.path?.indexOf?.('jpef') ?? -1) === -1 &&
-      (firstItems?.[0]?.path?.indexOf?.('gif') ?? -1) === -1
+      (firstItems?.[0]?.path?.indexOf?.('jpeg') ?? -1) === -1 &&
+      (firstItems?.[0]?.path?.indexOf?.('gif') ?? -1) === -1 &&
+      (firstItems?.[0]?.path?.indexOf?.('webp') ?? -1) === -1
     ) {
       return 'You can set only one picture for a cover';
     }
