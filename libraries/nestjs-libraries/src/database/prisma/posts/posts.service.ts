@@ -490,17 +490,30 @@ export class PostsService {
               return m;
             }
 
-            if (hasExtension(m.path, 'png')) {
-              imageUpdateNeeded = true;
+            // Every image that is not already a JPEG, not only PNG: the
+            // library also takes WebP, GIF, AVIF, BMP and TIFF, and a provider
+            // that asks for JPEG accepts none of them as they are.
+            if (
+              m.type === 'image' &&
+              !hasExtension(m.path, 'jpg') &&
+              !hasExtension(m.path, 'jpeg')
+            ) {
               // The stored path can name any host, so it goes through the same
               // guarded reader the providers use.
               const imageBuffer = Buffer.from(await readOrFetch(m.url));
 
-              // Use sharp to get the metadata of the image
+              // sharp cannot decode every format the library accepts (BMP).
+              // Such a file goes out as it is, and the rest of the list is
+              // still converted instead of the whole list being dropped.
               const buffer = await sharp(imageBuffer)
                 .jpeg({ quality: 100 })
-                .toBuffer();
+                .toBuffer()
+                .catch((): null => null);
+              if (!buffer) {
+                return m;
+              }
 
+              imageUpdateNeeded = true;
               const { path, originalname } = await this.storage.uploadFile({
                 buffer,
                 mimetype: 'image/jpeg',
