@@ -126,6 +126,7 @@ describe('Connect marketplace catalog', () => {
     assert.deepEqual([...BOTS_DISPLAY_ORDER], [
       'openclaw',
       'grok-bot',
+      'claude-cowork',
       'hermes',
       'muse',
     ]);
@@ -142,6 +143,7 @@ describe('Connect marketplace catalog', () => {
     assert.equal(byId('openclaw').section, 'bots');
     assert.equal(byId('grok-bot').section, 'bots');
     assert.equal(byId('hermes').section, 'bots');
+    assert.equal(byId('claude-cowork').section, 'bots');
     assert.equal(byId('muse').section, 'bots');
     assert.equal(byId('vscode').section, 'editors');
     assert.equal(byId('claude-apps').section, 'featured');
@@ -224,26 +226,31 @@ describe('Connect marketplace catalog', () => {
     assert.equal(resolveConnectorId('rss-autopost'), 'rss');
   });
 
-  it('uses Gemini httpUrl and ChatGPT Apps Create, not Connectors or Plugins', () => {
+  it('uses Gemini url with type http and the current ChatGPT Plugins path', () => {
     const gemini = byId('gemini');
-    assert.match(gemini.steps.map((s) => s.code).join('\n'), /"httpUrl"/);
-    assert.doesNotMatch(gemini.intro, /\burl is the streamable/);
-    assert.match(gemini.intro, /httpUrl/);
+    const geminiCode = gemini.steps.map((s) => s.code).join('\n');
+    assert.match(geminiCode, /"url"/);
+    assert.match(geminiCode, /"type": "http"/);
+    assert.doesNotMatch(geminiCode, /"httpUrl"/);
+    assert.doesNotMatch(gemini.intro, /reserved for SSE/);
+    assert.match(gemini.intro, /httpUrl key still works but is deprecated/);
     assert.match(gemini.intro, /not gemini\.google\.com/);
 
+    // OpenAI replaced the App Directory with the Plugin Directory on
+    // 2026-07-09; its developer-mode guide puts the switch under Security
+    // and login and the create form at chatgpt.com/plugins.
     const chatgpt = byId('chatgpt');
+    const chatgptSteps = chatgpt.steps.map((s) => s.detail).join('\n');
     assert.match(chatgpt.intro, /Developer mode/);
-    assert.match(chatgpt.intro, /Settings → Apps/);
-    assert.match(chatgpt.intro, /not Settings → Connectors/);
+    assert.match(chatgpt.intro, /chatgpt\.com\/plugins/);
     assert.match(chatgpt.intro, /not in the ChatGPT app store/);
-    assert.match(
-      chatgpt.steps.map((s) => s.detail).join('\n'),
-      /Apps → Create/
-    );
-    assert.match(
-      chatgpt.steps.map((s) => s.detail).join('\n'),
-      /Do not search the app store/
-    );
+    assert.doesNotMatch(chatgpt.intro, /Older builds/);
+    assert.match(chatgptSteps, /Settings → Security and login → Developer mode/);
+    assert.match(chatgptSteps, /chatgpt\.com\/plugins and press \+/);
+    assert.match(chatgptSteps, /No Authentication/);
+    assert.match(chatgptSteps, /\+ → Developer mode/);
+    assert.doesNotMatch(chatgptSteps, /Apps → Create|Older builds/);
+    assert.match(chatgptSteps, /Do not search the app store/);
     assert.match(chatgpt.info || '', /schedulePostTool may stay blocked/);
     assert.match(chatgpt.info || '', /not listed in the ChatGPT app store/i);
   });
@@ -269,6 +276,7 @@ describe('Connect marketplace catalog', () => {
     assert.match(claude.intro, /not in Anthropic/);
     assert.match(claude.intro, /paste our public MCP URL/);
     assert.match(claude.info || '', /Not listed at claude\.com\/connectors/);
+    assert.match(claude.info || '', /mobile apps is in beta/);
     assert.match(claude.info || '', /Do not search the directory/);
     assert.match(
       claude.steps.map((s) => s.detail).join('\n'),
@@ -322,17 +330,29 @@ describe('Connect marketplace catalog', () => {
     assert.match(grok.intro, /not in xAI/);
     assert.match(grok.info || '', /does not install PostQueen on Grok Bot or Grok Build/);
     assert.match(grok.steps.map((s) => s.detail).join('\n'), /grok\.com\/connectors/);
+    assert.doesNotMatch(grok.intro, /iOS\/Android|Settings → Connectors|\+ → Connectors/);
     assert.match(
       grok.steps.map((s) => s.detail).join('\n'),
       /Do not pick a catalog connector/
     );
     assert.match(grokBot.intro, /not grok\.com chat/);
     assert.doesNotMatch(grokBot.intro, /grok\.com\/connectors first/);
+    // Owner-tested 2026-09-19: the Bot takes the bare URL in chat and asks
+    // for the key through its secure prompt, so the key never enters the chat.
     assert.match(
       grokBot.steps.map((s) => s.detail).join('\n'),
-      /Add this MCP server/
+      /secure prompt, never into the chat/
+    );
+    assert.equal(
+      grokBot.steps[0].code,
+      'Connect PostQueen as an MCP server at https://api.postqueen.ai/mcp'
+    );
+    assert.doesNotMatch(
+      grokBot.steps.map((s) => s.code || '').join('\n'),
+      /test-key/
     );
     assert.match(grokBot.info || '', /not a Grok Bot marketplace plugin/);
+    assert.match(grokBot.info || '', /Plugins → Yours/);
     assert.equal(resolveConnectorId('grok-bot'), 'grok-bot');
   });
 
@@ -359,7 +379,7 @@ describe('Connect marketplace catalog', () => {
     assert.equal(resolveConnectorId('grok build'), 'grok-build');
   });
 
-  it('uses the official VS Code, Windsurf and Zed JSON keys, not Cursor mcpServers', () => {
+  it('uses the official VS Code, Devin Desktop and Zed JSON keys, not Cursor mcpServers', () => {
     const vscode = byId('vscode');
     const windsurf = byId('windsurf');
     const zed = byId('zed');
@@ -378,12 +398,21 @@ describe('Connect marketplace catalog', () => {
       /Do not look for PostQueen in an extension marketplace/
     );
 
-    assert.match(windsurfJson, /"serverUrl"/);
-    assert.match(windsurf.intro, /mcp_config\.json/);
+    // Windsurf is Devin Desktop since 2026-06-02 and Cascade was removed in
+    // September; Devin Local reads ~/.config/devin/mcp_config.json.
+    assert.equal(windsurf.name, 'Devin Desktop');
+    assert.match(windsurfJson, /devin mcp add -s user postqueen/);
+    assert.match(windsurfJson, /"url"/);
+    assert.doesNotMatch(windsurfJson, /"serverUrl"/);
+    assert.match(windsurf.intro, /~\/\.config\/devin\/mcp_config\.json/);
     assert.match(windsurf.info || '', /Devin Local/);
+    assert.doesNotMatch(
+      windsurf.steps.map((s) => `${s.title} ${s.detail || ''}`).join('\n'),
+      /Cascade/
+    );
     assert.match(
       windsurf.steps.map((s) => s.detail).join('\n'),
-      /not in the Windsurf marketplace/
+      /not in the Devin Desktop marketplace/
     );
 
     assert.match(cursor.intro, /not in the Cursor Marketplace/);
@@ -397,15 +426,18 @@ describe('Connect marketplace catalog', () => {
     assert.doesNotMatch(zedJson, /mcpServers/);
     assert.match(zed.intro, /context_servers/);
     assert.doesNotMatch(zed.intro, /OAuth/);
+    // Zed starts OAuth only on a 401 (crates/context_server/src/transport/http.rs);
+    // the key-in-path URL answers 200.
     assert.match(zed.info || '', /OAuth/);
-    assert.match(zed.info || '', /not that flow/);
-    assert.match(zed.info || '', /not enough on its own/);
+    assert.match(zed.info || '', /only when a server answers 401/);
+    assert.doesNotMatch(zed.info || '', /not enough on its own/);
 
     const other = byId('other-mcp');
     assert.match(other.note || '', /Cline, Continue, Goose/);
     assert.match(other.intro, /17 tools/);
     assert.equal(resolveConnectorId('vs-code'), 'vscode');
     assert.equal(resolveConnectorId('cascade'), 'windsurf');
+    assert.equal(resolveConnectorId('devin-desktop'), 'windsurf');
     assert.equal(resolveConnectorId('zed'), 'zed');
   });
 
@@ -439,7 +471,7 @@ describe('Connect marketplace catalog', () => {
     assert.match(discord.examples?.[0]?.code || '', /posts:create/);
   });
 
-  it('installs the CLI for skill bots and does not pretend they speak MCP', () => {
+  it('installs the CLI for skill bots and offers their native MCP route second', () => {
     const openclaw = byId('openclaw');
     const hermes = byId('hermes');
     assert.match(
@@ -465,6 +497,35 @@ describe('Connect marketplace catalog', () => {
       /external_dirs/
     );
     assert.equal(hermes.examples?.[0]?.tool, undefined);
+
+    const openclawCode = openclaw.steps.map((s) => s.code || '').join('\n');
+    assert.match(openclawCode, /openclaw mcp set postqueen '/);
+    // OpenClaw falls back to SSE when transport is left out.
+    assert.match(openclawCode, /"transport":"streamable-http"/);
+    assert.match(openclawCode, /openclaw mcp probe postqueen/);
+    assert.doesNotMatch(openclaw.intro, /not MCP/);
+    assert.match(
+      hermes.steps.map((s) => s.code || '').join('\n'),
+      /mcp_servers:\n  postqueen:\n    url: /
+    );
+    assert.match(
+      hermes.steps.map((s) => s.detail || '').join('\n'),
+      /\/reload-mcp/
+    );
+  });
+
+  it('adds Claude Cowork through the same custom connector as Claude', () => {
+    const cowork = byId('claude-cowork');
+    assert.equal(cowork.method, 'MCP');
+    assert.match(cowork.intro, /same custom connector as the Claude card/);
+    assert.match(cowork.intro, /Pro, Max, Team and Enterprise plans, not Free/);
+    assert.match(
+      cowork.steps.map((s) => s.detail).join('\n'),
+      /Customize → Connectors → \+ → Add custom connector/
+    );
+    assert.equal(cowork.steps[0].code, 'https://api.postqueen.ai/mcp/test-key');
+    assert.equal(resolveConnectorId('cowork'), 'claude-cowork');
+    assert.equal(resolveConnectorId('claude cowork'), 'claude-cowork');
   });
 
   it('states CLI, API and OAuth capabilities without mixing surfaces', () => {
@@ -476,9 +537,12 @@ describe('Connect marketplace catalog', () => {
     assert.match(byId('oauth').intro, /Bearer token on \/mcp/);
     assert.doesNotMatch(byId('oauth').intro, / and the CLI/);
     assert.match(byId('zapier').intro, /Professional/);
+    const codex = byId('codex');
+    assert.equal(codex.method, 'MCP');
+    assert.match(codex.steps[0].code || '', /^codex mcp add postqueen --url /);
     assert.match(
-      byId('codex').steps.map((s) => s.code || '').join('\n'),
-      /codex mcp add postqueen --url/
+      codex.steps.map((s) => s.detail || '').join('\n'),
+      /network access turned off by default/
     );
     assert.equal(
       byId('gemini').steps.find((s) => s.title === 'Check it worked')?.code,

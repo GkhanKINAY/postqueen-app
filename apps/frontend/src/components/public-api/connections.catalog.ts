@@ -6,7 +6,9 @@
  * / Node SDK / OAuth apps, and third-party media. Code samples interpolate
  * backendUrl / mcpUrl / apiKey at build time.
  *
- * Do not invent MCP commands for OpenClaw/Hermes, they use Agent Skills.
+ * OpenClaw and Hermes lead with the Agent Skill, because the Chat cards build
+ * on it. Both also have native MCP clients (openclaw mcp set, Hermes
+ * mcp_servers), which their cards offer as a second route.
  * Do not invent Typefully commands.
  */
 
@@ -96,6 +98,7 @@ export const AGENTS_DISPLAY_ORDER = [
 export const BOTS_DISPLAY_ORDER = [
   'openclaw',
   'grok-bot',
+  'claude-cowork',
   'hermes',
   'muse',
 ] as const;
@@ -374,6 +377,11 @@ export const CONNECTOR_ALIASES: Record<string, string> = {
   'vs code': 'vscode',
   windsurf: 'windsurf',
   cascade: 'windsurf',
+  devin: 'windsurf',
+  'devin-desktop': 'windsurf',
+  'devin desktop': 'windsurf',
+  cowork: 'claude-cowork',
+  'claude cowork': 'claude-cowork',
   zed: 'zed',
   xai: 'grok',
   'muse-app': 'muse',
@@ -696,7 +704,7 @@ openclaw pairing approve discord <CODE>`,
           short: t('conn_openclaw_short', 'A bot you host that posts from chat'),
           intro: t(
             'conn_openclaw_intro',
-            'OpenClaw is a self hosted personal agent that stays running on your machine. Message it from WhatsApp, Telegram, Slack or Discord. It is a bot, not a coding session. It drives the postqueen CLI through an Agent Skill, not MCP.'
+            'OpenClaw is a self hosted personal agent that stays running on your machine. Message it from WhatsApp, Telegram, Slack or Discord. It is a bot, not a coding session. It drives the postqueen CLI through an Agent Skill, and it can also call PostQueen over MCP with openclaw mcp set.'
           ),
           examples: [
             sample({
@@ -746,6 +754,18 @@ openclaw onboard --install-daemon`,
             },
             ...skillInstall,
             {
+              title: t('conn_openclaw_step_mcp', 'Or connect over MCP'),
+              detail: t(
+                'conn_openclaw_step_mcp_detail',
+                'OpenClaw has its own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Settings → API Keys.'
+              ),
+              code: `openclaw mcp set postqueen '${JSON.stringify({
+                url: mcpUrlWithKey,
+                transport: 'streamable-http',
+              })}'
+openclaw mcp probe postqueen`,
+            },
+            {
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_openclaw_verify',
@@ -776,7 +796,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_hermes_short', 'Hand it a brief. It plans the week.'),
           intro: t(
             'conn_hermes_intro',
-            'Hermes is Nous Research\'s open-source agent. It runs on your machine (Python, not Node), keeps memory across sessions, and drives the postqueen CLI. Hand it one brief and it can plan, write and schedule a week. It can also front the same chat apps as OpenClaw.'
+            'Hermes is Nous Research\'s open-source agent. It runs on your machine (Python, not Node), keeps memory across sessions, and drives the postqueen CLI. Hand it one brief and it can plan, write and schedule a week. It can also front the same chat apps as OpenClaw, and it has a built-in MCP client if you would rather connect over MCP.'
           ),
           examples: [
             sample({
@@ -833,6 +853,16 @@ openclaw onboard --install-daemon`,
               code: `skills:
   external_dirs:
     - ~/.agents/skills`,
+            },
+            {
+              title: t('conn_hermes_step_mcp', 'Or connect over MCP'),
+              detail: t(
+                'conn_hermes_step_mcp_detail',
+                'MCP support ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open. Get the key from Settings → API Keys.'
+              ),
+              code: `mcp_servers:
+  postqueen:
+    url: "${mcpUrlWithKey}"`,
             },
             {
               title: t('conn_step_verify', 'Check it worked'),
@@ -988,15 +1018,15 @@ openclaw onboard --install-daemon`,
           name: 'Codex',
           glyph: 'Cx',
           icon: '/icons/connections/codex.svg',
-          kind: 'SKILL',
-          method: 'Skill',
-          cred: 'env',
+          kind: 'MCP',
+          method: 'MCP',
+          cred: 'mcp',
           exampleKind: 'cli',
           section: 'agents',
           short: t('conn_codex_short', 'Schedule from the Codex coding agent'),
           intro: t(
             'conn_codex_intro',
-            'Codex is OpenAI\'s coding agent, not ChatGPT. Same pairing as Claude Code vs Claude. Teach it the postqueen CLI with the Agent Skill, or register MCP with the Codex CLI. Settings → Apps in ChatGPT does not install this product.'
+            'Codex is OpenAI\'s coding agent, not ChatGPT. Same pairing as Claude Code vs Claude. Register PostQueen over MCP with one codex mcp add command. The Agent Skill and the postqueen CLI are optional. Adding a plugin in ChatGPT does not install this product.'
           ),
           examples: [
             sample({
@@ -1038,12 +1068,11 @@ openclaw onboard --install-daemon`,
             },
           ],
           steps: [
-            ...skillInstall,
             {
-              title: t('conn_codex_step_mcp', 'Or register MCP instead'),
+              title: t('conn_codex_step_add', 'Register the server'),
               detail: t(
-                'conn_codex_step_mcp_detail',
-                'Prefer tool calls to shell commands? The Codex CLI speaks streamable HTTP MCP natively and writes ~/.codex/config.toml. Get the key from Settings → API Keys.'
+                'conn_codex_step_add_detail',
+                'Run this in your terminal. It writes ~/.codex/config.toml, which the Codex CLI, the IDE extension and the ChatGPT desktop app share. The key sits in the URL. Get it from Settings → API Keys. To keep the key out of the file, register the bare /mcp URL with --bearer-token-env-var POSTQUEEN_API_KEY instead.'
               ),
               code: `codex mcp add postqueen --url ${mcpUrlWithKey}`,
             },
@@ -1051,6 +1080,14 @@ openclaw onboard --install-daemon`,
               title: t('conn_step_verify', 'Check it worked'),
               code: 'codex "list my social media integrations"',
             },
+            {
+              title: t('conn_codex_step_cli', 'Optional: the skill and CLI'),
+              detail: t(
+                'conn_codex_step_cli_detail',
+                'Codex runs shell commands with network access turned off by default, so every postqueen CLI call asks for your approval. To allow it, set network_access = true under [sandbox_workspace_write] in ~/.codex/config.toml. The MCP server above does not need this.'
+              ),
+            },
+            ...skillInstall,
           ],
         },
         {
@@ -1370,7 +1407,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_claude_apps_note',
-            'Not listed at claude.com/connectors. Browse will not find PostQueen. Do not search the directory. A plain "url" in claude_desktop_config.json does not work. Customize → Connectors does not install Claude Code. New custom MCP entries generally cannot be created from the mobile apps, add them on the web or Desktop first.'
+            'Not listed at claude.com/connectors. Browse will not find PostQueen. Do not search the directory. A plain "url" in claude_desktop_config.json does not work. Customize → Connectors does not install Claude Code. Adding connectors from the mobile apps is in beta; the web and Desktop remain the main way to add one.'
           ),
           docs: [
             {
@@ -1397,7 +1434,7 @@ openclaw onboard --install-daemon`,
               ),
               detail: t(
                 'conn_claude_apps_step_web_detail',
-                'In a conversation, open + → Connectors and turn PostQueen on. One add follows the account, so Desktop, claude.ai and iOS/Android pick it up after you add it once on the web or Desktop. You generally cannot create a new custom MCP entry from the mobile apps.'
+                'In a conversation, open + → Connectors and turn PostQueen on. One add follows the account, so Desktop, claude.ai and iOS/Android pick it up after you add it once. Adding connectors from the mobile apps is in beta, so the web or Desktop is the surer place to add it.'
               ),
             },
             {
@@ -1422,7 +1459,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_chatgpt_short', 'Schedule posts from ChatGPT on the web'),
           intro: t(
             'conn_chatgpt_intro',
-            'ChatGPT reaches PostQueen over MCP in Developer mode. She is not in the ChatGPT app store or GPT store. Create a custom MCP app under Settings → Apps, not Settings → Connectors, and paste the MCP URL; do not search Apps. Older builds still say Plugins. Web only, not the Free plan, not the mobile apps. Codex is a different product, use that card under Agents.'
+            'ChatGPT reaches PostQueen over MCP in Developer mode. She is not in the ChatGPT app store or GPT store. Turn on Developer mode, then create your own plugin at chatgpt.com/plugins and paste the MCP URL; do not search the directory. In July 2026 OpenAI replaced the App Directory with the Plugin Directory, so older guides and some accounts still say Apps. Web only, not the Free plan, not the mobile apps. Codex is a different product, use that card under Agents.'
           ),
           examples: [
             sample({
@@ -1446,7 +1483,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_chatgpt_note',
-            'She is not listed in the ChatGPT app store. Searching Apps will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as schedulePostTool may stay blocked. Authentication: No authentication, the key is already in the URL. Settings → Apps does not install Codex.'
+            'She is not listed in the ChatGPT app store. Searching the Plugin Directory will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as schedulePostTool may stay blocked. Authentication: No Authentication, the key is already in the URL. A ChatGPT plugin does not install Codex.'
           ),
           docs: [
             {
@@ -1468,14 +1505,14 @@ openclaw onboard --install-daemon`,
               ),
               detail: t(
                 'conn_chatgpt_step_devmode_detail',
-                'ChatGPT on the web → Settings → Apps → Advanced settings → Developer mode. Older ChatGPT builds put this under Settings → Security and login. On Business, Enterprise and Edu an admin controls this switch. It is not available on the Free plan.'
+                'ChatGPT on the web → Settings → Security and login → Developer mode. On Business, Enterprise and Edu an admin allows it first under Workspace settings → Permissions & Roles, and the switch may sit under Settings → Apps → Advanced settings. It is not available on the Free plan.'
               ),
             },
             {
-              title: t('conn_chatgpt_step_plugin', 'Create the app'),
+              title: t('conn_chatgpt_step_plugin', 'Create the plugin'),
               detail: t(
                 'conn_chatgpt_step_plugin_detail',
-                'Do not search the app store. Settings → Apps → Create (workspace admins: Workspace settings → Apps → Create). Older builds: Settings → Plugins or chatgpt.com/plugins → +. Name it PostQueen, paste the MCP URL, set Authentication to No authentication, then save. Enable it in a chat via + → Developer mode (or the tools menu).'
+                'Do not search the app store. Go to chatgpt.com/plugins and press +. Name it PostQueen, paste the MCP URL under Connection, set Authentication to No Authentication, then create it. It is listed under Drafts. Enable it in a chat via + → Developer mode, then pick PostQueen.'
               ),
               code: mcpUrlWithKey,
             },
@@ -1501,7 +1538,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_grok_short', 'Paste the MCP URL on grok.com'),
           intro: t(
             'conn_grok_intro',
-            'Grok on the web, iOS and Android can call a remote MCP server. PostQueen is not in xAI\'s connector catalog. Paste the MCP URL yourself at grok.com/connectors → New Connector → Custom (web: + → Connectors; iOS/Android: Settings → Connectors). The server must be reachable over the public internet. Grok Bot and Grok Build are different products, use those cards.'
+            'Grok can call a remote MCP server through a custom connector. PostQueen is not in xAI\'s connector catalog. Paste the MCP URL yourself at grok.com/connectors → New Connector → Custom. The server must be reachable over the public internet. Grok Bot and Grok Build are different products, use those cards.'
           ),
           examples: [
             sample({
@@ -1574,10 +1611,10 @@ openclaw onboard --install-daemon`,
           cred: 'mcp',
           exampleKind: 'chat',
           section: 'bots',
-          short: t('conn_grok_bot_short', 'Tell Grok Bot the MCP URL in chat'),
+          short: t('conn_grok_bot_short', 'Ask Grok Bot in chat to connect PostQueen'),
           intro: t(
             'conn_grok_bot_intro',
-            'Grok Bot is the cloud agent, not grok.com chat and not Grok Build. It does not read grok.com/connectors, Cursor mcp.json or ~/.grok/config.toml. Tell the Bot to add a remote MCP server. The URL must be public HTTPS, localhost and stdio do not work.'
+            'Grok Bot is xAI\'s cloud agent app, not grok.com chat and not Grok Build. It does not read grok.com/connectors, Cursor mcp.json or ~/.grok/config.toml. Ask the Bot in chat to connect PostQueen as an MCP server, and give it your API key through its secure prompt. The URL must be public HTTPS, localhost and stdio do not work.'
           ),
           examples: [
             sample({
@@ -1601,7 +1638,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_grok_bot_note',
-            'PostQueen is not a Grok Bot marketplace plugin. Do not look for her under Plugins. Cursor staff document adding a custom server in the Bot chat. Teams inherit Cursor MCP allowlists. Same MCP URL as Grok chat, different product.'
+            'PostQueen is not a Grok Bot marketplace plugin yet, so there is nothing to install from Marketplace. Servers you add from chat are managed under Plugins → Yours. Keep the API key out of the chat itself; the secure prompt keeps it out of the transcript. Teams inherit Cursor MCP allowlists. Same MCP server as Grok chat, different product.'
           ),
           docs: [
             {
@@ -1617,25 +1654,98 @@ openclaw onboard --install-daemon`,
           ],
           steps: [
             {
-              title: t('conn_grok_bot_step_ask', 'Ask the Bot to add the server'),
+              title: t('conn_grok_bot_step_ask', 'Ask the Bot to connect PostQueen'),
               detail: t(
                 'conn_grok_bot_step_ask_detail',
-                'Open Grok Bot. There is no grok.com/connectors form here. In the Bot chat, tell it to add the MCP server. Cursor documents: Add this MCP server: plus the public URL.'
+                'Open Grok Bot in the desktop or mobile app. There is no grok.com/connectors form here. In a Bot chat, send this message. It uses the URL without your key.'
               ),
+              code: `Connect PostQueen as an MCP server at ${mcpUrl}`,
             },
             {
-              title: t('conn_grok_bot_step_url', 'Give it the MCP URL'),
+              title: t('conn_grok_bot_step_url', 'Give it the key in the secure prompt'),
               detail: t(
                 'conn_grok_bot_step_url_detail',
-                'Paste the streamable HTTP URL with your API key in the path. Get the key from Settings → API Keys. Confirm when the Bot asks. Tools show up on the next message.'
+                'The Bot shows a secure card. Choose Connect and paste your API key into the secure prompt, never into the chat. Get the key from Settings → API Keys. Tools show up on the next message.'
               ),
-              code: mcpUrlWithKey,
             },
             {
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_grok_bot_verify',
-                'In that Grok Bot chat, ask it to list your connected social media accounts.'
+                'In that Grok Bot chat, ask it to list your connected social media accounts. The server is also listed under Plugins → Yours.'
+              ),
+            },
+          ],
+        },
+        {
+          id: 'claude-cowork',
+          name: t('conn_claude_cowork_name', 'Claude Cowork'),
+          glyph: 'CW',
+          icon: '/icons/connections/claude.svg',
+          kind: 'MCP',
+          method: 'MCP',
+          cred: 'mcp',
+          exampleKind: 'chat',
+          section: 'bots',
+          short: t(
+            'conn_claude_cowork_short',
+            'Hand Cowork a task that ends in a post'
+          ),
+          intro: t(
+            'conn_claude_cowork_intro',
+            'Claude Cowork is Anthropic\'s agent for everyday work in Claude Desktop, and in beta on claude.ai and the mobile apps. It uses the same custom connector as the Claude card: add the MCP URL once and Cowork can call PostQueen. Cowork is on the Pro, Max, Team and Enterprise plans, not Free. Claude Code is a different product, use that card under Agents.'
+          ),
+          examples: [
+            sample({
+              title: t('conn_ex_label_week', 'Check the calendar'),
+              body: t('conn_claude_cowork_ex', 'Look at my PostQueen calendar for next week and tell me which days have nothing scheduled'),
+              reply: t('conn_claude_cowork_ex_reply', 'Next week Monday and Thursday are empty. Instagram on Tuesday at 19:00 and X on Wednesday at 08:00 are already queued.'),
+              tool: 'postsListTool',
+            }),
+            sample({
+              title: t('conn_ex_label_ig', 'One channel: Instagram'),
+              body: t('conn_claude_cowork_ex_ig', 'Generate a photo of a phone showing a boarding pass and draft it to Instagram tonight at 7, caption about travel days without SIM swaps'),
+              reply: t('conn_claude_cowork_ex_ig_reply', 'Boarding pass photo is an Instagram draft for tonight at 19:00. Open the calendar if you want to change the caption.'),
+              tool: 'generateImageTool',
+            }),
+            sample({
+              title: t('conn_ex_label_multi', 'Several channels'),
+              body: t('conn_claude_cowork_ex_multi', 'Turn this week\'s product update into drafts for Instagram, X and LinkedIn on Friday at 10'),
+              reply: t('conn_claude_cowork_ex_multi_reply', 'The product update is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
+              tool: 'schedulePostTool',
+            }),
+          ],
+          info: t(
+            'conn_claude_cowork_note',
+            'There is no separate Cowork install. If PostQueen is already a custom connector on your Claude account, Cowork can use it. On Team and Enterprise an Owner adds the connector for the organization first.'
+          ),
+          docs: [
+            {
+              label: t('conn_docs_claude_apps', 'Claude MCP setup'),
+              href: `${DOCS}/mcp/clients/claude`,
+            },
+          ],
+          steps: [
+            {
+              title: t('conn_claude_cowork_step_add', 'Add the custom connector'),
+              detail: t(
+                'conn_claude_cowork_step_add_detail',
+                'Skip this if the Claude card is already set up. On claude.ai or Claude Desktop: Customize → Connectors → + → Add custom connector. Name it PostQueen and paste the MCP URL (key in the path). Leave the advanced OAuth fields empty.'
+              ),
+              code: mcpUrlWithKey,
+            },
+            {
+              title: t('conn_claude_cowork_step_use', 'Use it in a Cowork task'),
+              detail: t(
+                'conn_claude_cowork_step_use_detail',
+                'Start a Cowork task and make sure PostQueen is turned on in its connectors. On Pro and Max, Cowork is gradually becoming part of the regular Claude chat, so you may not see a separate Cowork option.'
+              ),
+            },
+            {
+              title: t('conn_step_verify', 'Check it worked'),
+              detail: t(
+                'conn_claude_cowork_verify',
+                'Ask Cowork to list your connected social media accounts.'
               ),
             },
           ],
@@ -1803,7 +1913,7 @@ openclaw onboard --install-daemon`,
         },
         {
           id: 'windsurf',
-          name: 'Windsurf',
+          name: 'Devin Desktop',
           glyph: 'Ws',
           icon: '/icons/connections/windsurf.svg',
           kind: 'MCP',
@@ -1813,11 +1923,11 @@ openclaw onboard --install-daemon`,
           section: 'editors',
           short: t(
             'conn_windsurf_short',
-            'Schedule from Windsurf Cascade'
+            'Schedule from Devin Desktop, formerly Windsurf'
           ),
           intro: t(
             'conn_windsurf_intro',
-            'Windsurf Cascade reads MCP from ~/.codeium/windsurf/mcp_config.json. Remote HTTP uses serverUrl (url also works). That is not Cursor mcp.json. Open MCPs in the Cascade panel, or Devin Settings → Cascade → MCP Servers, then edit the file. The newer Devin Local agent in Windsurf uses Devin CLI config instead of this file.'
+            'Devin Desktop is the new name for Windsurf. Its agent, Devin Local, reads MCP servers from ~/.config/devin/mcp_config.json (Windows: %APPDATA%\\devin\\mcp_config.json), and a remote server needs only a url field. Add PostQueen with devin mcp add, or edit that file. That is not Cursor mcp.json.'
           ),
           examples: [
             sample({
@@ -1841,32 +1951,33 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_windsurf_note',
-            'This card is Cascade\'s mcp_config.json. Devin Local (the default agent in new Windsurf tabs) does not read that file. Teams can allowlist servers by the key name in mcp_config.json.'
+            'The Cascade agent was removed in September 2026, so there is no Cascade panel any more. Devin Local imports servers from an existing ~/.codeium/windsurf/mcp_config.json by default, so an older Windsurf entry can keep working. Older Devin versions keep MCP servers in ~/.config/devin/config.json and move them to mcp_config.json on startup.'
           ),
           docs: [
             {
-              label: t('conn_docs_windsurf', 'Windsurf MCP setup'),
+              label: t('conn_docs_windsurf', 'Devin Desktop MCP setup'),
               href: `${DOCS}/mcp/clients/windsurf`,
             },
           ],
           steps: [
             {
-              title: t('conn_windsurf_step_ui', 'Open MCP settings'),
+              title: t('conn_windsurf_step_ui', 'Add it from the terminal'),
               detail: t(
                 'conn_windsurf_step_ui_detail',
-                'PostQueen is not in the Windsurf marketplace. In the Cascade panel, open MCPs, or Devin Settings → Cascade → MCP Servers, then edit the raw mcp_config.json.'
+                'PostQueen is not in the Devin Desktop marketplace. Run this once. -s user makes the server available in every project; without it, it is saved for the current project only. Get the key from Settings → API Keys.'
               ),
+              code: `devin mcp add -s user postqueen ${mcpUrlWithKey}`,
             },
             {
-              title: t('conn_windsurf_step_json', 'Paste this JSON'),
+              title: t('conn_windsurf_step_json', 'Or paste this JSON'),
               detail: t(
                 'conn_windsurf_step_json_detail',
-                'Add this to ~/.codeium/windsurf/mcp_config.json. Use serverUrl for streamable HTTP. Get the key from Settings → API Keys.'
+                'Add this to ~/.config/devin/mcp_config.json (Windows: %APPDATA%\\devin\\mcp_config.json). A url is all a remote server needs; Devin Local infers streamable HTTP.'
               ),
               code: JSON.stringify(
                 {
                   mcpServers: {
-                    postqueen: { serverUrl: mcpUrlWithKey },
+                    postqueen: { url: mcpUrlWithKey },
                   },
                 },
                 null,
@@ -1877,7 +1988,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_windsurf_verify',
-                'In a Cascade chat, ask it to list your connected channels.'
+                'In a Devin Local session, ask it to list your connected channels.'
               ),
             },
           ],
@@ -1919,7 +2030,7 @@ openclaw onboard --install-daemon`,
           ],
           info: t(
             'conn_zed_note',
-            'A remote entry with only a url and no Authorization header is Zed\'s OAuth path. PostQueen /mcp with an API key is not that flow. Always send Authorization: Bearer. Putting the key in the URL is not enough on its own; without the header Zed still starts OAuth.'
+            'Zed starts its OAuth sign-in only when a server answers 401. The MCP URL with your key in the path answers normally, so it connects without the header and no OAuth prompt appears. The bare /mcp URL needs the Authorization header, or Zed gets a 401 and tries OAuth, which PostQueen does not offer on that address.'
           ),
           docs: [
             {
@@ -1939,7 +2050,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_zed_step_json', 'Paste this JSON'),
               detail: t(
                 'conn_zed_step_json_detail',
-                'The key is context_servers. Always include the Authorization header. Without it Zed starts an OAuth flow PostQueen does not speak, even if the key is already in the URL. Get the key from Settings → API Keys.'
+                'The key is context_servers. This form sends the key in an Authorization header on the bare /mcp URL. A url with the key in the path also works on its own, without headers. Get the key from Settings → API Keys.'
               ),
               code: JSON.stringify(
                 {
@@ -1976,7 +2087,7 @@ openclaw onboard --install-daemon`,
           short: t('conn_gemini_short', 'Gemini CLI talks over streamable HTTP'),
           intro: t(
             'conn_gemini_intro',
-            'Gemini CLI reads MCP servers from ~/.gemini/settings.json. Streamable HTTP uses the httpUrl key, url is reserved for SSE and will not connect to PostQueen. This is the terminal CLI, not gemini.google.com.'
+            'Gemini CLI reads MCP servers from ~/.gemini/settings.json. A remote server uses url with type "http", which is what gemini mcp add --transport http writes. The older httpUrl key still works but is deprecated. This is the terminal CLI, not gemini.google.com.'
           ),
           examples: [
             sample({
@@ -2027,10 +2138,10 @@ openclaw onboard --install-daemon`,
               title: t('conn_gemini_step_config', 'Or edit settings.json'),
               detail: t(
                 'conn_gemini_step_config_detail',
-                'Add this to ~/.gemini/settings.json. Use httpUrl, not url. If an older gemini mcp add wrote "url" plus a type field, change that key to httpUrl or the connection fails.'
+                'Add this to ~/.gemini/settings.json. Use url with type "http". An existing entry that uses httpUrl keeps working, but that key is deprecated.'
               ),
               code: JSON.stringify(
-                { mcpServers: { postqueen: { httpUrl: mcpUrlWithKey } } },
+                { mcpServers: { postqueen: { url: mcpUrlWithKey, type: 'http' } } },
                 null,
                 2
               ),
@@ -2095,7 +2206,7 @@ openclaw onboard --install-daemon`,
       label: t('conn_group_editors', 'Editors'),
       blurb: t(
         'conn_group_editors_blurb',
-        'Code editors that speak MCP. VS Code, Windsurf and Zed.'
+        'Code editors that speak MCP. VS Code, Devin Desktop and Zed.'
       ),
       items: [
         {
@@ -2135,7 +2246,7 @@ openclaw onboard --install-daemon`,
           ],
           note: t(
             'conn_other_mcp_note',
-            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. VS Code, Windsurf and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json, and do not look for PostQueen in Anthropic\'s directory; use Add custom connector with the MCP URL, or mcp-remote for LAN.'
+            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. VS Code, Devin Desktop and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json, and do not look for PostQueen in Anthropic\'s directory; use Add custom connector with the MCP URL, or mcp-remote for LAN.'
           ),
           docs: [
             {

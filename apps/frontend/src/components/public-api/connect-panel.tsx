@@ -1033,7 +1033,7 @@ export const ConnectPanel: FC<{
         title: t('connect_hub_bots', 'Bots'),
         blurb: t(
           'connect_hub_bots_blurb',
-          'Bots you host or message. OpenClaw, Grok Bot, Hermes, and Muse.'
+          'Bots you host or message. OpenClaw, Grok Bot, Claude Cowork, Hermes, and Muse.'
         ),
       },
       chat: {
@@ -1047,7 +1047,7 @@ export const ConnectPanel: FC<{
         title: t('connect_hub_editors', 'Editors'),
         blurb: t(
           'connect_hub_editors_blurb',
-          'Code editors that speak MCP. VS Code, Windsurf and Zed.'
+          'Code editors that speak MCP. VS Code, Devin Desktop and Zed.'
         ),
       },
       automation: {
