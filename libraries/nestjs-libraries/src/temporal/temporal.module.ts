@@ -46,6 +46,15 @@ export const getTemporalModule = (
               identifier: 'media',
               maxConcurrentJob: Number(process.env.MEDIA_PROCESSING_CONCURRENCY) || 1,
             },
+            // Video clipping: the jobs a clipping processor runs (fetching a
+            // window of a video, rendering a clip). One at a time by default
+            // for the same reason as media when the processor is ffmpeg on
+            // this server; a remote processor only waits, and can be given
+            // more. EXCLUDE_QUEUE=clipping keeps a server out of it.
+            {
+              identifier: 'clipping',
+              maxConcurrentJob: Number(process.env.CLIPPING_CONCURRENCY) || 1,
+            },
             ...socialIntegrationList,
           ]
             .filter((f) => f.identifier.indexOf('-') === -1)

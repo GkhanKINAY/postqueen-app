@@ -1677,6 +1677,7 @@ plan_meta_trial
 plan_n_ai_images
 plan_n_ai_videos
 plan_n_channels
+plan_n_clipping_minutes
 plan_n_posts
 plan_one_channel
 plan_picture_editor

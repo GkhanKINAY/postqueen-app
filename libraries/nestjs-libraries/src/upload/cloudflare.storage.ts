@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import 'multer';
 import { Readable } from 'stream';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -193,6 +194,44 @@ class CloudflareStorage implements IUploadProvider {
       throw new Error('The file is not in storage');
     }
     return object.Body as Readable;
+  }
+
+  // Presigned URLs for work done elsewhere (the clipping processor, the
+  // transcriber): they read and write this bucket without its credentials.
+  // Three hours covers the longest job that is handed one.
+  async signDownloadUrl(fileName: string) {
+    return getSignedUrl(
+      this._client,
+      new GetObjectCommand({ Bucket: this._bucketName, Key: fileName }),
+      { expiresIn: 3 * 3600 }
+    );
+  }
+
+  async signUploadUrl(fileName: string, contentType: string) {
+    return getSignedUrl(
+      this._client,
+      new PutObjectCommand({
+        Bucket: this._bucketName,
+        Key: fileName,
+        ContentType: contentType,
+      }),
+      { expiresIn: 3 * 3600 }
+    );
+  }
+
+  publicUrl(fileName: string) {
+    return `${this._uploadUrl}/${fileName}`;
+  }
+
+  async writeFile(fileName: string, body: string, contentType: string) {
+    await this._client.send(
+      new PutObjectCommand({
+        Bucket: this._bucketName,
+        Key: fileName,
+        Body: body,
+        ContentType: contentType,
+      })
+    );
   }
 
   async removeFile(path: string): Promise<void> {

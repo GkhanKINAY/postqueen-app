@@ -28,3 +28,4 @@ export * from './generate.video.workflow';
 export * from './process.media.workflow';
 export * from './founding.fee.workflow';
 export * from './analytics.sync.workflow.v1';
+export * from './clipping.workflow';

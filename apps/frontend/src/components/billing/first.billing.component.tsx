@@ -1316,6 +1316,7 @@ export const BillingFeatures: FC<{
   tone?: 'brand' | 'lifetime';
 }> = ({ tier, tone = 'brand' }) => {
   const t = useT();
+  const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
     const currentPricing = pricing[tier];
     const channelsOr = currentPricing.channel;
@@ -1384,8 +1385,17 @@ export const BillingFeatures: FC<{
         prefix: currentPricing?.generate_videos,
       });
     }
+    // Off until a clipping processor is configured: no plan advertises
+    // minutes nobody can spend
+    if (clippingEnabled && currentPricing?.clipping_minutes) {
+      list.push({
+        key: 'billing_clipping_minutes_per_month',
+        defaultValue: 'minutes of AI video clipping per month',
+        prefix: currentPricing?.clipping_minutes,
+      });
+    }
     return list;
-  }, [tier]);
+  }, [tier, clippingEnabled]);
 
   const renderFeature = (feature: FeatureItem) => {
     const translatedText = t(feature.key, feature.defaultValue);

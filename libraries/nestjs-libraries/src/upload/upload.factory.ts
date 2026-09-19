@@ -1,6 +1,12 @@
 import { CloudflareStorage } from './cloudflare.storage';
 import { IUploadProvider } from './upload.interface';
 import { LocalStorage } from './local.storage';
+import { IClippingProcessor } from './clipping.processor.interface';
+import { UnconfiguredClippingProcessor } from './unconfigured.clipping.processor';
+import {
+  clippingProcessor,
+  isClippingEnabled,
+} from '@gitroom/helpers/utils/clipping.enabled';
 
 export class UploadFactory {
   static createStorage(): IUploadProvider {
@@ -35,6 +41,20 @@ export class UploadFactory {
         );
       default:
         throw new Error(`Invalid storage type ${storageProvider}`);
+    }
+  }
+
+  static clippingEnabled() {
+    return isClippingEnabled();
+  }
+
+  // One processor runs both jobs of a clipping (ingest: a video's captions,
+  // audio or a window of it; clip: cut, reframe, burn the captions). Every
+  // name clippingProcessor() accepts gets its case here
+  static createClippingProcessor(): IClippingProcessor {
+    switch (clippingProcessor()) {
+      default:
+        return new UnconfiguredClippingProcessor();
     }
   }
 }

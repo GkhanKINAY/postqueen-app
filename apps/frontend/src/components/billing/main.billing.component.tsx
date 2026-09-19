@@ -115,6 +115,7 @@ export const Features: FC<{
 }> = (props) => {
   const { pack } = props;
   const t = useT();
+  const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
     const currentPricing = pricing[pack];
     const channelsOr = currentPricing.channel;
@@ -171,8 +172,19 @@ export const Features: FC<{
         }),
       });
     }
+    // Off until a clipping processor is configured: no plan advertises
+    // minutes nobody can spend
+    if (clippingEnabled && currentPricing?.clipping_minutes) {
+      list.push({
+        label: t(
+          'plan_n_clipping_minutes',
+          '{{count}} minutes of AI video clipping per month',
+          { count: currentPricing?.clipping_minutes }
+        ),
+      });
+    }
     return list;
-  }, [pack, t]);
+  }, [pack, t, clippingEnabled]);
   return (
     <div className="flex flex-col gap-[9px]">
       {features.map((feature) => (
