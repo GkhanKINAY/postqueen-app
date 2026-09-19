@@ -2,7 +2,6 @@ import {
   IsDefined,
   IsOptional,
   IsString,
-  IsUrl,
   MinLength,
 } from 'class-validator';
 
@@ -14,8 +13,10 @@ export class DribbbleDto {
   })
   title: string;
 
+  // The id of a team from the picker (Dribbble's create-shot `team_id`).
+  // It used to demand a URL, which the picker never stores, so any team
+  // choice failed validation.
   @IsString()
   @IsOptional()
-  @IsUrl()
   team: string;
 }

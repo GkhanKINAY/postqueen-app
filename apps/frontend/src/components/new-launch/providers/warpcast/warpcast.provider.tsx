@@ -78,5 +78,5 @@ export default withProvider({
   SettingsComponent: WrapcastProvider,
   CustomPreviewComponent: undefined,
   dto: undefined,
-  maximumCharacters: 800,
+  maximumCharacters: 1024,
 });

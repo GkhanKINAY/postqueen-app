@@ -86,7 +86,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   }
 
   override async checkValidity(
-    items: Array<ValidityMedia[]>
+    items: Array<ValidityMedia[]>,
+    settings: any,
+    additionalSettings: any[],
+    [description = '']: string[] = []
   ): Promise<string | true> {
     const [firstItems] = items ?? [];
     if (items?.[0]?.length !== 1) {
@@ -94,6 +97,15 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     }
     if ((firstItems?.[0]?.path?.indexOf?.('mp4') ?? -1) === -1) {
       return 'Item must be a video';
+    }
+    // The videos resource allows any UTF-8 in the description except < and >,
+    // and measures its 5,000 limit in bytes, not characters. Both used to be
+    // found only after the upload, as invalidDescription.
+    if (/[<>]/.test(description)) {
+      return 'YouTube descriptions cannot contain < or >';
+    }
+    if (Buffer.byteLength(description, 'utf8') > 5000) {
+      return 'YouTube descriptions can be at most 5,000 bytes, and accented letters, emoji and non-Latin scripts take 2 to 4 bytes each';
     }
     return true;
   }

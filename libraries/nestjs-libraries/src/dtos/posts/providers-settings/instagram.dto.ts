@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsDefined,
   IsIn,
@@ -63,6 +64,9 @@ export class InstagramDto {
   @Type(() => Collaborators)
   @ValidateNested({ each: true })
   @IsArray()
+  @ArrayMaxSize(3, {
+    message: 'Instagram allows up to 3 collaborators',
+  })
   @IsOptional()
   collaborators: Collaborators[];
 

@@ -32,6 +32,6 @@ export default withProvider({
   SettingsComponent: SkoolComponent,
   CustomPreviewComponent: undefined,
   dto: SkoolDto,
-  maximumCharacters: 50000,
+  maximumCharacters: 5000,
   postComment: PostComment.ALL,
 });

@@ -490,17 +490,40 @@ export class PostsService {
               return m;
             }
 
-            if (hasExtension(m.path, 'png')) {
-              imageUpdateNeeded = true;
+            // Every image format the library takes besides JPEG, not only
+            // PNG: a provider that asks for JPEG accepts none of them as they
+            // are. Named formats only, so a path with no known extension is
+            // never downloaded on a guess. (BMP is left out: sharp cannot
+            // read it, and the providers that convert refuse it up front.)
+            if (
+              m.type === 'image' &&
+              ['png', 'webp', 'gif', 'avif', 'tif'].some((ext) =>
+                hasExtension(m.path, ext)
+              )
+            ) {
               // The stored path can name any host, so it goes through the same
-              // guarded reader the providers use.
-              const imageBuffer = Buffer.from(await readOrFetch(m.url));
+              // guarded reader the providers use. A file that cannot be read
+              // or decoded goes out as it is, and the rest of the list is
+              // still converted instead of the whole list being dropped.
+              const imageBuffer = await readOrFetch(m.url).catch(
+                (): null => null
+              );
+              // Transparency is laid on white: JPEG has no alpha, and sharp
+              // would otherwise fill it with black. rotate() applies the EXIF
+              // orientation first, since the JPEG is written without it.
+              const buffer = imageBuffer
+                ? await sharp(Buffer.from(imageBuffer))
+                    .rotate()
+                    .flatten({ background: '#ffffff' })
+                    .jpeg({ quality: 100 })
+                    .toBuffer()
+                    .catch((): null => null)
+                : null;
+              if (!buffer) {
+                return m;
+              }
 
-              // Use sharp to get the metadata of the image
-              const buffer = await sharp(imageBuffer)
-                .jpeg({ quality: 100 })
-                .toBuffer();
-
+              imageUpdateNeeded = true;
               const { path, originalname } = await this.storage.uploadFile({
                 buffer,
                 mimetype: 'image/jpeg',
@@ -950,6 +973,23 @@ export class PostsService {
 
         const settings = post.settings || {};
         const media = (post.value || []).map((p) => p.image || []);
+        // One stripped text per entry for the empty / too-long checks below.
+        const texts = (post.value || []).map((p) =>
+          stripHtmlValidation('normal', p.content || '', true)
+        );
+        // And, for the provider's own rules, each entry exactly as the
+        // publish activity will hand it over as `message`: stripped for the
+        // provider's editor, plain text passed through as it came.
+        const messages = (post.value || []).map((p) =>
+          stripHtmlValidation(
+            provider.editor,
+            p.content || '',
+            true,
+            false,
+            !/<\/?[a-z][\s\S]*>/i.test(p.content || ''),
+            provider.mentionFormat
+          )
+        );
 
         // Settings DTO validation — mirrors the client `form.trigger()`.
         let valid = true;
@@ -973,7 +1013,8 @@ export class PostsService {
           errors = await provider.checkValidity(
             media,
             settings,
-            additionalSettings
+            additionalSettings,
+            messages
           );
         } catch (err: any) {
           errors = err?.message || 'Invalid media';
@@ -981,14 +1022,13 @@ export class PostsService {
 
         const maximumCharacters = provider.maxLength(additionalSettings, settings);
 
-        const emptyContent = (post.value || []).some((a) => {
-          const strip = stripHtmlValidation('normal', a.content || '', true);
+        const emptyContent = (post.value || []).some((a, index) => {
+          const strip = texts[index];
           const length = countLength(integration.providerIdentifier, strip);
           return length === 0 && (a.image || []).length === 0;
         });
 
-        const tooLong = (post.value || []).some((a) => {
-          const strip = stripHtmlValidation('normal', a.content || '', true);
+        const tooLong = texts.some((strip) => {
           const counted = countLength(integration.providerIdentifier, strip);
           return counted > (maximumCharacters || 1000000);
         });

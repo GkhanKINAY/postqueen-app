@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  MaxLength,
   MinLength,
   ValidateIf,
   ValidateNested,
@@ -20,8 +21,10 @@ export class LemmySettingsDtoInner {
   @IsDefined()
   id: string;
 
+  // Lemmy's is_valid_post_title: 3 to 200 characters.
   @IsString()
-  @MinLength(2)
+  @MinLength(3)
+  @MaxLength(200)
   @IsDefined()
   title: string;
 

@@ -194,10 +194,17 @@ export interface SocialProvider
   refreshCron?: boolean;
   dto?: any;
   maxLength: (additionalSettings?: any, settings?: any) => number;
+  /**
+   * `texts` runs parallel to `posts`: the text of the main post and of each
+   * comment exactly as `post` / `comment` will receive it in `message` (so an
+   * `html` editor still gets its markup). Optional, so a provider that only
+   * looks at media ignores it.
+   */
   checkValidity(
     posts: Array<{ path: string; thumbnail?: string }[]>,
     settings: any,
     additionalSettings: any[],
+    texts?: string[],
   ): Promise<string | true>;
   checkPostStatus(
     accessToken: string,
