@@ -209,6 +209,10 @@ export const useProviderGuides = (): {
           'guide_hashnode',
           'Hashnode publishes through a personal access token.'
         ),
+        requirement: t(
+          'guide_hashnode_req',
+          "Hashnode's API only works for blogs on its Pro plan. Upgrade the blog you want to publish to first, in its dashboard under Billing, or Hashnode will refuse the connection or the post."
+        ),
         steps: [
           t('guide_hashnode_s1', 'Open Hashnode → Settings → Developer.'),
           t('guide_hashnode_s2', 'Generate a new token and copy it.'),

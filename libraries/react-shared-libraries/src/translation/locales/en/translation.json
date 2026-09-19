@@ -737,6 +737,7 @@
   "guide_devto_s3": "Copy it once — it is not shown again.",
   "guide_devto_link": "DEV API keys",
   "guide_hashnode": "Hashnode publishes through a personal access token.",
+  "guide_hashnode_req": "Hashnode's API only works for blogs on its Pro plan. Upgrade the blog you want to publish to first, in its dashboard under Billing, or Hashnode will refuse the connection or the post.",
   "guide_hashnode_s1": "Open Hashnode → Settings → Developer.",
   "guide_hashnode_s2": "Generate a new token and copy it.",
   "guide_hashnode_link": "Hashnode developer settings",
