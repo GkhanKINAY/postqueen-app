@@ -81,7 +81,7 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
           return 0;
         }
         return inheritOrSampleWith(
-          path.includes('/public/v1/analytics/') ? 0.01 : 0.2
+          path.includes('/public/v1/analytics/') ? 0.01 : 0.1
         );
       },
       enableLogs: true,
