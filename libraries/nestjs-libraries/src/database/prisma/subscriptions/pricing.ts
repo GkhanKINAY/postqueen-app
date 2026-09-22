@@ -24,6 +24,12 @@ export interface PricingInnerInterface {
   image_generator?: boolean;
   image_generation_count: number;
   generate_videos: number;
+  /**
+   * Minutes of source video this plan may clip a month (one minute of the
+   * YouTube video is one minute, whatever the clips come to). See
+   * CLIPPING_MINUTES_PROPOSAL.
+   */
+  clipping_minutes: number;
   public_api: boolean;
   webhooks: number;
   autoPost: boolean;
@@ -31,6 +37,22 @@ export interface PricingInnerInterface {
 export interface PricingInterface {
   [key: string]: PricingInnerInterface;
 }
+
+/**
+ * PROPOSAL, NOT DECIDED: the owner sets these before clipping is switched on.
+ *
+ * Upstream Postiz ships 60 / 120 / 300 / 600 minutes on its four plans
+ * (9aad99cd). They are mapped here by rung, cheapest to dearest; retired
+ * tiers take the numbers of the tier that replaced them. Nothing meters or
+ * shows them while clipping is not configured (`isClippingEnabled`): the
+ * routes and tools refuse first, and the plan cards leave the line out.
+ */
+export const CLIPPING_MINUTES_PROPOSAL = {
+  CREATOR: 60,
+  GROWTH: 120,
+  PRO: 300,
+  AGENCY: 600,
+};
 export const pricing: PricingInterface = {
   FREE: {
     current: 'FREE',
@@ -50,6 +72,7 @@ export const pricing: PricingInterface = {
     webhooks: 0,
     autoPost: false,
     generate_videos: 0,
+    clipping_minutes: 0,
   },
   // Current sellable tiers (CREATOR / GROWTH / PRO / AGENCY).
   // Retired STANDARD / TEAM / ULTIMATE rows below keep old prices so any
@@ -80,6 +103,7 @@ export const pricing: PricingInterface = {
     // customers using it today. Same reason on retired STANDARD below.
     autoPost: true,
     generate_videos: 3,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
   },
   GROWTH: {
     current: 'GROWTH',
@@ -99,6 +123,7 @@ export const pricing: PricingInterface = {
     webhooks: 10,
     autoPost: true,
     generate_videos: 10,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
   },
   PRO: {
     current: 'PRO',
@@ -123,6 +148,7 @@ export const pricing: PricingInterface = {
     webhooks: 30,
     autoPost: true,
     generate_videos: 30,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.PRO,
   },
   AGENCY: {
     current: 'AGENCY',
@@ -147,6 +173,7 @@ export const pricing: PricingInterface = {
     webhooks: 10000,
     autoPost: true,
     generate_videos: 60,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.AGENCY,
   },
 
   // --- retired: kept so existing subscriptions still resolve ---------------
@@ -170,6 +197,7 @@ export const pricing: PricingInterface = {
     webhooks: 2,
     autoPost: true,
     generate_videos: 3,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
   },
   TEAM: {
     current: 'TEAM',
@@ -190,6 +218,7 @@ export const pricing: PricingInterface = {
     webhooks: 10,
     autoPost: true,
     generate_videos: 10,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -210,6 +239,7 @@ export const pricing: PricingInterface = {
     webhooks: 10000,
     autoPost: true,
     generate_videos: 60,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.AGENCY,
   },
 };
 

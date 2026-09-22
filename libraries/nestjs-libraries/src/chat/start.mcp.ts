@@ -9,6 +9,13 @@ import { runWithContext } from './async.storage';
 import { createOAuthMiddleware } from './oauth-middleware';
 import { joinBaseUrl } from './oauth-types';
 import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/upload.widget';
+import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
+import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+
+type AppResources = NonNullable<
+  ConstructorParameters<typeof MCPServer>[0]['appResources']
+>;
+
 const fixAcceptHeader = (req: Request) => {
   const value = 'application/json, text/event-stream';
   req.headers.accept = value;
@@ -60,6 +67,10 @@ export const startMcp = async (app: INestApplication) => {
     'videoStatusTool',
     'generateVideoOptions',
     'videoFunctionTool',
+    // clipping renders new videos (AI picked cuts, burned-in captions)
+    'clippingTool',
+    'clippingStatusTool',
+    'clippingWidgetTicketTool',
   ];
   const claudeTools = Object.fromEntries(
     Object.entries(tools).filter(([name]) => !claudeHiddenTools.includes(name))
@@ -67,17 +78,29 @@ export const startMcp = async (app: INestApplication) => {
 
   // Everything the OAuth discovery advertises (resources, issuers, endpoints)
   // hangs off one base, joined without dropping its path: in production
-  // NEXT_PUBLIC_BACKEND_URL is https://app.postqueen.ai/api
+  // NEXT_PUBLIC_BACKEND_URL is https://app.postqueen.ai/api. The widgets call
+  // the backend from the same base.
   const mcpBackendUrl =
     process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL!;
+  const widgetBackendUrl = mcpBackendUrl.trim().replace(/\/+$/, '');
+
+  const clippingEnabled = UploadFactory.clippingEnabled();
+  // this runs before the backend listens: a bucket url that doesn't parse only
+  // costs the widget its thumbnails, never the boot
+  let storageOrigin: string | undefined;
+  try {
+    if (clippingEnabled) {
+      storageOrigin = new URL(UploadFactory.createStorage().publicUrl!('')).origin;
+    }
+  } catch (err) {}
 
   // MCP Apps widgets (ui:// resources). They run in the host's sandboxed iframe,
   // which can only reach the domains listed in the csp
-  const appResources = {
+  const appResources: AppResources = {
     [UPLOAD_WIDGET_URI]: {
       name: 'Upload Media',
       description: 'Upload an image or video from the device to the media library',
-      html: uploadWidgetHtml(mcpBackendUrl.trim().replace(/\/+$/, '')),
+      html: uploadWidgetHtml(widgetBackendUrl),
       meta: {
         csp: { connectDomains: [new URL(mcpBackendUrl).origin] },
         // the "Copy link" button of the uploaded media
@@ -85,7 +108,30 @@ export const startMcp = async (app: INestApplication) => {
         prefersBorder: true,
       },
     },
+    ...(clippingEnabled
+      ? {
+          [CLIPPING_WIDGET_URI]: {
+            name: 'Video Clipping',
+            description: 'Progress of a video clipping and the clips it made',
+            html: clippingWidgetHtml(widgetBackendUrl),
+            meta: {
+              csp: {
+                connectDomains: [new URL(mcpBackendUrl).origin],
+                // the thumbnails of the clips live wherever the storage serves files
+                ...(storageOrigin ? { resourceDomains: [storageOrigin] } : {}),
+              },
+              // the "Copy link" button of a clip
+              permissions: { clipboardWrite: {} },
+              prefersBorder: true,
+            },
+          },
+        }
+      : {}),
   };
+
+  // a widget of a hidden tool is hidden with it
+  const { [CLIPPING_WIDGET_URI]: hiddenWidget, ...claudeAppResources } =
+    appResources;
 
   const serverConfig = {
     name: 'PostQueen MCP',
@@ -111,7 +157,7 @@ export const startMcp = async (app: INestApplication) => {
     name: 'PostQueen MCP',
     version: '1.0.0',
     tools: claudeTools,
-    appResources,
+    appResources: claudeAppResources,
   });
 
   // Two RFC 8414 path-based issuers backed by the same endpoints and code.

@@ -74,6 +74,11 @@ const getErrorMessage = (error: {
         default:
           return 'Your subscription does not include AI features. Please upgrade your subscription to use them.';
       }
+    case Sections.CLIPPING_MINUTES:
+      switch (error.action) {
+        default:
+          return 'You have used all the clipping minutes of your subscription for this month. Please upgrade your subscription to clip more videos.';
+      }
     // Every section without a case above lands here instead of returning
     // undefined, which the frontend rendered as an empty Payment Required
     // dialog. That bug has now been found three separate times — ADMIN, then AI

@@ -7,6 +7,12 @@ interface VariableContextInterface {
   /** OpenAI key present — CopilotKit and CopilotTextarea are safe to mount. */
   aiEnabled: boolean;
   /**
+   * Video clipping can run on this deployment (`isClippingEnabled`). The plan
+   * cards list clipping minutes only then, so no plan advertises a feature
+   * that cannot be used.
+   */
+  clippingEnabled: boolean;
+  /**
    * Mail can actually be delivered. `/auth/forgot` always answers success so it
    * cannot be used to discover which addresses are registered, which means the
    * screen can never learn from the response that nothing was sent — so the
@@ -92,6 +98,7 @@ const VariableContext = createContext({
   stripeClient: '',
   billingEnabled: false,
   aiEnabled: false,
+  clippingEnabled: false,
   emailEnabled: false,
   passwordlessLogin: false,
   walletLogin: false,

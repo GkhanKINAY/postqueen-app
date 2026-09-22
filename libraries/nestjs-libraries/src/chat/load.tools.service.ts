@@ -75,6 +75,7 @@ export class LoadToolsService {
               this._moduleRef.get(p, { strict: false }) as AgentToolInterface
           )
           .filter((p) => !!p.mcpOnly === mcpOnly)
+          .filter((p) => !p.available || p.available())
           .map(async (p) => ({
             name: p.name as string,
             tool: await p.run(),

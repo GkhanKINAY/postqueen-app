@@ -233,7 +233,6 @@ Skipped, deliberately:
 | `e2d5b9c5` `914b29f0` `b3cace23` | RunPod media processing. This fork runs its own ffmpeg normalization (see Media below) |
 | `07fd99ef` `ee3eaa60` | Upstream's staging CI |
 | `6b40c644` `1207941b` | A boot-time Mastra storage init and its revert; net zero |
-| `9aad99cd` `f5d83b19` `c7405ff9` | YouTube clipping. Built on the RunPod clipping processor, Deepgram and a new credit type (schema and billing). Porting it onto the ffmpeg `media` queue would be a feature, not a pick |
 
 Already here, or empty once picked (second sync):
 
@@ -282,6 +281,70 @@ issues no new integration tokens, so the channel was removed whole:
 its guide, icons and i18n keys. Upstream still has it, so a commit of theirs
 that touches any of those files is a modify/delete conflict: drop it, do not
 restore the provider.
+
+**Clipping is taken without its processor (2026-09-19, `feat/clipping`).**
+`9aad99cd`, `f5d83b19` and `c7405ff9` (YouTube video to captioned vertical
+clips in the media library and as draft posts) were skipped by the second
+sync and then taken on the owner's word, each with its upstream hash and an
+"Adapted for this fork" paragraph. Upstream runs the jobs on RunPod
+(`postiz-uploader`: Oxylabs fetches from YouTube, a GPU renders) and polls
+them from the workflow. The owner has not yet chosen between that and yt-dlp +
+ffmpeg in our own container, so what landed is everything that does not
+depend on the choice:
+
+- `Clipping` / `ClippingClip` (migration `20260919120000_clipping`, two new
+  tables, nothing altered), the `clipping_minutes` credit type metered by
+  `creditWindow`, `chargeCredits` / `refundCredits`, `/clipping` and
+  `/clipping-widget/status`, the three MCP tools under upstream's names, the
+  `ui://postqueen/clipping` widget, and the plan-card line.
+- The processor sits behind `IClippingProcessor` (`upload/clipping.processor.interface.ts`):
+  `ingest` and `clip` each run one job of upstream's schema/v1 contract to
+  its end, reporting progress for the heartbeat. `UploadFactory.createClippingProcessor()`
+  picks it by `CLIPPING_PROCESSOR`; the only implementation today,
+  `UnconfiguredClippingProcessor`, fails with "Clipping is not configured".
+  `isClippingEnabled()` (`helpers/utils/clipping.enabled.ts`) is false until
+  its `clippingProcessors` list names an implemented processor, and also
+  needs cloudflare storage, `OPENAI_API_KEY` and `DEEPGRAM_API_KEY`. While
+  it is false the tools and the widget are not registered, `POST /clipping`
+  answers 503 and the plan cards leave the minutes out.
+- `clipping.workflow.ts` is ours, not upstream's. It calls `analyseClipping`,
+  `fetchClip` and `renderClip` on a new `clipping` task queue
+  (`CLIPPING_CONCURRENCY`, default 1), each handing one job to the processor
+  and heartbeating until it ends, the way `normalizeMedia` runs on `media`.
+  Whichever processor is chosen, the workflow does not change. Running a
+  job inside one activity means an analysis can be retried after it
+  charged, so each attempt gives its own charge back first (a fix of ours
+  after the picks); upstream's poll never ran past its charge.
+- Plan minutes are `CLIPPING_MINUTES_PROPOSAL` in `pricing.ts`, upstream's
+  60 / 120 / 300 / 600 put on Creator / Growth / Pro / Ultimate. They are a
+  proposal until the owner sets them.
+
+Left for the processor: one class implementing `IClippingProcessor`, its
+case in `createClippingProcessor`, its name in `clippingProcessors`, its
+env in `.env.example`, and for the self-hosted option yt-dlp on the image.
+Upstream's worker cannot simply be reused: `gitroomhq/postiz-uploader` is
+public but carries no licence.
+
+Two things to settle before a processor switches it on, both found by the
+review of the port and harmless while it is off:
+
+- `STALE_HOURS` in `clipping.service.ts` is 4, while one clipping can run
+  three activities of up to 3 h each on a queue of concurrency 1. A reaped
+  clipping is refunded and dropped from the running count but its workflow
+  is not cancelled, so it can still complete for free and let `MAX_RUNNING`
+  be exceeded. Make the window longer than the worst case, or cancel the
+  workflow when the reaper fires.
+- The in-app agent would get `clippingStatusTool`, which polls for up to
+  25 s; the MCP hosts are what it was written for.
+
+For later syncs: upstream changes to their clipping workflow, to
+`submit*` / `check*` in `clipping.service.ts`, to `runpod.media.processor.ts`
+or to `RUNPOD_*` env are mapped, not picked. `submitClippingAnalyse` and
+`checkClippingAnalyse` are our `analyse`, `submitClipFetch` / `checkClipFetch`
+our `fetchClip`, `submitClipRender` / `checkClipRender` our `renderClip`.
+Changes to the repository, the tools, the widget and the rest of the service
+apply as they are, with `@prisma/client` rewritten and `postiz` in the widget
+URI kept as `postqueen`.
 
 Move the watermark every time a sync PR merges. It is the only cheap way to
 answer "are we current?" — see the trap below.
