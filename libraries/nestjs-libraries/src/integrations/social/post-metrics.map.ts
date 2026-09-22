@@ -184,6 +184,20 @@ function insightsByName(data: GraphInsight[] | null | undefined) {
   return out;
 }
 
+// Only the action types whose name matches, summed; null when none is there.
+function actionCount(value: unknown, type: RegExp): number | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  return asCount(
+    Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).filter(([key]) =>
+        type.test(key)
+      )
+    )
+  );
+}
+
 export function mapInstagramMediaInsights(
   platformPostId: string,
   data: GraphInsight[] | null | undefined
@@ -222,17 +236,24 @@ export function mapFacebookPostInsights(
 
 // Reels and videos have no `insights` edge. Their numbers come from
 // `/{videoId}/video_insights`, the same edge FacebookProvider.postAnalytics
-// reads for them; reactions arrive as an object keyed by type.
+// reads for them; reactions arrive as an object keyed by type. A plain video
+// answers the total_video_* metrics; a reel answers only fb_reels_total_plays
+// and the post_video_* ones.
 export function mapFacebookVideoInsights(
   platformPostId: string,
   data: GraphInsight[] | null | undefined
 ): NormalizedPostMetrics {
   const byName = insightsByName(data);
   return row(platformPostId, {
-    impressions: asCount(byName.total_video_impressions),
-    reactions: asCount(byName.total_video_reactions_by_type_total),
-    comments: null,
-    shares: null,
+    impressions: asCount(
+      byName.total_video_impressions ?? byName.fb_reels_total_plays
+    ),
+    reactions: asCount(
+      byName.total_video_reactions_by_type_total ??
+        byName.post_video_likes_by_reaction_type
+    ),
+    comments: actionCount(byName.post_video_social_actions, /comment/i),
+    shares: actionCount(byName.post_video_social_actions, /share/i),
   });
 }
 

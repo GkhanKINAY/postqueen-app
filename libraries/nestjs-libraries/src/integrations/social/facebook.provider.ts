@@ -1144,11 +1144,24 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         // (see postAnalytics). Stories have no video_insights either, so that
         // one error stays quiet instead of being logged on every sync.
         if (!postId.includes('_')) {
-          const response = await fetch(
-            `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=total_video_impressions,total_video_reactions_by_type_total&access_token=${accessToken}`
+          const videoInsights = async (metrics: string) => {
+            const response = await fetch(
+              `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=${metrics}&access_token=${accessToken}`
+            );
+            const json = await response.text();
+            return { response, json, ...JSON.parse(json || '{}') };
+          };
+          let { response, json, data, error } = await videoInsights(
+            'total_video_impressions,total_video_reactions_by_type_total'
           );
-          const json = await response.text();
-          const { data, error } = JSON.parse(json || '{}');
+          // A reel answers the total_video_* metrics with an empty data array
+          // and has its own set (see videoPostAnalytics). Asked only when the
+          // first answer is empty, so a plain video's request is unchanged.
+          if (!error && !data?.length) {
+            ({ response, json, data, error } = await videoInsights(
+              'fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions'
+            ));
+          }
           if (error && !/nonexisting field/i.test(error.message || '')) {
             // A dead token must still flag the channel, as this.fetch does on
             // the feed path below, even for a channel that only posts reels.
