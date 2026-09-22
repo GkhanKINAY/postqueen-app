@@ -87,6 +87,22 @@ export class OrganizationService {
     return this._organizationRepository.getOrgByApiKey(api);
   }
 
+  // A platform superuser's organization, and only one where every other
+  // privileged member is a superuser too: a customer workspace a superuser
+  // was invited into has its owner as SUPERADMIN and does not qualify
+  async canUseSuperAdminApi(orgId: string) {
+    const [superAdmin, privilegedOther] = await Promise.all([
+      this._organizationRepository.getSuperAdminUser(orgId),
+      this._organizationRepository.getPrivilegedNonSuperAdminUser(orgId),
+    ]);
+
+    return !!superAdmin && !privilegedOther;
+  }
+
+  getAccountOverview(orgId: string) {
+    return this._organizationRepository.getAccountOverview(orgId);
+  }
+
   getUserOrg(id: string) {
     return this._organizationRepository.getUserOrg(id);
   }
