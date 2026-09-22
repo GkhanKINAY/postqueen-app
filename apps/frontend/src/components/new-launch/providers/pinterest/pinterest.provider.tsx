@@ -39,5 +39,5 @@ export default withProvider({
   SettingsComponent: PinterestSettings,
   CustomPreviewComponent: PinterestPreview,
   dto: PinterestSettingsDto,
-  maximumCharacters: 500,
+  maximumCharacters: 800,
 });

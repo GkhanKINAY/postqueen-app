@@ -38,7 +38,7 @@ const clientAndGmb = () => {
 };
 
 @Rules(
-  'Google My Business posts can have text content and optionally one image. Posts can be updates, events, or offers.'
+  'Google My Business posts can have text content and optionally one image. Posts can be updates, events, or offers. An event needs eventTitle, eventStartDate and eventEndDate; an offer needs the same three settings for its title and dates, and takes no call to action.'
 )
 export class GmbProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3;
@@ -81,6 +81,25 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       return 'Event posts require an event title';
     }
 
+    // Google reads the dates of an event, and of an offer, from `event`; an
+    // event sent without them used to be dated today, an offer was sent
+    // with none at all.
+    if (
+      settings?.topicType === 'EVENT' &&
+      (!settings?.eventStartDate || !settings?.eventEndDate)
+    ) {
+      return 'Event posts require a start and an end date';
+    }
+
+    if (settings?.topicType === 'OFFER') {
+      if (!settings?.eventTitle) {
+        return 'Offer posts require an offer title';
+      }
+      if (!settings?.eventStartDate || !settings?.eventEndDate) {
+        return 'Offer posts require a start and an end date';
+      }
+    }
+
     return true;
   }
 
@@ -101,7 +120,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'refresh-token',
         value:
-          'Token expired or invalid, please reconnect your YouTube account.',
+          'Token expired or invalid, please reconnect your Google My Business account.',
       };
     }
 
@@ -425,14 +444,28 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
       topicType: settings?.topicType || 'STANDARD',
     };
 
-    // Add call to action if provided (and not NONE)
-    if (
-      settings?.callToActionType &&
-      settings.callToActionType !== 'NONE' &&
+    // GET_OFFER is deprecated by Google and no longer offered; a post stored
+    // with it keeps its button, with the same link, as Learn more. An offer
+    // takes no button (Google shows its own), and the composer hides the
+    // choice there, so one left over from another post type is not sent.
+    const actionType =
+      settings?.topicType === 'OFFER'
+        ? undefined
+        : settings?.callToActionType === 'GET_OFFER'
+        ? 'LEARN_MORE'
+        : settings?.callToActionType;
+
+    // Add call to action if provided (and not NONE). CALL has no url: Google
+    // wants it left unset and dials the profile's verified number.
+    if (actionType === 'CALL') {
+      postBody.callToAction = { actionType };
+    } else if (
+      actionType &&
+      actionType !== 'NONE' &&
       settings?.callToActionUrl
     ) {
       postBody.callToAction = {
-        actionType: settings.callToActionType,
+        actionType,
         url: settings.callToActionUrl,
       };
     }
@@ -452,16 +485,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
     if (settings?.topicType === 'EVENT' && settings?.eventTitle) {
       postBody.event = {
         title: settings.eventTitle,
-        schedule: {
-          startDate: this.formatDate(settings.eventStartDate),
-          endDate: this.formatDate(settings.eventEndDate),
-          ...(settings.eventStartTime && {
-            startTime: this.formatTime(settings.eventStartTime),
-          }),
-          ...(settings.eventEndTime && {
-            endTime: this.formatTime(settings.eventEndTime),
-          }),
-        },
+        schedule: this.eventSchedule(settings),
       };
     }
 
@@ -472,6 +496,21 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
         redeemOnlineUrl: settings?.offerRedeemUrl || undefined,
         termsConditions: settings?.offerTerms || undefined,
       };
+
+      // An offer's title and dates travel in `event`, as they do for an
+      // event. Only when all three were given: an offer stored before they
+      // could be entered (dates left over from an event, no title) publishes
+      // exactly as it did.
+      if (
+        settings?.eventTitle &&
+        settings?.eventStartDate &&
+        settings?.eventEndDate
+      ) {
+        postBody.event = {
+          title: settings.eventTitle,
+          schedule: this.eventSchedule(settings),
+        };
+      }
     }
 
     // Create the local post
@@ -523,6 +562,19 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
         status: 'success',
       },
     ];
+  }
+
+  private eventSchedule(settings: GmbSettingsDto) {
+    return {
+      startDate: this.formatDate(settings.eventStartDate),
+      endDate: this.formatDate(settings.eventEndDate),
+      ...(settings.eventStartTime && {
+        startTime: this.formatTime(settings.eventStartTime),
+      }),
+      ...(settings.eventEndTime && {
+        endTime: this.formatTime(settings.eventEndTime),
+      }),
+    };
   }
 
   private formatDate(dateString?: string): any {

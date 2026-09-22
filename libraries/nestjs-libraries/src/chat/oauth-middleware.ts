@@ -24,6 +24,9 @@ interface OAuthMiddlewareLogger {
 export interface OAuthMiddlewareOptions {
   oauth: MCPServerOAuthConfig;
   mcpPath?: string;
+  // Advertised in WWW-Authenticate. Defaults to the RFC 9728 path-inserted
+  // form, which only resolves when the backend owns the root of the origin
+  resourceMetadataUrl?: string;
   logger?: OAuthMiddlewareLogger;
 }
 
@@ -41,10 +44,12 @@ export function createOAuthMiddleware(options: OAuthMiddlewareOptions) {
   // RFC 9728 path-inserted form (/.well-known/oauth-protected-resource/mcp-oauth):
   // the root well-known must stay 404 so clients don't demand OAuth for other paths
   const resourcePath = new URL(oauth.resource).pathname;
-  const resourceMetadataUrl = new URL(
-    wellKnownPath + (resourcePath === '/' ? '' : resourcePath),
-    oauth.resource,
-  ).toString();
+  const resourceMetadataUrl =
+    options.resourceMetadataUrl ??
+    new URL(
+      wellKnownPath + (resourcePath === '/' ? '' : resourcePath),
+      oauth.resource,
+    ).toString();
 
   return async function oauthMiddleware(
     req: http.IncomingMessage,

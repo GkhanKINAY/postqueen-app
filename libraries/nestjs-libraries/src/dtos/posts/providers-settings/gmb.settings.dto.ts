@@ -5,6 +5,9 @@ export class GmbSettingsDto {
   @IsIn(['STANDARD', 'EVENT', 'OFFER'])
   topicType?: 'STANDARD' | 'EVENT' | 'OFFER';
 
+  // GET_OFFER stays accepted so posts stored with it still validate; Google
+  // deprecated it, the composer no longer offers it, and the provider sends
+  // it as LEARN_MORE.
   @IsOptional()
   @IsIn([
     'NONE',
@@ -26,8 +29,10 @@ export class GmbSettingsDto {
     | 'GET_OFFER'
     | 'CALL';
 
+  // Not checked on an offer, which sends no button: the composer hides the
+  // field there, so a link left from another post type cannot block a save.
   @IsOptional()
-  @ValidateIf((o) => o.callToActionType)
+  @ValidateIf((o) => o.callToActionType && o.topicType !== 'OFFER')
   @IsUrl()
   callToActionUrl?: string;
 

@@ -160,6 +160,12 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
 
     formData.append('title', postDetails[0].settings.title);
     formData.append('description', postDetails[0].message);
+    // Only a team id is sent: an empty choice, or a URL stored by an API
+    // caller when the setting asked for one, is left out as it always was.
+    const team = String(postDetails[0].settings.team ?? '');
+    if (/^\d+$/.test(team)) {
+      formData.append('team_id', team);
+    }
 
     const data2 = await this.getSsrfSafeAxios().post(
       'https://api.dribbble.com/v2/shots',

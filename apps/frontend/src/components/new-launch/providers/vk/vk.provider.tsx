@@ -6,7 +6,7 @@ import {
   withProvider,
 } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 export default withProvider({
-  postComment: PostComment.POST,
+  postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: null,
   CustomPreviewComponent: undefined,

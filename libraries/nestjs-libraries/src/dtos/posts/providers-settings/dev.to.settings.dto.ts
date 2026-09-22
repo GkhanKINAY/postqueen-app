@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   MinLength,
   ValidateIf,
   ValidateNested,
@@ -14,8 +15,10 @@ import { Type } from 'class-transformer';
 import { DevToTagsSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/dev.to.tags.settings.dto';
 
 export class DevToSettingsDto {
+  // Forem's Article model validates the title at 128 characters.
   @IsString()
   @MinLength(2)
+  @MaxLength(128)
   @IsDefined()
   title: string;
 

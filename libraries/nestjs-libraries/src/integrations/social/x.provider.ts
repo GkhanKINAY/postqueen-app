@@ -129,6 +129,20 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     settings: any,
   ): Promise<string | true> {
     if (settings?.post_type !== 'article') {
+      // Every tweet, the first and each thread reply, takes up to 4 pictures,
+      // or one GIF, or one video, never a mix (create-post reference:
+      // media.media_ids holds at most 4, and a GIF or a video goes alone).
+      for (const media of [firstPost || [], ...comments]) {
+        const alone = media.filter(
+          (m) => hasExtension(m.path, 'mp4') || hasExtension(m.path, 'gif'),
+        );
+        if (alone.length && media.length > 1) {
+          return 'X allows one video or one GIF per post, without other media';
+        }
+        if (media.length > 4) {
+          return 'X allows up to 4 pictures per post';
+        }
+      }
       return true;
     }
 

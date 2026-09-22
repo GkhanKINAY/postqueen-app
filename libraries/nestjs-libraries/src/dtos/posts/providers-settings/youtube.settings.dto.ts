@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
   registerDecorator,
@@ -64,9 +65,14 @@ export class YoutubeTagsSettings {
 }
 
 export class YoutubeSettingsDto {
+  // Any UTF-8 but < and > (videos resource); YouTube answers invalidTitle
+  // after the video is already uploaded.
   @IsString()
   @MinLength(2)
   @MaxLength(100)
+  @Matches(/^[^<>]*$/, {
+    message: 'YouTube titles cannot contain < or >',
+  })
   @IsDefined()
   title: string;
 

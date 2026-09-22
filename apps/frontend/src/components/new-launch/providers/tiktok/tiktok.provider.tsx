@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import useSWR from 'swr';
 import {
@@ -28,6 +29,7 @@ import { useCustomProviderFunction } from '@gitroom/frontend/components/launches
 import { TiktokPreview } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.preview';
 import { TikTokMusicSelector } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.music';
 import { TikTokLocationSelector } from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.location';
+import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 
 type TikTokCreatorInfo = {
   privacyLevelOptions: string[];
@@ -85,6 +87,44 @@ const useTikTokCreatorInfo = (integrationId?: string) => {
 };
 
 /**
+ * How long the attached video runs, read from its metadata in the browser.
+ *
+ * TikTok's content sharing guidelines make the integrator check the video
+ * against the creator's `max_video_post_duration_sec` before posting, and a
+ * stored video carries no duration on the server, so the composer reads it
+ * here. `undefined` until the metadata has loaded, or when it cannot be read:
+ * that shows nothing rather than a guess.
+ */
+const useVideoDuration = (src?: string) => {
+  // Kept with the source it was measured from, so a newly attached video
+  // never shows the previous one's length while its own is loading.
+  const [measured, setMeasured] = useState<{ src: string; duration: number }>();
+
+  useEffect(() => {
+    if (!src) {
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      setMeasured({ src, duration: video.duration });
+    };
+    video.src = src;
+
+    return () => {
+      video.onloadedmetadata = null;
+      video.removeAttribute('src');
+      video.load();
+    };
+  }, [src]);
+
+  return src && measured?.src === src && Number.isFinite(measured.duration)
+    ? measured.duration
+    : undefined;
+};
+
+/**
  * Label and glyph for each value TikTok can return in `privacy_level_options`.
  * The mapping lives here rather than in `FormChoice`, because which privacy
  * levels exist is TikTok's business and generic form components must not know
@@ -138,7 +178,7 @@ const TikTokSettings: FC<{
     }
     return t(
       'tiktok_restriction_upload_video',
-      'TikTok restriction: For upload-only video, TikTok does not accept a title or message. The content will default to "#PostQueen" and you can edit it inside the TikTok app before publishing.'
+      'TikTok restriction: For upload-only video, TikTok does not accept a title or message. You can edit the post inside the TikTok app before publishing.'
     );
   }, [hasMedia, isUploadMode, isVideo, t]);
 
@@ -149,6 +189,20 @@ const TikTokSettings: FC<{
     error: creatorInfoError,
     mutate: retryCreatorInfo,
   } = useTikTokCreatorInfo(integration?.id);
+
+  // Direct Post only: in Upload mode the creator finishes the post in TikTok,
+  // which can trim the video there.
+  const mediaDir = useMediaDirectory();
+  const videoPath = isVideo ? value?.[0]?.image?.[0]?.path : undefined;
+  const videoDuration = useVideoDuration(
+    videoPath ? mediaDir.set(videoPath) : undefined
+  );
+  const maxDuration = creatorInfo?.maxDurationSeconds;
+  const videoTooLong =
+    !isUploadMode &&
+    !!maxDuration &&
+    !!videoDuration &&
+    videoDuration > maxDuration;
 
   const privacyLabels: Record<string, string> = useMemo(
     () => ({
@@ -299,6 +353,17 @@ const TikTokSettings: FC<{
         <FormSection icon="warn">
           <div className="text-[13px] leading-[1.45] text-pqText text-balance">
             {tiktokRestrictionNotice}
+          </div>
+        </FormSection>
+      )}
+      {videoTooLong && (
+        <FormSection icon="warn">
+          <div className="text-[13px] leading-[1.45] text-pqDanger text-balance">
+            {t(
+              'tiktok_video_too_long',
+              'This video is {{duration}} seconds long and this TikTok account can post videos of up to {{max}} seconds. TikTok will refuse it, so trim it or choose a shorter video.',
+              { duration: Math.ceil(videoDuration), max: maxDuration }
+            )}
           </div>
         </FormSection>
       )}

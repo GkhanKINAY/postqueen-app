@@ -16,6 +16,7 @@ import {
   Disconnect,
   RefreshToken,
   SocialAbstract,
+  ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { capitalize, chunk } from 'lodash';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
@@ -42,6 +43,44 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
   editor = 'normal' as const;
   maxLength() {
     return 500;
+  }
+
+  // Each entry is its own Threads post (the first one, then each reply). The
+  // 500 limit is not measured here: the generic too-long check already counts
+  // a Threads post in UTF-8 bytes (countLength), emoji included.
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>,
+    settings: any,
+    additionalSettings: any[],
+    texts: string[] = []
+  ): Promise<string | true> {
+    for (const media of posts || []) {
+      if ((media?.length ?? 0) > 20) {
+        return 'Threads carousels can have up to 20 items';
+      }
+      if (
+        media?.some((m) =>
+          ['gif', 'webp', 'avif', 'bmp', 'tif'].some((ext) =>
+            hasExtension(m?.path, ext)
+          )
+        )
+      ) {
+        return 'Threads accepts JPEG or PNG images only';
+      }
+    }
+
+    for (const text of texts) {
+      const links = new Set(
+        (text.match(/(?:https?:\/\/|www\.)[^\s]+/gi) || []).map((link) =>
+          link.toLowerCase()
+        )
+      );
+      if (links.size > 5) {
+        return 'Threads allows up to 5 links per post';
+      }
+    }
+
+    return true;
   }
 
   override handleErrors(body: string):
