@@ -207,6 +207,34 @@ describe('platform field maps', () => {
     assert.equal(mapped.shares, null);
   });
 
+  it('maps a Facebook reel from the reels metrics', () => {
+    const mapped = mapFacebookVideoInsights('fbr1', [
+      { name: 'fb_reels_total_plays', values: [{ value: 1200 }] },
+      {
+        name: 'post_video_likes_by_reaction_type',
+        values: [{ value: { REACTION_LIKE: 30, REACTION_LOVE: 2 } }],
+      },
+      {
+        name: 'post_video_social_actions',
+        values: [{ value: { COMMENT: 7, SHARE: 3 } }],
+      },
+    ]);
+    assert.equal(mapped.impressions, 1200);
+    assert.equal(mapped.reactions, 32);
+    assert.equal(mapped.comments, 7);
+    assert.equal(mapped.shares, 3);
+  });
+
+  it('leaves Facebook comments and shares unknown when no action matches', () => {
+    const mapped = mapFacebookVideoInsights('fbr2', [
+      { name: 'fb_reels_total_plays', values: [{ value: 5 }] },
+      { name: 'post_video_social_actions', values: [{ value: {} }] },
+    ]);
+    assert.equal(mapped.impressions, 5);
+    assert.equal(mapped.comments, null);
+    assert.equal(mapped.shares, null);
+  });
+
   it('maps TikTok and TikTok Business view fields to impressions', () => {
     assert.equal(
       mapTikTokVideoStats('tt1', {

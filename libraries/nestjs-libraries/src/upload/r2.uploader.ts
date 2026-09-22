@@ -310,7 +310,15 @@ export async function completeMultipartUpload(req: Request, res: Response) {
     const prefix = Buffer.concat(chunks);
     const detected = await fileTypeFromBuffer(prefix);
 
-    if (!detected || detected.mime !== expectedMime) {
+    // .mov and .mp4 are the same ISO BMFF family: a .mov with an ISO brand
+    // sniffs as video/mp4 and a QuickTime-brand file is often named .mp4.
+    // Either goes through the normalizer (MediaService.saveUploadedFile),
+    // which reads both and always writes an mp4.
+    const acceptedMimes =
+      safeExt === '.mov' || safeExt === '.mp4'
+        ? ['video/quicktime', 'video/mp4']
+        : [expectedMime];
+    if (!detected || !acceptedMimes.includes(detected.mime)) {
       await R2.send(
         new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
       );
