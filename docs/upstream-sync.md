@@ -213,11 +213,72 @@ Lessons, in the order they cost time:
   regenerated without touching the main checkout, and so `tsc` saw what CI
   sees.
 
+## September 2026 (third sync): what happened
+
+**The 18 left for an owner decision, plus 21 new commits (`6f107801..8b84b0dc`).**
+The owner's word on the 18 was to take everything that can be taken without
+breaking the app, and the clipping port above followed from it. Of the 18:
+16 taken (the eight superadmin commits as one adapted commit without their
+cross-tenant header, and the Mastra mirror measured rather than copied), 2
+left out because they only serve that header. Of the 21: 11 taken, 5 already
+here, 5 skipped.
+The second sync's branches, the five fix branches of the same day
+(`fix/mcp-oauth-discovery`, `fix/hashnode-endpoint`, `fix/platform-limit-validation`,
+`fix/connect-guides`, `chore/remove-medium`) and all of this landed together.
+
+What landed from the 18: URL uploads that stream to a temp file instead of
+buffering the body (`118d89c0`, onto our spooled upload path); the MCP OAuth
+issuer split with `/mcp-oauth-chatgpt` (`2a0d6885`, `48490b81`, on the
+base-path fix so `/api` survives); Mastra 1.67 and CopilotKit 1.72
+(`c589175a`); the MCP upload widget (`2c29ea3e`, `c6bfe135`, `1251b5a0`, on
+`spooledFileInterceptor` and `CustomFileValidationPipe`, so the allow-list and
+the video normalizer apply to it); and the superadmin debug endpoints
+(`facc77d8` and seven follow-ups), for the calling organization only.
+
+From the 21: Facebook page analytics throws on a Graph error instead of
+caching an empty result, Facebook reels get statistics, Google Business posts
+link to Google's `searchUrl`, Slack's `ok: false` answers fail the post
+instead of marking it published, Reddit resolves a pasted `r/name` or URL,
+Sentry stops tracing MCP stream GETs and samples at 0.1, clipping asks for
+the fit before it starts and gets public API endpoints, and a multipart
+`.mov` or `.mp4` is accepted in either ISO brand.
+
+Lessons, in the order they cost time:
+
+- **Measure the Mastra mirror; do not copy upstream's.** Upstream mirrored its
+  own production database, which carries tables, types and index names from
+  Mastra versions this fork's tables were never created with (`mastra_threads.metadata`
+  is text here, not jsonb). The mirror in `schema.prisma` is now what
+  `migrate deploy` plus Mastra's own `PostgresStore.init()` produce on an
+  empty database, read back with `prisma db pull`. Do the same after every
+  `@mastra/*` upgrade: `prisma migrate diff` from that database to the
+  schema must list nothing for `mastra_*`, and from the previous schema to
+  the new one it must contain no DROP of a column that holds data.
+- **Prisma 7 refuses `db push --accept-data-loss` from an agent** without the
+  user's consent text. Do not work around it. `migrate deploy` onto a scratch
+  database is the production path anyway, and `migrate diff` reads, it
+  never writes.
+- **The same diff found six columns no migration adds** (`Post.publishClaim`,
+  `Integration.autoDisabledAt`, `Organization.subscriptionEndedAt`, three
+  subscription tiers). They date from before production moved to
+  `PRISMA_MIGRATE`. `20260922120000_db_push_catch_up` adds them with
+  `IF NOT EXISTS`, which changes nothing where they exist.
+- **Upstream's CVE fixes can arrive after ours.** CVE-2026-94455 and -94456
+  were both closed here earlier and more strictly (a separate
+  `ENTERPRISE_SECRET`; a CSPRNG behind `makeId` itself rather than a second
+  function every caller has to remember).
+- **Read a support tool as an attack surface.** `x-postiz-org` makes a
+  superuser organization's API key a key to every tenant, and this fork puts
+  that key in the `/mcp/<key>` URL people paste into AI clients. The
+  endpoints came in for the calling organization only; impersonation in the
+  web app, session based and superuser only, stays the way to look into a
+  customer's workspace.
+
 ## Where the sync currently stands
 
-**Synced through `6f107801` (2026-09-19).** Everything upstream had written by
+**Synced through `8b84b0dc` (2026-09-22).** Everything upstream had written by
 that commit is either in this tree or listed below with a reason. The previous
-watermark was `c9382d98` (2026-09-03).
+watermarks were `6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
 
 Skipped, deliberately:
 
@@ -233,6 +294,10 @@ Skipped, deliberately:
 | `e2d5b9c5` `914b29f0` `b3cace23` | RunPod media processing. This fork runs its own ffmpeg normalization (see Media below) |
 | `07fd99ef` `ee3eaa60` | Upstream's staging CI |
 | `6b40c644` `1207941b` | A boot-time Mastra storage init and its revert; net zero |
+| `facc77d8` (in part) `9485ca50` `c3e06973` | The `x-postiz-org` override, `x-postiz-include-deleted`, and the search-term rule of the `GET /public/v1/users` search from `0b6dc6c5`. Together they let one organization's API key act as any other; the debug endpoints of the same set were taken for the calling organization |
+| `7cef69c1` | Widens the scope of upstream's own security advisory intake |
+| `3d3e9eee` `6af357dd` `c0238437` | Upstream's ChatGPT app-directory listing (`chatgpt-app-submission.json`) |
+| `8b84b0dc` | Reworks the onboarding modal this fork removed, around upstream's Claude, ChatGPT, Cursor and Grok Bot directory listings |
 
 Already here, or empty once picked (second sync):
 
@@ -243,17 +308,10 @@ Already here, or empty once picked (second sync):
 | `26885010` | Mantine 9 (`f57dfe81`) removed the React 19 warning this worked around |
 | `b267fbeb` | `e3b4dc27` already hides the Chatbase widget while Create Post is open |
 | `d46c7bb7` | Lockfile specifiers; empty after this sync's lockfile regeneration |
-
-Waiting for an owner decision (second sync). Each is a product or risk call
-rather than a fix, so none was taken:
-
-| Upstream | What | Why it waits |
-|---|---|---|
-| `118d89c0` | Streams a URL upload (public API, the agent's `uploadFromUrlTool`) into storage instead of buffering the body. Both of our URL paths still buffer | Built on upstream's RunPod-era storage interface; worth porting, not picking |
-| `2c29ea3e` `c6bfe135` `1251b5a0` | MCP upload widget for Claude and ChatGPT: a ticket-authenticated `POST /media-widget/upload` with `Access-Control-Allow-Origin: *` | Needs `118d89c0`'s streaming engine, and adds a public upload surface |
-| `2a0d6885` `48490b81` | Moves every MCP OAuth path to a `/mcp-oauth-dynamic` issuer and adds `/mcp-oauth-chatgpt` without DCR | Only useful for a ChatGPT app submitted with pre-defined client credentials; otherwise it changes discovery for every connected MCP client for nothing |
-| `c589175a` `e9245cad` | Mastra 1.57 to 1.67 and CopilotKit 1.66 to 1.72, with the schema mirror of Mastra 1.67's tables | The AI dependency graph took production down once (`c45dde68`). The mirror rewrites `mastra_ai_spans`, and under `db push --accept-data-loss` a mirror of another version's columns can drop columns our Mastra writes. The upgrade and the mirror go together or not at all |
-| `facc77d8` `671b8eae` `b4da5597` `7c2ac907` `a1db9359` `82a10abd` `246c3c03` `aee98597` `9485ca50` `c3e06973` | Superadmin debug endpoints on the public API, and an `x-postiz-org` header that lets a superadmin organization's API key act as any organization | Built on `0b6dc6c5`, skipped for a security reason. The later commits close that hole, but this is upstream's support tooling (dispute evidence) and a cross-tenant surface |
+| `12978bef` `0ffdbc97` | `9d7f9e3e` moved Hashnode to gql-beta with the new tag and cover inputs, and also tells a bad token (RefreshToken) from a missing Pro plan and a missing post |
+| `678acd4a` | `0901595b` already refuses a video on Slack at validation |
+| `9259cf24` (CVE-2026-94455) | `f95bd486` puts the enterprise routes behind their own `ENTERPRISE_SECRET`, so a session token is unusable there, not only rejected |
+| `4c835138` (CVE-2026-94456) | `22fae01e` made `makeId` itself a CSPRNG, which covers every caller, the frontend and the workflows included |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
 (`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing
@@ -282,8 +340,8 @@ its guide, icons and i18n keys. Upstream still has it, so a commit of theirs
 that touches any of those files is a modify/delete conflict: drop it, do not
 restore the provider.
 
-**Clipping is taken without its processor (2026-09-19, `feat/clipping`).**
-`9aad99cd`, `f5d83b19` and `c7405ff9` (YouTube video to captioned vertical
+**Clipping is taken without its processor (2026-09-19; `fc14ff16` and
+`dac36eda` on 2026-09-22).** `9aad99cd`, `f5d83b19` and `c7405ff9` (YouTube video to captioned vertical
 clips in the media library and as draft posts) were skipped by the second
 sync and then taken on the owner's word, each with its upstream hash and an
 "Adapted for this fork" paragraph. Upstream runs the jobs on RunPod
@@ -295,7 +353,8 @@ depend on the choice:
 - `Clipping` / `ClippingClip` (migration `20260919120000_clipping`, two new
   tables, nothing altered), the `clipping_minutes` credit type metered by
   `creditWindow`, `chargeCredits` / `refundCredits`, `/clipping` and
-  `/clipping-widget/status`, the three MCP tools under upstream's names, the
+  `/clipping-widget/status`, `POST` / `GET /public/v1/clipping`, the three
+  MCP tools under upstream's names, the
   `ui://postqueen/clipping` widget, and the plan-card line.
 - The processor sits behind `IClippingProcessor` (`upload/clipping.processor.interface.ts`):
   `ingest` and `clip` each run one job of upstream's schema/v1 contract to
