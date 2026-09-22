@@ -148,6 +148,7 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
         threadId={threadId}
         credentials="include"
         runtimeUrl={backendUrl + '/copilot/agent'}
+        useSingleEndpoint={true}
         showDevConsole={false}
         enableInspector={false}
         agent="postqueen"

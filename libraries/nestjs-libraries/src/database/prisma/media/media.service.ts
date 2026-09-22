@@ -1,4 +1,9 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import {
   ImageOrientation,
@@ -12,10 +17,17 @@ import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import {
+  detectUploadType,
+  DownloadTooLargeError,
   downloadToFile,
+  MAX_UPLOAD_BYTES,
   spooledFile,
   uploadTempDir,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
+import {
+  getMaxSize,
+  UPLOAD_ALLOWED_MIME,
+} from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import {
   decideAction,
   FfmpegService,
@@ -35,6 +47,8 @@ import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { randomBytes } from 'crypto';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 /**
  * Whether this video type is held back because the organization is still on
@@ -149,6 +163,60 @@ export class MediaService {
     return this.saveFile(org.id, file.split('/').pop(), file);
   }
 
+  /**
+   * A remote image or video into the library: the public API's
+   * /upload-from-url and the agent's uploadFromUrlTool. Both used to read the
+   * whole body into memory before looking at it. Now it is streamed to a
+   * spooled file under the upload cap, and from there it goes the way a
+   * multipart upload goes: the type sniffed from the bytes, the allow-list,
+   * storage, and the normalizer for a video. Rejections are
+   * BadRequestException with the messages the routes answered before.
+   */
+  async uploadFromUrl(org: string, url: string) {
+    await fsp.mkdir(uploadTempDir(), { recursive: true });
+    const dir = await fsp.mkdtemp(join(uploadTempDir(), 'url-'));
+    const path = join(dir, 'download');
+    try {
+      try {
+        await downloadToFile(url, path, MAX_UPLOAD_BYTES, { allowHttp: true });
+      } catch (err) {
+        // Network-level failures (DNS, connection refused, SSRF block, ...)
+        // reject rather than answer; keep the real reason reachable for
+        // callers that want to surface it
+        throw new BadRequestException(
+          err instanceof DownloadTooLargeError
+            ? 'File is too large.'
+            : 'Failed to fetch URL',
+          { cause: err }
+        );
+      }
+
+      const file = spooledFile(path, '', 'upload');
+      const detected = await detectUploadType(file);
+      if (!detected || !UPLOAD_ALLOWED_MIME.has(detected.mime)) {
+        throw new BadRequestException('Unsupported file type.');
+      }
+      if (file.size > getMaxSize(detected.mime)) {
+        throw new BadRequestException('File is too large.');
+      }
+
+      const stored = await this.storage.uploadFile({
+        ...file,
+        mimetype: detected.mime,
+        originalname: `upload.${detected.ext}`,
+      });
+      return await this.saveUploadedFile(
+        org,
+        stored.originalname,
+        stored.path,
+        undefined,
+        file.size
+      );
+    } finally {
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
+  }
+
   saveFile(
     org: string,
     fileName: string,
@@ -224,6 +292,80 @@ export class MediaService {
       return this._mediaRepository.finishProcessing(org, media.id, {});
     }
     return this.failProcessing(media.id, NO_PROCESSOR);
+  }
+
+  // Upload widget (MCP Apps): the session id is what the model sees and polls,
+  // the ticket is the credential the widget uploads with. It is handed to the
+  // widget only, so it doesn't end up in the conversation
+  async createUploadSession(org: string) {
+    const sessionId = randomBytes(16).toString('hex');
+    await ioRedis.set(`uploadSession:${sessionId}`, org, 'EX', 3600);
+    return sessionId;
+  }
+
+  private async checkUploadSession(org: string, sessionId: string) {
+    if ((await ioRedis.get(`uploadSession:${sessionId}`)) !== org) {
+      throw new HttpException('Upload session not found or expired', 404);
+    }
+  }
+
+  async createUploadTicket(org: string, sessionId: string) {
+    await this.checkUploadSession(org, sessionId);
+    const ticket = randomBytes(32).toString('hex');
+    await ioRedis.set(
+      `uploadTicket:${ticket}`,
+      JSON.stringify({ org, sessionId }),
+      'EX',
+      600
+    );
+    return ticket;
+  }
+
+  // A ticket never outlives its session: the upload is spooled to disk and
+  // stored right after this check, so an expired session has to be refused here
+  async getUploadTicket(ticket: string) {
+    const found = JSON.parse(
+      (await ioRedis.get(`uploadTicket:${ticket}`)) || 'null'
+    ) as { org: string; sessionId: string } | null;
+    if (
+      !found ||
+      (await ioRedis.get(`uploadSession:${found.sessionId}`)) !== found.org
+    ) {
+      return null;
+    }
+    return found;
+  }
+
+  async saveUploadSessionFile(
+    org: string,
+    sessionId: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    fileSize?: number
+  ) {
+    await this.checkUploadSession(org, sessionId);
+    const media = await this.saveUploadedFile(
+      org,
+      fileName,
+      filePath,
+      originalName,
+      fileSize
+    );
+    // a list, so parallel uploads of the same session can't overwrite each other
+    await ioRedis.rpush(`uploadSessionMedia:${sessionId}`, media.id);
+    await ioRedis.expire(`uploadSessionMedia:${sessionId}`, 3600);
+    return media;
+  }
+
+  async getUploadSession(org: string, sessionId: string) {
+    await this.checkUploadSession(org, sessionId);
+    const list = await ioRedis.lrange(`uploadSessionMedia:${sessionId}`, 0, -1);
+    return (
+      await Promise.all(
+        list.map((id) => this._mediaRepository.getMediaStatus(org, id))
+      )
+    ).filter((f) => f);
   }
 
   async getMediaStatus(org: string, id: string) {

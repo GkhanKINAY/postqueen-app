@@ -167,6 +167,10 @@ export const AgentChat: FC = () => {
       threadId={threadId}
       credentials="include"
       runtimeUrl={backendUrl + '/copilot/agent'}
+      // The backend serves the single-route envelope only. Up to 1.66 the
+      // v1 <CopilotKit> defaulted to it; from 1.72 an unset prop means
+      // "auto", which probes the REST routes first.
+      useSingleEndpoint={true}
       showDevConsole={false}
       // Separate switch from the console in 1.66, on by default on
       // localhost: a floating CopilotKit button with its own announcements.
