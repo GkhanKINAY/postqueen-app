@@ -276,9 +276,11 @@ Lessons, in the order they cost time:
 
 ## Where the sync currently stands
 
-**Synced through `8b84b0dc` (2026-09-22).** Everything upstream had written by
-that commit is either in this tree or listed below with a reason. The previous
-watermarks were `6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
+**Synced through `5ff9e0b2` (2026-09-22), and merged.** Everything upstream had
+written by that commit is either in this tree or listed below with a reason,
+and `main` now has that commit as an ancestor through a `-s ours` merge (see
+"Next time"). The previous watermarks were `8b84b0dc` (the same day, before
+three README commits), `6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
 
 Skipped, deliberately:
 
@@ -298,6 +300,7 @@ Skipped, deliberately:
 | `7cef69c1` | Widens the scope of upstream's own security advisory intake |
 | `3d3e9eee` `6af357dd` `c0238437` | Upstream's ChatGPT app-directory listing (`chatgpt-app-submission.json`) |
 | `8b84b0dc` | Reworks the onboarding modal this fork removed, around upstream's Claude, ChatGPT, Cursor and Grok Bot directory listings |
+| `87ac77c6` `c33f2188` `5ff9e0b2` | Upstream's own README and the agent icons it shows. This fork's README is PostQueen's |
 
 Already here, or empty once picked (second sync):
 
@@ -410,25 +413,48 @@ answer "are we current?" — see the trap below.
 
 ## Next time
 
+**`main` records upstream as merged.** Until 2026-09-22 nothing in `main`'s
+history said upstream's commits had been dealt with, so GitHub counted every
+one of them as "behind" forever, and `main..upstream/main` listed commits
+taken months ago under their cherry-picked hashes. After the third sync,
+upstream's `5ff9e0b2` was merged into `main` with `git merge -s ours`: a merge
+commit whose tree is `main`'s own, unchanged, whose second parent says "all of
+this is handled". From that point on `main..upstream/main` is the true list of
+what upstream wrote since, and GitHub's count agrees with it.
+
+So a sync is now:
+
 ```bash
 git fetch upstream
-git log --reverse --no-merges --format='%ad %h %s' --date=short \
-  <watermark>..upstream/main
+git log --reverse --no-merges --format='%ad %h %s' --date=short main..upstream/main
 ```
 
-**Do not use `main..upstream/main` to answer "what is missing".** Cherry-picking
-writes new hashes, so every commit ever taken keeps showing up as absent — that
-range read 44 the day after a sync that had left only two commits outstanding.
-`git cherry` and subject matching are both wrong here too, for the same reason
-in reverse: this fork renames and adapts what it takes, so an identical change
-shows as different. Six of the eight commits that "did not match" on 2026-08-09
-were present, one under a different filename and the rest reworded.
+1. Take, adapt or skip each commit as the rules above say, on branches off
+   `main`, in date order, and record the decisions below.
+2. When those have merged, write down the last upstream commit they cover
+   (a hash, never `upstream/main`, which may have moved while you worked),
+   and merge exactly that into a branch off `main` with
+   `git merge -s ours <hash>`, in its own PR. Check that the merge changes no
+   file (`git diff main HEAD` is empty).
+3. Merge that PR with a **merge commit**. A squash or a rebase merge drops the
+   second parent, and with it the whole point.
 
-Trust the watermark, and confirm a specific commit by looking for its hash:
+The `-s ours` merge only states that the commits were handled; the table of
+skipped commits is still where the reasons live. A commit skipped for a
+reason (a security hole, their hosted service, their branding) stays skipped
+even though git now calls it merged.
+
+Confirm a specific commit by its hash in our messages, since cherry-picks
+carry it:
 
 ```bash
 git log origin/main --format='%H%n%B' | grep <upstream-hash>
 ```
+
+`git cherry` and subject matching still do not work for that, because this
+fork renames and adapts what it takes. Six of the eight commits that "did not
+match" on 2026-08-09 were present, one under a different filename and the
+rest reworded.
 
 Do this monthly. Forty-two commits took a day; four hundred would not be four
 hundred times easier.
