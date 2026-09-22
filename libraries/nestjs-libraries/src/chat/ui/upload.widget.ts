@@ -256,28 +256,30 @@ export const uploadWidgetHtml = (backendUrl: string) => `<!DOCTYPE html>
     drop.className = 'disabled';
     fail('');
     var done = [];
-    getTicket()
-      .then(function (ticket) {
-        return files.reduce(function (chain, file) {
-          var set = row(file);
-          return chain.then(function () {
-            set('', 'Uploading…');
-            return uploadFile(file, ticket)
-              .then(function (media) {
+    // One ticket per file: a ticket lives 10 minutes, and the files before
+    // this one (a video that takes long to process) can outlast it
+    files
+      .reduce(function (chain, file) {
+        var set = row(file);
+        return chain.then(function () {
+          set('', 'Uploading…');
+          return getTicket()
+            .then(function (ticket) {
+              return uploadFile(file, ticket).then(function (media) {
                 if (media.status === 'processing') set('', 'Processing…');
                 return waitUntilReady(media, ticket);
-              })
-              .then(function (media) {
-                if (media.status === 'failed') throw new Error(media.processingError || 'Processing failed');
-                var item = { id: media.id, path: media.path, name: media.originalName || file.name };
-                uploaded.push(item);
-                done.push(item);
-                set('ok', 'Uploaded', media.path);
-              })
-              .catch(function (err) { set('bad', err.message || 'Upload failed'); });
-          });
-        }, Promise.resolve());
-      })
+              });
+            })
+            .then(function (media) {
+              if (media.status === 'failed') throw new Error(media.processingError || 'Processing failed');
+              var item = { id: media.id, path: media.path, name: media.originalName || file.name };
+              uploaded.push(item);
+              done.push(item);
+              set('ok', 'Uploaded', media.path);
+            })
+            .catch(function (err) { set('bad', err.message || 'Upload failed'); });
+        });
+      }, Promise.resolve())
       .catch(function (err) { fail(err.message || 'Upload failed'); })
       .then(function () {
         busy = false;
