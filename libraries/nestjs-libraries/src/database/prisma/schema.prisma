@@ -542,19 +542,19 @@ model Post {
 /// Request-path analytics reads this; workers write it. Null metric columns
 /// mean that provider does not fetch the field — never treat them as zero.
 model PostMetricSnapshot {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   postId         String
   integrationId  String
-  capturedAt     DateTime @default(now())
-  capturedDay    DateTime @db.Date
+  capturedAt     DateTime     @default(now())
+  capturedDay    DateTime     @db.Date
   impressions    Int?
   reactions      Int?
   comments       Int?
   shares         Int?
   raw            Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
   post           Post         @relation(fields: [postId], references: [id])
   integration    Integration  @relation(fields: [integrationId], references: [id])
@@ -808,55 +808,54 @@ model Mentions {
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model mastra_ai_spans {
-  traceId          String
-  spanId           String
-  name             String
-  spanType         String
-  isEvent          Boolean
-  startedAt        DateTime  @db.Timestamp(6)
-  parentSpanId     String?
-  scope            Json?
-  metadata         Json?
-  attributes       Json?
-  links            Json?
-  input            Json?
-  output           Json?
-  error            Json?
-  endedAt          DateTime? @db.Timestamp(6)
-  createdAt        DateTime  @db.Timestamp(6)
-  updatedAt        DateTime? @db.Timestamp(6)
-  startedAtZ       DateTime? @default(now()) @db.Timestamptz(6)
-  endedAtZ         DateTime? @default(now()) @db.Timestamptz(6)
-  createdAtZ       DateTime? @default(now()) @db.Timestamptz(6)
-  updatedAtZ       DateTime? @default(now()) @db.Timestamptz(6)
-  entityType       String?
-  entityId         String?
-  entityName       String?
-  parentEntityType String?
-  parentEntityId   String?
-  parentEntityName String?
-  rootEntityType   String?
-  rootEntityId     String?
-  rootEntityName   String?
-  userId           String?
-  organizationId   String?
-  resourceId       String?
-  runId            String?
-  sessionId        String?
-  threadId         String?
-  requestId        String?
-  environment      String?
-  serviceName      String?
-  experimentId     String?
-  source           String?
-  tags             Json?
-  requestContext   Json?
+  traceId               String
+  spanId                String
+  parentSpanId          String?
+  name                  String
+  scope                 Json?
+  spanType              String
+  attributes            Json?
+  metadata              Json?
+  links                 Json?
+  input                 Json?
+  output                Json?
+  error                 Json?
+  startedAt             DateTime  @db.Timestamp(6)
+  endedAt               DateTime? @db.Timestamp(6)
+  createdAt             DateTime  @db.Timestamp(6)
+  updatedAt             DateTime? @db.Timestamp(6)
+  isEvent               Boolean
+  startedAtZ            DateTime? @default(now()) @db.Timestamptz(6)
+  endedAtZ              DateTime? @default(now()) @db.Timestamptz(6)
+  createdAtZ            DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ            DateTime? @default(now()) @db.Timestamptz(6)
+  entityType            String?
+  entityId              String?
+  entityName            String?
+  parentEntityType      String?
+  parentEntityId        String?
+  parentEntityName      String?
+  rootEntityType        String?
+  rootEntityId          String?
+  rootEntityName        String?
+  userId                String?
+  organizationId        String?
+  resourceId            String?
+  runId                 String?
+  sessionId             String?
+  threadId              String?
+  requestId             String?
+  environment           String?
+  serviceName           String?
+  entityVersionId       String?
+  parentEntityVersionId String?
+  rootEntityVersionId   String?
+  experimentId          String?
+  source                String?
+  tags                  Json?
+  requestContext        Json?
 
   @@id([traceId, spanId], map: "public_mastra_ai_spans_traceid_spanid_pk")
-  @@index([name], map: "public_mastra_ai_spans_name_idx")
-  @@index([parentSpanId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_parentspanid_startedat_idx")
-  @@index([spanType, startedAt(sort: Desc)], map: "public_mastra_ai_spans_spantype_startedat_idx")
-  @@index([traceId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_traceid_startedat_idx")
   @@index([entityType, entityId], map: "mastra_ai_spans_entitytype_entityid_idx")
   @@index([entityType, entityName], map: "mastra_ai_spans_entitytype_entityname_idx")
   @@index([metadata], map: "mastra_ai_spans_metadata_gin_idx", type: Gin)
@@ -867,6 +866,10 @@ model mastra_ai_spans {
   @@index([spanType, startedAt(sort: Desc)], map: "mastra_ai_spans_spantype_startedat_idx")
   @@index([tags], map: "mastra_ai_spans_tags_gin_idx", type: Gin)
   @@index([traceId, startedAt(sort: Desc)], map: "mastra_ai_spans_traceid_startedat_idx")
+  @@index([name], map: "public_mastra_ai_spans_name_idx")
+  @@index([parentSpanId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_parentspanid_startedat_idx")
+  @@index([spanType, startedAt(sort: Desc)], map: "public_mastra_ai_spans_spantype_startedat_idx")
+  @@index([traceId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_traceid_startedat_idx")
   @@ignore
 }
 
@@ -900,8 +903,8 @@ model mastra_messages {
   resourceId String?
   createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
 
-  @@index([thread_id, createdAt(sort: Desc)], map: "public_mastra_messages_thread_id_createdat_idx")
   @@index([thread_id, createdAt(sort: Desc)], map: "mastra_messages_thread_id_createdat_idx")
+  @@index([thread_id, createdAt(sort: Desc)], map: "public_mastra_messages_thread_id_createdat_idx")
 }
 
 model mastra_resources {
@@ -918,7 +921,6 @@ model mastra_scorers {
   id                   String    @id
   scorerId             String
   traceId              String?
-  spanId               String?
   runId                String
   scorer               Json
   preprocessStepResult Json?
@@ -936,6 +938,7 @@ model mastra_scorers {
   input                Json
   output               Json
   additionalContext    Json?
+  runtimeContext       Json?
   entityType           String?
   entity               Json?
   entityId             String?
@@ -946,11 +949,16 @@ model mastra_scorers {
   updatedAt            DateTime  @db.Timestamp(6)
   createdAtZ           DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ           DateTime? @default(now()) @db.Timestamptz(6)
-  runtimeContext       Json?
+  spanId               String?
   requestContext       Json?
+  organizationId       String?
+  projectId            String?
+  batchId              String?
+  datasetId            String?
+  datasetItemId        String?
 
-  @@index([traceId, spanId, createdAt(sort: Desc)], map: "public_mastra_scores_trace_id_span_id_created_at_idx")
   @@index([traceId, spanId, createdAt(sort: Desc)], map: "mastra_scores_trace_id_span_id_created_at_idx")
+  @@index([traceId, spanId, createdAt(sort: Desc)], map: "public_mastra_scores_trace_id_span_id_created_at_idx")
 }
 
 model mastra_threads {
@@ -963,8 +971,8 @@ model mastra_threads {
   createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ DateTime? @default(now()) @db.Timestamptz(6)
 
-  @@index([resourceId, createdAt(sort: Desc)], map: "public_mastra_threads_resourceid_createdat_idx")
   @@index([resourceId, createdAt(sort: Desc)], map: "mastra_threads_resourceid_createdat_idx")
+  @@index([resourceId, createdAt(sort: Desc)], map: "public_mastra_threads_resourceid_createdat_idx")
 }
 
 model mastra_traces {
@@ -998,6 +1006,7 @@ model mastra_workflow_snapshot {
   updatedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
 
   @@unique([workflow_name, run_id], map: "public_mastra_workflow_snapshot_workflow_name_run_id_key")
+  @@index([workflow_name, createdAt(sort: Desc)], map: "mastra_workflow_snapshot_name_createdat_idx")
 }
 
 model OAuthApp {
@@ -1090,6 +1099,7 @@ model mastra_agent_versions {
   workflows            Json?
   agents               Json?
   integrationTools     Json?
+  toolProviders        Json?
   inputProcessors      Json?
   outputProcessors     Json?
   memory               Json?
@@ -1099,6 +1109,8 @@ model mastra_agent_versions {
   workspace            Json?
   skills               Json?
   skillsFormat         String?
+  durable              Json?
+  browser              Json?
   changedFields        Json?
   changeMessage        String?
   createdAt            DateTime  @db.Timestamp(6)
@@ -1110,33 +1122,99 @@ model mastra_agents {
   status          String
   activeVersionId String?
   authorId        String?
+  visibility      String?
   metadata        Json?
+  favoriteCount   Int?
   createdAt       DateTime  @db.Timestamp(6)
   updatedAt       DateTime  @db.Timestamp(6)
   createdAtZ      DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
 }
 
+model mastra_background_tasks {
+  id              String    @id
+  tool_call_id    String
+  tool_name       String
+  agent_id        String
+  run_id          String
+  thread_id       String?
+  resource_id     String?
+  status          String
+  args            Json
+  result          Json?
+  error           Json?
+  suspend_payload Json?
+  retry_count     Int
+  max_retries     Int
+  timeout_ms      Int
+  createdAt       DateTime  @db.Timestamp(6)
+  startedAt       DateTime? @db.Timestamp(6)
+  suspendedAt     DateTime? @db.Timestamp(6)
+  completedAt     DateTime? @db.Timestamp(6)
+  createdAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+  startedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+  suspendedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+  completedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([agent_id, status], map: "mastra_bg_tasks_agent_status_idx")
+  @@index([status, createdAt], map: "mastra_bg_tasks_status_created_at_idx")
+  @@index([thread_id, createdAt], map: "mastra_bg_tasks_thread_idx")
+  @@index([tool_call_id], map: "mastra_bg_tasks_tool_call_idx")
+}
+
+model mastra_channel_config {
+  platform   String    @id
+  data       Json
+  updatedAt  DateTime  @db.Timestamp(6)
+  updatedAtZ DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model mastra_channel_installations {
+  id         String    @id
+  platform   String
+  agentId    String
+  status     String
+  webhookId  String?   @unique(map: "idx_channel_installations_webhook")
+  data       Json
+  configHash String?
+  error      String?
+  createdAt  DateTime  @db.Timestamp(6)
+  updatedAt  DateTime  @db.Timestamp(6)
+  createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([platform, agentId], map: "idx_channel_installations_platform_agent")
+}
+
 model mastra_dataset_items {
-  id             String
-  datasetId      String
-  datasetVersion Int
-  validTo        Int?
-  isDeleted      Boolean
-  input          Json
-  groundTruth    Json?
-  requestContext Json?
-  metadata       Json?
-  source         Json?
-  createdAt      DateTime  @db.Timestamp(6)
-  updatedAt      DateTime  @db.Timestamp(6)
-  createdAtZ     DateTime? @default(now()) @db.Timestamptz(6)
-  updatedAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+  id                 String
+  datasetId          String
+  datasetVersion     Int
+  externalId         String?
+  organizationId     String?
+  projectId          String?
+  validTo            Int?
+  isDeleted          Boolean
+  input              Json
+  groundTruth        Json?
+  requestContext     Json?
+  metadata           Json?
+  source             Json?
+  expectedTrajectory Json?
+  toolMocks          Json?
+  unmockedToolPolicy String?
+  scorerIds          Json?
+  createdAt          DateTime  @db.Timestamp(6)
+  updatedAt          DateTime  @db.Timestamp(6)
+  createdAtZ         DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ         DateTime? @default(now()) @db.Timestamptz(6)
 
   @@id([id, datasetVersion])
   @@index([datasetId, validTo], map: "idx_dataset_items_dataset_validto")
   @@index([datasetId, validTo, isDeleted], map: "idx_dataset_items_dataset_validto_deleted")
   @@index([datasetId, datasetVersion], map: "idx_dataset_items_dataset_version")
+  @@index([datasetId, externalId, datasetVersion], map: "idx_dataset_items_external_id_history")
+  @@index([organizationId, projectId], map: "idx_dataset_items_org_project")
 }
 
 model mastra_dataset_versions {
@@ -1162,11 +1240,18 @@ model mastra_datasets {
   targetType           String?
   targetIds            Json?
   scorerIds            Json?
+  organizationId       String?
+  projectId            String?
+  candidateKey         String?
+  candidateId          String?
   version              Int
   createdAt            DateTime  @db.Timestamp(6)
   updatedAt            DateTime  @db.Timestamp(6)
   createdAtZ           DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([candidateKey, candidateId], map: "idx_datasets_candidate")
+  @@index([organizationId, projectId], map: "idx_datasets_org_project")
 }
 
 model mastra_experiment_results {
@@ -1177,47 +1262,175 @@ model mastra_experiment_results {
   input              Json
   output             Json?
   groundTruth        Json?
+  metadata           Json?
   error              Json?
   startedAt          DateTime  @db.Timestamp(6)
   completedAt        DateTime  @db.Timestamp(6)
   retryCount         Int
+  attempt            Int?
   traceId            String?
   status             String?
   tags               Json?
+  comment            String?
+  toolMockReport     Json?
+  organizationId     String?
+  projectId          String?
   createdAt          DateTime  @db.Timestamp(6)
   startedAtZ         DateTime? @default(now()) @db.Timestamptz(6)
   completedAtZ       DateTime? @default(now()) @db.Timestamptz(6)
   createdAtZ         DateTime? @default(now()) @db.Timestamptz(6)
 
-  @@unique([experimentId, itemId], map: "idx_experiment_results_exp_item")
+  @@unique([experimentId, itemId, attempt], map: "idx_experiment_results_exp_item_attempt")
   @@index([experimentId], map: "idx_experiment_results_experimentid")
+  @@index([organizationId, projectId], map: "idx_experiment_results_org_project")
+  @@index([tags], map: "idx_experiment_results_tags_gin", type: Gin)
 }
 
 model mastra_experiments {
-  id             String    @id
-  name           String?
-  description    String?
-  metadata       Json?
-  datasetId      String?
-  datasetVersion Int?
-  targetType     String
-  targetId       String
-  status         String
-  totalItems     Int
-  succeededCount Int
-  failedCount    Int
-  skippedCount   Int
-  startedAt      DateTime? @db.Timestamp(6)
-  completedAt    DateTime? @db.Timestamp(6)
-  agentVersion   String?
-  createdAt      DateTime  @db.Timestamp(6)
-  updatedAt      DateTime  @db.Timestamp(6)
-  startedAtZ     DateTime? @default(now()) @db.Timestamptz(6)
-  completedAtZ   DateTime? @default(now()) @db.Timestamptz(6)
-  createdAtZ     DateTime? @default(now()) @db.Timestamptz(6)
-  updatedAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+  id                String    @id
+  name              String?
+  description       String?
+  metadata          Json?
+  provenance        Json?
+  runnerAttestation Json?
+  experimentSetId   String?
+  comparisonId      String?
+  variantId         String?
+  trialIndex        Int?
+  datasetId         String?
+  datasetVersion    Int?
+  targetType        String?
+  targetId          String?
+  scorerIds         Json?
+  status            String
+  totalItems        Int
+  succeededCount    Int
+  failedCount       Int
+  skippedCount      Int
+  startedAt         DateTime? @db.Timestamp(6)
+  completedAt       DateTime? @db.Timestamp(6)
+  agentVersion      String?
+  organizationId    String?
+  projectId         String?
+  createdAt         DateTime  @db.Timestamp(6)
+  updatedAt         DateTime  @db.Timestamp(6)
+  startedAtZ        DateTime? @default(now()) @db.Timestamptz(6)
+  completedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+  createdAtZ        DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ        DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([datasetId], map: "idx_experiments_datasetid")
+  @@index([experimentSetId, comparisonId, variantId, trialIndex], map: "idx_experiments_grouping")
+  @@index([organizationId, projectId], map: "idx_experiments_org_project")
+}
+
+model mastra_favorites {
+  userId     String
+  entityType String
+  entityId   String
+  createdAt  DateTime  @db.Timestamp(6)
+  createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@id([userId, entityType, entityId])
+  @@index([entityType, entityId], map: "idx_favorites_entity")
+}
+
+model mastra_knowledge_activity {
+  id             String    @id
+  action         String
+  recordType     String
+  recordId       String
+  scope          Json
+  scopeKey       String
+  sourceThreadId String?
+  createdAt      DateTime  @db.Timestamp(6)
+  createdAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([id(sort: Desc)], map: "idx_knowledge_activity_latest")
+}
+
+model mastra_knowledge_cursors {
+  sourceThreadId  String
+  agent           String
+  lastKnowledgeId String
+  updatedAt       DateTime  @db.Timestamp(6)
+  updatedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@id([sourceThreadId, agent])
+}
+
+model mastra_knowledge_mentions {
+  sourceType String
+  sourceId   String
+  recordId   String
+
+  @@id([sourceType, sourceId, recordId])
+  @@index([recordId, sourceType, sourceId], map: "idx_knowledge_mentions_record")
+}
+
+model mastra_knowledge_nodes {
+  id            String    @id
+  type          String
+  name          String
+  canonicalName String
+  kind          String?
+  content       String?
+  description   String?
+  scope         Json
+  scopeKey      String
+  version       Int
+  mergedInto    String?
+  createdAt     DateTime  @db.Timestamp(6)
+  updatedAt     DateTime  @db.Timestamp(6)
+  createdAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([type, scopeKey, canonicalName], map: "idx_knowledge_nodes_identity")
+  @@index([scopeKey, type], map: "idx_knowledge_nodes_scope")
+}
+
+model mastra_knowledge_records {
+  id             String    @id
+  node           String
+  text           String
+  scope          Json
+  scopeKey       String
+  sourceThreadId String
+  capturedAt     DateTime  @db.Timestamp(6)
+  when           DateTime? @db.Timestamp(6)
+  maxScope       String?
+  metadata       Json?
+  deletedAt      DateTime? @db.Timestamp(6)
+  deletedBy      String?
+  capturedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+  whenZ          DateTime? @default(now()) @db.Timestamptz(6)
+  deletedAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([node, id(sort: Desc)], map: "idx_knowledge_records_node_latest")
+  @@index([sourceThreadId, id(sort: Desc)], map: "idx_knowledge_records_thread_latest")
+}
+
+model mastra_knowledge_semantic_outbox {
+  id             String    @id
+  idempotencyKey String    @unique(map: "idx_knowledge_outbox_idempotency")
+  documentId     String
+  documentType   String
+  operation      String
+  scope          Json
+  scopeKey       String
+  status         String
+  attempts       Int
+  availableAt    DateTime  @db.Timestamp(6)
+  claimedAt      DateTime? @db.Timestamp(6)
+  claimedBy      String?
+  createdAt      DateTime  @db.Timestamp(6)
+  completedAt    DateTime? @db.Timestamp(6)
+  availableAtZ   DateTime? @default(now()) @db.Timestamptz(6)
+  claimedAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+  createdAtZ     DateTime? @default(now()) @db.Timestamptz(6)
+  completedAtZ   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([status, availableAt, createdAt], map: "idx_knowledge_outbox_claim")
 }
 
 model mastra_mcp_client_versions {
@@ -1280,6 +1493,55 @@ model mastra_mcp_servers {
   updatedAt       DateTime  @db.Timestamp(6)
   createdAtZ      DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model mastra_notifications {
+  id                     String
+  threadId               String
+  source                 String
+  kind                   String
+  priority               String
+  status                 String
+  summary                String
+  payload                Json?
+  resourceId             String?
+  agentId                String?
+  sourceId               String?
+  dedupeKey              String?
+  coalesceKey            String?
+  coalescedCount         Int
+  attributes             Json?
+  createdAt              DateTime  @db.Timestamp(6)
+  updatedAt              DateTime  @db.Timestamp(6)
+  deliveredAt            DateTime? @db.Timestamp(6)
+  seenAt                 DateTime? @db.Timestamp(6)
+  dismissedAt            DateTime? @db.Timestamp(6)
+  archivedAt             DateTime? @db.Timestamp(6)
+  discardedAt            DateTime? @db.Timestamp(6)
+  deliverAt              DateTime? @db.Timestamp(6)
+  summaryAt              DateTime? @db.Timestamp(6)
+  deliveryReason         String?
+  deliveryAttempts       Int
+  lastDeliveryAttemptAt  DateTime? @db.Timestamp(6)
+  lastDeliveryError      String?
+  deliveredSignalId      String?
+  summarySignalId        String?
+  metadata               Json?
+  createdAtZ             DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ             DateTime? @default(now()) @db.Timestamptz(6)
+  deliveredAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+  seenAtZ                DateTime? @default(now()) @db.Timestamptz(6)
+  dismissedAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+  archivedAtZ            DateTime? @default(now()) @db.Timestamptz(6)
+  discardedAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+  deliverAtZ             DateTime? @default(now()) @db.Timestamptz(6)
+  summaryAtZ             DateTime? @default(now()) @db.Timestamptz(6)
+  lastDeliveryAttemptAtZ DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([threadId, source, kind, status, agentId, resourceId, dedupeKey, coalesceKey], map: "idx_notifications_coalescing")
+  @@index([status, deliverAt, summaryAt], map: "idx_notifications_due")
+  @@index([threadId, status, updatedAt], map: "idx_notifications_thread_status_updated")
+  @@ignore
 }
 
 model mastra_observational_memory {
@@ -1355,6 +1617,39 @@ model mastra_prompt_blocks {
   updatedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
 }
 
+model mastra_schedule_triggers {
+  id                String  @id
+  schedule_id       String
+  run_id            String?
+  scheduled_fire_at BigInt
+  actual_fire_at    BigInt
+  outcome           String
+  error             String?
+  trigger_kind      String
+  parent_trigger_id String?
+  metadata          Json?
+
+  @@index([schedule_id, actual_fire_at(sort: Desc)], map: "idx_mastra_schedule_triggers_schedule_fire")
+}
+
+model mastra_schedules {
+  id           String  @id
+  target       Json
+  cron         String
+  timezone     String?
+  status       String
+  next_fire_at BigInt
+  last_fire_at BigInt?
+  last_run_id  String?
+  created_at   BigInt
+  updated_at   BigInt
+  metadata     Json?
+  owner_type   String?
+  owner_id     String?
+
+  @@index([status, next_fire_at], map: "idx_mastra_schedules_status_next_fire")
+}
+
 model mastra_scorer_definition_versions {
   id                 String    @id
   scorerDefinitionId String
@@ -1380,6 +1675,8 @@ model mastra_scorer_definitions {
   status          String
   activeVersionId String?
   authorId        String?
+  organizationId  String?
+  projectId       String?
   metadata        Json?
   createdAt       DateTime  @db.Timestamp(6)
   updatedAt       DateTime  @db.Timestamp(6)
@@ -1409,6 +1706,7 @@ model mastra_skill_versions {
   references    Json?
   scripts       Json?
   assets        Json?
+  files         Json?
   metadata      Json?
   tree          Json?
   changedFields Json?
@@ -1424,10 +1722,61 @@ model mastra_skills {
   status          String
   activeVersionId String?
   authorId        String?
+  visibility      String?
+  favoriteCount   Int?
   createdAt       DateTime  @db.Timestamp(6)
   updatedAt       DateTime  @db.Timestamp(6)
   createdAtZ      DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ      DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model mastra_thread_state {
+  threadId   String
+  type       String
+  value      Json
+  createdAt  DateTime  @db.Timestamp(6)
+  updatedAt  DateTime  @db.Timestamp(6)
+  createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@id([threadId, type])
+}
+
+model mastra_tool_provider_connections {
+  authorId     String
+  providerId   String
+  connectionId String
+  toolkit      String
+  label        String?
+  scope        String
+  createdAt    DateTime  @db.Timestamp(6)
+  updatedAt    DateTime  @db.Timestamp(6)
+  createdAtZ   DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@id([authorId, providerId, connectionId])
+  @@index([authorId, providerId, toolkit], map: "idx_tool_provider_connections_author")
+}
+
+model mastra_workflow_definitions {
+  id                   String    @id
+  description          String?
+  metadata             Json?
+  inputSchema          Json
+  outputSchema         Json
+  stateSchema          Json?
+  requestContextSchema Json?
+  graph                Json
+  schedule             Json?
+  status               String
+  source               String
+  authorId             String?
+  createdAt            DateTime  @db.Timestamp(6)
+  updatedAt            DateTime  @db.Timestamp(6)
+  createdAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAtZ           DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([status], map: "idx_workflow_definitions_status")
 }
 
 model mastra_workspace_versions {
