@@ -24,6 +24,7 @@ import { createReadStream } from 'fs';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
 @Rules(
   [
@@ -358,7 +359,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   }
 
   async generateAuthUrl() {
-    const state = Math.random().toString(36).substring(2);
+    const state = makeId(20);
 
     return {
       url:

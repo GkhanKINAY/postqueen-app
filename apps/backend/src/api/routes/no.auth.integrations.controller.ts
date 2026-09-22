@@ -387,7 +387,13 @@ export class NoAuthIntegrationsController {
       organizationId,
       integrationId
     );
-    if (!integration || integration.internalId !== internalId) {
+    // A removed channel stays removed: refreshing it would store fresh
+    // cookies and bring it back through createOrUpdateIntegration.
+    if (
+      !integration ||
+      integration.deletedAt ||
+      integration.internalId !== internalId
+    ) {
       throw new HttpException('Integration not found', 404);
     }
 

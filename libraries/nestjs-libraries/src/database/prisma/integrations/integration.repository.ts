@@ -79,7 +79,7 @@ export class IntegrationRepository {
     const findIt = await this._integration.model.integration.findMany({
       where: {
         rootInternalId: {
-          in: [id, createHash('md5').update(id).digest('hex')],
+          in: [id, this.hashValue(id)],
         },
       },
       select: {
@@ -478,6 +478,7 @@ export class IntegrationRepository {
             not: upsert.id,
           },
           rootInternalId: rootId,
+          deletedAt: null,
         },
         data: {
           token,
@@ -868,7 +869,19 @@ export class IntegrationRepository {
     });
   }
 
-  deleteChannel(org: string, id: string) {
+  // Removing a channel keeps the row (post history and a later reconnect both
+  // find it by internalId), but not what it signed in with. The token, refresh
+  // token and custom instance details are replaced the same way account
+  // deletion does it, so a removed channel holds no working credentials. A
+  // reconnect writes fresh ones through createOrUpdateIntegration.
+  async deleteChannel(org: string, id: string) {
+    const integration = await this._integration.model.integration.findFirst({
+      where: {
+        id,
+        organizationId: org,
+      },
+    });
+
     return this._integration.model.integration.update({
       where: {
         id,
@@ -876,13 +889,26 @@ export class IntegrationRepository {
       },
       data: {
         deletedAt: new Date(),
+        ...(integration
+          ? {
+              token: this.hashValue(integration.token),
+              refreshToken: integration.refreshToken
+                ? this.hashValue(integration.refreshToken)
+                : null,
+              customInstanceDetails: integration.customInstanceDetails
+                ? this.hashValue(integration.customInstanceDetails)
+                : null,
+            }
+          : {}),
       },
     });
   }
 
+  private hashValue(value: string) {
+    return createHash('md5').update(value).digest('hex');
+  }
+
   async deleteIntegrationsForAccount(org: string) {
-    const hash = (value: string) =>
-      createHash('md5').update(value).digest('hex');
 
     await this._posts.model.post.updateMany({
       where: {
@@ -909,18 +935,18 @@ export class IntegrationRepository {
           id: integration.id,
         },
         data: {
-          name: hash(integration.name),
-          internalId: hash(integration.internalId),
+          name: this.hashValue(integration.name),
+          internalId: this.hashValue(integration.internalId),
           rootInternalId: integration.rootInternalId
-            ? hash(integration.rootInternalId)
+            ? this.hashValue(integration.rootInternalId)
             : null,
-          token: hash(integration.token),
+          token: this.hashValue(integration.token),
           refreshToken: integration.refreshToken
-            ? hash(integration.refreshToken)
+            ? this.hashValue(integration.refreshToken)
             : null,
-          profile: integration.profile ? hash(integration.profile) : null,
+          profile: integration.profile ? this.hashValue(integration.profile) : null,
           customInstanceDetails: integration.customInstanceDetails
-            ? hash(integration.customInstanceDetails)
+            ? this.hashValue(integration.customInstanceDetails)
             : null,
           picture: null,
           deletedAt: integration.deletedAt || new Date(),

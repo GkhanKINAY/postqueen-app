@@ -681,7 +681,9 @@ export class IntegrationService {
   ): Promise<AnalyticsData[]> {
     const getIntegration = await this.getIntegrationById(org.id, integration);
 
-    if (!getIntegration) {
+    // A removed channel no longer holds working credentials, so treat it as
+    // gone instead of refreshing it and telling the user to reconnect.
+    if (!getIntegration || getIntegration.deletedAt) {
       throw new Error('Invalid integration');
     }
 
@@ -818,7 +820,12 @@ export class IntegrationService {
       data.integration
     );
 
-    if (!getIntegration || !originalIntegration) {
+    if (
+      !getIntegration ||
+      !originalIntegration ||
+      getIntegration.deletedAt ||
+      originalIntegration.deletedAt
+    ) {
       return;
     }
 

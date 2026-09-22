@@ -160,7 +160,9 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
       return {
         id: pubkey,
         name: user.display_name || user.displayName || user.name || 'No Name',
-        accessToken: AuthService.signJWT({ password: body.password }),
+        accessToken: AuthService.fixedEncryption(
+          JSON.stringify({ password: body.password })
+        ),
         refreshToken: '',
         expiresIn: dayjs().add(200, 'year').unix() - dayjs().unix(),
         picture: user?.picture || '',
@@ -169,6 +171,23 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     } catch (e) {
       console.log(e);
       return 'Invalid credentials';
+    }
+  }
+
+  private getPassword(accessToken: string): string {
+    try {
+      // Current format: the private key stored as at-rest AES-encrypted JSON.
+      return (
+        JSON.parse(AuthService.fixedDecryption(accessToken)) as {
+          password: string;
+        }
+      ).password;
+    } catch {
+      // Legacy format: channels connected before the storage format was
+      // changed kept the key in a signed JWT. Read those as-is so connected
+      // channels keep working without a reconnect.
+      return (AuthService.verifyJWT(accessToken) as { password: string })
+        .password;
     }
   }
 
@@ -184,9 +203,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     accessToken: string,
     postDetails: PostDetails[]
   ): Promise<PostResponse[]> {
-    const { password } = AuthService.verifyJWT(accessToken) as {
-      password: string;
-    };
+    const password = this.getPassword(accessToken);
     const [firstPost] = postDetails;
 
     const textEvent = finalizeEvent(
@@ -219,9 +236,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]> {
-    const { password } = AuthService.verifyJWT(accessToken) as {
-      password: string;
-    };
+    const password = this.getPassword(accessToken);
     const [commentPost] = postDetails;
     const replyToId = lastCommentId || postId;
 

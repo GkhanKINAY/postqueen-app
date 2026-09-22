@@ -23,6 +23,7 @@ import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
 @Rules(
   [
@@ -356,7 +357,7 @@ export class TiktokBusinessProvider
   }
 
   async generateAuthUrl() {
-    const state = Math.random().toString(36).substring(2);
+    const state = makeId(20);
 
     return {
       url:
