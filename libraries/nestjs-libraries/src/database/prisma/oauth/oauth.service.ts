@@ -6,6 +6,7 @@ import { RegisterClientDto } from '@gitroom/nestjs-libraries/dtos/oauth/register
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
+import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { extractBearerToken } from '@gitroom/nestjs-libraries/chat/oauth-types';
 import { createHash } from 'crypto';
 import { OAuthApp } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
@@ -39,7 +40,8 @@ const browserSchemes = [
 export class OAuthService {
   constructor(
     private _oauthRepository: OAuthRepository,
-    private _mediaService: MediaService
+    private _mediaService: MediaService,
+    private _organizationRepository: OrganizationRepository
   ) {}
 
   /**
@@ -453,7 +455,24 @@ export class OAuthService {
 
   async getOrgByOAuthToken(token: string) {
     const encrypted = AuthService.fixedEncryption(token);
-    return this._oauthRepository.findByAccessToken(encrypted);
+    const authorization = await this._oauthRepository.findByAccessToken(
+      encrypted
+    );
+    if (!authorization) {
+      return null;
+    }
+
+    // The token acts for the person who approved it, so it stops working once
+    // they are removed or disabled in the workspace, or delete their account.
+    const membership = await this._organizationRepository.getMembership(
+      authorization.organizationId,
+      authorization.userId
+    );
+    if (!membership || membership.disabled || membership.user.deletedAt) {
+      return null;
+    }
+
+    return authorization;
   }
 
   async getUserInfo(authorization?: string) {

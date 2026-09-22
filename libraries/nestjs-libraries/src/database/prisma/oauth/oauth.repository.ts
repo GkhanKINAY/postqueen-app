@@ -231,6 +231,9 @@ export class OAuthRepository {
       where: {
         accessToken: encryptedToken,
         revokedAt: null,
+        organization: {
+          deletedAt: null,
+        },
       },
       include: {
         oauthApp: {
