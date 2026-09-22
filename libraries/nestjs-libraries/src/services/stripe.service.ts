@@ -2313,22 +2313,17 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
-    const sixtyDaysAgo = Math.floor(Date.now() / 1000) - 60 * 24 * 60 * 60;
-    if (lastCharge.created < sixtyDaysAgo) {
+    // The published policy: a charge is refunded in full when the customer asks
+    // within 30 days of it, monthly or yearly alike.
+    const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+    if (lastCharge.created < thirtyDaysAgo) {
       return {
         eligible: false as const,
-        reason: 'The last subscription payment is older than 60 days',
+        reason: 'The last subscription payment is older than 30 days',
       };
     }
 
-    const interval =
-      chargeSubscription.items?.data?.[0]?.price?.recurring?.interval;
-
-    // maximum refund is one month worth of the subscription
-    const amount =
-      interval === 'year'
-        ? Math.floor(lastCharge.amount / 12)
-        : lastCharge.amount;
+    const amount = lastCharge.amount;
 
     const currentSubscription =
       await this._subscriptionService.getSubscriptionByOrganizationId(
