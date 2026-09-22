@@ -6,9 +6,10 @@ import {
   hasKnownPostMetric,
   insightTimeSeries,
   mapFacebookPostInsights,
+  mapFacebookVideoInsights,
   mapInstagramMediaInsights,
   mapLinkedInShareStats,
-  mapPinterestLifetimeMetrics,
+  mapPinterestSummaryMetrics,
   mapThreadsInsights,
   mapTikTokBusinessVideoStats,
   mapTikTokVideoStats,
@@ -192,6 +193,20 @@ describe('platform field maps', () => {
     assert.equal(mapped.shares, null);
   });
 
+  it('maps Facebook video insights and sums reactions by type', () => {
+    const mapped = mapFacebookVideoInsights('fbv1', [
+      { name: 'total_video_impressions', values: [{ value: 450 }] },
+      {
+        name: 'total_video_reactions_by_type_total',
+        values: [{ value: { like: 4, wow: 1 } }],
+      },
+    ]);
+    assert.equal(mapped.impressions, 450);
+    assert.equal(mapped.reactions, 5);
+    assert.equal(mapped.comments, null);
+    assert.equal(mapped.shares, null);
+  });
+
   it('maps TikTok and TikTok Business view fields to impressions', () => {
     assert.equal(
       mapTikTokVideoStats('tt1', {
@@ -239,7 +254,7 @@ describe('platform field maps', () => {
   });
 
   it('leaves Pinterest reactions and comments null', () => {
-    const mapped = mapPinterestLifetimeMetrics('pin1', {
+    const mapped = mapPinterestSummaryMetrics('pin1', {
       IMPRESSION: 300,
       PIN_CLICK: 12,
       SAVE: 4,

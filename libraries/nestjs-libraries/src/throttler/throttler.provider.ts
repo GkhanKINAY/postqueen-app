@@ -92,3 +92,26 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     return (org || 'ip:' + req.ip) + '_' + bucket;
   }
 }
+
+// Route-level guard for public endpoints, keyed by the client address rather
+// than the org the global guard expects.
+//
+// The LAST X-Forwarded-For entry, not the first. Our nginx appends the peer it
+// accepted the connection from ($proxy_add_x_forwarded_for), so the last entry
+// is the one no client can write; the first is whatever the client sent, and
+// keying on it (upstream's version) gave every request with a fresh header a
+// fresh bucket. Behind a further proxy (a CDN) the last entry is that proxy's
+// address, which makes the bucket coarser, never bypassable. Without a proxy
+// there is no header and the socket address is used.
+@Injectable()
+export class ThrottlerRealIpGuard extends ThrottlerGuard {
+  protected override async getTracker(
+    req: Record<string, any>
+  ): Promise<string> {
+    const forwarded = String(req.headers?.['x-forwarded-for'] || '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    return forwarded[forwarded.length - 1] || req.ip;
+  }
+}

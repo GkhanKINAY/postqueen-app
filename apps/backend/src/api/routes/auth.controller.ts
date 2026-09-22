@@ -7,7 +7,10 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { Response, Request } from 'express';
 
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
@@ -30,6 +33,7 @@ import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
+import { FarcasterProvider } from '@gitroom/nestjs-libraries/integrations/social/farcaster.provider';
 
 @ApiTags('Auth')
 @Controller('/auth')
@@ -332,6 +336,30 @@ export class AuthController {
     return {
       success: true,
     };
+  }
+
+  // public and creates a signer at Neynar per call, so cap it per client
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Post('/farcaster/signer')
+  async farcasterSigner() {
+    try {
+      return await new FarcasterProvider().createSigner();
+    } catch (err: any) {
+      return { error: err.message || 'Failed to create signer' };
+    }
+  }
+
+  // the modal polls every 2s for up to 10 minutes, so leave room for that
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 1000, ttl: 3600000 } })
+  @Get('/farcaster/signer')
+  async farcasterSignerStatus(@Query('signerUuid') signerUuid: string) {
+    try {
+      return await new FarcasterProvider().signerStatus(signerUuid);
+    } catch (err: any) {
+      return { error: err.message || 'Failed to check signer' };
+    }
   }
 
   @Post('/oauth/:provider/redirect')

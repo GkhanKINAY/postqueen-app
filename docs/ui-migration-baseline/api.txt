@@ -7,9 +7,11 @@
 /announcements/${id}
 /api/teams
 /auth/activate
+/auth/farcaster/signer
 /auth/oauth/${provider
 /auth/oauth/${provider}/exists
 /auth/oauth/APPLE
+/auth/oauth/FARCASTER
 /auth/oauth/GENERIC
 /auth/oauth/GITHUB
 /auth/oauth/GOOGLE

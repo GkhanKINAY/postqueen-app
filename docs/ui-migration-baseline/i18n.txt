@@ -1183,6 +1183,12 @@ faq_to_confirm_credit_card_information_postqueen_will_hold
 faq_what_are_channels
 faq_what_are_team_members
 farcaster
+farcaster_approval_timeout
+farcaster_copy_link
+farcaster_scan_instructions
+farcaster_signer_failed
+farcaster_signer_revoked
+farcaster_waiting_for_approval
 feature_setup_admin
 feature_setup_docs
 feature_setup_member

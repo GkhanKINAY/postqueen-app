@@ -41,28 +41,28 @@ import {
 export { MediaBox };
 
 export const ShowMediaBoxModal: FC = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [callBack, setCallBack] =
-    useState<(params: { id: string; path: string }[]) => void | undefined>();
-  const closeModal = useCallback(() => {
-    setShowModal(false);
-    setCallBack(undefined);
-  }, []);
+  const modals = useModals();
+  const t = useT();
+  const { touch } = useViewport();
   useEffect(() => {
     showModalEmitter.on('show-modal', (cCallback) => {
-      setShowModal(true);
-      setCallBack(() => cCallback);
+      modals.openModal({
+        title: t('media_library', 'Media Library'),
+        askClose: false,
+        closeOnEscape: true,
+        size: 'min(1200px, calc(100vw - 64px))',
+        maxSize: 'min(1200px, calc(100vw - 64px))',
+        height: touch ? '100%' : MEDIA_LIBRARY_PICKER_HEIGHT,
+        children: (close) => (
+          <MediaBox setMedia={cCallback} closeModal={close} />
+        ),
+      });
     });
     return () => {
       showModalEmitter.removeAllListeners('show-modal');
     };
-  }, []);
-  if (!showModal) return null;
-  return (
-    <div className="text-textColor">
-      <MediaBox setMedia={callBack!} closeModal={closeModal} />
-    </div>
-  );
+  }, [modals, t, touch]);
+  return null;
 };
 export const showMediaBox = (
   callback: (params: { id: string; path: string }[]) => void

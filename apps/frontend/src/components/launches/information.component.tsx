@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FC, Fragment, useMemo, useState } from 'react';
+import React, { FC, Fragment, useCallback, useMemo, useState } from 'react';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import clsx from 'clsx';
@@ -8,6 +8,7 @@ import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 import { hasLinks } from '@gitroom/helpers/utils/strip.links';
+import { countLength } from '@gitroom/helpers/utils/count.length';
 
 const Valid: FC = () => {
   return (
@@ -138,6 +139,13 @@ export const InformationComponent: FC<{
 
   const showCannotCommentWarning = cannotCommentNames.length > 0;
 
+  const countFor = useCallback(
+    (identifier?: string) => countLength(identifier || '', text || ''),
+    [text]
+  );
+
+  const currentChars = countFor(currentIntegration?.identifier);
+
   const isInternal = useMemo(() => {
     if (!isGlobal) {
       return [];
@@ -165,11 +173,11 @@ export const InformationComponent: FC<{
       return 'idle';
     }
 
-    if (totalChars > totalAllowedChars && !isGlobal) {
+    if (currentChars > totalAllowedChars && !isGlobal) {
       return 'invalid';
     }
 
-    if (totalChars <= totalAllowedChars && !isGlobal) {
+    if (currentChars <= totalAllowedChars && !isGlobal) {
       return 'valid';
     }
 
@@ -179,7 +187,10 @@ export const InformationComponent: FC<{
           return false;
         }
 
-        return totalChars > (chars?.[p.integration.id] || 0);
+        return (
+          countFor(p.integration.identifier) >
+          (chars?.[p.integration.id] || 0)
+        );
       })
     ) {
       return 'invalid';
@@ -189,6 +200,8 @@ export const InformationComponent: FC<{
   }, [
     totalAllowedChars,
     totalChars,
+    currentChars,
+    countFor,
     isInternal,
     isPicture,
     requireContent,
@@ -215,11 +228,11 @@ export const InformationComponent: FC<{
     const limits = selectedIntegrations
       .map((p, index) => ({
         limit: chars?.[p.integration.id] || 0,
+        count: countFor(p.integration.identifier),
         isInternal: isInternal[index],
       }))
       .filter((item) => !item.isInternal && item.limit > 0)
-      .map((item) => item.limit)
-      .sort((a, b) => a - b);
+      .sort((a, b) => a.limit - b.limit);
 
     if (!limits.length) {
       return null;
@@ -227,9 +240,9 @@ export const InformationComponent: FC<{
 
     // Find the smallest limit that hasn't been exceeded yet
     // If all are exceeded, show the smallest one
-    const validLimit = limits.find((limit) => totalChars <= limit);
+    const validLimit = limits.find((item) => item.count <= item.limit);
     return validLimit ?? limits[0];
-  }, [isGlobal, selectedIntegrations, chars, isInternal, totalChars]);
+  }, [isGlobal, selectedIntegrations, chars, isInternal, countFor]);
 
   const hasDetails =
     (isGlobal && selectedIntegrations.length > 0) || status === 'invalid';
@@ -263,7 +276,7 @@ export const InformationComponent: FC<{
             status === 'invalid' && 'text-pqOnBrand'
           )}
         >
-          {totalChars}/{totalAllowedChars}
+          {currentChars}/{totalAllowedChars}
         </div>
       )}
       {isGlobal && globalDisplayLimit !== null && (
@@ -273,7 +286,7 @@ export const InformationComponent: FC<{
             status === 'invalid' && 'text-pqOnBrand'
           )}
         >
-          {totalChars}/{globalDisplayLimit}
+          {globalDisplayLimit.count}/{globalDisplayLimit.limit}
         </div>
       )}
       {hasDetails && (
@@ -353,7 +366,8 @@ export const InformationComponent: FC<{
                       'whitespace-nowrap',
                       isInternal?.[index]
                         ? ''
-                        : totalChars > (chars?.[p.integration.id] || 0)
+                        : countFor(p.integration.identifier) >
+                          (chars?.[p.integration.id] || 0)
                         ? 'text-pqWarn'
                         : ''
                     )}
@@ -366,14 +380,17 @@ export const InformationComponent: FC<{
                       'whitespace-nowrap',
                       isInternal?.[index]
                         ? ''
-                        : totalChars > (chars?.[p.integration.id] || 0)
+                        : countFor(p.integration.identifier) >
+                          (chars?.[p.integration.id] || 0)
                         ? 'text-pqWarn'
                         : ''
                     )}
                   >
                     {isInternal?.[index]
                       ? t('internal_edit', 'Internal Edit')
-                      : `${totalChars}/${chars?.[p.integration.id] || 0}`}
+                      : `${countFor(p.integration.identifier)}/${
+                          chars?.[p.integration.id] || 0
+                        }`}
                   </div>
                 </Fragment>
               ))}

@@ -603,6 +603,7 @@ export const ChannelsComponent: FC = () => {
   const fetch = useFetch();
   const modal = useModals();
   const toast = useToaster();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const tourNeedsAdd = useTourNeeds('channel-add');
   const { data: integrations, mutate, isValidating } = useIntegrationList();
@@ -1006,6 +1007,25 @@ export const ChannelsComponent: FC = () => {
 
   const reconnect = useCallback(async () => {
     if (!current) return;
+    // Custom-fields providers (Bluesky, etc.) have no OAuth page to send the
+    // user to: the refresh endpoint answers with the state string, which is
+    // not a URL. Reconnect them by re-entering the credentials, the same
+    // modal Update credentials opens.
+    if (current.isCustomFields) {
+      modal.openModal({
+        title: t('custom_url', 'Custom URL'),
+        withCloseButton: true,
+        compact: 420,
+        children: (
+          <CustomVariables
+            identifier={current.identifier}
+            gotoUrl={(url: string) => router.push(url)}
+            variables={current.customFields || []}
+          />
+        ),
+      });
+      return;
+    }
     const params = new URLSearchParams({
       refresh: String(current.internalId),
       redirectUrl: '/channels',
@@ -1026,7 +1046,7 @@ export const ChannelsComponent: FC = () => {
       return;
     }
     window.location.href = url;
-  }, [current, fetch, t, toast]);
+  }, [current, fetch, modal, router, t, toast]);
 
   const openBot = useCallback(() => {
     if (!current) return;
