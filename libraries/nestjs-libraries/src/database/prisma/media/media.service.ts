@@ -47,6 +47,8 @@ import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { randomBytes } from 'crypto';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 /**
  * Whether this video type is held back because the organization is still on
@@ -290,6 +292,80 @@ export class MediaService {
       return this._mediaRepository.finishProcessing(org, media.id, {});
     }
     return this.failProcessing(media.id, NO_PROCESSOR);
+  }
+
+  // Upload widget (MCP Apps): the session id is what the model sees and polls,
+  // the ticket is the credential the widget uploads with. It is handed to the
+  // widget only, so it doesn't end up in the conversation
+  async createUploadSession(org: string) {
+    const sessionId = randomBytes(16).toString('hex');
+    await ioRedis.set(`uploadSession:${sessionId}`, org, 'EX', 3600);
+    return sessionId;
+  }
+
+  private async checkUploadSession(org: string, sessionId: string) {
+    if ((await ioRedis.get(`uploadSession:${sessionId}`)) !== org) {
+      throw new HttpException('Upload session not found or expired', 404);
+    }
+  }
+
+  async createUploadTicket(org: string, sessionId: string) {
+    await this.checkUploadSession(org, sessionId);
+    const ticket = randomBytes(32).toString('hex');
+    await ioRedis.set(
+      `uploadTicket:${ticket}`,
+      JSON.stringify({ org, sessionId }),
+      'EX',
+      600
+    );
+    return ticket;
+  }
+
+  // A ticket never outlives its session: the upload is spooled to disk and
+  // stored right after this check, so an expired session has to be refused here
+  async getUploadTicket(ticket: string) {
+    const found = JSON.parse(
+      (await ioRedis.get(`uploadTicket:${ticket}`)) || 'null'
+    ) as { org: string; sessionId: string } | null;
+    if (
+      !found ||
+      (await ioRedis.get(`uploadSession:${found.sessionId}`)) !== found.org
+    ) {
+      return null;
+    }
+    return found;
+  }
+
+  async saveUploadSessionFile(
+    org: string,
+    sessionId: string,
+    fileName: string,
+    filePath: string,
+    originalName?: string,
+    fileSize?: number
+  ) {
+    await this.checkUploadSession(org, sessionId);
+    const media = await this.saveUploadedFile(
+      org,
+      fileName,
+      filePath,
+      originalName,
+      fileSize
+    );
+    // a list, so parallel uploads of the same session can't overwrite each other
+    await ioRedis.rpush(`uploadSessionMedia:${sessionId}`, media.id);
+    await ioRedis.expire(`uploadSessionMedia:${sessionId}`, 3600);
+    return media;
+  }
+
+  async getUploadSession(org: string, sessionId: string) {
+    await this.checkUploadSession(org, sessionId);
+    const list = await ioRedis.lrange(`uploadSessionMedia:${sessionId}`, 0, -1);
+    return (
+      await Promise.all(
+        list.map((id) => this._mediaRepository.getMediaStatus(org, id))
+      )
+    ).filter((f) => f);
   }
 
   async getMediaStatus(org: string, id: string) {

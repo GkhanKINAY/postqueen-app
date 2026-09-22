@@ -15,6 +15,9 @@ import { PostReadTool } from '@gitroom/nestjs-libraries/chat/tools/post.read.too
 import { AnalyticsSummaryTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.summary.tool';
 import { AnalyticsPostsTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.posts.tool';
 import { AnalyticsPostTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.post.tool';
+import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.tool';
+import { UploadWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.ticket.tool';
+import { UploadWidgetStatusTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.status.tool';
 
 export const toolList = [
   IntegrationListTool,
@@ -34,4 +37,7 @@ export const toolList = [
   VideoStatusTool,
   GenerateImageTool,
   UploadFromUrlTool,
+  UploadWidgetTool,
+  UploadWidgetTicketTool,
+  UploadWidgetStatusTool,
 ];
