@@ -99,6 +99,7 @@
 /posts
 /posts/${current.group}
 /posts/${existingData.group}
+/posts/${existingData.group}/repeat
 /posts/${id}
 /posts/${item.id}/date
 /posts/${item.id}/status
