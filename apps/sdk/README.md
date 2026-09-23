@@ -1,16 +1,20 @@
-<p align="center">
-  <a href="https://postqueen.ai">
-    <img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/header.svg" width="840" alt="PostQueen: the queen of your posts, your AI social media manager" />
-  </a>
+# PostQueen Node.js SDK
+
+<a href="https://app.postqueen.ai/auth?utm_source=npm&utm_medium=readme&utm_campaign=postqueen-sdk&utm_content=npm-banner"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/sdk-banner-light.png" width="100%" alt="PostQueen Node SDK. Schedule posts from your own code: a typed Node.js client for the PostQueen API."></a>
+
+<p>
+  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/v/@postqueen/node?label=npm&color=CB3837&labelColor=15131C&logo=npm&logoColor=white" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/dm/@postqueen/node?color=7C3AED&labelColor=15131C" alt="npm downloads"></a>
+  <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2563EB?labelColor=15131C" alt="License: AGPL-3.0"></a>
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/v/@postqueen/node" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/@postqueen/node"><img src="https://img.shields.io/npm/dm/@postqueen/node" alt="npm downloads"></a>
-  <a href="https://github.com/GkhanKINAY/postqueen-app/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-</p>
+<a href="https://docs.postqueen.ai/agents/grok-bot"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/showcase/announce-light.png" width="100%" alt="New: Grok Bot is here. Connect Claude, ChatGPT, Grok Bot or any AI agent to your socials."></a>
 
-# PostQueen NodeJS SDK
+<p><a href="https://app.postqueen.ai/auth?utm_source=npm&utm_medium=readme&utm_campaign=postqueen-sdk&utm_content=npm-button"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/showcase/btn-trial-light.png" width="351" alt="Start 7-day trial for $0"></a><a href="https://docs.postqueen.ai/agents/overview"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/showcase/btn-agent-light.png" width="325" alt="Connect your AI agent"></a></p>
+
+<sub><b>$0 due today.</b> A card is required, and you pay nothing if you cancel within 7 days.</sub>
+
+<a href="https://docs.postqueen.ai/agents/overview"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/showcase/works-light.png" width="100%" alt="Use the agent you already have: Claude, ChatGPT, Grok Bot (new), Grok, Perplexity, Muse (new), Claude Code, Codex, Cursor, Gemini CLI, VS Code, Devin Desktop, Zed, OpenClaw, Hermes, NanoClaw, Paperclip and any MCP app. Posts to 30+ networks."></a>
 
 Typed Node client for the [PostQueen](https://postqueen.ai) public API. Schedule posts, upload
 media and read your connected channels across 30+ networks, from X and LinkedIn to TikTok and
@@ -22,7 +26,7 @@ YouTube, with a handful of methods and full types.
 npm install @postqueen/node
 ```
 
-Get your API key in [PostQueen](https://app.postqueen.ai) under **Connections > API Keys**. Only
+No account yet? [Start a 7-day trial, $0 due today](https://app.postqueen.ai/auth?utm_source=npm&utm_medium=readme&utm_campaign=postqueen-sdk&utm_content=install). Get your API key in [PostQueen](https://app.postqueen.ai) under **Connections > API Keys**. Only
 workspace admins see it.
 
 ## Quick start
@@ -95,6 +99,10 @@ const postqueen = new PostQueen(apiKey, 'https://yourdomain.com/api');
 | n8n node | [`n8n-nodes-postqueen`](https://www.npmjs.com/package/n8n-nodes-postqueen) |
 | MCP server | `https://api.postqueen.ai/mcp/<YOUR_API_KEY>` |
 | Source and issues | [github.com/GkhanKINAY/postqueen-app](https://github.com/GkhanKINAY/postqueen-app) |
+
+**No PostQueen account yet?** The SDK calls PostQueen Cloud: start a trial, copy the key from Connections > API Keys, and your code can post.
+
+<a href="https://app.postqueen.ai/auth?utm_source=npm&utm_medium=readme&utm_campaign=postqueen-sdk&utm_content=npm-closing-band"><img src="https://raw.githubusercontent.com/GkhanKINAY/postqueen-app/main/.github/assets/showcase/cta-light.png" width="100%" alt="Ready when you are: hand your next post to your agent. Start 7-day trial for $0. $0 due today, cancel in one click."></a>
 
 ## License
 
