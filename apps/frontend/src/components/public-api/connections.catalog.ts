@@ -100,12 +100,15 @@ export const BOTS_DISPLAY_ORDER = [
   'grok-bot',
   'claude-cowork',
   'hermes',
+  'perplexity-computer',
+  'nanoclaw',
+  'paperclip',
   'muse',
 ] as const;
 
 export const EDITORS_DISPLAY_ORDER = [
   'vscode',
-  'windsurf',
+  'devin-desktop',
   'zed',
 ] as const;
 
@@ -218,6 +221,15 @@ export const needsApiUrl = (apiUrl: string) => {
     return !/(^|\.)postqueen\.ai$/.test(new URL(apiUrl).hostname);
   } catch {
     return true;
+  }
+};
+
+/** The API's host, for tools that attach the key by host rather than by URL. */
+const apiHost = (apiUrl: string) => {
+  try {
+    return new URL(apiUrl).host;
+  } catch {
+    return apiUrl;
   }
 };
 
@@ -375,16 +387,18 @@ export const CONNECTOR_ALIASES: Record<string, string> = {
   vscode: 'vscode',
   'vs-code': 'vscode',
   'vs code': 'vscode',
-  windsurf: 'windsurf',
-  cascade: 'windsurf',
-  devin: 'windsurf',
-  'devin-desktop': 'windsurf',
-  'devin desktop': 'windsurf',
+  devin: 'devin-desktop',
+  'devin desktop': 'devin-desktop',
+  // links written before the rename
+  windsurf: 'devin-desktop',
+  cascade: 'devin-desktop',
   cowork: 'claude-cowork',
   'claude cowork': 'claude-cowork',
   zed: 'zed',
   xai: 'grok',
   'muse-app': 'muse',
+  perplexity: 'perplexity-computer',
+  'perplexity computer': 'perplexity-computer',
 };
 
 export function resolveConnectorId(raw: string | null): string {
@@ -523,6 +537,14 @@ export function buildConnectionsCatalog(
       ]
     : [];
   const mcpUrlWithKey = `${mcpUrl}/${apiKey}`;
+  // The sign-in address: a workspace admin approves, and it serves every tool
+  // but ask_postqueen
+  const mcpSignInUrl = `${backendUrl}/mcp-oauth-dynamic`;
+  const signInStep = (detail: string): Step => ({
+    title: t('conn_step_sign_in', 'Or sign in instead of a key'),
+    detail,
+    code: mcpSignInUrl,
+  });
 
   const skillInstall: Step[] = [
     {
@@ -545,7 +567,7 @@ export function buildConnectionsCatalog(
       title: t('conn_step_skill_key', 'Give it your API key'),
       detail: t(
         'conn_step_skill_key_detail',
-        'The agent and the CLI read this from the environment. Put it in the profile the gateway or agent actually runs in. Get the key from Settings → API Keys.'
+        'The agent and the CLI read this from the environment. Put it in the profile the gateway or agent actually runs in. Get the key from Connections → API Keys (workspace admins only).'
       ),
       code: `export POSTQUEEN_API_KEY="${apiKey}"`,
     },
@@ -773,7 +795,7 @@ openclaw onboard --install-daemon`,
               title: t('conn_openclaw_step_mcp', 'Or connect over MCP'),
               detail: t(
                 'conn_openclaw_step_mcp_detail',
-                'Instead of the skill, you can use OpenClaw\'s own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Settings → API Keys.'
+                'Instead of the skill, you can use OpenClaw\'s own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Connections → API Keys (workspace admins only).'
               ),
               code: `openclaw mcp set postqueen '${JSON.stringify({
                 url: mcpUrlWithKey,
@@ -866,7 +888,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_hermes_step_mcp', 'Or connect over MCP'),
               detail: t(
                 'conn_hermes_step_mcp_detail',
-                'Instead of the skill, you can use the MCP client that ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open, and ask it to list your connected channels. Get the key from Settings → API Keys.'
+                'Instead of the skill, you can use the MCP client that ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open, and ask it to list your connected channels. Get the key from Connections → API Keys (workspace admins only).'
               ),
               code: `mcp_servers:
   postqueen:
@@ -906,7 +928,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_cc_ex_multi', 'Save the same Japan launch post as drafts on Instagram, X and LinkedIn for Friday at 10'),
               reply: t('conn_cc_ex_multi_reply', 'Japan launch is drafted to Instagram, X and LinkedIn for Friday at 10:00. Open the calendar if you want to tweak any of them.'),
-              code: 'claude', tool: 'schedulePostTool',
+              code: 'claude', tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -934,7 +956,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_cc_step_add', 'Register the server'),
               detail: t(
                 'conn_cc_step_add_detail',
-                'Run this in your terminal. The key sits in the URL. Get it from Settings → API Keys.'
+                'Run this in your terminal. The key sits in the URL. Get it from Connections → API Keys (workspace admins only).'
               ),
               code: `claude mcp add --transport http postqueen ${mcpUrlWithKey}`,
             },
@@ -967,7 +989,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_x', 'One channel: X'),
               body: t('conn_grok_build_ex', 'Queue a draft on X for 8am: we just launched Japan eSIM, keep it under 280 characters'),
               reply: t('conn_grok_build_ex_reply', 'Japan eSIM post is drafted to X for 08:00. Confirm it on the calendar before it publishes.'),
-              code: 'grok', tool: 'schedulePostTool',
+              code: 'grok', tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
@@ -979,7 +1001,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_grok_build_ex_multi', 'Put Friday\'s launch recap on Instagram, X and LinkedIn at 10 as drafts'),
               reply: t('conn_grok_build_ex_multi_reply', 'Launch recap is queued as drafts on Instagram, X and LinkedIn for Friday at 10:00. Confirm in this session when you are happy with them.'),
-              code: 'grok', tool: 'schedulePostTool',
+              code: 'grok', tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1003,7 +1025,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_grok_build_step_add', 'Register the server'),
               detail: t(
                 'conn_grok_build_step_add_detail',
-                'Run this in your terminal. The key sits in the URL. Get it from Settings → API Keys. Add --header "Authorization: Bearer KEY" if you prefer the key out of the URL.'
+                'Run this in your terminal. The key sits in the URL. Get it from Connections → API Keys (workspace admins only). Add --header "Authorization: Bearer KEY" if you prefer the key out of the URL.'
               ),
               code: `grok mcp add --transport http postqueen ${mcpUrlWithKey}`,
             },
@@ -1048,7 +1070,7 @@ openclaw mcp probe postqueen`,
               body: t('conn_codex_ex_multi', 'Draft the same Narita arrivals post to Instagram, X and LinkedIn Friday at 10'),
               reply: t('conn_codex_ex_multi_reply', 'Narita arrivals is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
               code: 'codex "Draft the same Narita arrivals post to Instagram, X and LinkedIn Friday at 10"',
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           docs: [
@@ -1072,7 +1094,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_codex_step_add', 'Register the server'),
               detail: t(
                 'conn_codex_step_add_detail',
-                'Run this in your terminal. It writes ~/.codex/config.toml, which the Codex CLI, the IDE extension and the ChatGPT desktop app share. The key sits in the URL. Get it from Settings → API Keys. To keep the key out of the file, register the bare /mcp URL with --bearer-token-env-var POSTQUEEN_API_KEY instead.'
+                'Run this in your terminal. It writes ~/.codex/config.toml, which the Codex CLI, the IDE extension and the ChatGPT desktop app share. The key sits in the URL. Get it from Connections → API Keys (workspace admins only). To keep the key out of the file, register the bare /mcp URL with --bearer-token-env-var POSTQUEEN_API_KEY instead.'
               ),
               code: `codex mcp add postqueen --url ${mcpUrlWithKey}`,
             },
@@ -1116,13 +1138,13 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_x', 'One channel: X'),
               body: t('conn_muse_code_ex_x', 'Queue a draft on X tomorrow at 8am about the Korea eSIM going live this week'),
               reply: t('conn_muse_code_ex_x_reply', 'Korea eSIM post is queued on X as a draft for tomorrow at 08:00. Have a look first.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_muse_code_ex_multi', 'Share Friday\'s Korea launch post to Instagram, X and LinkedIn at 10, all drafts'),
               reply: t('conn_muse_code_ex_multi_reply', 'Korea launch is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           docs: [
@@ -1142,7 +1164,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_muse_code_step_file', 'Edit Muse Code settings'),
               detail: t(
                 'conn_muse_code_step_file_detail',
-                'Add this to ~/.config/muse/settings.json. Get the key from Settings → API Keys. Restart Muse Code after saving.'
+                'Add this to ~/.config/muse/settings.json. Get the key from Connections → API Keys (workspace admins only). Restart Muse Code after saving.'
               ),
               code: JSON.stringify(
                 {
@@ -1367,7 +1389,7 @@ openclaw mcp probe postqueen`,
       label: t('conn_group_featured', 'Featured'),
       blurb: t(
         'conn_group_featured_blurb',
-        'Chat products and any other MCP client. One URL, 17 tools.'
+        'Chat products and any other MCP client. One URL, 21 tools.'
       ),
       items: [
         {
@@ -1402,7 +1424,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_claude_apps_ex_multi', 'Draft the same passport stamp post to Instagram, X and LinkedIn Friday at 10'),
               reply: t('conn_claude_apps_ex_multi_reply', 'Passport stamp post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you say so.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1483,7 +1505,7 @@ openclaw mcp probe postqueen`,
           ],
           info: t(
             'conn_chatgpt_note',
-            'She is not listed in the ChatGPT app store. Searching the Plugin Directory will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as schedulePostTool may stay blocked. Authentication: No Authentication, the key is already in the URL. A ChatGPT plugin does not install Codex.'
+            'She is not listed in the ChatGPT app store. Searching the Plugin Directory will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as integrationSchedulePostTool may stay blocked. Authentication: No Authentication, the key is already in the URL. A ChatGPT plugin does not install Codex.'
           ),
           docs: [
             {
@@ -1545,7 +1567,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_x', 'One channel: X'),
               body: t('conn_grok_ex', 'Put tonight\'s launch photo on X tomorrow at 8am as a draft'),
               reply: t('conn_grok_ex_reply', 'Tonight\'s launch photo is drafted to X for tomorrow at 08:00. Nothing publishes until you say so.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
@@ -1557,7 +1579,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_grok_ex_multi', 'Queue this launch photo on Instagram, X and LinkedIn Friday at 10 as drafts'),
               reply: t('conn_grok_ex_multi_reply', 'Launch photo is queued as drafts on Instagram, X and LinkedIn for Friday at 10:00. Confirm when you are ready.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1588,7 +1610,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_grok_step_url', 'Paste the MCP URL'),
               detail: t(
                 'conn_grok_step_url_detail',
-                'Enter the streamable HTTP URL with your API key in the path. Get the key from Settings → API Keys. Leave extra auth empty unless you prefer a Bearer header instead.'
+                'Enter the streamable HTTP URL with your API key in the path. Get the key from Connections → API Keys (workspace admins only). Leave extra auth empty unless you prefer a Bearer header instead.'
               ),
               code: mcpUrlWithKey,
             },
@@ -1621,19 +1643,19 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_x', 'One channel: X'),
               body: t('conn_grok_bot_ex', 'Draft this photo to X for tomorrow 8am, caption about the waitlist opening'),
               reply: t('conn_grok_bot_ex_reply', 'Waitlist photo is drafted to X for tomorrow at 08:00. I will wait for you here before it goes out.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
               body: t('conn_grok_bot_ex_ig', 'Draft this picture to Instagram tonight at 7, caption for the waitlist'),
               reply: t('conn_grok_bot_ex_ig_reply', 'Waitlist picture is an Instagram draft for tonight at 19:00. Reply in this chat if you want a change.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_grok_bot_ex_multi', 'Post this picture to Instagram, X and LinkedIn Friday at 10 as drafts, waitlist caption on each'),
               reply: t('conn_grok_bot_ex_multi_reply', 'Waitlist picture is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm here before they publish.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1665,7 +1687,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_grok_bot_step_url', 'Give it the key in the secure prompt'),
               detail: t(
                 'conn_grok_bot_step_url_detail',
-                'The Bot shows a secure card. Choose Connect and paste your API key into the secure prompt, never into the chat. Get the key from Settings → API Keys. Tools show up on the next message.'
+                'The Bot shows a secure card. Choose Connect and paste your API key into the secure prompt, never into the chat. Get the key from Connections → API Keys (workspace admins only). Tools show up on the next message.'
               ),
             },
             {
@@ -1712,7 +1734,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_claude_cowork_ex_multi', 'Turn this week\'s product update into drafts for Instagram, X and LinkedIn on Friday at 10'),
               reply: t('conn_claude_cowork_ex_multi_reply', 'The product update is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1853,19 +1875,19 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_x', 'One channel: X'),
               body: t('conn_vscode_ex', 'Draft this copy to X for 8am: waitlist is open, link in the next tweet'),
               reply: t('conn_vscode_ex_reply', 'Waitlist copy is drafted to X for 08:00. Confirm it on the calendar before it publishes.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
               body: t('conn_vscode_ex_ig', 'Save this product shot as an Instagram draft for tonight at 7, caption about the waitlist'),
               reply: t('conn_vscode_ex_ig_reply', 'Waitlist product shot is saved as an Instagram draft for tonight at 19:00. Peek at the calendar first.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_vscode_ex_multi', 'Schedule this campaign shot to Instagram, X and LinkedIn Friday at 10 as drafts'),
               reply: t('conn_vscode_ex_multi_reply', 'Campaign shot is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar when they look right.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -1890,7 +1912,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_vscode_step_json', 'Paste this JSON'),
               detail: t(
                 'conn_vscode_step_json_detail',
-                'The key is servers, not mcpServers. type must be http. Put the API key in the URL or in a headers Authorization Bearer. Get the key from Settings → API Keys.'
+                'The key is servers, not mcpServers. type must be http. Put the API key in the URL or in a headers Authorization Bearer. Get the key from Connections → API Keys (workspace admins only).'
               ),
               code: JSON.stringify(
                 {
@@ -1912,66 +1934,66 @@ openclaw mcp probe postqueen`,
           ],
         },
         {
-          id: 'windsurf',
+          id: 'devin-desktop',
           name: 'Devin Desktop',
           glyph: 'Dv',
-          icon: '/icons/connections/windsurf.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'editors',
           short: t(
-            'conn_windsurf_short',
-            'Schedule from Devin Desktop, formerly Windsurf'
+            'conn_devin_desktop_short',
+            'Schedule from Devin Desktop'
           ),
           intro: t(
-            'conn_windsurf_intro',
-            'Devin Desktop is the new name for Windsurf. Its agent, Devin Local, reads MCP servers from ~/.config/devin/mcp_config.json (Windows: %APPDATA%\\devin\\mcp_config.json), and a remote server needs only a url field. Add PostQueen with devin mcp add, or edit that file. That is not Cursor mcp.json.'
+            'conn_devin_desktop_intro',
+            'Devin Desktop is Cognition\'s code editor. Its agent, Devin Local, reads MCP servers from ~/.config/devin/mcp_config.json (Windows: %APPDATA%\\devin\\mcp_config.json), and a remote server needs only a url field. Add PostQueen with devin mcp add, or edit that file. That is not Cursor mcp.json.'
           ),
           examples: [
             sample({
               title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_windsurf_ex', 'Generate a photo of a packing list next to a passport and save an Instagram draft for tonight at 7'),
-              reply: t('conn_windsurf_ex_reply', 'Packing list photo is saved as an Instagram draft for tonight at 19:00. Open it on the calendar before it publishes.'),
+              body: t('conn_devin_desktop_ex', 'Generate a photo of a packing list next to a passport and save an Instagram draft for tonight at 7'),
+              reply: t('conn_devin_desktop_ex_reply', 'Packing list photo is saved as an Instagram draft for tonight at 19:00. Open it on the calendar before it publishes.'),
               tool: 'generateImageTool',
             }),
             sample({
               title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_windsurf_ex_x', 'Queue a draft on X tomorrow at 8am about packing wifi instead of a SIM tray'),
-              reply: t('conn_windsurf_ex_x_reply', 'Packing wifi post is queued on X as a draft for tomorrow at 08:00. Confirm on the calendar first.'),
-              tool: 'schedulePostTool',
+              body: t('conn_devin_desktop_ex_x', 'Queue a draft on X tomorrow at 8am about packing wifi instead of a SIM tray'),
+              reply: t('conn_devin_desktop_ex_x_reply', 'Packing wifi post is queued on X as a draft for tomorrow at 08:00. Confirm on the calendar first.'),
+              tool: 'integrationSchedulePostTool',
             }),
             sample({
               title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_windsurf_ex_multi', 'Post this packing photo to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_windsurf_ex_multi_reply', 'Packing photo is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar when you are happy.'),
-              tool: 'schedulePostTool',
+              body: t('conn_devin_desktop_ex_multi', 'Post this packing photo to Instagram, X and LinkedIn Friday at 10 as drafts'),
+              reply: t('conn_devin_desktop_ex_multi_reply', 'Packing photo is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar when you are happy.'),
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
-            'conn_windsurf_note',
-            'The Cascade agent was removed in September 2026, so there is no Cascade panel any more. Devin Local imports servers from an existing ~/.codeium/windsurf/mcp_config.json by default, so an older Windsurf entry can keep working. Older Devin versions keep MCP servers in ~/.config/devin/config.json and move them to mcp_config.json on startup.'
+            'conn_devin_desktop_note',
+            'Devin Local asks before each tool call by default. Older Devin versions keep MCP servers in ~/.config/devin/config.json and move them to mcp_config.json on startup.'
           ),
-          docs: [
+          docs: [],
+          paths: [
             {
-              label: t('conn_docs_windsurf', 'Devin Desktop MCP setup'),
-              href: `${DOCS}/mcp/clients/windsurf`,
+              label: t('conn_path_mcp', 'Connect via MCP'),
+              href: `${DOCS}/mcp/introduction`,
             },
           ],
           steps: [
             {
-              title: t('conn_windsurf_step_ui', 'Add it from the terminal'),
+              title: t('conn_devin_desktop_step_ui', 'Add it from the terminal'),
               detail: t(
-                'conn_windsurf_step_ui_detail',
-                'PostQueen is not in the Devin Desktop marketplace. Run this once. -s user makes the server available in every project; without it, it is saved for the current project only. Get the key from Settings → API Keys.'
+                'conn_devin_desktop_step_ui_detail',
+                'PostQueen is not in the Devin Desktop marketplace. Run this once. -s user makes the server available in every project; without it, it is saved for the current project only. Get the key from Connections → API Keys (workspace admins only).'
               ),
               code: `devin mcp add -s user postqueen ${mcpUrlWithKey}`,
             },
             {
-              title: t('conn_windsurf_step_json', 'Or paste this JSON'),
+              title: t('conn_devin_desktop_step_json', 'Or paste this JSON'),
               detail: t(
-                'conn_windsurf_step_json_detail',
+                'conn_devin_desktop_step_json_detail',
                 'Add this to ~/.config/devin/mcp_config.json (Windows: %APPDATA%\\devin\\mcp_config.json). A url is all a remote server needs; Devin Local infers streamable HTTP.'
               ),
               code: JSON.stringify(
@@ -1987,7 +2009,7 @@ openclaw mcp probe postqueen`,
             {
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
-                'conn_windsurf_verify',
+                'conn_devin_desktop_verify',
                 'In a Devin Local session, ask it to list your connected channels.'
               ),
             },
@@ -2025,7 +2047,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_zed_ex_multi', 'Queue the same packing post on Instagram, X and LinkedIn Friday at 10 as drafts'),
               reply: t('conn_zed_ex_multi_reply', 'Packing post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm on the calendar.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -2050,7 +2072,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_zed_step_json', 'Paste this JSON'),
               detail: t(
                 'conn_zed_step_json_detail',
-                'The key is context_servers. This form sends the key in an Authorization header on the bare /mcp URL. A url with the key in the path also works on its own, without headers. Get the key from Settings → API Keys.'
+                'The key is context_servers. This form sends the key in an Authorization header on the bare /mcp URL. A url with the key in the path also works on its own, without headers. Get the key from Connections → API Keys (workspace admins only).'
               ),
               code: JSON.stringify(
                 {
@@ -2106,7 +2128,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_gemini_ex_multi', 'Schedule the airplane mode post to Instagram, X and LinkedIn Friday at 10 as drafts'),
               reply: t('conn_gemini_ex_multi_reply', 'Airplane mode post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm when the set looks right.'),
-              code: 'gemini', tool: 'schedulePostTool',
+              code: 'gemini', tool: 'integrationSchedulePostTool',
             }),
           ],
           info: t(
@@ -2150,10 +2172,239 @@ openclaw mcp probe postqueen`,
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_gemini_verify',
-                'Start Gemini CLI and run the slash command /mcp. postqueen should show as connected with 17 tools. Then ask it to list your connected social media accounts.'
+                'Start Gemini CLI and run the slash command /mcp. postqueen should show as connected with 21 tools. Then ask it to list your connected social media accounts.'
               ),
               code: '/mcp',
             },
+          ],
+        },
+        {
+          id: 'perplexity-computer',
+          name: 'Perplexity Computer',
+          glyph: 'Px',
+          kind: 'MCP',
+          method: 'MCP',
+          cred: 'mcp',
+          exampleKind: 'chat',
+          section: 'bots',
+          short: t(
+            'conn_perplexity_short',
+            'Hand Perplexity Computer a task that ends in a post'
+          ),
+          intro: t(
+            'conn_perplexity_intro',
+            'Perplexity Computer is Perplexity\'s agent that carries out multi-step tasks in a cloud sandbox with a browser, files and your connected tools. Add PostQueen as a custom remote connector with the MCP URL, and Computer can call her. It is on the Pro, Max, Education Pro, Enterprise Pro and Enterprise Max plans, not Free. Perplexity search is a different product.'
+          ),
+          examples: [
+            sample({
+              title: t('conn_ex_label_week', 'Check the calendar'),
+              body: t('conn_perplexity_ex', 'Check my PostQueen queue for next week and list the days with no posts'),
+              reply: t('conn_perplexity_ex_reply', 'Next week Monday and Friday have no posts. Instagram on Tuesday at 19:00 and X on Wednesday at 08:00 are already queued.'),
+              tool: 'postsListTool',
+            }),
+            sample({
+              title: t('conn_ex_label_ig', 'One channel: Instagram'),
+              body: t('conn_perplexity_ex_ig', 'Generate a photo of a SIM tray next to a passport and draft it to Instagram tonight at 7, caption with three eSIM tips'),
+              reply: t('conn_perplexity_ex_ig_reply', 'SIM tray photo is an Instagram draft for tonight at 19:00 with the three tips. Open the calendar if you want to trim the caption.'),
+              tool: 'generateImageTool',
+            }),
+            sample({
+              title: t('conn_ex_label_multi', 'Several channels'),
+              body: t('conn_perplexity_ex_multi', 'Find last month\'s best post and draft a follow up to Instagram, X and LinkedIn for Friday at 10'),
+              reply: t('conn_perplexity_ex_multi_reply', 'The Japan launch did best. A follow up is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
+              tool: 'analyticsPostsTool',
+            }),
+          ],
+          info: t(
+            'conn_perplexity_note',
+            'From Perplexity\'s docs, not tested by PostQueen yet. Add it under Account settings → Connectors, not Settings → MCP servers, which is for servers on your own device. Use the MCP URL with the key; PostQueen\'s sign-in address is not supported with Perplexity yet. On Enterprise, an admin first allows members to add custom connectors under Enterprise settings → Permissions.'
+          ),
+          docs: [],
+          paths: [
+            {
+              label: t('conn_path_mcp', 'Connect via MCP'),
+              href: `${DOCS}/mcp/introduction`,
+            },
+          ],
+          steps: [
+            {
+              title: t('conn_perplexity_step_open', 'Open Perplexity connectors'),
+              detail: t(
+                'conn_perplexity_step_open_detail',
+                'In Perplexity on the web, open Account settings → Connectors, click + Custom connector and choose Remote.'
+              ),
+            },
+            {
+              title: t('conn_perplexity_step_url', 'Paste the MCP URL'),
+              detail: t(
+                'conn_perplexity_step_url_detail',
+                'Name it PostQueen and paste this as the MCP Server URL. Set Authentication to None, because the key is already in the URL, and Transport to Streamable HTTP. Get the key from Connections → API Keys (workspace admins only). Tick the acknowledgement box, click Add, then click the PostQueen card to enable it.'
+              ),
+              code: mcpUrlWithKey,
+            },
+            {
+              title: t('conn_step_verify', 'Check it worked'),
+              detail: t(
+                'conn_perplexity_verify',
+                'In Computer, check that PostQueen is on under Connectors, then ask it to list your connected channels.'
+              ),
+            },
+          ],
+        },
+        {
+          id: 'nanoclaw',
+          name: 'NanoClaw',
+          glyph: 'NC',
+          kind: 'MCP',
+          method: 'MCP',
+          cred: 'mcp',
+          exampleKind: 'bot',
+          section: 'bots',
+          short: t('conn_nanoclaw_short', 'An assistant you host, each agent in its own container'),
+          intro: t(
+            'conn_nanoclaw_intro',
+            'NanoClaw is an open-source assistant that runs each agent in its own Docker container on your machine. You talk to it from Slack, Telegram, Discord, WhatsApp and other chat apps. Add PostQueen as an MCP server and keep the key in NanoClaw\'s OneCLI vault, so the agent never sees it. NanoClaw is not OpenClaw; each has its own setup.'
+          ),
+          examples: [
+            sample({
+              title: t('conn_ex_label_ig', 'One channel: Instagram'),
+              body: t('conn_nanoclaw_ex', 'Draft this photo to Instagram tonight at 7, caption about the new Japan eSIM plans'),
+              reply: t('conn_nanoclaw_ex_reply', 'Japan eSIM photo is an Instagram draft for tonight at 19:00. Reply here when it should go live.'),
+              tool: 'integrationSchedulePostTool',
+            }),
+            sample({
+              title: t('conn_ex_label_x', 'One channel: X'),
+              body: t('conn_nanoclaw_ex_x', 'Queue this clip on X tomorrow at 8am as a draft, copy about roaming without a SIM swap'),
+              reply: t('conn_nanoclaw_ex_x_reply', 'Roaming clip is drafted to X for tomorrow at 08:00. I will wait for your yes in this chat.'),
+              tool: 'integrationSchedulePostTool',
+            }),
+            sample({
+              title: t('conn_ex_label_multi', 'Several channels'),
+              body: t('conn_nanoclaw_ex_multi', 'Send this photo to Instagram, X and LinkedIn on Friday at 10 as drafts, caption for the spring sale'),
+              reply: t('conn_nanoclaw_ex_multi_reply', 'Spring sale photo is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm here before they publish.'),
+              tool: 'integrationSchedulePostTool',
+            }),
+          ],
+          info: t(
+            'conn_nanoclaw_note',
+            'From NanoClaw\'s docs, not tested by PostQueen yet. Use the MCP server: the postqueen CLI and skill do not work inside NanoClaw\'s containers. NanoClaw has no sign-in flow for MCP servers, so use the API key, and keep it in the vault rather than in the URL.'
+          ),
+          docs: [],
+          paths: [
+            {
+              label: t('conn_path_mcp', 'Connect via MCP'),
+              href: `${DOCS}/mcp/introduction`,
+            },
+          ],
+          steps: [
+            {
+              title: t('conn_nanoclaw_step_vault', 'Save the key in the OneCLI vault'),
+              detail: t(
+                'conn_nanoclaw_step_vault_detail',
+                'On the machine that runs NanoClaw. The vault adds the key to the agent\'s requests to PostQueen. Get the key from Connections → API Keys (workspace admins only).'
+              ),
+              code: `onecli secrets create --name PostQueen --type generic --value "${apiKey}" --host-pattern ${apiHost(backendUrl)} --header-name Authorization --value-format "Bearer {value}"`,
+            },
+            {
+              title: t('conn_nanoclaw_step_group', 'Add PostQueen to your agent group'),
+              detail: t(
+                'conn_nanoclaw_step_group_detail',
+                'Find the group id with ncl groups list, then add the server on the bare /mcp URL and restart the group. The vault supplies the key.'
+              ),
+              code: `ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url ${mcpUrl}
+ncl groups restart --id YOUR_GROUP_ID`,
+            },
+            {
+              title: t('conn_step_verify', 'Check it worked'),
+              detail: t(
+                'conn_nanoclaw_verify',
+                'Message the agent and ask it to list your connected channels.'
+              ),
+            },
+          ],
+        },
+        {
+          id: 'paperclip',
+          name: 'Paperclip',
+          glyph: 'Pc',
+          kind: 'MCP',
+          method: 'MCP',
+          cred: 'mcp',
+          exampleKind: 'agent',
+          section: 'bots',
+          short: t('conn_paperclip_short', 'Give your agent company a social media desk'),
+          intro: t(
+            'conn_paperclip_intro',
+            'Paperclip is an open-source app for running a team of AI agents as a company: you set goals, hire agents, set budgets and approve their work from one dashboard. Connect PostQueen once under Apps and its Claude Code and Codex agents can use her tools.'
+          ),
+          examples: [
+            sample({
+              title: t('conn_ex_label_week', 'Check the calendar'),
+              body: t('conn_paperclip_ex', 'List everything scheduled on PostQueen this week and flag the empty days'),
+              reply: t('conn_paperclip_ex_reply', 'This week: Instagram Tuesday at 19:00 and X Wednesday at 08:00. Monday, Thursday and Friday are empty.'),
+              tool: 'postsListTool',
+            }),
+            sample({
+              title: t('conn_ex_label_x', 'One channel: X'),
+              body: t('conn_paperclip_ex_x', 'Draft an X post for tomorrow at 8am announcing the Korea eSIM, under 280 characters'),
+              reply: t('conn_paperclip_ex_x_reply', 'Korea eSIM post is drafted to X for tomorrow at 08:00. It waits for your approval before it is scheduled.'),
+              tool: 'integrationSchedulePostTool',
+            }),
+            sample({
+              title: t('conn_ex_label_multi', 'Several channels'),
+              body: t('conn_paperclip_ex_multi', 'Turn Friday\'s product update into drafts for Instagram, X and LinkedIn at 10'),
+              reply: t('conn_paperclip_ex_multi_reply', 'The product update is drafted to Instagram, X and LinkedIn for Friday at 10:00. Approve them when you are ready.'),
+              tool: 'integrationSchedulePostTool',
+            }),
+          ],
+          info: t(
+            'conn_paperclip_note',
+            'From Paperclip\'s docs, not tested by PostQueen yet. PostQueen\'s tools reach Paperclip\'s Claude Code and Codex agents; other agent types use their own MCP settings. There is no paperclipai command for MCP connections yet, so use the Apps page.'
+          ),
+          docs: [],
+          paths: [
+            {
+              label: t('conn_path_mcp', 'Connect via MCP'),
+              href: `${DOCS}/mcp/introduction`,
+            },
+          ],
+          steps: [
+            {
+              title: t('conn_paperclip_step_add', 'Connect your own MCP server'),
+              detail: t(
+                'conn_paperclip_step_add_detail',
+                'In Paperclip, open Apps → Connect an app → Connect your own MCP server. Enter this URL and press Check link.'
+              ),
+              code: mcpUrl,
+            },
+            {
+              title: t('conn_paperclip_step_key', 'Give it the key'),
+              detail: t(
+                'conn_paperclip_step_key_detail',
+                'Under Advanced authentication choose Key or token and paste the key on its own, without the word Bearer. Get the key from Connections → API Keys (workspace admins only).'
+              ),
+              code: apiKey,
+            },
+            {
+              title: t('conn_paperclip_step_tools', 'Choose tools and who can use them'),
+              detail: t(
+                'conn_paperclip_step_tools_detail',
+                'Reading tools start on. Tools that change something, such as scheduling a post, start off until you turn them on, and then ask for approval by default. Give an agent, a project or the whole company access to PostQueen.'
+              ),
+            },
+            {
+              title: t('conn_step_verify', 'Check it worked'),
+              detail: t(
+                'conn_paperclip_verify',
+                'Assign an agent a task such as listing your connected channels.'
+              ),
+            },
+            signInStep(
+              t(
+                'conn_paperclip_step_sign_in_detail',
+                'Enter this address instead, choose Sign in to continue and approve as a PostQueen workspace admin. Not tested by PostQueen yet.'
+              )
+            ),
           ],
         },
         {
@@ -2166,15 +2417,14 @@ openclaw mcp probe postqueen`,
           cred: 'none',
           exampleKind: 'chat',
           section: 'bots',
-          soon: true,
-          short: t('conn_muse_short', 'Muse app. Custom MCP not ready yet'),
+          short: t('conn_muse_short', 'Meta\'s personal agent. Not tested yet'),
           intro: t(
             'conn_muse_intro',
-            'Meta Muse (the personal agent in the Muse app and WhatsApp) has Connectors, including custom connectors built from API details Muse walks you through. That is not a paste-an-MCP-URL flow. First-class MCP for the Muse app is coming soon. Muse Code, the coding agent, already connects, use that card under Agents.'
+            'Muse is Meta\'s personal agent in the Muse app, on muse.ai and in WhatsApp. PostQueen cannot be added to it by URL yet. Meta documents asking Muse in chat to build a custom connector from a service\'s API information, not from an MCP address, and no PostQueen connector has been built that way yet, so this route is not tested by PostQueen yet. Muse Code is a separate product, Meta\'s coding agent, and it connects today: use that card under Agents.'
           ),
           info: t(
             'conn_muse_note',
-            'Do not paste the MCP URL into Muse Settings → Connectors expecting it to work like Claude. For now, use Muse Code or another MCP client on this page.'
+            'Do not paste the MCP URL into Muse Settings → Connectors expecting it to work like Claude; that screen lists the connectors Meta has reviewed. If you try the chat route, enter your API key only in the secure prompt Muse shows, never in the chat.'
           ),
           docs: [
             {
@@ -2194,7 +2444,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_muse_step_app', 'Muse app'),
               detail: t(
                 'conn_muse_step_app_detail',
-                'Settings → Connectors can attach catalog apps (Gmail, calendar). Custom connectors there collect API information, not an MCP server URL. We will add paste-URL steps here when Meta ships that.'
+                'PostQueen is not in Muse\'s connector list. Muse builds custom connectors in chat from API information, not from an MCP server URL, and that route is not tested by PostQueen yet.'
               ),
             },
           ],
@@ -2222,7 +2472,7 @@ openclaw mcp probe postqueen`,
           short: t('conn_other_mcp_short', 'Any other MCP client with the URL'),
           intro: t(
             'conn_other_mcp_intro',
-            'PostQueen exposes 17 tools at a single streamable HTTP endpoint (16 registry tools plus ask_postqueen). If your editor or agent can reach a remote MCP server, use the URL below (API key in the path or as a Bearer token). Get your key from Settings → API Keys.'
+            'PostQueen exposes 21 tools at a single streamable HTTP endpoint (20 tools plus the ask_postqueen agent). If your editor or agent can reach a remote MCP server, use the URL below (API key in the path or as a Bearer token). Get your key from Connections → API Keys (workspace admins only).'
           ),
           examples: [
             sample({
@@ -2241,7 +2491,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_ex_label_multi', 'Several channels'),
               body: t('conn_other_mcp_ex_multi', 'Draft that QR post to Instagram, X and LinkedIn Friday at 10'),
               reply: t('conn_other_mcp_ex_multi_reply', 'QR post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing goes out until you confirm.'),
-              tool: 'schedulePostTool',
+              tool: 'integrationSchedulePostTool',
             }),
           ],
           note: t(
@@ -2267,6 +2517,12 @@ openclaw mcp probe postqueen`,
               ),
               code: `${mcpUrl}\nAuthorization: Bearer ${apiKey}`,
             },
+            signInStep(
+              t(
+                'conn_other_mcp_step_sign_in_detail',
+                'For clients that sign in to MCP servers themselves. A workspace admin approves access. This address has 20 tools, all but ask_postqueen. Not tested by PostQueen yet.'
+              )
+            ),
           ],
         },
       ],
@@ -2340,7 +2596,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_n8n_step_cred', 'Add the credential'),
               detail: t(
                 'conn_n8n_step_cred_detail',
-                'Create a PostQueen API credential. Paste your key from Settings → API Keys. The Public API wants the raw key, n8n handles the Authorization header for you.'
+                'Create a PostQueen API credential. Paste your key from Connections → API Keys (workspace admins only). The Public API wants the raw key, n8n handles the Authorization header for you.'
               ),
               code: apiKey,
             },
@@ -2619,11 +2875,11 @@ openclaw mcp probe postqueen`,
           short: t('conn_cli_short', 'Run postqueen commands in a shell'),
           intro: t(
             'conn_cli_intro',
-            'The postqueen CLI is 16 commands for channels, posts, media uploads and analytics. Same Public API under the hood; data commands print JSON. It does not generate video. The Agent Skill is a playbook and does not install this package.'
+            'The postqueen CLI is 17 commands for channels, posts, media uploads and analytics. Same Public API under the hood; most commands print one status line, then JSON. It does not generate video. The Agent Skill is a playbook and does not install this package.'
           ),
           info: t(
             'conn_cli_note',
-            'Video generation lives on MCP (generateVideoTool) and the Public API (POST /generate-video). Analytics is here and on the API, not on MCP.'
+            'Video generation lives on MCP (generateVideoTool) and the Public API (POST /generate-video). Analytics is here, on the API and on MCP. Over MCP she reports how published posts did: totals for 7, 30 or 90 days, top posts and one post. Channel numbers such as follower growth are here and on the API.'
           ),
           examples: [
             {
@@ -2673,7 +2929,7 @@ openclaw mcp probe postqueen`,
               title: t('conn_cli_step_login', 'Authenticate'),
               detail: t(
                 'conn_cli_step_login_detail',
-                'Settings → API Keys → Reveal, then export. Self-hosted OAuth device flow (`auth:login`) is advanced, see Authentication docs.'
+                'Copy the key from Connections → API Keys (workspace admins only), then export it. The CLI logs in with the API key only.'
               ),
               code: `export POSTQUEEN_API_KEY="${apiKey}"`,
             },
@@ -2790,7 +3046,7 @@ await pq.post({
               title: t('conn_sdk_step_key', 'Authenticate'),
               detail: t(
                 'conn_sdk_step_key_detail',
-                'Pass your API key when you construct the client. Settings → API Keys.'
+                'Pass your API key when you construct the client. Get it from Connections → API Keys (workspace admins only).'
               ),
               code: `POSTQUEEN_API_KEY="${apiKey}"`,
             },

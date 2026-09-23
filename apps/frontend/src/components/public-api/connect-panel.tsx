@@ -639,7 +639,7 @@ const CliSetupCallout: FC<{
         <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
           {t(
             'conn_cli_step_login_detail',
-            'Settings → API Keys → Reveal, then export. Self-hosted OAuth device flow (`auth:login`) is advanced, see Authentication docs.'
+            'Copy the key from Connections → API Keys (workspace admins only), then export it. The CLI logs in with the API key only.'
           )}
         </div>
         <CodeBlock code={maskedKey} rawCode={keyCode} label="API key" />
@@ -1033,7 +1033,7 @@ export const ConnectPanel: FC<{
         title: t('connect_hub_bots', 'Bots'),
         blurb: t(
           'connect_hub_bots_blurb',
-          'Bots you host or message. OpenClaw, Grok Bot, Claude Cowork, Hermes, and Muse.'
+          'Bots you host or message. OpenClaw, Grok Bot, Claude Cowork, Hermes, Perplexity Computer, NanoClaw, Paperclip and Muse.'
         ),
       },
       chat: {
@@ -1164,7 +1164,7 @@ export const ConnectPanel: FC<{
           showDocs={false}
           hint={t(
             'conn_api_key_hint',
-            'One key for MCP, the CLI, n8n and the Public API. Settings → API Keys.'
+            'One key for MCP, the CLI, n8n and the Public API. Only workspace admins can see it.'
           )}
           onRevealChange={setKeyRevealed}
         />

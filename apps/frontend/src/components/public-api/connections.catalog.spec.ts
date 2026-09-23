@@ -128,11 +128,14 @@ describe('Connect marketplace catalog', () => {
       'grok-bot',
       'claude-cowork',
       'hermes',
+      'perplexity-computer',
+      'nanoclaw',
+      'paperclip',
       'muse',
     ]);
     assert.deepEqual([...EDITORS_DISPLAY_ORDER], [
       'vscode',
-      'windsurf',
+      'devin-desktop',
       'zed',
     ]);
     assert.equal(byId('claude-code').section, 'agents');
@@ -145,14 +148,18 @@ describe('Connect marketplace catalog', () => {
     assert.equal(byId('hermes').section, 'bots');
     assert.equal(byId('claude-cowork').section, 'bots');
     assert.equal(byId('muse').section, 'bots');
+    assert.equal(byId('perplexity-computer').section, 'bots');
+    assert.equal(byId('nanoclaw').section, 'bots');
+    assert.equal(byId('paperclip').section, 'bots');
     assert.equal(byId('vscode').section, 'editors');
+    assert.equal(byId('devin-desktop').section, 'editors');
     assert.equal(byId('claude-apps').section, 'featured');
     assert.equal(byId('chatgpt').section, 'featured');
     assert.equal(byId('grok').section, 'featured');
     assert.ok(!FEATURED_IDS.includes('openclaw' as never));
     assert.ok(!FEATURED_IDS.includes('hermes' as never));
     assert.ok(!FEATURED_IDS.includes('gemini' as never));
-    assert.equal(byId('muse').soon, true);
+    assert.equal(byId('muse').soon, undefined);
     assert.equal(byId('muse-code').soon, undefined);
   });
 
@@ -248,14 +255,22 @@ describe('Connect marketplace catalog', () => {
     assert.match(chatgptSteps, /\+ → Developer mode/);
     assert.doesNotMatch(chatgptSteps, /Apps → Create|Older builds/);
     assert.match(chatgptSteps, /Do not search the app store/);
-    assert.match(chatgpt.info || '', /schedulePostTool may stay blocked/);
+    assert.match(chatgpt.info || '', /integrationSchedulePostTool may stay blocked/);
     assert.match(chatgpt.info || '', /not listed in the ChatGPT app store/i);
   });
 
-  it('says 17 tools and points keys at API Keys', () => {
+  it('says 21 tools, 20 on the sign-in address, and points keys at Connections → API Keys', () => {
     const other = byId('other-mcp');
-    assert.match(other.intro, /17 tools/);
-    assert.match(other.intro, /Settings → API Keys/);
+    assert.match(other.intro, /21 tools/);
+    assert.match(other.intro, /Connections → API Keys \(workspace admins only\)/);
+    const signIn = other.steps.find((s) => /sign in/i.test(s.title));
+    assert.equal(signIn?.code, 'https://api.postqueen.ai/mcp-oauth-dynamic');
+    assert.match(signIn?.detail || '', /20 tools, all but ask_postqueen/);
+    assert.match(signIn?.detail || '', /Not tested by PostQueen yet/);
+    assert.match(byId('gemini').steps.map((s) => s.detail).join('\n'), /21 tools/);
+    const text = JSON.stringify(catalog);
+    assert.doesNotMatch(text, /Settings → API Keys/);
+    assert.doesNotMatch(text, /\b1[4-7] tools\b/);
     const claude = byId('claude-apps');
     assert.match(
       claude.steps.map((s) => s.detail).join('\n'),
@@ -376,11 +391,11 @@ describe('Connect marketplace catalog', () => {
 
   it('uses the official VS Code, Devin Desktop and Zed JSON keys, not Cursor mcpServers', () => {
     const vscode = byId('vscode');
-    const windsurf = byId('windsurf');
+    const devin = byId('devin-desktop');
     const zed = byId('zed');
     const cursor = byId('cursor');
     const vscodeJson = vscode.steps.map((s) => s.code || '').join('\n');
-    const windsurfJson = windsurf.steps.map((s) => s.code || '').join('\n');
+    const devinJson = devin.steps.map((s) => s.code || '').join('\n');
     const zedJson = zed.steps.map((s) => s.code || '').join('\n');
 
     assert.match(vscodeJson, /"servers"/);
@@ -393,20 +408,18 @@ describe('Connect marketplace catalog', () => {
       /Do not look for PostQueen in an extension marketplace/
     );
 
-    assert.equal(windsurf.name, 'Devin Desktop');
-    assert.match(windsurfJson, /devin mcp add -s user postqueen/);
-    assert.match(windsurfJson, /"url"/);
-    assert.doesNotMatch(windsurfJson, /"serverUrl"/);
-    assert.match(windsurf.intro, /~\/\.config\/devin\/mcp_config\.json/);
-    assert.match(windsurf.info || '', /Devin Local/);
-    assert.doesNotMatch(
-      windsurf.steps.map((s) => `${s.title} ${s.detail || ''}`).join('\n'),
-      /Cascade/
-    );
+    assert.equal(devin.name, 'Devin Desktop');
+    assert.match(devinJson, /devin mcp add -s user postqueen/);
+    assert.match(devinJson, /"url"/);
+    assert.doesNotMatch(devinJson, /"serverUrl"/);
+    assert.match(devin.intro, /~\/\.config\/devin\/mcp_config\.json/);
+    assert.match(devin.info || '', /Devin Local/);
     assert.match(
-      windsurf.steps.map((s) => s.detail).join('\n'),
+      devin.steps.map((s) => s.detail).join('\n'),
       /not in the Devin Desktop marketplace/
     );
+    // the current name only: no old name, rename note, old icon or old docs path
+    assert.doesNotMatch(JSON.stringify(catalog), /windsurf|cascade|formerly/i);
 
     assert.match(cursor.intro, /not in the Cursor Marketplace/);
     assert.match(
@@ -425,10 +438,12 @@ describe('Connect marketplace catalog', () => {
 
     const other = byId('other-mcp');
     assert.match(other.note || '', /Cline, Continue, Goose/);
-    assert.match(other.intro, /17 tools/);
     assert.equal(resolveConnectorId('vs-code'), 'vscode');
-    assert.equal(resolveConnectorId('cascade'), 'windsurf');
-    assert.equal(resolveConnectorId('devin-desktop'), 'windsurf');
+    assert.equal(resolveConnectorId('devin-desktop'), 'devin-desktop');
+    assert.equal(resolveConnectorId('devin'), 'devin-desktop');
+    // links written before the rename
+    assert.equal(resolveConnectorId('windsurf'), 'devin-desktop');
+    assert.equal(resolveConnectorId('cascade'), 'devin-desktop');
     assert.equal(resolveConnectorId('zed'), 'zed');
   });
 
@@ -519,7 +534,17 @@ describe('Connect marketplace catalog', () => {
   });
 
   it('states CLI, API and OAuth capabilities without mixing surfaces', () => {
-    assert.match(byId('cli').intro, /16 commands/);
+    assert.match(byId('cli').intro, /17 commands/);
+    assert.match(byId('cli').info || '', /on the API and on MCP/);
+    assert.doesNotMatch(byId('cli').info || '', /not on MCP/);
+    assert.match(
+      byId('cli').steps.map((s) => s.detail || '').join('\n'),
+      /logs in with the API key only/
+    );
+    assert.doesNotMatch(
+      byId('cli').steps.map((s) => s.detail || '').join('\n'),
+      /auth:login|device flow/
+    );
     assert.match(byId('cli').intro, /does not generate video/);
     assert.match(byId('api').intro, /generate video/);
     assert.match(byId('api').intro, /Image generation is MCP only/);
@@ -540,10 +565,49 @@ describe('Connect marketplace catalog', () => {
     );
   });
 
-  it('marks Muse app no paste-MCP lie', () => {
+  it('says the Muse app cannot take PostQueen by URL yet, without promising it', () => {
     const muse = byId('muse');
-    assert.match(muse.intro, /not a paste-an-MCP-URL flow/i);
+    assert.match(muse.intro, /cannot be added to it by URL yet/);
+    assert.match(muse.intro, /not tested by PostQueen yet/);
+    assert.match(muse.intro, /Muse Code is a separate product/);
+    assert.doesNotMatch(
+      `${muse.short} ${muse.intro} ${muse.info} ${muse.steps.map((s) => s.detail).join(' ')}`,
+      /coming soon|will add|when Meta ships/i
+    );
     assert.equal(muse.cred, 'none');
+  });
+
+  it('adds Perplexity Computer, NanoClaw and Paperclip as not tested yet', () => {
+    const perplexity = byId('perplexity-computer');
+    const nanoclaw = byId('nanoclaw');
+    const paperclip = byId('paperclip');
+    for (const item of [perplexity, nanoclaw, paperclip]) {
+      assert.equal(item.method, 'MCP');
+      assert.match(item.info || '', /docs, not tested by PostQueen yet/);
+      assert.match(
+        item.steps.map((s) => s.detail || '').join('\n'),
+        /Connections → API Keys \(workspace admins only\)/
+      );
+    }
+    assert.equal(perplexity.steps[1].code, 'https://api.postqueen.ai/mcp/test-key');
+    assert.match(perplexity.steps[1].detail || '', /Authentication to None/);
+    const nanoclawCode = nanoclaw.steps.map((s) => s.code || '').join('\n');
+    assert.match(
+      nanoclawCode,
+      /onecli secrets create .*--value "test-key" --host-pattern api\.postqueen\.ai /
+    );
+    assert.match(
+      nanoclawCode,
+      /ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url https:\/\/api\.postqueen\.ai\/mcp\n/
+    );
+    assert.doesNotMatch(nanoclawCode, /\/mcp\/test-key/);
+    assert.equal(paperclip.steps[0].code, 'https://api.postqueen.ai/mcp');
+    assert.match(paperclip.steps[1].detail || '', /without the word Bearer/);
+    assert.equal(
+      paperclip.steps.at(-1)?.code,
+      'https://api.postqueen.ai/mcp-oauth-dynamic'
+    );
+    assert.equal(resolveConnectorId('perplexity'), 'perplexity-computer');
   });
 
   it('keeps catalog shorts dash-free for search, without a card-length cap', () => {
@@ -662,7 +726,7 @@ describe('Connect marketplace catalog', () => {
       )
     );
     for (const need of [
-      'schedulePostTool',
+      'integrationSchedulePostTool',
       'generateImageTool',
       'generateVideoTool',
       'postsListTool',
@@ -671,8 +735,9 @@ describe('Connect marketplace catalog', () => {
     ]) {
       assert.ok(mcpTools.has(need), `catalog examples never call ${need}`);
     }
+    // MCP wire names, never the in-app agent's internal ids
     const allowedTools = new Set([
-      'schedulePostTool',
+      'integrationSchedulePostTool',
       'generateImageTool',
       'generateVideoTool',
       'postsListTool',
@@ -695,7 +760,7 @@ describe('Connect marketplace catalog', () => {
 
   it('example replies answer the prompt, they do not teach which product this is', () => {
     const banned =
-      /not Claude Code|not Codex|not ChatGPT|not Grok Build|not grok\.com|not Cursor|not the consumer Muse|Enable PostQueen from|Settings then Apps|Claude chat, not|ChatGPT web, not|Grok chat, not|Grok Bot, not|Muse Code, not|Agent mode, not|VS Code Copilot, not|Windsurf Cascade, not|used schedulePostTool|used the skill|used the public MCP|JSON shape for the client|Same MCP URL as|Cline, Continue, Goose|httpUrl in settings|Bearer header, not only|mcp\.json|connectors form|Write tools can stay blocked|Claude Code used|grok mcp add registered/i;
+      /not Claude Code|not Codex|not ChatGPT|not Grok Build|not grok\.com|not Cursor|not the consumer Muse|Enable PostQueen from|Settings then Apps|Claude chat, not|ChatGPT web, not|Grok chat, not|Grok Bot, not|Muse Code, not|Agent mode, not|VS Code Copilot, not|Windsurf Cascade, not|used integrationSchedulePostTool|used schedulePostTool|used the skill|used the public MCP|JSON shape for the client|Same MCP URL as|Cline, Continue, Goose|httpUrl in settings|Bearer header, not only|mcp\.json|connectors form|Write tools can stay blocked|Claude Code used|grok mcp add registered/i;
     for (const item of all) {
       if (item.id === 'cli' || item.id === 'api' || item.id === 'sdk') continue;
       for (const ex of item.examples || []) {
