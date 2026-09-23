@@ -1219,7 +1219,11 @@ export class InstagramProvider
           // Daily reach counts unique accounts per day, so a sum of days
           // counts the same account again each day; show the daily average.
           ...(d.name === 'reach' && Array.isArray(d.values)
-            ? { label: 'Average Daily Reach', average: true, unit: 'count' }
+            ? {
+                label: 'Average Daily Reach',
+                average: true,
+                unit: 'count' as const,
+              }
             : {}),
           percentageChange: 5,
           data: Array.isArray(d.values)

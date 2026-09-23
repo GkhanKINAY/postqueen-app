@@ -136,7 +136,9 @@ const AnalyticsChartBoard: FC<{
       <div className="overflow-hidden rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
         <div className="flex items-center gap-[9px] px-[17px] pt-[15px] pb-[2px]">
           <span className="min-w-0 flex-1 truncate text-[12px] font-[600] uppercase tracking-[0.06em] text-pqSoft">
-            {item.data.length > 2
+            {/* An average already names a daily figure ("Average Daily
+                Reach"), so it keeps its own label. */}
+            {item.data.length > 2 && !item.average
               ? `${t('daily', 'Daily')} ${item.label.toLowerCase()}`
               : item.label}
           </span>
@@ -377,7 +379,7 @@ export const RenderAnalytics: FC<{
         (p?.data.reduce(
           (acc: number, curr: { total: number }) => acc + Number(curr.total),
           0,
-        ) || 0) / (p.average ? p.data.length : 1);
+        ) || 0) / (p.average ? p.data.length || 1 : 1);
       // An average used to be shown as a percentage whatever it measured, so
       // YouTube's average view duration, in seconds, read as a percent.
       if (p.average && p.unit === 'seconds') {
