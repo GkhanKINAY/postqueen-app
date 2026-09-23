@@ -26,6 +26,10 @@ const scheduleTool = read(`${libraries}chat/tools/integration.schedule.post.ts`)
 const triggerTool = read(`${libraries}chat/tools/integration.trigger.tool.ts`);
 const clipping = read(`${libraries}database/prisma/clipping/clipping.service.ts`);
 const middleware = read('../../../services/auth/auth.middleware.ts');
+const appIntegrations = read('../../../api/routes/integrations.controller.ts');
+const permissions = read(
+  '../../../services/auth/permissions/permissions.service.ts'
+);
 const connect = read('../../../api/routes/no.auth.integrations.controller.ts');
 const videoActivity = read(
   '../../../../../orchestrator/src/activities/video.activity.ts'
@@ -126,6 +130,34 @@ describe('a deleted channel', () => {
       3
     );
     assert.doesNotMatch(controller, /getIntegrationById\(/);
+  });
+
+  it('is refused by validation, the app channel routes, clipping and the refresh skip', () => {
+    const validate = posts.slice(posts.indexOf('  async validatePosts('));
+    assert.match(
+      validate,
+      /getIntegrationByIdNotDeleted\(\s*orgId,\s*post\?\.integration\?\.id\s*\)/
+    );
+    // nickname, mentions and function; a missing channel still answers the
+    // controller's own "Invalid integration"
+    assert.doesNotMatch(appIntegrations, /getIntegrationById\(/);
+    assert.equal(
+      appIntegrations.match(/getIntegrationByIdNotDeleted\(/g)?.length,
+      3
+    );
+    assert.match(
+      integrations,
+      /async saveProviderPage\(org: string, id: string, data: any\) \{\s*const getIntegration =\s*await this\._integrationRepository\.getIntegrationByIdNotDeleted\(org, id\);/
+    );
+    assert.match(
+      clipping,
+      /!\(await this\._integrationService\.getIntegrationByIdNotDeleted\(\s*org\.id,\s*integration\s*\)\)/
+    );
+    // A removed channel named in ?refresh= is counted like a new one.
+    assert.match(
+      permissions,
+      /if \(refreshChannelId\) \{\s*const existingIntegration =\s*await this\._integrationService\.getIntegrationByIdNotDeleted\(/
+    );
   });
 
   it('keeps the plain lookup, and analytics telling a removed channel apart itself', () => {

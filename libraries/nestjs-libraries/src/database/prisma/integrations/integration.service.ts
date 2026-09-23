@@ -605,10 +605,8 @@ export class IntegrationService {
   }
 
   async saveProviderPage(org: string, id: string, data: any) {
-    const getIntegration = await this._integrationRepository.getIntegrationById(
-      org,
-      id
-    );
+    const getIntegration =
+      await this._integrationRepository.getIntegrationByIdNotDeleted(org, id);
     if (!getIntegration) {
       throw new HttpException('Integration not found', HttpStatus.NOT_FOUND);
     }

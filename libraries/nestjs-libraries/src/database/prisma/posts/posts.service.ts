@@ -1005,10 +1005,13 @@ export class PostsService {
   ) {
     return Promise.all(
       (posts || []).map(async (post) => {
-        const integration = await this._integrationService.getIntegrationById(
-          orgId,
-          post?.integration?.id
-        );
+        // The same lookup as mapTypeToPost: a removed channel is refused here
+        // too, instead of validating a post that could never be saved.
+        const integration =
+          await this._integrationService.getIntegrationByIdNotDeleted(
+            orgId,
+            post?.integration?.id
+          );
 
         if (!integration) {
           throw new BadRequestException(

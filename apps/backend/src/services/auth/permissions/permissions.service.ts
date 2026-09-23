@@ -69,10 +69,12 @@ export class PermissionsService {
       // check for the amount of channels
       if (section === Sections.CHANNEL) {
         // Refreshing an existing channel doesn't add a new one, so skip the limit check
-        // but only if the channel actually belongs to this org
+        // but only if the channel actually belongs to this org and is still
+        // connected. A removed channel comes back through Add Channel, which
+        // counts against the limit; naming it here must not skip that count.
         if (refreshChannelId) {
           const existingIntegration =
-            await this._integrationService.getIntegrationById(
+            await this._integrationService.getIntegrationByIdNotDeleted(
               orgId,
               refreshChannelId
             );

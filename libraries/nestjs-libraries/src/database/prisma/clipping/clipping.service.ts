@@ -247,7 +247,7 @@ export class ClippingService {
     const integrations = body.integrations || [];
     for (const integration of integrations) {
       if (
-        !(await this._integrationService.getIntegrationById(
+        !(await this._integrationService.getIntegrationByIdNotDeleted(
           org.id,
           integration
         ))

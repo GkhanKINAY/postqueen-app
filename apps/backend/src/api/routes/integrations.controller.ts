@@ -160,10 +160,8 @@ export class IntegrationsController {
     @Param('id') id: string,
     @Body() body: { name: string; picture: string }
   ) {
-    const integration = await this._integrationService.getIntegrationById(
-      org.id,
-      id
-    );
+    const integration =
+      await this._integrationService.getIntegrationByIdNotDeleted(org.id, id);
     if (!integration) {
       throw new Error('Invalid integration');
     }
@@ -302,10 +300,11 @@ export class IntegrationsController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: IntegrationFunctionDto
   ) {
-    const getIntegration = await this._integrationService.getIntegrationById(
-      org.id,
-      body.id
-    );
+    const getIntegration =
+      await this._integrationService.getIntegrationByIdNotDeleted(
+        org.id,
+        body.id
+      );
     if (!getIntegration) {
       throw new Error('Invalid integration');
     }
@@ -358,10 +357,11 @@ export class IntegrationsController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: IntegrationFunctionDto
   ): Promise<any> {
-    const getIntegration = await this._integrationService.getIntegrationById(
-      org.id,
-      body.id
-    );
+    const getIntegration =
+      await this._integrationService.getIntegrationByIdNotDeleted(
+        org.id,
+        body.id
+      );
     if (!getIntegration) {
       throw new Error('Invalid integration');
     }
