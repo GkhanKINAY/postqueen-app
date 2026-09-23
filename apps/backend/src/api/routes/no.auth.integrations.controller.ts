@@ -67,8 +67,15 @@ export class NoAuthIntegrationsController {
     const getCodeVerifier = integrationProvider.customFields
       ? 'none'
       : await ioRedis.get(`login:${body.state}`);
+    // The state lives in Redis for an hour and is spent on use. A plain
+    // Error here was a 500, "Internal server error", for what is an expired
+    // or reused link. The wording must not match the two 400 messages the
+    // frontend retries on (continue.integration.tsx).
     if (!getCodeVerifier) {
-      throw new Error('Invalid state');
+      throw new HttpException(
+        'This connection link has expired or was already used. Start again from Add Channel.',
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     const organization = await ioRedis.get(`organization:${body.state}`);

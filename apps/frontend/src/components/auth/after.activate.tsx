@@ -75,7 +75,7 @@ export const AfterActivate = () => {
               )
             : t(
                 'activation_link_not_valid',
-                'This activation link is no longer valid — it may have expired, or the account is already active.'
+                'This activation link is no longer valid. It may have expired, or the account is already active.'
               )}
           <br />
           <Link href="/auth/login" className="underline">
