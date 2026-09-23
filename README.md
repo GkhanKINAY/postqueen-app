@@ -28,60 +28,12 @@
   <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n%20node&color=7C3AED&labelColor=15131C" alt="n8n node on npm"></a>
 </p>
 
-<p align="center"><b>Schedule posts to 30+ networks</b></p>
 <p align="center">
-  <a href="https://docs.postqueen.ai/channels/instagram"><img src=".github/assets/channels/instagram.svg" width="34" height="34" alt="Instagram" title="Instagram"></a>
-  <a href="https://docs.postqueen.ai/channels/tiktok"><img src=".github/assets/channels/tiktok.svg" width="34" height="34" alt="TikTok" title="TikTok"></a>
-  <a href="https://docs.postqueen.ai/channels/youtube"><img src=".github/assets/channels/youtube.svg" width="34" height="34" alt="YouTube" title="YouTube"></a>
-  <a href="https://docs.postqueen.ai/channels/x-twitter"><img src=".github/assets/channels/x.svg" width="34" height="34" alt="X" title="X"></a>
-  <a href="https://docs.postqueen.ai/channels/linkedin"><img src=".github/assets/channels/linkedin.svg" width="34" height="34" alt="LinkedIn" title="LinkedIn"></a>
-  <a href="https://docs.postqueen.ai/channels/facebook"><img src=".github/assets/channels/facebook.svg" width="34" height="34" alt="Facebook" title="Facebook"></a>
-  <a href="https://docs.postqueen.ai/channels/threads"><img src=".github/assets/channels/threads.svg" width="34" height="34" alt="Threads" title="Threads"></a>
-  <a href="https://docs.postqueen.ai/channels/pinterest"><img src=".github/assets/channels/pinterest.svg" width="34" height="34" alt="Pinterest" title="Pinterest"></a>
-  <a href="https://docs.postqueen.ai/channels/reddit"><img src=".github/assets/channels/reddit.svg" width="34" height="34" alt="Reddit" title="Reddit"></a>
-  <a href="https://docs.postqueen.ai/channels/bluesky"><img src=".github/assets/channels/bluesky.svg" width="34" height="34" alt="Bluesky" title="Bluesky"></a>
-  <a href="https://docs.postqueen.ai/channels/mastodon"><img src=".github/assets/channels/mastodon.svg" width="34" height="34" alt="Mastodon" title="Mastodon"></a>
-  <a href="https://docs.postqueen.ai/channels/discord"><img src=".github/assets/channels/discord.svg" width="34" height="34" alt="Discord" title="Discord"></a>
-  <a href="https://docs.postqueen.ai/channels/telegram"><img src=".github/assets/channels/telegram.svg" width="34" height="34" alt="Telegram" title="Telegram"></a>
-  <a href="https://docs.postqueen.ai/channels/slack"><img src=".github/assets/channels/slack.svg" width="34" height="34" alt="Slack" title="Slack"></a>
-  <a href="https://docs.postqueen.ai/channels/twitch"><img src=".github/assets/channels/twitch.svg" width="34" height="34" alt="Twitch" title="Twitch"></a>
-  <a href="https://docs.postqueen.ai/channels/kick"><img src=".github/assets/channels/kick.svg" width="34" height="34" alt="Kick" title="Kick"></a>
-  <a href="https://docs.postqueen.ai/channels/google-my-business"><img src=".github/assets/channels/google-business.svg" width="34" height="34" alt="Google Business Profile" title="Google Business Profile"></a>
-  <a href="https://docs.postqueen.ai/channels/dribbble"><img src=".github/assets/channels/dribbble.svg" width="34" height="34" alt="Dribbble" title="Dribbble"></a>
-  <a href="https://docs.postqueen.ai/channels/tumblr"><img src=".github/assets/channels/tumblr.png" width="34" height="34" alt="Tumblr" title="Tumblr"></a>
-  <a href="https://docs.postqueen.ai/channels/wordpress"><img src=".github/assets/channels/wordpress.svg" width="34" height="34" alt="WordPress" title="WordPress"></a>
-  <a href="https://docs.postqueen.ai/channels/devto"><img src=".github/assets/channels/devto.svg" width="34" height="34" alt="DEV" title="DEV"></a>
-  <a href="https://docs.postqueen.ai/channels/hashnode"><img src=".github/assets/channels/hashnode.svg" width="34" height="34" alt="Hashnode" title="Hashnode"></a>
-  <a href="https://docs.postqueen.ai/channels/vk"><img src=".github/assets/channels/vk.svg" width="34" height="34" alt="VK" title="VK"></a>
-  <a href="https://docs.postqueen.ai/channels/mewe"><img src=".github/assets/channels/mewe.svg" width="34" height="34" alt="MeWe" title="MeWe"></a>
-  <a href="https://docs.postqueen.ai/channels/lemmy"><img src=".github/assets/channels/lemmy.svg" width="34" height="34" alt="Lemmy" title="Lemmy"></a>
-  <a href="https://docs.postqueen.ai/channels/nostr"><img src=".github/assets/channels/nostr.svg" width="34" height="34" alt="Nostr" title="Nostr"></a>
-  <a href="https://docs.postqueen.ai/channels/farcaster"><img src=".github/assets/channels/farcaster.svg" width="34" height="34" alt="Farcaster" title="Farcaster"></a>
-  <a href="https://docs.postqueen.ai/channels/moltbook"><img src=".github/assets/channels/moltbook.png" width="34" height="34" alt="Moltbook" title="Moltbook"></a>
-  <a href="https://docs.postqueen.ai/channels/listmonk"><img src=".github/assets/channels/listmonk.svg" width="34" height="34" alt="Listmonk" title="Listmonk"></a>
-  <a href="https://docs.postqueen.ai/channels/whop"><img src=".github/assets/channels/whop.svg" width="34" height="34" alt="Whop" title="Whop"></a>
-  <a href="https://docs.postqueen.ai/channels/skool"><img src=".github/assets/channels/skool.svg" width="34" height="34" alt="Skool" title="Skool"></a>
+  <a href="https://docs.postqueen.ai/channels/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/channels-row-dark.png"><img src=".github/assets/showcase/channels-row-light.png" width="100%" alt="Posts to 30+ networks: Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Pinterest, Reddit, Bluesky, Mastodon, Discord, Telegram, Slack, Twitch, Kick, Google Business Profile, Dribbble, Tumblr, WordPress, DEV, Hashnode, VK, MeWe, Lemmy, Nostr, Farcaster, Moltbook, Listmonk, Whop and Skool"></picture></a>
 </p>
 
-<p align="center"><b>From the AI agent you already use</b></p>
 <p align="center">
-  <a href="https://docs.postqueen.ai/agents/claude"><img src=".github/assets/agents/claude.svg" width="34" height="34" alt="Claude" title="Claude"></a>
-  <a href="https://docs.postqueen.ai/agents/chatgpt"><img src=".github/assets/agents/chatgpt.svg" width="34" height="34" alt="ChatGPT" title="ChatGPT"></a>
-  <a href="https://docs.postqueen.ai/agents/grok-bot"><img src=".github/assets/agents/grok-bot.svg" width="34" height="34" alt="Grok Bot" title="Grok Bot"></a>
-  <a href="https://docs.postqueen.ai/agents/grok"><img src=".github/assets/agents/grok.svg" width="34" height="34" alt="Grok" title="Grok"></a>
-  <a href="https://docs.postqueen.ai/agents/perplexity-computer"><img src=".github/assets/agents/perplexity.svg" width="34" height="34" alt="Perplexity Computer" title="Perplexity Computer"></a>
-  <a href="https://docs.postqueen.ai/agents/claude-code"><img src=".github/assets/agents/claude-code.svg" width="34" height="34" alt="Claude Code" title="Claude Code"></a>
-  <a href="https://docs.postqueen.ai/agents/codex"><img src=".github/assets/agents/codex.svg" width="34" height="34" alt="Codex" title="Codex"></a>
-  <a href="https://docs.postqueen.ai/agents/cursor"><img src=".github/assets/agents/cursor.svg" width="34" height="34" alt="Cursor" title="Cursor"></a>
-  <a href="https://docs.postqueen.ai/agents/gemini-cli"><img src=".github/assets/agents/gemini-cli.svg" width="34" height="34" alt="Gemini CLI" title="Gemini CLI"></a>
-  <a href="https://docs.postqueen.ai/agents/vscode"><img src=".github/assets/agents/vscode.svg" width="34" height="34" alt="VS Code" title="VS Code"></a>
-  <a href="https://docs.postqueen.ai/agents/devin-desktop"><img src=".github/assets/agents/devin-desktop.svg" width="34" height="34" alt="Devin Desktop" title="Devin Desktop"></a>
-  <a href="https://docs.postqueen.ai/agents/zed"><img src=".github/assets/agents/zed.svg" width="34" height="34" alt="Zed" title="Zed"></a>
-  <a href="https://docs.postqueen.ai/agents/openclaw"><img src=".github/assets/agents/openclaw.svg" width="34" height="34" alt="OpenClaw" title="OpenClaw"></a>
-  <a href="https://docs.postqueen.ai/agents/hermes"><img src=".github/assets/agents/hermes.svg" width="34" height="34" alt="Hermes Agent" title="Hermes Agent"></a>
-  <a href="https://docs.postqueen.ai/agents/nanoclaw"><img src=".github/assets/agents/nanoclaw.svg" width="34" height="34" alt="NanoClaw" title="NanoClaw"></a>
-  <a href="https://docs.postqueen.ai/agents/paperclip"><img src=".github/assets/agents/paperclip.svg" width="34" height="34" alt="Paperclip" title="Paperclip"></a>
-  <a href="https://docs.postqueen.ai/agents/muse"><img src=".github/assets/agents/muse.svg" width="34" height="34" alt="Muse" title="Muse"></a>
+  <a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/agents-row-dark.png"><img src=".github/assets/showcase/agents-row-light.png" width="100%" alt="Works with the AI agent you already use: Claude, ChatGPT, Grok Bot (new), Grok, Perplexity, Muse (new), Claude Code, Codex, Cursor, Gemini CLI, VS Code, Devin Desktop, Zed, OpenClaw, Hermes, NanoClaw, Paperclip and any MCP app"></picture></a>
 </p>
 
 ## What it does
