@@ -3076,7 +3076,7 @@ await pq.post({
           short: t('conn_oauth_short', 'Let other apps post for your users'),
           intro: t(
             'conn_oauth_intro',
-            'If you are building a product rather than automating your own account, register an OAuth app under OAuth Apps. Users approve access and you receive a pos_ token. That token works on the Public API (raw key header) and on MCP as a Bearer token on /mcp. The URL form /mcp/KEY only accepts API keys.'
+            'If you are building a product rather than automating your own account, register an OAuth app under Developers. Users approve access and you receive a pos_ token. That token works on the Public API (raw key header) and on MCP as a Bearer token on /mcp. The URL form /mcp/KEY only accepts API keys.'
           ),
           docs: [
             {

@@ -668,7 +668,7 @@
   "conn_webhooks_step_receive_detail": "A POST with the post, its channel and its release URL, once publishing succeeds.",
   "conn_oauth_name": "OAuth apps",
   "conn_oauth_short": "Let other apps post for your users",
-  "conn_oauth_intro": "If you are building a product rather than automating your own account, register an OAuth app under OAuth Apps. Users approve access and you receive a pos_ token. That token works on the Public API (raw key header) and on MCP as a Bearer token on /mcp. The URL form /mcp/KEY only accepts API keys.",
+  "conn_oauth_intro": "If you are building a product rather than automating your own account, register an OAuth app under Developers. Users approve access and you receive a pos_ token. That token works on the Public API (raw key header) and on MCP as a Bearer token on /mcp. The URL form /mcp/KEY only accepts API keys.",
   "conn_oauth_step_create": "Create the app",
   "conn_oauth_step_create_detail": "Connections → Developers, or Settings → Developers. Set your redirect URL there. This is not where the workspace API key lives, that is API Keys.",
   "conn_oauth_step_token": "Use the token",
