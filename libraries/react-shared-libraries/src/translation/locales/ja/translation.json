@@ -675,7 +675,7 @@
   "are_you_sure_disable_channel": "本当にこのチャンネルを無効にしますか？",
   "disable_channel_title": "チャンネルを無効化",
   "channel_disabled": "チャンネルが無効になりました",
-  "are_you_sure_delete_channel": "本当にこのチャンネルを削除しますか？",
+  "are_you_sure_delete_channel": "このチャンネルを削除すると、PostQueen にあるこのチャンネルのすべての投稿（予約投稿、下書き、公開済みの投稿を含む）も削除されます。予約投稿は公開されません。すでに公開された投稿はプラットフォームから削除されません。",
   "delete_channel_title": "チャンネルを削除",
   "delete_posts_before_channel": "このチャンネルを削除する前に、関連するすべての投稿を削除する必要があります",
   "channel_deleted": "チャンネルが削除されました",

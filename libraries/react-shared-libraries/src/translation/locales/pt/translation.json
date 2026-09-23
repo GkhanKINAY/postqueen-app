@@ -675,7 +675,7 @@
   "are_you_sure_disable_channel": "Tem certeza de que deseja desativar este canal?",
   "disable_channel_title": "Desativar Canal",
   "channel_disabled": "Canal Desativado",
-  "are_you_sure_delete_channel": "Tem certeza de que deseja excluir este canal?",
+  "are_you_sure_delete_channel": "Excluir este canal também exclui todas as publicações dele no PostQueen, incluindo as agendadas, os rascunhos e as já publicadas. As publicações agendadas não serão publicadas. As publicações que já foram publicadas não são removidas da plataforma.",
   "delete_channel_title": "Excluir Canal",
   "delete_posts_before_channel": "Você precisa excluir todas as postagens associadas a este canal antes de excluí-lo",
   "channel_deleted": "Canal Excluído",
