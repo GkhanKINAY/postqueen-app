@@ -460,7 +460,7 @@ export const SettingsPopup: FC<{
         title: t('language', 'Language'),
         desc: t(
           'language_settings_description',
-          'Pick the language for the interface, emails and AI prompts.'
+          'Pick the language for the interface and AI prompts. Emails are sent in English.'
         ),
       },
       teams: {

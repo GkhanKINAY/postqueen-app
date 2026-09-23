@@ -110,10 +110,10 @@ const EmailNotificationsComponent = () => {
     },
     {
       key: 'sendStreakEmails',
-      name: t('streak_emails', 'Streak Reminder Emails'),
+      name: t('streak_emails', 'Streak Ended Emails'),
       description: t(
         'streak_emails_description',
-        'Receive email reminders when your posting streak is about to end'
+        'Receive an email when your posting streak ends, 24 hours after your last published post'
       ),
     },
   ];

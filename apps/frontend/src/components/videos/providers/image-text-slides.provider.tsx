@@ -7,6 +7,7 @@ import { Button } from '@gitroom/react/form/button';
 import clsx from 'clsx';
 import { useVideo } from '@gitroom/frontend/components/videos/video.context.wrapper';
 import { Textarea } from '@gitroom/react/form/textarea';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export interface Voices {
   voices: Voice[];
@@ -21,6 +22,7 @@ export interface Voice {
 const VoiceSelector: FC = () => {
   const { register, watch, setValue } = useFormContext();
   const videoFunction = useVideoFunction();
+  const t = useT();
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -97,7 +99,9 @@ const VoiceSelector: FC = () => {
   if (isLoading || !data?.voices?.length) {
     return (
       <div className="flex items-center justify-center py-4">
-        <div className="text-sm text-pqSoft">Loading voices...</div>
+        <div className="text-sm text-pqSoft">
+          {t('loading_voices', 'Loading voices...')}
+        </div>
       </div>
     );
   }
@@ -105,7 +109,7 @@ const VoiceSelector: FC = () => {
   return (
     <div className="space-y-3">
       <div className="text-sm font-medium text-textColor mb-4">
-        Select a Voice
+        {t('select_a_voice', 'Select a Voice')}
       </div>
       <div className="space-y-2">
         {data.voices.map((voice) => (
@@ -151,8 +155,8 @@ const VoiceSelector: FC = () => {
               {loadingVoice === voice.id
                 ? '...'
                 : currentlyPlaying === voice.id
-                ? '⏹ Stop'
-                : '▶ Play'}
+                ? `⏹ ${t('stop', 'Stop')}`
+                : `▶ ${t('play', 'Play')}`}
             </Button>
           </div>
         ))}
@@ -167,10 +171,11 @@ const VoiceSelector: FC = () => {
 const ImageSlidesComponent = () => {
   const { register, formState } = useFormContext();
   const { value } = useVideo();
+  const t = useT();
   return (
     <div>
       <Textarea
-        label="Prompt"
+        label={t('prompt', 'Prompt')}
         name="prompt"
         {...register('prompt', {
           required: true,

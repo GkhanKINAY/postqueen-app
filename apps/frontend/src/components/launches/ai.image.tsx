@@ -368,7 +368,7 @@ export const AiImage: FC<{
           >
             {ghost
               ? t('generate_image', 'Generate image')
-              : `${t('ai', 'AI')} Image`}
+              : t('ai_image', 'AI Image')}
           </div>
         </div>
       </div>

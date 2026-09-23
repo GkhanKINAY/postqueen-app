@@ -5,6 +5,7 @@ import { useVideo } from '@gitroom/frontend/components/videos/video.context.wrap
 import { Textarea } from '@gitroom/react/form/textarea';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 export interface Voice {
   id: string;
@@ -15,6 +16,7 @@ export interface Voice {
 const SeedanceSettings: FC = () => {
   const { register, watch, setValue, formState } = useFormContext();
   const { value } = useVideo();
+  const t = useT();
 
   // `images` is what the DTO validates and what `setValue` below writes
   // (`videos/veo3/veo3.ts` — `Veo3Params.images`). This used to register,
@@ -31,7 +33,7 @@ const SeedanceSettings: FC = () => {
   return (
     <div>
       <Textarea
-        label="Prompt"
+        label={t('prompt', 'Prompt')}
         name="prompt"
         {...register('prompt', {
           required: true,
@@ -40,7 +42,7 @@ const SeedanceSettings: FC = () => {
         })}
         error={formState?.errors?.prompt?.message}
       />
-      <div className="mb-[6px]">Images (max 3)</div>
+      <div className="mb-[6px]">{t('images_max_3', 'Images (max 3)')}</div>
       <MultiMediaComponent
         allData={[]}
         dummy={true}

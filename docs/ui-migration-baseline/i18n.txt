@@ -65,7 +65,6 @@ add_your_first_channel
 added_successfully
 added_to_card
 adding_channel
-additional_settings
 admin
 affiliate
 agent_channels_list_empty_hint
@@ -77,16 +76,17 @@ agent_name
 agent_placeholder
 agent_posting_to
 agent_starting
-ai
 ai_copilot
 ai_copilot_unlocks_after_your_trial
 ai_credits_exhausted
 ai_generation_cancelled
 ai_generation_failed
+ai_image
 ai_lock_perk_chat
 ai_lock_sub
 ai_not_configured_body
 ai_post
+ai_video
 all
 all_channels
 all_dates
@@ -1209,6 +1209,7 @@ edit_plug
 edit_post
 edit_post_title
 edit_signature
+edit_the_connection_details_for_this_channel
 edit_time_slots
 editing_a_specific_network
 email
@@ -1412,6 +1413,8 @@ heygen_generate_captions
 heygen_generate_video
 heygen_generating_body
 heygen_generating_title
+heygen_landscape
+heygen_portrait
 heygen_replace_voice_confirm
 heygen_select_avatar
 heygen_select_placeholder
@@ -1425,6 +1428,7 @@ hour
 i_understand_continue
 images
 images_and_video_up_to_1gb
+images_max_3
 import
 import_as_draft
 import_debug_post
@@ -1508,6 +1512,7 @@ list_empty_draft_hint
 list_empty_published_hint
 list_empty_scheduled_hint
 loading
+loading_voices
 login_failed_try_again
 login_instead
 login_register_to_add_comments
@@ -1893,6 +1898,7 @@ see_all_posts_on
 select
 select_1
 select_a_channel_to_create_a_post
+select_a_voice
 select_all
 select_channels
 select_customer_label
@@ -2025,7 +2031,6 @@ thank_you_for_registering
 that_a_wrap
 the_file
 the_hours_this_channel_publishes_at
-the_link_previews_point_at_for_this_channel
 theme
 third_party_status_connected
 this_cannot_be_changed_once_posted

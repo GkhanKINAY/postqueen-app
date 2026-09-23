@@ -40,13 +40,33 @@ export class VideoFunctionTool implements AgentToolInterface {
         checkAuth(inputData, context);
         const videos = this._videoManagerService.getAllVideos();
         const findVideo = videos.find(
-          (p) =>
-            p.identifier === inputData.identifier &&
-            p.tools.some((p) => p.functionName === inputData.functionName)
+          (p) => p.identifier === inputData.identifier
         );
 
+        // "Function not found" answered both mistakes alike and named
+        // nothing the caller could use instead.
         if (!findVideo) {
-          throw new Error('Function not found');
+          throw new Error(
+            videos.length
+              ? `There is no video generator "${inputData.identifier}". Use one of these identifiers: ${videos
+                  .map((p) => p.identifier)
+                  .join(', ')}.`
+              : 'No video generator is configured on this installation.'
+          );
+        }
+
+        if (
+          !findVideo.tools.some(
+            (p) => p.functionName === inputData.functionName
+          )
+        ) {
+          throw new Error(
+            findVideo.tools.length
+              ? `The video generator "${findVideo.identifier}" has no function "${inputData.functionName}". Its functions are: ${findVideo.tools
+                  .map((p) => p.functionName)
+                  .join(', ')}.`
+              : `The video generator "${findVideo.identifier}" has no functions to call.`
+          );
         }
 
         let params: unknown = {};
