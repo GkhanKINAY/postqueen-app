@@ -19,7 +19,7 @@ export class UploadFromUrlTool implements AgentToolInterface {
       description: `Upload a remote image or video into the media library from a public URL.
 Use this before scheduling a post when the user provides an external media URL (not already hosted on our domain),
 so the attachment passes the upload-domain validation. Returns the hosted media { id, path, status } to use as an attachment, or { error } on failure.
-A video is converted for the platforms in the background: an mp4 comes back with status "processing" and can be attached by its id right away; a .mov is waited on until it is an mp4 (status "ready"), because a post takes no .mov.`,
+A video is converted for the platforms in the background: an mp4 comes back with status "processing" and can be attached by its path right away (the converted file is used when the post publishes); a .mov is waited on until it is an mp4 (status "ready"), because a post takes no .mov.`,
       mcp: {
         annotations: {
           title: 'Upload Media From URL',

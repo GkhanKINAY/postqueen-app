@@ -136,6 +136,21 @@ export class MediaRepository {
     });
   }
 
+  /**
+   * This organization's live media rows at `paths`. Posts made outside the
+   * dashboard name their media by path, with an id of the caller's own.
+   */
+  findOwnedMediaByPaths(org: string, paths: string[]) {
+    return this._media.model.media.findMany({
+      where: {
+        organizationId: org,
+        path: { in: paths },
+        deletedAt: null,
+      },
+      select: { id: true, path: true },
+    });
+  }
+
   getMediaById(id: string) {
     return this._media.model.media.findUnique({
       where: {
