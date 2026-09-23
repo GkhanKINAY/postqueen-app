@@ -22,16 +22,6 @@ import { Select } from '@gitroom/react/form/select';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
-const aspectRatio = [
-  { key: 'portrait', value: 'Portrait' },
-  { key: 'story', value: 'Story' },
-];
-
-const generateCaptions = [
-  { key: 'yes', value: 'Yes' },
-  { key: 'no', value: 'No' },
-];
-
 const SelectAvatarComponent: FC<{
   avatarList: any[];
   onChange: (id: string) => void;
@@ -127,6 +117,19 @@ const HeygenProviderComponent = () => {
   const [hideVoiceGenerator, setHideVoiceGenerator] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
 
+  // The keys are what the backend is sent. `portrait` renders 1280×720 and
+  // `story` 720×1280 (`nestjs-libraries/src/3rdparties/heygen`), so the
+  // labels name the shape each one makes rather than the key.
+  const aspectRatio = [
+    { key: 'portrait', value: t('heygen_landscape', 'Landscape (16:9)') },
+    { key: 'story', value: t('heygen_portrait', 'Portrait (9:16)') },
+  ];
+
+  const generateCaptions = [
+    { key: 'yes', value: t('yes', 'Yes') },
+    { key: 'no', value: t('no', 'No') },
+  ];
+
   const form = useForm<HeygenForm>({
     values: {
       voice: '',
@@ -196,7 +199,7 @@ const HeygenProviderComponent = () => {
           <div className="max-w-[420px] text-[16px] font-[600] leading-[1.45] text-pqText">
             {t(
               'heygen_generating_title',
-              'Grab a coffee — this may take a while.'
+              'Grab a coffee. This may take a while.'
             )}
           </div>
           <div className="max-w-[420px] text-[13.5px] leading-[1.5] text-pqMuted">

@@ -444,7 +444,7 @@ export const AiVideo: FC<{
           >
             {ghost
               ? t('generate_video', 'Generate video')
-              : `${t('ai', 'AI')} Video`}
+              : t('ai_video', 'AI Video')}
           </div>
         </div>
       </div>

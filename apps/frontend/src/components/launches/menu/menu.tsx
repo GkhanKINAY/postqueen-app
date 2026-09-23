@@ -455,7 +455,7 @@ export const Menu: FC<{
                 onClick={additionalSettings}
               >
                 <MenuIcon d={MENU_ICONS.gear} />
-                {t('additional_settings', 'Additional Settings')}
+                {t('publishing_options', 'Publishing options')}
               </button>
             )}
             {(canChangeProfilePicture || canChangeNickName) && (

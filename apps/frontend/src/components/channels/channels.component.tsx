@@ -464,8 +464,8 @@ const ChannelSettingsGroups: FC<{
             key: 'url',
             label: t('custom_url', 'Custom URL'),
             hint: t(
-              'the_link_previews_point_at_for_this_channel',
-              'The link previews point at for this channel'
+              'edit_the_connection_details_for_this_channel',
+              'Edit the connection details for this channel'
             ),
             cta: t('set', 'Set'),
             onClick: openCustom,

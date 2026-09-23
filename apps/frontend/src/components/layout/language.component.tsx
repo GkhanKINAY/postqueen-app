@@ -139,7 +139,7 @@ export const ChangeLanguageComponent = ({
           <div className="mt-[6px] text-[14px] leading-[1.45] text-pqMuted">
             {t(
               'language_settings_description',
-              'Pick the language for the interface, emails and AI prompts.'
+              'Pick the language for the interface and AI prompts. Emails are sent in English.'
             )}
           </div>
         </>
@@ -212,7 +212,7 @@ export const LanguageComponent = () => {
           <p className="m-0 text-[14px] leading-[1.45] text-pqMuted">
             {t(
               'language_settings_description',
-              'Pick the language for the interface, emails and AI prompts.'
+              'Pick the language for the interface and AI prompts. Emails are sent in English.'
             )}
           </p>
           <ChangeLanguageComponent hideHeader />

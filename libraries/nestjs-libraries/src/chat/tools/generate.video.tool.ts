@@ -5,6 +5,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
+import { uniq } from 'lodash';
 
 @Injectable()
 export class GenerateVideoTool implements AgentToolInterface {
@@ -59,6 +60,19 @@ export class GenerateVideoTool implements AgentToolInterface {
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
         const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
+        // The service reports an unknown identifier as a plain Error, which
+        // comes back as the generic "try again later" and does not say that
+        // retrying cannot help.
+        const identifiers = this._videoManager
+          .getAllVideos()
+          .map((p) => p.identifier);
+        if (!identifiers.includes(inputData.identifier)) {
+          return {
+            error: identifiers.length
+              ? `There is no video generator "${inputData.identifier}". Use one of these identifiers: ${identifiers.join(', ')}. The user's video credit was not used.`
+              : `No video generator is configured on this installation. The user's video credit was not used.`,
+          };
+        }
         try {
           const value = await this._mediaService.startGenerateVideo(org, {
             type: inputData.identifier,
@@ -77,15 +91,28 @@ export class GenerateVideoTool implements AgentToolInterface {
           };
         } catch (err) {
           // SubscriptionException (402) carries { section, action } and its
-          // message is just "Subscription Exception", so translate it
+          // message is just "Subscription Exception", so translate it.
+          // A customParams check that fails is a BadRequestException whose
+          // message is just "Bad Request Exception"; what is wrong is the
+          // list under `message` in its response.
+          const invalid =
+            err instanceof HttpException
+              ? (err.getResponse() as { message?: unknown })?.message
+              : undefined;
           const message =
             err instanceof HttpException && err.getStatus() === 402
               ? 'No AI video credits are available on this account.'
+              : Array.isArray(invalid)
+              ? `customParams are not valid: ${uniq(invalid).join('; ')}`
               : err instanceof Error
               ? err.message
               : String(err);
           return {
-            error: `Video generation failed: ${message}. The user's video credit was not used.`,
+            // The reason may end in its own period; the sentence adds one.
+            error: `Video generation failed: ${message.replace(
+              /\.+$/,
+              ''
+            )}. The user's video credit was not used.`,
           };
         }
       },
