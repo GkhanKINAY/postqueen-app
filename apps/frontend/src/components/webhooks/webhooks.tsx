@@ -129,7 +129,7 @@ export const Webhooks: FC = () => {
       toaster.show(
         t(
           'webhook_needs_channel',
-          'Connect a channel first — webhooks fire when a post publishes.'
+          'Connect a channel first. Webhooks fire when a post publishes.'
         ),
         'warning'
       );

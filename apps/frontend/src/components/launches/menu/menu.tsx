@@ -184,11 +184,10 @@ export const Menu: FC<{
         id,
       }),
     });
-    if (deleteIntegration.status === 406) {
-      toast.show(
-        t('delete_posts_before_channel', 'You have to delete all the posts associated with this channel before deleting it'),
-        'warning'
-      );
+    // The server deletes the channel's posts itself, so the only answer that
+    // is not a success is a failure.
+    if (!deleteIntegration.ok) {
+      toast.show(t('something_went_wrong', 'Something went wrong'), 'warning');
       return;
     }
     // Clean up extension refresh token if applicable

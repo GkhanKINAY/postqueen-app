@@ -84,8 +84,6 @@ ai_credits_exhausted
 ai_generation_cancelled
 ai_generation_failed
 ai_lock_perk_chat
-ai_lock_perk_images
-ai_lock_perk_videos
 ai_lock_sub
 ai_not_configured_body
 ai_post
@@ -1152,7 +1150,6 @@ delete_channel
 delete_channel_title
 delete_post
 delete_post_tooltip
-delete_posts_before_channel
 delete_tag
 deleting_your_account
 deleting_your_account_description

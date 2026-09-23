@@ -1540,15 +1540,27 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
           )}
           description={t(
             'ai_lock_sub',
-            'Your channels, calendar and analytics are already live. Copilot is the one thing that waits for your first payment.'
+            'Your channels, calendar and analytics are already live. Copilot unlocks with your first payment.'
           )}
           perks={[
             t(
               'ai_lock_perk_chat',
               'Copilot chat that drafts and schedules for you'
             ),
-            t('ai_lock_perk_images', '300 AI images a month'),
-            t('ai_lock_perk_videos', '30 AI videos a month'),
+            ...(user?.tier?.image_generator
+              ? [
+                  t('plan_n_ai_images', '{{count}} AI Images per month', {
+                    count: user.tier.image_generation_count,
+                  }),
+                ]
+              : []),
+            ...(user?.tier?.generate_videos
+              ? [
+                  t('plan_n_ai_videos', '{{count}} AI Videos per month', {
+                    count: user.tier.generate_videos,
+                  }),
+                ]
+              : []),
           ]}
         />
       )}

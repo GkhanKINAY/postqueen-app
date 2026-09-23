@@ -203,7 +203,7 @@ const RefreshChannelState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
       <p className="mb-[12px] text-center text-[15px] text-pqText">
         {t(
           'this_channel_needs_to_be_refreshed',
-          'This channel needs to be refreshed to display analytics',
+          'This channel needs to be refreshed to display analytics.',
         )}
       </p>
       <button

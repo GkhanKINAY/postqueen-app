@@ -395,14 +395,10 @@ const ChannelSettingsGroups: FC<{
         method: 'DELETE',
         body: JSON.stringify({ id: integration.id }),
       });
-      if (res.status === 406) {
-        toast.show(
-          t(
-            'delete_posts_before_channel',
-            'You have to delete all the posts associated with this channel before deleting it'
-          ),
-          'warning'
-        );
+      // The server deletes the channel's posts itself, so the only answer
+      // that is not a success is a failure.
+      if (!res.ok) {
+        toast.show(t('something_went_wrong', 'Something went wrong'), 'warning');
         return;
       }
       if (

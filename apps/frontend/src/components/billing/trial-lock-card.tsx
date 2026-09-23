@@ -55,18 +55,18 @@ export const TrialLockCard: FC<TrialLockCardProps> = ({
     foot = formatted
       ? t(
           'or_wait_unlocks_on_date',
-          'Or wait — {{name}} unlocks on {{date}} when your trial ends.',
+          'Or wait: {{name}} unlocks on {{date}} when your trial ends.',
           { name, date: formatted }
         )
       : t(
           'or_wait_until_trial_ends',
-          'Or wait — {{name}} unlocks by itself when your free trial ends.',
+          'Or wait: {{name}} unlocks by itself when your free trial ends.',
           { name }
         );
   } else {
     foot = t(
       'or_wait_until_trial_ends',
-      'Or wait — {{name}} unlocks by itself when your free trial ends.',
+      'Or wait: {{name}} unlocks by itself when your free trial ends.',
       { name }
     );
   }

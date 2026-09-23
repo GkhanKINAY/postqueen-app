@@ -30,7 +30,7 @@ const useFaqList = () => {
       description:
         t(
           'faq_postqueen_gitroom_is_proudly_open_source',
-          'PostQueen is proudly open-source! We believe in an ethical and transparent culture, meaning that PostQueen will live forever. You can check out the entire code or use it for personal projects.'
+          "PostQueen's code is public under the AGPL-3.0 license, so you can read how it handles your channels and posts."
         ) +
         (repositoryUrl
           ? ` <a href="${repositoryUrl}" target="_blank" style="text-decoration: underline;">View the source code</a>.`
@@ -42,7 +42,7 @@ const useFaqList = () => {
         'faq_postqueen_gitroom_allows_you_to_schedule_posts',
         `PostQueen allows you to schedule your posts between different channels.
 A channel is a publishing platform where you can schedule your posts.
-For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Reddit, Linkedin, Dribbble, Threads and Pinterest.`
+For example, you can schedule your posts on X, Facebook, Instagram, TikTok, YouTube, Threads and Bluesky.`
       ),
     },
     {
