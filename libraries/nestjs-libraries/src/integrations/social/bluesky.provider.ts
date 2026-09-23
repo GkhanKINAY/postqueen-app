@@ -888,7 +888,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       return true;
     }
 
-    return true;
+    // Not there yet: false keeps the remaining checks, true would cancel them.
+    return false;
   }
 
   @Plug({
@@ -966,7 +967,8 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       return true;
     }
 
-    return true;
+    // Not there yet: false keeps the remaining checks, true would cancel them.
+    return false;
   }
 
   override async mention(
