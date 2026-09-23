@@ -123,6 +123,30 @@ export class IntegrationManager {
       .map(([from]) => from);
   }
 
+  // The providers one platform callback speaks for. A platform takes one
+  // callback URL per app, and one app can sit behind several providers that
+  // log in through it, so the callback covers every provider whose own secret
+  // verifies the same request for the same user, hidden ones included: a
+  // hidden provider can still have channels.
+  async getPlatformCallbackProviders(
+    signedRequest: string,
+    platformUserId: string
+  ): Promise<string[]> {
+    const verified = await Promise.all(
+      socialIntegrationList
+        .filter((p) => p.verifyPlatformCallback)
+        .map(async (p) => ({
+          identifier: p.identifier,
+          platformUserId: (await p.verifyPlatformCallback!(signedRequest))
+            ?.platformUserId,
+        }))
+    );
+
+    return verified
+      .filter((p) => p.platformUserId === platformUserId)
+      .map((p) => p.identifier);
+  }
+
   async getAllIntegrations() {
     return {
       social: await Promise.all(

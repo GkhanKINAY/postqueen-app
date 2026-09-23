@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "نعم، إلغاء القسيمة",
   "cancel_coupon_title": "إلغاء القسيمة؟",
   "cancel_coupon_failed": "تعذّر إلغاء القسيمة",
-  "cancel_coupon_success": "تم إلغاء القسيمة"
+  "cancel_coupon_success": "تم إلغاء القسيمة",
+  "data_deletion_title": "طلب حذف البيانات",
+  "data_deletion_not_found": "لا يوجد طلب حذف بيانات بهذا الرمز.",
+  "data_deletion_code": "رمز التأكيد",
+  "data_deletion_status": "الحالة",
+  "data_deletion_completed": "مكتمل",
+  "data_deletion_in_progress": "قيد التنفيذ",
+  "data_deletion_done": "أزال PostQueen القنوات المرتبطة بهذا الحساب، مع منشوراتها ورموز الوصول وبيانات الملف الشخصي.",
+  "data_deletion_none": "لم يعثر PostQueen على قنوات مرتبطة بهذا الحساب. إذا كنت لا تزال ترى قناة في PostQueen، فاحذفها من صفحة القنوات.",
+  "data_deletion_contact": "هل لديك أسئلة حول هذا الطلب؟ راسلنا على {{email}} مع رمز التأكيد."
 }

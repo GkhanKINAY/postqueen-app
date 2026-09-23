@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "Да, отменить купон",
   "cancel_coupon_title": "Отменить купон?",
   "cancel_coupon_failed": "Не удалось отменить купон",
-  "cancel_coupon_success": "Купон отменён"
+  "cancel_coupon_success": "Купон отменён",
+  "data_deletion_title": "Запрос на удаление данных",
+  "data_deletion_not_found": "Запроса на удаление данных с таким кодом нет.",
+  "data_deletion_code": "Код подтверждения",
+  "data_deletion_status": "Статус",
+  "data_deletion_completed": "Выполнен",
+  "data_deletion_in_progress": "Выполняется",
+  "data_deletion_done": "PostQueen удалил каналы, подключённые с этим аккаунтом, вместе с их постами, токенами доступа и данными профиля.",
+  "data_deletion_none": "PostQueen не нашёл каналов, подключённых с этим аккаунтом. Если вы всё ещё видите такой канал в PostQueen, удалите его на странице Каналы.",
+  "data_deletion_contact": "Вопросы по этому запросу? Напишите на {{email}} и укажите код подтверждения."
 }

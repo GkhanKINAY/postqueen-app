@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "是的，取消优惠券",
   "cancel_coupon_title": "取消优惠券？",
   "cancel_coupon_failed": "无法取消该优惠券",
-  "cancel_coupon_success": "优惠券已取消"
+  "cancel_coupon_success": "优惠券已取消",
+  "data_deletion_title": "数据删除请求",
+  "data_deletion_not_found": "没有与此代码对应的数据删除请求。",
+  "data_deletion_code": "确认码",
+  "data_deletion_status": "状态",
+  "data_deletion_completed": "已完成",
+  "data_deletion_in_progress": "处理中",
+  "data_deletion_done": "PostQueen 已删除通过此账号连接的频道，以及它们的帖子、访问令牌和个人资料信息。",
+  "data_deletion_none": "PostQueen 未找到通过此账号连接的频道。如果您在 PostQueen 中仍能看到，请在频道页面将其删除。",
+  "data_deletion_contact": "对此请求有疑问？请发送邮件至 {{email}}，并附上确认码。"
 }

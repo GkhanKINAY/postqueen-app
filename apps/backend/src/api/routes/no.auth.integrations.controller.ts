@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpException,
   HttpStatus,
   Param,
@@ -26,6 +27,8 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { PlatformCallbackDto } from '@gitroom/nestjs-libraries/dtos/integrations/platform.callback.dto';
+import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
 
 @ApiTags('Integrations')
 @Controller('/integrations')
@@ -34,7 +37,8 @@ export class NoAuthIntegrationsController {
     private _integrationManager: IntegrationManager,
     private _integrationService: IntegrationService,
     private _refreshIntegrationService: RefreshIntegrationService,
-    private _organizationService: OrganizationService
+    private _organizationService: OrganizationService,
+    private _platformCallbacksService: PlatformCallbacksService
   ) {}
 
   @Get('/')
@@ -115,6 +119,7 @@ export class NoAuthIntegrationsController {
       picture,
       username,
       additionalSettings,
+      platformUserId,
       // eslint-disable-next-line no-async-promise-executor
     } = await new Promise<AuthTokenDetails>(async (res) => {
       try {
@@ -147,7 +152,13 @@ export class NoAuthIntegrationsController {
               refresh,
               auth.accessToken
             );
-            return res({ ...newAuth, refreshToken: body.refresh });
+            // reConnect answers for the page; the person is still the one
+            // who just logged in.
+            return res({
+              ...newAuth,
+              platformUserId: auth.platformUserId,
+              refreshToken: body.refresh,
+            });
           } catch (err: any) {
             return res({
               error: err.message,
@@ -266,7 +277,8 @@ export class NoAuthIntegrationsController {
           ? AuthService.fixedEncryption(
               Buffer.from(body.code, 'base64').toString()
             )
-          : undefined
+          : undefined,
+        platformUserId
       );
 
     this._refreshIntegrationService
@@ -451,5 +463,32 @@ export class NoAuthIntegrationsController {
     );
 
     return { success: true };
+  }
+
+  // Called by the platform itself, with no session: the request carries its
+  // own signature, which the provider checks against its app secret. These
+  // are the URLs set in the platform's app dashboard, one pair per app.
+  @Post('/:integration/platform-deletion')
+  @HttpCode(200)
+  platformDeletion(
+    @Param('integration') integration: string,
+    @Body() body: PlatformCallbackDto
+  ) {
+    return this._platformCallbacksService.deletion(
+      integration,
+      body.signed_request
+    );
+  }
+
+  @Post('/:integration/platform-deauthorize')
+  @HttpCode(200)
+  platformDeauthorize(
+    @Param('integration') integration: string,
+    @Body() body: PlatformCallbackDto
+  ) {
+    return this._platformCallbacksService.deauthorize(
+      integration,
+      body.signed_request
+    );
   }
 }

@@ -1244,5 +1244,14 @@
   "processing": "Processing",
   "could_not_optimize_file": "The video could not be optimized and was kept as it came.",
   "could_not_convert_file": "The video could not be converted.",
-  "tiktok_video_too_long": "This video is {{duration}} seconds long and this TikTok account can post videos of up to {{max}} seconds. TikTok will refuse it, so trim it or choose a shorter video."
+  "tiktok_video_too_long": "This video is {{duration}} seconds long and this TikTok account can post videos of up to {{max}} seconds. TikTok will refuse it, so trim it or choose a shorter video.",
+  "data_deletion_title": "Data deletion request",
+  "data_deletion_not_found": "No data deletion request has this code.",
+  "data_deletion_code": "Confirmation code",
+  "data_deletion_status": "Status",
+  "data_deletion_completed": "Completed",
+  "data_deletion_in_progress": "In progress",
+  "data_deletion_done": "PostQueen removed the channels connected with this account, together with their posts, access tokens and profile details.",
+  "data_deletion_none": "PostQueen found no channels connected with this account. If you still see one in PostQueen, delete it on the Channels page.",
+  "data_deletion_contact": "Questions about this request? Email {{email}} and include the confirmation code."
 }

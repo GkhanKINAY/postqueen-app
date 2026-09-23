@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "כן, בטל קופון",
   "cancel_coupon_title": "לבטל קופון?",
   "cancel_coupon_failed": "לא ניתן היה לבטל את הקופון",
-  "cancel_coupon_success": "הקופון בוטל"
+  "cancel_coupon_success": "הקופון בוטל",
+  "data_deletion_title": "בקשה למחיקת נתונים",
+  "data_deletion_not_found": "אין בקשה למחיקת נתונים עם הקוד הזה.",
+  "data_deletion_code": "קוד אישור",
+  "data_deletion_status": "סטטוס",
+  "data_deletion_completed": "הושלמה",
+  "data_deletion_in_progress": "בטיפול",
+  "data_deletion_done": "PostQueen הסירה את הערוצים שחוברו עם החשבון הזה, יחד עם הפוסטים, אסימוני הגישה ופרטי הפרופיל שלהם.",
+  "data_deletion_none": "PostQueen לא מצאה ערוצים שחוברו עם החשבון הזה. אם אתה עדיין רואה ערוץ ב-PostQueen, מחק אותו בדף הערוצים.",
+  "data_deletion_contact": "יש לך שאלות על הבקשה? כתוב אל {{email}} וצרף את קוד האישור."
 }

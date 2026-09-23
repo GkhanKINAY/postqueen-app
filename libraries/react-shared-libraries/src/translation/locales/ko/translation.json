@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "네, 쿠폰을 취소합니다.",
   "cancel_coupon_title": "쿠폰을 취소하시겠습니까?",
   "cancel_coupon_failed": "쿠폰을 취소할 수 없습니다.",
-  "cancel_coupon_success": "쿠폰이 취소되었습니다."
+  "cancel_coupon_success": "쿠폰이 취소되었습니다.",
+  "data_deletion_title": "데이터 삭제 요청",
+  "data_deletion_not_found": "이 코드에 해당하는 데이터 삭제 요청이 없습니다.",
+  "data_deletion_code": "확인 코드",
+  "data_deletion_status": "상태",
+  "data_deletion_completed": "완료됨",
+  "data_deletion_in_progress": "진행 중",
+  "data_deletion_done": "PostQueen이 이 계정으로 연결된 채널을 게시물, 액세스 토큰, 프로필 정보와 함께 삭제했습니다.",
+  "data_deletion_none": "PostQueen에서 이 계정으로 연결된 채널을 찾지 못했습니다. PostQueen에 아직 채널이 보이면 채널 페이지에서 삭제하세요.",
+  "data_deletion_contact": "이 요청에 대해 궁금한 점이 있으면 확인 코드와 함께 {{email}}로 이메일을 보내 주세요."
 }

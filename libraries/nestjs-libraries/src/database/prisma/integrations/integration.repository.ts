@@ -263,6 +263,9 @@ export class IntegrationRepository {
       refreshToken: template.refreshToken || template.token,
       tokenExpiration: template.tokenExpiration,
       profile: page.username,
+      ...(template.platformUserId
+        ? { platformUserId: template.platformUserId }
+        : {}),
       inBetweenSteps: false,
       refreshNeeded: false,
       disabled: false,
@@ -395,7 +398,8 @@ export class IntegrationRepository {
     isBetweenSteps = false,
     refresh?: string,
     timezone?: number,
-    customInstanceDetails?: string
+    customInstanceDetails?: string,
+    platformUserId?: string
   ) {
     const postTimes = timezone
       ? {
@@ -431,6 +435,7 @@ export class IntegrationRepository {
         refreshNeeded: false,
         rootInternalId: internalId,
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
+        ...(platformUserId ? { platformUserId } : {}),
         additionalSettings: additionalSettings
           ? JSON.stringify(additionalSettings)
           : '[]',
@@ -440,6 +445,8 @@ export class IntegrationRepository {
           ? { additionalSettings: JSON.stringify(additionalSettings) }
           : {}),
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
+        // A refresh does not send it, and must not clear it.
+        ...(platformUserId ? { platformUserId } : {}),
         type: type as any,
         ...(!refresh
           ? {
@@ -904,6 +911,75 @@ export class IntegrationRepository {
     });
   }
 
+  // The channels, in every organization, that a platform callback about one
+  // of its users can mean. New rows carry platformUserId. A personal account
+  // is its own internalId, whoever connected it. A page or business account
+  // connected before platformUserId existed keeps the person only in
+  // rootInternalId, which a later reconnect by someone else does not update,
+  // so that is read only while platformUserId is empty.
+  // Soft-deleted rows are included, since they still hold the profile.
+  getIntegrationsByPlatformUser(providers: string[], platformUserId: string) {
+    return this._integration.model.integration.findMany({
+      where: {
+        providerIdentifier: {
+          in: providers,
+        },
+        OR: [
+          { platformUserId },
+          { internalId: platformUserId },
+          { platformUserId: null, rootInternalId: platformUserId },
+        ],
+      },
+    });
+  }
+
+  // A platform asked for what it sent about one of its users to be deleted.
+  // Takes what the channel arrived with, the way deleteIntegrationsForAccount
+  // does. The credentials are replaced here too, because a channel removed
+  // before deleteChannel started replacing them still holds them.
+  // rootInternalId stays matchable by checkPreviousConnections through its
+  // md5, and internalId is renamed out of the way like updateIntegration
+  // does, so a later connect starts a fresh row instead of reviving this one.
+  async eraseChannelData(org: string, id: string) {
+    const integration = await this._integration.model.integration.findFirst({
+      where: {
+        id,
+        organizationId: org,
+      },
+    });
+
+    if (!integration) {
+      return;
+    }
+
+    return this._integration.model.integration.update({
+      where: {
+        id,
+        organizationId: org,
+      },
+      data: {
+        name: this.hashValue(integration.name),
+        internalId: `deleted_${this.hashValue(integration.internalId)}_${makeId(
+          10
+        )}`,
+        rootInternalId: integration.rootInternalId
+          ? this.hashValue(integration.rootInternalId)
+          : null,
+        profile: integration.profile ? this.hashValue(integration.profile) : null,
+        picture: null,
+        platformUserId: null,
+        token: this.hashValue(integration.token),
+        refreshToken: integration.refreshToken
+          ? this.hashValue(integration.refreshToken)
+          : null,
+        customInstanceDetails: integration.customInstanceDetails
+          ? this.hashValue(integration.customInstanceDetails)
+          : null,
+        deletedAt: integration.deletedAt || new Date(),
+      },
+    });
+  }
+
   private hashValue(value: string) {
     return createHash('md5').update(value).digest('hex');
   }
@@ -949,6 +1025,7 @@ export class IntegrationRepository {
             ? this.hashValue(integration.customInstanceDetails)
             : null,
           picture: null,
+          platformUserId: null,
           deletedAt: integration.deletedAt || new Date(),
         },
       });

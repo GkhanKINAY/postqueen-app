@@ -811,5 +811,14 @@
   "yes_cancel_coupon": "Evet, kuponu iptal et",
   "cancel_coupon_title": "Kupon İptal Edilsin mi?",
   "cancel_coupon_failed": "Kupon iptal edilemedi",
-  "cancel_coupon_success": "Kupon iptal edildi"
+  "cancel_coupon_success": "Kupon iptal edildi",
+  "data_deletion_title": "Veri silme talebi",
+  "data_deletion_not_found": "Bu koda ait bir veri silme talebi yok.",
+  "data_deletion_code": "Onay kodu",
+  "data_deletion_status": "Durum",
+  "data_deletion_completed": "Tamamlandı",
+  "data_deletion_in_progress": "Sürüyor",
+  "data_deletion_done": "PostQueen bu hesapla bağlanan kanalları gönderileri, erişim anahtarları ve profil bilgileriyle birlikte kaldırdı.",
+  "data_deletion_none": "PostQueen bu hesapla bağlanmış bir kanal bulamadı. PostQueen'de hâlâ bir kanal görüyorsanız Kanallar sayfasından silin.",
+  "data_deletion_contact": "Bu talep hakkında sorunuz mu var? Onay kodunu da ekleyerek {{email}} adresine yazın."
 }

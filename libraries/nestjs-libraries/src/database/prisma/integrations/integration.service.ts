@@ -135,7 +135,8 @@ export class IntegrationService {
     isBetweenSteps = false,
     refresh?: string,
     timezone?: number,
-    customInstanceDetails?: string
+    customInstanceDetails?: string,
+    platformUserId?: string
   ) {
     // Pictures already on Cloudflare Images are kept as they are. The host is
     // compared as a hostname: a URL that merely contains the name somewhere is
@@ -174,7 +175,8 @@ export class IntegrationService {
       isBetweenSteps,
       refresh,
       timezone,
-      customInstanceDetails
+      customInstanceDetails,
+      platformUserId
     );
   }
 
@@ -490,6 +492,17 @@ export class IntegrationService {
     return this._integrationRepository.deleteChannel(org, id);
   }
 
+  getIntegrationsByPlatformUser(providers: string[], platformUserId: string) {
+    return this._integrationRepository.getIntegrationsByPlatformUser(
+      providers,
+      platformUserId
+    );
+  }
+
+  async eraseChannelData(org: string, id: string) {
+    return this._integrationRepository.eraseChannelData(org, id);
+  }
+
   async disableIntegrations(org: string, totalChannels: number) {
     const disabled = await this._integrationRepository.disableIntegrations(
       org,
@@ -651,6 +664,11 @@ export class IntegrationService {
             inBetweenSteps: false,
             token: page.access_token,
             profile: page.username,
+            // The page may land on a row it already had; the person who
+            // picked it goes with it.
+            ...(getIntegration.platformUserId
+              ? { platformUserId: getIntegration.platformUserId }
+              : {}),
           }
         );
         ids.push(updated.id);

@@ -791,5 +791,14 @@
   "yes_cancel_coupon": "হ্যাঁ, কুপন বাতিল করুন",
   "cancel_coupon_title": "কুপন বাতিল করবেন?",
   "cancel_coupon_failed": "কুপন বাতিল করা যায়নি",
-  "cancel_coupon_success": "কুপন বাতিল হয়েছে"
+  "cancel_coupon_success": "কুপন বাতিল হয়েছে",
+  "data_deletion_title": "ডেটা মুছে ফেলার অনুরোধ",
+  "data_deletion_not_found": "এই কোডে কোনো ডেটা মুছে ফেলার অনুরোধ নেই।",
+  "data_deletion_code": "নিশ্চিতকরণ কোড",
+  "data_deletion_status": "স্ট্যাটাস",
+  "data_deletion_completed": "সম্পন্ন",
+  "data_deletion_in_progress": "চলছে",
+  "data_deletion_done": "PostQueen এই অ্যাকাউন্ট দিয়ে সংযুক্ত চ্যানেলগুলো তাদের পোস্ট, অ্যাক্সেস টোকেন ও প্রোফাইলের তথ্যসহ সরিয়ে দিয়েছে।",
+  "data_deletion_none": "PostQueen এই অ্যাকাউন্ট দিয়ে সংযুক্ত কোনো চ্যানেল পায়নি। PostQueen-এ এখনও কোনো চ্যানেল দেখলে চ্যানেল পেজ থেকে সেটি মুছে দিন।",
+  "data_deletion_contact": "এই অনুরোধ নিয়ে প্রশ্ন আছে? নিশ্চিতকরণ কোডসহ {{email}} ঠিকানায় ইমেল করুন।"
 }
