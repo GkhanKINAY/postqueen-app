@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "Em andamento",
   "data_deletion_done": "O PostQueen removeu os canais conectados a esta conta, junto com suas postagens, tokens de acesso e dados de perfil.",
   "data_deletion_none": "O PostQueen não encontrou canais conectados a esta conta. Se você ainda vê algum no PostQueen, exclua-o na página Canais.",
-  "data_deletion_contact": "Dúvidas sobre este pedido? Envie um e-mail para {{email}} com o código de confirmação."
+  "data_deletion_contact": "Dúvidas sobre este pedido? Envie um e-mail para {{email}} com o código de confirmação.",
+  "stop_repeating": "Parar de repetir",
+  "stop_repeating_title": "Parar de repetir esta publicação?",
+  "stop_repeating_confirm": "Ela não será publicada novamente. Tudo o que já foi publicado continua publicado.",
+  "stop_repeating_done": "Esta publicação não se repete mais",
+  "stop_repeating_failed": "Não foi possível parar a repetição desta publicação, tente novamente",
+  "leave_workspace": "Sair do espaço de trabalho"
 }

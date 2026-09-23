@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "In Bearbeitung",
   "data_deletion_done": "PostQueen hat die mit diesem Konto verbundenen Kanäle entfernt, zusammen mit ihren Beiträgen, Zugriffstokens und Profildaten.",
   "data_deletion_none": "PostQueen hat keine mit diesem Konto verbundenen Kanäle gefunden. Wenn du in PostQueen noch einen siehst, lösche ihn auf der Seite Kanäle.",
-  "data_deletion_contact": "Fragen zu dieser Anfrage? Schreib an {{email}} und gib den Bestätigungscode an."
+  "data_deletion_contact": "Fragen zu dieser Anfrage? Schreib an {{email}} und gib den Bestätigungscode an.",
+  "stop_repeating": "Wiederholung beenden",
+  "stop_repeating_title": "Wiederholung dieses Beitrags beenden?",
+  "stop_repeating_confirm": "Er wird nicht erneut veröffentlicht. Alles bereits Veröffentlichte bleibt online.",
+  "stop_repeating_done": "Dieser Beitrag wird nicht mehr wiederholt",
+  "stop_repeating_failed": "Die Wiederholung konnte nicht beendet werden, bitte versuchen Sie es erneut",
+  "leave_workspace": "Arbeitsbereich verlassen"
 }

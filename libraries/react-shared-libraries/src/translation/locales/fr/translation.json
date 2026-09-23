@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "En cours",
   "data_deletion_done": "PostQueen a supprimé les canaux connectés à ce compte, ainsi que leurs publications, jetons d'accès et informations de profil.",
   "data_deletion_none": "PostQueen n'a trouvé aucun canal connecté à ce compte. Si vous en voyez encore un dans PostQueen, supprimez-le depuis la page Canaux.",
-  "data_deletion_contact": "Des questions sur cette demande ? Écrivez à {{email}} en indiquant le code de confirmation."
+  "data_deletion_contact": "Des questions sur cette demande ? Écrivez à {{email}} en indiquant le code de confirmation.",
+  "stop_repeating": "Arrêter la répétition",
+  "stop_repeating_title": "Arrêter la répétition de ce post ?",
+  "stop_repeating_confirm": "Il ne sera plus publié. Tout ce qui a déjà été publié le reste.",
+  "stop_repeating_done": "Ce post ne se répète plus",
+  "stop_repeating_failed": "Impossible d’arrêter la répétition de ce post, veuillez réessayer",
+  "leave_workspace": "Quitter l’espace de travail"
 }

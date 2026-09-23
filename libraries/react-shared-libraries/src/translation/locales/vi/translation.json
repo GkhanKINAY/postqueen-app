@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "Đang xử lý",
   "data_deletion_done": "PostQueen đã xóa các kênh được kết nối bằng tài khoản này, cùng với bài viết, mã truy cập và thông tin hồ sơ của chúng.",
   "data_deletion_none": "PostQueen không tìm thấy kênh nào được kết nối bằng tài khoản này. Nếu bạn vẫn thấy kênh trong PostQueen, hãy xóa nó trên trang Kênh.",
-  "data_deletion_contact": "Có câu hỏi về yêu cầu này? Gửi email đến {{email}} kèm mã xác nhận."
+  "data_deletion_contact": "Có câu hỏi về yêu cầu này? Gửi email đến {{email}} kèm mã xác nhận.",
+  "stop_repeating": "Dừng lặp lại",
+  "stop_repeating_title": "Dừng lặp lại bài đăng này?",
+  "stop_repeating_confirm": "Bài đăng sẽ không được đăng lại. Những gì đã đăng vẫn được giữ nguyên.",
+  "stop_repeating_done": "Bài đăng này không còn lặp lại",
+  "stop_repeating_failed": "Không thể dừng lặp lại bài đăng, vui lòng thử lại",
+  "leave_workspace": "Rời không gian làm việc"
 }
