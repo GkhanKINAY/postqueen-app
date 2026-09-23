@@ -236,7 +236,8 @@ If validation fails, the result contains output.errors describing what to fix; t
         // The dashboard's POST /posts is behind the posts policy; this path
         // creates rows directly, so it asks the same question first, once,
         // before any row exists. SubscriptionException (402) says only
-        // "Subscription Exception", so it is put into words here.
+        // "Subscription Exception", so it is put into words here. It is the
+        // same exception for a used-up month and for no plan at all.
         try {
           await this._postsService.assertPostsQuota(organizationId);
         } catch (err) {
@@ -244,7 +245,7 @@ If validation fails, the result contains output.errors describing what to fix; t
             return {
               output: {
                 errors:
-                  'No posts are left on this plan this month. The user can upgrade the plan in PostQueen billing; nothing was created.',
+                  'This workspace has no active plan, or no posts left on its plan this month. The user can choose or upgrade a plan in PostQueen billing; nothing was created.',
               },
             };
           }
