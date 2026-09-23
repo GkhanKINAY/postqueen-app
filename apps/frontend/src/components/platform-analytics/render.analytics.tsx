@@ -16,6 +16,7 @@ interface AnalyticsDataItem {
   label: string;
   data: Array<{ total: number; date: string }>;
   average?: boolean;
+  unit?: 'percent' | 'seconds' | 'count';
   hint?: string;
 }
 
@@ -377,7 +378,17 @@ export const RenderAnalytics: FC<{
           (acc: number, curr: { total: number }) => acc + Number(curr.total),
           0,
         ) || 0) / (p.average ? p.data.length : 1);
-      if (p.average) {
+      // An average used to be shown as a percentage whatever it measured, so
+      // YouTube's average view duration, in seconds, read as a percent.
+      if (p.average && p.unit === 'seconds') {
+        return new Intl.NumberFormat(undefined, {
+          style: 'unit',
+          unit: 'second',
+          unitDisplay: 'short',
+          maximumFractionDigits: 0,
+        }).format(value);
+      }
+      if (p.average && p.unit !== 'count') {
         return value.toFixed(2) + '%';
       }
       return new Intl.NumberFormat().format(Math.round(value));

@@ -399,14 +399,14 @@ export class LinkedinPageProvider
         if (
           typeof current?.followerGains?.organicFollowerGain !== 'undefined'
         ) {
-          all['Organic Followers'].push({
+          all['New Organic Followers'].push({
             total: current?.followerGains?.organicFollowerGain,
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
           });
         }
 
         if (typeof current?.followerGains?.paidFollowerGain !== 'undefined') {
-          all['Paid Followers'].push({
+          all['New Paid Followers'].push({
             total: current?.followerGains?.paidFollowerGain,
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
           });
@@ -423,8 +423,9 @@ export class LinkedinPageProvider
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
           });
 
-          all['Engagement'].push({
-            total: current?.totalShareStatistics.engagement,
+          // LinkedIn gives engagement as a fraction of impressions, per day.
+          all['Engagement Rate'].push({
+            total: (current?.totalShareStatistics.engagement || 0) * 100,
             date: dayjs(current.timeRange.start).format('YYYY-MM-DD'),
           });
 
@@ -440,19 +441,22 @@ export class LinkedinPageProvider
         'Page Views': [] as any[],
         Clicks: [] as any[],
         Shares: [] as any[],
-        Engagement: [] as any[],
+        'Engagement Rate': [] as any[],
         Comments: [] as any[],
-        'Organic Followers': [] as any[],
-        'Paid Followers': [] as any[],
+        // followerGains are the followers won each day, not a total.
+        'New Organic Followers': [] as any[],
+        'New Paid Followers': [] as any[],
       }
     );
 
     return Object.keys(analytics).map((key) => ({
       label: key,
-      data: analytics[
-        key as 'Page Views' | 'Organic Followers' | 'Paid Followers'
-      ],
+      data: analytics[key as keyof typeof analytics],
       percentageChange: 5,
+      // A daily rate is averaged over the range, not added up.
+      ...(key === 'Engagement Rate'
+        ? { average: true, unit: 'percent' as const }
+        : {}),
     }));
   }
 

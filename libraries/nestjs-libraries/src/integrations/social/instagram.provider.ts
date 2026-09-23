@@ -1155,8 +1155,9 @@ export class InstagramProvider
         return 'Reach';
       }
 
+      // New followers per day, not the account's total.
       case 'follower_count': {
-        return 'Follower Count';
+        return 'New Followers';
       }
 
       case 'views': {
@@ -1215,6 +1216,11 @@ export class InstagramProvider
         )
         .map((d: any) => ({
           label: this.setTitle(d.name),
+          // Daily reach counts unique accounts per day, so a sum of days
+          // counts the same account again each day; show the daily average.
+          ...(d.name === 'reach' && Array.isArray(d.values)
+            ? { label: 'Average Daily Reach', average: true, unit: 'count' }
+            : {}),
           percentageChange: 5,
           data: Array.isArray(d.values)
             ? d.values.map((v: any) => ({

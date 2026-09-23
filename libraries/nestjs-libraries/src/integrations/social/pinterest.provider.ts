@@ -577,9 +577,10 @@ export class PinterestProvider
     return daily_metrics.reduce(
       (acc: any, item: any) => {
         if (typeof item?.metrics?.PIN_CLICK_RATE !== 'undefined') {
+          // A fraction of impressions, per day.
           acc[0].data.push({
             date: item.date,
-            total: item.metrics.PIN_CLICK_RATE,
+            total: (item.metrics.PIN_CLICK_RATE || 0) * 100,
           });
 
           acc[1].data.push({
@@ -606,7 +607,13 @@ export class PinterestProvider
         return acc;
       },
       [
-        { label: 'Pin click rate', data: [] as any[] },
+        // A daily rate is averaged over the range, not added up.
+        {
+          label: 'Pin click rate',
+          data: [] as any[],
+          average: true,
+          unit: 'percent' as const,
+        },
         { label: 'Impressions', data: [] as any[] },
         { label: 'Pin Clicks', data: [] as any[] },
         { label: 'Engagement', data: [] as any[] },
