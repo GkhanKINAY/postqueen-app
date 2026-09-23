@@ -1032,14 +1032,20 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
 
     return (
       data?.map((d: any) => ({
+        // page_total_media_view_unique counts unique viewers per day, so a
+        // sum of days counts the same person again each day; it is shown as
+        // the daily average. page_daily_follows is the follows won each day.
         label:
           d.name === 'page_total_media_view_unique'
-            ? 'Page Impressions'
+            ? 'Average Daily Reach'
             : d.name === 'page_post_engagements'
             ? 'Posts Engagement'
             : d.name === 'page_daily_follows'
-            ? 'Page followers'
+            ? 'New Followers'
             : 'Media views',
+        ...(d.name === 'page_total_media_view_unique'
+          ? { average: true, unit: 'count' as const }
+          : {}),
         percentageChange: 5,
         data: (d?.values || []).map((v: any) => ({
           total: sumValue(v.value),

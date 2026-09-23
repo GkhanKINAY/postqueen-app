@@ -72,6 +72,10 @@ export interface AnalyticsData {
   label: string;
   data: Array<{ total: string; date: string }>;
   percentageChange: number;
+  // The headline is the sum of the days unless `average` is set, for a
+  // daily rate or a daily unique count. `unit` says how to show it.
+  average?: boolean;
+  unit?: 'percent' | 'seconds' | 'count';
 }
 
 export type NormalizedPostMetrics = {
