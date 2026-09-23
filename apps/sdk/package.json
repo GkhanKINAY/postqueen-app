@@ -1,6 +1,6 @@
 {
   "name": "@postqueen/node",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "PostQueen Node.js SDK: a typed client for the public API. Schedule posts, upload media and list your channels on 30+ networks.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
