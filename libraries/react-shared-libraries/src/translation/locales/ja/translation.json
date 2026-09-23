@@ -454,7 +454,7 @@
   "upload_content_to_tiktok_without_posting": "投稿せずにコンテンツをTikTokにアップロードする",
   "choose_upload_without_posting_description": "投稿せずにアップロードを選択すると、TikTokアプリ内でコンテンツを確認・編集してから投稿できます。これにより、TikTokの編集ツールを利用し、投稿前に最終調整を行うことができます。追加設定は、TikTokに直接投稿する場合のみ利用可能です。",
   "faq_am_i_going_to_be_charged_by_postqueen": "PostQueenから料金が請求されますか？",
-  "faq_to_confirm_credit_card_information_postqueen_will_hold": "クレジットカード情報を確認するために、PostQueenは2ドルを一時的に保持し、すぐに返金します。設定からいつでも人と話すことなくサブスクリプションをキャンセルできます。",
+  "faq_to_confirm_credit_card_information_postqueen_will_hold": "クレジットカード情報を確認するために、PostQueenは1ドルを一時的に保持し、すぐに返金します。設定からいつでも人と話すことなくサブスクリプションをキャンセルできます。",
   "faq_can_i_trust_postqueen_gitroom": "PostQueenは信頼できますか？",
   "faq_postqueen_gitroom_is_proudly_open_source": "PostQueenは誇りを持ってオープンソースです！私たちは倫理的で透明性のある文化を信じており、PostQueenは永遠に存続します。全てのコードを確認したり、個人プロジェクトで利用したりできます。オープンソースリポジトリを見るには、<a href=\"https://github.com/GkhanKINAY/postqueen-app\" target=\"_blank\" style=\"text-decoration: underline;\">こちらをクリック</a>してください。",
   "faq_what_are_channels": "チャンネルとは何ですか？",

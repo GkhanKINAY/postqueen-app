@@ -12,10 +12,7 @@ export const PreConditionComponentModal: FC = () => {
       <div className="whitespace-pre-line">
         This social channel was connected previously to another PostQueen account.
         {'\n'}
-        To continue, please fast-track your trial for an immediate charge.{'\n'}
-        {'\n'}
-        ** Please be advised that the account will not eligible for a refund,
-        and the charge is final.
+        To continue, please fast-track your trial for an immediate charge.
       </div>
       <div className="flex gap-[2px] justify-center">
         <Button

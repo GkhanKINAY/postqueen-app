@@ -454,7 +454,7 @@
   "upload_content_to_tiktok_without_posting": "上传内容到 TikTok 但不发布",
   "choose_upload_without_posting_description": "如果你想在发布前在 TikTok 应用内审核和编辑内容，请选择“上传但不发布”。这样你可以使用 TikTok 内置的编辑工具，并在发布前进行最终调整。只有直接发布到 TikTok 时，才能使用额外的设置。",
   "faq_am_i_going_to_be_charged_by_postqueen": "我会被 PostQueen 收费吗？",
-  "faq_to_confirm_credit_card_information_postqueen_will_hold": "为确认信用卡信息，PostQueen将暂时预授权2美元并立即释放，您可以随时在设置中取消订阅，无需与任何人交流。",
+  "faq_to_confirm_credit_card_information_postqueen_will_hold": "为确认信用卡信息，PostQueen将暂时预授权1美元并立即释放，您可以随时在设置中取消订阅，无需与任何人交流。",
   "faq_can_i_trust_postqueen_gitroom": "我可以信任PostQueen吗？",
   "faq_postqueen_gitroom_is_proudly_open_source": "PostQueen自豪地开源！我们相信道德和透明的文化，这意味着PostQueen将永远存在。您可以查看全部代码或将其用于个人项目。要查看开源仓库，<a href=\"https://github.com/GkhanKINAY/postqueen-app\" target=\"_blank\" style=\"text-decoration: underline;\">请点击这里</a>。",
   "faq_what_are_channels": "什么是频道？",
