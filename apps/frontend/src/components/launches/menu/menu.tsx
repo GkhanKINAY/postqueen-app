@@ -212,12 +212,19 @@ export const Menu: FC<{
   }, [t, extensionId, id]);
 
   const enableChannel = useCallback(async () => {
-    await fetch('/integrations/enable', {
+    const res = await fetch('/integrations/enable', {
       method: 'POST',
       body: JSON.stringify({
         id,
       }),
     });
+    if (!res.ok) {
+      // 402 (the plan's channel limit) already showed a global dialog.
+      if (res.status !== 402 && res.status !== 499) {
+        toast.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+      }
+      return;
+    }
     toast.show(t('channel_enabled', 'Channel Enabled'), 'success');
     setShow(false);
     onChange(false);
