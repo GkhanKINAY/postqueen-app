@@ -104,8 +104,12 @@ export default class PostQueen {
     const ext = extension.replace(/^\./, '').toLowerCase();
     const type = CONTENT_TYPES[ext] || 'image/jpeg';
 
-    // A Buffer is not a BlobPart to the current DOM types; its bytes are.
-    const blob = new Blob([new Uint8Array(file)], { type });
+    // A Buffer is not a BlobPart to the current DOM types; a view of its
+    // bytes is, without copying a file that can be large.
+    const blob = new Blob(
+      [new Uint8Array(file.buffer as ArrayBuffer, file.byteOffset, file.byteLength)],
+      { type }
+    );
     formData.append('file', blob, `upload.${ext}`);
 
     return (

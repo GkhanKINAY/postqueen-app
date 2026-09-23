@@ -29,7 +29,7 @@ workspace admins see it.
 
 ```typescript
 import fs from 'fs';
-import PostQueen from '@postqueen/node'; // or require('@postqueen/node').default
+import PostQueen from '@postqueen/node';
 
 const postqueen = new PostQueen(process.env.POSTQUEEN_API_KEY!);
 
