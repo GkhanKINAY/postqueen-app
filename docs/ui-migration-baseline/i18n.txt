@@ -1063,6 +1063,15 @@ customer_updated
 customers
 customize_for_channel
 daily
+data_deletion_code
+data_deletion_completed
+data_deletion_contact
+data_deletion_done
+data_deletion_in_progress
+data_deletion_none
+data_deletion_not_found
+data_deletion_status
+data_deletion_title
 date
 date_format
 date_format_dmy

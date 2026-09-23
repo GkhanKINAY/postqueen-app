@@ -9,6 +9,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { mapInstagramMediaInsights, insightTimeSeries } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { parseMetaSignedRequest } from '@gitroom/nestjs-libraries/integrations/social/meta.signed.request';
 import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
@@ -552,7 +553,16 @@ export class InstagramProvider
       expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
       picture: picture?.data?.url || '',
       username: '',
+      // The account picked next gets its own internalId; this is the person.
+      platformUserId: id,
     };
+  }
+
+  async verifyPlatformCallback(signedRequest: string) {
+    return parseMetaSignedRequest(
+      signedRequest,
+      process.env.FACEBOOK_APP_SECRET
+    );
   }
 
   async pages(token: string) {

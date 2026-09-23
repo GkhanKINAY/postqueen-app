@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "Đúng, hủy mã giảm giá",
   "cancel_coupon_title": "Hủy mã giảm giá?",
   "cancel_coupon_failed": "Không thể hủy mã giảm giá",
-  "cancel_coupon_success": "Đã hủy mã giảm giá"
+  "cancel_coupon_success": "Đã hủy mã giảm giá",
+  "data_deletion_title": "Yêu cầu xóa dữ liệu",
+  "data_deletion_not_found": "Không có yêu cầu xóa dữ liệu nào với mã này.",
+  "data_deletion_code": "Mã xác nhận",
+  "data_deletion_status": "Trạng thái",
+  "data_deletion_completed": "Đã hoàn tất",
+  "data_deletion_in_progress": "Đang xử lý",
+  "data_deletion_done": "PostQueen đã xóa các kênh được kết nối bằng tài khoản này, cùng với bài viết, mã truy cập và thông tin hồ sơ của chúng.",
+  "data_deletion_none": "PostQueen không tìm thấy kênh nào được kết nối bằng tài khoản này. Nếu bạn vẫn thấy kênh trong PostQueen, hãy xóa nó trên trang Kênh.",
+  "data_deletion_contact": "Có câu hỏi về yêu cầu này? Gửi email đến {{email}} kèm mã xác nhận."
 }

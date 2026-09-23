@@ -114,7 +114,7 @@ export const PURGE_KEEP: Record<string, string> = {
     'Tombstone: keeps paymentId for Stripe invoices, refunds and webhooks, and every foreign key into it valid. Name, description and API key are scrubbed.',
   User: 'Tombstone: keeps comments and legacy marketplace rows pointing at a row with no name, email or provider id.',
   Integration:
-    'Tombstone: keeps the md5 of rootInternalId that the trial check reads across organizations. Name, profile, picture and credentials are scrubbed.',
+    'Tombstone: keeps the md5 of rootInternalId that the trial check reads across organizations. Name, profile, picture, platform user id and credentials are scrubbed.',
   UsedCodes:
     'Billing markers keyed by Stripe invoice and session ids, read by the founding-fee logic. No personal data.',
   MessagesGroup:

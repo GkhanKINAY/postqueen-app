@@ -1,3 +1,4 @@
+/(app)/(preview)/data-deletion/[code]/page.tsx
 /(app)/(preview)/p/[id]/page.tsx
 /(app)/(site)/@modal/(.)connections/page.tsx
 /(app)/(site)/@modal/(.)settings/page.tsx

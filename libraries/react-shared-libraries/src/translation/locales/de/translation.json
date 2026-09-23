@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "Ja, Gutschein stornieren",
   "cancel_coupon_title": "Gutschein stornieren?",
   "cancel_coupon_failed": "Der Gutschein konnte nicht storniert werden",
-  "cancel_coupon_success": "Gutschein storniert"
+  "cancel_coupon_success": "Gutschein storniert",
+  "data_deletion_title": "Anfrage zur Datenlöschung",
+  "data_deletion_not_found": "Zu diesem Code gibt es keine Anfrage zur Datenlöschung.",
+  "data_deletion_code": "Bestätigungscode",
+  "data_deletion_status": "Status",
+  "data_deletion_completed": "Abgeschlossen",
+  "data_deletion_in_progress": "In Bearbeitung",
+  "data_deletion_done": "PostQueen hat die mit diesem Konto verbundenen Kanäle entfernt, zusammen mit ihren Beiträgen, Zugriffstokens und Profildaten.",
+  "data_deletion_none": "PostQueen hat keine mit diesem Konto verbundenen Kanäle gefunden. Wenn du in PostQueen noch einen siehst, lösche ihn auf der Seite Kanäle.",
+  "data_deletion_contact": "Fragen zu dieser Anfrage? Schreib an {{email}} und gib den Bestätigungscode an."
 }

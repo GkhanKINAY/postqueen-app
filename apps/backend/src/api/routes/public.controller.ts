@@ -31,6 +31,7 @@ import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
+import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
 
 const pump = promisify(pipeline);
 
@@ -41,7 +42,8 @@ export class PublicController {
     private _trackService: TrackService,
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _platformCallbacksService: PlatformCallbacksService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -94,6 +96,14 @@ export class PublicController {
             }
           : {}),
       }));
+  }
+
+  // The `/data-deletion/:code` status page a platform's data deletion answer
+  // links to. The random code is the only credential, so this answers with
+  // the status alone.
+  @Get(`/platform-deletion/:code`)
+  getPlatformDeletionStatus(@Param('code') code: string) {
+    return this._platformCallbacksService.deletionStatus(code);
   }
 
   @Get(`/posts/:id/comments`)

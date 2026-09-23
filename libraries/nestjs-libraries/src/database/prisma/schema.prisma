@@ -473,6 +473,12 @@ model Integration {
   /// wishes. Null on every existing row, which reads as "user's own choice" —
   /// the safe default, since it only ever suppresses an automatic re-enable.
   autoDisabledAt        DateTime?
+  /// The platform's id for the person who authorized this channel, when the
+  /// provider reports one (AuthTokenDetails.platformUserId). A page or a
+  /// business account has its own internalId, so this is the id a platform's
+  /// deletion or deauthorize callback names. Null on rows connected before it
+  /// existed; those are matched on rootInternalId and internalId instead.
+  platformUserId        String?
   exisingPlugData       ExisingPlugData[]
   customer              Customer?              @relation(fields: [customerId], references: [id])
   organization          Organization           @relation(fields: [organizationId], references: [id])
@@ -484,6 +490,7 @@ model Integration {
 
   @@unique([organizationId, internalId])
   @@index([rootInternalId])
+  @@index([platformUserId])
   @@index([organizationId])
   @@index([providerIdentifier])
   @@index([updatedAt])
@@ -1137,6 +1144,22 @@ model OtpCode {
 
   @@index([email, purpose])
   @@index([expiresAt])
+}
+
+/// A data deletion request a platform sent about one of its users. The
+/// confirmation code goes back to the platform with a status link. The user
+/// id is kept as a sha256, not as the id itself. `channels` is how many were
+/// found; `completedAt` stays empty until every one of them was erased.
+model PlatformDeletionRequest {
+  id               String    @id @default(uuid())
+  provider         String
+  platformUserHash String
+  confirmationCode String    @unique
+  channels         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  completedAt      DateTime?
+
+  @@index([platformUserHash])
 }
 
 model mastra_agent_versions {

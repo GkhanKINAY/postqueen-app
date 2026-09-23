@@ -792,5 +792,14 @@
   "yes_cancel_coupon": "Oui, annuler le coupon",
   "cancel_coupon_title": "Annuler le coupon ?",
   "cancel_coupon_failed": "Impossible d'annuler le coupon",
-  "cancel_coupon_success": "Coupon annulé"
+  "cancel_coupon_success": "Coupon annulé",
+  "data_deletion_title": "Demande de suppression des données",
+  "data_deletion_not_found": "Aucune demande de suppression des données ne correspond à ce code.",
+  "data_deletion_code": "Code de confirmation",
+  "data_deletion_status": "Statut",
+  "data_deletion_completed": "Terminée",
+  "data_deletion_in_progress": "En cours",
+  "data_deletion_done": "PostQueen a supprimé les canaux connectés à ce compte, ainsi que leurs publications, jetons d'accès et informations de profil.",
+  "data_deletion_none": "PostQueen n'a trouvé aucun canal connecté à ce compte. Si vous en voyez encore un dans PostQueen, supprimez-le depuis la page Canaux.",
+  "data_deletion_contact": "Des questions sur cette demande ? Écrivez à {{email}} en indiquant le code de confirmation."
 }

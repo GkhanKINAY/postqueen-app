@@ -1069,6 +1069,7 @@ export class AccountPurgeRepository {
             internalId: `purged_${integration.id}`,
             profile: null,
             picture: null,
+            platformUserId: null,
             customInstanceDetails: null,
             tokenExpiration: null,
             token: 'purged',

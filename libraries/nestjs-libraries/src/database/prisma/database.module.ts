@@ -57,6 +57,8 @@ import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.se
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { AccountPurgeRepository } from '@gitroom/nestjs-libraries/database/prisma/account-purge/account-purge.repository';
 import { AccountPurgeService } from '@gitroom/nestjs-libraries/database/prisma/account-purge/account-purge.service';
+import { PlatformCallbacksRepository } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.repository';
+import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
 
 @Global()
 @Module({
@@ -123,6 +125,8 @@ import { AccountPurgeService } from '@gitroom/nestjs-libraries/database/prisma/a
     AbuseGuardService,
     AccountPurgeRepository,
     AccountPurgeService,
+    PlatformCallbacksRepository,
+    PlatformCallbacksService,
   ],
   get exports() {
     return this.providers;

@@ -53,6 +53,9 @@ export async function proxy(request: NextRequest) {
   if (
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
+    // The status link a platform's data deletion answer hands the person who
+    // asked, who may have no PostQueen account at all.
+    nextUrl.pathname.startsWith('/data-deletion/') ||
     nextUrl.pathname.startsWith('/provider/') ||
     nextUrl.pathname.startsWith('/icons/')
   ) {

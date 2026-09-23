@@ -12,6 +12,7 @@ import {
   mapFacebookVideoInsights,
 } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { parseMetaSignedRequest } from '@gitroom/nestjs-libraries/integrations/social/meta.signed.request';
 import dayjs from 'dayjs';
 import {
   BadBody,
@@ -357,7 +358,16 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       expiresIn: dayjs().add(59, 'days').unix() - dayjs().unix(),
       picture: picture?.data?.url || '',
       username: '',
+      // The page picked next gets its own internalId; this is the person.
+      platformUserId: id,
     };
+  }
+
+  async verifyPlatformCallback(signedRequest: string) {
+    return parseMetaSignedRequest(
+      signedRequest,
+      process.env.FACEBOOK_APP_SECRET
+    );
   }
 
   async pages(accessToken: string) {

@@ -98,6 +98,14 @@ export type AuthTokenDetails = {
   expiresIn?: number; // The duration in seconds for which the access token is valid
   picture?: string;
   username: string;
+  /**
+   * The platform's id for the person who authorized the connection, when it
+   * differs from `id` or may later: a page or business account connected
+   * through someone's login has its own id. Stored on the channel so a
+   * platform callback about that person (`verifyPlatformCallback`) can find
+   * it. Optional; a provider without callbacks leaves it out.
+   */
+  platformUserId?: string;
   additionalSettings?: {
     title: string;
     description: string;
@@ -287,4 +295,17 @@ export interface SocialProvider
     accessToken: string,
     data: any,
   ): Promise<FetchPageInformationResult>;
+  /**
+   * Checks a callback the platform sent about one of its users (a data
+   * deletion request, or the user removing the app) against this provider's
+   * own app secret. Returns the platform's id for that user, or null when the
+   * request was not signed by this provider's app. A provider without
+   * platform callbacks leaves it out, and its callback routes answer 404.
+   *
+   * Every provider whose secret verifies the same request is covered by it,
+   * which is how one app's callback reaches all the providers that share it.
+   */
+  verifyPlatformCallback?(
+    signedRequest: string,
+  ): Promise<{ platformUserId: string } | null>;
 }

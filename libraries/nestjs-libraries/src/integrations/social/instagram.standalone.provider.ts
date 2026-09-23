@@ -6,6 +6,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { parseMetaSignedRequest } from '@gitroom/nestjs-libraries/integrations/social/meta.signed.request';
 import dayjs from 'dayjs';
 import {
   SocialAbstract,
@@ -186,9 +187,11 @@ export class InstagramStandaloneProvider
 
     this.checkScopes(this.scopes, getAccessToken.permissions);
 
-    const { user_id, name, username, profile_picture_url } = await (
+    // `user_id` is the professional account (the channel's internalId), `id`
+    // the app-scoped id of the person who logged in.
+    const { id, user_id, name, username, profile_picture_url } = await (
       await fetch(
-        `https://graph.instagram.com/${META_GRAPH_API_VERSION}/me?fields=user_id,username,name,profile_picture_url&access_token=${access_token}`
+        `https://graph.instagram.com/${META_GRAPH_API_VERSION}/me?fields=id,user_id,username,name,profile_picture_url&access_token=${access_token}`
       )
     ).json();
 
@@ -200,7 +203,15 @@ export class InstagramStandaloneProvider
       expiresIn: dayjs().add(58, 'days').unix() - dayjs().unix(),
       picture: profile_picture_url,
       username,
+      platformUserId: id,
     };
+  }
+
+  async verifyPlatformCallback(signedRequest: string) {
+    return parseMetaSignedRequest(
+      signedRequest,
+      process.env.INSTAGRAM_APP_SECRET
+    );
   }
 
   async post(

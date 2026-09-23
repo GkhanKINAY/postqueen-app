@@ -9,6 +9,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { mapThreadsInsights } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { parseMetaSignedRequest } from '@gitroom/nestjs-libraries/integrations/social/meta.signed.request';
 import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
@@ -211,7 +212,15 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       expiresIn: dayjs().add(58, 'days').unix() - dayjs().unix(),
       picture: picture || '',
       username: username,
+      platformUserId: id,
     };
+  }
+
+  async verifyPlatformCallback(signedRequest: string) {
+    return parseMetaSignedRequest(
+      signedRequest,
+      process.env.THREADS_APP_SECRET
+    );
   }
 
   // Single, read-only status check of a media container - no loops and no
