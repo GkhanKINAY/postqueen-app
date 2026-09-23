@@ -226,6 +226,7 @@
   "link": "링크",
   "add_subreddit": "서브레딧 추가",
   "please_add_at_least_one_subreddit": "최소한 하나의 서브레딧을 추가해 주세요.",
+  "please_add_at_least_one_community": "커뮤니티를 하나 이상 추가하세요",
   "add_community": "커뮤니티 추가",
   "select_post_type": "게시물 유형 선택...",
   "we_couldn_t_find_any_business_connected_to_your_linkedin_page": "연결된 LinkedIn 페이지에 연결된 비즈니스를 찾을 수 없습니다.",
