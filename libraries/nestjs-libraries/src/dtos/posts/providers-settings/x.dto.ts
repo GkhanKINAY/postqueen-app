@@ -38,7 +38,7 @@ export class XDto {
   @IsIn(['post', 'article'])
   @JSONSchema({
     description:
-      'post = a regular short post (plain text). article = a long-form X article: write the post content as HTML (p, h1, h2, h3, ul, ol, li, strong, u, a) - the formatting is kept in the article',
+      'post = a regular short post (plain text). article = a long-form X article: write the post content as HTML (p, h1, h2, h3, ul, ol, li, strong, a) - the formatting is kept in the article',
   })
   post_type?: 'post' | 'article';
 
