@@ -8,7 +8,6 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
-import { KickDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/kick.dto';
 import { createHash, randomBytes } from 'crypto';
 
 export class KickProvider extends SocialAbstract implements SocialProvider {
@@ -19,7 +18,6 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
   isBetweenSteps = false;
   editor = 'normal' as const;
   scopes = ['chat:write', 'user:read', 'channel:read'];
-  dto = KickDto;
 
   maxLength() {
     return 500; // Kick chat message max length
