@@ -823,5 +823,11 @@
   "data_deletion_in_progress": "Sürüyor",
   "data_deletion_done": "PostQueen bu hesapla bağlanan kanalları gönderileri, erişim anahtarları ve profil bilgileriyle birlikte kaldırdı.",
   "data_deletion_none": "PostQueen bu hesapla bağlanmış bir kanal bulamadı. PostQueen'de hâlâ bir kanal görüyorsanız Kanallar sayfasından silin.",
-  "data_deletion_contact": "Bu talep hakkında sorunuz mu var? Onay kodunu da ekleyerek {{email}} adresine yazın."
+  "data_deletion_contact": "Bu talep hakkında sorunuz mu var? Onay kodunu da ekleyerek {{email}} adresine yazın.",
+  "stop_repeating": "Tekrarı durdur",
+  "stop_repeating_title": "Bu gönderinin tekrarı durdurulsun mu?",
+  "stop_repeating_confirm": "Bir daha paylaşılmayacak. Şimdiye kadar yayınlananlar yayında kalır.",
+  "stop_repeating_done": "Bu gönderi artık tekrarlanmıyor",
+  "stop_repeating_failed": "Gönderinin tekrarı durdurulamadı, lütfen tekrar deneyin",
+  "leave_workspace": "Çalışma alanından ayrıl"
 }

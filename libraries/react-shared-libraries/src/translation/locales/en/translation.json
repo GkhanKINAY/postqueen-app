@@ -1296,5 +1296,11 @@
   "heygen_select_voice": "Select voice",
   "heygen_generate_video": "Generate video",
   "heygen_generating_title": "Grab a coffee. This may take a while.",
-  "heygen_generating_body": "You can also track progress in the HeyGen dashboard. Do not close this window."
+  "heygen_generating_body": "You can also track progress in the HeyGen dashboard. Do not close this window.",
+  "stop_repeating": "Stop repeating",
+  "stop_repeating_title": "Stop repeating this post?",
+  "stop_repeating_confirm": "It will not be posted again. Everything it already published stays published.",
+  "stop_repeating_done": "This post no longer repeats",
+  "stop_repeating_failed": "Could not stop this post from repeating, please try again",
+  "leave_workspace": "Leave workspace"
 }

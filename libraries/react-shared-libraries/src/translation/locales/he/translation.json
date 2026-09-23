@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "בטיפול",
   "data_deletion_done": "PostQueen הסירה את הערוצים שחוברו עם החשבון הזה, יחד עם הפוסטים, אסימוני הגישה ופרטי הפרופיל שלהם.",
   "data_deletion_none": "PostQueen לא מצאה ערוצים שחוברו עם החשבון הזה. אם אתה עדיין רואה ערוץ ב-PostQueen, מחק אותו בדף הערוצים.",
-  "data_deletion_contact": "יש לך שאלות על הבקשה? כתוב אל {{email}} וצרף את קוד האישור."
+  "data_deletion_contact": "יש לך שאלות על הבקשה? כתוב אל {{email}} וצרף את קוד האישור.",
+  "stop_repeating": "הפסקת החזרה",
+  "stop_repeating_title": "להפסיק את החזרה של הפוסט הזה?",
+  "stop_repeating_confirm": "הוא לא יפורסם שוב. כל מה שכבר פורסם יישאר מפורסם.",
+  "stop_repeating_done": "הפוסט הזה כבר לא חוזר",
+  "stop_repeating_failed": "לא ניתן היה להפסיק את החזרה של הפוסט, נסו שוב",
+  "leave_workspace": "יציאה מסביבת העבודה"
 }

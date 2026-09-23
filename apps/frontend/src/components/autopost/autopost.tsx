@@ -12,10 +12,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Select } from '@gitroom/react/form/select';
 import { FormChoice } from '@gitroom/react/form/form.choice';
 import { ChannelPickList } from '@gitroom/frontend/components/launches/channel.pick.list';
-import {
-  ChannelHealthBadge,
-  computeChannelHealth,
-} from '@gitroom/frontend/components/launches/channel.health.badge';
+import { ChannelHealthBadge } from '@gitroom/frontend/components/launches/channel.health.badge';
+import { computeChannelHealth } from '@gitroom/frontend/components/launches/channel.health';
 import { sortIntegrationsByProviderImportance } from '@gitroom/frontend/components/launches/helpers/sort.integrations';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -61,7 +59,11 @@ export const Autopost: FC = () => {
       } catch {
         savedIds = [];
       }
-      return computeChannelHealth(savedIds, integrations || []);
+      return computeChannelHealth(
+        savedIds,
+        integrations || [],
+        row.autoPublish
+      );
     },
     [integrations]
   );

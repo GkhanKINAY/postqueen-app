@@ -279,6 +279,14 @@ export class PostsController {
     return this._postsService.deletePost(org.id, group);
   }
 
+  @Delete('/:group/repeat')
+  stopRepeat(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string
+  ) {
+    return this._postsService.stopRepeat(org.id, group);
+  }
+
   @Put('/:id/date')
   changeDate(
     @GetOrgFromRequest() org: Organization,

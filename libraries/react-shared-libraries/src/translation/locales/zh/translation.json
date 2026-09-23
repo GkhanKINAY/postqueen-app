@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "处理中",
   "data_deletion_done": "PostQueen 已删除通过此账号连接的频道，以及它们的帖子、访问令牌和个人资料信息。",
   "data_deletion_none": "PostQueen 未找到通过此账号连接的频道。如果您在 PostQueen 中仍能看到，请在频道页面将其删除。",
-  "data_deletion_contact": "对此请求有疑问？请发送邮件至 {{email}}，并附上确认码。"
+  "data_deletion_contact": "对此请求有疑问？请发送邮件至 {{email}}，并附上确认码。",
+  "stop_repeating": "停止重复",
+  "stop_repeating_title": "停止重复发布此帖子？",
+  "stop_repeating_confirm": "它将不会再次发布。已发布的内容会保留。",
+  "stop_repeating_done": "此帖子不再重复发布",
+  "stop_repeating_failed": "无法停止此帖子的重复发布，请重试",
+  "leave_workspace": "离开工作区"
 }

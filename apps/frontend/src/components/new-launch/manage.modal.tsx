@@ -60,6 +60,7 @@ import {
   SendIcon,
   DraftIcon,
   DuplicateIcon,
+  RepeatIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { useHasScroll } from '@gitroom/frontend/components/ui/is.scroll.hook';
 import { useShortlinkPreference } from '@gitroom/frontend/components/settings/shortlink-preference.component';
@@ -392,6 +393,55 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     modal.closeAll();
     return;
   }, [existingData, mutate, modal, toaster, t, dropPostGroupFromView]);
+
+  // Once a repeating post has published, the view offers Duplicate only, so
+  // without this the one way to stop the repeats was to delete the post.
+  const repeating =
+    publishedView && !!existingData?.posts?.[0]?.intervalInDays;
+
+  const stopRepeating = useCallback(async () => {
+    if (
+      !(await deleteDialog(
+        t(
+          'stop_repeating_confirm',
+          'It will not be posted again. Everything it already published stays published.'
+        ),
+        t('stop_repeating', 'Stop repeating'),
+        t('stop_repeating_title', 'Stop repeating this post?'),
+        undefined,
+        false
+      ))
+    ) {
+      return;
+    }
+    setLoading(true);
+    const response = await fetch(`/posts/${existingData.group}/repeat`, {
+      method: 'DELETE',
+    });
+    setLoading(false);
+
+    if (!response.ok) {
+      const { message } = await response
+        .json()
+        .catch(() => ({ message: '' }));
+      toaster.show(
+        message ||
+          t(
+            'stop_repeating_failed',
+            'Could not stop this post from repeating, please try again'
+          ),
+        'warning'
+      );
+      return;
+    }
+
+    toaster.show(
+      t('stop_repeating_done', 'This post no longer repeats'),
+      'success'
+    );
+    mutate();
+    modal.closeAll();
+  }, [existingData, fetch, mutate, modal, toaster, t]);
 
   // Carry what is in the editor, so edits made here are not dropped. If the
   // values cannot be read, the duplicate falls back to the saved post.
@@ -1259,6 +1309,17 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     <RepeatComponent repeat={repeater} onChange={setRepeater} />
                   </div>
                 )}
+                {repeating && (
+                  <button
+                    type="button"
+                    onClick={stopRepeating}
+                    disabled={loading}
+                    className="flex cursor-pointer items-center gap-[8px] text-[15px] font-[600] text-pqText disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <RepeatIcon />
+                    <div>{t('stop_repeating', 'Stop repeating')}</div>
+                  </button>
+                )}
                 {existingData?.integration && (
                   <button
                     onClick={deletePost}
@@ -1402,6 +1463,21 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   <ComposeWhen date={date} onChange={setDate} />
                 )}
               </>
+            )}
+            {!phoneFlow && repeating && (
+              <button
+                type="button"
+                onClick={stopRepeating}
+                disabled={loading}
+                className="cursor-pointer flex text-pqText gap-[8px] items-center text-[15px] font-[600] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div>
+                  <RepeatIcon />
+                </div>
+                <div className="whitespace-nowrap">
+                  {t('stop_repeating', 'Stop repeating')}
+                </div>
+              </button>
             )}
             {!phoneFlow && existingData?.integration && (
               <button

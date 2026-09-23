@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "قيد التنفيذ",
   "data_deletion_done": "أزال PostQueen القنوات المرتبطة بهذا الحساب، مع منشوراتها ورموز الوصول وبيانات الملف الشخصي.",
   "data_deletion_none": "لم يعثر PostQueen على قنوات مرتبطة بهذا الحساب. إذا كنت لا تزال ترى قناة في PostQueen، فاحذفها من صفحة القنوات.",
-  "data_deletion_contact": "هل لديك أسئلة حول هذا الطلب؟ راسلنا على {{email}} مع رمز التأكيد."
+  "data_deletion_contact": "هل لديك أسئلة حول هذا الطلب؟ راسلنا على {{email}} مع رمز التأكيد.",
+  "stop_repeating": "إيقاف التكرار",
+  "stop_repeating_title": "هل تريد إيقاف تكرار هذا المنشور؟",
+  "stop_repeating_confirm": "لن يُنشر مرة أخرى. كل ما نُشر بالفعل يبقى منشورًا.",
+  "stop_repeating_done": "لم يعد هذا المنشور يتكرر",
+  "stop_repeating_failed": "تعذّر إيقاف تكرار هذا المنشور، يُرجى المحاولة مرة أخرى",
+  "leave_workspace": "مغادرة مساحة العمل"
 }

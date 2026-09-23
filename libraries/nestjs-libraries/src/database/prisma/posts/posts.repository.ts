@@ -386,6 +386,38 @@ export class PostsRepository {
     });
   }
 
+  getRootPostByGroup(orgId: string, group: string) {
+    return this._post.model.post.findFirst({
+      where: {
+        organizationId: orgId,
+        group,
+        deletedAt: null,
+        parentPostId: null,
+      },
+      select: {
+        id: true,
+        state: true,
+        intervalInDays: true,
+      },
+    });
+  }
+
+  // Every row of the group carries the interval (createOrUpdatePost writes it
+  // on the thread's parts too), so all of them are cleared, not just the root
+  // the workflow reads.
+  stopRepeat(orgId: string, group: string) {
+    return this._post.model.post.updateMany({
+      where: {
+        organizationId: orgId,
+        group,
+        deletedAt: null,
+      },
+      data: {
+        intervalInDays: null,
+      },
+    });
+  }
+
   getPostsByGroup(orgId: string, group: string) {
     return this._post.model.post.findMany({
       where: {

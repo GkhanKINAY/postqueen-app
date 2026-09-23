@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "処理中",
   "data_deletion_done": "PostQueen は、このアカウントで接続されたチャンネルを、その投稿、アクセストークン、プロフィール情報とともに削除しました。",
   "data_deletion_none": "PostQueen には、このアカウントで接続されたチャンネルが見つかりませんでした。PostQueen にまだ表示されている場合は、チャンネルページから削除してください。",
-  "data_deletion_contact": "このリクエストについてご質問がある場合は、確認コードを添えて {{email}} までメールでお問い合わせください。"
+  "data_deletion_contact": "このリクエストについてご質問がある場合は、確認コードを添えて {{email}} までメールでお問い合わせください。",
+  "stop_repeating": "繰り返しを停止",
+  "stop_repeating_title": "この投稿の繰り返しを停止しますか？",
+  "stop_repeating_confirm": "今後は投稿されません。すでに公開された内容はそのまま残ります。",
+  "stop_repeating_done": "この投稿は繰り返されなくなりました",
+  "stop_repeating_failed": "投稿の繰り返しを停止できませんでした。もう一度お試しください",
+  "leave_workspace": "ワークスペースを退出"
 }

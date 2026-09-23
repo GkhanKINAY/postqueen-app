@@ -5,6 +5,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import clsx from 'clsx';
 
 interface AnalyticsData {
@@ -37,6 +38,7 @@ export const StatisticsModal: FC<{
   const { postId } = props;
   const t = useT();
   const fetch = useFetch();
+  const { shortLinkEnabled } = useVariables();
   const [dateRange, setDateRange] = useState(7);
 
   const loadStatistics = useCallback(async () => {
@@ -47,8 +49,10 @@ export const StatisticsModal: FC<{
     return (await fetch(`/analytics/post/${postId}?date=${dateRange}`)).json();
   }, [postId, dateRange, fetch]);
 
+  // Without a shortener no link was shortened, so there are no clicks to ask
+  // for and no table to show.
   const { data: statisticsData, isLoading: isLoadingStatistics } = useSWR(
-    `/posts/${postId}/statistics`,
+    shortLinkEnabled ? `/posts/${postId}/statistics` : null,
     loadStatistics,
   );
 
@@ -182,49 +186,51 @@ export const StatisticsModal: FC<{
               </div>
             )}
 
-          <div className="flex flex-col gap-[14px]">
-            <h3 className="font-display text-[16px] font-[600] text-pqText">
-              {t('short_links_statistics', 'Short Links Statistics')}
-            </h3>
-            {clicks.length === 0 ? (
-              <div className="rounded-pqMd bg-pqSettings px-[20px] py-[28px] text-center shadow-[inset_0_0_0_1px_var(--border)]">
-                <div className="text-[14px] font-[600] text-pqText">
-                  {t('no_short_link_results', 'No short link results')}
-                </div>
-                <div className="mt-[6px] text-[13px] text-pqMuted">
-                  {t(
-                    'no_short_link_results_hint',
-                    'This post has no tracked short links.',
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-pqMd shadow-[inset_0_0_0_1px_var(--border)]">
-                <div className="grid grid-cols-3 bg-pqSettings text-[12px] font-[600] uppercase tracking-[0.06em] text-pqSoft">
-                  <div className="px-[12px] py-[10px]">
-                    {t('short_link', 'Short Link')}
+          {shortLinkEnabled && (
+            <div className="flex flex-col gap-[14px]">
+              <h3 className="font-display text-[16px] font-[600] text-pqText">
+                {t('short_links_statistics', 'Short Links Statistics')}
+              </h3>
+              {clicks.length === 0 ? (
+                <div className="rounded-pqMd bg-pqSettings px-[20px] py-[28px] text-center shadow-[inset_0_0_0_1px_var(--border)]">
+                  <div className="text-[14px] font-[600] text-pqText">
+                    {t('no_short_link_results', 'No short link results')}
                   </div>
-                  <div className="px-[12px] py-[10px]">
-                    {t('original_link', 'Original Link')}
-                  </div>
-                  <div className="px-[12px] py-[10px]">
-                    {t('clicks', 'Clicks')}
+                  <div className="mt-[6px] text-[13px] text-pqMuted">
+                    {t(
+                      'no_short_link_results_hint',
+                      'This post has no tracked short links.',
+                    )}
                   </div>
                 </div>
-                {clicks.map((row: { short: string; original: string; clicks: number }) => (
-                  <Fragment key={row.short}>
-                    <div className="grid grid-cols-3 border-t border-pqLine text-[13px] text-pqText">
-                      <div className="truncate px-[12px] py-[10px]">{row.short}</div>
-                      <div className="truncate px-[12px] py-[10px]">
-                        {row.original}
-                      </div>
-                      <div className="px-[12px] py-[10px]">{row.clicks}</div>
+              ) : (
+                <div className="overflow-hidden rounded-pqMd shadow-[inset_0_0_0_1px_var(--border)]">
+                  <div className="grid grid-cols-3 bg-pqSettings text-[12px] font-[600] uppercase tracking-[0.06em] text-pqSoft">
+                    <div className="px-[12px] py-[10px]">
+                      {t('short_link', 'Short Link')}
                     </div>
-                  </Fragment>
-                ))}
-              </div>
-            )}
-          </div>
+                    <div className="px-[12px] py-[10px]">
+                      {t('original_link', 'Original Link')}
+                    </div>
+                    <div className="px-[12px] py-[10px]">
+                      {t('clicks', 'Clicks')}
+                    </div>
+                  </div>
+                  {clicks.map((row: { short: string; original: string; clicks: number }) => (
+                    <Fragment key={row.short}>
+                      <div className="grid grid-cols-3 border-t border-pqLine text-[13px] text-pqText">
+                        <div className="truncate px-[12px] py-[10px]">{row.short}</div>
+                        <div className="truncate px-[12px] py-[10px]">
+                          {row.original}
+                        </div>
+                        <div className="px-[12px] py-[10px]">{row.clicks}</div>
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {(!analyticsData ||
             !Array.isArray(analyticsData) ||

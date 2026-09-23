@@ -1495,6 +1495,7 @@ language
 language_settings_description
 launches
 leave
+leave_workspace
 lifetime_badge
 lifetime_deal
 lifetime_payment_pending_body
@@ -1979,6 +1980,11 @@ state
 statistics
 status
 stop
+stop_repeating
+stop_repeating_confirm
+stop_repeating_done
+stop_repeating_failed
+stop_repeating_title
 streak_emails
 streak_emails_description
 style

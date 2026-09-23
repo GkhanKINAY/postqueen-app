@@ -805,5 +805,11 @@
   "data_deletion_in_progress": "진행 중",
   "data_deletion_done": "PostQueen이 이 계정으로 연결된 채널을 게시물, 액세스 토큰, 프로필 정보와 함께 삭제했습니다.",
   "data_deletion_none": "PostQueen에서 이 계정으로 연결된 채널을 찾지 못했습니다. PostQueen에 아직 채널이 보이면 채널 페이지에서 삭제하세요.",
-  "data_deletion_contact": "이 요청에 대해 궁금한 점이 있으면 확인 코드와 함께 {{email}}로 이메일을 보내 주세요."
+  "data_deletion_contact": "이 요청에 대해 궁금한 점이 있으면 확인 코드와 함께 {{email}}로 이메일을 보내 주세요.",
+  "stop_repeating": "반복 중지",
+  "stop_repeating_title": "이 게시글의 반복을 중지할까요?",
+  "stop_repeating_confirm": "다시 게시되지 않습니다. 이미 게시된 내용은 그대로 유지됩니다.",
+  "stop_repeating_done": "이 게시글은 더 이상 반복되지 않습니다",
+  "stop_repeating_failed": "게시글 반복을 중지하지 못했습니다. 다시 시도해 주세요",
+  "leave_workspace": "워크스페이스 나가기"
 }

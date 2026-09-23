@@ -32,3 +32,27 @@ describe('Organization switcher', () => {
     );
   });
 });
+
+describe('Leave workspace', () => {
+  it('is offered only with another workspace to move to', () => {
+    assert.match(source, /data\.length > 1 && \(/);
+    assert.match(source, /t\('leave_workspace', 'Leave workspace'\)/);
+  });
+
+  it('uses the Teams leave endpoint, confirms first, and moves the session on', () => {
+    const leave = source.slice(
+      source.indexOf('const leave = useCallback'),
+      source.indexOf('useEffect(')
+    );
+    assert.match(leave, /deleteDialog\(/);
+    assert.match(leave, /fetch\('\/settings\/team\/leave', \{ method: 'POST' \}\)/);
+    assert.ok(
+      leave.indexOf('deleteDialog(') < leave.indexOf("'/settings/team/leave'"),
+      'the confirmation comes before the request'
+    );
+    // customFetch resolves on 4xx/5xx: the server's reason (the last Super
+    // Admin, the only workspace) is shown instead of switching away.
+    assert.match(leave, /if \(!res\.ok\)/);
+    assert.match(leave, /await changeOrg\(next\)\(\)/);
+  });
+});

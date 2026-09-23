@@ -802,35 +802,82 @@ export class PostsService {
       });
   }
 
+  /**
+   * Ends every run still going for a post: the one waiting for its publish
+   * date, a repeat waiting for its next turn, and the plugs a finished run is
+   * still processing (repeat runs are started with the same `postId`, so the
+   * search finds them too). The empty catches are on purpose: failing to find
+   * or end a run is normal, it may have just finished.
+   */
+  private async terminatePostWorkflows(postId: string) {
+    try {
+      const workflows = this._temporalService.client
+        .getRawClient()
+        ?.workflow.list({
+          query: `postId="${postId}" AND ExecutionStatus="Running"`,
+        });
+
+      for await (const executionInfo of workflows) {
+        try {
+          const workflow = await this._temporalService.client.getWorkflowHandle(
+            executionInfo.workflowId
+          );
+          if (
+            workflow &&
+            (await workflow.describe()).status.name !== 'TERMINATED'
+          ) {
+            await workflow.terminate();
+          }
+        } catch (err) {}
+      }
+    } catch (err) {}
+  }
+
   async deletePost(orgId: string, group: string) {
     const post = await this._postRepository.deletePost(orgId, group);
 
     if (post?.id) {
-      try {
-        const workflows = this._temporalService.client
-          .getRawClient()
-          ?.workflow.list({
-            query: `postId="${post.id}" AND ExecutionStatus="Running"`,
-          });
-
-        for await (const executionInfo of workflows) {
-          try {
-            const workflow =
-              await this._temporalService.client.getWorkflowHandle(
-                executionInfo.workflowId
-              );
-            if (
-              workflow &&
-              (await workflow.describe()).status.name !== 'TERMINATED'
-            ) {
-              await workflow.terminate();
-            }
-          } catch (err) {}
-        }
-      } catch (err) {}
+      await this.terminatePostWorkflows(post.id);
     }
 
     return { error: true };
+  }
+
+  /**
+   * Stops a published post from repeating. What it already published stays,
+   * on the platform and here.
+   *
+   * Clearing the interval alone is not enough. A run reads the interval before
+   * it publishes, and the one that published last is already waiting to start
+   * the next repeat, which publishes without looking at the interval again. So
+   * the runs still going for the post are ended, as deletePost ends them. That
+   * also drops any plug still waiting on the last repeat, the same as a delete.
+   * No workflow changes: the next repeat is simply never started.
+   */
+  async stopRepeat(orgId: string, group: string) {
+    const post = await this._postRepository.getRootPostByGroup(orgId, group);
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    // Before it is published, the Repeat control in the editor clears it, and
+    // ending the run here would cancel the first publish with it.
+    if (post.state !== 'PUBLISHED') {
+      throw new BadRequestException(
+        'Only a published post can be stopped from repeating. Edit the post to change its repeat.'
+      );
+    }
+
+    // Already stopped: nothing is waiting, and ending the runs would only
+    // drop the plugs of a post that no longer repeats.
+    if (!post.intervalInDays) {
+      return { id: post.id };
+    }
+
+    await this._postRepository.stopRepeat(orgId, group);
+    await this.terminatePostWorkflows(post.id);
+
+    return { id: post.id };
   }
 
   /**
@@ -873,27 +920,7 @@ export class PostsService {
     orgId: string,
     state: State
   ) {
-    try {
-      const workflows = this._temporalService.client
-        .getRawClient()
-        ?.workflow.list({
-          query: `postId="${postId}" AND ExecutionStatus="Running"`,
-        });
-
-      for await (const executionInfo of workflows) {
-        try {
-          const workflow = await this._temporalService.client.getWorkflowHandle(
-            executionInfo.workflowId
-          );
-          if (
-            workflow &&
-            (await workflow.describe()).status.name !== 'TERMINATED'
-          ) {
-            await workflow.terminate();
-          }
-        } catch (err) {}
-      }
-    } catch (err) {}
+    await this.terminatePostWorkflows(postId);
 
     if (state === 'DRAFT') {
       return;
@@ -932,9 +959,9 @@ export class PostsService {
       // therefore looked exactly like a successful schedule — HTTP 200, a row
       // in QUEUE, and nothing anywhere to say the post would never publish.
       //
-      // The terminate sweep above keeps its empty catches on purpose: failing
-      // to find or kill a previous execution is normal, and the start below
-      // uses TERMINATE_EXISTING anyway.
+      // The terminate sweep above (terminatePostWorkflows) keeps its empty
+      // catches on purpose: failing to find or kill a previous execution is
+      // normal, and the start below uses TERMINATE_EXISTING anyway.
       throw err;
     }
   }
