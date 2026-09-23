@@ -1171,6 +1171,61 @@ export class PostsService {
         }
       }
 
+      // The MCP tool, the CLI and the public API name media by path and make
+      // up an id for it. A video still being converted is swapped for its
+      // converted file at publish time by media id, so a made-up id leaves the
+      // post pointing at the original, which is removed once the conversion
+      // is done. Use the id of this organization's media row with that path.
+      const mediaPaths = [
+        ...new Set(
+          (post.value || [])
+            .flatMap((p) => p.image || [])
+            .map((image: any) => image?.path)
+            .filter(Boolean) as string[]
+        ),
+      ];
+
+      if (mediaPaths.length) {
+        const idByPath = new Map(
+          (
+            await this._mediaService.findOwnedMediaByPaths(orgId, mediaPaths)
+          ).map((row) => [row.path, row.id])
+        );
+
+        post.value = (post.value || []).map((p) => ({
+          ...p,
+          image: (p.image || []).map((image: any) =>
+            idByPath.has(image?.path)
+              ? { ...image, id: idByPath.get(image.path) }
+              : image
+          ),
+        }));
+
+        // Publish reads a video's row by id as well, so an id left over
+        // after that must be this organization's or no media row at all.
+        const unmatchedIds = [
+          ...new Set(
+            (post.value || [])
+              .flatMap((p) => p.image || [])
+              .filter((image: any) => image?.id && !idByPath.has(image?.path))
+              .map((image: any) => image.id as string)
+          ),
+        ];
+
+        if (unmatchedIds.length) {
+          const owned = (
+            await this._mediaService.findOwnedMediaIds(orgId, unmatchedIds)
+          ).map((row) => row.id);
+          const foreign = await this._mediaService.getMediaByIds(
+            unmatchedIds.filter((id) => !owned.includes(id))
+          );
+
+          if (foreign.length) {
+            throw new Error('Media not found');
+          }
+        }
+      }
+
       const { posts } = await this._postRepository.createOrUpdatePost(
         body.type,
         orgId,
