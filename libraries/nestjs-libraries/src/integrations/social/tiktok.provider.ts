@@ -10,6 +10,7 @@ import {
 import { mapTikTokVideoStats } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { chunk } from 'lodash';
 import dayjs from 'dayjs';
+import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import {
   BadBody,
   Disconnect,
@@ -454,7 +455,15 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
    *
    * Replaces `maxVideoLength`, which asked this endpoint for one field and had
    * no callers anywhere in the repo.
+   *
+   * A tool too, so an API or MCP caller can build the same choices the
+   * composer does instead of guessing a privacy level.
    */
+  @Tool({
+    description:
+      'What this TikTok account may post right now: the privacy levels to choose from, the longest video in seconds, and whether comments, duets and stitches are turned off',
+    dataSchema: [],
+  })
   async creatorInfo(accessToken: string) {
     const { data } = await (
       await this.fetch(
