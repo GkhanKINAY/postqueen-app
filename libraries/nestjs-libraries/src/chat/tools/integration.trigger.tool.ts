@@ -64,7 +64,7 @@ export class IntegrationTriggerTool implements AgentToolInterface {
         ).id;
 
         const getIntegration =
-          await this._integrationService.getIntegrationById(
+          await this._integrationService.getIntegrationByIdNotDeleted(
             organizationId,
             inputData.integrationId
           );

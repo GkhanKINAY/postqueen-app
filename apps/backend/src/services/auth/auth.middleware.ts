@@ -8,8 +8,7 @@ import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.man
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
-import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { setSentryUserContext } from '@gitroom/nestjs-libraries/sentry/initialize.sentry';
 
 export const removeAuth = (res: Response) => {
@@ -29,28 +28,15 @@ export const removeAuth = (res: Response) => {
 };
 
 /**
- * The stored flag says a trial *started*; whether it is still running is
- * derived from the registration date. Done here, once, because every consumer
- * downstream reads `org.isTrailing` and none of them should have to know about
- * the clock: the X lock, trial-only video, the trial banner and
- * `/billing/is-trial-finished` all get the same answer.
+ * `req.org.isTrailing` is the derived flag, not the stored one: every consumer
+ * downstream (the X lock, trial-only video, the trial banner,
+ * `/billing/is-trial-finished`) reads it, and none of them should have to know
+ * about the clock. `effectiveIsTrailing` holds the rule.
  *
- * Read-only on purpose. The row is left alone — Stripe's webhook and the "End
- * free trial" button are still the only things that write it, and a middleware
- * that writes on every request is a middleware that writes a great many times.
- *
- * Both paths below go through this. Impersonation used to pass the raw flag,
+ * Both paths below go through it. Impersonation used to pass the raw flag,
  * so support opening an account whose seven days ran out long ago saw a trial
  * still running that the customer did not.
- *
- * Billing off: there is no trial to be in, whatever the row says (every
- * organization is created with the flag set).
  */
-const effectiveIsTrailing = (org: {
-  isTrailing?: boolean | null;
-  createdAt?: Date | string | null;
-}) => isBillingEnabled() && !!org.isTrailing && trialWindow(org.createdAt).open;
-
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(

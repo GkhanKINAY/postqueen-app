@@ -25,7 +25,7 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { PlatformCallbackDto } from '@gitroom/nestjs-libraries/dtos/integrations/platform.callback.dto';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
@@ -223,8 +223,7 @@ export class NoAuthIntegrationsController {
     }
 
     if (
-      isBillingEnabled() &&
-      org.isTrailing &&
+      effectiveIsTrailing(org) &&
       (await this._integrationService.checkPreviousConnections(
         org.id,
         String(id)

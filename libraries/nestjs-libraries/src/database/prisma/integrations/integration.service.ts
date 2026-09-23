@@ -31,6 +31,7 @@ import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/au
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { TemporalService } from 'nestjs-temporal-core';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { providerPageSelections } from '@gitroom/nestjs-libraries/integrations/provider-page-selections';
 import {
   AuthorizationActions,
@@ -216,6 +217,10 @@ export class IntegrationService {
 
   getIntegrationById(org: string, id: string) {
     return this._integrationRepository.getIntegrationById(org, id);
+  }
+
+  getIntegrationByIdNotDeleted(org: string, id: string) {
+    return this._integrationRepository.getIntegrationByIdNotDeleted(org, id);
   }
 
   async refreshToken(provider: SocialProvider, refresh: string) {
@@ -455,13 +460,14 @@ export class IntegrationService {
    */
   assertConnectAllowed(
     provider: { trialLocked?: boolean; name: string },
-    org: { isTrailing?: boolean },
+    org: { isTrailing?: boolean; createdAt?: Date | string },
     refresh?: string
   ) {
-    if (!isBillingEnabled() || !provider.trialLocked) {
-      return;
-    }
-    if (!org?.isTrailing || refresh) {
+    // Derived, not the stored flag (billing off included): the OAuth callback
+    // passes the row as it is in the database, while the route that sent the
+    // user to the platform passed the app's derived `req.org`, so a flag nobody
+    // cleared let the one through and refused the other.
+    if (!provider.trialLocked || !effectiveIsTrailing(org) || refresh) {
       return;
     }
 

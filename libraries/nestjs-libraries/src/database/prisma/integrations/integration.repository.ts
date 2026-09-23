@@ -560,6 +560,22 @@ export class IntegrationRepository {
     });
   }
 
+  // Deleting a channel keeps its row, with the credentials hashed: its history
+  // and running workflows still read it through the lookup above, and the few
+  // callers that must tell a removed channel apart (analytics, the internal
+  // plugs) check `deletedAt` themselves. Anything that would post to a channel
+  // or act on it reads this one, so a removed channel answers "not found"
+  // instead of taking the request.
+  getIntegrationByIdNotDeleted(org: string, id: string) {
+    return this._integration.model.integration.findFirst({
+      where: {
+        organizationId: org,
+        id,
+        deletedAt: null,
+      },
+    });
+  }
+
   async getIntegrationForOrder(
     id: string,
     order: string,

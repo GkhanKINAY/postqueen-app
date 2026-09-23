@@ -60,9 +60,9 @@ export class GenerateVideoTool implements AgentToolInterface {
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
         const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
-        // The service reports an unknown identifier as a plain Error, which
-        // comes back as the generic "try again later" and does not say that
-        // retrying cannot help.
+        // Checked here as well as in the service, whose 404 names only the
+        // identifier that does not exist: this answer names the ones that do,
+        // so the caller can fix the call instead of retrying it.
         const identifiers = this._videoManager
           .getAllVideos()
           .map((p) => p.identifier);

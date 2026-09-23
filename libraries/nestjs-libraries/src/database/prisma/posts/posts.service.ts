@@ -345,10 +345,13 @@ export class PostsService {
       type: replaceDraft ? 'schedule' : body?.type,
       posts: await Promise.all(
         body?.posts?.map(async (post) => {
-          const integration = await this._integrationService.getIntegrationById(
-            organization,
-            post.integration.id
-          );
+          // A removed channel keeps its row, so the plain lookup would take
+          // the post and answer 200 for a channel that cannot publish.
+          const integration =
+            await this._integrationService.getIntegrationByIdNotDeleted(
+              organization,
+              post.integration.id
+            );
 
           if (!integration) {
             throw new BadRequestException(
@@ -1161,12 +1164,40 @@ export class PostsService {
     );
   }
 
+  // An update changes a post that exists, named by the first entry of its
+  // thread. The rows are upserted by id, so an id that matched nothing created
+  // a new main post instead: in QUEUE, because an update leaves the state
+  // alone, with no workflow started for it, and the hourly sweep then
+  // published it. Only the first entry is checked: a comment added while
+  // editing is new, and the composer gives it an id of its own making. Every
+  // post is checked before any is written, so a refusal writes nothing.
+  private async guardUpdateTargets(
+    orgId: string,
+    posts: CreatePostDto['posts']
+  ) {
+    for (const post of posts) {
+      const id = post.value?.[0]?.id;
+      const existing = id
+        ? await this._postRepository.getPostById(id, orgId)
+        : null;
+      if (!existing || existing.deletedAt || existing.parentPostId) {
+        throw new BadRequestException(
+          `type 'update' changes an existing post: value[0].id must be the id of a post in this workspace (the main post, not a comment). To create a post, use type 'draft', 'schedule' or 'now'.`
+        );
+      }
+    }
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
     creationMethod: CreationMethod,
     keepGroup = false
   ): Promise<any[]> {
+    if (body.type === 'update') {
+      await this.guardUpdateTargets(orgId, body.posts);
+    }
+
     const postList = [];
     for (const post of body.posts) {
       if (

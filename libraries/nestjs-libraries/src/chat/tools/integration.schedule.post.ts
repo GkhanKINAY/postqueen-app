@@ -148,10 +148,11 @@ If validation fails, the result contains output.errors describing what to fix; t
 
         const integrations = {} as Record<string, Integration>;
         for (const platform of inputData.socialPost) {
-          const integration = await this._integrationService.getIntegrationById(
-            organizationId,
-            platform.integrationId
-          );
+          const integration =
+            await this._integrationService.getIntegrationByIdNotDeleted(
+              organizationId,
+              platform.integrationId
+            );
           integrations[platform.integrationId] = integration;
 
           if (!integration) {
