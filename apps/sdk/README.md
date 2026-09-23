@@ -22,14 +22,14 @@ YouTube, with a handful of methods and full types.
 npm install @postqueen/node
 ```
 
-Grab your API key at [app.postqueen.ai/settings](https://app.postqueen.ai/settings)
-(Developers → Public API → Reveal).
+Get your API key in [PostQueen](https://app.postqueen.ai) under **Connections > API Keys**. Only
+workspace admins see it.
 
 ## Quick start
 
 ```typescript
 import fs from 'fs';
-import PostQueen from '@postqueen/node';
+import PostQueen from '@postqueen/node'; // or require('@postqueen/node').default
 
 const postqueen = new PostQueen(process.env.POSTQUEEN_API_KEY!);
 
@@ -43,8 +43,6 @@ const media = await postqueen.upload(fs.readFileSync('./launch.png'), 'png');
 await postqueen.post({
   type: 'schedule',
   date: '2026-08-01T09:00:00Z',
-  shortLink: false,
-  tags: [],
   posts: [
     {
       integration: { id: channels[0].id },
@@ -59,21 +57,25 @@ await postqueen.post({
 });
 ```
 
-`type` is one of `draft`, `schedule` or `now`. `date` (ISO 8601), `shortLink`, `tags` and at least
-one entry in `posts` are required. Per-platform options go into each post's `settings` object; see
-the [API reference](https://api.postqueen.ai/docs) for the schema of the channel you are posting to.
+`type` is one of `draft`, `schedule`, `now` or `update`. `date` (ISO 8601) and at least one entry in
+`posts` are required. `shortLink` defaults to `false`, `tags` to `[]` and each part's `image` to
+`[]`. Per-network options go into each post's `settings` object; the
+[posting settings](https://docs.postqueen.ai/public-api/providers/overview) list them for every
+network. A network without required settings needs none.
 
 ## API
 
 | Method | Returns |
 | --- | --- |
-| `post(posts: CreatePostDto)` | Schedule a post; returns parsed JSON |
+| `post(posts: CreatePostInput)` | Schedule a post; returns parsed JSON |
 | `postList(filters: GetPostsDto)` | List posts in a date range; returns parsed JSON |
 | `upload(file: Buffer, extension: string)` | Upload an image or video; returns parsed JSON with the hosted `path` |
 | `integrations()` | List connected channels; returns parsed JSON |
 | `deletePost(id: string)` | Delete a post; returns the raw `Response`, so call `.json()` yourself if you need the body |
 
-`upload()` maps the extension to a content type; `png`, `jpg`, `jpeg` and `gif` are recognized.
+`upload()` maps the extension to a content type: `png`, `jpg`, `jpeg`, `gif`, `webp`, `mp4` and `mov` are recognized. A video comes back with `status: "processing"` while PostQueen prepares it; an MP4 can go into a post right away.
+
+The methods return the API's JSON as it comes, error answers included, so check it before you use it.
 
 ## Self-hosted instances
 
@@ -87,7 +89,7 @@ const postqueen = new PostQueen(apiKey, 'https://yourdomain.com/api');
 
 | | |
 | --- | --- |
-| REST API reference | [api.postqueen.ai/docs](https://api.postqueen.ai/docs) |
+| API reference | [docs.postqueen.ai/public-api](https://docs.postqueen.ai/public-api/introduction) |
 | Documentation | [docs.postqueen.ai](https://docs.postqueen.ai) |
 | CLI | [`postqueen`](https://www.npmjs.com/package/postqueen) |
 | n8n node | [`n8n-nodes-postqueen`](https://www.npmjs.com/package/n8n-nodes-postqueen) |
