@@ -495,7 +495,7 @@ export const SettingsPopup: FC<{
         title: t('autopost', 'Autopost'),
         desc: t(
           'autopost_can_automatically_posts_your_rss_new_items_to_social_media',
-          'Autopost can automatically posts your RSS new items to social media'
+          'Auto Post publishes the new items of your RSS feeds to your channels'
         ),
       },
       sets: {
