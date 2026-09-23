@@ -416,8 +416,12 @@ export class AutopostService {
 
     // The slot is resolved per group: sharing one findFreeDateTime between the
     // scheduled and the draft group writes both to the same timestamp, which
-    // is the one thing the call exists to avoid.
-    const send = async (type: 'schedule' | 'draft', list: typeof posts) =>
+    // is the one thing the call exists to avoid. For 'now' createPost uses the
+    // current time instead.
+    const send = async (
+      type: 'schedule' | 'now' | 'draft',
+      list: typeof posts
+    ) =>
       this._postsService.createPost(
         orgId,
         {
@@ -431,8 +435,10 @@ export class AutopostService {
         'AUTOPOST'
       );
 
+    // `onSlot` is the rule's "When should we post it?" answer: the next free
+    // slot, or right away. A draft has no publish time to choose.
     if (toPublish.length) {
-      await send('schedule', toPublish);
+      await send(state.body.onSlot ? 'schedule' : 'now', toPublish);
     }
     if (toDraft.length) {
       await send('draft', toDraft);
