@@ -11,6 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { UpdateReleaseIdDto } from '@gitroom/nestjs-libraries/dtos/posts/update.release.id.dto';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
@@ -61,9 +62,9 @@ export class PostsController {
   async updateReleaseId(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
-    @Body('releaseId') releaseId: string
+    @Body() body: UpdateReleaseIdDto
   ) {
-    return this._postsService.updateReleaseId(org.id, id, releaseId);
+    return this._postsService.updateReleaseId(org.id, id, body.releaseId);
   }
 
   @Post('/should-shortlink')

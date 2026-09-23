@@ -713,7 +713,7 @@ export class IntegrationService {
     // A removed channel no longer holds working credentials, so treat it as
     // gone instead of refreshing it and telling the user to reconnect.
     if (!getIntegration || getIntegration.deletedAt) {
-      throw new Error('Invalid integration');
+      throw new HttpException('Channel not found', HttpStatus.NOT_FOUND);
     }
 
     if (getIntegration.type !== 'social') {

@@ -31,6 +31,7 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
+import { UpdateReleaseIdDto } from '@gitroom/nestjs-libraries/dtos/posts/update.release.id.dto';
 import { UpdatePostSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/update.post.settings.dto';
 import {
   AuthorizationActions,
@@ -477,6 +478,10 @@ export class PublicIntegrationsController {
     @Param('id') id: string
   ) {
     Sentry.metrics.count('public_api-request', 1);
+    // An unknown id reached Prisma's update and answered 500.
+    if (!(await this._integrationService.getIntegrationById(org.id, id))) {
+      throw new HttpException({ msg: 'Channel not found' }, 404);
+    }
     const isTherePosts = await this._integrationService.getPostsForChannel(
       org.id,
       id
@@ -588,10 +593,10 @@ export class PublicIntegrationsController {
   async updateReleaseId(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
-    @Body('releaseId') releaseId: string
+    @Body() body: UpdateReleaseIdDto
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    return this._postsService.updateReleaseId(org.id, id, releaseId);
+    return this._postsService.updateReleaseId(org.id, id, body.releaseId);
   }
 
   @Get('/analytics/posts')

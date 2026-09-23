@@ -34,10 +34,15 @@ export const MissingReleaseModal: FC<{
     if (!selected) return;
     setSaving(true);
     try {
-      await fetch(`/posts/${postId}/release-id`, {
+      const res = await fetch(`/posts/${postId}/release-id`, {
         method: 'PUT',
         body: JSON.stringify({ releaseId: selected }),
       });
+      // customFetch resolves a 4xx instead of throwing, so a refused save
+      // used to close the modal as if it had worked.
+      if (!res.ok) {
+        throw new Error('release id not saved');
+      }
       onSuccess();
       modal.closeAll();
       modal.openModal({
