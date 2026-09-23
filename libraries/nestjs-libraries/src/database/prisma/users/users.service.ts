@@ -6,6 +6,7 @@ import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/emai
 import { ChangePasswordDto } from '@gitroom/nestjs-libraries/dtos/users/change.password.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
@@ -27,7 +28,8 @@ export class UsersService {
     private _usersRepository: UsersRepository,
     private _organizationRepository: OrganizationRepository,
     private _integrationRepository: IntegrationRepository,
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _integrationService: IntegrationService
   ) {}
 
   private readonly _logger = new Logger(UsersService.name);
@@ -147,6 +149,10 @@ export class UsersService {
 
     for (const org of orgs) {
       if (org.users[0].role === Role.SUPERADMIN) {
+        // Cancelling billing switches these off on the way to the free tier,
+        // but a lifetime plan is never cancelled, and its rules would keep
+        // polling feeds for a workspace that no longer exists.
+        await this._integrationService.changeActiveCron(org.id);
         await this._integrationRepository.deleteIntegrationsForAccount(org.id);
         await this._organizationRepository.deleteOrganization(org.id);
       } else {
