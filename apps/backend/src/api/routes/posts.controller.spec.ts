@@ -42,3 +42,45 @@ describe('changeDate does not publish drafts', () => {
     assert.match(service, /path: 'changeDate'/);
   });
 });
+
+describe('Stop repeating a published post', () => {
+  const repository = readFileSync(
+    fileURLToPath(
+      new URL(
+        '../../../../../libraries/nestjs-libraries/src/database/prisma/posts/posts.repository.ts',
+        import.meta.url
+      )
+    ),
+    'utf8'
+  );
+  const stopRepeat = service.slice(
+    service.indexOf('async stopRepeat('),
+    service.indexOf('async deletePostsByGroups(')
+  );
+
+  it('is a route of its own, scoped to the organization', () => {
+    assert.match(controller, /@Delete\('\/:group\/repeat'\)/);
+    assert.match(controller, /stopRepeat\(org\.id, group\)/);
+  });
+
+  it('only stops a published post, so a first publish is never cancelled', () => {
+    assert.match(stopRepeat, /post\.state !== 'PUBLISHED'/);
+  });
+
+  it('clears the interval before it ends the runs still waiting', () => {
+    const clear = stopRepeat.indexOf('this._postRepository.stopRepeat(');
+    const end = stopRepeat.indexOf('this.terminatePostWorkflows(post.id)');
+    assert.ok(clear > -1 && end > -1);
+    assert.ok(clear < end);
+  });
+
+  it('clears every row of the group in this organization', () => {
+    const block = repository.slice(
+      repository.indexOf('stopRepeat(orgId: string, group: string)'),
+      repository.indexOf('getPostsByGroup(orgId: string, group: string)')
+    );
+    assert.match(block, /updateMany\(/);
+    assert.match(block, /organizationId: orgId/);
+    assert.match(block, /intervalInDays: null/);
+  });
+});
