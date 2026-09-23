@@ -401,7 +401,10 @@ export class IntegrationRepository {
     customInstanceDetails?: string,
     platformUserId?: string
   ) {
-    const postTimes = timezone
+    // An offset of 0 (UTC, or London in winter) is a real offset. Tested
+    // for truthiness it fell through to the column default, 02:00, 06:40 and
+    // 11:40 UTC. Unknown (undefined, or NaN from `+undefined`) keeps it.
+    const postTimes = Number.isFinite(timezone)
       ? {
           postingTimes: JSON.stringify([
             { time: 560 - timezone },
