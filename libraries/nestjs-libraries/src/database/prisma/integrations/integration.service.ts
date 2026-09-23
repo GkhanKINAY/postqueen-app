@@ -32,6 +32,11 @@ import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integration
 import { TemporalService } from 'nestjs-temporal-core';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { providerPageSelections } from '@gitroom/nestjs-libraries/integrations/provider-page-selections';
+import {
+  AuthorizationActions,
+  Sections,
+  SubscriptionException,
+} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 
 dayjs.extend(utc);
 
@@ -478,7 +483,13 @@ export class IntegrationService {
       isBillingEnabled() &&
       integrations.length >= totalChannels
     ) {
-      throw new Error('You have reached the maximum number of channels');
+      // The same answer the connect flow gets from the channel policy, so the
+      // dashboard shows the limit and the way to billing. A plain Error was a
+      // 500 with no message.
+      throw new SubscriptionException({
+        action: AuthorizationActions.Create,
+        section: Sections.CHANNEL,
+      });
     }
 
     return this._integrationRepository.enableChannel(org, id);
