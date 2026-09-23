@@ -15,6 +15,8 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import clsx from 'clsx';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { useToaster } from '@gitroom/react/toaster/toaster';
 
 interface Organization {
   name: string;
@@ -106,6 +108,7 @@ export const OrganizationSelector: FC<{
   const fetch = useFetch();
   const user = useUser();
   const t = useT();
+  const toast = useToaster();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { referenceRef, floatingRef } = useAnchoredPopover<
@@ -137,6 +140,37 @@ export const OrganizationSelector: FC<{
     },
     []
   );
+
+  // Teams → Leave is for admins only, so this is the one way a member leaves.
+  // Same endpoint and the same server checks (the last Super Admin stays, and
+  // nobody leaves their only workspace). It is offered only with somewhere to
+  // go, and the session moves there before the reload.
+  const leave = useCallback(async () => {
+    setOpen(false);
+    const next = data?.find((org: Organization) => org.id !== current?.id);
+    if (
+      !next ||
+      !(await deleteDialog(
+        t(
+          'are_you_sure_leave_workspace',
+          'Are you sure you want to leave this workspace?'
+        ),
+        t('leave', 'Leave')
+      ))
+    ) {
+      return;
+    }
+    const res = await fetch('/settings/team/leave', { method: 'POST' });
+    if (!res.ok) {
+      const { message } = await res.json().catch(() => ({ message: '' }));
+      toast.show(
+        message || t('team_action_failed', 'Could not update the team'),
+        'warning'
+      );
+      return;
+    }
+    await changeOrg(next)();
+  }, [data, current?.id, t, fetch, toast, changeOrg]);
 
   useEffect(() => {
     if (!open) return;
@@ -242,6 +276,37 @@ export const OrganizationSelector: FC<{
                 </button>
               );
             })}
+            {data.length > 1 && (
+              <>
+                <div className="mx-[4px] my-[5px] h-[1px] bg-pqLine" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={leave}
+                  className="flex w-full items-center gap-[9px] rounded-pqSm px-[9px] py-[7px] text-start text-[13px] text-pqWarn transition-colors hover:bg-pqHover"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    aria-hidden="true"
+                    className="shrink-0"
+                  >
+                    <path
+                      d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="min-w-0 flex-1 truncate">
+                    {t('leave_workspace', 'Leave workspace')}
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

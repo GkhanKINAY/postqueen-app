@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   canChangeRole,
   canLeaveWorkspace,
@@ -87,6 +89,29 @@ describe('isLastSuperAdmin / leave / transfer', () => {
     assert.equal(
       canTransferOwnership({ myRole: 'ADMIN', targetRole: 'ADMIN', confirm: true }),
       false
+    );
+  });
+});
+
+describe('leaveWorkspace', () => {
+  const service = readFileSync(
+    fileURLToPath(new URL('./organization.service.ts', import.meta.url)),
+    'utf8'
+  );
+  const leave = service.slice(
+    service.indexOf('async leaveWorkspace('),
+    service.indexOf('async updateOrganizationName(')
+  );
+
+  // The auth middleware needs one workspace to sign a request into, so an
+  // account left with none is refused everywhere.
+  it('refuses to leave the only workspace', () => {
+    assert.match(leave, /getOrgsByUserId\(userId\)/);
+    assert.match(leave, /f\.id !== org\.id && !f\.users\[0\]\?\.disabled/);
+    assert.match(leave, /You cannot leave your only workspace/);
+    assert.ok(
+      leave.indexOf('only workspace') < leave.indexOf('deleteTeamMember('),
+      'the check comes before the membership is removed'
     );
   });
 });

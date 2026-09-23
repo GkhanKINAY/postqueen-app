@@ -371,6 +371,16 @@ export class OrganizationService {
       );
     }
 
+    // The auth middleware signs every request into one of the user's
+    // workspaces, from this same list. With none left, every request is
+    // refused and the account cannot be used at all.
+    const otherWorkspaces = (
+      await this._organizationRepository.getOrgsByUserId(userId)
+    ).filter((f) => f.id !== org.id && !f.users[0]?.disabled);
+    if (!otherWorkspaces.length) {
+      throw new HttpException('You cannot leave your only workspace', 400);
+    }
+
     return this._organizationRepository.deleteTeamMember(org.id, userId);
   }
 
