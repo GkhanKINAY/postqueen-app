@@ -2,6 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import ShortlinkPreferenceComponent from '@gitroom/frontend/components/settings/shortlink-preference.component';
 
 const WorkspaceNameComponent = dynamic(
@@ -27,12 +28,14 @@ const DateFormatComponent = dynamic(
 
 /** Workspace defaults only — email prefs live under Settings → Notifications. */
 export const GlobalSettings = () => {
+  // No shortener configured: every choice there would do the same nothing.
+  const { shortLinkEnabled } = useVariables();
   return (
     <div className="mt-[18px] flex flex-col gap-[10px]">
       <WorkspaceNameComponent />
       <MetricComponent />
       <DateFormatComponent />
-      <ShortlinkPreferenceComponent />
+      {shortLinkEnabled && <ShortlinkPreferenceComponent />}
     </div>
   );
 };

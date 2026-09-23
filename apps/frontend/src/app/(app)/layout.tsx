@@ -30,6 +30,7 @@ import {
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { isAiEnabled } from '@gitroom/helpers/utils/ai.enabled';
 import { isClippingEnabled } from '@gitroom/helpers/utils/clipping.enabled';
+import { isShortLinkEnabled } from '@gitroom/helpers/utils/short.link.enabled';
 import { isEmailEnabled } from '@gitroom/helpers/utils/email.enabled';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
 import { isRegistrationDisabled } from '@gitroom/helpers/utils/registration.disabled';
@@ -146,6 +147,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           billingEnabled={isBillingEnabled()}
           aiEnabled={isAiEnabled()}
           clippingEnabled={isClippingEnabled()}
+          shortLinkEnabled={isShortLinkEnabled()}
           emailEnabled={isEmailEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           walletLogin={isWalletLoginEnabled()}

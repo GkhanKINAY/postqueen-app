@@ -13,6 +13,12 @@ interface VariableContextInterface {
    */
   clippingEnabled: boolean;
   /**
+   * A link shortener is configured (`isShortLinkEnabled`). Without one the
+   * backend never shortens a link and has no clicks to report, so the
+   * shortlink preference and the short link statistics are not offered.
+   */
+  shortLinkEnabled: boolean;
+  /**
    * Mail can actually be delivered. `/auth/forgot` always answers success so it
    * cannot be used to discover which addresses are registered, which means the
    * screen can never learn from the response that nothing was sent — so the
@@ -99,6 +105,7 @@ const VariableContext = createContext({
   billingEnabled: false,
   aiEnabled: false,
   clippingEnabled: false,
+  shortLinkEnabled: false,
   emailEnabled: false,
   passwordlessLogin: false,
   walletLogin: false,
