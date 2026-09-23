@@ -186,6 +186,19 @@ class CloudflareStorage implements IUploadProvider {
     return key;
   }
 
+  // Stricter than keyOf, which reads the last segment of any host: the URL
+  // has to be a key directly under the upload URL this storage writes.
+  isOwnFile(path: string) {
+    if (!this._uploadUrl) {
+      return false;
+    }
+    const base = `${this._uploadUrl.replace(/\/+$/, '')}/`;
+    return (
+      path.startsWith(base) &&
+      KEY.test(path.slice(base.length).split(/[?#]/)[0])
+    );
+  }
+
   async readFile(path: string): Promise<Readable> {
     const object = await this._client.send(
       new GetObjectCommand({ Bucket: this._bucketName, Key: this.keyOf(path) })

@@ -11,6 +11,12 @@ export interface IUploadProvider {
   readFile(path: string): Promise<Readable>;
   /** Deletes by the same saved URL; a file that is already gone is not an error. */
   removeFile(path: string): Promise<void>;
+  /**
+   * Whether a saved URL names a file this storage wrote, under the address it
+   * serves them from. The account purge removes nothing else, so a link to
+   * another host is never taken for one of ours.
+   */
+  isOwnFile(path: string): boolean;
   // Presigned URLs, so another service (the clipping processor, the
   // transcriber) reads or writes one key without the bucket's credentials;
   // only cloud storage can mint them

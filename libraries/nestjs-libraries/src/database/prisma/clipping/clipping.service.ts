@@ -103,6 +103,15 @@ export class ClippingService {
     };
   }
 
+  // Every file these clippings and clips write under a derived key, for the
+  // account purge to remove with their records
+  derivedFileKeys(clippingIds: string[], clipIds: string[]) {
+    return [
+      ...clippingIds.flatMap((id) => Object.values(this.keys(id))),
+      ...clipIds.flatMap((id) => Object.values(this.clipKeys(id))),
+    ];
+  }
+
   private putJson(key: string, value: unknown) {
     return this.storage.writeFile!(
       key,

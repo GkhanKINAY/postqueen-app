@@ -1,5 +1,6 @@
 import { Global, Injectable, Module, OnModuleInit } from '@nestjs/common';
 import { TemporalService } from 'nestjs-temporal-core';
+import { accountPurgeMode } from '@gitroom/helpers/utils/account.purge.mode';
 
 @Injectable()
 export class InfiniteWorkflowRegister implements OnModuleInit {
@@ -42,6 +43,24 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
           ?.getRawClient()
           ?.workflow?.start('analyticsSyncWorkflowV1', {
             workflowId: 'analytics-sync-workflow-v1',
+            taskQueue: 'main',
+          });
+      } catch (err) {
+        // Already running, as above.
+      }
+    }
+
+    // Its own switch rather than RUN_CRON: turning RUN_CRON on also starts
+    // the founding-fee charges and the missing-post recovery, a separate
+    // decision. Unset means off and nothing starts. Once started, the
+    // orchestrator reads the mode on every run, so going from dry-run to on
+    // (or back to off) is an environment change on the orchestrator.
+    if (accountPurgeMode() !== 'off') {
+      try {
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('accountPurgeWorkflowV1', {
+            workflowId: 'account-purge-v1',
             taskQueue: 'main',
           });
       } catch (err) {

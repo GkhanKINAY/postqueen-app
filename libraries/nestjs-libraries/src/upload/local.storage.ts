@@ -162,4 +162,10 @@ export class LocalStorage implements IUploadProvider {
     }
     await fsp.rm(file, { force: true });
   }
+
+  // The same mapping: a URL under FRONTEND_URL/uploads that stays inside
+  // UPLOAD_DIRECTORY.
+  isOwnFile(path: string) {
+    return !!ownUploadPath(path);
+  }
 }

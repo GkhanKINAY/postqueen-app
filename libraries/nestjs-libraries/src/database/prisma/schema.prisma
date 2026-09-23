@@ -42,6 +42,9 @@ model Organization {
   /// hard-deleted Subscription row so First Billing can show an honest end
   /// date for paid-then-cancelled orgs instead of createdAt+trial.
   subscriptionEndedAt DateTime?
+  /// Set when the account purge has removed the workspace's content and
+  /// scrubbed this row down to a tombstone. Null on every live workspace.
+  purgedAt            DateTime?
   autoPost            AutoPost[]
   Comments            Comments[]
   credits             Credits[]
@@ -72,6 +75,7 @@ model Organization {
   @@index([streakSince])
   @@index([paymentId])
   @@index([deletedAt])
+  @@index([purgedAt])
 }
 
 model Tags {
@@ -133,6 +137,9 @@ model User {
   /// Sessions signed before this are refused. Set when the password changes,
   /// so a reset ends every session that existed, not only the one in hand.
   sessionsNotBefore     DateTime?
+  /// Set when the account purge has scrubbed this deleted user down to a
+  /// tombstone. Null on every live user.
+  purgedAt              DateTime?
   comments              Comments[]
   items                 ItemUser[]
   groupBuyer            MessagesGroup[]      @relation("groupBuyer")
@@ -153,6 +160,7 @@ model User {
   @@index([lastOnline])
   @@index([pictureId])
   @@index([deletedAt])
+  @@index([purgedAt])
 }
 
 /// Login identities attached to a User. Session JWT still keys off User.id.
