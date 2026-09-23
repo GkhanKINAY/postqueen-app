@@ -37,6 +37,12 @@ export class OtpRepository {
     });
   }
 
+  deleteExpired(olderThan: Date) {
+    return this._otp.model.otpCode.deleteMany({
+      where: { expiresAt: { lt: olderThan } },
+    });
+  }
+
   // Called before issuing a fresh code so a stale one can't be reused.
   invalidateActive(email: string, purpose: OtpPurpose) {
     return this._otp.model.otpCode.updateMany({

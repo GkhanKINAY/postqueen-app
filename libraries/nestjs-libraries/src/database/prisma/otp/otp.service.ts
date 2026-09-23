@@ -13,6 +13,12 @@ export class OtpService {
     expiresAt: Date;
     ip?: string;
   }) {
+    // Each row keeps an email and an IP long after its code stops working, so
+    // opportunistically prune the ones more than a day past their expiry
+    this._otpRepository
+      .deleteExpired(new Date(Date.now() - 24 * 60 * 60 * 1000))
+      .catch(() => {});
+
     return this._otpRepository.create(data);
   }
 
