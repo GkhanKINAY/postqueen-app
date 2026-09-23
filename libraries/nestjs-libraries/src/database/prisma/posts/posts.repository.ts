@@ -545,7 +545,19 @@ export class PostsRepository {
             organizationId: update.organizationId,
             platform: update.integration.providerIdentifier,
             postId: update.id,
-            body: typeof body === 'string' ? body : JSON.stringify(body),
+            // The body is the post list the workflow was publishing, and each
+            // post carries its whole channel row. Keep the posts, not the
+            // channel's credentials.
+            body:
+              typeof body === 'string'
+                ? body
+                : JSON.stringify(body, (key, value) =>
+                    ['token', 'refreshToken', 'customInstanceDetails'].includes(
+                      key
+                    )
+                      ? undefined
+                      : value
+                  ),
           },
         });
       } catch (err) {}
