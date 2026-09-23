@@ -1445,6 +1445,35 @@ export class PostsService {
       );
     }
 
+    // A draft can be saved with settings the network would refuse. Queueing
+    // it is the point where POST /posts would have checked them, so the same
+    // rules run here, before a publishing workflow starts.
+    if (status === 'schedule' && getPostById.state === 'DRAFT') {
+      const post = await this.getPost(orgId, id);
+      const [check] = await this.validatePosts(orgId, [
+        {
+          integration: { id: post.integration },
+          value: post.posts.map((p) => ({ content: p.content, image: p.image })),
+          settings: post.settings,
+        },
+      ]);
+
+      let error = '';
+      if (check.emptyContent) {
+        error = 'Your post should have at least one character or one image.';
+      } else if (!check.valid) {
+        error = check.settingsError || 'Please fix your settings';
+      } else if (check.errors !== true) {
+        error = check.errors;
+      } else if (check.tooLong) {
+        error = 'post is too long, please fix it';
+      }
+
+      if (error) {
+        throw new BadRequestException(`${check.name}: ${error}`);
+      }
+    }
+
     const state: State = status === 'draft' ? 'DRAFT' : 'QUEUE';
 
     // Idempotent: already a draft — skip Temporal churn.
