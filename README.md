@@ -1,16 +1,25 @@
-# PostQueen
-
-PostQueen is a social media scheduler with an AI copilot. Plan, write and schedule posts to 30+ networks from the calendar, your AI agent or the API.
-
-<p>
-  <a href="https://postqueen.ai">Website</a> ·
-  <a href="https://postqueen.ai/pricing">Pricing</a> ·
-  <a href="https://docs.postqueen.ai/introduction">Docs</a> ·
-  <a href="https://api.postqueen.ai/docs">API reference</a> ·
-  <a href="LICENSE">AGPL-3.0</a>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.png">
+    <img src=".github/assets/banner-light.png" width="100%" alt="PostQueen. Your AI agent posts for you. Plan, write and schedule posts to 30+ networks from the calendar, your AI agent or the API.">
+  </picture>
 </p>
 
-![The PostQueen calendar in week view, with scheduled posts for several channels and the post list beside it](apps/frontend/public/auth/app-preview.png)
+<p align="center">
+  PostQueen is a social media scheduler with an AI copilot. Plan, write and schedule posts to 30+ networks from the calendar, your AI agent or the API.
+</p>
+
+<p align="center">
+  <a href="https://postqueen.ai"><b>Website</b></a> ·
+  <a href="https://docs.postqueen.ai/introduction"><b>Docs</b></a> ·
+  <a href="https://postqueen.ai/pricing"><b>Pricing</b></a> ·
+  <a href="https://api.postqueen.ai/docs"><b>API reference</b></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/GkhanKINAY/postqueen-app/tags"><img src="https://img.shields.io/github/v/tag/GkhanKINAY/postqueen-app?sort=semver&label=release&color=7C3AED&labelColor=15131C" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-7C3AED?labelColor=15131C" alt="License: AGPL-3.0"></a>
+</p>
 
 ## What it does
 
@@ -18,7 +27,12 @@ PostQueen is a social media scheduler with an AI copilot. Plan, write and schedu
 - Drafts posts and generates images with the AI copilot inside the app.
 - Shows analytics for the networks that report them: X, Facebook, Instagram, LinkedIn Pages, YouTube, Threads, Pinterest, TikTok and Google Business Profile.
 - Lets a team work in one workspace, with roles, customers and comments on posts. Team members come with the Growth plan and up.
-- Gives agents and scripts the same abilities through an MCP server, a CLI, a REST API, a Node SDK and an n8n node.
+- Lets agents and scripts create and manage posts through an MCP server, a CLI, a REST API, a Node SDK and an n8n node.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/app-preview-dark.png">
+  <img src=".github/assets/app-preview-light.png" width="100%" alt="Illustration of the PostQueen app: an AI agent uses three PostQueen tools to plan four posts, and they appear on the week calendar next to the chat.">
+</picture>
 
 ## Quick start
 
@@ -30,7 +44,7 @@ PostQueen is a social media scheduler with an AI copilot. Plan, write and schedu
 # An AI agent over MCP (Claude Code shown)
 claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/YOUR_API_KEY
 
-# The CLI (Node.js 18 or newer)
+# The CLI (Node.js 20.19+ or 22.12+)
 npm install -g postqueen
 export POSTQUEEN_API_KEY=YOUR_API_KEY
 postqueen integrations:list
@@ -54,19 +68,19 @@ curl https://api.postqueen.ai/public/v1/integrations -H "Authorization: YOUR_API
 
 There are two ways to connect. Each agent's guide says which one it supports.
 
-- **Sign in.** Add `https://api.postqueen.ai/mcp-oauth-dynamic` to your agent, then sign in to PostQueen and approve access. A workspace admin has to approve. This address has 20 tools.
-- **API key.** Add `https://api.postqueen.ai/mcp/YOUR_API_KEY`, using the key from Connections > API Keys. This address has 21 tools: the same 20 plus `ask_postqueen`, which hands a whole request to the PostQueen agent.
+- **API key.** Add `https://api.postqueen.ai/mcp/YOUR_API_KEY`, using the key from Connections > API Keys. This address has 21 tools: 20 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent.
+- **Sign in.** Add `https://api.postqueen.ai/mcp-oauth-dynamic` to your agent, then sign in to PostQueen and approve access. A workspace admin has to approve. This address has the same 20 tools, without `ask_postqueen`. It is new and has not been tested end to end yet, so use the API key if the sign-in fails.
 
 For Grok Bot, ask the Bot to connect PostQueen as an MCP server at `https://api.postqueen.ai/mcp`. Then paste your key into the Bot's secure prompt, never into the chat.
 
-Setup guides cover Claude, Claude Cowork, ChatGPT, Grok, Grok Bot, Claude Code, Codex, Cursor, Gemini CLI, OpenClaw, Hermes Agent, VS Code, Devin Desktop, Zed, Grok Build, Muse Code, Muse, Perplexity Computer, NanoClaw and Paperclip. Start at the [agents overview](https://docs.postqueen.ai/agents/overview).
+Setup guides cover Claude, ChatGPT, Grok, Grok Bot, Claude Code, Codex, Cursor, Gemini CLI, OpenClaw, Hermes Agent, VS Code, Devin Desktop, Zed, Grok Build, Muse Code and Muse. Start at the [agents overview](https://docs.postqueen.ai/agents/overview).
 
 ## Networks
 
 PostQueen supports 30+ networks. This is their status on the hosted service at postqueen.ai:
 
 - **Available:** Bluesky, DEV, Hashnode, Lemmy, Listmonk, Moltbook, Nostr and WordPress.
-- **Available, with limits until the network approves PostQueen's app:** Facebook Pages, Instagram (Business and Creator accounts), Threads, TikTok, X and YouTube.
+- **Available, with limits until the network approves PostQueen's app:** Facebook Pages, Instagram (Business and Creator accounts), Threads, TikTok, X and YouTube. X can be connected once the 7-day trial has ended.
 - **Soon on the hosted service:** Discord, Dribbble, Farcaster, Google Business Profile, Kick, LinkedIn and LinkedIn Pages, Mastodon, MeWe, Pinterest, Reddit, Skool, Slack, Telegram, TikTok Business, Tumblr, Twitch, VK and Whop.
 
 On your own server, a network works once you create its developer app. The [provider guides](https://docs.postqueen.ai/providers/overview) cover each one.
@@ -99,7 +113,7 @@ To run it from source, follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [develo
 ## Privacy and security
 
 - Channels connect through each network's official OAuth sign-in where the network offers one.
-- Some networks, such as Bluesky, Lemmy, WordPress and Nostr, need an app password or a key that you paste in.
+- Some networks, such as Bluesky, Lemmy, WordPress and Nostr, need an app password, an account password or a key that you paste in.
 - PostQueen stores these credentials so it can post for you, and replaces them when you remove the channel.
 - Read the [privacy policy](https://postqueen.ai/privacy-policy), or [delete your account](https://postqueen.ai/delete-my-account).
 - To report a vulnerability, see [SECURITY.md](SECURITY.md).
