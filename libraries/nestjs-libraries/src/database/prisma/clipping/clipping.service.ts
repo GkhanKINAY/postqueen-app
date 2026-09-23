@@ -26,8 +26,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { randomBytes } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { timer } from '@gitroom/helpers/utils/timer';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
-import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { text } from 'stream/consumers';
 import dayjs from 'dayjs';
 import {
@@ -209,9 +208,7 @@ export class ClippingService {
     const org = await this._organizationService.getOrgByIdWithSubscription(
       organizationId
     );
-    return (
-      isBillingEnabled() && !!org?.isTrailing && trialWindow(org.createdAt).open
-    );
+    return effectiveIsTrailing(org);
   }
 
   private isStale(clipping: { status: string; createdAt: Date }) {
@@ -250,7 +247,7 @@ export class ClippingService {
     const integrations = body.integrations || [];
     for (const integration of integrations) {
       if (
-        !(await this._integrationService.getIntegrationById(
+        !(await this._integrationService.getIntegrationByIdNotDeleted(
           org.id,
           integration
         ))

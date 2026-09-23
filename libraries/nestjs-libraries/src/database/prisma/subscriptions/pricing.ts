@@ -1,3 +1,5 @@
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+
 export interface PricingInnerInterface {
   current: string;
   /**
@@ -404,10 +406,8 @@ export const TRIAL_DAYS = 7;
  * offer: the row says a trial began, this says whether it is still running. No
  * column, no cron, and nothing to drift.
  *
- * Read in one place — `auth.middleware.ts`, where `req.org` is assembled — so
- * every consumer downstream (the X lock, trial-only video, the trial banner,
- * `/billing/is-trial-finished`) gets the same answer without being patched
- * individually.
+ * Every trial lock reads it through `effectiveIsTrailing` below, so the app,
+ * the public API, MCP and the orchestrator all get the same answer.
  */
 export const trialWindow = (createdAt?: string | Date | null) => {
   const started = createdAt ? new Date(createdAt).getTime() : NaN;
@@ -420,3 +420,30 @@ export const trialWindow = (createdAt?: string | Date | null) => {
   const msLeft = endsAt.getTime() - Date.now();
   return { endsAt, msLeft: Math.max(0, msLeft), open: msLeft > 0 };
 };
+
+/**
+ * Whether an organization is on its free trial right now: the stored flag says
+ * a trial *started*, `trialWindow` says whether it is still running.
+ *
+ * Every trial lock goes through this — `auth.middleware.ts` when it assembles
+ * `req.org` for the app, and the services that are also reached with an
+ * organization read straight from the database: the public API, MCP and the
+ * orchestrator. When the app derived the flag and those read the raw row, an
+ * organization whose flag was never cleared (a founding member past its seven
+ * days) was let through by the app and then refused by the video job the app
+ * had just started. Deriving an already derived flag changes nothing, so a
+ * caller never has to know which kind it was handed.
+ *
+ * Read-only on purpose. The row is left alone — Stripe's webhook and the "End
+ * free trial" button are still the only things that write it.
+ *
+ * Billing off: there is no trial to be in, whatever the row says (every
+ * organization is created with the flag set).
+ */
+export const effectiveIsTrailing = (
+  org?: {
+    isTrailing?: boolean | null;
+    createdAt?: Date | string | null;
+  } | null
+) =>
+  isBillingEnabled() && !!org?.isTrailing && trialWindow(org.createdAt).open;

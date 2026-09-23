@@ -478,8 +478,11 @@ export class PublicIntegrationsController {
     @Param('id') id: string
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    // An unknown id reached Prisma's update and answered 500.
-    if (!(await this._integrationService.getIntegrationById(org.id, id))) {
+    // An unknown id reached Prisma's update and answered 500. A channel that
+    // is already deleted is not found either.
+    if (
+      !(await this._integrationService.getIntegrationByIdNotDeleted(org.id, id))
+    ) {
       throw new HttpException({ msg: 'Channel not found' }, 404);
     }
     const isTherePosts = await this._integrationService.getPostsForChannel(
@@ -514,10 +517,8 @@ export class PublicIntegrationsController {
     @Param('id') id: string
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    const loadIntegration = await this._integrationService.getIntegrationById(
-      org.id,
-      id
-    );
+    const loadIntegration =
+      await this._integrationService.getIntegrationByIdNotDeleted(org.id, id);
 
     if (!loadIntegration) {
       throw new HttpException({ msg: 'Integration not found' }, 404);
@@ -644,10 +645,8 @@ export class PublicIntegrationsController {
     @Body() body: { methodName: string; data: Record<string, string> }
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    const getIntegration = await this._integrationService.getIntegrationById(
-      org.id,
-      id
-    );
+    const getIntegration =
+      await this._integrationService.getIntegrationByIdNotDeleted(org.id, id);
 
     if (!getIntegration) {
       throw new HttpException({ msg: 'Integration not found' }, 404);

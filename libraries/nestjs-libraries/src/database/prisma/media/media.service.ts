@@ -46,7 +46,7 @@ import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { randomBytes } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
@@ -54,21 +54,21 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
  * Whether this video type is held back because the organization is still on
  * trial.
  *
- * The `isBillingEnabled()` half is the part that was missing. Every new
- * organization is written `isTrailing: true` for seven days
- * (`organization.repository.ts`), and `auth.middleware.ts` derives the live flag
- * from that without consulting billing — so on an install with no Stripe keys
- * the first week of every account was told to "finish your trial" and sent to a
- * billing page that cannot take money. There is no trial to finish when there
- * is nothing to buy.
+ * `effectiveIsTrailing` answers that, billing included: on an install with no
+ * Stripe keys there is no trial to finish, and the first week of every account
+ * used to be told to "finish your trial" and sent to a billing page that cannot
+ * take money. It also derives the flag from the registration date the way the
+ * auth middleware does for the app, because the public API, MCP and the
+ * orchestrator's video activity hand in the stored row, and a founding member
+ * past its seven days can still carry the flag there.
  *
- * `integration.service.ts`'s `assertConnectAllowed` is the same rule written
- * correctly; this is that guard applied to video generation.
+ * `integration.service.ts`'s `assertConnectAllowed` is the same rule; this is
+ * that guard applied to video generation.
  */
 const isTrialLocked = (
   video: { trial?: boolean },
-  org: { isTrailing?: boolean }
-) => isBillingEnabled() && !video.trial && !!org.isTrailing;
+  org: { isTrailing?: boolean; createdAt?: Date | string }
+) => !video.trial && effectiveIsTrailing(org);
 
 /**
  * Uploaded videos are normalized in the background (h264 / yuv420p / aac,
@@ -538,7 +538,7 @@ export class MediaService {
   async generateVideoAllowed(org: Organization, type: string) {
     const video = this._videoManager.getVideoByName(type);
     if (!video) {
-      throw new Error(`Video type ${type} not found`);
+      throw new HttpException(`Video generator ${type} not found`, 404);
     }
 
     if (isTrialLocked(video, org)) {
@@ -563,7 +563,7 @@ export class MediaService {
 
     const video = this._videoManager.getVideoByName(body.type);
     if (!video) {
-      throw new Error(`Video type ${body.type} not found`);
+      throw new HttpException(`Video generator ${body.type} not found`, 404);
     }
 
     if (isTrialLocked(video, org)) {
@@ -724,9 +724,11 @@ export class MediaService {
   }
 
   async videoFunction(identifier: string, functionName: string, body: any) {
+    // An unknown or unconfigured generator is the caller's to fix, not a
+    // server failure: a plain Error here answered 500.
     const video = this._videoManager.getVideoByName(identifier);
     if (!video) {
-      throw new Error(`Video with identifier ${identifier} not found`);
+      throw new HttpException(`Video generator ${identifier} not found`, 404);
     }
 
     // @ts-ignore
