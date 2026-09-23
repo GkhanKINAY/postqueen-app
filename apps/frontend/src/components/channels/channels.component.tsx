@@ -383,7 +383,7 @@ const ChannelSettingsGroups: FC<{
       !(await deleteDialog(
         t(
           'are_you_sure_delete_channel',
-          'Are you sure you want to delete this channel?'
+          'Deleting this channel also deletes all of its posts in PostQueen, including scheduled posts, drafts and published posts. Scheduled posts will not go out, and reconnecting the channel later does not bring the posts back. Posts that were already published are not taken down from the platform.'
         ),
         t('delete_channel_title', 'Delete Channel')
       ))

@@ -675,7 +675,7 @@
   "are_you_sure_disable_channel": "您确定要禁用此频道吗？",
   "disable_channel_title": "禁用频道",
   "channel_disabled": "频道已禁用",
-  "are_you_sure_delete_channel": "您确定要删除此频道吗？",
+  "are_you_sure_delete_channel": "删除此频道也会删除它在 PostQueen 中的所有帖子，包括定时帖子、草稿和已发布的帖子。定时帖子将不会发布，之后重新连接该频道也不会恢复这些帖子。已经发布的帖子不会从平台上撤下。",
   "delete_channel_title": "删除频道",
   "delete_posts_before_channel": "您需要先删除与此频道相关的所有帖子，然后才能删除该频道",
   "channel_deleted": "频道已删除",

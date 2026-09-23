@@ -675,7 +675,7 @@
   "are_you_sure_disable_channel": "¿Estás seguro de que deseas deshabilitar este canal?",
   "disable_channel_title": "Deshabilitar canal",
   "channel_disabled": "Canal deshabilitado",
-  "are_you_sure_delete_channel": "¿Estás seguro de que deseas eliminar este canal?",
+  "are_you_sure_delete_channel": "Al eliminar este canal también se eliminan todas sus publicaciones en PostQueen, incluidas las programadas, los borradores y las ya publicadas. Las publicaciones programadas no se publicarán, y reconectar el canal más adelante no recupera las publicaciones. Las publicaciones que ya se publicaron no se retiran de la plataforma.",
   "delete_channel_title": "Eliminar canal",
   "delete_posts_before_channel": "Debes eliminar todas las publicaciones asociadas a este canal antes de eliminarlo",
   "channel_deleted": "Canal eliminado",

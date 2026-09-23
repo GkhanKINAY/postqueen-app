@@ -694,7 +694,7 @@
   "are_you_sure_disable_channel": "Bu kanalı devre dışı bırakmak istediğinizden emin misiniz?",
   "disable_channel_title": "Kanalı Devre Dışı Bırak",
   "channel_disabled": "Kanal Devre Dışı",
-  "are_you_sure_delete_channel": "Bu kanalı silmek istediğinizden emin misiniz?",
+  "are_you_sure_delete_channel": "Bu kanalı silerseniz kanalın PostQueen'deki tüm gönderileri de silinir; zamanlanmış gönderiler, taslaklar ve yayınlanmış gönderiler buna dahildir. Zamanlanmış gönderiler yayınlanmaz ve kanalı daha sonra yeniden bağlamak gönderileri geri getirmez. Daha önce yayınlanmış gönderiler platformdan kaldırılmaz.",
   "delete_channel_title": "Kanalı Sil",
   "delete_posts_before_channel": "Bu kanalı silmeden önce bu kanala ait tüm gönderileri silmelisiniz",
   "channel_deleted": "Kanal Silindi",
