@@ -3,6 +3,7 @@ initializeSentry('backend', true);
 import compression from 'compression';
 
 import { loadSwagger } from '@gitroom/helpers/swagger/load.swagger';
+import { PublicApiModule } from '@gitroom/backend/public-api/public.api.module';
 import { json } from 'express';
 import { Runtime } from '@temporalio/worker';
 Runtime.install({ shutdownSignals: [] });
@@ -87,7 +88,7 @@ async function start() {
   app.useGlobalFilters(new PostValidationExceptionFilter());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  loadSwagger(app);
+  loadSwagger(app, [PublicApiModule]);
 
   const port = process.env.PORT || 3000;
 
