@@ -147,7 +147,7 @@ export const Sets: FC = () => {
           toaster.show(
             t(
               'set_needs_channel',
-              'Connect a channel first — a social set is a saved selection of channels.'
+              'Connect a channel first. A social set is a saved selection of channels.'
             ),
             'warning'
           );

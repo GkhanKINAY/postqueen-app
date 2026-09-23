@@ -78,7 +78,7 @@ export const TOUR_COPY: Record<string, { title: string; text: string }> = {
   },
   'connect-creds': {
     title: 'One API key for every client',
-    text: 'Reveal it here, then copy the MCP URL. The same key works for MCP, the CLI and the Public API. Get it later from Settings, API Keys.',
+    text: 'Reveal it here, then copy the MCP URL. The same key works for MCP, the CLI and the Public API. Find it again under Connections, API Keys.',
   },
   'nav-channels': {
     title: 'Your publishing accounts live here',

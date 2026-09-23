@@ -516,7 +516,7 @@ export const SettingsPopup: FC<{
         title: t('api_keys', 'API Keys'),
         desc: t(
           'api_keys_description',
-          'Reveal or rotate your personal API key for authenticating with the public API.'
+          "Reveal or rotate this workspace's API key. The public API, the CLI and MCP use it."
         ),
       },
       developers: {

@@ -112,7 +112,7 @@ export const Autopost: FC = () => {
           toaster.show(
             t(
               'autopost_needs_channel',
-              'Connect a channel first — an autopost needs somewhere to publish.'
+              'Connect a channel first. An autopost needs somewhere to publish.'
             ),
             'warning'
           );

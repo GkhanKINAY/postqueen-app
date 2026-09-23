@@ -4,7 +4,9 @@ isTrailing 21
 tier.ai 8
 tier.autoPost 2
 tier.current 16
-tier.image_generator 2
+tier.generate_videos 4
+tier.image_generation_count 2
+tier.image_generator 4
 tier.month_price 3
 tier.team_members 2
 tier.webhooks 3

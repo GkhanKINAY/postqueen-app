@@ -3089,7 +3089,7 @@ await pq.post({
               title: t('conn_oauth_step_create', 'Create the app'),
               detail: t(
                 'conn_oauth_step_create_detail',
-                'Connect → OAuth Apps, or Settings → Developers. Set your redirect URL there. This is not where the personal API key lives, that is API Keys.'
+                'Connect → OAuth Apps, or Settings → Developers. Set your redirect URL there. This is not where the workspace API key lives, that is API Keys.'
               ),
             },
             {
