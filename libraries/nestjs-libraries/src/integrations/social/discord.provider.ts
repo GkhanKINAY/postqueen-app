@@ -352,10 +352,13 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
         image: '',
         doNotCache: true,
       })),
+      // Members belong to one server, and the mention cache is shared by every
+      // workspace, so they are looked up fresh each time like the roles above.
       ...list.map((p: any) => ({
         id: String(p.user.id),
         label: p.user.global_name || p.user.username,
         image: `https://cdn.discordapp.com/avatars/${p.user.id}/${p.user.avatar}.png`,
+        doNotCache: true,
       })),
     ];
   }
