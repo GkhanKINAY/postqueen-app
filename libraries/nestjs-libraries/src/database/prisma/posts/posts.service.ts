@@ -1132,6 +1132,34 @@ export class PostsService {
       );
       const removeLinks = !!provider?.stripLinks?.();
 
+      // "Add a thread finisher" was a setting nothing ever published. On save
+      // it becomes the thread's last part, in the editor's paragraph HTML, and
+      // the switch is turned off, so the next edit shows it as a normal part
+      // instead of adding it again.
+      const finisher = (post.settings as any)?.active_thread_finisher
+        ? String((post.settings as any)?.thread_finisher || '').trim()
+        : '';
+      if (finisher) {
+        const html = finisher
+          .split(/\n+/)
+          .map(
+            (line) =>
+              `<p>${line
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')}</p>`
+          )
+          .join('');
+        post.value = [
+          ...(post.value || []),
+          { id: makeId(10), content: html, image: [], delay: 0 },
+        ];
+        post.settings = {
+          ...(post.settings as any),
+          active_thread_finisher: false,
+        };
+      }
+
       const messages = (post.value || []).map((p) => p.content);
       // No point shortlinking links on platforms that strip them out anyway
       const updateContent =
