@@ -38,11 +38,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GkhanKINAY/postqueen-app/releases"><img src="https://img.shields.io/github/v/release/GkhanKINAY/postqueen-app?label=release&color=7C3AED&labelColor=15131C" alt="Latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-7C3AED?labelColor=15131C" alt="License: AGPL-3.0"></a>
-  <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&color=7C3AED&labelColor=15131C" alt="postqueen CLI on npm"></a>
-  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n%20node&color=7C3AED&labelColor=15131C" alt="n8n node on npm"></a>
-  <a href="https://www.forbes.com/profile/gokhan-kinay/"><img src="https://img.shields.io/badge/founder-Forbes%2030%20Under%2030%20Europe-7C3AED?labelColor=15131C" alt="Founder: Forbes 30 Under 30 Europe"></a>
+  <a href="https://github.com/GkhanKINAY/postqueen-app/releases"><img src="https://img.shields.io/github/v/release/GkhanKINAY/postqueen-app?label=release&color=7C3AED&labelColor=15131C&logo=github&logoColor=white" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2563EB?labelColor=15131C" alt="License: AGPL-3.0"></a>
+  <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&color=CB3837&labelColor=15131C&logo=npm&logoColor=white" alt="postqueen CLI on npm"></a>
+  <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n%20node&color=EA4B71&labelColor=15131C&logo=n8n&logoColor=white" alt="n8n node on npm"></a>
+  <a href="https://www.forbes.com/profile/gokhan-kinay/"><img src="https://img.shields.io/badge/Forbes-30%20Under%2030%20Europe-C9A227?labelColor=15131C" alt="Founder: Forbes 30 Under 30 Europe"></a>
 </p>
 
 <p align="center">
