@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=hero-button"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-trial-dark.png"><img src=".github/assets/showcase/btn-trial-light.png" width="323" alt="Start 7-day trial for $0"></picture></a><a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-agent-dark.png"><img src=".github/assets/showcase/btn-agent-light.png" width="297" alt="Connect your AI agent"></picture></a>
+  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=hero-button"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-trial-dark.png"><img src=".github/assets/showcase/btn-trial-light.png" width="351" alt="Start 7-day trial for $0"></picture></a><a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-agent-dark.png"><img src=".github/assets/showcase/btn-agent-light.png" width="325" alt="Connect your AI agent"></picture></a>
 </p>
 
 <p align="center">
@@ -46,6 +46,14 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/GkhanKINAY/postqueen-app/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/star-dark.png"><img src=".github/assets/showcase/star-light.png" width="380" alt="Like PostQueen? Star the repo. It helps others find it."></picture></a>
+</p>
+
+<p align="center">
+  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=demo-gif"><img src=".github/assets/showcase/demo.gif" width="100%" alt="Demo: in Claude, someone asks PostQueen to plan next week's posts for Instagram, TikTok, LinkedIn and X. Claude uses three PostQueen tools, and four posts appear on the PostQueen calendar."></a>
+</p>
+
+<p align="center">
   <a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/works-dark.png"><img src=".github/assets/showcase/works-light.png" width="100%" alt="Use the agent you already have: Claude, ChatGPT, Grok Bot (new), Grok, Perplexity, Muse (new), Claude Code, Codex, Cursor, Gemini CLI, VS Code, Devin Desktop, Zed, OpenClaw, Hermes, NanoClaw, Paperclip and any MCP app. Posts to 30+ networks."></picture></a>
 </p>
 
@@ -63,11 +71,6 @@
 - **Analytics** for the networks that report them: X, Facebook, Instagram, LinkedIn Pages, YouTube, Threads, Pinterest, TikTok and Google Business Profile.
 - **Automation.** Auto Post publishes new items from your RSS feeds, Auto-Plugs reply or repost once a post takes off, webhooks tell your own systems when a post goes out, and time slots pick the next free time.
 - **Teams and clients.** Workspaces with roles, customers to group channels by client, signatures, reusable sets and notifications.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/app-preview-dark.png">
-  <img src=".github/assets/app-preview-light.png" width="100%" alt="The PostQueen app: an AI agent uses three PostQueen tools to plan four posts, and they appear on the week calendar next to the chat.">
-</picture>
 
 ## Four ways to post
 
@@ -162,7 +165,14 @@ The key address has 21 tools: 20 for channels, posts, media, images, video and a
 
 ## PostQueen Cloud or self-hosted
 
-**PostQueen Cloud is the fastest way to start**, and the recommended one. The same open-source app, run for you.
+**PostQueen Cloud is the fastest way to start**, and the recommended one: the same open-source app, run for you, so you can post today instead of waiting weeks for each network to approve an app of your own.
+
+<p align="center">
+  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=choose-cloud"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/choose-cloud-dark.png"><img src=".github/assets/showcase/choose-cloud-light.png" width="49%" alt="PostQueen Cloud, recommended: post today, not after the API reviews. PostQueen's own network apps, the hosted MCP server, AI included, updates and support handled. Start 7-day trial for $0, $0 due today."></picture></a>
+  <a href="https://docs.postqueen.ai/installation/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/choose-self-dark.png"><img src=".github/assets/showcase/choose-self-light.png" width="49%" alt="Self-hosted, AGPL-3.0: run it on your own servers with PostgreSQL, Redis and Temporal, create a developer app on every network and wait for its review, bring your own AI keys, and handle updates yourself. Self-hosting guide."></picture></a>
+</p>
+
+The details, side by side:
 
 | | **PostQueen Cloud** (recommended) | Self-hosted |
 | --- | --- | --- |
@@ -175,7 +185,7 @@ The key address has 21 tools: 20 for channels, posts, media, images, video and a
 | Price | 7-day trial, $0 due today, then your plan ([pricing](https://postqueen.ai/pricing?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app)) | Free under AGPL-3.0, plus your servers |
 
 <p align="center">
-  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=cloud-table"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-trial-dark.png"><img src=".github/assets/showcase/btn-trial-light.png" width="323" alt="Start 7-day trial for $0"></picture></a><a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-agent-dark.png"><img src=".github/assets/showcase/btn-agent-light.png" width="297" alt="Connect your AI agent"></picture></a>
+  <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=cloud-table"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-trial-dark.png"><img src=".github/assets/showcase/btn-trial-light.png" width="351" alt="Start 7-day trial for $0"></picture></a><a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/btn-agent-dark.png"><img src=".github/assets/showcase/btn-agent-light.png" width="325" alt="Connect your AI agent"></picture></a>
 </p>
 
 **Self-hosting instead?** [postqueen-docker-compose](https://github.com/GkhanKINAY/postqueen-docker-compose) runs the app with PostgreSQL, Redis and a Temporal cluster on one host, and [postqueen-helmchart](https://github.com/GkhanKINAY/postqueen-helmchart) runs it on Kubernetes with a Temporal server you provide. The [self-hosting guide](https://docs.postqueen.ai/installation/overview) covers both, and the [provider guides](https://docs.postqueen.ai/installation/providers/overview) cover each network's developer app.
