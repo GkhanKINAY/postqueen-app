@@ -73,8 +73,8 @@ const LemmySettings: FC = () => {
       {fields.length === 0 && (
         <div className="text-red-500 text-[12px] mt-[10px]">
           {t(
-            'please_add_at_least_one_subreddit',
-            'Please add at least one Subreddit'
+            'please_add_at_least_one_community',
+            'Please add at least one community'
           )}
         </div>
       )}

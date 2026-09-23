@@ -226,6 +226,7 @@
   "link": "リンク",
   "add_subreddit": "サブレディットを追加",
   "please_add_at_least_one_subreddit": "少なくとも1つのサブレディットを追加してください",
+  "please_add_at_least_one_community": "コミュニティを1つ以上追加してください",
   "add_community": "コミュニティを追加",
   "select_post_type": "投稿タイプを選択...",
   "we_couldn_t_find_any_business_connected_to_your_linkedin_page": "あなたのLinkedInページに接続されているビジネスが見つかりませんでした。",

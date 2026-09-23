@@ -291,7 +291,7 @@ export const useProviderGuides = (): {
           username: t('guide_listmonk_f_user', 'A Listmonk API user.'),
           password: t(
             'guide_listmonk_f_pass',
-            "That user's API token, from Listmonk → Settings → API users."
+            "That user's API token, from Listmonk → Admin → Users."
           ),
         },
       },

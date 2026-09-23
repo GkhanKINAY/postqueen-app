@@ -1743,6 +1743,7 @@ play
 please_add
 please_add_at_least
 please_add_at_least_n_chars
+please_add_at_least_one_community
 please_add_at_least_one_subreddit
 please_add_the_following_command_in_your_chat
 please_check_your_email_to_activate_your_account
