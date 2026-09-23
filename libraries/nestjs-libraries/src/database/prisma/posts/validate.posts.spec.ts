@@ -18,9 +18,11 @@ const contract = read(
 
 describe('validatePosts hands each entry its text', () => {
   it('strips every entry once for the empty and too-long checks, as before', () => {
+    // Every check runs on the thread as it will be saved, finisher included.
+    assert.match(validate, /const value = this\.withThreadFinisher\(post\)\.value;/);
     assert.match(
       validate,
-      /const texts = \(post\.value \|\| \[\]\)\.map\(\(p\) =>\s*stripHtmlValidation\('normal', p\.content \|\| '', true\)/
+      /const texts = value\.map\(\(p\) =>\s*stripHtmlValidation\('normal', p\.content \|\| '', true\)/
     );
     assert.match(validate, /const strip = texts\[index\];/);
     assert.match(validate, /const tooLong = texts\.some\(\(strip\) =>/);
