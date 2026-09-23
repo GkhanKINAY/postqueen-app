@@ -938,6 +938,48 @@ export class PostsService {
    * same toasts it did before — and so `/posts` can refuse to create invalid
    * posts.
    */
+  /**
+   * "Add a thread finisher" (X, Threads, Bluesky) was a setting nothing ever
+   * published. When a post is saved it becomes the thread's last part, and the
+   * switch is stored off so the next edit shows it as a normal part instead of
+   * adding it again. validatePosts runs on the same result, so the part is
+   * checked like any other. Finishers saved while the composer used a rich
+   * editor are HTML already; plain text becomes one paragraph per line.
+   */
+  private withThreadFinisher(post: { value?: any[]; settings?: any }) {
+    const settings = post.settings || {};
+    const text = settings.active_thread_finisher
+      ? String(settings.thread_finisher || '').trim()
+      : '';
+    if (!text) {
+      return { value: post.value || [], settings };
+    }
+
+    // The rich editor always opened with a block tag; "<me>" in plain text
+    // is not HTML.
+    const html = /^<(p|div|h[1-6]|ul|ol|blockquote)\b/i.test(text)
+      ? text
+      : text
+          .split('\n')
+          .map((line) =>
+            line.trim()
+              ? `<p>${line
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')}</p>`
+              : '<p></p>'
+          )
+          .join('');
+
+    return {
+      value: [
+        ...(post.value || []),
+        { id: makeId(10), content: html, image: [], delay: 0 },
+      ],
+      settings: { ...settings, active_thread_finisher: false },
+    };
+  }
+
   async validatePosts(
     orgId: string,
     posts: Array<{
@@ -976,15 +1018,16 @@ export class PostsService {
         }
 
         const settings = post.settings || {};
-        const media = (post.value || []).map((p) => p.image || []);
+        const value = this.withThreadFinisher(post).value;
+        const media = value.map((p) => p.image || []);
         // One stripped text per entry for the empty / too-long checks below.
-        const texts = (post.value || []).map((p) =>
+        const texts = value.map((p) =>
           stripHtmlValidation('normal', p.content || '', true)
         );
         // And, for the provider's own rules, each entry exactly as the
         // publish activity will hand it over as `message`: stripped for the
         // provider's editor, plain text passed through as it came.
-        const messages = (post.value || []).map((p) =>
+        const messages = value.map((p) =>
           stripHtmlValidation(
             provider.editor,
             p.content || '',
@@ -1026,7 +1069,7 @@ export class PostsService {
 
         const maximumCharacters = provider.maxLength(additionalSettings, settings);
 
-        const emptyContent = (post.value || []).some((a, index) => {
+        const emptyContent = value.some((a, index) => {
           const strip = texts[index];
           const length = countLength(integration.providerIdentifier, strip);
           return length === 0 && (a.image || []).length === 0;
@@ -1132,32 +1175,11 @@ export class PostsService {
       );
       const removeLinks = !!provider?.stripLinks?.();
 
-      // "Add a thread finisher" was a setting nothing ever published. On save
-      // it becomes the thread's last part, in the editor's paragraph HTML, and
-      // the switch is turned off, so the next edit shows it as a normal part
-      // instead of adding it again.
-      const finisher = (post.settings as any)?.active_thread_finisher
-        ? String((post.settings as any)?.thread_finisher || '').trim()
-        : '';
-      if (finisher) {
-        const html = finisher
-          .split(/\n+/)
-          .map(
-            (line) =>
-              `<p>${line
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')}</p>`
-          )
-          .join('');
-        post.value = [
-          ...(post.value || []),
-          { id: makeId(10), content: html, image: [], delay: 0 },
-        ];
-        post.settings = {
-          ...(post.settings as any),
-          active_thread_finisher: false,
-        };
+      // A settings-only update promises the content stays as it is.
+      if (body.type !== 'update') {
+        const finished = this.withThreadFinisher(post);
+        post.value = finished.value;
+        post.settings = finished.settings;
       }
 
       const messages = (post.value || []).map((p) => p.content);
