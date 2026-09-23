@@ -9,6 +9,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import { useSets } from '@gitroom/frontend/components/launches/helpers/use.sets';
+import { useDefaultSignature } from '@gitroom/frontend/components/launches/helpers/use.default.signature';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useClickOutside } from '@mantine/hooks';
 import {
@@ -81,6 +82,12 @@ export const NewPost = () => {
     isLoading: setsLoading,
     error: setsError,
   } = useSets();
+  const {
+    data: signature,
+    mutate: mutateSignature,
+    isLoading: signatureLoading,
+    error: signatureError,
+  } = useDefaultSignature();
   const { mutate: globalMutate } = useSWRConfig();
   const t = useT();
   const toaster = useToaster();
@@ -155,6 +162,20 @@ export const NewPost = () => {
     }
   }, [setsLoading, setsError, sets, mutateSets]);
 
+  /**
+   * The signature a new post starts with, the one the calendar's empty slots
+   * add. Resolved at click time like the sets above; a failure means no
+   * signature rather than no composer.
+   */
+  const resolveSignature = useCallback(async (): Promise<any> => {
+    if (!signatureLoading && !signatureError) return signature;
+    try {
+      return await mutateSignature();
+    } catch {
+      return undefined;
+    }
+  }, [signatureLoading, signatureError, signature, mutateSignature]);
+
   const createAPost = useCallback(async () => {
     setMenuOpen(false);
     const list = await resolveIntegrations();
@@ -222,6 +243,8 @@ export const NewPost = () => {
 
     if (set === 'exit') return;
 
+    const defaultSignature = set ? undefined : await resolveSignature();
+
     modal.openModal({
       id: 'add-edit-modal',
       closeOnClickOutside: false,
@@ -238,6 +261,15 @@ export const NewPost = () => {
           allIntegrations={list.map((p) => ({
             ...p,
           }))}
+          {...(defaultSignature?.id
+            ? {
+                onlyValues: [
+                  {
+                    content: '\n' + defaultSignature.content,
+                  },
+                ],
+              }
+            : {})}
           {...(set?.content ? { set: JSON.parse(set.content) } : {})}
           reopenModal={createAPost}
           mutate={reloadCalendarView}
@@ -252,6 +284,7 @@ export const NewPost = () => {
   }, [
     resolveIntegrations,
     resolveSets,
+    resolveSignature,
     addProvider,
     fetch,
     modal,
