@@ -224,6 +224,15 @@ export class PostsService {
   }
 
   async updateReleaseId(orgId: string, postId: string, releaseId: string) {
+    // The update matches only a post still waiting for its id, so a wrong id
+    // or a post that already has one reached Prisma as a 500.
+    const post = await this._postRepository.getPostById(postId, orgId);
+    if (!post || post.deletedAt) {
+      throw new NotFoundException('Post not found');
+    }
+    if (post.releaseId !== 'missing') {
+      throw new BadRequestException('This post is not waiting for a release id');
+    }
     return this._postRepository.updateReleaseId(postId, orgId, releaseId);
   }
 
@@ -1217,7 +1226,7 @@ export class PostsService {
         );
 
         if (owned.length !== borrowedMediaIds.length) {
-          throw new Error('Media not found');
+          throw new BadRequestException('Media not found');
         }
       }
 
@@ -1271,7 +1280,7 @@ export class PostsService {
           );
 
           if (foreign.length) {
-            throw new Error('Media not found');
+            throw new BadRequestException('Media not found');
           }
         }
       }
