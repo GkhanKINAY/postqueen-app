@@ -13,6 +13,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import useSWR from 'swr';
+import { tierLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export const ChatbaseComponent: FC = () => {
   const { isChatBase } = useVariables();
@@ -264,7 +265,7 @@ const ChatBaseCode: FC<{ token: string }> = ({ token }) => {
 
           const approved = await deleteDialog(
             `You are cancelling your ${
-              preview.tier || ''
+              tierLabel(preview.tier)
             } subscription and will receive a refund of ${preview.amount} ${(
               preview.currency || ''
             ).toUpperCase()}. Do you approve?`,

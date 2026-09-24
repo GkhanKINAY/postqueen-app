@@ -25,7 +25,7 @@ export class PermissionsService {
 
     // Billing off: the top tier, whatever row is left (same rule as /user/self).
     const tier = !isBillingEnabled()
-      ? 'AGENCY'
+      ? 'ULTIMATE'
       : subscription?.subscriptionTier || 'FREE';
 
     const { channel, ...all } = pricing[tier];

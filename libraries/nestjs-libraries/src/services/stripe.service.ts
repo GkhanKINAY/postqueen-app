@@ -13,8 +13,10 @@ import {
   LIFETIME_RETENTION_PRICE,
   foundingChargeCents,
   lifetimeCheckoutQuotedCents,
+  normalizeTier,
   PaidTier,
   pricing,
+  TIER_ALIASES,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -63,6 +65,23 @@ const ENTITLED_STATUSES: Stripe.Subscription.Status[] = [
   'trialing',
   'past_due',
 ];
+
+/**
+ * Whether a Stripe product is the one for this tier. Products are named after
+ * the tier key, and a product created before a key was renamed still carries
+ * the old name (AGENCY for ULTIMATE) until it is renamed in Stripe, so either
+ * name matches. Without that, the first sale after the rename would mint a
+ * second product for the same plan.
+ */
+const productIsTier = (product: Stripe.Product, tier: string) => {
+  const name = product.name.toUpperCase();
+  return (
+    name === tier.toUpperCase() ||
+    Object.entries(TIER_ALIASES).some(
+      ([alias, current]) => current === tier && name === alias
+    )
+  );
+};
 
 @PaymentProvider({ provider: STRIPE_PROVIDER })
 export class StripeService extends PaymentProviderAbstract {
@@ -517,7 +536,7 @@ export class StripeService extends PaymentProviderAbstract {
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
     const {
       uniqueId,
-      billing,
+      billing: writtenBilling,
       period,
     } = event.data.object.metadata as {
       // Stripe hands this back as whatever was written when the subscription
@@ -527,6 +546,8 @@ export class StripeService extends PaymentProviderAbstract {
       period: 'MONTHLY' | 'YEARLY';
       uniqueId: string;
     };
+    // Subscriptions made before the rename still say AGENCY.
+    const billing = normalizeTier(writtenBilling);
 
     // `pricing[billing]` used to be dereferenced unguarded a few lines down.
     // `billing` comes from Stripe metadata, so a subscription created outside
@@ -579,7 +600,7 @@ export class StripeService extends PaymentProviderAbstract {
   async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
     const {
       uniqueId,
-      billing,
+      billing: writtenBilling,
       period,
     } = event.data.object.metadata as {
       // Stripe hands this back as whatever was written when the subscription
@@ -589,6 +610,8 @@ export class StripeService extends PaymentProviderAbstract {
       period: 'MONTHLY' | 'YEARLY';
       uniqueId: string;
     };
+    // Subscriptions made before the rename still say AGENCY.
+    const billing = normalizeTier(writtenBilling);
 
     // Terminal statuses are handled FIRST, before the metadata and card checks
     // below. Both of those exist to decide what to *grant*, and neither has any
@@ -842,9 +865,7 @@ export class StripeService extends PaymentProviderAbstract {
     });
 
     const findProduct =
-      allProducts.data.find(
-        (product) => product.name.toUpperCase() === body.billing.toUpperCase()
-      ) ||
+      allProducts.data.find((product) => productIsTier(product, body.billing)) ||
       (await stripe.products.create({
         active: true,
         name: body.billing,
@@ -1617,9 +1638,7 @@ export class StripeService extends PaymentProviderAbstract {
     });
 
     const findProduct =
-      allProducts.data.find(
-        (product) => product.name.toUpperCase() === body.billing.toUpperCase()
-      ) ||
+      allProducts.data.find((product) => productIsTier(product, body.billing)) ||
       (await stripe.products.create({
         active: true,
         name: body.billing,
@@ -1698,9 +1717,7 @@ export class StripeService extends PaymentProviderAbstract {
     });
 
     const findProduct =
-      allProducts.data.find(
-        (product) => product.name.toUpperCase() === body.billing.toUpperCase()
-      ) ||
+      allProducts.data.find((product) => productIsTier(product, body.billing)) ||
       (await stripe.products.create({
         active: true,
         name: body.billing,

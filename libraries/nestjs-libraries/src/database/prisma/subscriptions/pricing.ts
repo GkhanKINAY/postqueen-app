@@ -4,8 +4,8 @@ export interface PricingInnerInterface {
   current: string;
   /**
    * Commercial name shown in the UI. The identifier (`current` / object key)
-   * can differ — live top tier is keyed `AGENCY` but labeled "Ultimate" so we
-   * do not collide with the retired `ULTIMATE` enum/pricing row.
+   * can differ, e.g. the retired `LEGACY_ULTIMATE` row is still labeled
+   * "Ultimate (legacy)".
    */
   label: string;
   /**
@@ -53,7 +53,7 @@ export const CLIPPING_MINUTES_PROPOSAL = {
   CREATOR: 60,
   GROWTH: 120,
   PRO: 300,
-  AGENCY: 600,
+  ULTIMATE: 600,
 };
 export const pricing: PricingInterface = {
   FREE: {
@@ -76,8 +76,8 @@ export const pricing: PricingInterface = {
     generate_videos: 0,
     clipping_minutes: 0,
   },
-  // Current sellable tiers (CREATOR / GROWTH / PRO / AGENCY).
-  // Retired STANDARD / TEAM / ULTIMATE rows below keep old prices so any
+  // Current sellable tiers (CREATOR / GROWTH / PRO / ULTIMATE).
+  // Retired STANDARD / TEAM / LEGACY_ULTIMATE rows below keep old prices so any
   // unmigrated subscription still resolves without lying about the charge.
   CREATOR: {
     current: 'CREATOR',
@@ -152,8 +152,8 @@ export const pricing: PricingInterface = {
     generate_videos: 30,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.PRO,
   },
-  AGENCY: {
-    current: 'AGENCY',
+  ULTIMATE: {
+    current: 'ULTIMATE',
     label: 'Ultimate',
     month_price: 99,
     year_price: 792,
@@ -175,7 +175,7 @@ export const pricing: PricingInterface = {
     webhooks: 10000,
     autoPost: true,
     generate_videos: 60,
-    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.AGENCY,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
   },
 
   // --- retired: kept so existing subscriptions still resolve ---------------
@@ -222,9 +222,11 @@ export const pricing: PricingInterface = {
     generate_videos: 10,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
   },
-  ULTIMATE: {
-    current: 'ULTIMATE',
-    label: 'Ultimate',
+  // The tier upstream sold as ULTIMATE before the fork. Renamed so the top
+  // plan could take the name (migration 20260924120000).
+  LEGACY_ULTIMATE: {
+    current: 'LEGACY_ULTIMATE',
+    label: 'Ultimate (legacy)',
     retired: true,
     month_price: 99,
     year_price: 950,
@@ -241,7 +243,7 @@ export const pricing: PricingInterface = {
     webhooks: 10000,
     autoPost: true,
     generate_videos: 60,
-    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.AGENCY,
+    clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
   },
 };
 
@@ -253,10 +255,10 @@ export type PaidTier =
   | 'STANDARD'
   | 'TEAM'
   | 'PRO'
-  | 'ULTIMATE'
+  | 'LEGACY_ULTIMATE'
   | 'CREATOR'
   | 'GROWTH'
-  | 'AGENCY';
+  | 'ULTIMATE';
 
 /** What a *user* can be on, which includes having no subscription at all. */
 export type AnyTier = 'FREE' | PaidTier;
@@ -274,10 +276,23 @@ export const LIFETIME_GRANT_TIER: PaidTier = 'PRO';
 export const nextLifetimeTier = (_current?: string | null): PaidTier =>
   LIFETIME_GRANT_TIER;
 
+/**
+ * Old spellings of a tier that are still accepted as input. The top plan was
+ * keyed AGENCY until 2026-09-24, and that key lives on outside this code:
+ * Stripe subscription metadata, `?plan=` links, a `selectedPlan` stashed in
+ * localStorage, and resellers calling `/public/modify-subscription`.
+ */
+export const TIER_ALIASES: Record<string, string> = {
+  AGENCY: 'ULTIMATE',
+};
+
+export const normalizeTier = <T extends string | undefined | null>(tier: T) =>
+  ((tier && TIER_ALIASES[tier.toUpperCase()]) || tier) as T;
+
 /** Commercial plan name for UI. Falls back to the raw key if unknown. */
 export function tierLabel(tier: string | undefined | null): string {
   if (!tier) return '';
-  return pricing[tier]?.label ?? tier;
+  return pricing[normalizeTier(tier)]?.label ?? tier;
 }
 
 /**

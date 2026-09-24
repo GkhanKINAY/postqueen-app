@@ -6,7 +6,10 @@ import { useLocalStorage } from '@mantine/hooks';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useTrack } from '@gitroom/react/helpers/use.track';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  normalizeTier,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 /**
  * Plans the marketing site is allowed to preselect through `?plan=`.
@@ -57,7 +60,8 @@ const UtmSaver: FC = () => {
   // redirects away before the trial screen mounts, so the choice has to survive
   // the round-trip. A later ?plan= wins: the visitor changed their mind.
   useEffect(() => {
-    const plan = query.get('plan')?.toUpperCase();
+    // `?plan=AGENCY` links predate the rename and are still out there.
+    const plan = normalizeTier(query.get('plan')?.toUpperCase());
     if (plan && SELECTABLE_PLANS.includes(plan)) {
       localStorage.setItem('selectedPlan', plan);
     }
