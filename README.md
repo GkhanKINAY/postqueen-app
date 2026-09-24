@@ -142,7 +142,7 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 | <img src=".github/assets/agents/vscode.svg" width="24" height="24" alt=""> | **VS Code** | Microsoft | MCP config | [Guide](https://docs.postqueen.ai/agents/vscode) |
 | <img src=".github/assets/agents/devin-desktop.svg" width="24" height="24" alt=""> | **Devin Desktop** | Cognition | MCP config | [Guide](https://docs.postqueen.ai/agents/devin-desktop) |
 | <img src=".github/assets/agents/zed.svg" width="24" height="24" alt=""> | **Zed** | Zed Industries | MCP config | [Guide](https://docs.postqueen.ai/agents/zed) |
-| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse Code** | Meta | MCP config | [Guide](https://docs.postqueen.ai/agents/muse-code) |
+| <img src=".github/assets/agents/muse-code.svg" width="24" height="24" alt=""> | **Muse Code** | Meta | MCP config | [Guide](https://docs.postqueen.ai/agents/muse-code) |
 
 **Agents you run yourself**
 

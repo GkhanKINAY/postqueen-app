@@ -834,7 +834,7 @@ describe('Connect marketplace catalog', () => {
     assert.equal(byId('grok-build').icon, '/icons/connections/grok.svg');
     assert.equal(byId('grok-bot').icon, '/icons/connections/grok-bot.svg');
     assert.equal(byId('muse').icon, '/icons/connections/muse.svg');
-    assert.equal(byId('muse-code').icon, '/icons/connections/muse.svg');
+    assert.equal(byId('muse-code').icon, '/icons/connections/muse-code.svg');
     assert.equal(byId('codex').icon, '/icons/connections/codex.svg');
 
     const iconsDir = join(
@@ -844,6 +844,7 @@ describe('Connect marketplace catalog', () => {
     const grok = readFileSync(join(iconsDir, 'grok.svg'), 'utf8');
     const grokBot = readFileSync(join(iconsDir, 'grok-bot.svg'), 'utf8');
     const muse = readFileSync(join(iconsDir, 'muse.svg'), 'utf8');
+    const museCode = readFileSync(join(iconsDir, 'muse-code.svg'), 'utf8');
     const codex = readFileSync(join(iconsDir, 'codex.svg'), 'utf8');
 
     assert.doesNotMatch(grok, /M15 6\.5 17\.2 12\.3l6\.3\.5/);
@@ -862,6 +863,13 @@ describe('Connect marketplace catalog', () => {
     assert.match(museMark, /M24\.6257 16\.1214/);
     assert.match(museMark, /#0082FB/);
     assert.match(museMark, /#0040DC/);
+    // Muse Code is Meta's coding agent; Meta's docs show it under the Meta symbol, not Muse's m.
+    const museCodeMark = Buffer.from(
+      museCode.match(/base64,([A-Za-z0-9+/=]+)/)?.[1] ?? '',
+      'base64'
+    ).toString('utf8');
+    assert.match(museCodeMark, /M107\.654 0c-12\.3 0-21\.915 9\.264/);
+    assert.doesNotMatch(museCodeMark, /M24\.6257 16\.1214/);
     assert.match(codex, /#3941FF/);
     assert.match(codex, /#7A9DFF/);
     assert.match(codex, /#B1A7FF/);
