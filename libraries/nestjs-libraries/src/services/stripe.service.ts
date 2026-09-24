@@ -373,10 +373,16 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
+    // A first checkout creates its customer (see `embedded`), so this event
+    // can arrive before `adoptSubscriptionCustomer` links it to the org.
+    const organizationId = event.data.object.metadata?.organizationId;
     const getOrgFromCustomer =
-      await this._organizationService.getOrgByCustomerId(
+      (await this._organizationService.getOrgByCustomerId(
         event.data.object.customer as string
-      );
+      )) ||
+      (organizationId
+        ? await this._organizationService.getOrgById(organizationId)
+        : null);
 
     if (!getOrgFromCustomer?.allowTrial) {
       return true;
@@ -926,8 +932,14 @@ export class StripeService extends PaymentProviderAbstract {
   async getCustomerSubscriptions(organizationId: string) {
     const org = (await this._organizationService.getOrgById(organizationId))!;
     const customer = org.paymentId;
+    // A first checkout no longer creates the customer up front (see
+    // `embedded`), so between paying and the webhook there is none. An
+    // undefined `customer` would list every subscription on the account.
+    if (!customer?.startsWith('cus_')) {
+      return { data: [] as Stripe.Subscription[] };
+    }
     return stripe.subscriptions.list({
-      customer: customer!,
+      customer,
       status: 'all',
     });
   }
@@ -1180,7 +1192,7 @@ export class StripeService extends PaymentProviderAbstract {
   private async createEmbeddedCheckout(
     ud: string,
     uniqueId: string,
-    customer: string,
+    customer: string | undefined,
     body: BillingSubscribeDto,
     price: string,
     userId: string,
@@ -1188,23 +1200,26 @@ export class StripeService extends PaymentProviderAbstract {
     organizationId: string
   ) {
     const user = await this._userService.getUserById(userId);
+    const email =
+      (user?.email ?? '').indexOf('@') > -1
+        ? user!.email
+        : `${user?.email}@no-reply.invalid`;
 
-    try {
-      await stripe.customers.update(customer, {
-        email:
-          (user?.email ?? '').indexOf('@') > -1
-            ? user!.email
-            : `${user?.email}@no-reply.invalid`,
-        ...(body.dub
-          ? {
-              metadata: {
-                dubCustomerExternalId: userId,
-                dubClickId: body.dub,
-              },
-            }
-          : {}),
-      });
-    } catch (err) {}
+    if (customer) {
+      try {
+        await stripe.customers.update(customer, {
+          email,
+          ...(body.dub
+            ? {
+                metadata: {
+                  dubCustomerExternalId: userId,
+                  dubClickId: body.dub,
+                },
+              }
+            : {}),
+        });
+      } catch (err) {}
+    }
 
     // Check for auto-apply promotion code (only for monthly plans)
     let autoApplyPromoCode: string | null = null;
@@ -1215,7 +1230,7 @@ export class StripeService extends PaymentProviderAbstract {
     const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
     const { client_secret } = await stripe.checkout.sessions.create({
       ui_mode: 'custom',
-      customer,
+      ...(customer ? { customer } : { customer_email: email }),
       return_url:
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
@@ -1230,7 +1245,11 @@ export class StripeService extends PaymentProviderAbstract {
       tax_id_collection: { enabled: true },
       // Without name: 'auto' the legal entity name is collected and then
       // dropped, so the invoice would keep showing the signup org name.
-      customer_update: { address: 'auto', name: 'auto' },
+      // Stripe only accepts it with an existing customer; one Checkout creates
+      // gets the address and name written to it anyway.
+      ...(customer
+        ? { customer_update: { address: 'auto', name: 'auto' } }
+        : {}),
       billing_address_collection: 'required',
       subscription_data: {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
@@ -1572,7 +1591,19 @@ export class StripeService extends PaymentProviderAbstract {
     const id = makeId(10);
     const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
-    const customer = await this.createOrGetCustomer(org!);
+    // The paywall loads this on render, so creating the customer here left an
+    // empty Stripe customer behind for everyone who only looked at it. Without
+    // one, Checkout creates the customer when the subscription is made, and
+    // `adoptSubscriptionCustomer` links it through `metadata.organizationId`.
+    // Still created now: when the org already has a paymentId (a customer to
+    // reuse, or a leftover user id `adoptSubscriptionCustomer` cannot list
+    // subscriptions for), for a Dub referral (Dub reads its click id off the
+    // customer), and when the login has no real email to give Checkout.
+    const user = await this._userService.getUserById(userId);
+    const customer =
+      org!.paymentId || body.dub || (user?.email ?? '').indexOf('@') === -1
+        ? await this.createOrGetCustomer(org!)
+        : undefined;
     const allProducts = await stripe.products.list({
       active: true,
       // Stripe defaults to 10 and sorts newest-first. The lifetime checkout

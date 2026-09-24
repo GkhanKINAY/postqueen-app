@@ -284,6 +284,7 @@ billing_once_and_keep_forever
 billing_one_payment_no_renewal
 billing_one_time_payment
 billing_or_pay
+billing_or_pay_another_way
 billing_or_subscribe
 billing_order_summary
 billing_other_account_subscribed

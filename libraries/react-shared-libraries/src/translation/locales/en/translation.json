@@ -827,6 +827,7 @@
   "billing_clipping_minutes_per_month": "minutes of AI video clipping per month",
   "billing_billing_address": "Billing Address",
   "billing_payment": "Payment",
+  "billing_or_pay_another_way": "or pay another way",
   "billing_powered_by_stripe": "Secure payments processed by",
   "billing_your_7_day_trial_is": "Your 7-day trial is",
   "billing_100_percent_free": "100% free",

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import {
   PaymentElement,
+  ExpressCheckoutElement,
   BillingAddressElement,
   TaxIdElement,
   CheckoutProvider,
@@ -390,6 +391,66 @@ const OrderSummarySlot: FC<{ children: ReactNode }> = ({ children }) => {
   return createPortal(children, slot);
 };
 
+/**
+ * Apple Pay, Google Pay and Link as one-tap buttons above the form, the layout
+ * Stripe recommends for conversion. The wallet hands over the billing address,
+ * so a wallet payment skips the fields below. Which buttons show is up to
+ * Stripe: the Dashboard's payment methods, the registered domain and the
+ * buyer's device. When none qualifies the row and its divider stay hidden.
+ */
+const ExpressPay: FC = () => {
+  const checkoutState = useCheckout();
+  const toaster = useToaster();
+  const t = useT();
+  const [walletsVisible, setWalletsVisible] = useState(false);
+
+  if (checkoutState.type !== 'success') {
+    return null;
+  }
+
+  return (
+    // `invisible`, not `hidden`: inside display:none the element measures no
+    // width and cannot lay out or detect its wallets. With none it has no
+    // height, so nothing is reserved.
+    <div className={clsx(walletsVisible ? 'mb-[22px]' : 'invisible')}>
+      <ExpressCheckoutElement
+        options={{
+          paymentMethods: {
+            applePay: 'always',
+            googlePay: 'always',
+            link: 'auto',
+          },
+          paymentMethodOrder: ['apple_pay', 'google_pay', 'link'],
+          buttonType: { applePay: 'subscribe', googlePay: 'subscribe' },
+          buttonTheme: { applePay: 'black', googlePay: 'black' },
+          buttonHeight: 48,
+          layout: { maxColumns: 2, maxRows: 2 },
+        }}
+        onReady={(e) => {
+          const methods = e.availablePaymentMethods;
+          setWalletsVisible(!!methods && Object.values(methods).some(Boolean));
+        }}
+        onLoadError={() => setWalletsVisible(false)}
+        onConfirm={async (event) => {
+          const confirmResult = await checkoutState.checkout.confirm({
+            expressCheckoutConfirmEvent: event,
+          });
+          if (confirmResult.type === 'error') {
+            toaster.show(confirmResult.error.message, 'warning');
+          }
+        }}
+      />
+      {walletsVisible && (
+        <div className="mt-[22px] flex items-center gap-[12px] text-[13px] font-[500] text-pqMuted">
+          <div className="h-px flex-1 bg-pqLine" />
+          {t('billing_or_pay_another_way', 'or pay another way')}
+          <div className="h-px flex-1 bg-pqLine" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const StripeInputs: FC<{
   showCoupon: boolean;
   autoApplyCoupon?: string;
@@ -409,6 +470,7 @@ const StripeInputs: FC<{
   const [taxIdVisible, setTaxIdVisible] = useState(true);
   return (
     <>
+      <ExpressPay />
       {/* The session is created with automatic_tax and
           billing_address_collection: 'required', so the address has to be
           collected here — Stripe Tax has no other way to learn the customer's
@@ -456,6 +518,8 @@ const StripeInputs: FC<{
           options={{
             fields: { billingDetails: { address: 'never' } },
             layout: 'tabs',
+            // Already offered as buttons by ExpressPay above.
+            wallets: { applePay: 'never', googlePay: 'never', link: 'never' },
           }}
         />
         {!suppressCheckoutChrome && (
