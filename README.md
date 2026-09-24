@@ -120,40 +120,40 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 
 **Chat assistants and bots**
 
-| | Agent | Made by | Connects with | Status | Guide |
-| --- | --- | --- | --- | --- | --- |
-| <img src=".github/assets/agents/grok-bot.svg" width="24" height="24" alt=""> | **Grok Bot** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | xAI | MCP, key in the Bot's secure prompt | ✓ Tested | [Guide](https://docs.postqueen.ai/agents/grok-bot) |
-| <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude** | Anthropic | MCP: key address or sign-in | ✓ Key address tested | [Guide](https://docs.postqueen.ai/agents/claude) |
-| <img src=".github/assets/agents/chatgpt.svg" width="24" height="24" alt=""> | **ChatGPT** | OpenAI | MCP: key address or sign-in | ✓ Key address tested | [Guide](https://docs.postqueen.ai/agents/chatgpt) |
-| <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude Cowork** | Anthropic | MCP: key address or sign-in | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/claude-cowork) |
-| <img src=".github/assets/agents/grok.svg" width="24" height="24" alt=""> | **Grok** | xAI | MCP: key address | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/grok) |
-| <img src=".github/assets/agents/perplexity.svg" width="24" height="24" alt=""> | **Perplexity Computer** | Perplexity | MCP: key address | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/perplexity-computer) |
-| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | Meta | Custom connector | Not possible yet | [Guide](https://docs.postqueen.ai/agents/muse) |
+| | Agent | Made by | Connects with | Guide |
+| --- | --- | --- | --- | --- |
+| <img src=".github/assets/agents/grok-bot.svg" width="24" height="24" alt=""> | **Grok Bot** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | xAI | MCP, key in the Bot's secure prompt | [Guide](https://docs.postqueen.ai/agents/grok-bot) |
+| <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude** | Anthropic | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/claude) |
+| <img src=".github/assets/agents/chatgpt.svg" width="24" height="24" alt=""> | **ChatGPT** | OpenAI | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/chatgpt) |
+| <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude Cowork** | Anthropic | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/claude-cowork) |
+| <img src=".github/assets/agents/grok.svg" width="24" height="24" alt=""> | **Grok** | xAI | MCP: key address | [Guide](https://docs.postqueen.ai/agents/grok) |
+| <img src=".github/assets/agents/perplexity.svg" width="24" height="24" alt=""> | **Perplexity Computer** | Perplexity | MCP: key address | [Guide](https://docs.postqueen.ai/agents/perplexity-computer) |
+| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | Meta | Custom connector | [Guide](https://docs.postqueen.ai/agents/muse) |
 
 **Coding agents and editors**
 
-| | Agent | Made by | Connects with | Status | Guide |
-| --- | --- | --- | --- | --- | --- |
-| <img src=".github/assets/agents/claude-code.svg" width="24" height="24" alt=""> | **Claude Code** | Anthropic | MCP: key address, or the CLI and skill | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/claude-code) |
-| <img src=".github/assets/agents/codex.svg" width="24" height="24" alt=""> | **Codex** | OpenAI | MCP: key address, or the CLI and skill | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/codex) |
-| <img src=".github/assets/agents/cursor.svg" width="24" height="24" alt=""> | **Cursor** | Anysphere | MCP config, or the CLI and skill | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/cursor) |
-| <img src=".github/assets/agents/gemini-cli.svg" width="24" height="24" alt=""> | **Gemini CLI** | Google | MCP: key address, or the CLI and skill | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/gemini-cli) |
-| <img src=".github/assets/agents/grok.svg" width="24" height="24" alt=""> | **Grok Build** | xAI | MCP: key address, or the CLI and skill | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/grok-build) |
-| <img src=".github/assets/agents/vscode.svg" width="24" height="24" alt=""> | **VS Code** | Microsoft | MCP config | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/vscode) |
-| <img src=".github/assets/agents/devin-desktop.svg" width="24" height="24" alt=""> | **Devin Desktop** | Cognition | MCP config | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/devin-desktop) |
-| <img src=".github/assets/agents/zed.svg" width="24" height="24" alt=""> | **Zed** | Zed Industries | MCP config | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/zed) |
-| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse Code** | Meta | MCP config | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/muse-code) |
+| | Agent | Made by | Connects with | Guide |
+| --- | --- | --- | --- | --- |
+| <img src=".github/assets/agents/claude-code.svg" width="24" height="24" alt=""> | **Claude Code** | Anthropic | MCP: key address, or the CLI and skill | [Guide](https://docs.postqueen.ai/agents/claude-code) |
+| <img src=".github/assets/agents/codex.svg" width="24" height="24" alt=""> | **Codex** | OpenAI | MCP: key address, or the CLI and skill | [Guide](https://docs.postqueen.ai/agents/codex) |
+| <img src=".github/assets/agents/cursor.svg" width="24" height="24" alt=""> | **Cursor** | Anysphere | MCP config, or the CLI and skill | [Guide](https://docs.postqueen.ai/agents/cursor) |
+| <img src=".github/assets/agents/gemini-cli.svg" width="24" height="24" alt=""> | **Gemini CLI** | Google | MCP: key address, or the CLI and skill | [Guide](https://docs.postqueen.ai/agents/gemini-cli) |
+| <img src=".github/assets/agents/grok.svg" width="24" height="24" alt=""> | **Grok Build** | xAI | MCP: key address, or the CLI and skill | [Guide](https://docs.postqueen.ai/agents/grok-build) |
+| <img src=".github/assets/agents/vscode.svg" width="24" height="24" alt=""> | **VS Code** | Microsoft | MCP config | [Guide](https://docs.postqueen.ai/agents/vscode) |
+| <img src=".github/assets/agents/devin-desktop.svg" width="24" height="24" alt=""> | **Devin Desktop** | Cognition | MCP config | [Guide](https://docs.postqueen.ai/agents/devin-desktop) |
+| <img src=".github/assets/agents/zed.svg" width="24" height="24" alt=""> | **Zed** | Zed Industries | MCP config | [Guide](https://docs.postqueen.ai/agents/zed) |
+| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse Code** | Meta | MCP config | [Guide](https://docs.postqueen.ai/agents/muse-code) |
 
 **Agents you run yourself**
 
-| | Agent | Made by | Connects with | Status | Guide |
-| --- | --- | --- | --- | --- | --- |
-| <img src=".github/assets/agents/openclaw.svg" width="24" height="24" alt=""> | **OpenClaw** | OpenClaw | The CLI and skill, from WhatsApp, Telegram, Slack or Discord | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/openclaw) |
-| <img src=".github/assets/agents/hermes.svg" width="24" height="24" alt=""> | **Hermes Agent** | Nous Research | MCP config | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/hermes) |
-| <img src=".github/assets/agents/nanoclaw.svg" width="24" height="24" alt=""> | **NanoClaw** | NanoCo | MCP with a Bearer header | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/nanoclaw) |
-| <img src=".github/assets/agents/paperclip.svg" width="24" height="24" alt=""> | **Paperclip** | Paperclip AI | MCP with a Bearer header | Vendor's docs | [Guide](https://docs.postqueen.ai/agents/paperclip) |
+| | Agent | Made by | Connects with | Guide |
+| --- | --- | --- | --- | --- |
+| <img src=".github/assets/agents/openclaw.svg" width="24" height="24" alt=""> | **OpenClaw** | OpenClaw | The CLI and skill, from WhatsApp, Telegram, Slack or Discord | [Guide](https://docs.postqueen.ai/agents/openclaw) |
+| <img src=".github/assets/agents/hermes.svg" width="24" height="24" alt=""> | **Hermes Agent** | Nous Research | MCP config | [Guide](https://docs.postqueen.ai/agents/hermes) |
+| <img src=".github/assets/agents/nanoclaw.svg" width="24" height="24" alt=""> | **NanoClaw** | NanoCo | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/nanoclaw) |
+| <img src=".github/assets/agents/paperclip.svg" width="24" height="24" alt=""> | **Paperclip** | Paperclip AI | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/paperclip) |
 
-"Tested" means PostQueen ran the setup end to end (2026-09-19). The other guides follow each vendor's documented setup. Any other MCP client works with the same addresses: see [other MCP clients](https://docs.postqueen.ai/agents/other-mcp-clients).
+Any other MCP client works with the same addresses: see [other MCP clients](https://docs.postqueen.ai/agents/other-mcp-clients).
 
 **Connect in one line.** In PostQueen, open Connections > API Keys (workspace admins) to copy your key, or your agent's ready-made address:
 
@@ -161,7 +161,7 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/YOUR_API_KEY
 ```
 
-The key address has 21 tools: 20 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 20 tools; a workspace admin approves access. It is new and not tested end to end yet, so use the key if the sign-in fails. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
+The key address has 21 tools: 20 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 20 tools; a workspace admin approves access. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
 
 ## PostQueen Cloud or self-hosted
 
@@ -177,7 +177,7 @@ The details, side by side:
 | | **PostQueen Cloud** (recommended) | Self-hosted |
 | --- | --- | --- |
 | Get started | Sign up and connect your channels in minutes | Docker Compose or Helm, with PostgreSQL, Redis, Temporal and storage |
-| Network apps | PostQueen's own apps, so there is no developer account or app review on your side. A few networks are still in review: [status](https://docs.postqueen.ai/channels/overview) | You create a developer app on every network and get it approved. Meta, TikTok and YouTube reviews can take weeks |
+| Network apps | PostQueen's own apps, so there is no developer account or app review on your side. | You create a developer app on every network and get it approved. Meta, TikTok and YouTube reviews can take weeks |
 | AI agents over MCP | Hosted at `api.postqueen.ai`: paste a key or sign in | You run and secure the MCP server on your own domain |
 | AI copilot, images and video | Included, with monthly credits on every plan | Bring your own AI provider keys and pay each provider |
 | Updates and backups | Automatic | You pull new images, run migrations and keep backups |
