@@ -120,7 +120,12 @@ export class SubscriptionRepository {
   // narrows the search to the ones that could.
   async getOrgIdsWithDeferredFoundingSetup() {
     const rows = await this._usedCodes.model.usedCodes.findMany({
-      where: { code: { startsWith: 'lifetime-setup:' } },
+      // A deleted organization owes nothing: the hourly settle would otherwise
+      // keep trying the card of somebody who closed their account.
+      where: {
+        code: { startsWith: 'lifetime-setup:' },
+        organization: { deletedAt: null },
+      },
       select: { orgId: true },
       distinct: ['orgId'],
     });
