@@ -373,10 +373,16 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
+    // A first checkout creates its customer (see `embedded`), so this event
+    // can arrive before `adoptSubscriptionCustomer` links it to the org.
+    const organizationId = event.data.object.metadata?.organizationId;
     const getOrgFromCustomer =
-      await this._organizationService.getOrgByCustomerId(
+      (await this._organizationService.getOrgByCustomerId(
         event.data.object.customer as string
-      );
+      )) ||
+      (organizationId
+        ? await this._organizationService.getOrgById(organizationId)
+        : null);
 
     if (!getOrgFromCustomer?.allowTrial) {
       return true;
