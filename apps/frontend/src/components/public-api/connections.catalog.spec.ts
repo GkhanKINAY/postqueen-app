@@ -851,8 +851,17 @@ describe('Connect marketplace catalog', () => {
     assert.doesNotMatch(grokBot, /M15 6\.5 17\.2 12\.3l6\.3\.5/);
     assert.match(grokBot, /pq-grok-bot-eyes/);
     assert.doesNotMatch(muse, /M15 7\.2c2\.4 2\.2 4\.8 2\.2 7\.2 0/);
-    assert.match(muse, /#0033FF/);
-    assert.match(muse, /M24 144V24l40 68 40-68v120/);
+    // The blue square with a straight white M was a stand-in, not Meta's mark.
+    assert.doesNotMatch(muse, /#0033FF/);
+    assert.doesNotMatch(muse, /M24 144V24l40 68 40-68v120/);
+    // Muse's mark, the handwritten m in Meta blue, is embedded like the other logos.
+    const museMark = Buffer.from(
+      muse.match(/base64,([A-Za-z0-9+/=]+)/)?.[1] ?? '',
+      'base64'
+    ).toString('utf8');
+    assert.match(museMark, /M24\.6257 16\.1214/);
+    assert.match(museMark, /#0082FB/);
+    assert.match(museMark, /#0040DC/);
     assert.match(codex, /#3941FF/);
     assert.match(codex, /#7A9DFF/);
     assert.match(codex, /#B1A7FF/);
