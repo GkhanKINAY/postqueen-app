@@ -46,8 +46,8 @@ export class OrganizationRepository {
         subscription: {
           create: {
             totalChannels: 1000000,
-            // Self-host / no-billing bootstrap: top sellable tier (AGENCY).
-            subscriptionTier: 'AGENCY',
+            // Self-host / no-billing bootstrap: top sellable tier (ULTIMATE).
+            subscriptionTier: 'ULTIMATE',
             isLifetime: true,
             period: 'YEARLY',
           },

@@ -5,6 +5,7 @@ import { useSWRConfig } from 'swr';
 import type { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import {
   AnyTier,
+  normalizeTier,
   pricing,
   PricingInnerInterface,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -43,7 +44,9 @@ export const ContextWrapper: FC<{
   const values = user
     ? {
         ...user,
-        tier: pricing[user.tier],
+        // normalizeTier: a backend still on the old key can answer AGENCY
+        // for a moment during a deploy.
+        tier: pricing[normalizeTier(user.tier)],
       }
     : ({} as any);
   return <UserContext.Provider value={values}>{children}</UserContext.Provider>;

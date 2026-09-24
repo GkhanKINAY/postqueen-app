@@ -263,6 +263,13 @@ Lessons, in the order they cost time:
   subscription tiers). They date from before production moved to
   `PRISMA_MIGRATE`. `20260922120000_db_push_catch_up` adds them with
   `IF NOT EXISTS`, which changes nothing where they exist.
+- **Our `ULTIMATE` is not upstream's.** Since
+  `20260924120000_rename_agency_to_ultimate` the top plan (formerly `AGENCY`)
+  is keyed `ULTIMATE`, and upstream's own `ULTIMATE` tier ($99 / $950, 100
+  channels) is our retired `LEGACY_ULTIMATE`. An upstream hunk that touches
+  `ULTIMATE` in `pricing.ts`, the `SubscriptionTier` enum or the RevenueCat
+  parser means `LEGACY_ULTIMATE` here and has to be merged by hand. `AGENCY`
+  is still accepted as input through `TIER_ALIASES`.
 - **Upstream's CVE fixes can arrive after ours.** CVE-2026-94455 and -94456
   were both closed here earlier and more strictly (a separate
   `ENTERPRISE_SECRET`; a CSPRNG behind `makeId` itself rather than a second

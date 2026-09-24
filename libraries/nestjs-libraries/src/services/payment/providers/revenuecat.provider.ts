@@ -179,7 +179,13 @@ export class RevenueCatProvider extends PaymentProviderAbstract {
     }
 
     return {
-      billing: billing as 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+      // Store product ids come from upstream's app, where ULTIMATE is the tier
+      // kept here as LEGACY_ULTIMATE; our top plan took the ULTIMATE key.
+      billing: (billing === 'ULTIMATE' ? 'LEGACY_ULTIMATE' : billing) as
+        | 'STANDARD'
+        | 'TEAM'
+        | 'PRO'
+        | 'LEGACY_ULTIMATE',
       period: period as 'MONTHLY' | 'YEARLY',
     };
   }

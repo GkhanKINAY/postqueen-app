@@ -249,7 +249,7 @@ export class SubscriptionService {
    *
    * Split out rather than reusing the two-way sync, which is what this was
    * first written as and was wrong: the redeemed-code path below grants PRO,
-   * and a trialing organization reads as AGENCY, so a customer converting to a
+   * and a trialing organization reads as ULTIMATE, so a customer converting to a
    * founding purchase with more than PRO's thirty live channels would have had
    * the excess switched off. Nothing happened on that path before, so that
    * would have been a loss introduced by the fix for the opposite problem.
@@ -279,7 +279,7 @@ export class SubscriptionService {
   async modifySubscriptionByOrg(
     organizationId: string,
     totalChannels: number,
-    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE' | 'CREATOR' | 'GROWTH' | 'AGENCY'
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'LEGACY_ULTIMATE' | 'CREATOR' | 'GROWTH' | 'ULTIMATE'
   ) {
     if (!organizationId) {
       return false;
@@ -319,7 +319,7 @@ export class SubscriptionService {
   async modifySubscription(
     customerId: string,
     totalChannels: number,
-    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE' | 'CREATOR' | 'GROWTH' | 'AGENCY'
+    billing: 'FREE' | 'STANDARD' | 'TEAM' | 'PRO' | 'LEGACY_ULTIMATE' | 'CREATOR' | 'GROWTH' | 'ULTIMATE'
   ) {
     if (!customerId) {
       return false;
@@ -378,10 +378,10 @@ export class SubscriptionService {
       | 'STANDARD'
       | 'TEAM'
       | 'PRO'
-      | 'ULTIMATE'
+      | 'LEGACY_ULTIMATE'
       | 'CREATOR'
       | 'GROWTH'
-      | 'AGENCY',
+      | 'ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
@@ -415,7 +415,7 @@ export class SubscriptionService {
       // one up from.
       //
       // Restore only, never the two-way sync: this grant is always PRO, a
-      // trialing organization reads as AGENCY, and taking channels off someone
+      // trialing organization reads as ULTIMATE, and taking channels off someone
       // at the moment they pay is not a trade worth making.
       await this.restoreChannelsUpTo(org, totalChannels);
     }
@@ -439,7 +439,7 @@ export class SubscriptionService {
     provider: string,
     identifier: string,
     totalChannels: number,
-    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'LEGACY_ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null
   ) {

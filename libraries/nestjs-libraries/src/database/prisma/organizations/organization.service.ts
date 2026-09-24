@@ -180,7 +180,7 @@ export class OrganizationService {
     // Self-host without Stripe: every feature via the top sellable tier,
     // whatever Subscription row is left. Same test as the rest of billing.
     const tier = !isBillingEnabled()
-      ? 'AGENCY'
+      ? 'ULTIMATE'
       : // @ts-ignore
         org?.subscription?.subscriptionTier || 'FREE';
 

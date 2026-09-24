@@ -122,7 +122,7 @@ export const Features: FC<{
     const list: Array<{ label: string; unlim?: boolean }> = [];
 
     // The same "a very large number means unlimited" reading the posts line has
-    // always used. AGENCY's channel count joined it when unlimited was decided,
+    // always used. ULTIMATE's channel count joined it when unlimited was decided,
     // so neither needs a tier named here. The unlimited-channels line is the
     // one the design animates, so it is flagged rather than string-matched.
     list.push(
@@ -1314,7 +1314,7 @@ export const MainBillingComponent: FC<{
               const ltOn =
                 !!user?.isLifetime &&
                 subscription?.subscriptionTier === name.toUpperCase();
-              const isAgency = name.toUpperCase() === 'AGENCY';
+              const isUltimate = name.toUpperCase() === 'ULTIMATE';
               return (
                 <div
                   key={name}
@@ -1323,14 +1323,14 @@ export const MainBillingComponent: FC<{
                     'relative flex flex-col gap-[15px] rounded-[16px] p-[20px] outline -outline-offset-1',
                     ltOn
                       ? 'bg-pqLtCardOn'
-                      : isAgency
+                      : isUltimate
                       ? 'bg-[linear-gradient(150deg,color-mix(in_srgb,var(--brand)_16%,transparent),color-mix(in_srgb,var(--pink)_7%,transparent)_45%,var(--inner)_78%)]'
                       : 'bg-pqInner',
                     ltOn
                       ? 'outline-[1.5px] outline-pqLtLine2'
                       : on
                       ? 'outline-[1.5px] outline-pqBrand'
-                      : isAgency
+                      : isUltimate
                       ? 'outline-1 outline-[color:color-mix(in_srgb,var(--brand)_40%,transparent)]'
                       : 'outline-1 outline-pqBorder'
                   )}

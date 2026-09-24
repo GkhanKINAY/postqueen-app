@@ -23,6 +23,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import {
   AnyTier,
+  normalizeTier,
   pricing,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Readable, pipeline } from 'stream';
@@ -185,16 +186,18 @@ export class PublicController {
         billing: AnyTier;
       } | null;
 
-      if (!load || !load.orgId || !load.billing || !pricing[load.billing]) {
+      // A reseller signing the pre-rename AGENCY key gets the same plan.
+      const billing = normalizeTier(load?.billing);
+      if (!load || !load.orgId || !billing || !pricing[billing]) {
         return { success: false };
       }
 
-      const totalChannels = pricing[load.billing].channel || 0;
+      const totalChannels = pricing[billing].channel || 0;
 
       await this._subscriptionService.modifySubscriptionByOrg(
         load.orgId,
         totalChannels,
-        load.billing
+        billing
       );
 
       return { success: true };

@@ -1,5 +1,7 @@
 import { IsIn } from 'class-validator';
+import { Transform } from 'class-transformer';
 import {
+  normalizeTier,
   pricing,
   PaidTier,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -7,7 +9,7 @@ import {
 /**
  * Tiers this endpoint will actually sell.
  *
- * `pricing` still carries STANDARD / TEAM / ULTIMATE so existing subscribers on
+ * `pricing` still carries STANDARD / TEAM / LEGACY_ULTIMATE so existing subscribers on
  * them keep resolving, but they are `retired` and not offered anywhere in the
  * UI. Accepting them here meant a hand-made POST could buy a retired tier at its
  * legacy price — and, because the checkout builder creates whatever product it
@@ -25,6 +27,8 @@ export class BillingSubscribeDto {
   @IsIn(['MONTHLY', 'YEARLY'])
   period: 'MONTHLY' | 'YEARLY';
 
+  // A client still sending the old AGENCY key buys the same plan.
+  @Transform(({ value }) => normalizeTier(value))
   @IsIn(SELLABLE_TIERS)
   billing: PaidTier;
 

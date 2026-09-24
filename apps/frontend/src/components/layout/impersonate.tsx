@@ -206,7 +206,7 @@ const ApplyCouponModal: FC<{ close: () => void }> = ({ close }) => {
         <>
           <div className="flex flex-col gap-[4px] text-[14px]">
             <div>
-              {t('apply_coupon_plan', 'Plan:')} {info.tier || 'FREE'}
+              {t('apply_coupon_plan', 'Plan:')} {tierLabel(info.tier || 'FREE')}
               {!!info.tier && ` - $${info.planPrice}`}
             </div>
             <div>
@@ -907,7 +907,9 @@ const SwitchUser = () => {
           .map(
             (org: any) =>
               `${org?.organization?.name} (${org?.role} / ${
-                org?.organization?.subscription?.subscriptionTier || 'FREE'
+                tierLabel(
+                  org?.organization?.subscription?.subscriptionTier || 'FREE'
+                )
               })`
           )
           .join(', '),
@@ -1142,7 +1144,7 @@ export const Impersonate = () => {
                   >
                     {t('user_1', 'user:')}
                     {user?.id?.split('-')?.at(-1)} - {user?.name} - {user?.email}{' '}
-                    - {user?.orgName} ({user?.role} / {user?.tier})
+                    - {user?.orgName} ({user?.role} / {tierLabel(user?.tier)})
                   </div>
                 ))}
               </div>

@@ -153,7 +153,7 @@ export class UsersController {
       // Billing off: the top tier's own number, which the UI renders as
       // "Unlimited" (10000 was shown as a literal 10000).
       totalChannels: !isBillingEnabled()
-        ? pricing.AGENCY.channel
+        ? pricing.ULTIMATE.channel
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
       // Self-host / billing off: everything is open, so the top sellable tier,
@@ -162,7 +162,7 @@ export class UsersController {
       // tier's feature locks and the founding chip on an instance that sells
       // nothing — the same reason totalChannels and isTrailing ignore it.
       tier: !isBillingEnabled()
-        ? 'AGENCY'
+        ? 'ULTIMATE'
         : // @ts-ignore
           organization?.subscription?.subscriptionTier || 'FREE',
       // @ts-ignore

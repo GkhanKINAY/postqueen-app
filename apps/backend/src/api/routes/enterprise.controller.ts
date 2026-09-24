@@ -16,7 +16,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
  * exactly that: the whole User row signed with that same key, with no expiry,
  * audience or purpose claim. `POST /enterprise/create-user` destructures
  * `{id, name, saasName, email}`, three of which a session token carries, and
- * answers with an organization on a **lifetime AGENCY subscription with a
+ * answers with an organization on a **lifetime ULTIMATE subscription with a
  * million channels plus its API key**. On a billing-enabled install that meant
  * anyone who could register a free account could mint themselves an unlimited
  * paid one by posting their own cookie back at this endpoint.

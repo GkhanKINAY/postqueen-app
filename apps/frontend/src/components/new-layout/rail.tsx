@@ -23,6 +23,7 @@ import {
 } from '@gitroom/frontend/components/layout/top.menu';
 import { OrganizationSelector } from '@gitroom/frontend/components/layout/organization.selector';
 import { GettingStarted } from '@gitroom/frontend/components/onboarding/getting.started';
+import { tierLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 interface RailProps {
   /** Desktop only. On mobile the drawer always shows labels. */
@@ -130,7 +131,7 @@ export const Rail: FC<RailProps> = ({
   const showSettings = !!settings && filter(settings);
 
   // Prototype `upgradeLabel` / icon triad: Upgrade (arrow) · Billing & invoices
-  // (card, AGENCY) · Founding member (heart, lifetime / lifetime_trial). Billing
+  // (card, ULTIMATE) · Founding member (heart, lifetime / lifetime_trial). Billing
   // must be on; founding members keep the row — /billing is their lifetime
   // surface now (the old redirect away is gone).
   //
@@ -145,16 +146,16 @@ export const Rail: FC<RailProps> = ({
   const onBilling = pathname.indexOf('/billing') === 0;
   // Founding is a hosted-service state; with billing off there is none.
   const isFoundingRail = billingEnabled && !!user?.isLifetime;
-  const isAgencyRail =
-    !isFoundingRail && user?.tier?.current === 'AGENCY';
+  const isUltimateRail =
+    !isFoundingRail && user?.tier?.current === 'ULTIMATE';
   const upgradeLabel = isFoundingRail
     ? t('founding_member', 'Founding member')
-    : isAgencyRail
+    : isUltimateRail
     ? t('billing_and_invoices', 'Billing & invoices')
     : t('upgrade', 'Upgrade');
   const planBadge = isFoundingRail
     ? t('lifetime_badge', 'Lifetime')
-    : user?.tier?.current || '';
+    : tierLabel(user?.tier?.current);
 
   // Tapping a destination should close the drawer, but not tapping the controls
   // that live inside it. The timeout lets the link's own navigation start first.
@@ -394,7 +395,7 @@ export const Rail: FC<RailProps> = ({
                   ? onBilling
                     ? 'bg-pqLtRowBg text-pqLtAmber'
                     : 'text-pqLtAmber hover:bg-pqLtRowBg'
-                  : isAgencyRail
+                  : isUltimateRail
                   ? onBilling
                     ? 'bg-transparent text-pqFocused'
                     : 'text-pqMuted hover:bg-pqHover hover:text-pqFocused'
@@ -414,7 +415,7 @@ export const Rail: FC<RailProps> = ({
                 >
                   <path d="M12 20.5 4.2 13a4.6 4.6 0 0 1 6.5-6.5l1.3 1.3 1.3-1.3A4.6 4.6 0 1 1 19.8 13L12 20.5Z" />
                 </svg>
-              ) : isAgencyRail ? (
+              ) : isUltimateRail ? (
                 <svg
                   viewBox="0 0 24 24"
                   width="19"

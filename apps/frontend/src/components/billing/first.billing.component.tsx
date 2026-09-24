@@ -15,6 +15,7 @@ import {
   LIFETIME_PRICE,
   lifetimeWindow,
   monthsFree,
+  normalizeTier,
   pricing,
   TRIAL_DAYS,
   tierLabel,
@@ -700,7 +701,8 @@ export const FirstBillingComponent = () => {
   // the server render stays deterministic. A marketing plan pick also leaves
   // Lifetime mode so the stashed tier is actually selected.
   useEffect(() => {
-    const selectedPlan = localStorage.getItem('selectedPlan');
+    // Stashed before the AGENCY -> ULTIMATE rename, it can still say AGENCY.
+    const selectedPlan = normalizeTier(localStorage.getItem('selectedPlan'));
     // A plan stashed by the marketing site before registration. Ignore it if it
     // names a tier that is no longer for sale.
     if (
@@ -1322,7 +1324,7 @@ export const BillingFeatures: FC<{
     const channelsOr = currentPricing.channel;
     const list: FeatureItem[] = [];
 
-    // AGENCY carries 1,000,000 channels, which is how "unlimited" is stored.
+    // ULTIMATE carries 1,000,000 channels, which is how "unlimited" is stored.
     // The Billing screen already reads it that way; this list did not, so the
     // checkout offered "1000000 channels" — the one number on the screen that
     // makes the product look broken. Same key as the other screen, so the two

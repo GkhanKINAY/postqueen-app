@@ -305,7 +305,7 @@ export class SubscriptionRepository {
     identifier: string,
     customerId: string,
     totalChannels: number,
-    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE' | 'CREATOR' | 'GROWTH' | 'AGENCY',
+    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'LEGACY_ULTIMATE' | 'CREATOR' | 'GROWTH' | 'ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,

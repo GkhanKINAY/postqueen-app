@@ -1911,11 +1911,11 @@ enum State {
 enum SubscriptionTier {
   STANDARD
   TEAM
-  ULTIMATE
+  LEGACY_ULTIMATE
   CREATOR
   GROWTH
   PRO
-  AGENCY
+  ULTIMATE
 }
 
 enum Period {
