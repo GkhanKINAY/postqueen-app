@@ -8,14 +8,14 @@
 </p>
 
 <p align="center">
-  <a href="https://docs.postqueen.ai/agents/grok-bot"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/announce-dark.png"><img src=".github/assets/showcase/announce-light.png" width="100%" alt="New: Grok Bot is here. Connect Claude, ChatGPT, Grok Bot or any AI agent to your socials."></picture></a>
+  <a href="https://docs.postqueen.ai/agents/grok-bot"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/announce-dark.png"><img src=".github/assets/showcase/announce-light.png" width="100%" alt="New: connect Grok Bot, Muse, ChatGPT, Claude or any AI agent to your socials."></picture></a>
 </p>
 
 <h1 align="center">PostQueen: the AI social media scheduler</h1>
 
 <p align="center">
   Schedule posts to Instagram, TikTok, YouTube, X, LinkedIn and more, 30+ networks, from one calendar.<br>
-  Or ask <b>Claude</b>, <b>ChatGPT</b>, <b>Grok Bot</b> or any AI agent to do it through PostQueen's MCP server.<br>
+  Or ask <b>Grok Bot</b>, <b>Muse</b>, <b>ChatGPT</b>, <b>Claude</b> or any AI agent to do it through PostQueen's MCP server or API.<br>
   An open-source alternative to Buffer, Hootsuite, Later and Sprout Social.
 </p>
 
@@ -54,7 +54,7 @@
 </p>
 
 <p align="center">
-  <a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/works-dark.png"><img src=".github/assets/showcase/works-light.png" width="100%" alt="Use the agent you already have: Claude, ChatGPT, Grok Bot (new), Grok, Perplexity, Muse (new), Claude Code, Codex, Cursor, Gemini CLI, VS Code, Devin Desktop, Zed, OpenClaw, Hermes, NanoClaw, Paperclip and any MCP app. Posts to 30+ networks."></picture></a>
+  <a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/works-dark.png"><img src=".github/assets/showcase/works-light.png" width="100%" alt="Use the agent you already have: Grok Bot (new), Muse (new), OpenClaw, Hermes, Claude, ChatGPT, Grok, Perplexity, Claude Code, Codex, Cursor, Gemini CLI, VS Code, Devin Desktop, Zed, NanoClaw, Paperclip and any MCP app. Posts to 30+ networks."></picture></a>
 </p>
 
 ## Why PostQueen
@@ -66,7 +66,7 @@
 ## What it does
 
 - **One calendar for every channel.** Write a post once, adjust it for each network, then schedule it, keep it as a draft or publish it now. Repeat a post on an interval, preview it, and comment on it with your team.
-- **Your AI agent does the posting.** Claude, ChatGPT, Grok Bot, Claude Code, Cursor and other agents list your channels, write and schedule posts, add images and video, and read results, all through the MCP server.
+- **Your AI agent does the posting.** Grok Bot, Muse, ChatGPT, Claude, Claude Code, Cursor and other agents list your channels, write and schedule posts, add images and video, and read results, all through the MCP server or the API.
 - **AI in the composer.** The AI copilot drafts and rewrites posts. Generate images, and videos with Seedance or narrated image slides. Make avatar videos with your own HeyGen account.
 - **Analytics** for the networks that report them: X, Facebook, Instagram, LinkedIn Pages, YouTube, Threads, Pinterest, TikTok and Google Business Profile.
 - **Automation.** Auto Post publishes new items from your RSS feeds, Auto-Plugs reply or repost once a post takes off, webhooks tell your own systems when a post goes out, and time slots pick the next free time.
@@ -85,7 +85,7 @@
     <td width="50%" valign="top">
       <a href="https://docs.postqueen.ai/agents/overview"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/way-agent-dark.png"><img src=".github/assets/showcase/way-agent-light.png" width="100%" alt="A chat asking for a LinkedIn post and an X thread on Tuesday at 10, and the PostQueen tool that scheduled both"></picture></a>
       <h3>From an AI agent</h3>
-      Ask Claude, ChatGPT, Grok Bot or another agent in plain words. It posts through PostQueen's MCP server.<br>
+      Ask Grok Bot, Muse, ChatGPT, Claude or another agent in plain words. It posts through PostQueen's MCP server or API.<br>
       <a href="https://docs.postqueen.ai/agents/overview"><b>Connect your agent →</b></a>
     </td>
   </tr>
@@ -123,12 +123,21 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 | | Agent | Made by | Connects with | Guide |
 | --- | --- | --- | --- | --- |
 | <img src=".github/assets/agents/grok-bot.svg" width="24" height="24" alt=""> | **Grok Bot** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | xAI | MCP, key in the Bot's secure prompt | [Guide](https://docs.postqueen.ai/agents/grok-bot) |
+| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | Meta | Custom connector | [Guide](https://docs.postqueen.ai/agents/muse) |
 | <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude** | Anthropic | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/claude) |
-| <img src=".github/assets/agents/chatgpt.svg" width="24" height="24" alt=""> | **ChatGPT** | OpenAI | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/chatgpt) |
 | <img src=".github/assets/agents/claude.svg" width="24" height="24" alt=""> | **Claude Cowork** | Anthropic | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/claude-cowork) |
+| <img src=".github/assets/agents/chatgpt.svg" width="24" height="24" alt=""> | **ChatGPT** | OpenAI | MCP: key address or sign-in | [Guide](https://docs.postqueen.ai/agents/chatgpt) |
 | <img src=".github/assets/agents/grok.svg" width="24" height="24" alt=""> | **Grok** | xAI | MCP: key address | [Guide](https://docs.postqueen.ai/agents/grok) |
 | <img src=".github/assets/agents/perplexity.svg" width="24" height="24" alt=""> | **Perplexity Computer** | Perplexity | MCP: key address | [Guide](https://docs.postqueen.ai/agents/perplexity-computer) |
-| <img src=".github/assets/agents/muse.svg" width="24" height="24" alt=""> | **Muse** <img src="https://img.shields.io/badge/NEW-7C3AED?style=flat-square" height="18" alt="New"> | Meta | Custom connector | [Guide](https://docs.postqueen.ai/agents/muse) |
+
+**Agents you run yourself**
+
+| | Agent | Made by | Connects with | Guide |
+| --- | --- | --- | --- | --- |
+| <img src=".github/assets/agents/openclaw.svg" width="24" height="24" alt=""> | **OpenClaw** | OpenClaw | The CLI and skill, from WhatsApp, Telegram, Slack or Discord | [Guide](https://docs.postqueen.ai/agents/openclaw) |
+| <img src=".github/assets/agents/hermes.svg" width="24" height="24" alt=""> | **Hermes Agent** | Nous Research | MCP config | [Guide](https://docs.postqueen.ai/agents/hermes) |
+| <img src=".github/assets/agents/nanoclaw.svg" width="24" height="24" alt=""> | **NanoClaw** | NanoCo | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/nanoclaw) |
+| <img src=".github/assets/agents/paperclip.svg" width="24" height="24" alt=""> | **Paperclip** | Paperclip AI | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/paperclip) |
 
 **Coding agents and editors**
 
@@ -143,15 +152,6 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 | <img src=".github/assets/agents/devin-desktop.svg" width="24" height="24" alt=""> | **Devin Desktop** | Cognition | MCP config | [Guide](https://docs.postqueen.ai/agents/devin-desktop) |
 | <img src=".github/assets/agents/zed.svg" width="24" height="24" alt=""> | **Zed** | Zed Industries | MCP config | [Guide](https://docs.postqueen.ai/agents/zed) |
 | <img src=".github/assets/agents/muse-code.svg" width="24" height="24" alt=""> | **Muse Code** | Meta | MCP config | [Guide](https://docs.postqueen.ai/agents/muse-code) |
-
-**Agents you run yourself**
-
-| | Agent | Made by | Connects with | Guide |
-| --- | --- | --- | --- | --- |
-| <img src=".github/assets/agents/openclaw.svg" width="24" height="24" alt=""> | **OpenClaw** | OpenClaw | The CLI and skill, from WhatsApp, Telegram, Slack or Discord | [Guide](https://docs.postqueen.ai/agents/openclaw) |
-| <img src=".github/assets/agents/hermes.svg" width="24" height="24" alt=""> | **Hermes Agent** | Nous Research | MCP config | [Guide](https://docs.postqueen.ai/agents/hermes) |
-| <img src=".github/assets/agents/nanoclaw.svg" width="24" height="24" alt=""> | **NanoClaw** | NanoCo | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/nanoclaw) |
-| <img src=".github/assets/agents/paperclip.svg" width="24" height="24" alt=""> | **Paperclip** | Paperclip AI | MCP with a Bearer header | [Guide](https://docs.postqueen.ai/agents/paperclip) |
 
 Any other MCP client works with the same addresses: see [other MCP clients](https://docs.postqueen.ai/agents/other-mcp-clients).
 
@@ -219,7 +219,7 @@ curl https://api.postqueen.ai/public/v1/integrations -H "Authorization: YOUR_API
 | Route | Use it for | Start here |
 | --- | --- | --- |
 | App | Calendar, composer, copilot, analytics, team | [Start a 7-day trial](https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=ways-in) |
-| MCP | AI agents such as Claude, ChatGPT, Grok Bot, Cursor and Codex | [MCP guide](https://docs.postqueen.ai/mcp/introduction) |
+| MCP | AI agents such as Grok Bot, ChatGPT, Claude, Codex and Cursor | [MCP guide](https://docs.postqueen.ai/mcp/introduction) |
 | CLI | Terminals, scripts and coding agents | [postqueen-agent](https://github.com/GkhanKINAY/postqueen-agent) |
 | REST API | Your own code | [API reference](https://api.postqueen.ai/docs) · [API guide](https://docs.postqueen.ai/public-api/introduction) |
 | Node SDK | Typed calls from Node.js | [`@postqueen/node`](https://www.npmjs.com/package/@postqueen/node) · [SDK guide](https://docs.postqueen.ai/public-api/sdk) |

@@ -829,13 +829,15 @@ describe('Connect marketplace catalog', () => {
     assert.equal(defaultNavForConnection(byId('vscode')), 'all');
   });
 
-  it('uses original Grok Bot, Muse and Codex marks, not invented stand-ins', () => {
+  it('uses original Grok Bot, Muse, Codex, VS Code and Zed marks, not invented stand-ins', () => {
     assert.equal(byId('grok').icon, '/icons/connections/grok.svg');
     assert.equal(byId('grok-build').icon, '/icons/connections/grok.svg');
     assert.equal(byId('grok-bot').icon, '/icons/connections/grok-bot.svg');
     assert.equal(byId('muse').icon, '/icons/connections/muse.svg');
     assert.equal(byId('muse-code').icon, '/icons/connections/muse-code.svg');
     assert.equal(byId('codex').icon, '/icons/connections/codex.svg');
+    assert.equal(byId('vscode').icon, '/icons/connections/vscode.svg');
+    assert.equal(byId('zed').icon, '/icons/connections/zed.svg');
 
     const iconsDir = join(
       dirname(fileURLToPath(import.meta.url)),
@@ -846,6 +848,8 @@ describe('Connect marketplace catalog', () => {
     const muse = readFileSync(join(iconsDir, 'muse.svg'), 'utf8');
     const museCode = readFileSync(join(iconsDir, 'muse-code.svg'), 'utf8');
     const codex = readFileSync(join(iconsDir, 'codex.svg'), 'utf8');
+    const vscode = readFileSync(join(iconsDir, 'vscode.svg'), 'utf8');
+    const zed = readFileSync(join(iconsDir, 'zed.svg'), 'utf8');
 
     assert.doesNotMatch(grok, /M15 6\.5 17\.2 12\.3l6\.3\.5/);
     assert.match(grok, /24\.3186 12\.8506/);
@@ -873,5 +877,19 @@ describe('Connect marketplace catalog', () => {
     assert.match(codex, /#3941FF/);
     assert.match(codex, /#7A9DFF/);
     assert.match(codex, /#B1A7FF/);
+    // A white ">" on a blue square and a green "Z" on black were stand-ins.
+    assert.doesNotMatch(vscode, /M8\.8 10\.1 13\.6 15/);
+    assert.doesNotMatch(zed, /M9 9h12v2\.4L13\.6 18\.2/);
+    // VS Code's blue icon (code.visualstudio.com/brand) and Zed's logomark (zed.dev/brand).
+    const vscodeMark = Buffer.from(
+      vscode.match(/base64,([A-Za-z0-9+/=]+)/)?.[1] ?? '',
+      'base64'
+    ).toString('utf8');
+    assert.match(vscodeMark, /M70\.9119 99\.3171/);
+    const zedMark = Buffer.from(
+      zed.match(/base64,([A-Za-z0-9+/=]+)/)?.[1] ?? '',
+      'base64'
+    ).toString('utf8');
+    assert.match(zedMark, /M8\.4375 5\.625C6\.8842 5\.625/);
   });
 });
