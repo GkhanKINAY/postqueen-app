@@ -439,7 +439,7 @@ export class SubscriptionService {
     provider: string,
     identifier: string,
     totalChannels: number,
-    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE',
+    billing: 'STANDARD' | 'TEAM' | 'PRO' | 'LEGACY_ULTIMATE',
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null
   ) {

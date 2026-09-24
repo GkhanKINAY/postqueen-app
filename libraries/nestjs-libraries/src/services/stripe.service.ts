@@ -67,21 +67,21 @@ const ENTITLED_STATUSES: Stripe.Subscription.Status[] = [
 ];
 
 /**
- * Whether a Stripe product is the one for this tier. Products are named after
- * the tier key, and a product created before a key was renamed still carries
- * the old name (AGENCY for ULTIMATE) until it is renamed in Stripe, so either
- * name matches. Without that, the first sale after the rename would mint a
- * second product for the same plan.
+ * Every name a tier's Stripe product and prices can carry. They are named
+ * after the tier key, and ones created before a key was renamed keep the old
+ * name (AGENCY for ULTIMATE) until they are renamed in Stripe. Matching only
+ * the current key would make the first sale after a rename mint a second
+ * product, or a second price, for the same plan.
  */
-const productIsTier = (product: Stripe.Product, tier: string) => {
-  const name = product.name.toUpperCase();
-  return (
-    name === tier.toUpperCase() ||
-    Object.entries(TIER_ALIASES).some(
-      ([alias, current]) => current === tier && name === alias
-    )
-  );
-};
+const tierNames = (tier: string) => [
+  tier.toUpperCase(),
+  ...Object.entries(TIER_ALIASES)
+    .filter(([, current]) => current === tier)
+    .map(([alias]) => alias),
+];
+
+const productIsTier = (product: Stripe.Product, tier: string) =>
+  tierNames(tier).includes(product.name.toUpperCase());
 
 @PaymentProvider({ provider: STRIPE_PROVIDER })
 export class StripeService extends PaymentProviderAbstract {
@@ -885,7 +885,9 @@ export class StripeService extends PaymentProviderAbstract {
           p?.tax_behavior === 'exclusive' &&
           p?.recurring?.interval?.toLowerCase() ===
             (body.period === 'MONTHLY' ? 'month' : 'year') &&
-          p?.nickname === body.billing + ' ' + body.period &&
+          tierNames(body.billing).some(
+            (name) => p?.nickname === name + ' ' + body.period
+          ) &&
           p?.unit_amount ===
             (body.period === 'MONTHLY'
               ? priceData.month_price
