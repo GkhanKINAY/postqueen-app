@@ -10,6 +10,7 @@ import { useCalendar } from '@gitroom/frontend/components/launches/calendar.cont
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
+import { dateChangeActionForDrop } from '@gitroom/frontend/components/launches/calendar.drop';
 
 /**
  * Touch replacement for calendar HTML5 drag-reschedule. The caller still
@@ -68,10 +69,13 @@ export const MovePostSheet: FC<{
 
 /**
  * Phone and tablet Move control for calendar / queue cards. Reuses the same PUT
- * string as HTML5 drop (`/posts/${item.id}/date`) so the API baseline stays.
+ * string as HTML5 drop (`/posts/${item.id}/date`) so the API baseline stays,
+ * and the same `action`: without it the server defaults to `update`, which
+ * only rewrites `publishDate` and leaves the publish workflow sleeping until
+ * the old time. Callers only render this for posts that are not published.
  */
 export const CalendarMoveButton: FC<{
-  post: { id: string; publishDate: string | Date };
+  post: { id: string; publishDate: string | Date; state?: string };
   className?: string;
 }> = ({ post, className }) => {
   const t = useT();
@@ -102,6 +106,7 @@ export const CalendarMoveButton: FC<{
             method: 'PUT',
             body: JSON.stringify({
               date: next.utc().format('YYYY-MM-DDTHH:mm:ss'),
+              action: dateChangeActionForDrop(item.state),
             }),
           });
           if (status < 200 || status >= 300) {
