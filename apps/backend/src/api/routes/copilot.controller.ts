@@ -4,6 +4,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Delete,
   Req,
   Res,
   Query,
@@ -28,6 +30,7 @@ import {
   CopilotSurface,
 } from '@gitroom/helpers/utils/copilot.context';
 import { ThreadStateDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.state.dto';
+import { ThreadTitleDto } from '@gitroom/nestjs-libraries/dtos/copilot/thread.title.dto';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -310,20 +313,60 @@ export class CopilotController {
   @Get('/list')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async getList(@GetOrgFromRequest() organization: Organization) {
-    const mastra = await this._mastraService.mastra();
-    const memory = await mastra.getAgent('postqueen').getMemory();
-    const list = await memory.listThreads({
-      filter: { resourceId: organization.id },
-      perPage: 100000,
-      page: 0,
-      orderBy: { field: 'createdAt', direction: 'DESC' },
-    });
-
     return {
-      threads: list.threads.map((p) => ({
-        id: p.id,
-        title: p.title,
-      })),
+      threads: await this._mastraService.listThreads(organization.id),
     };
+  }
+
+  // Chats belong to the workspace, not to one person, so a rename or a
+  // delete here is seen by every member.
+  @Put('/:thread')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async renameThread(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string,
+    @Body() body: ThreadTitleDto
+  ) {
+    const renamed = await this._mastraService.renameThread(
+      organization.id,
+      threadId,
+      body.title
+    );
+    if (!renamed) {
+      throw new HttpException('Chat not found.', HttpStatus.NOT_FOUND);
+    }
+    return renamed;
+  }
+
+  @Delete('/:thread')
+  @CheckPolicies([AuthorizationActions.Create, Sections.AI])
+  async deleteThread(
+    @GetOrgFromRequest() organization: Organization,
+    @Param('thread') threadId: string
+  ) {
+    const result = await this._mastraService.deleteThread(
+      organization.id,
+      threadId
+    );
+    if (result === 'missing') {
+      throw new HttpException('Chat not found.', HttpStatus.NOT_FOUND);
+    }
+    if (result === 'running') {
+      throw new HttpException(
+        'This chat is still answering. Try again when it has finished.',
+        HttpStatus.CONFLICT
+      );
+    }
+    return { deleted: true };
+  }
+
+  // Wipes every member's history at once, so only admins can do it.
+  @Delete('/')
+  @CheckPolicies(
+    [AuthorizationActions.Create, Sections.AI],
+    [AuthorizationActions.Create, Sections.ADMIN]
+  )
+  clearThreads(@GetOrgFromRequest() organization: Organization) {
+    return this._mastraService.clearThreads(organization.id);
   }
 }
