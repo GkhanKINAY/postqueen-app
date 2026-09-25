@@ -22,7 +22,13 @@ import {
 import { postId as postIdSearchParam } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 
 /**
- * v1.0.10 plus an honest ending for the parts a channel cannot comment with.
+ * v1.0.11 with its notices handed to the `publishingNotice` activity: the
+ * workflow reports what happened to which post, and the activity writes the
+ * in-app text and the email, so their wording can change without another
+ * version. Nothing else differs from v1.0.11, whose notes follow.
+ *
+ * v1.0.11 was v1.0.10 plus an honest ending for the parts a channel cannot
+ * comment with.
  *
  * - A channel whose provider implements no `comment` was handed a post with
  *   more than one part, published the first, and dropped the rest from
