@@ -30,6 +30,8 @@ import utc from 'dayjs/plugin/utc';
 import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.repository';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { TemporalService } from 'nestjs-temporal-core';
+import { TypedSearchAttributes } from '@temporalio/common';
+import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { providerPageSelections } from '@gitroom/nestjs-libraries/integrations/provider-page-selections';
@@ -66,6 +68,10 @@ export class IntegrationService {
    * The terminate is still allowed to fail — a rule whose workflow is already
    * gone is the normal case, not an error — but the row is written either way,
    * and a genuine Temporal outage is now logged rather than swallowed whole.
+   *
+   * Written with `autoDisableAutopost`, not `changeActive`, so the rule is
+   * stamped as switched off by the plan and `restoreAutoDisabledAutoposts` can
+   * give it back.
    */
   async changeActiveCron(orgId: string) {
     const data = await this._autopostsRepository.getAutoposts(orgId);
@@ -80,10 +86,79 @@ export class IntegrationService {
           }`
         );
       }
-      await this._autopostsRepository.changeActive(orgId, item.id, false);
+      await this._autopostsRepository.autoDisableAutopost(orgId, item.id);
     }
 
     return true;
+  }
+
+  /**
+   * The other half of `changeActiveCron`, for an organization coming back to a
+   * plan with autopost. Only rules the downgrade switched off come back; a rule
+   * the user stopped themselves has no `autoDisabledAt` and stays off.
+   *
+   * Lives here rather than in AutopostService because neither caller can
+   * reach that one: it depends on this service, and through PostsService on
+   * SubscriptionService. The workflow start is the same call
+   * AutopostService.processCron makes, and a failure is logged rather than
+   * thrown for the same reason: this runs inside the Stripe webhook, and the
+   * row is already back on.
+   */
+  async restoreAutoDisabledAutoposts(orgId: string) {
+    const data = await this._autopostsRepository.getAutoDisabledAutoposts(
+      orgId
+    );
+
+    for (const item of data) {
+      await this._autopostsRepository.enableAutoDisabledAutopost(
+        orgId,
+        item.id
+      );
+      try {
+        await this._temporalService.client
+          .getRawClient()
+          ?.workflow.start('autoPostWorkflowV2', {
+            workflowId: `autopost-${item.id}`,
+            taskQueue: 'main',
+            workflowIdConflictPolicy: 'TERMINATE_EXISTING',
+            args: [{ id: item.id, immediately: true }],
+            typedSearchAttributes: new TypedSearchAttributes([
+              {
+                key: organizationId,
+                value: orgId,
+              },
+            ]),
+          });
+      } catch (err) {
+        console.error(
+          `[autopost] could not start workflow for ${item.id}`,
+          err
+        );
+      }
+    }
+
+    // Same wrapping rationale as the channel notices below.
+    if (data.length) {
+      try {
+        await this._notificationService.inAppNotification(
+          orgId,
+          `${data.length} Auto Post rule${
+            data.length > 1 ? 's are' : ' is'
+          } back on`,
+          `Your plan includes Auto Post again, so ${
+            data.length > 1 ? `your ${data.length} rules are` : 'your rule is'
+          } running again.`,
+          true,
+          false,
+          'info',
+          '/settings?tab=autopost'
+        );
+      } catch (err) {
+        console.error(`[autopost] restore notice failed for ${orgId}`, err);
+      }
+    }
+
+    return data;
   }
 
   getMentions(platform: string, q: string) {

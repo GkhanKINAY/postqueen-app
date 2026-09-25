@@ -77,6 +77,8 @@ export class AutopostRepository {
     });
   }
 
+  // The user's own toggle, so it clears `autoDisabledAt`: once someone has
+  // chosen, a later upgrade must not overrule them.
   changeActive(orgId: string, id: string, active: boolean) {
     return this._autoPost.model.autoPost.update({
       where: {
@@ -85,6 +87,49 @@ export class AutopostRepository {
       },
       data: {
         active,
+        autoDisabledAt: null,
+      },
+    });
+  }
+
+  // For a plan change, not the user. Stamped so an upgrade can tell these apart
+  // from the rules the user switched off, and give back only these.
+  autoDisableAutopost(orgId: string, id: string) {
+    return this._autoPost.model.autoPost.update({
+      where: {
+        id,
+        organizationId: orgId,
+      },
+      data: {
+        active: false,
+        autoDisabledAt: new Date(),
+      },
+    });
+  }
+
+  getAutoDisabledAutoposts(orgId: string) {
+    return this._autoPost.model.autoPost.findMany({
+      where: {
+        organizationId: orgId,
+        active: false,
+        autoDisabledAt: { not: null },
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  enableAutoDisabledAutopost(orgId: string, id: string) {
+    return this._autoPost.model.autoPost.update({
+      where: {
+        id,
+        organizationId: orgId,
+      },
+      data: {
+        active: true,
+        autoDisabledAt: null,
       },
     });
   }
@@ -131,6 +176,8 @@ export class AutopostRepository {
         ...(body.autoPublish !== undefined
           ? { autoPublish: body.autoPublish }
           : {}),
+        // Saving the rule sets `active` by hand, same as the toggle.
+        autoDisabledAt: null,
       },
     });
 

@@ -8,6 +8,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { mapTikTokBusinessVideoStats } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
+import { classifyTikTokPostId } from '@gitroom/nestjs-libraries/integrations/social/tiktok.provider';
 import { chunk } from 'lodash';
 import dayjs from 'dayjs';
 import {
@@ -1121,9 +1122,15 @@ export class TiktokBusinessProvider
     const today = dayjs().format('YYYY-MM-DD');
 
     // Posts saved before post_ids became available keep their share_id
-    // (v_pub_url~... / p_pub_url~...) as releaseId - resolve it to the public
-    // post id first.
-    if (postId.indexOf('_pub_url') > -1) {
+    // (v_pub_url~... / p_pub_url~... / v_pub_file~...) as releaseId - resolve
+    // it to the public post id first. See classifyTikTokPostId.
+    const kind = classifyTikTokPostId(postId);
+
+    if (kind === 'skip') {
+      return [];
+    }
+
+    if (kind === 'publish') {
       const post = await (
         await this.fetch(
           `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
@@ -1145,6 +1152,9 @@ export class TiktokBusinessProvider
       }
 
       postId = String(post.data.post_ids[0]);
+      if (classifyTikTokPostId(postId) !== 'video') {
+        return [];
+      }
     }
 
     try {
@@ -1227,7 +1237,11 @@ export class TiktokBusinessProvider
     const requestedByResolved = new Map<string, string>();
 
     for (const postId of platformPostIds) {
-      if (postId.indexOf('_pub_url') === -1) {
+      const kind = classifyTikTokPostId(postId);
+      if (kind === 'skip') {
+        continue;
+      }
+      if (kind === 'video') {
         resolved.push(postId);
         requestedByResolved.set(postId, postId);
         continue;
@@ -1247,8 +1261,9 @@ export class TiktokBusinessProvider
           )
         ).json();
         this.throwIfTokenError(post);
-        if (post?.data?.post_ids?.[0]) {
-          const publicId = String(post.data.post_ids[0]);
+        const publicId = String(post?.data?.post_ids?.[0] ?? '');
+        // Only an integer ever goes into video_ids, whatever came back.
+        if (classifyTikTokPostId(publicId) === 'video') {
           resolved.push(publicId);
           requestedByResolved.set(publicId, postId);
         }

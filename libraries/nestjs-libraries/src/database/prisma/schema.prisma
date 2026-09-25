@@ -804,6 +804,12 @@ model AutoPost {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   autoPublish     Boolean      @default(false)
+  /// Set when dropping to a plan without autopost switched this rule off,
+  /// cleared whenever the user touches the toggle or saves the rule. Same idea
+  /// as Integration.autoDisabledAt: coming back to a paid plan restarts only
+  /// these, never a rule the user stopped on purpose. Null on every existing
+  /// row, which reads as "user's own choice".
+  autoDisabledAt  DateTime?
   organization    Organization @relation(fields: [organizationId], references: [id])
 
   @@index([deletedAt])

@@ -258,11 +258,14 @@ export class SubscriptionService {
    * off are given back; see `autoDisabledAt` in the schema for how that is told
    * apart from the user's own choice.
    *
-   * Autopost rules are deliberately not resumed the same way. Enabling a
-   * channel publishes nothing by itself; an autopost rule does, and quietly
-   * restarting unattended publishing after a gap in billing is not a surprise
-   * anyone wants. `changeActiveCron` switches them off on the way down and the
-   * user switches them back on.
+   * Autopost rules follow the same rule on their own axis, the tier's
+   * `autoPost` flag rather than the channel count, in the callers below:
+   * `changeActiveCron` switches them off and stamps them on the way down to
+   * FREE, and `restoreAutoDisabledAutoposts` restarts them when a plan with
+   * autopost comes back. Nothing restarted them before, so a customer who
+   * upgraded again found every rule off and had to find the toggle for each.
+   * Only stamped rules come back, because a rule publishes by itself and one
+   * the user stopped on purpose must stay stopped.
    */
   private async syncChannelsToPlan(orgId: string, totalChannels: number) {
     if (!orgId) {
@@ -350,6 +353,12 @@ export class SubscriptionService {
 
     if (billing === 'FREE') {
       await this._integrationService.changeActiveCron(organizationId);
+    } else if (!from.autoPost && to.autoPost) {
+      // `to` comes from `billing`, not the organization's row: the row is
+      // written after this returns, so it still holds the tier being left.
+      await this._integrationService.restoreAutoDisabledAutoposts(
+        organizationId
+      );
     }
 
     return true;
@@ -402,6 +411,12 @@ export class SubscriptionService {
 
     if (billing === 'FREE') {
       await this._integrationService.changeActiveCron(getOrgByCustomerId?.id!);
+    } else if (!from.autoPost && to.autoPost) {
+      // `to` comes from `billing`, not the organization's row: the row is
+      // written after this returns, so it still holds the tier being left.
+      await this._integrationService.restoreAutoDisabledAutoposts(
+        getOrgByCustomerId?.id!
+      );
     }
 
     return true;
@@ -457,6 +472,11 @@ export class SubscriptionService {
       // trialing organization reads as ULTIMATE, and taking channels off someone
       // at the moment they pay is not a trade worth making.
       await this.restoreChannelsUpTo(org, totalChannels);
+      // Restore only, like the channels. The rules that come back are the ones
+      // a drop to FREE stamped, so there is no old tier to compare against.
+      if (pricing[billing].autoPost) {
+        await this._integrationService.restoreAutoDisabledAutoposts(org);
+      }
     }
     return this._subscriptionRepository.createOrUpdateSubscription(
       provider,
