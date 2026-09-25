@@ -10,6 +10,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
+import { INTEGRATION_TOKEN_PREFIX } from '@gitroom/helpers/auth/auth.service';
 
 @Injectable()
 export class IntegrationRepository {
@@ -1001,6 +1002,69 @@ export class IntegrationRepository {
 
   private hashValue(value: string) {
     return createHash('md5').update(value).digest('hex');
+  }
+
+  /**
+   * Rewrites the stored tokens that are not in the form asked for: the plain
+   * ones while encryption is on (every row written before it existed), the
+   * encrypted ones while ENCRYPT_INTEGRATION_TOKENS=false. The rewrite itself
+   * is an ordinary update, so the client extension in prisma.service.ts does
+   * the encrypting, or leaves them plain.
+   *
+   * Each update only lands if the row is unchanged since it was read
+   * (`updatedAt`), so a token refreshed in between is never replaced by the
+   * one read before it. That row is simply left for the next boot.
+   */
+  async syncStoredTokenEncryption(encrypt: boolean) {
+    const encrypted = { startsWith: INTEGRATION_TOKEN_PREFIX };
+    const [tokens, refreshTokens] = await Promise.all([
+      this._integration.model.integration.findMany({
+        where: encrypt
+          ? { token: { not: '' }, NOT: { token: encrypted } }
+          : { token: encrypted },
+        select: { id: true },
+      }),
+      this._integration.model.integration.findMany({
+        where: encrypt
+          ? { refreshToken: { not: '' }, NOT: { refreshToken: encrypted } }
+          : { refreshToken: encrypted },
+        select: { id: true },
+      }),
+    ]);
+
+    const rewriteToken = new Set(tokens.map((p) => p.id));
+    const rewriteRefreshToken = new Set(refreshTokens.map((p) => p.id));
+    let rewritten = 0;
+    for (const id of new Set([...rewriteToken, ...rewriteRefreshToken])) {
+      const row = await this._integration.model.integration.findUnique({
+        where: { id },
+        select: { token: true, refreshToken: true, updatedAt: true },
+      });
+
+      // Only the fields in the wrong form are written, so a field that is
+      // already right, and possibly encrypted under a key no longer set, is
+      // never read back and written out as empty.
+      const data = {
+        ...(rewriteToken.has(id) ? { token: row?.token } : {}),
+        ...(rewriteRefreshToken.has(id)
+          ? { refreshToken: row?.refreshToken }
+          : {}),
+      };
+
+      // Read back empty means no configured key could decrypt it. Writing
+      // that out would lose a value the right key may still open.
+      if (!row || Object.values(data).some((value) => !value)) {
+        continue;
+      }
+
+      const { count } = await this._integration.model.integration.updateMany({
+        where: { id, updatedAt: row.updatedAt },
+        data,
+      });
+      rewritten += count;
+    }
+
+    return rewritten;
   }
 
   async deleteIntegrationsForAccount(org: string) {
