@@ -96,7 +96,7 @@ export function RegisterAfter({
   provider: string;
 }) {
   const t = useT();
-  const { walletLogin, legalUrl, productNews } = useVariables();
+  const { walletLogin, legalUrl, productNewsEnabled } = useVariables();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const fireEvents = useFireEvents();
@@ -233,7 +233,7 @@ export function RegisterAfter({
       )}
       {/* Customers get product news unless they turn it off, so they are told
           here, where they give the address, and how to get out of it. */}
-      {productNews && (
+      {productNewsEnabled && (
         <div className="text-[12px] text-textItemBlur">
           {t(
             'signup_product_news_notice',

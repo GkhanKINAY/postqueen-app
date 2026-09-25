@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
-import { ResendProvider } from './resend.provider.ts';
+import { ResendNewsletterProvider } from './resend.provider.ts';
 
 /**
  * Measured against the Resend API on 2026-09-26: creating a contact that
@@ -48,15 +48,15 @@ afterEach(() => {
   delete process.env.RESEND_NEWS_TOPIC_ID;
 });
 
-describe('ResendProvider.register', () => {
+describe('ResendNewsletterProvider.register', () => {
   it('creates a new contact inside the segment', async () => {
     answer({ [`GET ${CONTACT}`]: missing });
 
-    await new ResendProvider().register(EMAIL);
+    await new ResendNewsletterProvider().register(EMAIL);
 
     assert.deepEqual(
       calls.map((c) => `${c.method} ${c.path}`),
-      [`GET ${CONTACT}`, 'POST /contacts']
+      [`GET ${CONTACT}`, 'POST /contacts'],
     );
     assert.deepEqual(calls[1].body, {
       email: EMAIL,
@@ -67,32 +67,32 @@ describe('ResendProvider.register', () => {
   it('only adds an existing contact to the segment, keeping its unsubscribe', async () => {
     answer({ [`GET ${CONTACT}`]: [200, { email: EMAIL, unsubscribed: true }] });
 
-    await new ResendProvider().register(EMAIL);
+    await new ResendNewsletterProvider().register(EMAIL);
 
     assert.deepEqual(
       calls.map((c) => `${c.method} ${c.path}`),
-      [`GET ${CONTACT}`, `POST ${CONTACT}/segments/segment-1`]
+      [`GET ${CONTACT}`, `POST ${CONTACT}/segments/segment-1`],
     );
   });
 
   it('never fails the sign-up when Resend does', async () => {
     answer({ [`GET ${CONTACT}`]: [500, {}] });
 
-    await assert.doesNotReject(new ResendProvider().register(EMAIL));
+    await assert.doesNotReject(new ResendNewsletterProvider().register(EMAIL));
   });
 });
 
-describe('ResendProvider.subscribed', () => {
+describe('ResendNewsletterProvider.subscribed', () => {
   it('is off for an address that is not on the list', async () => {
     answer({ [`GET ${CONTACT}`]: missing });
 
-    assert.equal(await new ResendProvider().subscribed(EMAIL), false);
+    assert.equal(await new ResendNewsletterProvider().subscribed(EMAIL), false);
   });
 
   it('is off after an unsubscribe from Resend’s page', async () => {
     answer({ [`GET ${CONTACT}`]: [200, { unsubscribed: true }] });
 
-    assert.equal(await new ResendProvider().subscribed(EMAIL), false);
+    assert.equal(await new ResendNewsletterProvider().subscribed(EMAIL), false);
   });
 
   it('follows the topic', async () => {
@@ -100,7 +100,7 @@ describe('ResendProvider.subscribed', () => {
       200,
       { data: [{ id: 'topic-1', subscription }] },
     ];
-    const provider = new ResendProvider();
+    const provider = new ResendNewsletterProvider();
 
     answer({
       [`GET ${CONTACT}`]: [200, { unsubscribed: false }],
@@ -118,15 +118,15 @@ describe('ResendProvider.subscribed', () => {
   it('throws rather than answering off when Resend fails', async () => {
     answer({ [`GET ${CONTACT}`]: [500, {}] });
 
-    await assert.rejects(new ResendProvider().subscribed(EMAIL));
+    await assert.rejects(new ResendNewsletterProvider().subscribed(EMAIL));
   });
 });
 
-describe('ResendProvider.setSubscribed', () => {
+describe('ResendNewsletterProvider.setSubscribed', () => {
   it('turning off only opts out of the topic', async () => {
     answer({ [`GET ${CONTACT}`]: [200, { unsubscribed: false }] });
 
-    await new ResendProvider().setSubscribed(EMAIL, false);
+    await new ResendNewsletterProvider().setSubscribed(EMAIL, false);
 
     const patches = calls.filter((c) => c.method === 'PATCH');
     assert.deepEqual(patches, [
@@ -141,7 +141,7 @@ describe('ResendProvider.setSubscribed', () => {
   it('turning on also clears an unsubscribe', async () => {
     answer({ [`GET ${CONTACT}`]: [200, { unsubscribed: true }] });
 
-    await new ResendProvider().setSubscribed(EMAIL, true);
+    await new ResendNewsletterProvider().setSubscribed(EMAIL, true);
 
     const patches = calls.filter((c) => c.method === 'PATCH');
     assert.deepEqual(
@@ -149,8 +149,46 @@ describe('ResendProvider.setSubscribed', () => {
       [
         [`${CONTACT}/topics`, [{ id: 'topic-1', subscription: 'opt_in' }]],
         [CONTACT, { unsubscribed: false }],
-      ]
+      ],
     );
+  });
+
+  it('fails on a wrong segment id instead of reporting a save', async () => {
+    answer({
+      [`GET ${CONTACT}`]: [200, { unsubscribed: false }],
+      [`POST ${CONTACT}/segments/segment-1`]: [
+        404,
+        { message: 'Audience not found' },
+      ],
+    });
+
+    await assert.rejects(
+      new ResendNewsletterProvider().setSubscribed(EMAIL, false),
+    );
+  });
+
+  it('tries once more after a rate limit', async () => {
+    let limited = true;
+    globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+      calls.push({
+        method: init.method || 'GET',
+        path: String(url),
+        body: undefined,
+      });
+      if (limited) {
+        limited = false;
+        return new Response('{}', {
+          status: 429,
+          headers: { 'retry-after': '0' },
+        });
+      }
+      return new Response(JSON.stringify({ unsubscribed: false, data: [] }), {
+        status: 200,
+      });
+    }) as typeof fetch;
+
+    assert.equal(await new ResendNewsletterProvider().subscribed(EMAIL), true);
+    assert.equal(calls.length, 3);
   });
 
   it('fails loudly, so Settings can put the switch back', async () => {
@@ -159,6 +197,8 @@ describe('ResendProvider.setSubscribed', () => {
       [`PATCH ${CONTACT}/topics`]: [500, {}],
     });
 
-    await assert.rejects(new ResendProvider().setSubscribed(EMAIL, false));
+    await assert.rejects(
+      new ResendNewsletterProvider().setSubscribed(EMAIL, false),
+    );
   });
 });

@@ -1,11 +1,10 @@
 /**
  * Whether this installation sends product news to its customers.
  *
- * Mirrors `getProvider()` in `newsletter.service.ts` on the backend, and has to
- * keep mirroring it: these three pick the Resend provider, which keeps every
- * account's address on the list and each one's choice to stay on it. The
- * frontend needs this to tell people at sign-up that the news will come, and
- * to offer the switch in Settings, only where a list really exists.
+ * `getProvider()` in `newsletter.service.ts` picks the Resend provider with
+ * this, which keeps each address on the list with its choice to stay on it.
+ * The frontend reads it to say at sign-up that the news will come, and to
+ * offer the switch in Settings, only where that list exists.
  */
 export const isProductNewsEnabled = () =>
   !!process.env.RESEND_CONTACTS_API_KEY &&

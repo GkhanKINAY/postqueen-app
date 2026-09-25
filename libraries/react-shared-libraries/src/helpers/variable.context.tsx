@@ -29,7 +29,7 @@ interface VariableContextInterface {
    * Customers get product news (`isProductNewsEnabled`). Sign-up says so and
    * Settings offers the switch only then.
    */
-  productNews: boolean;
+  productNewsEnabled: boolean;
   passwordlessLogin: boolean;
   /** Solana wallet sign-in. Separate from billing; off unless WALLET_LOGIN. */
   walletLogin: boolean;
@@ -109,7 +109,7 @@ const VariableContext = createContext({
   clippingEnabled: false,
   shortLinkEnabled: false,
   emailEnabled: false,
-  productNews: false,
+  productNewsEnabled: false,
   passwordlessLogin: false,
   walletLogin: false,
   disableRegistration: false,

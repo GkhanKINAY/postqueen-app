@@ -56,7 +56,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           clippingEnabled={isClippingEnabled()}
           shortLinkEnabled={isShortLinkEnabled()}
           emailEnabled={isEmailEnabled()}
-          productNews={isProductNewsEnabled()}
+          productNewsEnabled={isProductNewsEnabled()}
           passwordlessLogin={process.env.PASSWORDLESS_LOGIN === 'true'}
           walletLogin={isWalletLoginEnabled()}
           disableRegistration={isRegistrationDisabled()}

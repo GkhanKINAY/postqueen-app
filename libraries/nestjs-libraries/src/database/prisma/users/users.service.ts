@@ -190,11 +190,8 @@ export class UsersService {
 
     await this._usersRepository.deleteAccount(userId);
 
-    // The account keeps no address from here, so neither does the news list.
     if (user) {
-      await NewsletterService.remove(user.email).catch((err) =>
-        this._logger.error(`Failed to remove ${userId} from product news`, err)
-      );
+      await this.leaveProductNews(user.email, userId);
     }
 
     this._logger.log(
@@ -235,8 +232,26 @@ export class UsersService {
   }
 
   async updateProductNews(email: string, body: ProductNewsDto) {
-    await NewsletterService.setSubscribed(email, body.subscribed);
-    return { subscribed: body.subscribed };
+    return {
+      subscribed: await NewsletterService.setSubscribed(email, body.subscribed),
+    };
+  }
+
+  /**
+   * Takes an address this account no longer has off the product news list,
+   * unless another live account still signs in with it. The row no longer
+   * says which address it was, so a failure names it for removal by hand.
+   */
+  private async leaveProductNews(email: string, userId: string) {
+    if (await this._usersRepository.findEmailConflict(email, userId)) {
+      return;
+    }
+    await NewsletterService.remove(email).catch((err) =>
+      this._logger.error(
+        `Failed to take ${email} off product news; remove the contact in Resend`,
+        err
+      )
+    );
   }
 
   /**
@@ -663,6 +678,7 @@ export class UsersService {
       ).catch((err) =>
         this._logger.error(`Failed to move ${userId} on product news`, err)
       );
+      await this.leaveProductNews(user.email, userId);
     }
     return { changed: true };
   }

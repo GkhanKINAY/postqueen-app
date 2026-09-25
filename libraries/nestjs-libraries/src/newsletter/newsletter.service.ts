@@ -21,24 +21,47 @@ export class NewsletterService {
     }
     return NewsletterService.getProvider().register(email);
   }
-  /** Null when the provider keeps no choice to show. */
+  /**
+   * Null when there is no choice to show: the provider keeps none, or the
+   * account has no mailbox (wallet and Farcaster sign-ins store an id there).
+   */
   static async subscribed(email: string) {
     const provider = NewsletterService.getProvider();
-    return provider.subscribed ? provider.subscribed(email) : null;
+    if (!provider.subscribed || email.indexOf('@') === -1) {
+      return null;
+    }
+    return provider.subscribed(email);
   }
+  /** What was stored, or null when nothing could be. */
   static async setSubscribed(email: string, on: boolean) {
-    await NewsletterService.getProvider().setSubscribed?.(email, on);
+    const provider = NewsletterService.getProvider();
+    if (!provider.setSubscribed || email.indexOf('@') === -1) {
+      return null;
+    }
+    await provider.setSubscribed(email, on);
+    return on;
   }
   static async remove(email: string) {
+    if (email.indexOf('@') === -1) {
+      return;
+    }
     await NewsletterService.getProvider().remove?.(email);
   }
-  /** The list is kept by address, so it moves with the account, choice and all. */
+  /** The list is kept by address, so the choice follows the account's new one. */
   static async changeEmail(from: string, to: string) {
     const provider = NewsletterService.getProvider();
-    if (!provider.subscribed || !provider.setSubscribed || !provider.remove) {
+    if (
+      !provider.subscribed ||
+      !provider.setSubscribed ||
+      to.indexOf('@') === -1
+    ) {
+      return;
+    }
+    // An account that had no mailbox before joins like a new sign-up.
+    if (from.indexOf('@') === -1) {
+      await provider.register(to);
       return;
     }
     await provider.setSubscribed(to, await provider.subscribed(from));
-    await provider.remove(from);
   }
 }

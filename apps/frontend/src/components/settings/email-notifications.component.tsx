@@ -52,6 +52,8 @@ export const useProductNews = (enabled: boolean) => {
   }, [fetch]);
 
   return useSWR<ProductNews>(enabled ? 'product-news' : null, load, {
+    // A list that is down hides the row; retrying would only repeat the 500.
+    shouldRetryOnError: false,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -86,10 +88,16 @@ const EmailNotificationsComponent = () => {
   const fetch = useFetch();
   const toaster = useToaster();
   const { data, isLoading } = useEmailNotifications();
-  const { productNews } = useVariables();
-  const news = useProductNews(productNews);
-  const newsOn =
-    typeof news.data?.subscribed === 'boolean' ? news.data.subscribed : null;
+  const { productNewsEnabled } = useVariables();
+  const {
+    data: news,
+    isLoading: newsLoading,
+    mutate: mutateNews,
+  } = useProductNews(productNewsEnabled);
+  const newsOn = typeof news?.subscribed === 'boolean' ? news.subscribed : null;
+  // Each save is several calls to the list, so a second click waits for the
+  // first instead of racing it.
+  const savingNews = useRef(false);
 
   const [localSettings, setLocalSettings] = useState<EmailNotifications>({
     sendSuccessEmails: true,
@@ -141,8 +149,12 @@ const EmailNotificationsComponent = () => {
 
   const updateNews = useCallback(
     async (value: boolean) => {
-      const previous = news.data;
-      news.mutate({ subscribed: value }, { revalidate: false });
+      if (savingNews.current) {
+        return;
+      }
+      savingNews.current = true;
+      const previous = news;
+      mutateNews({ subscribed: value }, { revalidate: false });
 
       try {
         const response = await fetch('/user/product-news', {
@@ -154,14 +166,16 @@ const EmailNotificationsComponent = () => {
         }
         toaster.show(t('settings_updated', 'Settings updated'), 'success');
       } catch {
-        news.mutate(previous, { revalidate: false });
+        mutateNews(previous, { revalidate: false });
         toaster.show(
           t('something_went_wrong', 'Something went wrong'),
           'warning'
         );
+      } finally {
+        savingNews.current = false;
       }
     },
-    [fetch, toaster, t, news]
+    [fetch, toaster, t, news, mutateNews]
   );
 
   const rows: {
@@ -195,10 +209,10 @@ const EmailNotificationsComponent = () => {
     },
   ];
 
-  if (isLoading || (productNews && news.isLoading)) {
+  if (isLoading) {
     return (
       <div className="mt-[18px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        {Array.from({ length: productNews ? 4 : 3 }).map((_, i) => (
+        {Array.from({ length: productNewsEnabled ? 4 : 3 }).map((_, i) => (
           <div key={i} className="flex items-center gap-[12px]">
             <Skeleton className="h-[13px] min-w-0 flex-1" />
             <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />
@@ -232,6 +246,12 @@ const EmailNotificationsComponent = () => {
             onChange={(on) => updateSetting(row.key, on)}
           />
         ))}
+        {newsLoading && (
+          <div className="flex items-center gap-[12px] border-t border-pqLine py-[11px]">
+            <Skeleton className="h-[13px] min-w-0 flex-1" />
+            <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />
+          </div>
+        )}
         {newsOn !== null && (
           <SwitchRow
             name={t('product_news', 'Product news')}
