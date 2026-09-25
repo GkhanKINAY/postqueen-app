@@ -51,7 +51,58 @@ type RedditPendingData = {
     submitted: boolean;
     lookups: number;
   };
+  // Set when Reddit refused a submit with RATELIMIT. Checks stay pending,
+  // without calling Reddit, until `until`. `cursor` is the subreddit that was
+  // refused, `waited` the wait spent on this post so far, `reason` Reddit's
+  // own words.
+  rateLimit?: { until: number; cursor: number; waited: number; reason: string };
 };
+
+// Reddit refuses a submit with RATELIMIT and says how long to wait. The post
+// workflow checks a pending post every 20 seconds, 90 times (about half an
+// hour), and a media subreddit can need ten of those checks after its submit,
+// so at most this much of that budget goes to waiting.
+const RATELIMIT_BUDGET = 15 * 60 * 1000;
+// Reddit's wait is rounded; submitting on the dot is refused again.
+const RATELIMIT_MARGIN = 15 * 1000;
+// When Reddit gives no number.
+const RATELIMIT_DEFAULT = 5 * 60 * 1000;
+
+const RATELIMIT_UNITS: Record<string, number> = {
+  millisecond: 1,
+  second: 1000,
+  minute: 60 * 1000,
+  hour: 60 * 60 * 1000,
+};
+
+// How long Reddit asked us to wait, in milliseconds: `json.ratelimit` (seconds)
+// when present, otherwise the number in its message ("Take a break for 5
+// minutes before trying again", "try again in 30 seconds"). The message rounds
+// down, so "5 minutes" can mean 5:40 are left: a minute or an hour there is
+// given one unit more, or the retry lands inside the limit and fails the post.
+export const redditRateLimitWait = (json: any): number | undefined => {
+  const seconds = Number(json?.ratelimit);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.ceil(seconds * 1000);
+  }
+
+  const text = (json?.errors || [])
+    .map((e: any[]) => e?.[1] || '')
+    .join(' ');
+  const match = text.match(/(\d+)\s*(millisecond|second|minute|hour)s?\b/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const unit = RATELIMIT_UNITS[match[2].toLowerCase()];
+  return (Number(match[1]) + (unit >= RATELIMIT_UNITS.minute ? 1 : 0)) * unit;
+};
+
+const subredditName = (subreddit: string) =>
+  subreddit
+    .replace(/^\/?r\//, '')
+    .replace(/^\/+|\/+$/g, '')
+    .toLowerCase();
 
 export class RedditProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 1; // Reddit has strict rate limits (1 request per second)
@@ -354,6 +405,12 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PendingCheckResponse> {
     const data = { ...pendingData };
 
+    // Reddit refused the last submit with RATELIMIT: there is nothing to ask
+    // it until the wait it gave is over.
+    if (data.rateLimit && Date.now() < data.rateLimit.until) {
+      return { status: 'pending', pendingData: data };
+    }
+
     // A previous finalizePost may have died mid-submit (or submitted a media
     // post that only answers over a websocket): ask Reddit what actually
     // happened before authorizing anything else.
@@ -445,7 +502,7 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
     // finds the armed marker and asks Reddit instead of resubmitting blindly.
     const value = data.subreddits[data.cursor].value;
     data.armed = {
-      sr: value.subreddit.replace(/^\/?r\//, '').replace(/^\/+|\/+$/g, '').toLowerCase(),
+      sr: subredditName(value.subreddit),
       title: value.title || '',
       armedAt: Date.now(),
       media: value.type === 'media',
@@ -504,7 +561,7 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
           }
         : {}),
       text: data.message,
-      sr: value.subreddit.replace(/^\/?r\//, '').replace(/^\/+|\/+$/g, '').toLowerCase(),
+      sr: subredditName(value.subreddit),
     };
 
     const all = await (
@@ -521,11 +578,40 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
     // Reddit rejects submissions with a 200 and an errors array: surface the
     // real reason instead of failing later with an unknown outcome.
     if (all?.json?.errors?.length) {
-      // A rate limit is a refusal, nothing was submitted: disarm the marker so
-      // the next check re-arms this subreddit and submits it again once the
-      // window has passed, instead of failing the whole post.
+      // A rate limit is a refusal, nothing was submitted: disarm the marker
+      // and wait out the time Reddit gave before the next check re-arms this
+      // subreddit, instead of resubmitting (and re-uploading) every check.
       if (all.json.errors.every((e: any[]) => e?.[0] === 'RATELIMIT')) {
+        const wait =
+          (redditRateLimitWait(all.json) ?? RATELIMIT_DEFAULT) +
+          RATELIMIT_MARGIN;
+        const waited = (data.rateLimit?.waited || 0) + wait;
+        const reason = all.json.errors
+          .map((e: any[]) => e?.[1] || e?.[0] || '')
+          .join(', ');
+
+        // Refused again after waiting, or more waiting than the check budget
+        // can absorb: fail now with Reddit's reason, rather than let the
+        // workflow run out of checks and report it as "could not confirm".
+        if (
+          data.rateLimit?.cursor === data.cursor ||
+          waited > RATELIMIT_BUDGET
+        ) {
+          throw new BadBody(
+            this.identifier,
+            JSON.stringify(all),
+            Buffer.from('{}'),
+            this.rateLimitMessage(data, postData.sr, reason)
+          );
+        }
+
         data.armed = undefined;
+        data.rateLimit = {
+          until: Date.now() + wait,
+          cursor: data.cursor,
+          waited,
+          reason,
+        };
         return { status: 'pending', pendingData: data };
       }
 
@@ -564,6 +650,25 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
     // listing - a held-open websocket has no place inside an activity.
     data.armed = { ...data.armed, submitted: true };
     return { status: 'pending', pendingData: data };
+  }
+
+  private rateLimitMessage(
+    data: RedditPendingData,
+    sr: string,
+    reason: string
+  ) {
+    const published = (data.subreddits || [])
+      .slice(0, data.cursor)
+      .map((s) => `r/${subredditName(s.value.subreddit)}`);
+
+    return (
+      `Reddit is limiting how often this account can post, r/${sr} was not posted: ${reason}` +
+      (published.length
+        ? ` Already published to ${published.join(
+            ', '
+          )}. Post only the remaining subreddits again.`
+        : '')
+    );
   }
 
   // Old blocking behavior, kept for workflow versions before v1.0.6 that still
@@ -618,6 +723,28 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
         ];
       } else {
         pendingData = check.pendingData;
+      }
+
+      // Reddit asked for a wait: sleep it out when it fits in the window
+      // below, otherwise fail now with its reason instead of "took too long".
+      const rateLimit = (pendingData as RedditPendingData).rateLimit;
+      if (rateLimit && Date.now() < rateLimit.until) {
+        if (rateLimit.until - started > 8 * 60 * 1000) {
+          const data = pendingData as RedditPendingData;
+          throw new BadBody(
+            this.identifier,
+            '{}',
+            Buffer.from('{}'),
+            this.rateLimitMessage(
+              data,
+              subredditName(data.subreddits[rateLimit.cursor].value.subreddit),
+              rateLimit.reason
+            )
+          );
+        }
+
+        await timer(Math.max(5000, rateLimit.until - Date.now()));
+        continue;
       }
 
       // Cap below the 10-minute activity timeout of the old workflows using
