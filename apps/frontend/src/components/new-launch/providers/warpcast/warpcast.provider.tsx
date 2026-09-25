@@ -28,8 +28,8 @@ const WrapcastProvider: FC = () => {
       if (
         !(await deleteDialog(
           t(
-            'are_you_sure_you_want_to_delete_this_subreddit',
-            'Are you sure you want to delete this Subreddit?'
+            'are_you_sure_you_want_to_delete_this_farcaster_channel',
+            'Are you sure you want to delete this channel?'
           )
         ))
       )
