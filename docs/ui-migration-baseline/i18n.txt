@@ -373,6 +373,7 @@ cancel_subscription_confirm
 cancel_subscription_keep_access
 cancel_subscription_title
 cancel_trial
+cancel_upload
 cant_edit_networks_when_creating_set
 captcha_unavailable
 carousel_name

@@ -1328,5 +1328,6 @@
   "preview_comment_delete_confirm": "Delete this comment and its replies?",
   "preview_comment_delete_reply_confirm": "Delete this reply?",
   "preview_comment_delete_failed": "Could not delete the comment",
-  "captcha_unavailable": "The captcha could not load. It may be blocked by your browser or network. Reload the page to try again."
+  "captcha_unavailable": "The captcha could not load. It may be blocked by your browser or network. Reload the page to try again.",
+  "cancel_upload": "Cancel upload"
 }

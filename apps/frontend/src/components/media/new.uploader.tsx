@@ -222,6 +222,20 @@ export function useUppyUploader(props: {
       props.onEnd();
       fileOrderIndex = 0;
     });
+    // Cancelling a file removes it, and the uploader aborts its request. Once
+    // no upload is left running there is nothing to wait for, so the lock and
+    // the caller's uploading state end here. Uploads, not files: the files of
+    // a batch that just finished stay in the store until its `complete` has
+    // saved their posters. `cancelAll` removes its files the same way, so it
+    // lands here too.
+    uppy2.on('file-removed', () => {
+      if (Object.keys(uppy2.getState().currentUploads).length > 0) {
+        return;
+      }
+      setLocked(false);
+      props.onEnd();
+      fileOrderIndex = 0;
+    });
     // There was no `upload-error` listener at all. A failing upload-server
     // (misconfigured storage, bad credentials, 500) fired this, nobody
     // listened, then `complete` arrived with an empty `successful` list — and
@@ -243,6 +257,12 @@ export function useUppyUploader(props: {
       props.onStart();
     });
     uppy2.on('complete', async (result) => {
+      // Nothing succeeded and nothing failed: every file of the batch was
+      // cancelled, `file-removed` has already let go of the lock, and the
+      // next upload may be running by now. Ending here would clear its files.
+      if (!result.successful?.length && !result.failed?.length) {
+        return;
+      }
       // Clear after plugins settle — per-file removeFile during complete raced
       // ThumbnailGenerator (when enabled) and left queue warnings.
       props.onEnd();
