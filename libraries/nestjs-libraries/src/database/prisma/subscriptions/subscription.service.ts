@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  pricing,
+  trialWindow,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -75,6 +78,42 @@ export class SubscriptionService {
 
   getCodesByOrgId(orgId: string) {
     return this._subscriptionRepository.getCodesByOrgId(orgId);
+  }
+
+  /** Every live, non-lifetime plan Stripe is the source of truth for. */
+  getStripeSubscriptionCustomers() {
+    return this._subscriptionRepository.getStripeSubscriptionCustomers();
+  }
+
+  /**
+   * A founding-member fee was deferred to the end of a trial and nothing has
+   * paid it yet: a `lifetime-setup:` code with no charge, retention or
+   * immediate-checkout code beside it.
+   */
+  async isFoundingFeeUnpaid(orgId: string) {
+    const codes = (await this.getCodesByOrgId(orgId)).map((c) => c.code);
+    const deferred = codes.some((c) => c.startsWith('lifetime-setup:'));
+    const paid = codes.some(
+      (c) =>
+        c.startsWith('lifetime-charge:') ||
+        c.startsWith('lifetime-retention:') ||
+        /^cs_/.test(c)
+    );
+    return deferred && !paid;
+  }
+
+  /**
+   * The same fee, once the trial it waited for has ended. The founding row
+   * stays in place so paying it restores everything, but until then the
+   * account is treated as having no plan, the same as `lifetimePaymentPending`
+   * already shows it in the app.
+   */
+  async isFoundingFeeOverdue(orgId: string) {
+    if (!(await this.isFoundingFeeUnpaid(orgId))) {
+      return false;
+    }
+    const org = await this._organizationService.getOrgById(orgId);
+    return !trialWindow(org?.createdAt).open;
   }
 
   getOrgIdsWithDeferredFoundingSetup() {

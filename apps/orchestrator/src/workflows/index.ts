@@ -27,6 +27,7 @@ export * from './streak.workflow';
 export * from './generate.video.workflow';
 export * from './process.media.workflow';
 export * from './founding.fee.workflow';
+export * from './billing.reconcile.workflow.v1';
 export * from './analytics.sync.workflow.v1';
 export * from './clipping.workflow';
 export * from './account.purge.workflow.v1';

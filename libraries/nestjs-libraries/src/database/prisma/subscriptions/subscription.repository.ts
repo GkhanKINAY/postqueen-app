@@ -158,6 +158,20 @@ export class SubscriptionRepository {
     });
   }
 
+  getStripeSubscriptionCustomers() {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        provider: 'stripe',
+        isLifetime: false,
+        deletedAt: null,
+      },
+      select: {
+        organizationId: true,
+        organization: { select: { paymentId: true } },
+      },
+    });
+  }
+
   updateConnectedStatus(account: string, accountCharges: boolean) {
     return this._user.model.user.updateMany({
       where: {

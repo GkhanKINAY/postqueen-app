@@ -58,6 +58,8 @@ export const Prorate: FC<{
   const t = useT();
   const fetch = useFetch();
   const [price, setPrice] = useState<number | false>(0);
+  // A downgrade, or yearly to monthly, costs nothing now and starts at renewal.
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const calculatePrice = useDebouncedCallback(async () => {
     setLoading(true);
@@ -77,6 +79,7 @@ export const Prorate: FC<{
         ? await response.json().catch(() => ({}))
         : {};
       setPrice(typeof body?.price === 'number' ? body.price : false);
+      setScheduledAt(body?.scheduledAt || null);
     } catch (err) {
       setPrice(false);
     } finally {
@@ -96,6 +99,15 @@ export const Prorate: FC<{
   }
   if (price === false) {
     return <div className="min-h-[17px]" />;
+  }
+  if (scheduledAt) {
+    return (
+      <div className="flex min-h-[17px] text-[12.5px] font-[600] text-pqMuted">
+        {t('billing_changes_on', 'Changes on {{date}}', {
+          date: dayjs(scheduledAt).format('D MMM, YYYY'),
+        })}
+      </div>
+    );
   }
   return (
     <div className="flex min-h-[17px] text-[12.5px] font-[600] text-pqOk">
@@ -897,9 +909,22 @@ export const MainBillingComponent: FC<{
           return;
         }
 
-        const { url, portal, blocked } = await subscribeResponse
+        const { url, portal, blocked, scheduledAt } = await subscribeResponse
           .json()
           .catch(() => ({} as any));
+        // A downgrade, or yearly to monthly: nothing changes until renewal, so
+        // the current plan stays on screen and the date is what is said.
+        if (scheduledAt) {
+          setLoading(false);
+          toast.show(
+            t(
+              'billing_plan_change_scheduled',
+              'Your plan changes on {{date}}. You keep your current plan until then.',
+              { date: dayjs(scheduledAt).format('D MMM, YYYY') }
+            )
+          );
+          return;
+        }
         if (blocked) {
           setLoading(false);
           await deleteDialog(

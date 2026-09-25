@@ -92,6 +92,9 @@ export class BillingController {
   }
 
   @Post('/apply-discount')
+  // It changes what the organization's card is charged, so admins only,
+  // like every other billing action.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async applyDiscount(@GetOrgFromRequest() org: Organization) {
     this.assertBillingEnabled();
     // Returns the result, like `apply-lifetime-retention` right below. It used
@@ -113,12 +116,18 @@ export class BillingController {
   }
 
   @Post('/apply-lifetime-retention')
+  // It changes what the organization's card is charged, so admins only,
+  // like every other billing action.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async applyLifetimeRetention(@GetOrgFromRequest() org: Organization) {
     this.assertBillingEnabled();
     return this._stripeService.applyLifetimeRetentionOffer(org.id);
   }
 
   @Post('/finish-trial')
+  // It changes what the organization's card is charged, so admins only,
+  // like every other billing action.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async finishTrial(@GetOrgFromRequest() org: Organization) {
     this.assertBillingEnabled();
     // Two ways a trial ends, and the caller polls `is-trial-finished` until the
@@ -447,24 +456,11 @@ export class BillingController {
 
   @Post('/chatbase-refund')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
-  async chatbaseRefund(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() org: Organization
-  ) {
+  async chatbaseRefund(@GetOrgFromRequest() org: Organization) {
     this.assertChatbaseEnabled();
 
-    const refund = await (await this.provider(org)).chatbaseRefund(org.id);
-
-    if (refund.refunded) {
-      await this._notificationService.sendEmail(
-        process.env.EMAIL_FROM_ADDRESS,
-        'Refund issued from Chatbase',
-        `Organization ${org.name} received a refund of ${refund.amount} ${refund.currency} and their subscription was cancelled`,
-        user.email
-      );
-    }
-
-    return refund;
+    // No self-serve refunds: this answers with the policy, see the service.
+    return (await this.provider(org)).chatbaseRefund(org.id);
   }
 
   @Post('/lifetime-checkout')
