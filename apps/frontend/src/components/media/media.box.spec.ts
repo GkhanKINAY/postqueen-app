@@ -48,13 +48,13 @@ describe('Media library thumbnails', () => {
     assert.match(source, /aria-label=\{t\('cancel_upload', 'Cancel upload'\)\}/);
     assert.match(source, /\(id: string\) => \(\) => uppy\.removeFile\(id\)/);
     assert.equal(source.split('onCancel={cancelUpload(upload.id)}').length - 1, 2);
-    // Once the bytes are in there is no request left to abort.
+    // Once the server has answered there is no request left to abort.
     assert.match(source, /!upload\.processing && upload\.percent < 100 && \(/);
-    // The last file gone ends the upload there and then, and the empty
+    // The last running upload gone ends it there and then, and the empty
     // `complete` that follows cannot clear an upload started since.
     assert.match(
       uploader,
-      /on\('file-removed', \(\) => \{\n\s+if \(uppy2\.getFiles\(\)\.length > 0\) \{\n\s+return;\n\s+\}\n\s+setLocked\(false\);\n\s+props\.onEnd\(\);/,
+      /on\('file-removed', \(\) => \{\n\s+if \(Object\.keys\(uppy2\.getState\(\)\.currentUploads\)\.length > 0\) \{\n\s+return;\n\s+\}\n\s+setLocked\(false\);\n\s+props\.onEnd\(\);/,
     );
     assert.match(
       uploader,

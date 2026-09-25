@@ -223,11 +223,13 @@ export function useUppyUploader(props: {
       fileOrderIndex = 0;
     });
     // Cancelling a file removes it, and the uploader aborts its request. Once
-    // the last one is gone there is nothing left to wait for, so the lock and
-    // the caller's uploading state end here. `cancelAll` removes its files the
-    // same way, so it lands here too.
+    // no upload is left running there is nothing to wait for, so the lock and
+    // the caller's uploading state end here. Uploads, not files: the files of
+    // a batch that just finished stay in the store until its `complete` has
+    // saved their posters. `cancelAll` removes its files the same way, so it
+    // lands here too.
     uppy2.on('file-removed', () => {
-      if (uppy2.getFiles().length > 0) {
+      if (Object.keys(uppy2.getState().currentUploads).length > 0) {
         return;
       }
       setLocked(false);

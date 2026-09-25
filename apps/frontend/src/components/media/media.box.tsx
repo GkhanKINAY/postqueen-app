@@ -156,9 +156,10 @@ type UploadTile = {
  * Once the bytes are in and the server is converting a video, the
  * percentage gives way to "Processing".
  *
- * The × cancels the file while its bytes are still going up. It is gone once
- * they are in: the server has the file by then, so there is no request left
- * to abort.
+ * The × cancels the file until the server has answered for it. After that
+ * (100%, or Processing) the file is saved and there is no request left to
+ * abort. A cancel after the last byte but before the answer aborts the
+ * request, though the server may still save the file.
  */
 const UploadingTile: FC<{
   upload: UploadTile;
@@ -191,7 +192,7 @@ const UploadingTile: FC<{
             title={t('cancel_upload', 'Cancel upload')}
             className="absolute top-[6px] end-[6px] grid size-[28px] place-items-center rounded-full bg-black/65 text-white backdrop-blur-[2px] hover:bg-black/80"
           >
-            <CloseIcon size={16} />
+            <CloseIcon size={16} aria-hidden="true" />
           </button>
         )}
       </div>
