@@ -335,6 +335,12 @@ Lessons, in the order they cost time:
   after the watermark had been picked. Check `main..upstream/main` again
   right before the `-s ours` merge, and merge an exact hash, so what is
   recorded as handled is only what was.
+- **Never take upstream's `@RealIP()`.** It reads the first X-Forwarded-For
+  entry, which the client writes. Production is two proxies deep (host nginx,
+  then the container's nginx behind the Docker gateway), so this fork sets
+  Express `trust proxy` to private hops only and reads the client with
+  `ClientIp` (`libraries/nestjs-libraries/src/user/client.ip.ts`). ESLint
+  refuses `nestjs-real-ip`, so a synced commit that brings it back fails CI.
 - **Copy an upstream hash with `git rev-parse`, never by eye.** Two
   "(cherry picked / adapted from commit ...)" lines in this run first went in
   with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`

@@ -16,7 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
-import { RealIP } from 'nestjs-real-ip';
+import { ClientIp } from '@gitroom/nestjs-libraries/user/client.ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { Request, Response } from 'express';
@@ -129,7 +129,7 @@ export class PublicController {
   async createComment(
     @Param('id') postId: string,
     @Body() body: CreatePublicCommentDto,
-    @RealIP() ip: string
+    @ClientIp() ip: string
   ) {
     // Turnstile, when TURNSTILE_SECRET is set, like the passwordless login.
     const decision = await this._abuseGuardService.challenge({
@@ -148,7 +148,7 @@ export class PublicController {
   async trackEvent(
     @Res() res: Response,
     @Req() req: Request,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
     @Body()
     body: { fbclid?: string; tt: TrackEnum; additional: Record<string, any> }
