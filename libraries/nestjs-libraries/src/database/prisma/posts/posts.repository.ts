@@ -1133,6 +1133,19 @@ export class PostsRepository {
     });
   }
 
+  // A root comment goes with its replies: they only render under it.
+  deleteCommentThread(id: string) {
+    return this._comments.model.comments.updateMany({
+      where: {
+        OR: [{ id }, { parentId: id }],
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
   getAnchoredCommentsForPost(postId: string) {
     return this._comments.model.comments.findMany({
       where: {

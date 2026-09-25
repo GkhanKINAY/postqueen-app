@@ -12,6 +12,7 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { TurnstileWidget } from '@gitroom/frontend/components/auth/turnstile.widget';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import {
@@ -304,7 +305,51 @@ const CommentComposer: FC<{
   );
 };
 
-const CommentBody: FC<{ comment: PreviewComment }> = ({ comment }) => {
+// Moderation for the team that owns the post: anyone with the link can
+// comment, so the team can take a comment down. A root comment takes its
+// replies with it.
+const useDeleteComment = () => {
+  const t = useT();
+  const fetch = useFetch();
+  const toast = useToaster();
+  const { mutate, activeThread, setActiveThread } = usePreviewComments();
+  return useCallback(
+    async (comment: PreviewComment) => {
+      if (
+        !(await deleteDialog(
+          comment.parentId
+            ? t('preview_comment_delete_reply_confirm', 'Delete this reply?')
+            : t(
+                'preview_comment_delete_confirm',
+                'Delete this comment and its replies?'
+              )
+        ))
+      ) {
+        return;
+      }
+      const response = await fetch(`/posts/comments/${comment.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        toast.show(
+          t('preview_comment_delete_failed', 'Could not delete the comment'),
+          'warning'
+        );
+        return;
+      }
+      if (activeThread?.id === comment.id) {
+        setActiveThread(null);
+      }
+      await mutate();
+    },
+    [t, fetch, toast, mutate, activeThread, setActiveThread]
+  );
+};
+
+const CommentBody: FC<{
+  comment: PreviewComment;
+  onDelete?: () => void;
+}> = ({ comment, onDelete }) => {
   const t = useT();
   return (
     <div className="flex flex-col gap-[4px]">
@@ -319,6 +364,15 @@ const CommentBody: FC<{ comment: PreviewComment }> = ({ comment }) => {
           </span>
         )}
         <span>· {dayjs(comment.createdAt).format('MMM D, YYYY HH:mm')}</span>
+        {!!onDelete && (
+          <button
+            type="button"
+            className="ms-auto text-pqMuted hover:text-pqDanger"
+            onClick={onDelete}
+          >
+            {t('delete', 'Delete')}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -371,6 +425,7 @@ const ThreadCard: FC<{
     mutate();
   }, [comment.id, resolved, fetch, toast, t, mutate]);
 
+  const deleteComment = useDeleteComment();
   const actionClass = 'text-pqMuted hover:text-pqText';
 
   return (
@@ -428,7 +483,11 @@ const ThreadCard: FC<{
       {(!resolved || expanded) && !!replies.length && (
         <div className="flex flex-col gap-[8px] border-s border-pqBorder ps-[12px]">
           {replies.map((reply) => (
-            <CommentBody key={reply.id} comment={reply} />
+            <CommentBody
+              key={reply.id}
+              comment={reply}
+              onDelete={canResolve ? () => deleteComment(reply) : undefined}
+            />
           ))}
         </div>
       )}
@@ -450,6 +509,15 @@ const ThreadCard: FC<{
               onClick={toggleResolved}
             >
               {resolved ? t('reopen', 'Reopen') : t('resolve', 'Resolve')}
+            </button>
+          )}
+          {canResolve && (
+            <button
+              type="button"
+              className="text-pqMuted hover:text-pqDanger"
+              onClick={() => deleteComment(comment)}
+            >
+              {t('delete', 'Delete')}
             </button>
           )}
           {resolved && (

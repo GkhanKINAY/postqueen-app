@@ -106,6 +106,7 @@
 /posts/${postId}/release-id
 /posts/${postId}/statistics
 /posts/${previewId}/comments
+/posts/comments/${comment.id}
 /posts/comments/${comment.id}/resolve
 /posts/count
 /posts/find-slot

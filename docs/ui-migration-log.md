@@ -1644,3 +1644,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Preview before publishing
 
 **No api, i18n, route, gate or loop change.** The owner chose upstream's way on 2026-09-25: `/p/:id` and its comments show a post in every state again, and the calendar's Preview button (cells, day view and list) is back on drafts and scheduled posts, where `7da3f4f3` had hidden it. The page still returns chosen fields only, and a post that is not published yet carries `noindex`.
+
+## Deleting a preview comment
+
+**api +1 (`/posts/comments/${comment.id}`, DELETE); i18n +3 (`preview_comment_delete_confirm`, `preview_comment_delete_reply_confirm`, `preview_comment_delete_failed`); no route, gate or loop change.** Anyone holding a preview link can comment, so the team that owns the post can now take a comment down: Delete sits next to Resolve on a thread and on each reply, behind the usual confirmation, and a thread goes with its replies. It is a soft delete (`deletedAt`), scoped to the post's organization like Resolve. The new keys exist only as `t()` fallbacks. `scripts/ui-migration-check.sh --update` changed `api.txt` and `i18n.txt`.

@@ -1812,6 +1812,9 @@ posting_days_hint
 posts
 preview
 preview_click_to_open_comment
+preview_comment_delete_confirm
+preview_comment_delete_failed
+preview_comment_delete_reply_confirm
 preview_comment_detach_hint
 preview_comment_failed
 preview_comment_guest
