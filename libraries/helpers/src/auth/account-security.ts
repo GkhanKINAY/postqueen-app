@@ -58,6 +58,14 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 export const emailsMatch = (left: string, right: string) =>
   normalizeEmail(left) === normalizeEmail(right);
 
+/**
+ * An address for a case-insensitive Prisma `equals`, which Postgres runs as
+ * ILIKE: there `_` stands for any one character and `%` for any run of them,
+ * so an address holding either would also match addresses it is not.
+ * Escaped, it matches itself and nothing else.
+ */
+export const exactEmail = (email: string) => email.replace(/[\\%_]/g, '\\$&');
+
 /** Password login / forgot: LOCAL with a hash, else any provider with a hash. */
 export const pickUserWithPassword = <
   T extends { providerName: string; password?: string | null }

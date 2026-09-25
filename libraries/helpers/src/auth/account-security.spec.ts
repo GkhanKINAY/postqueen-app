@@ -5,6 +5,7 @@ import {
   canUnlinkIdentity,
   decideLinkIdentity,
   emailsMatch,
+  exactEmail,
   hasPasswordHash,
   isLinkableProvider,
   nextProviderNameAfterUnlink,
@@ -165,5 +166,17 @@ describe('nextProviderNameAfterUnlink', () => {
       }),
       'GITHUB'
     );
+  });
+});
+
+describe('exactEmail', () => {
+  it('escapes the characters ILIKE reads as wildcards', () => {
+    assert.equal(exactEmail('j_hn@example.com'), 'j\\_hn@example.com');
+    assert.equal(exactEmail('a%b@example.com'), 'a\\%b@example.com');
+    assert.equal(exactEmail('back\\slash@example.com'), 'back\\\\slash@example.com');
+  });
+
+  it('leaves an ordinary address as it is', () => {
+    assert.equal(exactEmail('John.Doe+tag@Example.com'), 'John.Doe+tag@Example.com');
   });
 });
