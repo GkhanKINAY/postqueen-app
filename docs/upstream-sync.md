@@ -281,13 +281,63 @@ Lessons, in the order they cost time:
   web app, session based and superuser only, stays the way to look into a
   customer's workspace.
 
+## September 2026 (fourth sync): what happened
+
+**39 commits past the watermark (`5ff9e0b2..60431b08`, merges not counted):
+34 taken, 1 already here, 4 skipped.** The first run since `main` records
+upstream as merged, so `main..upstream/main` listed exactly these. Three PRs:
+the fixes, the preview comments on their own because they carry a schema
+change and a restyle, and the `-s ours` merge.
+
+What landed: platform errors mapped to readable reasons or the right outcome
+(Instagram checkpoints and container errors, five Facebook Graph rejections
+and a page without a page token, six X rejections plus Unauthorized media
+uploads, Threads container retries, Reddit RATELIMIT resubmits, Pinterest
+board ids, Lemmy, VK, Telegram and Dribbble); tag deletion cleaning up its
+post assignments; a deleted post group answering 404; the uploader not
+calling `clear()` mid-upload; three third-party errors kept away from
+Sentry's report dialog; connected OAuth clients in the admin stats; and
+upstream's inline comments on `/p/:id`.
+
+Lessons, in the order they cost time:
+
+- **Upstream's preview is a review step before publishing; ours is a share
+  page for published posts.** `f95bd486` limited `/p/:id` to published posts
+  and stopped it naming the owning organization. Upstream's comments assume
+  both: the page reads `organizationId` to decide who may resolve, and the
+  MCP schedule tool (`8c63e686`, skipped) hands out `/p/<id>` for a post that
+  was only just scheduled. Here the comment routes are published-only too,
+  and a signed-in viewer's `canResolve` comes from `GET /posts/:id/comments`.
+  Any later upstream work on the preview has to be read against that.
+- **Upstream keyed a new public rate limit on the first X-Forwarded-For entry
+  again**, this time inside the global guard. The second sync's lesson
+  applies unchanged: `ThrottlerRealIpGuard` on the route, global guard left
+  alone.
+- **Upstream brought its own captcha (Google reCAPTCHA); this fork already
+  has one.** Anonymous comments use the Turnstile check of the passwordless
+  login instead: a `preview_comment` action in `AbuseGuardService`, on by
+  default once `TURNSTILE_SECRET` is set, and `TurnstileWidget` in the name
+  dialog. No new env, no Google script on the page. Look for an existing
+  mechanism before taking a second one along with a feature.
+- **`/p/:id` has no `ViewportProvider`**, so `useViewport().touch` is always
+  false there and the comments pane is inline at every width. Mobile
+  behaviour on that page cannot hang off the viewport context.
+- **The migration check's api list only sees `fetch()` of a literal path.**
+  A path chosen by a ternary or held in a variable drops out of the list
+  and reads as a removed endpoint. Write each call as its own literal.
+- **Copy an upstream hash with `git rev-parse`, never by eye.** Two
+  "(cherry picked / adapted from commit ...)" lines in this run first went in
+  with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`
+  over every such line caught them.
+
 ## Where the sync currently stands
 
-**Synced through `5ff9e0b2` (2026-09-22), and merged.** Everything upstream had
+**Synced through `60431b08` (2026-09-25), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
-and `main` now has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `8b84b0dc` (the same day, before
-three README commits), `6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
+and `main` has that commit as an ancestor through a `-s ours` merge (see
+"Next time"). The previous watermarks were `5ff9e0b2` (2026-09-22, the first
+one merged that way), `8b84b0dc` (the same day, before three README commits),
+`6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
 
 Skipped, deliberately:
 
@@ -308,6 +358,8 @@ Skipped, deliberately:
 | `3d3e9eee` `6af357dd` `c0238437` | Upstream's ChatGPT app-directory listing (`chatgpt-app-submission.json`) |
 | `8b84b0dc` | Reworks the onboarding modal this fork removed, around upstream's Claude, ChatGPT, Cursor and Grok Bot directory listings |
 | `87ac77c6` `c33f2188` `5ff9e0b2` | Upstream's own README and the agent icons it shows. This fork's README is PostQueen's |
+| `305f7c0d` `38cb6a41` `b90fc691` | Upstream's own README: their cloud versus open-source section and compliance line |
+| `8c63e686` | Returns `/p/<id>?share=true` from the MCP schedule tool as a preview to open right away. `/p/:id` shows published posts only here, so for a post just scheduled it opens on "Post not found" |
 
 Already here, or empty once picked (second sync):
 
@@ -322,6 +374,7 @@ Already here, or empty once picked (second sync):
 | `678acd4a` | `0901595b` already refuses a video on Slack at validation |
 | `9259cf24` (CVE-2026-94455) | `f95bd486` puts the enterprise routes behind their own `ENTERPRISE_SECRET`, so a session token is unusable there, not only rejected |
 | `4c835138` (CVE-2026-94456) | `22fae01e` made `makeId` itself a CSPRNG, which covers every caller, the frontend and the workflows included |
+| `f9e0d010` (fourth sync) | `4d46754e` already signs Nostr events with the key's bytes |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
 (`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing

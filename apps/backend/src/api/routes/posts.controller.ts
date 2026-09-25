@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { UpdateReleaseIdDto } from '@gitroom/nestjs-libraries/dtos/posts/update.release.id.dto';
@@ -32,6 +33,12 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
+import {
+  CreatePublicCommentDto,
+  ResolveCommentDto,
+} from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
+import { Throttle } from '@nestjs/throttler';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 
 @ApiTags('Posts')
 @Controller('/posts')
@@ -72,14 +79,34 @@ export class PostsController {
     return { ask: this._shortLinkService.askShortLinkedin(body.messages) };
   }
 
+  @Get('/:id/comments')
+  getComments(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._postsService.getComments(id, org.id);
+  }
+
+  // Any account can comment on any published preview, so this is capped per
+  // address like the anonymous route, with room for a reviewer's busy hour.
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 60, ttl: 3600000 } })
   @Post('/:id/comments')
   async createComment(
-    @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
     @Param('id') id: string,
-    @Body() body: { comment: string }
+    @Body() body: CreatePublicCommentDto
   ) {
-    return this._postsService.createComment(org.id, user.id, id, body.comment);
+    return this._postsService.createPublicComment(id, body, user.id);
+  }
+
+  @Put('/comments/:commentId/resolve')
+  async resolveComment(
+    @GetOrgFromRequest() org: Organization,
+    @Param('commentId') commentId: string,
+    @Body() body: ResolveCommentDto
+  ) {
+    return this._postsService.resolveComment(org.id, commentId, body.resolved);
   }
 
   @Get('/tags')

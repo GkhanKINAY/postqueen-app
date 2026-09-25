@@ -10,7 +10,8 @@ export type GuardAction =
   | 'forgot'
   | 'password_change'
   | 'email_change'
-  | 'identity_link';
+  | 'identity_link'
+  | 'preview_comment';
 
 export interface GuardChallengeInput {
   action: GuardAction;
@@ -109,11 +110,21 @@ export class AbuseGuardService {
         email: int('GUARD_IDENTITY_LINK_EMAIL', 5),
         ip: int('GUARD_IDENTITY_LINK_IP', 20),
       },
+      // Anonymous comments on the public preview. The route counts them per
+      // address itself (ThrottlerRealIpGuard), so this action is only here for
+      // the captcha.
+      preview_comment: {
+        email: 0,
+        ip: 0,
+      },
     };
   }
 
   private get captchaActions(): GuardAction[] {
-    return actionList('GUARD_CAPTCHA_ACTIONS', ['otp_request']);
+    return actionList('GUARD_CAPTCHA_ACTIONS', [
+      'otp_request',
+      'preview_comment',
+    ]);
   }
 
   private announceOnce() {

@@ -811,5 +811,21 @@
   "stop_repeating_confirm": "Non verrà più pubblicato. Tutto ciò che è già stato pubblicato resta pubblicato.",
   "stop_repeating_done": "Questo post non si ripete più",
   "stop_repeating_failed": "Impossibile interrompere la ripetizione del post, riprova",
-  "leave_workspace": "Esci dallo spazio di lavoro"
+  "leave_workspace": "Esci dallo spazio di lavoro",
+  "comment": "Commento",
+  "reply": "Rispondi",
+  "add_a_comment": "Aggiungi un commento",
+  "add_a_comment_placeholder": "Aggiungi un commento...",
+  "write_a_reply": "Scrivi una risposta...",
+  "reviewer": "Revisore",
+  "resolve": "Risolvi",
+  "reopen": "Riapri",
+  "resolved": "Risolto",
+  "collapse": "Comprimi",
+  "preview_comment_name_required": "Possiamo pubblicare il tuo commento solo se ci fornisci il tuo nome.",
+  "preview_comment_your_name": "Il tuo nome",
+  "preview_comment_failed": "Impossibile pubblicare il commento",
+  "preview_comment_detach_hint": "I commenti su testo selezionato perdono l'evidenziazione se il testo viene modificato successivamente.",
+  "preview_comment_text_changed": "Testo modificato",
+  "preview_no_comments_yet": "Nessun commento ancora. Seleziona del testo nel post per commentarlo, oppure aggiungi un commento generale."
 }

@@ -1303,5 +1303,20 @@
   "stop_repeating_confirm": "It will not be posted again. Everything it already published stays published.",
   "stop_repeating_done": "This post no longer repeats",
   "stop_repeating_failed": "Could not stop this post from repeating, please try again",
-  "leave_workspace": "Leave workspace"
+  "leave_workspace": "Leave workspace",
+  "comment": "Comment",
+  "reply": "Reply",
+  "add_a_comment": "Add a comment",
+  "add_a_comment_placeholder": "Add a comment...",
+  "write_a_reply": "Write a reply...",
+  "reviewer": "Reviewer",
+  "resolve": "Resolve",
+  "reopen": "Reopen",
+  "resolved": "Resolved",
+  "preview_comment_name_required": "We can only post your comment if you provide your name.",
+  "preview_comment_your_name": "Your name",
+  "preview_comment_failed": "Could not post the comment",
+  "preview_comment_detach_hint": "Comments on selected text lose their highlight if the text is edited later.",
+  "preview_comment_text_changed": "Text changed",
+  "preview_no_comments_yet": "No comments yet. Select some text in the post to comment on it, or add a general comment."
 }

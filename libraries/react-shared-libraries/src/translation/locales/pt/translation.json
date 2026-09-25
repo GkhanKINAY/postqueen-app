@@ -811,5 +811,21 @@
   "stop_repeating_confirm": "Ela não será publicada novamente. Tudo o que já foi publicado continua publicado.",
   "stop_repeating_done": "Esta publicação não se repete mais",
   "stop_repeating_failed": "Não foi possível parar a repetição desta publicação, tente novamente",
-  "leave_workspace": "Sair do espaço de trabalho"
+  "leave_workspace": "Sair do espaço de trabalho",
+  "comment": "Comentário",
+  "reply": "Responder",
+  "add_a_comment": "Adicionar um comentário",
+  "add_a_comment_placeholder": "Adicione um comentário...",
+  "write_a_reply": "Escreva uma resposta...",
+  "reviewer": "Revisor",
+  "resolve": "Resolver",
+  "reopen": "Reabrir",
+  "resolved": "Resolvido",
+  "collapse": "Recolher",
+  "preview_comment_name_required": "Só podemos publicar seu comentário se você informar seu nome.",
+  "preview_comment_your_name": "Seu nome",
+  "preview_comment_failed": "Não foi possível publicar o comentário",
+  "preview_comment_detach_hint": "Comentários em textos selecionados perdem o destaque se o texto for editado depois.",
+  "preview_comment_text_changed": "Texto alterado",
+  "preview_no_comments_yet": "Ainda não há comentários. Selecione um trecho do post para comentar ou adicione um comentário geral."
 }
