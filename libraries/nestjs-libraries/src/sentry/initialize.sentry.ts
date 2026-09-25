@@ -33,6 +33,12 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
     return null;
   }
 
+  // SENTRY_ENVIRONMENT first: the production image runs the backend and the
+  // orchestrator without NODE_ENV, which would file every event under
+  // "development" and profile every sampled trace.
+  const environment =
+    process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
+
   // Required here rather than imported at the top: `@sentry/profiling-node`
   // pulls a prebuilt native binding, and it has none for every Node release —
   // on Node 25 the process dies on load. A top-level import made that fatal for
@@ -61,7 +67,7 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
           },
         },
       },
-      environment: process.env.NODE_ENV || 'development',
+      environment,
       dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
       integrations: [
@@ -103,7 +109,7 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       beforeSendLog: (log) => scrubForSentry(log),
 
       // Profiling
-      profileSessionSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.2,
+      profileSessionSampleRate: environment === 'development' ? 1.0 : 0.2,
       profileLifecycle: 'trace',
     });
   } catch (err) {
