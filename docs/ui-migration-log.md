@@ -1640,3 +1640,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Checkout says so when Stripe.js cannot load (upstream sync)
 
 **i18n +1 (`billing_stripe_load_failed`); no api, route, gate or loop change.** Upstream's `cdaf61d6`. `loadStripe()` rejects when js.stripe.com is blocked by an ad blocker, a privacy extension or a proxy; the rejection was unhandled, opened Sentry's report dialog and left the checkout on its spinner. The checkout now shows its existing notice with the new message instead. Translated in every locale by upstream. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Preview before publishing
+
+**No api, i18n, route, gate or loop change.** The owner chose upstream's way on 2026-09-25: `/p/:id` and its comments show a post in every state again, and the calendar's Preview button (cells, day view and list) is back on drafts and scheduled posts, where `7da3f4f3` had hidden it. The page still returns chosen fields only, and a post that is not published yet carries `noindex`.
