@@ -7,7 +7,11 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { OAuthService } from '@gitroom/nestjs-libraries/database/prisma/oauth/oauth.service';
 import { runWithContext } from './async.storage';
 import { createOAuthMiddleware } from './oauth-middleware';
-import { joinBaseUrl } from './oauth-types';
+import {
+  authorizationServerIssuer,
+  joinBaseUrl,
+  mcpOAuthBaseUrl,
+} from './oauth-types';
 import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/upload.widget';
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
@@ -85,8 +89,7 @@ export const startMcp = async (app: INestApplication) => {
   // hangs off one base, joined without dropping its path: in production
   // NEXT_PUBLIC_BACKEND_URL is https://app.postqueen.ai/api. The widgets call
   // the backend from the same base.
-  const mcpBackendUrl =
-    process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL!;
+  const mcpBackendUrl = mcpOAuthBaseUrl();
   const widgetBackendUrl = mcpBackendUrl.trim().replace(/\/+$/, '');
 
   const clippingEnabled = UploadFactory.clippingEnabled();
@@ -171,14 +174,15 @@ export const startMcp = async (app: INestApplication) => {
   // the pre-defined client credentials instead of DCR (a fresh path, because
   // OpenAI kept serving its cached copy of the old /mcp-oauth metadata).
   // /mcp-oauth-dynamic keeps DCR for Claude, Cursor and every other
-  // self-registering client
+  // self-registering client. The authorization response names the same
+  // issuer in `iss` (RFC 9207, oauthAppIssuer in oauth-types.ts)
   const authorizationServers: Record<string, { issuer: string; registration: boolean }> = {
     '/mcp-oauth-chatgpt': {
-      issuer: joinBaseUrl(mcpBackendUrl, '/mcp-oauth-chatgpt'),
+      issuer: authorizationServerIssuer('/mcp-oauth-chatgpt'),
       registration: false,
     },
     '/mcp-oauth-dynamic': {
-      issuer: joinBaseUrl(mcpBackendUrl, '/mcp-oauth-dynamic'),
+      issuer: authorizationServerIssuer('/mcp-oauth-dynamic'),
       registration: true,
     },
   };
@@ -200,6 +204,7 @@ export const startMcp = async (app: INestApplication) => {
     token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
     code_challenge_methods_supported: ['S256'],
     scopes_supported: oauthScopes,
+    authorization_response_iss_parameter_supported: true,
   });
 
   // Every OAuth-protected MCP path is its own RFC 9728 protected resource

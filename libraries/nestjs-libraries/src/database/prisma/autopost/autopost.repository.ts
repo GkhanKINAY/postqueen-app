@@ -117,6 +117,7 @@ export class AutopostRepository {
       },
       select: {
         id: true,
+        title: true,
       },
     });
   }

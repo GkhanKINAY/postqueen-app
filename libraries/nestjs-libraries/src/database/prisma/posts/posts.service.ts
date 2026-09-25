@@ -141,12 +141,13 @@ export class PostsService {
     return this._postRepository.updatePost(id, postId, releaseURL);
   }
 
-  async shouldSkipPublishNotice(orgId: string, releaseURL: string) {
-    const row = await this._postRepository.getSettingsByReleaseUrl(
-      orgId,
-      releaseURL
-    );
-    return !postWantsPublishNotice(row?.settings);
+  shouldSkipPublishNotice(post?: { settings: string | null } | null) {
+    return !postWantsPublishNotice(post?.settings);
+  }
+
+  /** The post a publish notice is about, found by the link it went live at. */
+  getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
+    return this._postRepository.getPublishedByReleaseUrl(orgId, releaseURL);
   }
 
   claimPost(id: string, claimant: string, anyState: boolean) {

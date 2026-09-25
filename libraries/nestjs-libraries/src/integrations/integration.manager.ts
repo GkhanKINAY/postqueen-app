@@ -254,4 +254,11 @@ export class IntegrationManager {
   getSocialIntegration(integration: string): SocialProvider {
     return socialIntegrationList.find((i) => i.identifier === integration)!;
   }
+
+  /** The network's name as people know it ("Instagram"), never its identifier. */
+  getSocialIntegrationName(integration: string) {
+    return (this.getSocialIntegration(integration)?.name || integration)
+      .split('\n')[0]
+      .trim();
+  }
 }

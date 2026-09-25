@@ -1,5 +1,8 @@
 import nodemailer from 'nodemailer';
-import { EmailInterface } from '@gitroom/nestjs-libraries/emails/email.interface';
+import {
+  EmailExtras,
+  EmailInterface,
+} from '@gitroom/nestjs-libraries/emails/email.interface';
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
@@ -25,14 +28,19 @@ export class NodeMailerProvider implements EmailInterface {
     subject: string,
     html: string,
     emailFromName: string,
-    emailFromAddress: string
+    emailFromAddress: string,
+    replyTo?: string,
+    extras?: EmailExtras,
   ) {
+    // `text` used to be the HTML itself, so a client showing the plain part
+    // showed raw markup, and spam filters saw the two parts disagree.
     const sends = await transporter.sendMail({
       from: `${emailFromName} <${emailFromAddress}>`, // sender address
       to: to, // list of receivers
       subject: subject, // Subject line
-      text: html, // plain text body
+      ...(extras?.text && { text: extras.text }), // plain text body
       html: html, // html body
+      ...(replyTo && { replyTo }),
     });
 
     return sends;

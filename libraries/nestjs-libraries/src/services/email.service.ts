@@ -5,6 +5,16 @@ import { EmptyProvider } from '@gitroom/nestjs-libraries/emails/empty.provider';
 import { NodeMailerProvider } from '@gitroom/nestjs-libraries/emails/node.mailer.provider';
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import {
+  EmailStream,
+  readEmailContent,
+} from '@gitroom/nestjs-libraries/emails/email.content';
+import {
+  EmailEnv,
+  renderEmail,
+  renderLegacyEmail,
+} from '@gitroom/nestjs-libraries/emails/email.layout';
 
 @Injectable()
 export class EmailService {
@@ -37,6 +47,38 @@ export class EmailService {
       !!process.env.EMAIL_FROM_ADDRESS &&
       !!process.env.EMAIL_FROM_NAME
     );
+  }
+
+  /**
+   * Notifications go out from their own address when one is set, so a
+   * mailbox that learns to file publishing updates away never learns it about
+   * sign-in codes. Replies still reach the support inbox.
+   */
+  private sender(stream: EmailStream) {
+    const account = process.env.EMAIL_FROM_ADDRESS!;
+    const notifications = process.env.EMAIL_NOTIFICATIONS_FROM_ADDRESS;
+    if (stream === 'notifications' && notifications) {
+      return { from: notifications, replyTo: account };
+    }
+    return { from: account, replyTo: undefined };
+  }
+
+  /**
+   * Links and company details in every footer. Hosted PostQueen falls back to
+   * its own site, the way the app's legal and support links do; a self-hosted
+   * install shows only what it configures.
+   */
+  private layoutEnv(): EmailEnv {
+    const hosted = isBillingEnabled();
+    return {
+      frontendUrl: process.env.FRONTEND_URL || '',
+      fromName: process.env.EMAIL_FROM_NAME || 'PostQueen',
+      supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM_ADDRESS,
+      legalUrl:
+        process.env.LEGAL_URL || (hosted ? 'https://postqueen.ai' : undefined),
+      helpUrl: hosted ? 'https://docs.postqueen.ai' : undefined,
+      postalAddress: process.env.EMAIL_POSTAL_ADDRESS,
+    };
   }
 
   selectProvider(provider: string) {
@@ -86,59 +128,12 @@ export class EmailService {
       return;
     }
 
-    const modifiedHtml = `
-    <div style="
-        background: linear-gradient(to bottom right, #e6f2ff, #f0e6ff);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-    ">
-        <div style="
-            background-color: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(4px);
-            border-radius: 0.5rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            max-width: 48rem;
-            width: 100%;
-            padding: 2rem;
-        ">
-            <h1 style="
-                font-size: 1.875rem;
-                font-weight: bold;
-                margin-bottom: 1.5rem;
-                text-align: left;
-                color: #1f2937;
-            ">${subject}</h1>
-            
-            <div style="
-                margin-bottom: 2rem;
-                color: #374151;
-            ">
-                ${html}
-            </div>
-            
-            <div style="
-                display: flex;
-                align-items: center;
-                border-top: 1px solid #e5e7eb;
-                padding-top: 1.5rem;
-            ">
-                <div>
-                    <h2 style="
-                        font-size: 1.25rem;
-                        font-weight: 600;
-                        color: #1f2937;
-                        margin: 0;
-                    ">${process.env.EMAIL_FROM_NAME}</h2>
-                    <div style="font-size: 12px">
-                      You can change your notification preferences in your <a href="${process.env.FRONTEND_URL}/settings">account settings.</a>
-                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    `;
+    const content = readEmailContent(html);
+    const env = this.layoutEnv();
+    const rendered = content
+      ? renderEmail(env, subject, content)
+      : renderLegacyEmail(env, subject, html);
+    const sender = this.sender(content?.stream || 'account');
 
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -146,10 +141,11 @@ export class EmailService {
         const sends = await this.emailService.sendEmail(
           to,
           subject,
-          modifiedHtml,
+          rendered.html,
           process.env.EMAIL_FROM_NAME,
-          process.env.EMAIL_FROM_ADDRESS,
-          replyTo
+          sender.from,
+          replyTo || sender.replyTo,
+          { text: rendered.text }
         );
         console.log(sends);
         return;

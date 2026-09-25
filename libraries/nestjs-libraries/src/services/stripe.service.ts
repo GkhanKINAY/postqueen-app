@@ -660,16 +660,39 @@ export class StripeService extends PaymentProviderAbstract {
       });
     }
     await this._organizationService.withdrawTrial(org.id);
+    const prepaidRefusal = refusal === TRIAL_CARD_PREPAID;
     await this._notificationService.inAppNotification(
       org.id,
-      'Free trial not available',
-      refusal === TRIAL_CARD_PREPAID
+      // No "free" in a subject line: spam filters weigh it.
+      'Your trial didn’t start',
+      prepaidRefusal
         ? 'Free trials need a regular debit or credit card, and this one is prepaid. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.'
         : 'This card has already been used for a free trial on another PostQueen account. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.',
       true,
       false,
       'info',
-      '/billing'
+      '/billing',
+      {
+        stream: 'notifications',
+        category: 'Billing',
+        preheader: prepaidRefusal
+          ? 'Prepaid cards can’t start a trial. You weren’t charged.'
+          : 'This card was already used for a trial. You weren’t charged.',
+        tone: 'warn',
+        icon: 'card',
+        title: 'Your trial didn’t start',
+        lead: prepaidRefusal
+          ? 'Free trials need a regular debit or credit card, and this one is prepaid. We didn’t start your trial and you weren’t charged.'
+          : 'This card has already been used for a free trial on another PostQueen account. We didn’t start your trial and you weren’t charged.',
+        blocks: [
+          {
+            type: 'callout',
+            text: 'You can still subscribe without a trial from Billing.',
+          },
+          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+        ],
+        footer: 'billing',
+      }
     );
     return true;
   }
@@ -2350,14 +2373,56 @@ export class StripeService extends PaymentProviderAbstract {
 
     await this._notificationService.inAppNotification(
       org.id,
-      'Payment failed',
+      firstCharge
+        ? 'PostQueen is paused until your first payment goes through'
+        : 'We couldn’t charge your card',
       firstCharge
         ? "We couldn't take the first payment for your PostQueen subscription, so PostQueen is paused until it goes through. Update your card from Billing to continue; your channels and posts are kept."
         : "We could not charge your card for PostQueen. Update your payment method from Billing and we'll try again — nothing is cancelled yet.",
       true,
       false,
       'info',
-      '/billing'
+      '/billing',
+      firstCharge
+        ? {
+            stream: 'notifications',
+            category: 'Billing',
+            preheader:
+              'Update your card to continue. Your channels and posts are kept.',
+            tone: 'danger',
+            icon: 'card',
+            title: 'PostQueen is paused',
+            lead: 'We couldn’t take the first payment for your subscription, so PostQueen is paused until it goes through.',
+            blocks: [
+              {
+                type: 'callout',
+                text: 'Your channels and posts are kept. Scheduled posts go out again once the payment goes through.',
+              },
+              {
+                type: 'button',
+                link: { label: 'Update my card', url: '/billing' },
+              },
+            ],
+            footer: 'billing',
+          }
+        : {
+            stream: 'notifications',
+            category: 'Billing',
+            preheader:
+              'Update your payment method and we’ll try again. Nothing is cancelled yet.',
+            tone: 'danger',
+            icon: 'card',
+            title: 'Your payment didn’t go through',
+            lead: 'We couldn’t charge your card for your PostQueen subscription. Update your payment method from Billing and we’ll try again.',
+            blocks: [
+              { type: 'callout', text: 'Nothing is cancelled yet.' },
+              {
+                type: 'button',
+                link: { label: 'Update payment method', url: '/billing' },
+              },
+            ],
+            footer: 'billing',
+          }
     );
 
     return { ok: true };
@@ -2485,12 +2550,29 @@ export class StripeService extends PaymentProviderAbstract {
     await this._subscriptionService.revokeLocalSubscription(org.id);
     await this._notificationService.inAppNotification(
       org.id,
-      'Payment disputed',
+      'Your PostQueen plan is suspended',
       'A payment for PostQueen was disputed with your bank, so your plan has been suspended. Contact support if this was not you.',
       true,
       false,
       'info',
-      '/billing'
+      '/billing',
+      {
+        stream: 'notifications',
+        category: 'Billing',
+        preheader: 'A payment for PostQueen was disputed with your bank.',
+        tone: 'danger',
+        icon: 'shield-alert',
+        title: 'Your plan is suspended',
+        lead: 'A payment for PostQueen was disputed with your bank, so your plan has been suspended.',
+        blocks: [
+          {
+            type: 'text',
+            text: 'Didn’t dispute it? Reply to this email and we’ll help you sort it out.',
+          },
+          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+        ],
+        footer: 'billing',
+      }
     );
 
     return { ok: true, revoked: true };
@@ -2532,12 +2614,26 @@ export class StripeService extends PaymentProviderAbstract {
     // a bug to the person it happens to.
     await this._notificationService.inAppNotification(
       org.id,
-      'Payment refunded',
+      'Your PostQueen payment was refunded',
       'Your PostQueen payment was refunded, so the plan it paid for has ended. Subscribe again any time from Billing.',
       true,
       false,
       'info',
-      '/billing'
+      '/billing',
+      {
+        stream: 'notifications',
+        category: 'Billing',
+        preheader:
+          'The plan it paid for has ended. You can subscribe again any time.',
+        tone: 'brand',
+        icon: 'undo',
+        title: 'Your payment was refunded',
+        lead: 'Your PostQueen payment was refunded, so the plan it paid for has ended. You can subscribe again any time from Billing.',
+        blocks: [
+          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+        ],
+        footer: 'billing',
+      }
     );
     return { ok: true, revoked: true };
   }
@@ -3112,16 +3208,35 @@ export class StripeService extends PaymentProviderAbstract {
         (await this.trialCardUsedElsewhere(organizationId, fingerprint)))
     ) {
       await this._organizationService.withdrawTrial(organizationId);
+      const message = prepaid
+        ? 'Free trials need a regular debit or credit card, and this one is prepaid, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.'
+        : 'This card has already been used for a free trial on another PostQueen account, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.';
       await this._notificationService.inAppNotification(
         organizationId,
-        'Free trial not available',
-        prepaid
-          ? 'Free trials need a regular debit or credit card, and this one is prepaid, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.'
-          : 'This card has already been used for a free trial on another PostQueen account, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.',
+        'Your founding-member plan wasn’t added',
+        message,
         true,
         false,
         'info',
-        '/billing'
+        '/billing',
+        {
+          stream: 'notifications',
+          category: 'Billing',
+          preheader:
+            'The fee can’t wait for the end of a trial on this card. Nothing was charged.',
+          tone: 'warn',
+          icon: 'card',
+          title: 'Your founding-member plan wasn’t added',
+          lead: message.replace(' You can buy it with a payment today from Billing.', ''),
+          blocks: [
+            {
+              type: 'callout',
+              text: 'You can buy it with a payment today from Billing.',
+            },
+            { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+          ],
+          footer: 'billing',
+        }
       );
       return { ok: true, granted: false, reason: 'trial card refused' };
     }

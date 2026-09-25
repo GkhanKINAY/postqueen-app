@@ -173,6 +173,7 @@ export class AccountPurgeService {
       ...owners.autoposts.map((id) => `autopost-${id}`),
       ...owners.integrations.map((id) => `refresh_${id}`),
       `digest_email_workflow_${orgId}`,
+      `digest_email_v2_${orgId}`,
       `streak_${orgId}`,
       ...owners.media.map((id) => `media_${id}`),
       ...owners.clippings.map((id) => `clipping_${id}`),
