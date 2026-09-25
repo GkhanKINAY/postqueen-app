@@ -1,52 +1,12 @@
 'use client';
 
-import { FC, RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import {
-  useLaunchStore,
-} from '@gitroom/frontend/components/new-launch/store';
+import { FC } from 'react';
+import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import clsx from 'clsx';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useShallow } from 'zustand/react/shallow';
-import { GlobalIcon } from '@gitroom/frontend/components/ui/icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
-import type { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
-
-export function useHasScroll(ref: RefObject<HTMLElement | null>): boolean {
-  const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
-
-  useEffect(() => {
-    if (!ref.current) return;
-
-    const checkScroll = () => {
-      const el = ref.current;
-      if (el) {
-        setHasHorizontalScroll(el.scrollWidth > el.clientWidth);
-      }
-    };
-
-    checkScroll(); // initial check
-
-    const resizeObserver = new ResizeObserver(checkScroll);
-    resizeObserver.observe(ref.current);
-
-    const mutationObserver = new MutationObserver(checkScroll);
-    mutationObserver.observe(ref.current, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [ref]);
-
-  return hasHorizontalScroll;
-}
 
 export const SelectCurrent: FC = () => {
   const {
@@ -55,8 +15,7 @@ export const SelectCurrent: FC = () => {
     setCurrent,
     locked,
     setHide,
-    addOrRemoveSelectedIntegration,
-    isCreateSet,
+    hasOwnVersion,
   } = useLaunchStore(
     useShallow((state) => ({
       selectedIntegrations: state.selectedIntegrations,
@@ -64,211 +23,127 @@ export const SelectCurrent: FC = () => {
       setCurrent: state.setCurrent,
       locked: state.locked,
       setHide: state.setHide,
-      addOrRemoveSelectedIntegration: state.addOrRemoveSelectedIntegration,
-      isCreateSet: state.isCreateSet,
+      hasOwnVersion: !!state.internal.find(
+        (p) => p.integration.id === state.current
+      ),
     }))
   );
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const hasScroll = useHasScroll(contentRef);
-  const existingData = useExistingData();
-  const decisionModal = useDecisionModal();
-  const canRemove = !existingData?.integration && !isCreateSet;
-
   const t = useT();
   const isGlobal = current === 'global';
-  const showHint = selectedIntegrations.length > 0;
   const currentChannel = selectedIntegrations.find(
     (p) => p.integration.id === current
   )?.integration;
 
-  const removeChannel = useCallback(
-    async (integration: Integrations) => {
-      if (!canRemove) {
-        return;
-      }
-      const open = await decisionModal.open({
-        title: t('remove_social_account', 'Remove Social Account'),
-        description: t(
-          'are_you_sure_remove_social_from_scheduling',
-          'Are you sure you want to remove this social from scheduling?'
-        ),
-      });
-      if (!open) {
-        return;
-      }
-      addOrRemoveSelectedIntegration(integration, {});
-      if (current === integration.id) {
-        setCurrent('global');
-      }
-    },
-    [
-      canRemove,
-      decisionModal,
-      t,
-      addOrRemoveSelectedIntegration,
-      current,
-      setCurrent,
-    ]
-  );
+  // Which version is being edited, named: the shared post, or one channel's
+  // own. Picking a channel only switches the view (`setCurrent`); writing a
+  // separate version for it is the editor's "Write a version" step.
+  const tabClass = (active: boolean) =>
+    clsx(
+      'flex h-[34px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[9px] ps-[7px] pe-[12px] text-[13px] transition-colors disabled:cursor-not-allowed mobile:h-[44px]',
+      active
+        ? 'bg-pqInner font-[600] text-pqText shadow-pqE1'
+        : 'text-pqMuted hover:text-pqText'
+    );
 
   return (
-    <>
-      <div className="select-none left-0 absolute w-full z-[100] px-[20px]">
-        {showHint && (
-          <div className="mb-[8px] flex items-center gap-[6px] text-[11.5px] font-[500] text-pqMuted">
-            {isGlobal ? (
-              <>
-                <span>
-                  {t(
-                    'you_are_in_global_editing_mode',
-                    'You are in global editing mode'
-                  )}
-                </span>
-                <span className="text-pqSoft" aria-hidden="true">
-                  ·
-                </span>
-                <span className="inline-flex items-center gap-[4px] text-pqSoft">
-                  {t(
-                    'click_channel_to_customize',
-                    'Click a channel to customize'
-                  )}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    aria-hidden="true"
-                    className="opacity-80"
-                  >
-                    <path
-                      d="M6 4l4 4-4 4"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </>
-            ) : (
-              <span>
-                {t('customize_for_channel', 'Customize · {{name}}', {
-                  name: currentChannel?.name || 'Channel',
-                })}
-              </span>
-            )}
-          </div>
-        )}
-        <div
-          ref={contentRef}
-          className={clsx(
-            'flex w-full gap-[16px] overflow-x-auto ps-[8px] pe-[10px] pt-[10px] pb-[8px] -ms-[8px] -me-[8px]',
-            locked && 'pointer-events-none opacity-50'
-          )}
-        >
-          <div
-            onClick={() => {
-              setHide(true);
-              setCurrent('global');
-            }}
-            data-tooltip-id="tooltip"
-            data-tooltip-content={t(
-              'global_editing_tooltip',
-              'Global — same post for all channels'
-            )}
-            className={clsx(
-              'flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqTableHeader text-pqPink',
-              isGlobal && 'ring-2 ring-pqPink'
-            )}
-          >
-            <GlobalIcon />
-          </div>
-          {selectedIntegrations.map(({ integration }) => {
-            const isActive = current === integration.id;
-            return (
-              <div
-                onClick={() => {
-                  setHide(true);
-                  setCurrent(integration.id);
-                }}
-                key={integration.id}
-                data-tooltip-id="tooltip"
-                data-tooltip-content={
-                  isGlobal
-                    ? t('customize_for_channel', 'Customize · {{name}}', {
-                        name: channelNameWithHandle(integration),
-                      })
-                    : channelNameWithHandle(integration)
-                }
-                className={clsx(
-                  'group relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-pqSettings',
-                  isActive && 'ring-2 ring-pqBrand'
-                )}
-              >
-                <IsGlobal id={integration.id} />
-                {canRemove && (
-                  <button
-                    type="button"
-                    aria-label={t('remove_channel', 'Remove channel')}
-                    data-tooltip-id="tooltip"
-                    data-tooltip-content={t('remove_channel', 'Remove channel')}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void removeChannel(integration);
-                    }}
-                    className="absolute -end-[7px] -top-[7px] z-[3] grid h-[18px] w-[18px] place-items-center rounded-full bg-pqPop text-pqMuted shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqDanger hover:text-white hover:shadow-none"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="10"
-                      height="10"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 6l12 12M18 6 6 18"
-                        stroke="currentColor"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
-                )}
-                <div
-                  className={clsx(
-                    'relative flex h-full w-full items-center justify-center overflow-hidden rounded-[9px] transition-all',
-                    !isActive && 'grayscale opacity-70 group-hover:opacity-100'
-                  )}
-                >
-                  <ChannelAvatar
-                    integration={integration}
-                    size={40}
-                    rounded="lg"
-                    className="min-h-[40px] min-w-[40px]"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div className="flex flex-wrap items-center gap-x-[12px] gap-y-[8px] pb-[2px] select-none">
       <div
+        role="tablist"
+        aria-label={t('which_version_editing', 'Which version you are editing')}
         className={clsx(
-          hasScroll
-            ? showHint
-              ? 'h-[94px]'
-              : 'h-[70px]'
-            : showHint
-            ? 'h-[86px]'
-            : 'h-[62px]'
+          'flex max-w-full gap-[2px] overflow-x-auto rounded-[12px] bg-pqSettings p-[3px]',
+          locked && 'pointer-events-none opacity-50'
         )}
-      />
-    </>
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isGlobal}
+          disabled={locked}
+          onClick={() => {
+            setHide(true);
+            setCurrent('global');
+          }}
+          className={tabClass(isGlobal)}
+        >
+          <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqBrandSoft text-pqFocused">
+            <svg
+              viewBox="0 0 24 24"
+              width="13"
+              height="13"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <path
+                d="M12 3a13.5 13.5 0 0 0 0 18 13.5 13.5 0 0 0 0-18M3 12h18"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          {t('all_channels', 'All channels')}
+        </button>
+        {selectedIntegrations.map(({ integration }) => {
+          const isActive = current === integration.id;
+          return (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              disabled={locked}
+              key={integration.id}
+              onClick={() => {
+                setHide(true);
+                setCurrent(integration.id);
+              }}
+              data-tooltip-id="tooltip"
+              data-tooltip-content={channelNameWithHandle(integration)}
+              className={tabClass(isActive)}
+            >
+              <ChannelAvatar
+                integration={integration}
+                size={22}
+                rounded="full"
+              />
+              <span className="max-w-[140px] truncate">{integration.name}</span>
+              <IsGlobal id={integration.id} />
+            </button>
+          );
+        })}
+      </div>
+      {/* A channel still on the shared post gets no line here: the card
+          over its editor says so, with the way to write its own. */}
+      {(isGlobal || hasOwnVersion) && (
+        <span className="min-w-0 text-[12.5px] text-pqMuted">
+          {isGlobal
+            ? t(
+                'editing_shared_post_hint',
+                'Edits here reach every channel without its own version'
+              )
+            : t(
+                'editing_channel_version_hint',
+                'Only {{name}} gets this version',
+                {
+                  name: currentChannel?.name || '',
+                  interpolation: { escapeValue: false },
+                }
+              )}
+        </span>
+      )}
+    </div>
   );
 };
 
+/** The mark on a channel's tab once it has a version of its own. */
 export const IsGlobal: FC<{ id: string }> = ({ id }) => {
   const t = useT();
   const { isInternal } = useLaunchStore(
@@ -282,14 +157,8 @@ export const IsGlobal: FC<{ id: string }> = ({ id }) => {
   }
 
   return (
-    <div
-      data-tooltip-id="tooltip"
-      data-tooltip-content={t(
-        'no_longer_global_mode',
-        'No longer in global mode'
-      )}
-      className="absolute -start-[2px] -bottom-[2px] z-[2] h-[9px] w-[9px] rounded-full bg-pqBrand shadow-[0_0_0_2px_var(--bg)]"
-      aria-hidden="true"
-    />
+    <span className="shrink-0 rounded-full bg-pqBrandSoft px-[6px] py-[1px] text-[10.5px] font-[700] text-pqFocused">
+      {t('own_version', 'Own version')}
+    </span>
   );
 };

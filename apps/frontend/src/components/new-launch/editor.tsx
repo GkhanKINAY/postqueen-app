@@ -12,6 +12,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import clsx from 'clsx';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import EmojiPicker from 'emoji-picker-react';
 import { Theme } from 'emoji-picker-react';
@@ -527,29 +528,42 @@ export const EditorWrapper: FC<{
       )}
       {!canEdit && !isCreateSet && (
         <>
-          <div
-            onClick={() => {
-              setLoaded(false);
-              addRemoveInternal(current);
-            }}
-            className="text-center absolute w-full h-full p-[20px] left-0 top-0 items-center justify-center flex z-[101] flex-col gap-[16px]"
-          >
-            <div>
-              <div className="w-[54px] h-[54px] rounded-full absolute z-[101] flex justify-center items-center">
-                <LockIcon />
-              </div>
-              <div className="w-[54px] h-[54px] rounded-full bg-pqSettings opacity-80" />
-            </div>
-            <div className="text-[14px] font-[600] text-pqText">
-              {t(
-                'click_to_exit_global_editing',
-                'Click this button to exit global editing and customize the post for this channel'
+          <div className="absolute inset-0 z-[101] flex items-center justify-center p-[20px]">
+            <div className="flex w-full max-w-[420px] flex-col items-center gap-[10px] rounded-[16px] bg-pqPop p-[22px] text-center shadow-pqE2 ring-1 ring-pqBorder">
+              {!!internalFromAll && (
+                <ChannelAvatar
+                  integration={internalFromAll}
+                  size={36}
+                  rounded="full"
+                />
               )}
-            </div>
-            <div>
-              <div className="text-white rounded-[8px] h-[44px] px-[20px] bg-pqPink cursor-pointer flex justify-center items-center">
-                {t('edit_content', 'Edit content')}
+              <div className="font-display text-[16px] font-[700] text-pqText">
+                {t(
+                  'channel_uses_shared_post',
+                  '{{name}} uses the shared post',
+                  {
+                    name: internalFromAll?.name || '',
+                    interpolation: { escapeValue: false },
+                  }
+                )}
               </div>
+              <p className="m-0 text-[13.5px] leading-[1.55] text-pqMuted">
+                {t(
+                  'write_version_hint',
+                  'Write a version just for this channel, for example a shorter one. The other channels keep the shared post.'
+                )}
+              </p>
+              <button
+                type="button"
+                data-pq="composer-write-version"
+                onClick={() => {
+                  setLoaded(false);
+                  addRemoveInternal(current);
+                }}
+                className="mt-[4px] flex h-[38px] items-center gap-[7px] rounded-[10px] bg-pqBrand px-[16px] text-[13.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover mobile:h-[44px]"
+              >
+                {t('write_separate_version', 'Write a separate version')}
+              </button>
             </div>
           </div>
           <div className="absolute w-full h-full left-0 top-0 bg-pqPopup opacity-60 z-[100] rounded-[12px]" />
@@ -620,27 +634,21 @@ export const EditorWrapper: FC<{
                     {(canEdit && index === lastVisibleIndex) || !comments ? (
                       <div className="flex items-center">
                         {!!internal && !existingData?.integration && (
-                          <div
-                            className="mt-[12px] flex gap-[20px] items-center cursor-pointer select-none"
-                            onClick={goBackToGlobal}
-                          >
-                            <div className="flex gap-[6px] items-center">
-                              <div className="w-[8px] h-[8px] rounded-full bg-pqPink" />
-                              <div className="text-[14px] font-[600]">
-                                {t(
-                                  'editing_a_specific_network',
-                                  'Editing a Specific Network'
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-[6px] items-center">
-                              <div>
-                                <ResetIcon />
-                              </div>
-                              <div className="text-[13px] font-[600]">
-                                {t('back_to_global', 'Back to global')}
-                              </div>
-                            </div>
+                          <div className="mt-[12px] flex flex-wrap items-center gap-x-[12px] gap-y-[6px] rounded-[10px] bg-pqBrandSoft px-[12px] py-[8px] text-[12.5px] font-[500] text-pqFocused select-none">
+                            <span>
+                              {t(
+                                'only_channel_gets_version',
+                                'This version is only for this channel. Changes to the shared post will not reach it.'
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={goBackToGlobal}
+                              className="ms-auto flex items-center gap-[5px] font-[600]"
+                            >
+                              <ResetIcon />
+                              {t('use_shared_post', 'Use the shared post')}
+                            </button>
                           </div>
                         )}
                       </div>

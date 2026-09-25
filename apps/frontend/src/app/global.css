@@ -1864,26 +1864,19 @@ html[dir='rtl'] .lbox {
     padding: 6px 0;
   }
 
+  /* Send and Stop: the page's round brand button, one size down. */
   .copilotKitInputControlButton,
   .copilotKitInputControlButton:not([disabled]),
   .copilotKitInputControlButton[data-pq='composer-ai-send'] {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    width: auto !important;
-    min-width: 72px;
+    width: 36px !important;
     height: 36px !important;
+    min-width: 36px;
     min-height: 36px;
-    padding: 0 14px !important;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1;
   }
 
   .copilotKitInputControlButton svg {
-    display: none;
+    width: 17px !important;
+    height: 17px !important;
   }
 }
 

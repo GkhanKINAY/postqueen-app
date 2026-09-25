@@ -59,6 +59,7 @@ add_provider_title
 add_selected_media
 add_signature
 add_subreddit
+add_tags
 add_team_member
 add_time_slot
 add_to_post
@@ -171,7 +172,6 @@ are_you_sure_delete_this_post
 are_you_sure_disable_channel
 are_you_sure_go_back_to_global_mode
 are_you_sure_leave_workspace
-are_you_sure_remove_social_from_scheduling
 are_you_sure_remove_team_member
 are_you_sure_revoke_access
 are_you_sure_you_want_to_close_the_window
@@ -186,7 +186,6 @@ are_you_sure_you_want_to_delete_this_slot
 are_you_sure_you_want_to_delete_this_subreddit
 are_you_sure_you_want_to_logout
 assign_this_channel_to_a_customer
-assistant_initial_message
 attachments
 auth_showcase_alt
 auth_showcase_channels
@@ -225,7 +224,6 @@ autopost_toggle_failed
 autopost_updated_successfully
 back
 back_to_billing
-back_to_global
 before_you_cancel
 billing
 billing_100_percent_free
@@ -420,6 +418,7 @@ channel_needs_reconnect
 channel_save_missing_session
 channel_save_network_error
 channel_settings
+channel_uses_shared_post
 channels
 channels_list_empty_hint
 chat_actions
@@ -458,9 +457,7 @@ clear_chats_body
 clear_chats_confirm
 clear_chats_title
 clear_search
-click_channel_to_customize
 click_here_to_go_back_to_login
-click_to_exit_global_editing
 clicks
 client_id
 client_secret
@@ -476,6 +473,10 @@ comments_cannot_be_published_on
 community
 company_voice_we_are_happy_to_announce
 compose_ai_unconfigured_tip
+composer_ai_placeholder
+composer_ai_sub
+composer_ai_title_accent
+composer_ai_title_lead
 configure_your_channel
 confirm_channel
 confirm_delete
@@ -1403,7 +1404,6 @@ connected
 connected_accounts
 connected_accounts_description
 connections
-connections_sub
 contact_support
 continue
 continue_to
@@ -1469,7 +1469,6 @@ custom_url
 customer_socials_selected
 customer_updated
 customers
-customize_for_channel
 daily
 data_deletion_code
 data_deletion_completed
@@ -1574,7 +1573,6 @@ duplicate_post
 edit
 edit_app
 edit_autopost
-edit_content
 edit_in_composer
 edit_plug
 edit_post
@@ -1582,7 +1580,8 @@ edit_post_title
 edit_signature
 edit_the_connection_details_for_this_channel
 edit_time_slots
-editing_a_specific_network
+editing_channel_version_hint
+editing_shared_post_hint
 email
 email_confirm_sent
 email_me_a_code
@@ -1925,6 +1924,8 @@ lt_upsell_sub_trial_short
 lt_upsell_title
 mail_page
 main_navigation
+make_an_image
+make_an_image_for_post
 manage_billing
 manage_your_content_sets_for_easy_reuse_across_posts
 manage_your_oauth_application
@@ -2007,7 +2008,6 @@ no_earlier_posts_to_link
 no_go_back
 no_integrations_yet
 no_integrations_yet_description
-no_longer_global_mode
 no_matching_integrations
 no_media_found
 no_media_library_integrations_description
@@ -2050,6 +2050,7 @@ ok
 oldest
 one_publishing_option
 one_selected
+only_channel_gets_version
 only_existing_post
 only_option_to_connect
 open_auto_plugs
@@ -2075,6 +2076,7 @@ original_date
 original_link
 other_sessions_signed_out
 output_format
+own_version
 paid
 password
 password_confirm_sent
@@ -2173,6 +2175,7 @@ post_state_error
 post_state_published
 post_state_scheduled
 post_statistics
+post_to
 post_today_to_start_your_streak
 post_validation_failed
 posted
@@ -2238,16 +2241,14 @@ registering_agent
 registration_is_disabled
 release_id_update_failed
 remove
-remove_channel
 remove_delay
 remove_from_customer
 remove_image
-remove_social_account
 removes_the_channel_and_its_scheduled_posts
 rename_chat
 reopen
+repeat_none
 repeat_password
-repeat_post_every
 rephrase
 reply
 report_a_bug
@@ -2375,6 +2376,7 @@ sorted_newest_first
 sorted_oldest_first
 specific_channels
 start_7_days_free_trial
+start_over
 start_typing
 start_writing_your_post
 state
@@ -2566,6 +2568,7 @@ use
 use_a_different_email
 use_in_this_post
 use_it_with_the_api_mcp_or_the_cli
+use_shared_post
 use_signature
 use_this_media
 user
@@ -2614,12 +2617,15 @@ week
 welcome_back
 what_do_you_want_to_do
 whats_new
+which_version_editing
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
 write_a_reply
 write_anything
+write_separate_version
 write_something
+write_version_hint
 write_your_post
 write_your_post_placeholder
 write_your_signature
@@ -2649,7 +2655,6 @@ yes_shortlink_it
 yes_switch
 yesterday
 you_are_being_redirected_back
-you_are_in_global_editing_mode
 you_are_promoting_another_brand
 you_are_promoting_yourself
 you_can_add_signatures_to_your_account_to_be_used_in_your_posts
