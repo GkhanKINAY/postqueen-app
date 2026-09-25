@@ -1,7 +1,8 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { PaymentProviderManager } from '@gitroom/nestjs-libraries/services/payment/payment.provider.manager';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { PaymentPlatform } from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @Injectable()
 export class PaymentService {
@@ -159,5 +160,49 @@ export class PaymentService {
     for (const { provider } of this._paymentProviderManager.getProviders()) {
       await provider.syncCustomerEmailsAfterSwitch(accounts);
     }
+  }
+
+  /**
+   * Keeps every plan's credits in place, once a day (`creditGrantsWorkflowV1`).
+   * The provider that owns a plan grants whatever its own events have not
+   * brought (`grantMissingPlanCredits`), then every paid plan past its trial
+   * gets the monthly gift. Idempotent throughout, and one organization failing
+   * does not stop the rest.
+   */
+  async grantScheduledCredits() {
+    const result = { checked: 0, granted: 0, failed: 0 };
+    if (!isBillingEnabled()) {
+      return result;
+    }
+    for (const target of await this._subscriptionService.getCreditGrantTargets()) {
+      result.checked++;
+      try {
+        if (
+          await this._subscriptionService.isFoundingFeeOverdue(
+            target.organizationId
+          )
+        ) {
+          continue;
+        }
+        if (
+          await this._paymentProviderManager
+            .getProvider(target.provider)
+            .grantMissingPlanCredits(target)
+        ) {
+          result.granted++;
+        }
+        if (await this._subscriptionService.grantMonthlyGift(target)) {
+          result.granted++;
+        }
+      } catch (err) {
+        result.failed++;
+        Logger.warn(
+          `[credits] grant failed for ${target.organizationId}: ${
+            (err as Error)?.message || err
+          }`
+        );
+      }
+    }
+    return result;
   }
 }

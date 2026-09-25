@@ -101,19 +101,43 @@ export class RevenueCatProvider extends PaymentProviderAbstract {
     const { billing, period } = this.parseProductId(active.productId);
 
     // Store trials (intro offers) keep the same trial restrictions as a Stripe trial
-    await this._subscriptionService.createOrUpdateSubscriptionByOrg(
-      active.subscription.period_type === 'trial',
-      organizationId,
-      REVENUECAT_PROVIDER,
-      active.productId,
-      pricing[billing].channel!,
-      billing,
-      period,
-      active.subscription.unsubscribe_detected_at &&
-        active.subscription.expires_date
-        ? dayjs(active.subscription.expires_date).unix()
-        : null
-    );
+    const trial = active.subscription.period_type === 'trial';
+    const saved =
+      await this._subscriptionService.createOrUpdateSubscriptionByOrg(
+        trial,
+        organizationId,
+        REVENUECAT_PROVIDER,
+        active.productId,
+        pricing[billing].channel!,
+        billing,
+        period,
+        active.subscription.unsubscribe_detected_at &&
+          active.subscription.expires_date
+          ? dayjs(active.subscription.expires_date).unix()
+          : null
+      );
+
+    // The store period that is paid for now brings its credits, once per
+    // purchase: a renewal is a new purchase date. A store trial is one trial
+    // however many products it moves between, so it is keyed by the
+    // organization. Skipped when the plan was not written (another provider
+    // owns it).
+    if (
+      saved &&
+      'organizationId' in saved &&
+      active.subscription.expires_date
+    ) {
+      await this._subscriptionService.grantPlanPeriod(organizationId, {
+        tier: billing,
+        period,
+        start: new Date(active.subscription.purchase_date),
+        end: new Date(active.subscription.expires_date),
+        ref: trial
+          ? `rc:${organizationId}`
+          : `rc:${active.productId}:${active.subscription.purchase_date}`,
+        trial,
+      });
+    }
 
     return { active: true };
   }

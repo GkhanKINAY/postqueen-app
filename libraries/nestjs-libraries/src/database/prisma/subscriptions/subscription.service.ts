@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CREDIT_GIFT_MONTHLY,
+  CREDIT_PLAN_GRACE_DAYS,
+  CREDIT_UNIT,
+  effectiveIsTrailing,
+  normalizeTier,
+  planCredits,
   pricing,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -16,7 +23,8 @@ export class SubscriptionService {
   constructor(
     private readonly _subscriptionRepository: SubscriptionRepository,
     private readonly _integrationService: IntegrationService,
-    private readonly _organizationService: OrganizationService
+    private readonly _organizationService: OrganizationService,
+    private readonly _creditsService: CreditsService
   ) {}
 
   getSubscriptionByOrganizationId(organizationId: string) {
@@ -55,12 +63,6 @@ export class SubscriptionService {
       return { limit: 0, from: dayjs() };
     }
 
-    // @ts-ignore
-    let date = dayjs(organization.subscription.createdAt);
-    while (date.isBefore(dayjs())) {
-      date = date.add(1, 'month');
-    }
-
     return {
       limit:
         type === 'ai_images'
@@ -68,8 +70,250 @@ export class SubscriptionService {
           : type === 'clipping_minutes'
           ? pricing[tier].clipping_minutes
           : pricing[tier].generate_videos,
-      from: date.subtract(1, 'month'),
+      // @ts-ignore
+      from: this.monthlyWindow(organization.subscription.createdAt).start,
     };
+  }
+
+  /** The month, counted from `anchor`'s day of the month, that today is in. */
+  private monthlyWindow(anchor: Date | string) {
+    let date = dayjs(anchor);
+    while (date.isBefore(dayjs())) {
+      date = date.add(1, 'month');
+    }
+    return { start: date.subtract(1, 'month'), end: date };
+  }
+
+  /**
+   * Adds a plan period's credits: every provider's paid period and trial comes
+   * through here, so they all follow one set of rules.
+   *
+   * - A trial gets one month's allowance, raised (never lowered) when the plan
+   *   changes during it. It ends with the trial.
+   * - A new period replaces what the last one left: plan credits do not roll
+   *   over. They stay spendable `CREDIT_PLAN_GRACE_DAYS` past the period, so a
+   *   renewal paid a day late leaves no gap.
+   * - The same period again is an upgrade part-way through it, topped up by the
+   *   difference between the two plans for the time that is left, which is how
+   *   Stripe prorates the charge for it.
+   * - A period older than the current one (a late, out-of-order event) is
+   *   ignored.
+   *
+   * `ref` makes each step happen once. `prorate` is for plans that were already
+   * running when credits started: a yearly plan gets the months it has left,
+   * not a whole year of credits for a year that is partly over. The decision
+   * is taken under the ledger's lock, against the grants in force at that
+   * moment, so two events for one period cannot both add to it.
+   */
+  async grantPlanPeriod(
+    organizationId: string,
+    period: {
+      tier: string;
+      period: 'MONTHLY' | 'YEARLY';
+      start: Date;
+      end: Date;
+      ref: string;
+      trial?: boolean;
+      prorate?: boolean;
+    }
+  ) {
+    const tier = normalizeTier(period.tier);
+    const allowance = planCredits(tier, period.period, period.trial);
+    if (!allowance || dayjs(period.end).isBefore(dayjs())) {
+      return false;
+    }
+    const dates = {
+      tier,
+      periodStart: period.start,
+      periodEnd: period.end,
+    };
+
+    const { granted } = await this._creditsService.grantWith(
+      organizationId,
+      ['plan', 'trial'],
+      (current) => {
+        if (period.trial) {
+          const prefix = `trial:${period.ref}:`;
+          const given = current
+            .filter((grant) => grant.externalRef?.startsWith(prefix))
+            .reduce((sum, grant) => sum + grant.amount, 0);
+          return allowance > given
+            ? {
+                grant: {
+                  source: 'trial',
+                  amount: allowance - given,
+                  expiresAt: period.end,
+                  externalRef: `${prefix}${allowance}`,
+                  ...dates,
+                },
+              }
+            : null;
+        }
+
+        const expiresAt = dayjs(period.end)
+          .add(CREDIT_PLAN_GRACE_DAYS, 'day')
+          .toDate();
+        const plans = current.filter((grant) => grant.source === 'plan');
+        // Newest first, so this is the plan the period was last topped up to.
+        const samePeriod = plans.find(
+          (grant) => grant.periodEnd?.getTime() === period.end.getTime()
+        );
+
+        if (samePeriod) {
+          const left =
+            dayjs(period.end).diff(dayjs()) /
+            dayjs(period.end).diff(dayjs(period.start));
+          const difference = Math.floor(
+            (allowance - planCredits(samePeriod.tier, period.period)) *
+              Math.min(Math.max(left, 0), 1)
+          );
+          return difference > 0
+            ? {
+                grant: {
+                  source: 'plan',
+                  amount: difference,
+                  expiresAt,
+                  externalRef: period.ref,
+                  ...dates,
+                },
+              }
+            : null;
+        }
+
+        if (
+          plans.some((grant) => grant.periodEnd && grant.periodEnd > period.end)
+        ) {
+          return null;
+        }
+
+        return {
+          grant: {
+            source: 'plan',
+            amount:
+              period.prorate && period.period === 'YEARLY'
+                ? planCredits(tier, 'MONTHLY') *
+                  Math.min(
+                    Math.ceil(dayjs(period.end).diff(dayjs(), 'month', true)),
+                    12
+                  )
+                : allowance,
+            expiresAt,
+            externalRef: period.ref,
+            ...dates,
+          },
+          close: ['plan', 'trial'],
+        };
+      }
+    );
+    return granted;
+  }
+
+  /**
+   * A plan no invoice renews (a founding member's lifetime Pro, a plan an
+   * admin granted) gets its credits a month at a time, counted from the day
+   * the plan started, the same month the per-feature quotas count.
+   *
+   * A founding member whose fee waits for the end of the trial gets the
+   * month as trial credits, ending with the trial: if the fee is never paid,
+   * nothing is left over to spend. Once it is paid, the next pass turns them
+   * into the plan's month.
+   */
+  async grantScheduledPlanCredits(target: {
+    organizationId: string;
+    subscriptionTier: string;
+    createdAt: Date;
+    organization: { createdAt: Date };
+  }) {
+    if (await this.isFoundingFeeUnpaid(target.organizationId)) {
+      const trial = trialWindow(target.organization.createdAt);
+      if (!trial.endsAt) {
+        return false;
+      }
+      return this.grantPlanPeriod(target.organizationId, {
+        tier: target.subscriptionTier,
+        period: 'MONTHLY',
+        start: new Date(target.organization.createdAt),
+        end: trial.endsAt,
+        ref: `founding:${target.organizationId}`,
+        trial: true,
+      });
+    }
+
+    const { start, end } = this.monthlyWindow(target.createdAt);
+    return this.grantPlanPeriod(target.organizationId, {
+      tier: target.subscriptionTier,
+      period: 'MONTHLY',
+      start: start.toDate(),
+      end: end.toDate(),
+      ref: `plan:${target.organizationId}:${start.toISOString()}`,
+    });
+  }
+
+  /** The small monthly gift, once per calendar month (UTC), to a paid plan
+   * that is past its trial. */
+  async grantMonthlyGift(target: {
+    organizationId: string;
+    subscriptionTier: string;
+    isLifetime: boolean;
+    organization: { isTrailing: boolean; createdAt: Date };
+  }) {
+    // A sold plan's trial is the flag its provider keeps; a window counted
+    // from signup reads a trial started weeks after signing up as over. A
+    // founding member has no provider to keep it, so the window decides.
+    const trialing = target.isLifetime
+      ? effectiveIsTrailing({
+          ...target.organization,
+          subscription: { isLifetime: true },
+        })
+      : target.organization.isTrailing;
+    if (
+      !pricing[normalizeTier(target.subscriptionTier)]?.monthly_credits ||
+      trialing
+    ) {
+      return false;
+    }
+    const now = new Date();
+    const month = `${now.getUTCFullYear()}-${String(
+      now.getUTCMonth() + 1
+    ).padStart(2, '0')}`;
+    const { granted } = await this._creditsService.grant(
+      target.organizationId,
+      {
+        source: 'gift',
+        amount: CREDIT_GIFT_MONTHLY * CREDIT_UNIT,
+        expiresAt: new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+        ),
+        externalRef: `gift:${target.organizationId}:${month}`,
+      }
+    );
+    return granted;
+  }
+
+  /** Whether this organization has a plan or trial period's credits in force. */
+  async hasCurrentPlanCredits(organizationId: string) {
+    return (
+      (
+        await this._creditsService.currentGrants(organizationId, [
+          'plan',
+          'trial',
+        ])
+      ).length > 0
+    );
+  }
+
+  getCreditGrantTargets() {
+    return this._subscriptionRepository.getCreditGrantTargets();
+  }
+
+  // What a plan gave ends with it. Purchased credits stay: they were paid for
+  // separately and outlive the plan.
+  private revokePlanCredits(organizationId: string) {
+    return this._creditsService.revokeGrants(organizationId, [
+      'plan',
+      'trial',
+      'gift',
+    ]);
   }
 
   getCode(code: string) {
@@ -138,7 +382,7 @@ export class SubscriptionService {
   }
 
   // Customer-keyed flows must never touch a subscription owned by another provider
-  private async isManagedBy(customerId: string, provider: string) {
+  async isManagedBy(customerId: string, provider: string) {
     const current =
       await this._subscriptionRepository.getSubscriptionByCustomerId(
         customerId
@@ -176,10 +420,16 @@ export class SubscriptionService {
       pricing.FREE.channel || 0,
       'FREE'
     );
-    return this._subscriptionRepository.deleteSubscriptionByCustomerId(
-      customerId,
-      provider
-    );
+    const deleted =
+      await this._subscriptionRepository.deleteSubscriptionByCustomerId(
+        customerId,
+        provider
+      );
+    const org = await this.getOrganizationByCustomerId(customerId);
+    if (org) {
+      await this.revokePlanCredits(org.id);
+    }
+    return deleted;
   }
 
   // Store-managed subscriptions (RevenueCat etc.) have no Stripe customer, they are keyed by org
@@ -196,10 +446,12 @@ export class SubscriptionService {
       pricing.FREE.channel || 0,
       'FREE'
     );
-    return this._subscriptionRepository.deleteSubscriptionByOrgId(
+    const deleted = await this._subscriptionRepository.deleteSubscriptionByOrgId(
       organizationId,
       provider
     );
+    await this.revokePlanCredits(organizationId);
+    return deleted;
   }
 
   /** Immediate revoke of a local subscription row (founding-member trial cancel). */
@@ -217,9 +469,12 @@ export class SubscriptionService {
       pricing.FREE.channel || 0,
       'FREE'
     );
-    return this._subscriptionRepository.deleteSubscriptionByOrganizationId(
-      organizationId
-    );
+    const deleted =
+      await this._subscriptionRepository.deleteSubscriptionByOrganizationId(
+        organizationId
+      );
+    await this.revokePlanCredits(organizationId);
+    return deleted;
   }
 
   updateCustomerId(organizationId: string, customerId: string) {

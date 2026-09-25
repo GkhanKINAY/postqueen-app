@@ -25,6 +25,7 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
+  CreditGrantTarget,
   PaymentPlatform,
   PaymentProvider,
   PaymentProviderAbstract,
@@ -490,6 +491,71 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * Adds the credits a subscription's current period carries, or its trial's
+   * (see `grantPlanPeriod`). `ref` makes it happen once: the id of the invoice
+   * that paid for the period. A trial is keyed by the subscription instead,
+   * since nothing has been paid for it.
+   */
+  private async grantPeriodCredits(
+    organizationId: string,
+    subscription: Stripe.Subscription,
+    ref: string,
+    prorate = false
+  ) {
+    const { billing, period } = this.tierOfSubscription(subscription);
+    if (!pricing[billing]) {
+      return false;
+    }
+
+    if (subscription.status === 'trialing') {
+      if (!subscription.trial_end) {
+        return false;
+      }
+      return this._subscriptionService.grantPlanPeriod(organizationId, {
+        tier: billing,
+        period,
+        start: new Date(
+          (subscription.trial_start || subscription.created) * 1000
+        ),
+        end: new Date(subscription.trial_end * 1000),
+        ref: subscription.id,
+        trial: true,
+      });
+    }
+
+    const item = subscription.items?.data?.[0];
+    if (!item?.current_period_end) {
+      return false;
+    }
+    return this._subscriptionService.grantPlanPeriod(organizationId, {
+      tier: billing,
+      period,
+      start: new Date(item.current_period_start * 1000),
+      end: new Date(item.current_period_end * 1000),
+      ref,
+      prorate,
+    });
+  }
+
+  // A trial's credits come with the subscription events, because there is no
+  // paid invoice to bring them; a plan change during the trial raises them.
+  // Only once the plan itself was written: a refused trial card, or a plan
+  // another provider owns, writes nothing and grants nothing.
+  private async grantTrialCredits(
+    subscription: Stripe.Subscription,
+    saved?: { organizationId?: string } | null
+  ) {
+    if (subscription.status !== 'trialing' || !saved?.organizationId) {
+      return;
+    }
+    await this.grantPeriodCredits(
+      saved.organizationId,
+      subscription,
+      subscription.id
+    );
+  }
+
+  /**
    * What a free trial needs to know about the card behind a payment method.
    *
    * The fingerprint is the same for a card on any customer or account, which is
@@ -842,7 +908,7 @@ export class StripeService extends PaymentProviderAbstract {
 
     await this.adoptSubscriptionCustomer(event.data.object);
 
-    return this._subscriptionService.createOrUpdateSubscription(
+    const saved = await this._subscriptionService.createOrUpdateSubscription(
       STRIPE_PROVIDER,
       // This argument is the organization's trial flag, and it used to read
       // `status !== 'active'` — which is true of `past_due`, `unpaid`,
@@ -859,6 +925,8 @@ export class StripeService extends PaymentProviderAbstract {
       period,
       event.data.object.cancel_at
     );
+    await this.grantTrialCredits(event.data.object, saved);
+    return saved;
   }
 
   async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
@@ -986,7 +1054,7 @@ export class StripeService extends PaymentProviderAbstract {
 
     await this.adoptSubscriptionCustomer(event.data.object);
 
-    return this._subscriptionService.createOrUpdateSubscription(
+    const saved = await this._subscriptionService.createOrUpdateSubscription(
       STRIPE_PROVIDER,
       event.data.object.status === 'trialing',
       uniqueId,
@@ -996,6 +1064,8 @@ export class StripeService extends PaymentProviderAbstract {
       period,
       event.data.object.cancel_at
     );
+    await this.grantTrialCredits(event.data.object, saved);
+    return saved;
   }
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
@@ -2313,9 +2383,45 @@ export class StripeService extends PaymentProviderAbstract {
     if (!subscriptionId) {
       return { ok: true };
     }
-    const subscription = await stripe.subscriptions.retrieve(
+    const subscription = await this.retrieveSubscription(
       typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
     );
+
+    // The period this invoice paid for brings its credits. Read from the live
+    // subscription, so a late or repeated delivery lands on the period that is
+    // current now and adds nothing twice. Before the tracking below: a failure
+    // here answers 500 for Stripe to retry, and the purchase should not be
+    // counted twice for it.
+    //
+    // - The customer is linked first. A first checkout's invoice can arrive
+    //   before the subscription event that links it, and finding no
+    //   organization then would drop the credits until the next daily pass.
+    // - A trial's $0 invoice is skipped: its credits come with the
+    //   subscription event, after the trial card checks, so a refused card
+    //   never has them.
+    // - A plan another provider owns is not this invoice's to grant.
+    const customer = event.data.object.customer as string | null;
+    if (
+      customer &&
+      subscription.metadata?.service === SUBSCRIPTION_SERVICE_TAG &&
+      subscription.status !== 'trialing'
+    ) {
+      await this.adoptSubscriptionCustomer(subscription);
+    }
+    const org =
+      customer &&
+      subscription.metadata?.service === SUBSCRIPTION_SERVICE_TAG &&
+      subscription.status !== 'trialing' &&
+      (await this._subscriptionService.isManagedBy(customer, STRIPE_PROVIDER))
+        ? await this._organizationService.getOrgByCustomerId(customer)
+        : null;
+    if (org && (await this.isEntitled(subscription))) {
+      await this.grantPeriodCredits(
+        org.id,
+        subscription,
+        event.data.object.id!
+      );
+    }
 
     const { userId, ud } = subscription.metadata;
     const user = await this._userService.getUserById(userId);
@@ -2714,6 +2820,59 @@ export class StripeService extends PaymentProviderAbstract {
       }
     }
     return result;
+  }
+
+  /**
+   * Plan credits no Stripe event brings (see `PaymentService.grantScheduledCredits`).
+   *
+   * - A plan no invoice renews (a founding member, an admin grant) gets its
+   *   month here; see `grantScheduledPlanCredits`.
+   * - A sold plan gets its credits from the paid invoice. This only steps in
+   *   when an organization has none in force: a plan that was already running
+   *   when credits started, or an invoice whose webhook was lost. The grant is
+   *   keyed by the period rather than by an invoice, because the latest
+   *   invoice can be an upgrade not paid yet, and its own grant must still be
+   *   able to happen once it is.
+   */
+  override async grantMissingPlanCredits(target: CreditGrantTarget) {
+    const customer = target.organization.paymentId;
+    if (target.isLifetime || !customer?.startsWith('cus_')) {
+      return this._subscriptionService.grantScheduledPlanCredits(target);
+    }
+    if (
+      await this._subscriptionService.hasCurrentPlanCredits(
+        target.organizationId
+      )
+    ) {
+      return false;
+    }
+
+    // Active or trialing only. A `past_due` period is not paid for yet, and
+    // its credits come with the invoice once it is.
+    const all = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 100,
+    });
+    const live = all.data.find(
+      (subscription) =>
+        subscription.metadata?.service === SUBSCRIPTION_SERVICE_TAG &&
+        ['active', 'trialing'].includes(subscription.status)
+    );
+    if (!live) {
+      // A Stripe customer with a plan an admin granted and nothing sold.
+      return all.data.length
+        ? false
+        : this._subscriptionService.grantScheduledPlanCredits(target);
+    }
+
+    const subscription = await this.retrieveSubscription(live.id);
+    return this.grantPeriodCredits(
+      target.organizationId,
+      subscription,
+      `period:${subscription.id}:${subscription.items.data[0]?.current_period_start}`,
+      true
+    );
   }
 
   /**

@@ -32,6 +32,11 @@ export interface PricingInnerInterface {
    * CLIPPING_MINUTES_PROPOSAL.
    */
   clipping_minutes: number;
+  /**
+   * Credits the plan adds each month, in whole credits. A yearly plan gets
+   * twelve months of them at once, a trial gets one month. See `planCredits`.
+   */
+  monthly_credits: number;
   public_api: boolean;
   webhooks: number;
   autoPost: boolean;
@@ -75,6 +80,7 @@ export const pricing: PricingInterface = {
     autoPost: false,
     generate_videos: 0,
     clipping_minutes: 0,
+    monthly_credits: 0,
   },
   // Current sellable tiers (CREATOR / GROWTH / PRO / ULTIMATE).
   // Retired STANDARD / TEAM / LEGACY_ULTIMATE rows below keep old prices so any
@@ -106,6 +112,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 3,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
+    monthly_credits: 150,
   },
   GROWTH: {
     current: 'GROWTH',
@@ -126,6 +133,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 10,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
+    monthly_credits: 300,
   },
   PRO: {
     current: 'PRO',
@@ -151,6 +159,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 30,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.PRO,
+    monthly_credits: 500,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -176,6 +185,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 60,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
+    monthly_credits: 1000,
   },
 
   // --- retired: kept so existing subscriptions still resolve ---------------
@@ -200,6 +210,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 3,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
+    monthly_credits: 150,
   },
   TEAM: {
     current: 'TEAM',
@@ -221,6 +232,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 10,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
+    monthly_credits: 300,
   },
   // The tier upstream sold as ULTIMATE before the fork. Renamed so the top
   // plan could take the name (migration 20260924120000).
@@ -244,6 +256,7 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 60,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
+    monthly_credits: 1000,
   },
 };
 
@@ -505,3 +518,25 @@ export const toCredits = (units: number) =>
 /** How long credits handed back by a refund stay spendable when the grant
  * they came from has already expired. */
 export const CREDIT_REFUND_DAYS = 30;
+
+/** Credits every organization on a paid plan is given each calendar month,
+ * on top of the plan's own, whole credits. They expire at the month's end. */
+export const CREDIT_GIFT_MONTHLY = 5;
+
+/** Days a plan's credits stay spendable past the end of the period they were
+ * granted for, so a renewal paid a little late does not leave a gap. */
+export const CREDIT_PLAN_GRACE_DAYS = 3;
+
+/**
+ * What a plan period adds to the balance, in hundredths: the monthly amount,
+ * or twelve of them for a yearly period. A trial is one month whatever the
+ * period, so a yearly trial is not a year of free credits.
+ */
+export const planCredits = (
+  tier: string | undefined | null,
+  period: 'MONTHLY' | 'YEARLY',
+  trial = false
+) =>
+  (pricing[normalizeTier(tier) || '']?.monthly_credits || 0) *
+  (period === 'YEARLY' && !trial ? 12 : 1) *
+  CREDIT_UNIT;

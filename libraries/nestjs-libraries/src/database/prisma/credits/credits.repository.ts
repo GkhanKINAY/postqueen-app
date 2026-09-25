@@ -52,6 +52,20 @@ export const insufficientCredits = (required: number, balance: number) =>
     HttpStatus.PAYMENT_REQUIRED
   );
 
+const CURRENT_GRANT = {
+  id: true,
+  source: true,
+  amount: true,
+  tier: true,
+  periodStart: true,
+  periodEnd: true,
+  externalRef: true,
+} satisfies Prisma.CreditGrantSelect;
+
+export type CurrentGrant = Prisma.CreditGrantGetPayload<{
+  select: typeof CURRENT_GRANT;
+}>;
+
 // A negative amount would run every sum backwards: a spend that adds credits.
 const assertAmount = (amount: number) => {
   if (!Number.isInteger(amount) || amount <= 0) {
@@ -78,6 +92,20 @@ export class CreditsRepository {
       organizationId,
       revokedAt: null,
       remaining: { gt: 0 },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    };
+  }
+
+  // Grants from these sources that are still in force, spent or not: a plan
+  // period used up on its first day is still the current period.
+  private current(
+    organizationId: string,
+    sources: string[]
+  ): Prisma.CreditGrantWhereInput {
+    return {
+      organizationId,
+      source: { in: sources },
+      revokedAt: null,
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     };
   }
@@ -284,11 +312,45 @@ export class CreditsRepository {
   }
 
   /** Adds credits once per `externalRef`, paying off any debt first. */
-  async grant(organizationId: string, grant: CreditGrantInput) {
+  async grant(
+    organizationId: string,
+    grant: CreditGrantInput,
+    close: string[] = []
+  ) {
     assertAmount(grant.amount);
+    return this.grantWith(organizationId, [], () => ({ grant, close }));
+  }
 
+  /**
+   * Decides and grants in one step, under the lock. `decide` sees the grants
+   * from `sources` still in force and returns what to add, with the sources
+   * it replaces (a new plan period ends whatever the last one left), or
+   * nothing. Deciding outside the lock would let two events for the same
+   * period both read the old state and both add to it.
+   */
+  async grantWith(
+    organizationId: string,
+    sources: string[],
+    decide: (
+      current: CurrentGrant[]
+    ) => { grant: CreditGrantInput; close?: string[] } | null
+  ) {
     return this._transaction.model.$transaction(async (tx) => {
       await this.lock(tx, organizationId);
+
+      const current = sources.length
+        ? await tx.creditGrant.findMany({
+            where: this.current(organizationId, sources),
+            orderBy: { createdAt: 'desc' },
+            select: CURRENT_GRANT,
+          })
+        : [];
+      const decision = decide(current);
+      if (!decision) {
+        return { id: null, granted: false };
+      }
+      const { grant, close = [] } = decision;
+      assertAmount(grant.amount);
 
       if (grant.externalRef) {
         const existing = await tx.creditGrant.findUnique({
@@ -298,6 +360,13 @@ export class CreditsRepository {
         if (existing) {
           return { id: existing.id, granted: false };
         }
+      }
+
+      if (close.length) {
+        await tx.creditGrant.updateMany({
+          where: this.current(organizationId, close),
+          data: { expiresAt: new Date() },
+        });
       }
 
       const created = await tx.creditGrant.create({
@@ -318,6 +387,28 @@ export class CreditsRepository {
 
       await this.payDebt(tx, organizationId);
       return { id: created.id, granted: true };
+    });
+  }
+
+  currentGrants(organizationId: string, sources: string[]) {
+    return this._creditGrant.model.creditGrant.findMany({
+      where: this.current(organizationId, sources),
+      orderBy: { createdAt: 'desc' },
+      select: CURRENT_GRANT,
+    });
+  }
+
+  /**
+   * Takes back what is left of the grants from these sources. Revoked rather
+   * than expired: a refund of work they paid for gives nothing back either.
+   */
+  async revokeGrants(organizationId: string, sources: string[]) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+      return tx.creditGrant.updateMany({
+        where: this.current(organizationId, sources),
+        data: { revokedAt: new Date() },
+      });
     });
   }
 

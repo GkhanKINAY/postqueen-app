@@ -3,6 +3,7 @@ import {
   CreditGrantInput,
   CreditSpend,
   CreditsRepository,
+  CurrentGrant,
   insufficientCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.repository';
 import { toCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -87,10 +88,36 @@ export class CreditsService {
     }
   }
 
-  grant(organizationId: string, grant: CreditGrantInput) {
+  grant(organizationId: string, grant: CreditGrantInput, close: string[] = []) {
     if (!isBillingEnabled()) {
       return Promise.resolve({ id: null, granted: false });
     }
-    return this._creditsRepository.grant(organizationId, grant);
+    return this._creditsRepository.grant(organizationId, grant, close);
+  }
+
+  /** Grants from these sources still in force, newest first. */
+  currentGrants(organizationId: string, sources: string[]) {
+    return this._creditsRepository.currentGrants(organizationId, sources);
+  }
+
+  /** See `CreditsRepository.grantWith`: decide and grant under the lock. */
+  grantWith(
+    organizationId: string,
+    sources: string[],
+    decide: (
+      current: CurrentGrant[]
+    ) => { grant: CreditGrantInput; close?: string[] } | null
+  ) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve({ id: null, granted: false });
+    }
+    return this._creditsRepository.grantWith(organizationId, sources, decide);
+  }
+
+  revokeGrants(organizationId: string, sources: string[]) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve({ count: 0 });
+    }
+    return this._creditsRepository.revokeGrants(organizationId, sources);
   }
 }
