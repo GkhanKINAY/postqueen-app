@@ -841,11 +841,11 @@ export class AuthService {
                 },
                 {
                   title: 'Bring your AI agent',
-                  text: 'Connect Claude, ChatGPT, Grok Bot or another agent, then ask it to post for you.',
+                  text: 'Connect Claude, ChatGPT, Grok Bot, Muse or another agent, then ask it to post for you.',
                 },
                 {
                   title: 'Schedule your first post',
-                  text: 'Write it yourself or ask the AI Copilot, then pick a time on your calendar.',
+                  text: 'Write it yourself, or ask your AI agent to write and schedule it for you. Either way it lands on your calendar.',
                 },
               ],
             },
