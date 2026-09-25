@@ -417,7 +417,11 @@ const ChannelSettingsGroups: FC<{
           chrome.runtime.sendMessage(
             extensionId,
             { type: 'REMOVE_REFRESH_TOKEN', integrationId: integration.id },
-            () => {}
+            () => {
+              if (chrome.runtime.lastError) {
+                return;
+              }
+            }
           );
         } catch {
           /* ignore */
