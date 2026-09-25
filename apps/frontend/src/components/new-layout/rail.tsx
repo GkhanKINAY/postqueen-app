@@ -368,9 +368,7 @@ export const Rail: FC<RailProps> = ({
         <div
           data-sb-foot="1"
           // Pinned to the rail bottom: outside [data-sb-scroll], mt-auto +
-          // shrink-0, opaque bg so page content cannot show through. Chatbase
-          // must stay bottom-trailing (see chatbase.component / global.css)
-          // or it covers this block.
+          // shrink-0, opaque bg so page content cannot show through.
           className="mt-auto flex shrink-0 flex-col gap-[1px] border-t border-pqLine bg-pqRail pt-[6px]"
         >
           <GettingStarted collapsed={rc} />

@@ -434,35 +434,6 @@ export class BillingController {
     return (await this.provider(org)).cancelCoupon(org.id);
   }
 
-  /**
-   * These endpoints exist to back the Chatbase support agent's refund tool, but
-   * they are ordinary authenticated routes: with the widget switched off they
-   * were still reachable, letting any signed-in customer refund themselves and
-   * cancel their own subscription over the API. Refuse unless the integration
-   * that is meant to front them is actually configured.
-   */
-  private assertChatbaseEnabled() {
-    if (!process.env.CHATBASE_TOKEN) {
-      throw new HttpException('Not found', 404);
-    }
-  }
-
-  @Get('/chatbase-refund/preview')
-  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
-  async chatbaseRefundPreview(@GetOrgFromRequest() org: Organization) {
-    this.assertChatbaseEnabled();
-    return (await this.provider(org)).chatbaseRefundPreview(org.id);
-  }
-
-  @Post('/chatbase-refund')
-  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
-  async chatbaseRefund(@GetOrgFromRequest() org: Organization) {
-    this.assertChatbaseEnabled();
-
-    // No self-serve refunds: this answers with the policy, see the service.
-    return (await this.provider(org)).chatbaseRefund(org.id);
-  }
-
   @Post('/lifetime-checkout')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async lifetimeCheckout(

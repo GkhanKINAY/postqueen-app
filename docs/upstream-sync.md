@@ -316,7 +316,7 @@ Already here, or empty once picked (second sync):
 | `3e6206f7` | Our post workflow v1.0.8 (`9226fd61`) |
 | `b1930421` | `ca06a35c` already resolves the webhook's post by `releaseId`, and scopes it to the organization and integration, which upstream's version does not |
 | `26885010` | Mantine 9 (`f57dfe81`) removed the React 19 warning this worked around |
-| `b267fbeb` | `e3b4dc27` already hides the Chatbase widget while Create Post is open |
+| `b267fbeb` | `e3b4dc27` already hid the third-party support widget while Create Post was open; the widget has since been removed from this fork |
 | `d46c7bb7` | Lockfile specifiers; empty after this sync's lockfile regeneration |
 | `12978bef` `0ffdbc97` | `9d7f9e3e` moved Hashnode to gql-beta with the new tag and cover inputs, and also tells a bad token (RefreshToken) from a missing Pro plan and a missing post |
 | `678acd4a` | `0901595b` already refuses a video on Slack at validation |

@@ -31,9 +31,6 @@ interface VariableContextInterface {
   /** Sign-up is off. Login hides Create account; /auth still checks can-register. */
   disableRegistration: boolean;
   turnstileSiteKey: string;
-  isChatBase: boolean;
-  /** Chatbase bot this deployment owns; the SSO token is signed against it. */
-  chatbaseBotId: string;
   onboardingVideoUrl: string;
   repositoryUrl: string;
   /** Store listing for this deployment's own browser extension build. */
@@ -62,9 +59,9 @@ interface VariableContextInterface {
   /**
    * Inbox behind the Help menu's Contact support and Report a bug rows.
    *
-   * Chatbase and Sentry are the richer paths, but both are optional and a
-   * deployment with neither still has to leave a way to reach a human — so
-   * this one has a default rather than hiding its rows when unset. Whoever
+   * Sentry is the richer path for bugs, but it is optional and a deployment
+   * without it still has to leave a way to reach a human — so this one has
+   * a default rather than hiding its rows when unset. Whoever
    * runs the install should point it at their own inbox.
    */
   supportEmail: string;
@@ -113,8 +110,6 @@ const VariableContext = createContext({
   turnstileSiteKey: '',
   isGeneral: true,
   genericOauth: false,
-  isChatBase: false,
-  chatbaseBotId: '',
   onboardingVideoUrl: '',
   repositoryUrl: '',
   extensionStoreUrl: '',

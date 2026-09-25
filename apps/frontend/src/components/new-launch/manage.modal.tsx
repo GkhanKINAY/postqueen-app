@@ -93,49 +93,6 @@ const postHasPreviewableContent = (
   );
 };
 
-const hideChatbaseWhileComposerOpen = () => {
-  const mark = 'data-pq-cbh';
-  const hideEl = (el: HTMLElement) => {
-    if (el.getAttribute(mark) !== '1') {
-      el.setAttribute(mark, '1');
-    }
-    el.style.setProperty('display', 'none', 'important');
-    el.style.setProperty('visibility', 'hidden', 'important');
-    el.style.setProperty('pointer-events', 'none', 'important');
-    el.style.setProperty('opacity', '0', 'important');
-  };
-  const selector =
-    '#chatbase-bubble-button, #chatbase-bubble-window, [id^="chatbase-bubble"], [id*="chatbase"], iframe[src*="chatbase"]';
-  const hide = () => {
-    document.documentElement.setAttribute('data-pq-sheet', '1');
-    document.querySelectorAll<HTMLElement>(selector).forEach(hideEl);
-    document.querySelectorAll('iframe').forEach((el) => {
-      const style = window.getComputedStyle(el);
-      const src = el.getAttribute('src') || '';
-      if (
-        style.position === 'fixed' ||
-        src.includes('chatbase') ||
-        el.id.includes('chatbase')
-      ) {
-        hideEl(el);
-      }
-    });
-  };
-  hide();
-  const id = window.setInterval(hide, 1000);
-  return () => {
-    window.clearInterval(id);
-    document.documentElement.removeAttribute('data-pq-sheet');
-    document.querySelectorAll<HTMLElement>(`[${mark}]`).forEach((el) => {
-      el.removeAttribute(mark);
-      el.style.removeProperty('display');
-      el.style.removeProperty('visibility');
-      el.style.removeProperty('pointer-events');
-      el.style.removeProperty('opacity');
-    });
-  };
-};
-
 const ComposerStepTabs: FC<{
   pane: ComposerPane;
   phone: boolean;
@@ -300,8 +257,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       setComposerPane('edit');
     }
   }, [hasChannels, composerPane]);
-
-  useEffect(() => hideChatbaseWhileComposerOpen(), []);
 
   // Schedule is a phone-only column. Leaving the mobile bucket while that
   // pane is selected would hide both Edit and Preview with nothing to show.

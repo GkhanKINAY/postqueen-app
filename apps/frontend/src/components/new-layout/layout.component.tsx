@@ -27,7 +27,6 @@ import { NotificationsLiveBridge } from '@gitroom/frontend/components/notificati
 import { NetworkErrorBridge } from '@gitroom/frontend/components/layout/network-error.bridge';
 import { ShowPostSelector } from '@gitroom/frontend/components/post-url-selector/post.url.selector';
 import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscription';
-import { Support } from '@gitroom/frontend/components/layout/support';
 import { ContinueProvider } from '@gitroom/frontend/components/layout/continue.provider';
 import {
   aiAvailable,
@@ -427,7 +426,6 @@ const LayoutBody = ({
               <div className="shrink-0">
                 <AnnouncementBanner />
               </div>
-              <Support />
               <AppChrome>{children}</AppChrome>
               {overlay}
               <Tour />

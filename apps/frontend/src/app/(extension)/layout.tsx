@@ -88,8 +88,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           neynarClientId={process.env.NEYNAR_CLIENT_ID!}
           appleClientId={process.env.APPLE_CLIENT_ID!}
           isSecured={areCookiesSecured()}
-          isChatBase={false}
-          chatbaseBotId={''}
           onboardingVideoUrl={''}
           repositoryUrl={''}
           disableImageCompression={!!process.env.DISABLE_IMAGE_COMPRESSION}
