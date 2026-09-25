@@ -2057,6 +2057,19 @@ export class PostsService {
     );
   }
 
+  // Moderation for the team that owns the post, the same scope as resolving:
+  // anyone with the link can comment, so someone has to be able to take a
+  // comment down again.
+  async deleteComment(orgId: string, commentId: string) {
+    const comment = await this._postRepository.getCommentById(commentId);
+    if (!comment || comment.post.organizationId !== orgId) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    await this._postRepository.deleteCommentThread(commentId);
+    return { deleted: true };
+  }
+
   // A comment anchored to a span of text keeps its quote but loses the
   // highlight once the span no longer reads the same on the new content.
   async detachStaleAnchors(posts: { id: string; content: string }[]) {

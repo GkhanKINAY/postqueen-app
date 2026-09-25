@@ -109,6 +109,14 @@ export class PostsController {
     return this._postsService.resolveComment(org.id, commentId, body.resolved);
   }
 
+  @Delete('/comments/:commentId')
+  deleteComment(
+    @GetOrgFromRequest() org: Organization,
+    @Param('commentId') commentId: string
+  ) {
+    return this._postsService.deleteComment(org.id, commentId);
+  }
+
   @Get('/tags')
   async getTags(@GetOrgFromRequest() org: Organization) {
     return { tags: await this._postsService.getTags(org.id) };
