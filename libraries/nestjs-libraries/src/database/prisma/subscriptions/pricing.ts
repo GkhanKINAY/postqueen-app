@@ -435,14 +435,17 @@ export const TRIAL_DAYS = 7;
  * Every trial lock reads it through `effectiveIsTrailing` below, so the app,
  * the public API, MCP and the orchestrator all get the same answer.
  */
-export const trialWindow = (createdAt?: string | Date | null) => {
+export const trialWindow = (
+  createdAt?: string | Date | null,
+  days: number = TRIAL_DAYS
+) => {
   const started = createdAt ? new Date(createdAt).getTime() : NaN;
   if (!started || Number.isNaN(started)) {
     // Unlike the lifetime offer, the safe reading here is *open*: a missing
     // registration date must not cut somebody's trial short.
     return { endsAt: null, msLeft: 0, open: true };
   }
-  const endsAt = new Date(started + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const endsAt = new Date(started + days * 24 * 60 * 60 * 1000);
   const msLeft = endsAt.getTime() - Date.now();
   return { endsAt, msLeft: Math.max(0, msLeft), open: msLeft > 0 };
 };
@@ -470,6 +473,20 @@ export const effectiveIsTrailing = (
   org?: {
     isTrailing?: boolean | null;
     createdAt?: Date | string | null;
+    subscription?: { isLifetime?: boolean | null } | null;
   } | null
 ) =>
-  isBillingEnabled() && !!org?.isTrailing && trialWindow(org.createdAt).open;
+  isBillingEnabled() &&
+  !!org?.isTrailing &&
+  // A Stripe trial starts at checkout, not at signup: somebody who checks out
+  // on day 6 is trialing until day 13, and a window counted from signup lifted
+  // the trial locks on day 7 for six days of the paid plan's locked features,
+  // free for anyone who then cancels. With a Stripe plan the flag, which the
+  // webhook clears on conversion, decides, capped at twice the trial so a
+  // missed webhook cannot keep the locks on for good.
+  trialWindow(
+    org.createdAt,
+    org.subscription && !org.subscription.isLifetime
+      ? TRIAL_DAYS * 2
+      : TRIAL_DAYS
+  ).open;

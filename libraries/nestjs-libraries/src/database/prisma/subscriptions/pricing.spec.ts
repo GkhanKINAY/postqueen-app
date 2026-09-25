@@ -80,6 +80,37 @@ describe('effectiveIsTrailing', () => {
     );
   });
 
+  it('follows the Stripe trial past the signup window, up to twice the trial', () => {
+    const subscription = { isLifetime: false };
+    assert.equal(
+      effectiveIsTrailing({
+        isTrailing: true,
+        createdAt: daysAgo(TRIAL_DAYS + 3),
+        subscription,
+      }),
+      true
+    );
+    assert.equal(
+      effectiveIsTrailing({
+        isTrailing: true,
+        createdAt: daysAgo(TRIAL_DAYS * 2 + 1),
+        subscription,
+      }),
+      false
+    );
+  });
+
+  it('keeps the signup window for a founding member', () => {
+    assert.equal(
+      effectiveIsTrailing({
+        isTrailing: true,
+        createdAt: daysAgo(TRIAL_DAYS + 3),
+        subscription: { isLifetime: true },
+      }),
+      false
+    );
+  });
+
   it('reads the date an MCP organization carries as a string', () => {
     // The MCP request context holds the organization as JSON.
     const org = JSON.parse(
