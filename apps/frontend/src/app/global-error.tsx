@@ -19,17 +19,9 @@ export default function GlobalError({
     if (!sentryDsn) {
       return;
     }
-    const eventId = Sentry.captureException(error);
-    Sentry.showReportDialog({
-      eventId,
-      title: 'Something broke!',
-      subtitle: 'Please help us fix the issue by providing some details.',
-      labelComments: 'What happened?',
-      labelName: 'Your name',
-      labelEmail: 'Your email',
-      labelSubmit: 'Send Report',
-      lang: 'en',
-    });
+    // Reported without Sentry's crash dialog: it is English-only and not RTL,
+    // and this page already says what happened and offers a reload.
+    Sentry.captureException(error);
   }, [error]);
 
   return (

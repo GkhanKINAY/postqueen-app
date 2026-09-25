@@ -67,6 +67,9 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       integrations: [
         // Add our Profiling integration
         ...(profiling ? [profiling] : []),
+        // No request bodies: the SDK keeps up to 10 KB of every incoming
+        // body even with sendDefaultPii off, sign-in passwords included.
+        Sentry.httpIntegration({ maxIncomingRequestBodySize: 'none' }),
         // Warnings and errors only: info and debug lines carry provider
         // responses and user content, and they are in the pm2 logs anyway.
         Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),

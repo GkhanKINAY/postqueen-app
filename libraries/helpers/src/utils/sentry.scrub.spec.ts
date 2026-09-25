@@ -131,6 +131,88 @@ describe('scrubForSentry', () => {
     assert.deepEqual(out.contexts.trace.data, { 'network.peer.address': '127.0.0.1' });
   });
 
+  it('drops request bodies and fields named like a secret', () => {
+    // @sentry/nestjs 10.69 attached the body of POST /auth/login, password
+    // and all, to the error event and to sampled transactions.
+    const out = scrubForSentry({
+      request: {
+        method: 'POST',
+        url: 'https://api.postqueen.ai/auth/login',
+        data: '{"email":"a@b.c","password":"PASSWORD"}',
+      },
+      breadcrumbs: [
+        {
+          category: 'console',
+          level: 'error',
+          data: {
+            arguments: [
+              { access_token: 'TOKEN', refresh_token: 'TOKEN', client_secret: 'SECRET', name: 'x' },
+            ],
+          },
+        },
+      ],
+    });
+
+    assert.doesNotMatch(JSON.stringify(out), /PASSWORD|TOKEN|SECRET/);
+    assert.deepEqual(out.request, { method: 'POST', url: 'https://api.postqueen.ai/auth/login' });
+    assert.deepEqual(out.breadcrumbs[0].data.arguments, [{ name: 'x' }]);
+  });
+
+  it('filters credentials written into text', () => {
+    // A log body is the stringified error, so its keys never reach the
+    // key-based drop.
+    const out = scrubForSentry({
+      body: 'Request failed {"config":{"headers":{"Authorization":"Bearer abcdefgh12345678","x":"y"}},"password":"hunter2hunter2"} grant_type=refresh&client_secret=SECRET123',
+    });
+
+    assert.doesNotMatch(out.body, /abcdefgh12345678|hunter2hunter2|SECRET123/);
+    assert.match(out.body, /"x":"y"/);
+    assert.match(out.body, /grant_type=refresh/);
+  });
+
+  it('filters keys in a URL path and the password of a connection string', () => {
+    const out = scrubForSentry({
+      telegram: 'POST https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage',
+      webhook: 'https://discord.com/api/webhooks/123/k3yLooksLikeThis9QwErTy12345',
+      reset: '/auth/forgot/a1b2c3d4e5f6a7b8c9d0e1f2',
+      span: 'GET /auth/forgot/a1b2c3d4e5f6a7b8c9d0e1f2?x=1',
+      database: 'postgresql://postqueen:PASSWORD@postgres:5432/postqueen',
+      route: 'https://graph.facebook.com/v20.0/me/accounts',
+    });
+
+    assert.equal(out.telegram, 'POST https://api.telegram.org/[Filtered]/sendMessage');
+    assert.equal(out.webhook, 'https://discord.com/api/webhooks/123/[Filtered]');
+    assert.equal(out.reset, '/auth/forgot/[Filtered]');
+    assert.equal(out.span, 'GET /auth/forgot/[Filtered]');
+    assert.equal(out.database, 'postgresql://postgres:5432/postqueen');
+    assert.equal(out.route, 'https://graph.facebook.com/v20.0/me/accounts');
+  });
+
+  it('keeps the rest of a message that starts with a path', () => {
+    assert.equal(
+      scrubForSentry('/launches?code=OAUTH failed because the state expired'),
+      '/launches failed because the state expired'
+    );
+  });
+
+  it('drops what it cannot reach instead of passing it through', () => {
+    let deep: Record<string, unknown> = { link: `${graph}?access_token=SECRET` };
+    for (let i = 0; i < 40; i++) {
+      deep = { next: deep };
+    }
+    assert.doesNotMatch(JSON.stringify(scrubForSentry(deep)), /SECRET/);
+  });
+
+  it('stays fast on input built to make a pattern backtrack', () => {
+    // The first version took 7.9 s on 100 KB of `a-a-...` and 131 ms inside
+    // beforeSendTransaction for a 15 KB request path.
+    for (const value of ['a-'.repeat(50000), 'a://'.repeat(25000), `/${'a-'.repeat(50000)}`]) {
+      const started = performance.now();
+      scrubForSentry({ message: value, 'http.target': value });
+      assert.ok(performance.now() - started < 100, `${value.slice(0, 8)}… took too long`);
+    }
+  });
+
   it('never changes an object the application still holds', () => {
     const post = { link: `${graph}?access_token=SECRET` };
     const error = new Error(`${graph}?access_token=SECRET`);

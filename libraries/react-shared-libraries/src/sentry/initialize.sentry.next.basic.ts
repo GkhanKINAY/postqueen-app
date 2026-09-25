@@ -48,7 +48,7 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
         },
       },
       integrations: [
-        Sentry.consoleLoggingIntegration({ levels: ['log', 'info', 'warn', 'error', 'debug', 'assert', 'trace'] }),
+        Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
       ],
       environment: environment || 'development',
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
@@ -87,6 +87,11 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
         return scrubForSentry(event); // Send the event to Sentry
       },
     });
+    // Bug reports sent from the Help menu are `feedback` events, which skip
+    // beforeSend; they go through the same scrub here.
+    Sentry.addEventProcessor((event) =>
+      event.type === 'feedback' ? scrubForSentry(event) : event
+    );
   } catch (err) {
     // Log initialization errors
     // eslint-disable-next-line no-console

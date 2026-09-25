@@ -341,17 +341,18 @@ Lessons, in the order they cost time:
   Express `trust proxy` to private hops only and reads the client with
   `ClientIp` (`libraries/nestjs-libraries/src/user/client.ip.ts`). ESLint
   refuses `nestjs-real-ip`, so a synced commit that brings it back fails CI.
-- **Keep this fork's Sentry settings when upstream touches the three
-  `initialize.sentry*` files.** Here there is no Session Replay (upstream's
-  was unmasked), `sendDefaultPii` is off, there is no crash-report dialog,
-  the OpenAI integration records no prompts or answers, and only warn and
+- **Keep this fork's Sentry settings when upstream touches the
+  `initialize.sentry*` files, `sentry.server.config.ts` or `global-error.tsx`.**
+  Here there is no Session Replay (upstream's was unmasked), no crash-report
+  dialog, `sendDefaultPii` is off, the OpenAI integration records no prompts
+  or answers, the http integration keeps no request bodies, and only warn and
   error console lines are sent, as logs and as breadcrumbs. Every event,
-  transaction and log also goes through `scrubForSentry`
-  (`libraries/helpers/src/utils/sentry.scrub.ts`): the SDK copies full URLs,
-  cookies and request headers even with `sendDefaultPii` off, which put
-  provider access tokens, the `auth` session token and visitors' IPs in
-  Sentry. The privacy policy on postqueen.ai describes exactly what is left;
-  loosening any of it needs the policy changed first.
+  transaction, log and feedback also goes through `scrubForSentry`
+  (`libraries/helpers/src/utils/sentry.scrub.ts`): even with
+  `sendDefaultPii` off the SDK copies full URLs, cookies, request headers and
+  sign-in bodies, which put provider access tokens, the `auth` session token,
+  passwords and visitors' IPs in Sentry. The privacy policy on postqueen.ai
+  describes what is left; loosening any of it needs the policy changed first.
 - **Copy an upstream hash with `git rev-parse`, never by eye.** Two
   "(cherry picked / adapted from commit ...)" lines in this run first went in
   with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`
