@@ -8,6 +8,7 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import {
   LIFETIME_GRANT_TIER,
+  LIFETIME_ON_SALE,
   LIFETIME_PRICE,
   lifetimeWindow,
   pricing,
@@ -450,12 +451,12 @@ export const LifetimeDeal = () => {
   }
   // FREE accounts see the founding-member purchase window. Trialing paid tiers
   // can still convert to lifetime (Plans upsell) — do not bounce them back to
-  // /billing.
+  // /billing. With the offer off sale, only founding members stay here.
   if (
     user?.id &&
-    user?.tier?.current !== 'FREE' &&
     !user?.isLifetime &&
-    !user?.isTrailing
+    (!LIFETIME_ON_SALE ||
+      (user?.tier?.current !== 'FREE' && !user?.isTrailing))
   ) {
     router.replace('/billing');
     return null;

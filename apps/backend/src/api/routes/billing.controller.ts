@@ -5,6 +5,7 @@ import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/ge
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import {
+  LIFETIME_ON_SALE,
   lifetimeWindow,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -473,6 +474,12 @@ export class BillingController {
       throw new HttpException(
         { success: false, message: 'Already on the founding-member trial.' },
         HttpStatus.CONFLICT
+      );
+    }
+    if (!LIFETIME_ON_SALE) {
+      throw new HttpException(
+        { success: false, message: 'The founding-member offer has closed.' },
+        HttpStatus.GONE
       );
     }
     // Trial convert (design): entire trial, not only the 24h founding window.

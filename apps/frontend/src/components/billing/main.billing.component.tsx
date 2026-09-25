@@ -14,6 +14,7 @@ import {
   AnyTier,
   effectiveMonthly,
   LIFETIME_GRANT_TIER,
+  LIFETIME_ON_SALE,
   LIFETIME_PRICE,
   LIFETIME_RETENTION_PRICE,
   monthsFree,
@@ -797,8 +798,9 @@ export const MainBillingComponent: FC<{
 
           const isLifetimeTrial = !!user?.isLifetime && !!user?.isTrailing;
           // Prefetch eligibility so confirm → discount never flashes an empty step.
-          // Lifetime trial always gets the half-price founding retention (never 50%×3).
-          const offerLifetimeRetention = isLifetimeTrial;
+          // Lifetime trial gets the half-price founding retention (never 50%×3)
+          // while the offer is on sale; otherwise no retention step at all.
+          const offerLifetimeRetention = LIFETIME_ON_SALE && isLifetimeTrial;
           const checkDiscount = isLifetimeTrial
             ? { offerCoupon: false as const }
             : await (await fetch('/billing/check-discount')).json();
@@ -1013,8 +1015,9 @@ export const MainBillingComponent: FC<{
       {/* Founding-member upsell — design `ltUpsellDisplay`: every active trial
           that is not already on lifetime. Not gated on the 24h signup window
           (that only closed the strip for most of a 7-day trial). Backend allows
-          checkout while `isTrailing` OR within `lifetimeWindow`. */}
-      {!user?.isLifetime && user?.isTrailing && (
+          checkout while `isTrailing` OR within `lifetimeWindow`, and only
+          while `LIFETIME_ON_SALE`. */}
+      {LIFETIME_ON_SALE && !user?.isLifetime && user?.isTrailing && (
         <div
           data-lifetime-upsell="1"
           className="flex flex-col gap-[14px] rounded-[16px] bg-pqLtCardOn p-[20px_22px] outline outline-1 -outline-offset-1 outline-pqLtOutline"
