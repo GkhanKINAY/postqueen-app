@@ -594,6 +594,9 @@ export class PostsService {
       loadAll.map((p) => p.id)
     );
     const posts = this.arrangePostsByGroup(loadAll, undefined);
+    if (!posts.length) {
+      throw new NotFoundException('Post not found');
+    }
     const rootPost = posts[0] as any;
 
     return {
@@ -639,6 +642,9 @@ export class PostsService {
     const convertToJPEG = false;
     const loadAll = await this._postRepository.getPostsByGroup(orgId, group);
     const posts = this.arrangePostsByGroup(loadAll, undefined);
+    if (!posts.length) {
+      throw new NotFoundException('Post not found');
+    }
 
     return {
       group: posts?.[0]?.group,

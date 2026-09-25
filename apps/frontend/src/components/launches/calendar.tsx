@@ -364,6 +364,16 @@ export const usePostActions = (
         ? await groupResponse.json().catch((): null => null)
         : null;
 
+      // A group deleted since the calendar loaded (from another tab, by a
+      // teammate, on a cancelled subscription) answers 404: say so and take
+      // the stale tile off the calendar.
+      if (groupResponse.status === 404) {
+        toaster.show(t('post_not_found', 'Post not found'), 'warning');
+        dropPostGroupFromView(post.group);
+        mutate();
+        return;
+      }
+
       if (!data?.posts?.length) {
         toaster.show(
           t('post_open_failed', 'Could not open this post, please try again'),
@@ -441,7 +451,7 @@ export const usePostActions = (
         title: ``,
       });
     },
-    [integrations, fetch, modal, mutate, toaster, t]
+    [integrations, fetch, modal, mutate, toaster, t, dropPostGroupFromView]
   );
 
   const copyDebugJson = useCallback(
