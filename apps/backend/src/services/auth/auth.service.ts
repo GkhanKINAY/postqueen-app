@@ -206,6 +206,11 @@ export class AuthService {
     if (!user.activated) {
       await this._userService.activateUser(user.id);
       user.activated = true;
+      // An account made earlier that never followed its activation link is
+      // ready from here; a new one had its welcome above.
+      if (!isNew) {
+        await this.sendWelcome(email);
+      }
     }
 
     return { jwt: await this.jwt(user), isNew };
@@ -815,46 +820,47 @@ export class AuthService {
     // A welcome that cannot be queued must not fail the sign-up it follows.
     await this._emailService
       .sendEmail(
-      email,
-      'Welcome to PostQueen',
-      emailContent({
-        stream: 'account',
-        category: 'Welcome',
-        preheader: 'Your account is ready. Here is how to get your first post out.',
-        tone: 'brand',
-        title: 'Welcome to',
-        accent: 'PostQueen.',
-        lead: 'Your account is ready. Three steps and your first post is on its way.',
-        blocks: [
-          {
-            type: 'steps',
-            items: [
-              {
-                title: 'Connect your channels',
-                text: 'Instagram, TikTok, LinkedIn, X and more. Each one connects with the network’s own sign-in.',
-              },
-              {
-                title: 'Bring your AI agent',
-                text: 'Connect Claude, ChatGPT, Grok Bot or another agent, then ask it to post for you.',
-              },
-              {
-                title: 'Schedule your first post',
-                text: 'Write it yourself or ask the AI Copilot, then pick a time on your calendar.',
-              },
-            ],
-          },
-          {
-            type: 'button',
-            link: { label: 'Open my calendar', url: '/launches' },
-          },
-          {
-            type: 'note',
-            text: 'Stuck on a step? Reply to this email and we’ll help.',
-          },
-        ],
-        footer: 'welcome',
-      }),
-      'bottom',
+        email,
+        'Welcome to PostQueen',
+        emailContent({
+          stream: 'account',
+          category: 'Welcome',
+          preheader:
+            'Your account is ready. Here is how to get your first post out.',
+          tone: 'brand',
+          title: 'Welcome to',
+          accent: 'PostQueen.',
+          lead: 'Your account is ready. Three steps and your first post is on its way.',
+          blocks: [
+            {
+              type: 'steps',
+              items: [
+                {
+                  title: 'Connect your channels',
+                  text: 'Instagram, TikTok, X, YouTube and more. Each one connects with the network’s own sign-in.',
+                },
+                {
+                  title: 'Bring your AI agent',
+                  text: 'Connect Claude, ChatGPT, Grok Bot or another agent, then ask it to post for you.',
+                },
+                {
+                  title: 'Schedule your first post',
+                  text: 'Write it yourself or ask the AI Copilot, then pick a time on your calendar.',
+                },
+              ],
+            },
+            {
+              type: 'button',
+              link: { label: 'Open my calendar', url: '/launches' },
+            },
+            {
+              type: 'note',
+              text: 'Stuck on a step? Reply to this email and we’ll help.',
+            },
+          ],
+          footer: 'welcome',
+        }),
+        'bottom',
       )
       .catch((err) => console.error('[auth] welcome email not queued', err));
   }
