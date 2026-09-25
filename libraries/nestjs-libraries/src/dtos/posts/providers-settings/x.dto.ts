@@ -24,7 +24,7 @@ export class XDto {
   @IsIn(['everyone', 'following', 'mentionedUsers', 'subscribers', 'verified'])
   @JSONSchema({
     description:
-      'Required for a regular post (any post_type other than article). Use everyone unless the user asks to limit replies.',
+      'Required for a regular post (any post_type other than article). Use everyone unless the user asks to limit replies. subscribers and verified need an X Premium subscription on the connected account.',
     default: 'everyone',
   })
   who_can_reply_post:
@@ -38,7 +38,7 @@ export class XDto {
   @IsIn(['post', 'article'])
   @JSONSchema({
     description:
-      'post = a regular short post (plain text). article = a long-form X article: write the post content as HTML (p, h1, h2, h3, ul, ol, li, strong, a) - the formatting is kept in the article',
+      'post = a regular short post (plain text). article = a long-form X article, which needs an X Premium subscription on the connected account: write the post content as HTML (p, h1, h2, h3, ul, ol, li, strong, a) - the formatting is kept in the article',
   })
   post_type?: 'post' | 'article';
 
