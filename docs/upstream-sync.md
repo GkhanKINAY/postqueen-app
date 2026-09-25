@@ -283,11 +283,12 @@ Lessons, in the order they cost time:
 
 ## September 2026 (fourth sync): what happened
 
-**39 commits past the watermark (`5ff9e0b2..60431b08`, merges not counted):
-34 taken, 1 already here, 4 skipped.** The first run since `main` records
-upstream as merged, so `main..upstream/main` listed exactly these. Three PRs:
-the fixes, the preview comments on their own because they carry a schema
-change and a restyle, and the `-s ours` merge.
+**42 commits past the watermark (`5ff9e0b2..374fb202`, merges not counted):
+37 taken, 1 already here, 4 skipped.** The first run since `main` records
+upstream as merged, so `main..upstream/main` listed exactly these. Four PRs:
+the fixes (#261), the preview comments on their own because they carry a
+schema change and a restyle (#262), three commits upstream merged while
+those were in review (#263), and the `-s ours` merge.
 
 What landed: platform errors mapped to readable reasons or the right outcome
 (Instagram checkpoints and container errors, five Facebook Graph rejections
@@ -296,8 +297,10 @@ uploads, Threads container retries, Reddit RATELIMIT resubmits, Pinterest
 board ids, Lemmy, VK, Telegram and Dribbble); tag deletion cleaning up its
 post assignments; a deleted post group answering 404; the uploader not
 calling `clear()` mid-upload; three third-party errors kept away from
-Sentry's report dialog; connected OAuth clients in the admin stats; and
-upstream's inline comments on `/p/:id`.
+Sentry's report dialog; connected OAuth clients in the admin stats;
+upstream's inline comments on `/p/:id`; and, from the late three, a checkout
+that says so when Stripe.js is blocked, Instagram's 2207085 video error, and
+the activation page no longer reading a response it is navigating away from.
 
 Lessons, in the order they cost time:
 
@@ -325,6 +328,10 @@ Lessons, in the order they cost time:
 - **The migration check's api list only sees `fetch()` of a literal path.**
   A path chosen by a ternary or held in a variable drops out of the list
   and reads as a removed endpoint. Write each call as its own literal.
+- **Upstream keeps merging while a sync is in review.** Three commits landed
+  after the watermark had been picked. Check `main..upstream/main` again
+  right before the `-s ours` merge, and merge an exact hash, so what is
+  recorded as handled is only what was.
 - **Copy an upstream hash with `git rev-parse`, never by eye.** Two
   "(cherry picked / adapted from commit ...)" lines in this run first went in
   with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`
@@ -332,12 +339,13 @@ Lessons, in the order they cost time:
 
 ## Where the sync currently stands
 
-**Synced through `60431b08` (2026-09-25), and merged.** Everything upstream had
+**Synced through `374fb202` (2026-09-25), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
 and `main` has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `5ff9e0b2` (2026-09-22, the first
-one merged that way), `8b84b0dc` (the same day, before three README commits),
-`6f107801` (2026-09-19) and `c9382d98` (2026-09-03).
+"Next time"). The previous watermarks were `60431b08` (the same day, before
+three late commits), `5ff9e0b2` (2026-09-22, the first one merged that way),
+`8b84b0dc` (the same day, before three README commits), `6f107801`
+(2026-09-19) and `c9382d98` (2026-09-03).
 
 Skipped, deliberately:
 

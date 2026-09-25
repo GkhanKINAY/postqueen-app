@@ -49,6 +49,14 @@ export const AfterActivate = () => {
         return;
       }
 
+      // A successful activation answers with the onboarding header, and the
+      // shared fetch handler is already navigating there. Reading the body now
+      // is aborted (Firefox rejects it), which landed in the catch below and
+      // showed "could not confirm" for a link that had just worked.
+      if (response.headers.get('onboarding')) {
+        return;
+      }
+
       const { can } = await response.json();
       if (!can) {
         setShowLoader(false);

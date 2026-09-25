@@ -318,6 +318,7 @@ billing_resubscribe_to_plan
 billing_see_the_power
 billing_still_processing
 billing_still_processing_title
+billing_stripe_load_failed
 billing_subscription
 billing_subscription_ended
 billing_subscription_ended_on
