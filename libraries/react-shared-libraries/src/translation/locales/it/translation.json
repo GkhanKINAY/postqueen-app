@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "Eliminare questo commento e le sue risposte?",
   "preview_comment_delete_reply_confirm": "Eliminare questa risposta?",
   "preview_comment_delete_failed": "Impossibile eliminare il commento",
-  "captcha_unavailable": "Impossibile caricare il captcha. Potrebbe essere bloccato dal browser o dalla rete. Ricarica la pagina per riprovare."
+  "captcha_unavailable": "Impossibile caricare il captcha. Potrebbe essere bloccato dal browser o dalla rete. Ricarica la pagina per riprovare.",
+  "email_off_title_success": "Disattivare le email di successo?",
+  "email_off_title_failure": "Disattivare le email di errore?",
+  "email_off_title_streak": "Disattivare le email sulla serie?",
+  "email_off_title_publishing": "Disattivare il riepilogo orario delle pubblicazioni?",
+  "email_off_body": "Non riceverai più queste email a questo indirizzo. Le email di accesso, sicurezza e fatturazione continuano ad arrivare.",
+  "email_off_invalid_title": "Questo link non funziona più",
+  "email_off_invalid": "Puoi scegliere quali email ricevere in Impostazioni, sotto Notifiche.",
+  "email_off_settings": "Apri le impostazioni delle notifiche",
+  "email_off_done": "Fatto. Non riceverai più queste email.",
+  "email_off_button": "Disattivale"
 }

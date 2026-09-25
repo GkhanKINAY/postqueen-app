@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -39,6 +40,8 @@ import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
+import { EmailUnsubscribeDto } from '@gitroom/nestjs-libraries/dtos/users/email.unsubscribe.dto';
 
 const pump = promisify(pipeline);
 
@@ -51,7 +54,8 @@ export class PublicController {
     private _postsService: PostsService,
     private _subscriptionService: SubscriptionService,
     private _platformCallbacksService: PlatformCallbacksService,
-    private _abuseGuardService: AbuseGuardService
+    private _abuseGuardService: AbuseGuardService,
+    private _usersService: UsersService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -114,6 +118,25 @@ export class PublicController {
   @Get(`/platform-deletion/:code`)
   getPlatformDeletionStatus(@Param('code') code: string) {
     return this._platformCallbacksService.deletionStatus(code);
+  }
+
+  // What the unsubscribe link in a notification email would switch off, for
+  // the page it opens. The signed token is the only credential.
+  @Get('/emails/unsubscribe')
+  getEmailUnsubscribe(@Query() query: EmailUnsubscribeDto) {
+    return this._usersService.emailUnsubscribeKind(query.token);
+  }
+
+  // Switches it off: the page's button, and the one-click unsubscribe
+  // mailboxes send from the List-Unsubscribe header (RFC 8058), which posts
+  // `List-Unsubscribe=One-Click` with no cookies. Never on GET, so a link
+  // scanner opening the email cannot turn anything off.
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @HttpCode(200)
+  @Post('/emails/unsubscribe')
+  emailUnsubscribe(@Query() query: EmailUnsubscribeDto) {
+    return this._usersService.emailUnsubscribe(query.token);
   }
 
   @Get(`/posts/:id/comments`)

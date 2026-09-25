@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "Supprimer ce commentaire et ses réponses ?",
   "preview_comment_delete_reply_confirm": "Supprimer cette réponse ?",
   "preview_comment_delete_failed": "Impossible de supprimer le commentaire",
-  "captcha_unavailable": "Le captcha n’a pas pu se charger. Il est peut-être bloqué par votre navigateur ou votre réseau. Rechargez la page pour réessayer."
+  "captcha_unavailable": "Le captcha n’a pas pu se charger. Il est peut-être bloqué par votre navigateur ou votre réseau. Rechargez la page pour réessayer.",
+  "email_off_title_success": "Désactiver les e-mails de réussite ?",
+  "email_off_title_failure": "Désactiver les e-mails d'échec ?",
+  "email_off_title_streak": "Désactiver les e-mails de série ?",
+  "email_off_title_publishing": "Désactiver le récapitulatif horaire des publications ?",
+  "email_off_body": "Vous ne recevrez plus ces e-mails à cette adresse. Les e-mails de connexion, de sécurité et de facturation continuent d'arriver.",
+  "email_off_invalid_title": "Ce lien ne fonctionne plus",
+  "email_off_invalid": "Vous pouvez choisir les e-mails que vous recevez dans Paramètres, sous Notifications.",
+  "email_off_settings": "Ouvrir les paramètres de notification",
+  "email_off_done": "C'est fait. Vous ne recevrez plus ces e-mails.",
+  "email_off_button": "Les désactiver"
 }

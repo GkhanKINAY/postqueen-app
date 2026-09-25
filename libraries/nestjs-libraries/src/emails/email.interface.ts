@@ -2,6 +2,8 @@
 export interface EmailExtras {
   /** The plain-text part. Mailboxes trust an email more when it has one. */
   text?: string;
+  /** Extra headers, e.g. List-Unsubscribe. */
+  headers?: Record<string, string>;
 }
 
 export interface EmailInterface {

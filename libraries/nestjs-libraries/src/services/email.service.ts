@@ -7,9 +7,12 @@ import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
+  EmailContent,
   EmailStream,
+  emailUnsubscribeKind,
   readEmailContent,
 } from '@gitroom/nestjs-libraries/emails/email.content';
+import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import {
   EmailEnv,
   renderEmail,
@@ -61,6 +64,32 @@ export class EmailService {
       return { from: notifications, replyTo: account };
     }
     return { from: account, replyTo: undefined };
+  }
+
+  /**
+   * One-click unsubscribe for the emails a person can turn off in Settings:
+   * the page the footer links to, and the List-Unsubscribe headers mailboxes
+   * act on (RFC 8058), so people switch these off instead of reporting them
+   * as spam. The token names the address and what to switch off.
+   */
+  private unsubscribe(to: string, content: EmailContent) {
+    const kind = emailUnsubscribeKind(content.footer);
+    if (!kind || !process.env.FRONTEND_URL) {
+      return undefined;
+    }
+    const token = encodeURIComponent(
+      AuthService.signJWT({ email: to, purpose: 'email_off', kind })
+    );
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
+    return {
+      page: `${process.env.FRONTEND_URL}/unsubscribe?token=${token}`,
+      headers: backend?.startsWith('https://')
+        ? {
+            'List-Unsubscribe': `<${backend}/public/emails/unsubscribe?token=${token}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          }
+        : undefined,
+    };
   }
 
   /**
@@ -130,8 +159,9 @@ export class EmailService {
 
     const content = readEmailContent(html);
     const env = this.layoutEnv();
+    const unsubscribe = content && this.unsubscribe(to, content);
     const rendered = content
-      ? renderEmail(env, subject, content)
+      ? renderEmail(env, subject, content, unsubscribe?.page)
       : renderLegacyEmail(env, subject, html);
     const sender = this.sender(content?.stream || 'account');
 
@@ -145,7 +175,7 @@ export class EmailService {
           process.env.EMAIL_FROM_NAME,
           sender.from,
           replyTo || sender.replyTo,
-          { text: rendered.text }
+          { text: rendered.text, headers: unsubscribe?.headers }
         );
         console.log(sends);
         return;

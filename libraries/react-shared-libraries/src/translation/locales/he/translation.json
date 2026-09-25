@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "למחוק את התגובה הזו ואת התשובות שלה?",
   "preview_comment_delete_reply_confirm": "למחוק את התשובה הזו?",
   "preview_comment_delete_failed": "לא ניתן היה למחוק את התגובה",
-  "captcha_unavailable": "לא ניתן היה לטעון את ה-captcha. ייתכן שהיא חסומה על ידי הדפדפן או הרשת שלכם. טענו מחדש את הדף ונסו שוב."
+  "captcha_unavailable": "לא ניתן היה לטעון את ה-captcha. ייתכן שהיא חסומה על ידי הדפדפן או הרשת שלכם. טענו מחדש את הדף ונסו שוב.",
+  "email_off_title_success": "לכבות את הודעות ההצלחה?",
+  "email_off_title_failure": "לכבות את הודעות הכישלון?",
+  "email_off_title_streak": "לכבות את הודעות הרצף?",
+  "email_off_title_publishing": "לכבות את סיכום הפרסומים השעתי?",
+  "email_off_body": "ההודעות האלה לא יגיעו יותר לכתובת הזו. הודעות על כניסה, אבטחה וחיוב ימשיכו להגיע.",
+  "email_off_invalid_title": "הקישור הזה כבר לא עובד",
+  "email_off_invalid": "אפשר לבחור אילו הודעות לקבל בהגדרות, תחת התראות.",
+  "email_off_settings": "פתיחת הגדרות ההתראות",
+  "email_off_done": "בוצע. ההודעות האלה לא יגיעו יותר.",
+  "email_off_button": "לכבות"
 }

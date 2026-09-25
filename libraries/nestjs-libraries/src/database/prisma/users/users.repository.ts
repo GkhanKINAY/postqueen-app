@@ -574,6 +574,23 @@ export class UsersRepository {
     });
   }
 
+  /** Every account at the address, whatever the case it was typed in. */
+  turnOffEmails(
+    email: string,
+    fields: readonly (
+      | 'sendSuccessEmails'
+      | 'sendFailureEmails'
+      | 'sendStreakEmails'
+    )[]
+  ) {
+    return this._user.model.user.updateMany({
+      where: {
+        email: { equals: email, mode: 'insensitive' },
+      },
+      data: Object.fromEntries(fields.map((field) => [field, false])),
+    });
+  }
+
   async updateEmailNotifications(userId: string, body: EmailNotificationsDto) {
     await this._user.model.user.update({
       where: {

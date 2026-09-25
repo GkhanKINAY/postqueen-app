@@ -7,6 +7,8 @@ import {
   EmailContent,
   digestEmail,
   emailContent,
+  emailUnsubscribeKind,
+  isEmailUnsubscribeKind,
   noticeEmail,
   readEmailContent,
 } from './email.content.ts';
@@ -154,6 +156,30 @@ describe('steps', () => {
     assert.ok(text.includes('1. Connect <your> channels: One click each.'));
     assert.ok(text.includes('2. Schedule a post: Pick a time.'));
     assert.ok(text.includes('You get this because you just created an account.'));
+
+describe('one-click unsubscribe', () => {
+  const failure = noticeEmail({ title: 'Failed', message: 'Failed.', type: 'fail' });
+
+  it('is offered on the emails Settings can turn off, and only there', () => {
+    assert.equal(emailUnsubscribeKind('failure'), 'failure');
+    assert.equal(emailUnsubscribeKind('digest'), 'publishing');
+    assert.equal(emailUnsubscribeKind('security'), undefined);
+    assert.equal(emailUnsubscribeKind('billing'), undefined);
+  });
+
+  it('does not take inherited names for a kind', () => {
+    assert.equal(isEmailUnsubscribeKind('streak'), true);
+    assert.equal(isEmailUnsubscribeKind('toString'), false);
+    assert.equal(isEmailUnsubscribeKind(undefined), false);
+  });
+
+  it('puts the link in the footer and in the text part', () => {
+    const url = 'https://app.example.com/unsubscribe?token=abc';
+    const { html, text } = renderEmail(env, 'x', failure, url);
+    assert.ok(html.includes(`href="${url}"`));
+    assert.ok(html.includes('Turn off failure emails</a> in one click'));
+    assert.ok(text.includes(`Turn off failure emails: ${url}`));
+    assert.ok(!renderEmail(env, 'x', failure).html.includes('in one click'));
   });
 });
 
@@ -229,5 +255,6 @@ describe('the images an email shows', () => {
     );
     assert.match(proxy, /startsWith\('\/email\/'\)/);
     assert.match(proxy, /startsWith\('\/icons\/'\)/);
+    assert.match(proxy, /=== '\/unsubscribe'/);
   });
 });

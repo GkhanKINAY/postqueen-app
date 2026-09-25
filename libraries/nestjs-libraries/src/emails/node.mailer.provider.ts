@@ -41,6 +41,7 @@ export class NodeMailerProvider implements EmailInterface {
       ...(extras?.text && { text: extras.text }), // plain text body
       html: html, // html body
       ...(replyTo && { replyTo }),
+      ...(extras?.headers && { headers: extras.headers }),
     });
 
     return sends;

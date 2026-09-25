@@ -55,6 +55,40 @@ export type EmailFooter =
   | 'welcome'
   | 'general';
 
+/**
+ * What one-click unsubscribe switches off, by the footer the email carries.
+ * Only emails a person can turn off in Settings have one; the hourly summary
+ * holds both kinds of publishing notice, so it turns both off.
+ */
+export const EMAIL_UNSUBSCRIBE_FIELDS = {
+  success: ['sendSuccessEmails'],
+  failure: ['sendFailureEmails'],
+  streak: ['sendStreakEmails'],
+  publishing: ['sendSuccessEmails', 'sendFailureEmails'],
+} as const satisfies Record<
+  string,
+  readonly ('sendSuccessEmails' | 'sendFailureEmails' | 'sendStreakEmails')[]
+>;
+
+export type EmailUnsubscribeKind = keyof typeof EMAIL_UNSUBSCRIBE_FIELDS;
+
+export const isEmailUnsubscribeKind = (
+  kind: unknown
+): kind is EmailUnsubscribeKind =>
+  typeof kind === 'string' &&
+  Object.prototype.hasOwnProperty.call(EMAIL_UNSUBSCRIBE_FIELDS, kind);
+
+const UNSUBSCRIBE_BY_FOOTER: Partial<Record<EmailFooter, EmailUnsubscribeKind>> =
+  {
+    success: 'success',
+    failure: 'failure',
+    streak: 'streak',
+    digest: 'publishing',
+  };
+
+export const emailUnsubscribeKind = (footer: EmailFooter) =>
+  UNSUBSCRIBE_BY_FOOTER[footer];
+
 export interface EmailLink {
   label: string;
   url: string;

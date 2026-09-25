@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "Xóa bình luận này và các câu trả lời?",
   "preview_comment_delete_reply_confirm": "Xóa câu trả lời này?",
   "preview_comment_delete_failed": "Không thể xóa bình luận",
-  "captcha_unavailable": "Không thể tải captcha. Có thể trình duyệt hoặc mạng của bạn đang chặn nó. Hãy tải lại trang để thử lại."
+  "captcha_unavailable": "Không thể tải captcha. Có thể trình duyệt hoặc mạng của bạn đang chặn nó. Hãy tải lại trang để thử lại.",
+  "email_off_title_success": "Tắt email báo đăng thành công?",
+  "email_off_title_failure": "Tắt email báo đăng thất bại?",
+  "email_off_title_streak": "Tắt email về chuỗi đăng bài?",
+  "email_off_title_publishing": "Tắt bản tóm tắt đăng bài hằng giờ?",
+  "email_off_body": "Địa chỉ này sẽ không nhận các email này nữa. Email đăng nhập, bảo mật và thanh toán vẫn được gửi.",
+  "email_off_invalid_title": "Liên kết này không còn hoạt động",
+  "email_off_invalid": "Bạn có thể chọn loại email muốn nhận trong Cài đặt, mục Thông báo.",
+  "email_off_settings": "Mở cài đặt thông báo",
+  "email_off_done": "Xong. Bạn sẽ không nhận các email này nữa.",
+  "email_off_button": "Tắt"
 }

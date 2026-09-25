@@ -358,8 +358,18 @@ const FOOTER_WHY: Record<EmailFooter, string> = {
   general: 'You get this because you have an account.',
 };
 const MANAGE: EmailFooter[] = ['success', 'failure', 'digest', 'streak'];
+const TURN_OFF: Partial<Record<EmailFooter, string>> = {
+  success: 'Turn off success emails',
+  failure: 'Turn off failure emails',
+  digest: 'Turn off these summaries',
+  streak: 'Turn off streak emails',
+};
 
-const footerLines = (env: EmailEnv, c: EmailContent) => {
+const footerLines = (
+  env: EmailEnv,
+  c: EmailContent,
+  unsubscribeUrl?: string,
+) => {
   const why = c.footerText || FOOTER_WHY[c.footer];
   const manage = MANAGE.includes(c.footer)
     ? {
@@ -367,6 +377,10 @@ const footerLines = (env: EmailEnv, c: EmailContent) => {
         url: `${env.frontendUrl}/settings?tab=notifications`,
       }
     : undefined;
+  const turnOff =
+    unsubscribeUrl && TURN_OFF[c.footer]
+      ? { label: TURN_OFF[c.footer]!, url: unsubscribeUrl }
+      : undefined;
   const links: EmailLink[] = [
     ...(env.helpUrl ? [{ label: 'Help center', url: env.helpUrl }] : []),
     ...(env.supportEmail
@@ -382,11 +396,15 @@ const footerLines = (env: EmailEnv, c: EmailContent) => {
   const company = env.postalAddress
     ? `${env.fromName} is made by ${env.postalAddress}.`
     : '';
-  return { why, manage, links, company };
+  return { why, manage, turnOff, links, company };
 };
 
-const footer = (env: EmailEnv, c: EmailContent) => {
-  const { why, manage, links, company } = footerLines(env, c);
+const footer = (env: EmailEnv, c: EmailContent, unsubscribeUrl?: string) => {
+  const { why, manage, turnOff, links, company } = footerLines(
+    env,
+    c,
+    unsubscribeUrl,
+  );
   const small = `font:400 13px/1.6 ${SANS};color:${LIGHT.muted};`;
   const a = (l: EmailLink, bold = true) =>
     `<a class="pq-link" href="${esc(l.url)}" style="color:${LIGHT.link};font-weight:${bold ? 700 : 600};text-decoration:underline;">${esc(l.label)}</a>`;
@@ -395,7 +413,13 @@ const footer = (env: EmailEnv, c: EmailContent) => {
       ? `<p class="pq-muted" style="margin:0 0 14px;${small}">Questions? Reply to this email or write to ${a({ label: env.supportEmail, url: `mailto:${env.supportEmail}` })}.</p>` +
         `<div class="pq-rule" style="height:1px;line-height:1px;font-size:0;background-color:${LIGHT.line};">&nbsp;</div>`
       : '',
-    `<p class="pq-muted" style="margin:14px 0 0;${small}">${esc(why)}${manage ? ` ${a(manage)}.` : ''}</p>`,
+    `<p class="pq-muted" style="margin:14px 0 0;${small}">${esc(why)}${
+      turnOff && manage
+        ? ` ${a(turnOff)} in one click, or ${a({ ...manage, label: 'manage email notifications' })}.`
+        : manage
+          ? ` ${a(manage)}.`
+          : ''
+    }</p>`,
     links.length
       ? `<p class="pq-muted" style="margin:12px 0 0;${small}">${links
           .map(
@@ -419,6 +443,7 @@ const page = (
   subject: string,
   c: EmailContent,
   body: string,
+  unsubscribeUrl?: string,
 ) => {
   const logo = asset(env, '/email/logo.png');
   return `<!doctype html>
@@ -453,7 +478,7 @@ ${preheader(c.preheader)}
 ${body}
 </table>
 </td></tr>
-<tr><td style="padding:26px 4px 4px;">${footer(env, c)}</td></tr>
+<tr><td style="padding:26px 4px 4px;">${footer(env, c, unsubscribeUrl)}</td></tr>
 </table>
 </td></tr>
 </table>
@@ -470,7 +495,7 @@ const head = (env: EmailEnv, c: EmailContent) => {
   );
 };
 
-const text = (env: EmailEnv, c: EmailContent) => {
+const text = (env: EmailEnv, c: EmailContent, unsubscribeUrl?: string) => {
   const out: string[] = [
     c.category.toUpperCase(),
     '',
@@ -527,12 +552,17 @@ const text = (env: EmailEnv, c: EmailContent) => {
         break;
     }
   }
-  const { why, manage, links, company } = footerLines(env, c);
+  const { why, manage, turnOff, links, company } = footerLines(
+    env,
+    c,
+    unsubscribeUrl,
+  );
   out.push('', '--');
   if (env.supportEmail && c.footer !== 'internal') {
     out.push(`Questions? Reply to this email or write to ${env.supportEmail}.`);
   }
   out.push(why);
+  if (turnOff) out.push(`${turnOff.label}: ${turnOff.url}`);
   if (manage) out.push(`${manage.label}: ${manage.url}`);
   if (links.length)
     out.push(
@@ -544,17 +574,22 @@ const text = (env: EmailEnv, c: EmailContent) => {
   return out.join('\n');
 };
 
+/** `unsubscribeUrl`: the one-click page, on emails a person can turn off. */
 export const renderEmail = (
   env: EmailEnv,
   subject: string,
   c: EmailContent,
+  unsubscribeUrl?: string,
 ) => {
   const body =
     head(env, c) +
     c.blocks
       .map((b) => `${spacer(24)}<tr><td>${block(env, b)}</td></tr>`)
       .join('');
-  return { html: page(env, subject, c, body), text: text(env, c) };
+  return {
+    html: page(env, subject, c, body, unsubscribeUrl),
+    text: text(env, c, unsubscribeUrl),
+  };
 };
 
 /**

@@ -853,5 +853,15 @@
   "preview_comment_delete_confirm": "Bu yorum ve yanıtları silinsin mi?",
   "preview_comment_delete_reply_confirm": "Bu yanıt silinsin mi?",
   "preview_comment_delete_failed": "Yorum silinemedi",
-  "captcha_unavailable": "Doğrulama (captcha) yüklenemedi. Tarayıcınız veya ağınız tarafından engelleniyor olabilir. Tekrar denemek için sayfayı yenileyin."
+  "captcha_unavailable": "Doğrulama (captcha) yüklenemedi. Tarayıcınız veya ağınız tarafından engelleniyor olabilir. Tekrar denemek için sayfayı yenileyin.",
+  "email_off_title_success": "Başarı e-postaları kapatılsın mı?",
+  "email_off_title_failure": "Hata e-postaları kapatılsın mı?",
+  "email_off_title_streak": "Seri e-postaları kapatılsın mı?",
+  "email_off_title_publishing": "Saatlik paylaşım özeti kapatılsın mı?",
+  "email_off_body": "Bu adrese bu e-postalar artık gelmeyecek. Giriş, güvenlik ve ödeme e-postaları gelmeye devam eder.",
+  "email_off_invalid_title": "Bu bağlantı artık çalışmıyor",
+  "email_off_invalid": "Hangi e-postaları alacağınızı Ayarlar'da, Bildirimler altında seçebilirsiniz.",
+  "email_off_settings": "Bildirim ayarlarını aç",
+  "email_off_done": "Tamam. Bu e-postalar artık gelmeyecek.",
+  "email_off_button": "Kapat"
 }

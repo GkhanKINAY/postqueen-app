@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "删除此评论及其回复？",
   "preview_comment_delete_reply_confirm": "删除此回复？",
   "preview_comment_delete_failed": "无法删除评论",
-  "captcha_unavailable": "验证码无法加载，可能被您的浏览器或网络拦截。请刷新页面后重试。"
+  "captcha_unavailable": "验证码无法加载，可能被您的浏览器或网络拦截。请刷新页面后重试。",
+  "email_off_title_success": "关闭发布成功邮件？",
+  "email_off_title_failure": "关闭发布失败邮件？",
+  "email_off_title_streak": "关闭连续发布邮件？",
+  "email_off_title_publishing": "关闭每小时发布摘要？",
+  "email_off_body": "此地址将不再收到这些邮件。登录、安全和账单邮件仍会照常发送。",
+  "email_off_invalid_title": "此链接已失效",
+  "email_off_invalid": "你可以在“设置”的“通知”中选择要接收的邮件。",
+  "email_off_settings": "打开通知设置",
+  "email_off_done": "完成。你将不再收到这些邮件。",
+  "email_off_button": "关闭"
 }

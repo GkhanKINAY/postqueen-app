@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "هل تريد حذف هذا التعليق والردود عليه؟",
   "preview_comment_delete_reply_confirm": "هل تريد حذف هذا الرد؟",
   "preview_comment_delete_failed": "تعذّر حذف التعليق",
-  "captcha_unavailable": "تعذّر تحميل اختبار التحقق (captcha). قد يكون محظورًا من المتصفح أو الشبكة. أعد تحميل الصفحة للمحاولة مرة أخرى."
+  "captcha_unavailable": "تعذّر تحميل اختبار التحقق (captcha). قد يكون محظورًا من المتصفح أو الشبكة. أعد تحميل الصفحة للمحاولة مرة أخرى.",
+  "email_off_title_success": "هل تريد إيقاف رسائل النجاح؟",
+  "email_off_title_failure": "هل تريد إيقاف رسائل الفشل؟",
+  "email_off_title_streak": "هل تريد إيقاف رسائل سلسلة النشر؟",
+  "email_off_title_publishing": "هل تريد إيقاف ملخص النشر كل ساعة؟",
+  "email_off_body": "لن تصل هذه الرسائل إلى هذا العنوان بعد الآن. ستستمر رسائل تسجيل الدخول والأمان والفوترة في الوصول.",
+  "email_off_invalid_title": "هذا الرابط لم يعد يعمل",
+  "email_off_invalid": "يمكنك اختيار الرسائل التي تصلك من الإعدادات، ضمن الإشعارات.",
+  "email_off_settings": "فتح إعدادات الإشعارات",
+  "email_off_done": "تم. لن تصلك هذه الرسائل بعد الآن.",
+  "email_off_button": "إيقافها"
 }
