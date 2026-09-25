@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
 import { AdminApplyCouponDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.apply.coupon.dto';
+import type { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 
 export type PaymentPlatform = 'web' | 'mobile';
 
@@ -147,7 +148,21 @@ export abstract class PaymentProviderAbstract {
   async syncCustomerEmailsAfterSwitch(
     accounts: { id: string; email: string }[]
   ): Promise<void> {}
+
+  // --- credits --------------------------------------------------------------
+
+  // Asked once a day for each plan this provider owns: grant any plan credits
+  // its own events have not brought. A provider whose events always bring
+  // them has nothing to do here.
+  async grantMissingPlanCredits(target: CreditGrantTarget): Promise<boolean> {
+    return false;
+  }
 }
+
+/** A live plan, as the daily credit pass sees it. */
+export type CreditGrantTarget = Awaited<
+  ReturnType<SubscriptionRepository['getCreditGrantTargets']>
+>[number];
 
 export interface PaymentProviderParams {
   provider: string;

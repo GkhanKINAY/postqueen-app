@@ -9,6 +9,7 @@ import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrati
 import { VideoActivity } from '@gitroom/orchestrator/activities/video.activity';
 import { FoundingFeeActivity } from '@gitroom/orchestrator/activities/founding.fee.activity';
 import { BillingReconcileActivity } from '@gitroom/orchestrator/activities/billing.reconcile.activity';
+import { CreditGrantsActivity } from '@gitroom/orchestrator/activities/credit.grants.activity';
 import { PostMetricsActivity } from '@gitroom/orchestrator/activities/post-metrics.activity';
 import { MediaActivity } from '@gitroom/orchestrator/activities/media.activity';
 import { ClippingActivity } from '@gitroom/orchestrator/activities/clipping.activity';
@@ -29,6 +30,7 @@ const activities = [
   VideoActivity,
   FoundingFeeActivity,
   BillingReconcileActivity,
+  CreditGrantsActivity,
   PostMetricsActivity,
   MediaActivity,
   ClippingActivity,

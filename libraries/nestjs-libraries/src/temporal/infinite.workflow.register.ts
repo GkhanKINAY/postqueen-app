@@ -51,6 +51,18 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
       }
 
       try {
+        // Plan credits no invoice brings, and the monthly gift, once a day.
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('creditGrantsWorkflowV1', {
+            workflowId: 'credit-grants-v1',
+            taskQueue: 'main',
+          });
+      } catch (err) {
+        // Already running, as above.
+      }
+
+      try {
         await this._temporalService.client
           ?.getRawClient()
           ?.workflow?.start('analyticsSyncWorkflowV1', {

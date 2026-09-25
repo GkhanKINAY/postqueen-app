@@ -172,6 +172,30 @@ export class SubscriptionRepository {
     });
   }
 
+  /** Every live plan, whoever sells it, for the daily credit grants. */
+  getCreditGrantTargets() {
+    return this._subscription.model.subscription.findMany({
+      where: {
+        deletedAt: null,
+        organization: { deletedAt: null },
+      },
+      select: {
+        organizationId: true,
+        provider: true,
+        isLifetime: true,
+        subscriptionTier: true,
+        createdAt: true,
+        organization: {
+          select: {
+            paymentId: true,
+            isTrailing: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
+
   updateConnectedStatus(account: string, accountCharges: boolean) {
     return this._user.model.user.updateMany({
       where: {
@@ -386,6 +410,10 @@ export class SubscriptionRepository {
         },
       });
     }
+
+    // Which organization the plan was written for, so a caller can go on to
+    // grant its credits. Nothing written, nothing returned.
+    return { organizationId: findOrg.id };
   }
 
   getSubscriptionByIdentifier(identifier: string) {
