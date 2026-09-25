@@ -96,10 +96,16 @@ const subscribe = (listener: () => void) => {
 
 const getSnapshot = () => snapshot;
 
-const getServerSnapshot = (): DateFormatSnapshot => ({
+// One object, not a fresh literal per call: React compares server snapshots
+// by identity, and a new one each time logged "The result of
+// getServerSnapshot should be cached to avoid an infinite loop" on every page
+// with a date.
+const SERVER_SNAPSHOT: DateFormatSnapshot = {
   dateOrder: 'MDY',
   use12Hour: true,
-});
+};
+
+const getServerSnapshot = (): DateFormatSnapshot => SERVER_SNAPSHOT;
 
 // Deliberately NOT refreshed at module load.
 //
