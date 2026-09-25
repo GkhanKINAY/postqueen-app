@@ -43,6 +43,18 @@ describe('X premium-only settings come from the platform', () => {
   it('names why the options are missing', () => {
     assert.match(component, /x_premium_only_settings/);
   });
+
+  it('holds the counter to 280 where the server does', () => {
+    // The server's maxLength ignores the "Long posts" switch for an account X
+    // said has no subscription, so a counter that followed the switch would
+    // allow what the save then refuses.
+    const limit = component.slice(component.indexOf('maximumCharacters:'));
+    assert.match(limit, /subscriptionType !== 'None'/);
+    // And the channel's "Long posts" status says 280 rather than 4000.
+    const copy = read('../../../launches/settings.modal.tsx');
+    const verified = copy.slice(copy.indexOf("option.title === 'Verified'"));
+    assert.match(verified, /const on = .*subscriptionType !== 'None'/);
+  });
 });
 
 describe('subscriptionInfo on the provider', () => {

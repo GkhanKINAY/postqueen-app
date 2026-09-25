@@ -1656,3 +1656,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## A refused bot rename and a rate-limited Farcaster connect say so
 
 **i18n +1 (`farcaster_rate_limited`); no api, route, gate or loop change.** Part of a round of fixes for networks that are not enabled on the hosted service yet. Bot name & avatar said Updated whatever the server answered, and a Discord bot installed without Change Nickname is refused the rename, so the form now says Could not save (the existing `could_not_save`) and stays open; new Discord installs ask for that permission. Farcaster's connect screen read the 429 of its own route limit (30 signer requests an hour per address) as "Failed to start the Farcaster connection"; it now says there were too many attempts. The new key exists only as a `t()` fallback. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.
+
+## Lemmy and Farcaster delete confirmations stop saying Subreddit
+
+**i18n +2 (`are_you_sure_you_want_to_delete_this_community`, `are_you_sure_you_want_to_delete_this_farcaster_channel`); no api, route, gate or loop change.** Removing a Lemmy community or a Farcaster channel from a post's settings asked "Are you sure you want to delete this Subreddit?", because both copied Reddit's dialog and its key. Each now asks about what it removes; Reddit keeps its own. The new keys exist only in the English file and as `t()` fallbacks. `scripts/ui-migration-check.sh --update` changed `i18n.txt` only.

@@ -524,10 +524,9 @@ export class PublicIntegrationsController {
       throw new HttpException({ msg: 'Integration not found' }, 404);
     }
 
-    const verified =
-      JSON.parse(loadIntegration.additionalSettings || '[]')?.find(
-        (p: any) => p?.title === 'Verified'
-      )?.value || false;
+    const additionalSettings = JSON.parse(
+      loadIntegration.additionalSettings || '[]'
+    );
 
     const integration = socialIntegrationList.find(
       (p) => p.identifier === loadIntegration.providerIdentifier
@@ -539,7 +538,9 @@ export class PublicIntegrationsController {
       };
     }
 
-    const maxLength = integration.maxLength(verified);
+    // The same stored settings `validatePosts` hands the provider, so the
+    // limit reported here is the one a post is then held to.
+    const maxLength = integration.maxLength(additionalSettings);
     const schemas = !integration.dto
       ? false
       : getValidationSchemas()[integration.dto.name];

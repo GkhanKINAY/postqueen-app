@@ -49,6 +49,8 @@ export class AccountPurgeRepository {
     private _thirdParty: PrismaRepository<'thirdParty'>,
     private _notifications: PrismaRepository<'notifications'>,
     private _credits: PrismaRepository<'credits'>,
+    private _creditGrant: PrismaRepository<'creditGrant'>,
+    private _creditAllocation: PrismaRepository<'creditAllocation'>,
     private _gitHub: PrismaRepository<'gitHub'>,
     private _clipping: PrismaRepository<'clipping'>,
     private _clippingClip: PrismaRepository<'clippingClip'>,
@@ -563,6 +565,21 @@ export class AccountPurgeRepository {
     );
   }
 
+  purgeCreditAllocations(orgId: string, apply: boolean) {
+    const where: Prisma.CreditAllocationWhereInput = {
+      spend: { organizationId: orgId },
+    };
+    return this.step(
+      apply,
+      () => this._creditAllocation.model.creditAllocation.count({ where }),
+      () =>
+        this._creditAllocation.model.creditAllocation.deleteMany({
+          where,
+          limit: PURGE_BATCH,
+        })
+    );
+  }
+
   purgeCredits(orgId: string, apply: boolean) {
     const where: Prisma.CreditsWhereInput = { organizationId: orgId };
     return this.step(
@@ -570,6 +587,19 @@ export class AccountPurgeRepository {
       () => this._credits.model.credits.count({ where }),
       () =>
         this._credits.model.credits.deleteMany({ where, limit: PURGE_BATCH })
+    );
+  }
+
+  purgeCreditGrants(orgId: string, apply: boolean) {
+    const where: Prisma.CreditGrantWhereInput = { organizationId: orgId };
+    return this.step(
+      apply,
+      () => this._creditGrant.model.creditGrant.count({ where }),
+      () =>
+        this._creditGrant.model.creditGrant.deleteMany({
+          where,
+          limit: PURGE_BATCH,
+        })
     );
   }
 
