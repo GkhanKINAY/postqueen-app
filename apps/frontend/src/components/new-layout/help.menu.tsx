@@ -67,12 +67,13 @@ const ICON_COMMUNITY =
  * paywall. Same support and bug rows as the app menu.
  *
  * Contact support and Report a bug are reachable whenever there is somewhere
- * to send them. Chatbase and Sentry are the richer paths, but both are
- * optional per deployment and a menu whose only working row is Documentation
- * is not a help menu — so each falls back to a pre-filled mail draft carrying
- * the build and the page it was sent from. The draft needs a support address
- * (SUPPORT_EMAIL, or ours on the hosted service); a self-hosted instance
- * without one shows neither mail row rather than mailing its reports to us.
+ * to send them. Report a bug uses Sentry's feedback form when this
+ * deployment has Sentry, but that is optional and a menu whose only working
+ * row is Documentation is not a help menu, so both rows can be a pre-filled
+ * mail draft carrying the build and the page it was sent from. The draft
+ * needs a support address (SUPPORT_EMAIL, or ours on the hosted service);
+ * a self-hosted instance without one shows neither mail row rather than
+ * mailing its reports to us.
  */
 export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
   surface = 'app',
@@ -80,7 +81,6 @@ export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
   const t = useT();
   const { touch } = useViewport();
   const {
-    isChatBase,
     extensionStoreUrl,
     billingEnabled,
     supportEmail,
@@ -255,26 +255,19 @@ export const HelpMenu: FC<{ surface?: 'app' | 'checkout' }> = ({
         'docs'
       )}
 
-      {isChatBase
-        ? live(
-            () => (window as any).chatbase?.('open'),
-            ICON_SUPPORT,
-            t('contact_support', 'Contact support'),
-            'support'
-          )
-        : !!supportEmail &&
-          mail(
-            mailto(
-              t('support_mail_subject', 'PostQueen support'),
-              t(
-                'support_mail_body',
-                'What do you need help with? Attach a screenshot if you can.'
-              )
-            ),
-            ICON_SUPPORT,
-            t('contact_support', 'Contact support'),
-            'support'
-          )}
+      {!!supportEmail &&
+        mail(
+          mailto(
+            t('support_mail_subject', 'PostQueen support'),
+            t(
+              'support_mail_body',
+              'What do you need help with? Attach a screenshot if you can.'
+            )
+          ),
+          ICON_SUPPORT,
+          t('contact_support', 'Contact support'),
+          'support'
+        )}
 
       {sentry.enabled ? (
         <button

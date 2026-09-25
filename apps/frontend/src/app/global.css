@@ -1735,37 +1735,6 @@ html[dir='rtl'] .lbox {
   }
 }
 
-/* Chatbase embed defaults to bottom-left (dashboard Align: Left) and covers
-   the rail footer (Settings / Upgrade). Pin bottom-trailing. JS in
-   chatbase.component.tsx re-applies the same rules when the widget rewrites
-   inline `left` after mount. */
-#chatbase-bubble-button,
-#chatbase-bubble-window,
-[id^='chatbase-bubble'] {
-  inset-inline-start: auto !important;
-  inset-inline-end: 20px !important;
-  left: auto !important;
-  right: 20px !important;
-}
-
-[dir='rtl'] #chatbase-bubble-button,
-[dir='rtl'] #chatbase-bubble-window,
-[dir='rtl'] [id^='chatbase-bubble'] {
-  left: 20px !important;
-  right: auto !important;
-}
-
-/* Chatbase's iframe uses inline !important; JS in ManageModal also hides it.
-   :has() covers the first paint before the interval runs. */
-html:has([data-pq='composer']) #chatbase-bubble-button,
-html:has([data-pq='composer']) #chatbase-bubble-window,
-html:has([data-pq='composer']) [id^='chatbase-bubble'],
-html:has([data-pq='composer']) iframe[src*='chatbase'] {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
 /* Create Post AI rail / dock: same CopilotChat chrome as /agents. */
 [data-pq='composer-ai-rail'],
 [data-pq='composer-ai-dock'] {
@@ -1917,21 +1886,4 @@ html:has([data-pq-composer-empty='1']:not([data-pq-composer-max='1']))
   max-width: min(960px, calc(100vw - 64px)) !important;
   height: auto !important;
   max-height: calc(100dvh - 64px) !important;
-}
-
-/* Chatbase's bubble is position:fixed at a huge z-index, so the tour card and
-   phone/tablet sheets cannot cover it. Hide it for those surfaces — the pin
-   to trailing still loses on some viewports and the N sat on Next / Got it. */
-[data-tourdemo='1'] #chatbase-bubble-button,
-[data-tourdemo='1'] #chatbase-bubble-window,
-[data-tourdemo='1'] [id^='chatbase-bubble'],
-[data-tourdemo='1'] iframe[src*='chatbase'],
-[data-pq-sheet] #chatbase-bubble-button,
-[data-pq-sheet] #chatbase-bubble-window,
-[data-pq-sheet] [id^='chatbase-bubble'],
-[data-pq-sheet] iframe[src*='chatbase'] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
 }

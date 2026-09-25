@@ -13,7 +13,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
-import { sign } from 'jsonwebtoken';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
@@ -71,37 +70,6 @@ export class UsersController {
     private _trackService: TrackService,
     private _abuseGuardService: AbuseGuardService
   ) {}
-
-  @Get('/chatbase-token')
-  async getChatbaseToken(
-    @GetUserFromRequest() user: User,
-    @GetOrgFromRequest() organization: Organization
-  ) {
-    if (!process.env.CHATBASE_TOKEN) {
-      throw new HttpException('Chatbase SSO is not configured', 400);
-    }
-
-    const token = sign(
-      {
-        user_id: organization.id,
-        email: user.email,
-        ...(organization.paymentId
-          ? {
-              stripe_accounts: [
-                {
-                  label: organization.name,
-                  stripe_id: organization.paymentId,
-                },
-              ],
-            }
-          : {}),
-      },
-      process.env.CHATBASE_TOKEN,
-      { expiresIn: '1h' }
-    );
-
-    return { token };
-  }
 
   @Get('/self')
   async getSelf(
