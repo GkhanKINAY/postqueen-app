@@ -1,6 +1,20 @@
-import { ThrottlerGuard, ThrottlerRequest } from '@nestjs/throttler';
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  InjectThrottlerStorage,
+  ThrottlerGuard,
+  ThrottlerRequest,
+} from '@nestjs/throttler';
+import {
+  CallHandler,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NestInterceptor,
+} from '@nestjs/common';
 import { Request } from 'express';
+import { catchError, Observable } from 'rxjs';
+import { RefundableThrottlerStorage } from '@gitroom/nestjs-libraries/throttler/throttler.storage';
 
 /**
  * Routes that accept a file. They are rate limited for a different reason than
@@ -37,6 +51,9 @@ const uploadLimit = () => {
   return Number.isInteger(limit) && limit > 0 ? limit : 300;
 };
 
+// A counter a request was counted in, kept on it as `req.throttlerHits`.
+type ThrottlerHit = { key: string; throttlerName: string };
+
 @Injectable()
 export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   public override async canActivate(
@@ -59,12 +76,27 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
   protected override async handleRequest(
     requestProps: ThrottlerRequest
   ): Promise<boolean> {
-    const { req } = this.getRequestResponse(requestProps.context);
-    return super.handleRequest(
+    const { context, throttler, getTracker, generateKey } = requestProps;
+    const { req } = this.getRequestResponse(context);
+    const allowed = await super.handleRequest(
       isUpload(req.path)
         ? { ...requestProps, limit: uploadLimit() }
         : requestProps
     );
+
+    // Counted, not refused (that throws above). Note the key it was counted
+    // under, built the way super.handleRequest built it, so that
+    // ThrottlerRefundInterceptor can give the hit back.
+    const hit: ThrottlerHit = {
+      key: generateKey(
+        context,
+        await getTracker(req, context),
+        throttler.name!
+      ),
+      throttlerName: throttler.name!,
+    };
+    req.throttlerHits = [...(req.throttlerHits || []), hit];
+    return allowed;
   }
 
   protected override async getTracker(
@@ -91,6 +123,68 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     return (org || 'ip:' + req.ip) + '_' + bucket;
   }
 }
+
+// A request refused for what it sent: the DTO, the service's own validation.
+// Not 401 or 403 (who is asking), and not 429 (the limit itself).
+const REFUNDED_STATUSES: number[] = [
+  HttpStatus.BAD_REQUEST,
+  HttpStatus.UNPROCESSABLE_ENTITY,
+];
+
+/**
+ * Gives a request its hits back when it is answered 400 or 422.
+ *
+ * Guards run before pipes and the handler, so ThrottlerBehindProxyGuard has
+ * already counted a POST /public/v1/posts by the time its body turns out to be
+ * invalid. The allowance rations posts, and an API client or AI agent that
+ * sent a few malformed calls used it up without posting anything. A refund
+ * that fails is logged, and the request still gets its own answer.
+ */
+@Injectable()
+export class ThrottlerRefundInterceptor implements NestInterceptor {
+  private readonly _logger = new Logger(ThrottlerRefundInterceptor.name);
+
+  constructor(
+    @InjectThrottlerStorage()
+    private readonly _storage: RefundableThrottlerStorage
+  ) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    return next.handle().pipe(
+      catchError(async (err) => {
+        if (
+          err instanceof HttpException &&
+          REFUNDED_STATUSES.includes(err.getStatus())
+        ) {
+          await this.refund(context.switchToHttp().getRequest());
+        }
+        throw err;
+      })
+    );
+  }
+
+  private async refund(req: Record<string, any>) {
+    const hits: ThrottlerHit[] = req.throttlerHits || [];
+    for (const { key, throttlerName } of hits) {
+      try {
+        await this._storage.decrement(key, throttlerName);
+      } catch (err) {
+        this._logger.warn(
+          `Could not give a rate limit hit back: ${(err as Error)?.message}`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * From here on the request keeps its hits, whatever it answers. For a handler
+ * that can still be refused after it has written something: a request that
+ * saved one post and was then refused for the next has spent its allowance.
+ */
+export const spendThrottlerHits = (req: Record<string, any>) => {
+  delete req.throttlerHits;
+};
 
 // Route-level guard for public endpoints, keyed by the client address rather
 // than the org the global guard expects.
