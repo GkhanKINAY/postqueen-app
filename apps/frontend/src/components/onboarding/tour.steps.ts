@@ -70,15 +70,15 @@ export const TOUR_COPY: Record<string, { title: string; text: string }> = {
   },
   'connect-pq': {
     title: 'Connect an assistant, not a channel',
-    text: 'This opens Connect PostQueen. Claude, ChatGPT and Cursor live here. Instagram and X live under Channels, next.',
+    text: 'This opens Connect PostQueen. Grok Bot, Muse, Claude, ChatGPT and your coding agents live here. Instagram and X live under Channels, next.',
   },
   'connect-featured': {
-    title: 'Pick the client you already use',
-    text: 'Featured is the short list. Agents, Bots, Chat, Editors and Automation sit under it. Public API, CLI, Node SDK and OAuth Apps are under Develop. Open one card and follow its steps.',
+    title: 'Pick the agent you already use',
+    text: 'The featured four lead Assistants and bots. Coding agents, editors, automations and developer tools each have a row in the menu. Open a card and follow its steps.',
   },
   'connect-creds': {
-    title: 'One API key for every client',
-    text: 'Reveal it here, then copy the MCP URL. The same key works for MCP, the CLI and the Public API. Find it again under Connections, API Keys.',
+    title: 'One API key for every agent',
+    text: 'Your API key opens here, next to the addresses agents ask for. The same key works for MCP, the CLI and the Public API, and every setup puts it in the step that needs it.',
   },
   'nav-channels': {
     title: 'Your publishing accounts live here',

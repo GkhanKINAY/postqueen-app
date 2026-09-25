@@ -18,7 +18,7 @@ const sources = (dir: string): string[] =>
 describe('self-hosted fonts', () => {
   it('points every @font-face at a file that exists', () => {
     const urls = [...css.matchAll(/url\(\.\/fonts\/([^)]+)\)/g)].map((m) => m[1]);
-    assert.equal(new Set(urls).size, 18);
+    assert.equal(new Set(urls).size, 20);
     for (const file of urls) {
       assert.ok(existsSync(here(`./fonts/${file}`)), `missing fonts/${file}`);
     }
@@ -30,10 +30,13 @@ describe('self-hosted fonts', () => {
       assert.match(css, new RegExp(`font-family:"${family} Fallback"`));
     }
     assert.match(css, /\.pq-fonts \{[\s\S]*--font-dm-sans[\s\S]*--font-jakarta[\s\S]*--font-jetbrains-mono/);
+    // The Connect headings' italic accent; it falls back to the system serif.
+    assert.match(css, /font-family:"Instrument Serif"; font-style:italic/);
+    assert.match(css, /--font-instrument-serif: 'Instrument Serif', Georgia/);
   });
 
   it('keeps the licence of each family next to the files', () => {
-    for (const licence of ['OFL-DMSans.txt', 'OFL-PlusJakartaSans.txt', 'OFL-JetBrainsMono.txt']) {
+    for (const licence of ['OFL-DMSans.txt', 'OFL-PlusJakartaSans.txt', 'OFL-JetBrainsMono.txt', 'OFL-InstrumentSerif.txt']) {
       assert.match(
         readFileSync(here(`./fonts/${licence}`), 'utf8'),
         /SIL OPEN FONT LICENSE/

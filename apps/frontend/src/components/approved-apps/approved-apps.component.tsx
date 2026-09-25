@@ -8,7 +8,8 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 
-const useApprovedApps = () => {
+/** The apps this user signed in to. Connect also reads it for its menu count. */
+export const useApprovedApps = () => {
   const fetch = useFetch();
   const load = useCallback(async () => {
     return (await fetch('/user/approved-apps')).json();

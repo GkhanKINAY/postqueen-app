@@ -3,33 +3,58 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const panel = readFileSync(
-  fileURLToPath(new URL('./connect-panel.tsx', import.meta.url)),
-  'utf8'
-);
+const read = (name: string) =>
+  readFileSync(fileURLToPath(new URL(`./${name}`, import.meta.url)), 'utf8');
 
-describe('Connect panel detail tabs', () => {
-  it('splits a connector page into How to connect, API key and Examples', () => {
-    assert.match(panel, /data-pq="conn-detail-tabs"/);
-    assert.match(panel, /data-pq=\{`conn-tab-\$\{tab\.id\}`\}/);
-    assert.match(panel, /t\('conn_how_to_connect', 'How to connect'\)/);
-    assert.match(panel, /t\('api_key', 'API key'\)/);
-    assert.match(panel, /t\('conn_examples_eyebrow', 'Examples'\)/);
-    assert.match(panel, /role="tablist"/);
-    assert.match(panel, /data-pq="conn-pane-connect"/);
-    assert.match(panel, /data-pq="conn-pane-key"/);
-    assert.match(panel, /data-pq="conn-pane-examples"/);
+const detail = read('connect-detail.tsx');
+const hub = read('connect-hub.tsx');
+const panel = read('connect-panel.tsx');
+const ui = read('connect-ui.tsx');
+
+describe('Connect panel item page', () => {
+  it('splits an item page into Setup, Tips and fixes, and All ways to connect', () => {
+    assert.match(detail, /data-pq="conn-detail-tabs"/);
+    assert.match(detail, /data-pq=\{`conn-tab-\$\{tab\.id\}`\}/);
+    assert.match(detail, /role="tablist"/);
+    assert.match(detail, /t\('conn_tab_setup', 'Setup'\)/);
+    assert.match(detail, /t\('conn_tab_tips', 'Tips and fixes'\)/);
+    assert.match(detail, /t\('conn_tab_ways', 'All ways to connect'\)/);
+    assert.match(detail, /data-pq="conn-pane-setup"/);
+    assert.match(detail, /data-pq="conn-pane-tips"/);
+    assert.match(detail, /data-pq="conn-pane-ways"/);
+    assert.match(detail, /shown === 'setup'/);
+    assert.match(detail, /shown === 'tips'/);
+    assert.match(detail, /shown === 'ways'/);
   });
 
-  it('does not stack the key card, steps and samples on one scroll', () => {
-    const detail = panel.slice(panel.indexOf('const renderDetail'));
-    const afterTabs = detail.slice(detail.indexOf('conn-detail-tabs'));
-    assert.match(afterTabs, /activeTab === 'connect'/);
-    assert.match(afterTabs, /activeTab === 'key'/);
-    assert.match(afterTabs, /activeTab === 'examples'/);
-    assert.doesNotMatch(
-      afterTabs,
-      /credentialStrip\(item\.cred\)[\s\S]{0,400}item\.steps\.map/
-    );
+  it('puts the key and the text to copy inside the step that needs them', () => {
+    assert.match(detail, /step\.inline === 'key' && <KeyRow/);
+    assert.match(detail, /<CommandRow/);
+    assert.match(detail, /<CodePanel/);
+    assert.match(detail, /step\.inline === 'ask'/);
+  });
+
+  it('shows no method badge: a card says how you connect in words', () => {
+    for (const source of [detail, hub, panel]) {
+      assert.doesNotMatch(source, /METHOD_STYLE|item\.method\b/);
+    }
+    assert.match(hub, /<WayLine way=\{item\.way\}/);
+  });
+
+  it('keeps code left to right and copies the real key behind the mask', () => {
+    assert.match(ui, /dir="ltr"/);
+    assert.match(ui, /onClick=\{\(\) => copyValue\(code\)\}/);
+    assert.match(ui, /maskIn\(code, apiKey\)/);
+  });
+
+  it('only offers email support where the workspace has an address', () => {
+    assert.match(detail, /!!supportEmail && \(/);
+    assert.match(detail, /mailto:\$\{supportEmail\}/);
+  });
+
+  it('keeps the tour anchors on the featured cards and the key button', () => {
+    assert.match(hub, /data-tour="connect-featured"/);
+    assert.match(hub, /data-conn-card="1"/);
+    assert.match(panel, /data-tour="connect-creds"/);
   });
 });

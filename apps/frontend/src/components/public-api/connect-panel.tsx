@@ -8,17 +8,13 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
-import copy from 'copy-to-clipboard';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import clsx from 'clsx';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 import SafeImage from '@gitroom/react/helpers/safe.image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '../layout/user.context';
-import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
@@ -26,43 +22,39 @@ import {
   useTourStepKey,
 } from '@gitroom/frontend/components/onboarding/tour';
 import {
-  ApiKeyCard,
-  useApiKeyAdminOnly,
-} from '@gitroom/frontend/components/public-api/api-key-card';
-import {
   PublicApiKeysSection,
   PublicAppsSection,
 } from '@gitroom/frontend/components/public-api/public.component';
-import { ApprovedAppsComponent } from '@gitroom/frontend/components/approved-apps/approved-apps.component';
+import {
+  ApprovedAppsComponent,
+  useApprovedApps,
+} from '@gitroom/frontend/components/approved-apps/approved-apps.component';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import {
   buildConnectionsCatalog,
-  FEATURED_IDS,
-  FEATURED_CATCHALL_ID,
-  restGroupsForAllPage,
-  CONNECT_AUTOMATION_SHORTCUTS,
   CONNECT_NAV_ACCOUNT,
-  CONNECT_NAV_CONNECTORS,
-  CONNECT_NAV_DEVELOP,
-  CONNECT_SETTINGS_EXITS,
-  DEVELOP_NAV_ITEM,
-  settingsExitHref,
+  CONNECT_NAV_BROWSE,
+  LEGACY_NAV_CONNECTOR,
   connectionsForNav,
   defaultNavForConnection,
   findConnection,
-  isAutomationShortcut,
-  METHOD_STYLE,
   resolveConnectNavId,
   resolveConnectorId,
-  type Connection,
   type ConnectNavId,
-  type Example,
-  type ExampleKind,
   absoluteApiUrl,
   needsApiUrl,
 } from '@gitroom/frontend/components/public-api/connections.catalog';
+import { ConnectHub } from '@gitroom/frontend/components/public-api/connect-hub';
+import { ConnectDetail } from '@gitroom/frontend/components/public-api/connect-detail';
 import {
-  leaveSettingsFor,
+  Card,
+  ICONS,
+  KEY_PLACEHOLDER,
+  StrokeIcon,
+  maskIn,
+  useCopy,
+} from '@gitroom/frontend/components/public-api/connect-ui';
+import {
   RouteOverlayScrim,
   useRouteOverlayActive,
   type RouteOverlayMode,
@@ -72,626 +64,24 @@ const NAV_ICONS: Record<ConnectNavId, string[]> = {
   all: [
     'M4 5.5h6.5A1.5 1.5 0 0 1 12 7v4.5A1.5 1.5 0 0 1 10.5 13H4A1.5 1.5 0 0 1 2.5 11.5V7A1.5 1.5 0 0 1 4 5.5ZM13.5 5.5H20A1.5 1.5 0 0 1 21.5 7v2A1.5 1.5 0 0 1 20 10.5h-6.5A1.5 1.5 0 0 1 12 9V7A1.5 1.5 0 0 1 13.5 5.5ZM4 16h6.5A1.5 1.5 0 0 1 12 17.5V20A1.5 1.5 0 0 1 10.5 21.5H4A1.5 1.5 0 0 1 2.5 20v-2.5A1.5 1.5 0 0 1 4 16ZM13.5 13.5H20A1.5 1.5 0 0 1 21.5 15v5A1.5 1.5 0 0 1 20 21.5h-6.5A1.5 1.5 0 0 1 12 20v-5a1.5 1.5 0 0 1 1.5-1.5Z',
   ],
-  agents: [
-    'M12 3l2.2 4.5 5 .7-3.6 3.5.9 5L12 14.8 7.5 16.7l.9-5L4.8 8.2l5-.7L12 3Z',
-  ],
-  bots: [
-    'M12 7.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4 20.5a8 8 0 0 1 16 0',
-    'M9 11.5h6M8 14.5h8',
-  ],
-  chat: [
-    'M5 6.5h10.5A2.5 2.5 0 0 1 18 9v5a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16.5H5A2.5 2.5 0 0 1 2.5 14V9A2.5 2.5 0 0 1 5 6.5Z',
-  ],
+  bots: ICONS.chat,
+  agents: ICONS.terminal,
   editors: [
     'M14 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H17A1.5 1.5 0 0 0 18.5 18v-8',
     'm13.5 12.5 6-6M16 6.5h3.5V10',
   ],
   automation: [
-    'M5 19.5h.01M5 12a7.5 7.5 0 0 1 7.5 7.5M5 5a14.5 14.5 0 0 1 14.5 14.5',
+    'M4 14a1 1 0 0 1-.8-1.6l9.9-10.2a.5.5 0 0 1 .9.5l-1.9 6A1 1 0 0 0 13 10h7a1 1 0 0 1 .8 1.6l-9.9 10.2a.5.5 0 0 1-.9-.5l1.9-6A1 1 0 0 0 11 14z',
   ],
-  'public-api': [
-    'M5 6.5h14A1.5 1.5 0 0 1 20.5 8v10A1.5 1.5 0 0 1 19 19.5H5A1.5 1.5 0 0 1 3.5 18V8A1.5 1.5 0 0 1 5 6.5Z',
-    'M8 11.5h8M8 15h5',
-  ],
-  cli: ['m8 8-4 4 4 4M16 8l4 4-4 4M13.6 5.5l-3.2 13'],
-  sdk: [
-    'M4.5 8.5 12 4l7.5 4.5v7L12 20l-7.5-4.5v-7Z',
-    'M12 12v8M4.5 8.5 12 12l7.5-3.5',
-  ],
+  developer: ['m16 18 6-6-6-6M8 6l-6 6 6 6'],
   'oauth-apps': [
     'M5 7.5h6.5A1.5 1.5 0 0 1 13 9v9.5A1.5 1.5 0 0 1 11.5 20H5A1.5 1.5 0 0 1 3.5 18.5V9A1.5 1.5 0 0 1 5 7.5Z',
     'M14.5 4.5H19A1.5 1.5 0 0 1 20.5 6v9A1.5 1.5 0 0 1 19 16.5h-4.5',
   ],
-  'api-keys': [
-    'M7.5 21a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Z',
-    'm21 2-9.6 9.6',
-    'm15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4',
-  ],
-  'approved-apps': [
-    'M9 12.5l2.5 2.5 5-5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z',
-  ],
+  'api-keys': ICONS.key,
+  'approved-apps': ['M9 12.5l2.5 2.5 5-5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z'],
 };
 
-const SETTINGS_EXIT_ICONS: Record<string, string[]> = {
-  webhooks: [
-    'M9 8.5a3 3 0 1 1 4.6 2.5l2.2 4M8.4 11a3 3 0 1 0 3.1 5M14.5 16.5a3 3 0 1 0 3-3h-5.2',
-  ],
-  rss: [
-    'M5 19.5h.01M5 12a7.5 7.5 0 0 1 7.5 7.5M5 5a14.5 14.5 0 0 1 14.5 14.5',
-  ],
-};
-
-const CodeBlock: FC<{
-  code: string;
-  label: string;
-  rawCode?: string;
-}> = ({ code, label, rawCode }) => {
-  const toaster = useToaster();
-  const t = useT();
-  return (
-    <div className="relative mt-[8px] rounded-pqSm bg-pqBg p-[12px_42px_12px_13px] shadow-[inset_0_0_0_1px_var(--border)]">
-      <pre
-        data-conn-code="1"
-        className="m-0 overflow-x-auto whitespace-pre-wrap break-all font-mono text-[12px] leading-[1.65] text-pqText"
-      >
-        {code}
-      </pre>
-      <button
-        type="button"
-        aria-label={t('copy', 'Copy')}
-        onClick={() => {
-          copy(rawCode ?? code);
-          toaster.show(`${label} copied to clipboard`, 'success');
-        }}
-        className="absolute end-[8px] top-[8px] flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[7px] bg-pqSettings text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
-      >
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
-          <path
-            d="M9 9V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H15M5.5 9h8A1.5 1.5 0 0 1 15 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9Z"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-    </div>
-  );
-};
-
-/**
- * Shown wherever a command or URL would carry the API key and cannot.
- *
- * The callouts below interpolate the key into copyable text; for a member the
- * server sends an empty one, so the line renders as a URL that stops at the
- * slash. Better to say why than to hand somebody a command that cannot work.
- */
-const ApiKeyMissingNote: FC = () => {
-  const adminOnly = useApiKeyAdminOnly();
-  return (
-    <div className="rounded-pqSm bg-pqBg p-[10px_12px] text-[12px] leading-[1.5] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
-      {adminOnly.body}
-    </div>
-  );
-};
-
-const ToolChip: FC<{ name: string }> = ({ name }) => (
-  <span className="inline-flex w-fit items-center rounded-[5px] bg-pqSettings px-[7px] py-[2px] font-mono text-[10.5px] font-[600] tracking-[0.02em] text-pqMuted">
-    {name}
-  </span>
-);
-
-const TerminalFrame: FC<{
-  title: string;
-  children: ReactNode;
-}> = ({ title, children }) => (
-  <div className="overflow-hidden rounded-pqLg bg-pqBg shadow-[inset_0_0_0_1px_var(--border)]">
-    <div className="flex items-center gap-[7px] border-b border-pqLine px-[12px] py-[8px]">
-      <span className="h-[7px] w-[7px] rounded-full bg-pqMuted/45" />
-      <span className="h-[7px] w-[7px] rounded-full bg-pqMuted/45" />
-      <span className="h-[7px] w-[7px] rounded-full bg-pqMuted/45" />
-      <span className="ms-[4px] text-[11px] font-[600] text-pqMuted">{title}</span>
-    </div>
-    <div className="p-[14px_16px] font-mono text-[12.5px] leading-[1.65] text-pqText">
-      {children}
-    </div>
-  </div>
-);
-
-const EXAMPLE_CHANNELS = [
-  'Instagram',
-  'LinkedIn',
-  'YouTube',
-  'TikTok',
-  'X',
-] as const;
-
-const channelsInExample = (ex: Example): string[] => {
-  const blob = `${ex.title || ''} ${ex.body} ${ex.reply || ''}`;
-  return EXAMPLE_CHANNELS.filter((name) =>
-    name === 'X'
-      ? /(^|[^A-Za-z])X([^A-Za-z]|$)/.test(blob)
-      : blob.includes(name)
-  );
-};
-
-const CopyGlyph: FC = () => (
-  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden>
-    <path
-      d="M9 9V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H15M5.5 9h8A1.5 1.5 0 0 1 15 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9Z"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const CopySample: FC<{ text: string }> = ({ text }) => {
-  const toaster = useToaster();
-  const t = useT();
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        copy(text);
-        toaster.show(t('conn_examples_copied', 'Copied the sample'), 'success');
-      }}
-      className="inline-flex h-[26px] shrink-0 cursor-pointer items-center gap-[5px] rounded-[7px] bg-pqBtnSimple px-[8px] text-[11px] font-[700] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
-    >
-      <CopyGlyph />
-      {t('conn_examples_copy', 'Copy')}
-    </button>
-  );
-};
-
-const ExamplesBlock: FC<{
-  kind: ExampleKind;
-  examples: Example[];
-  name: string;
-  mask?: (text: string) => string;
-}> = ({ kind, examples, name, mask }) => {
-  const t = useT();
-  const toaster = useToaster();
-  if (!examples.length) return null;
-
-  const isTalk = kind === 'chat' || kind === 'bot';
-  const heading = isTalk
-    ? t('conn_examples_chat', 'What you can say')
-    : kind === 'agent'
-      ? t('conn_examples_agent', 'What you can ask')
-      : kind === 'cli'
-        ? t('conn_examples_cli', 'What you can run')
-        : kind === 'workflow'
-          ? t('conn_examples_flow', 'Example workflows')
-          : t('conn_examples_http', 'Example request');
-
-  const blurb = isTalk
-    ? t(
-        'conn_examples_chat_blurb',
-        'These are sample messages, not a live chat. After you connect, say them in your own words. One sample is a single channel. Another is several at once.'
-      )
-    : kind === 'agent'
-      ? t(
-          'conn_examples_agent_blurb',
-          'Sample prompts in this agent. Each card is a different job: one channel, another channel, or several together.'
-        )
-      : kind === 'cli'
-        ? t(
-            'conn_examples_cli_blurb',
-            'Sample commands in this terminal. Copy one, then change the channel and the time.'
-          )
-        : t(
-            'conn_examples_flow_blurb',
-            'Sample automations. One in, one out, or several channels in the same run.'
-          );
-
-  const youLabel = t('conn_examples_you', 'You');
-  const total = examples.length;
-
-  const sampleCard = (ex: Example, i: number, inner: ReactNode) => {
-    const channels = channelsInExample(ex);
-    const copyText = kind === 'cli' ? ex.code || ex.body : ex.body;
-    return (
-      <article
-        key={`${ex.title ?? ''}-${ex.body}-${i}`}
-        className="overflow-hidden rounded-[16px] bg-pqInner shadow-[inset_0_0_0_1px_var(--border)]"
-      >
-        <div className="flex flex-wrap items-center gap-[8px] border-b border-pqLine px-[12px] py-[9px]">
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-pqSettings text-[11px] font-[700] text-pqText">
-            {i + 1}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-[700] leading-[1.2] text-pqText">
-              {ex.title || t('conn_examples_sample', 'Sample')}
-            </div>
-            <div className="mt-[2px] text-[10.5px] font-[600] uppercase tracking-[0.06em] text-pqMuted">
-              {t('conn_examples_sample', 'Sample')} {i + 1}/{total}
-            </div>
-          </div>
-          {channels.length > 0 && (
-            <div className="flex flex-wrap gap-[4px]">
-              {channels.map((channel) => (
-                <span
-                  key={channel}
-                  className="rounded-full bg-pqSettings px-[8px] py-[3px] text-[10.5px] font-[700] text-pqMuted"
-                >
-                  {channel}
-                </span>
-              ))}
-            </div>
-          )}
-          <CopySample text={copyText} />
-        </div>
-        <div className="p-[12px]">
-          {inner}
-        </div>
-      </article>
-    );
-  };
-
-  const chatTurn = (ex: Example) => (
-    <div className="flex flex-col gap-[10px]">
-      <div className="flex justify-end">
-        <div className="max-w-[94%] min-w-0">
-          <div className="mb-[4px] text-end text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-            {youLabel}
-          </div>
-          <div className="relative rounded-[18px_18px_6px_18px] bg-pqSettings px-[14px] py-[11px] pe-[38px] text-[13.5px] leading-[1.45] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
-            {ex.body}
-            <button
-              type="button"
-              aria-label={t('copy', 'Copy')}
-              onClick={() => {
-                copy(ex.body);
-                toaster.show(t('conn_examples_copied', 'Copied the sample'), 'success');
-              }}
-              className="absolute end-[8px] top-[8px] flex h-[22px] w-[22px] cursor-pointer items-center justify-center rounded-[6px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
-            >
-              <CopyGlyph />
-            </button>
-          </div>
-        </div>
-      </div>
-      {(ex.tool || ex.reply) && (
-        <div className="max-w-[94%] min-w-0">
-          <div className="mb-[4px] text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-            {name}
-          </div>
-          {!!ex.tool && (
-            <div className="mb-[6px]">
-              <ToolChip name={ex.tool} />
-            </div>
-          )}
-          {!!ex.reply && (
-            <div className="rounded-[6px_18px_18px_18px] bg-pqInner px-[14px] py-[11px] text-[13.5px] leading-[1.45] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
-              {ex.reply}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  const inner =
-    isTalk ? (
-      <div className="flex flex-col gap-[12px]">
-        {examples.map((ex, i) => sampleCard(ex, i, chatTurn(ex)))}
-      </div>
-    ) : kind === 'agent' ? (
-      <div className="flex flex-col gap-[12px]">
-        {examples.map((ex, i) =>
-          sampleCard(
-            ex,
-            i,
-            <div className="flex flex-col gap-[8px]">
-              <div>
-                <div className="mb-[4px] text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-                  {youLabel}
-                </div>
-                <div className="rounded-pqSm bg-pqInner px-[12px] py-[10px] text-[13.5px] leading-[1.5] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
-                  {ex.body}
-                </div>
-              </div>
-              {!!ex.tool && <ToolChip name={ex.tool} />}
-              {!!ex.reply && (
-                <div>
-                  <div className="mb-[4px] text-[10.5px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-                    {name}
-                  </div>
-                  <div className="rounded-pqSm bg-pqSettings px-[12px] py-[10px] text-[13px] leading-[1.5] text-pqText shadow-[inset_0_0_0_1px_var(--border)]">
-                    {ex.reply}
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        )}
-      </div>
-    ) : kind === 'cli' ? (
-      <div className="flex flex-col gap-[12px]">
-        {examples.map((ex, i) => {
-          const launch = ex.code && ex.body && !ex.code.includes(' ') ? ex.code : null;
-          const shell = ex.code && (!ex.body || ex.code.includes(' ')) ? ex.code : null;
-          return sampleCard(
-            ex,
-            i,
-            <TerminalFrame title={t('conn_examples_terminal', 'Terminal')}>
-              {launch && (
-                <div>
-                  <span className="text-pqMuted">$ </span>
-                  {launch}
-                </div>
-              )}
-              {shell && (
-                <div>
-                  <span className="text-pqMuted">$ </span>
-                  {mask ? mask(shell) : shell}
-                </div>
-              )}
-              {!!ex.body && !!launch && (
-                <div>
-                  <span className="text-pqMuted">{'> '}</span>
-                  {ex.body}
-                </div>
-              )}
-              {!!ex.tool && (
-                <div className="pt-[4px]">
-                  <ToolChip name={ex.tool} />
-                </div>
-              )}
-              {!!ex.reply && (
-                <pre className="m-0 mt-[6px] whitespace-pre-wrap break-all text-pqMuted">
-                  {mask ? mask(ex.reply) : ex.reply}
-                </pre>
-              )}
-            </TerminalFrame>
-          );
-        })}
-      </div>
-    ) : (
-      <div className="flex flex-col gap-[12px]">
-        {examples.map((ex, i) =>
-          sampleCard(
-            ex,
-            i,
-            <div>
-              <div className="text-[13.5px] leading-[1.5] text-pqText">{ex.body}</div>
-              {!!ex.code && (
-                <CodeBlock
-                  code={mask ? mask(ex.code) : ex.code}
-                  rawCode={ex.code}
-                  label={ex.title || 'Example'}
-                />
-              )}
-            </div>
-          )
-        )}
-      </div>
-    );
-
-  return (
-    <section className="overflow-hidden rounded-[16px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
-      <div className="flex flex-wrap items-start justify-between gap-[10px] px-[16px] py-[14px]">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-[8px]">
-            <span className="inline-flex items-center gap-[6px] rounded-full bg-pqSettings px-[10px] py-[4px] text-[10.5px] font-[700] uppercase tracking-[0.08em] text-pqText">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden>
-                <path
-                  d="M5 6.5h10.5A2.5 2.5 0 0 1 18 9v5a2.5 2.5 0 0 1-2.5 2.5H10l-4 3.5V16.5H5A2.5 2.5 0 0 1 2.5 14V9A2.5 2.5 0 0 1 5 6.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {t('conn_examples_eyebrow', 'Examples')}
-            </span>
-            <span className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-              {t('conn_examples_not_live', 'Not a live chat')}
-            </span>
-          </div>
-          <div className="mt-[8px] text-[16px] font-[600] text-pqText">{heading}</div>
-          <div className="mt-[4px] max-w-[52ch] text-[13px] leading-[1.5] text-pqMuted">
-            {blurb}
-          </div>
-        </div>
-        <span className="rounded-full bg-pqSettings px-[10px] py-[4px] text-[11px] font-[700] text-pqMuted">
-          {total} {t('conn_examples_count_label', 'samples')}
-        </span>
-      </div>
-      <div className="px-[12px] pb-[12px]">{inner}</div>
-    </section>
-  );
-};
-
-const ConnIcon: FC<{
-  item: Pick<Connection, 'icon' | 'glyph' | 'name'>;
-  size?: 'xs' | 'sm' | 'lg';
-}> = ({ item, size = 'sm' }) => {
-  const img = size === 'lg' ? 48 : size === 'xs' ? 22 : 40;
-  if (item.icon) {
-    return (
-      <span className="flex shrink-0 items-center justify-center">
-        <SafeImage
-          src={item.icon}
-          alt={item.name}
-          width={img}
-          height={img}
-          className="object-contain"
-        />
-      </span>
-    );
-  }
-  return (
-    <span
-      className={clsx(
-        'flex shrink-0 items-center justify-center bg-pqSettings font-[700] text-pqText ring-1 ring-pqBorder',
-        size === 'lg'
-          ? 'h-[48px] w-[48px] rounded-pqLg text-[12px]'
-          : size === 'xs'
-            ? 'h-[22px] w-[22px] rounded-[6px] text-[9px]'
-            : 'h-[40px] w-[40px] rounded-pqMd text-[12px]'
-      )}
-    >
-      {item.glyph}
-    </span>
-  );
-};
-
-const StrokeIcon: FC<{ paths: string[] }> = ({ paths }) => (
-  <svg
-    viewBox="0 0 24 24"
-    width="16"
-    height="16"
-    fill="none"
-    className="block shrink-0 opacity-[0.85]"
-    aria-hidden="true"
-  >
-    {paths.map((d) => (
-      <path
-        key={d}
-        d={d}
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ))}
-  </svg>
-);
-
-const NavIcon: FC<{ id: ConnectNavId }> = ({ id }) => (
-  <StrokeIcon paths={NAV_ICONS[id] || NAV_ICONS.all} />
-);
-
-const RailBrandIcon: FC<{ src: string }> = ({ src }) => (
-  <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center overflow-hidden rounded-[3px]">
-    <SafeImage src={src} alt="" width={16} height={16} className="h-[16px] w-[16px] object-contain" />
-  </span>
-);
-
-/** Same mark as Settings → Connect PostQueen external-link affordance. */
-const ExternalLinkIcon: FC<{ size?: number; className?: string }> = ({
-  size = 14,
-  className,
-}) => (
-  <svg
-    viewBox="0 0 24 24"
-    width={size}
-    height={size}
-    fill="none"
-    aria-hidden="true"
-    className={clsx('shrink-0', className)}
-  >
-    <path
-      d="M14 5h5v5M19 5l-9 9M10 6H6a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const CliSetupCallout: FC<{
-  apiKey: string;
-  keyRevealed: boolean;
-  /** Only when the tools must be told where the API is (see needsApiUrl). */
-  apiUrl?: string;
-}> = ({ apiKey, keyRevealed, apiUrl }) => {
-  const t = useT();
-  const keyCode = `export POSTQUEEN_API_KEY="${apiKey}"`;
-  // `!apiKey` is the member case: the server withholds the key from non-admins.
-  // Masking an absent key would prepend the stars instead of hiding anything.
-  const maskedKey =
-    keyRevealed || !apiKey
-      ? keyCode
-      : keyCode.replace(apiKey, '*'.repeat(Math.min(apiKey.length, 24)));
-  return (
-    <div className="mb-[16px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
-      <div>
-        <div className="text-[14px] font-[600] text-pqText">
-          {t('conn_cli_callout_title', 'Set up the PostQueen CLI')}
-        </div>
-        <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
-          {t(
-            'conn_cli_callout_detail',
-            'Install the package, export your Public API key, then hit the API from any shell.'
-          )}
-        </div>
-      </div>
-      <div>
-        <div className="text-[13px] font-[600] text-pqText">
-          {t('conn_cli_step_install', 'Install it')}
-        </div>
-        <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
-          {t(
-            'conn_cli_step_install_detail',
-            'Or `pnpm install -g postqueen`. Verify with `postqueen --help`.'
-          )}
-        </div>
-        <CodeBlock code="npm install -g postqueen" label="Install" />
-      </div>
-      <div>
-        <div className="text-[13px] font-[600] text-pqText">
-          {t('conn_cli_step_login', 'Authenticate')}
-        </div>
-        <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
-          {t(
-            'conn_cli_step_login_detail',
-            'Copy the key from Connections → API Keys (workspace admins only), then export it. The CLI logs in with the API key only.'
-          )}
-        </div>
-        <CodeBlock code={maskedKey} rawCode={keyCode} label="API key" />
-        {!apiKey && <ApiKeyMissingNote />}
-      </div>
-      {!!apiUrl && (
-        <div>
-          <div className="text-[13px] font-[600] text-pqText">
-            {t('conn_step_api_url', 'Point it at your server')}
-          </div>
-          <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
-            {t(
-              'conn_step_api_url_detail',
-              'The skill, the CLI and the SDK call the hosted API unless told otherwise. Export this next to the key.'
-            )}
-          </div>
-          <CodeBlock
-            code={`export POSTQUEEN_API_URL="${apiUrl}"`}
-            label="API URL"
-          />
-        </div>
-      )}
-      <div>
-        <div className="text-[13px] font-[600] text-pqText">
-          {t('conn_cli_step_try', 'Try it')}
-        </div>
-        <div className="mt-[2px] text-[12.5px] leading-[1.5] text-pqMuted">
-          {t(
-            'conn_cli_step_try_detail',
-            'First command that reaches the API, lists your connected channels as JSON.'
-          )}
-        </div>
-        <CodeBlock code="postqueen integrations:list" label="Try it" />
-      </div>
-      <a
-        href="https://docs.postqueen.ai/cli/introduction"
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex cursor-pointer items-center gap-[6px] text-[12.5px] font-[600] text-pqBrand hover:underline"
-      >
-        {t('conn_docs_cli', 'CLI introduction')}
-        <ExternalLinkIcon size={13} className="opacity-[0.85]" />
-      </a>
-    </div>
-  );
-};
-
-/**
- * Dual-pane Connect PostQueen marketplace.
- * Same card size as Settings (`1040×680`). Connectors: Featured four-up, then
- * category groups of compact cards (name only; method lives on the detail pane).
- */
 // Its own hook, as the repo requires of every SWR call. Same key and options as
 // `organization.selector` so the two share one cache entry rather than each
 // fetching the list.
@@ -710,21 +100,107 @@ const useOrganizations = () => {
   });
 };
 
+/**
+ * The three things most agents and tools ask for, next to the key they carry.
+ * Masked on screen; Copy puts the real value on the clipboard.
+ */
+const AddressesCard: FC<{ apiKey: string; apiUrl: string }> = ({
+  apiKey,
+  apiUrl,
+}) => {
+  const t = useT();
+  const copyValue = useCopy();
+  const member = apiKey === KEY_PLACEHOLDER;
+  const rows = [
+    {
+      label: t('conn_address_mcp', 'MCP address'),
+      value: `${apiUrl}/mcp/${apiKey}`,
+    },
+    {
+      label: t('conn_address_sign_in', 'Sign-in address'),
+      value: `${apiUrl}/mcp-oauth-dynamic`,
+    },
+    {
+      label: t('conn_address_header', 'Public API header'),
+      value: `Authorization: ${apiKey}`,
+    },
+  ];
+  return (
+    <Card className="mt-[16px] gap-[12px] p-[18px_20px]">
+      <div>
+        <h4 className="m-0 font-display text-[16px] font-[700] text-pqText">
+          {t('conn_addresses', 'Addresses')}
+        </h4>
+        <p className="m-0 mt-[3px] text-[13px] text-pqMuted">
+          {member
+            ? t(
+                'conn_addresses_sub_member',
+                'What most agents and tools ask for. Put the workspace key in place of YOUR_API_KEY; only an admin can see it.'
+              )
+            : t(
+                'conn_addresses_sub',
+                'What most agents and tools ask for. Copy puts your real key in.'
+              )}
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--border)]">
+        {rows.map((row, i) => (
+          <div
+            key={row.label}
+            className={clsx(
+              'grid grid-cols-[minmax(0,150px)_minmax(0,1fr)_auto] items-center gap-[14px] py-[9px] pe-[10px] ps-[14px]',
+              i > 0 && 'border-t border-pqLine'
+            )}
+          >
+            <span className="text-[13px] font-[600] text-pqText">
+              {row.label}
+            </span>
+            <span
+              dir="ltr"
+              className="truncate font-mono text-[12.5px] text-pqMuted"
+            >
+              {maskIn(row.value, apiKey)}
+            </span>
+            <button
+              type="button"
+              onClick={() => copyValue(row.value)}
+              className="inline-flex h-[30px] cursor-pointer items-center gap-[6px] rounded-[8px] bg-pqPop px-[10px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover"
+            >
+              <StrokeIcon paths={ICONS.copy} size={14} />
+              {t('copy', 'Copy')}
+            </button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+/**
+ * Connect PostQueen. A left menu of categories and your account, a catalog
+ * that scrolls inside the panel, and one page per agent or tool that fits the
+ * window. The panel is the size of the window less the scrim's margin, up to
+ * 1376x836.
+ */
 export const ConnectPanel: FC<{
   onClose?: () => void;
 }> = ({ onClose }) => {
   const t = useT();
   const user = useUser();
   const { data: organizations } = useOrganizations();
+  const { data: approvedApps } = useApprovedApps();
   const currentOrgName = useMemo(
     () =>
       organizations?.find((org: { id: string }) => org.id === user?.orgId)
         ?.name,
     [organizations, user?.orgId]
   );
-  const { backendUrl } = useVariables();
-  const toaster = useToaster();
+  const { backendUrl, supportEmail } = useVariables();
   const { mobile, tablet, desktop, touch } = useViewport();
+  const layout = useMemo(
+    () => ({ mobile, tablet, desktop }),
+    [mobile, tablet, desktop]
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const tourKey = useTourStepKey();
@@ -734,31 +210,26 @@ export const ConnectPanel: FC<{
     tourKey === 'connect-creds';
   const tourConn = tourKey === 'connect-featured';
 
-
   const [nav, setNav] = useState<ConnectNavId>('all');
   const [picked, setPicked] = useState('');
-  const [keyRevealed, setKeyRevealed] = useState(false);
-  const [detailTab, setDetailTab] = useState<'connect' | 'key' | 'examples'>(
-    'connect'
-  );
   const [mobilePane, setMobilePane] = useState(false);
   const [query, setQuery] = useState('');
   const paneRef = useRef<HTMLDivElement>(null);
 
-  // Hub and detail share one overflow pane. Without a reset, opening a card
-  // after scrolling Featured keeps the same scrollTop, so Back / title sit
-  // above the fold and How to connect is the first thing you see.
+  // The catalog and a page share one overflow pane. Without a reset, opening a
+  // card after scrolling the list keeps the same scrollTop and the page opens
+  // half way down.
   useLayoutEffect(() => {
     const el = paneRef.current;
     if (el) el.scrollTop = 0;
   }, [nav, picked]);
 
-  const apiKey = user?.publicApi || '';
+  // A member gets no key from the server; the snippets read YOUR_API_KEY
+  // instead of an address that stops at the slash.
+  const apiKey = user?.publicApi || KEY_PLACEHOLDER;
   const apiUrl = useMemo(() => absoluteApiUrl(backendUrl), [backendUrl]);
   const customApiUrl = needsApiUrl(apiUrl) ? apiUrl : undefined;
   const mcpUrl = `${apiUrl}/mcp`;
-  const mcpUrlWithKey = `${apiUrl}/mcp/${apiKey}`;
-  const apiHeader = `Authorization: ${apiKey}`;
 
   const groups = useMemo(
     () =>
@@ -772,8 +243,6 @@ export const ConnectPanel: FC<{
     [t, apiUrl, mcpUrl, apiKey, customApiUrl]
   );
 
-  const all = useMemo(() => groups.flatMap((g) => g.items), [groups]);
-
   useEffect(() => {
     if (!tourHub) return;
     setNav('all');
@@ -784,48 +253,40 @@ export const ConnectPanel: FC<{
 
   useEffect(() => {
     if (tourHub) return;
-    const resolvedNav = resolveConnectNavId(searchParams.get('nav'));
+    const rawNav = searchParams.get('nav');
+    const resolvedNav = resolveConnectNavId(rawNav);
     const connectorId = resolveConnectorId(searchParams.get('connector'));
 
+    // `?connector=oauth` has always opened the OAuth app console.
     if (connectorId === 'oauth') {
       setNav('oauth-apps');
       setPicked('');
+      setMobilePane(true);
       return;
     }
 
-    const settingsHref = settingsExitHref(connectorId);
-    if (settingsHref) {
-      leaveSettingsFor(settingsHref, router);
+    const found = connectorId ? findConnection(groups, connectorId) : undefined;
+    // Older developer links (`?nav=cli`) opened one card; they still do.
+    const legacy = rawNav
+      ? LEGACY_NAV_CONNECTOR[rawNav.trim().toLowerCase()]
+      : '';
+    const item = found || (legacy ? findConnection(groups, legacy) : undefined);
+
+    if (item) {
+      setNav(
+        resolvedNav && resolvedNav !== 'all'
+          ? resolvedNav
+          : defaultNavForConnection(item)
+      );
+      setPicked(item.id);
+      setMobilePane(true);
       return;
     }
-
     if (resolvedNav) {
       setNav(resolvedNav);
-    }
-
-    if (connectorId) {
-      const found = findConnection(groups, connectorId);
-      if (found) {
-        const exit = settingsExitHref(found.id);
-        if (exit) {
-          leaveSettingsFor(exit, router);
-          return;
-        }
-        setPicked(found.id);
-        setMobilePane(true);
-        if (!resolvedNav) setNav(defaultNavForConnection(found));
-        return;
-      }
-    }
-
-    const auto = resolvedNav ? DEVELOP_NAV_ITEM[resolvedNav] : undefined;
-    if (auto) {
-      setPicked(auto);
-      setMobilePane(true);
-    } else if (resolvedNav) {
       setMobilePane(true);
     }
-  }, [searchParams, groups, tourHub, router]);
+  }, [searchParams, groups, tourHub]);
 
   const syncUrl = useCallback(
     (nextNav: ConnectNavId, nextPicked: string) => {
@@ -839,94 +300,35 @@ export const ConnectPanel: FC<{
 
   const selectNav = useCallback(
     (id: ConnectNavId) => {
-      const auto = DEVELOP_NAV_ITEM[id] ?? '';
       setNav(id);
-      setPicked(auto);
-      setKeyRevealed(false);
-      setDetailTab('connect');
+      setPicked('');
+      setQuery('');
       setMobilePane(true);
-      syncUrl(id, auto);
+      syncUrl(id, '');
     },
     [syncUrl]
   );
 
-  const openSettingsExit = useCallback(
-    (href: string) => {
-      leaveSettingsFor(href, router);
-    },
-    [router]
-  );
-
   const selectItem = useCallback(
     (id: string) => {
-      const exit = settingsExitHref(id);
-      if (exit) {
-        openSettingsExit(exit);
-        return;
-      }
-      const nextNav = isAutomationShortcut(id) ? 'all' : nav;
+      const found = findConnection(groups, id);
+      if (!found) return;
+      const nextNav = defaultNavForConnection(found);
       setNav(nextNav);
-      setPicked(id);
-      setKeyRevealed(false);
-      setDetailTab('connect');
+      setPicked(found.id);
+      setQuery('');
       setMobilePane(true);
-      syncUrl(nextNav, id);
+      syncUrl(nextNav, found.id);
     },
-    [nav, syncUrl, openSettingsExit]
+    [groups, syncUrl]
   );
 
   const clearPicked = useCallback(() => {
-    if (DEVELOP_NAV_ITEM[nav]) {
-      setNav('all');
-      setPicked('');
-      setKeyRevealed(false);
-      setDetailTab('connect');
-      syncUrl('all', '');
-      return;
-    }
     setPicked('');
-    setKeyRevealed(false);
-    setDetailTab('connect');
     syncUrl(nav, '');
   }, [nav, syncUrl]);
-  const maskCode = useCallback(
-    (text: string) =>
-      keyRevealed || !apiKey
-        ? text
-        : text.split(apiKey).join('*'.repeat(Math.min(apiKey.length, 24))),
-    [apiKey, keyRevealed]
-  );
 
-  const hubItems = useMemo(() => {
-    const items = connectionsForNav(groups, nav);
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.short.toLowerCase().includes(q) ||
-        item.method.toLowerCase().includes(q)
-    );
-  }, [groups, nav, query]);
-
-  const featuredItems = useMemo(
-    () =>
-      FEATURED_IDS.map((id) => findConnection(groups, id)).filter(
-        (c): c is Connection => !!c
-      ),
-    [groups]
-  );
-  const featuredCatchall = useMemo(
-    () => findConnection(groups, FEATURED_CATCHALL_ID),
-    [groups]
-  );
-
-  const allPageGroups = useMemo(
-    () => (nav === 'all' && !query.trim() ? restGroupsForAllPage(groups) : []),
-    [groups, nav, query]
-  );
-
-  const active = all.find((item) => item.id === picked);
+  const active = picked ? findConnection(groups, picked) : undefined;
 
   const close = useCallback(() => {
     if (onClose) {
@@ -940,526 +342,196 @@ export const ConnectPanel: FC<{
     }
   }, [onClose, router]);
 
-  const navItemBase = clsx(
-    'flex cursor-pointer items-center gap-[9px] rounded-pqSm px-[9px] text-start text-[13px] transition-[box-shadow,color,background-color] hover:text-pqText hover:shadow-[inset_0_0_0_999px_rgba(124,58,237,.10)]',
-    mobile ? 'h-[44px]' : 'h-[34px]'
-  );
-
   const navLabels = useMemo(
     (): Record<ConnectNavId, string> => ({
-      all: t('connect_nav_all', 'Connectors'),
-      agents: t('connect_nav_agents', 'Agents'),
-      bots: t('connect_nav_bots', 'Bots'),
-      chat: t('connect_nav_chat', 'Chat'),
-      editors: t('connect_nav_editors', 'Editors'),
-      automation: t('connect_nav_automation', 'Automation'),
-      'public-api': t('connect_nav_public_api', 'Public API'),
-      cli: t('connect_nav_cli', 'CLI'),
-      sdk: t('connect_nav_sdk', 'Node SDK'),
-      'oauth-apps': t('developers', 'Developers'),
-      'api-keys': t('connect_nav_api_keys', 'API Keys'),
+      all: t('connect_nav_all_view', 'All'),
+      bots: t('connect_nav_assistants', 'Assistants and bots'),
+      agents: t('connect_nav_coding', 'Coding agents'),
+      editors: t('connect_nav_editors_apps', 'Editors and other apps'),
+      automation: t('connect_nav_automations', 'Automations'),
+      developer: t('connect_nav_developer_tools', 'Developer tools'),
+      'api-keys': t('connect_nav_api_key', 'API key'),
+      'oauth-apps': t('connect_nav_oauth_apps', 'OAuth apps'),
       'approved-apps': t('connect_nav_approved_apps', 'Approved Apps'),
     }),
     [t]
   );
 
-  const navQuery = query.trim().toLowerCase();
-
-  const visibleConnectors = useMemo(() => {
-    if (!navQuery) return CONNECT_NAV_CONNECTORS;
-    return CONNECT_NAV_CONNECTORS.filter(({ id }) =>
-      navLabels[id].toLowerCase().includes(navQuery)
-    );
-  }, [navQuery, navLabels]);
-
-  const visibleDevelop = useMemo(() => {
-    if (!navQuery) return CONNECT_NAV_DEVELOP;
-    return CONNECT_NAV_DEVELOP.filter(({ id }) =>
-      navLabels[id].toLowerCase().includes(navQuery)
-    );
-  }, [navQuery, navLabels]);
-
-  const visibleAccount = useMemo(() => {
-    if (!navQuery) return CONNECT_NAV_ACCOUNT;
-    return CONNECT_NAV_ACCOUNT.filter(({ id }) =>
-      navLabels[id].toLowerCase().includes(navQuery)
-    );
-  }, [navQuery, navLabels]);
-
-  const settingsExitLabels = useMemo(
-    () =>
-      Object.fromEntries(
-        CONNECT_SETTINGS_EXITS.map((item) => [
-          item.id,
-          t(item.labelKey, item.labelDefault),
-        ])
-      ) as Record<string, string>,
-    [t]
-  );
-
-  const visibleSettingsExits = useMemo(() => {
-    if (!navQuery) return CONNECT_SETTINGS_EXITS;
-    return CONNECT_SETTINGS_EXITS.filter(({ id }) =>
-      (settingsExitLabels[id] || '').toLowerCase().includes(navQuery)
-    );
-  }, [navQuery, settingsExitLabels]);
-
-  const visibleAutomationShortcuts = useMemo(() => {
-    if (!navQuery) return CONNECT_AUTOMATION_SHORTCUTS;
-    return CONNECT_AUTOMATION_SHORTCUTS.filter(({ name }) =>
-      name.toLowerCase().includes(navQuery)
-    );
-  }, [navQuery]);
-
-  const connectorsActive = nav === 'all' && !isAutomationShortcut(picked);
-
-  const hubTitles = useMemo(
-    (): Partial<Record<ConnectNavId, { title: string; blurb: string }>> => ({
-      all: {
-        title: t('connect_hub_all', 'Connect PostQueen'),
-        blurb: t(
-          'connect_hub_all_blurb',
-          'Connect once. Then ask, run an agent, or automate.'
-        ),
-      },
-      agents: {
-        title: t('connect_hub_agents', 'Agents'),
-        blurb: t(
-          'connect_hub_agents_blurb',
-          'Coding agents you run in an editor or a terminal. Claude Code, Codex, Cursor, Grok Build, Muse Code, Gemini CLI.'
-        ),
-      },
-      bots: {
-        title: t('connect_hub_bots', 'Bots'),
-        blurb: t(
-          'connect_hub_bots_blurb',
-          'Bots you host or message. OpenClaw, Grok Bot, Claude Cowork, Hermes, Perplexity Computer, NanoClaw, Paperclip and Muse.'
-        ),
-      },
-      chat: {
-        title: t('connect_hub_chat', 'Chat'),
-        blurb: t(
-          'connect_hub_chat_blurb',
-          'Message an agent from WhatsApp, Telegram, Slack or Discord. Publishing channels live under Channels.'
-        ),
-      },
-      editors: {
-        title: t('connect_hub_editors', 'Editors'),
-        blurb: t(
-          'connect_hub_editors_blurb',
-          'Code editors that speak MCP. VS Code, Devin Desktop and Zed.'
-        ),
-      },
-      automation: {
-        title: t('connect_hub_automation', 'Automation'),
-        blurb: t(
-          'connect_hub_automation_blurb',
-          'n8n is live. Zapier and Make official apps are coming soon. All three open from the left rail, next to Webhooks and RSS AutoPost.'
-        ),
-      },
-    }),
-    [t]
-  );
-
-  const copyChipClass =
-    'flex h-[30px] shrink-0 cursor-pointer items-center rounded-[8px] bg-pqBtnSimple px-[11px] text-[12.5px] font-[600] text-pqText transition-colors hover:bg-pqHover';
-
-  const credentialStrip = (
-    cred: Connection['cred'] | 'hub',
-    compact = false
-  ) => {
-    if (cred === 'none') return null;
-    const showMcp = cred === 'hub' || cred === 'mcp';
-    const showApi = cred === 'hub' || cred === 'api';
-    const showEnv = cred === 'env';
-    const maskedKey = keyRevealed
-      ? apiKey
-      : apiKey
-        ? `••••••••${apiKey.slice(-4)}`
-        : '••••••••••••';
-
-    if (compact) {
-      return (
-        <div
-          className="overflow-hidden rounded-[16px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]"
-          aria-label={t('conn_your_connection', 'Your connection')}
-          data-tour={compact ? 'connect-creds' : undefined}
-        >
-          <div className="flex flex-wrap items-center gap-[8px] px-[14px] py-[11px]">
-            <span className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-              {t('api_key', 'API key')}
-            </span>
-            <code className="min-w-0 flex-1 truncate font-mono text-[13px] tracking-[0.04em] text-pqText">
-              {maskedKey || '••••••••••••'}
-            </code>
-            <button
-              type="button"
-              onClick={() => setKeyRevealed((v) => !v)}
-              className={copyChipClass}
-            >
-              {keyRevealed ? t('hide', 'Hide') : t('reveal', 'Reveal')}
-            </button>
-            <button
-              type="button"
-              onClick={() => selectNav('api-keys')}
-              className={copyChipClass}
-            >
-              {t('conn_go_api_keys', 'Go to API Keys')}
-            </button>
-          </div>
-          {(showMcp || showApi) && (
-            <div className="flex flex-wrap gap-[8px] border-t border-pqLine bg-pqSettings px-[14px] py-[10px]">
-              {!!apiKey && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    copy(apiKey);
-                    toaster.show('API key copied to clipboard', 'success');
-                  }}
-                  className={copyChipClass}
-                >
-                  {t('conn_copy_key', 'Copy key')}
-                </button>
-              )}
-              {showMcp && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    copy(mcpUrlWithKey);
-                    toaster.show('MCP URL copied to clipboard', 'success');
-                  }}
-                  className={copyChipClass}
-                >
-                  {t('copy', 'Copy')} {t('conn_copy_mcp', 'MCP URL')}
-                </button>
-              )}
-              {showApi && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    copy(apiHeader);
-                    toaster.show('API header copied to clipboard', 'success');
-                  }}
-                  className={copyChipClass}
-                >
-                  {t('conn_copy_header', 'Copy API header')}
-                </button>
-              )}
-            </div>
-          )}
-          {!apiKey && (
-            <div className="border-t border-pqLine px-[14px] py-[10px]">
-              <ApiKeyMissingNote />
-            </div>
-          )}
-        </div>
-      );
+  const counts = useMemo(() => {
+    const out: Partial<Record<ConnectNavId, number>> = {};
+    for (const id of CONNECT_NAV_BROWSE) {
+      if (id !== 'all') out[id] = connectionsForNav(groups, id).length;
     }
+    // Shown once it has loaded, never a zero that is merely not back yet.
+    if (Array.isArray(approvedApps)) out['approved-apps'] = approvedApps.length;
+    return out;
+  }, [groups, approvedApps]);
 
-    return (
-      <div className="flex flex-col gap-[12px] rounded-pqMd bg-pqInner p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        <ApiKeyCard
-          compact
-          showWizard={false}
-          showDocs={false}
-          hint={t(
-            'conn_api_key_hint',
-            'One key for MCP, the CLI, n8n and the Public API. Only workspace admins can see it.'
-          )}
-          onRevealChange={setKeyRevealed}
-        />
-        {showMcp && (
-          <div>
-            <div className="text-[12px] font-[600] text-pqMuted">
-              {t('conn_copy_mcp', 'MCP URL')}
-            </div>
-            <CodeBlock
-              code={maskCode(mcpUrlWithKey)}
-              rawCode={mcpUrlWithKey}
-              label="MCP URL"
-            />
-          </div>
-        )}
-        {showApi && (
-          <div>
-            <div className="text-[12px] font-[600] text-pqMuted">
-              {t('conn_copy_api_header', 'Public API header, no Bearer')}
-            </div>
-            <CodeBlock
-              code={maskCode(apiHeader)}
-              rawCode={apiHeader}
-              label="API header"
-            />
-          </div>
-        )}
-        {showEnv && (
-          <div>
-            <div className="text-[12px] font-[600] text-pqMuted">
-              {t('conn_copy_env', 'Environment')}
-            </div>
-            <CodeBlock
-              code={maskCode(`export POSTQUEEN_API_KEY="${apiKey}"`)}
-              rawCode={`export POSTQUEEN_API_KEY="${apiKey}"`}
-              label="API key"
-            />
-            {!!customApiUrl && (
-              <CodeBlock
-                code={`export POSTQUEEN_API_URL="${customApiUrl}"`}
-                label="API URL"
-              />
-            )}
-          </div>
-        )}
-        {!apiKey && <ApiKeyMissingNote />}
-      </div>
-    );
-  };
+  const openKey = useCallback(() => selectNav('api-keys'), [selectNav]);
 
-  const renderDetail = (item: Connection) => {
-    const showKey = item.section !== 'media' && item.cred !== 'none';
-    const showExamples = !!item.examples?.length;
-    const tabs: { id: 'connect' | 'key' | 'examples'; label: string }[] = [
-      { id: 'connect', label: t('conn_how_to_connect', 'How to connect') },
-    ];
-    if (showKey) tabs.push({ id: 'key', label: t('api_key', 'API key') });
-    if (showExamples) {
-      tabs.push({
-        id: 'examples',
-        label: t('conn_examples_eyebrow', 'Examples'),
-      });
-    }
-    const activeTab = tabs.some((tab) => tab.id === detailTab)
-      ? detailTab
-      : tabs[0].id;
-
-    return (
-      <div className="flex flex-col gap-[20px]">
-        {!mobile && (
+  const searchBox = (
+    <div className="relative min-w-0 flex-1">
+      <StrokeIcon
+        paths={ICONS.search}
+        size={16}
+        className="pointer-events-none absolute start-[11px] top-1/2 -translate-y-1/2 text-pqSoft"
+      />
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (picked) {
+            setPicked('');
+            syncUrl(nav, '');
+          }
+        }}
+        placeholder={t('conn_search_agents', 'Search agents and tools')}
+        aria-label={t('conn_search_agents', 'Search agents and tools')}
+        className={clsx(
+          'w-full rounded-pqSm bg-pqInner pe-[34px] ps-[34px] text-[13.5px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] outline-none placeholder:text-pqSoft focus-visible:shadow-[inset_0_0_0_1px_var(--brand)]',
+          mobile ? 'h-[44px]' : 'h-[36px]'
+        )}
+      />
+      {!!query && (
         <button
           type="button"
-          onClick={clearPicked}
-          className="flex h-[32px] w-fit cursor-pointer items-center gap-[6px] rounded-pqSm bg-pqBtnSimple px-[10px] text-[12.5px] font-[600] text-pqText transition-colors hover:bg-pqHover"
+          onClick={() => setQuery('')}
+          aria-label={t('conn_clear_search', 'Clear search')}
+          className="absolute end-[6px] top-1/2 grid size-[26px] -translate-y-1/2 cursor-pointer place-items-center rounded-[6px] text-pqSoft hover:bg-pqHover hover:text-pqText"
         >
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
-            <path
-              d="M15 6l-6 6 6 6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {t('conn_back', 'Back')}
+          <StrokeIcon paths={ICONS.close} size={14} />
         </button>
+      )}
+    </div>
+  );
+
+  const closeButton = (size: 36 | 44) => (
+    <button
+      type="button"
+      onClick={close}
+      aria-label={t('close', 'Close')}
+      className={clsx(
+        'grid shrink-0 cursor-pointer place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText',
+        size === 44 ? 'size-[44px]' : 'size-[36px]'
+      )}
+    >
+      <StrokeIcon paths={ICONS.close} size={19} />
+    </button>
+  );
+
+  const keyIconButton = (
+    <button
+      type="button"
+      data-tour="connect-creds"
+      onClick={openKey}
+      aria-label={t('conn_your_api_key', 'Your API key')}
+      className="grid size-[44px] shrink-0 cursor-pointer place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+    >
+      <StrokeIcon paths={ICONS.key} size={18} />
+    </button>
+  );
+
+  const navRow = (id: ConnectNavId) => {
+    const on = id === nav && !mobile && !query.trim();
+    const count = counts[id];
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => selectNav(id)}
+        aria-current={on ? 'page' : undefined}
+        className={clsx(
+          'flex cursor-pointer items-center gap-[9px] rounded-pqSm px-[9px] text-start transition-[box-shadow,color,background-color] hover:shadow-[inset_0_0_0_999px_var(--navRowHover)]',
+          mobile ? 'h-[44px] text-[14px]' : 'h-[34px] text-[13px]',
+          on
+            ? 'bg-pqNavActive font-[600] text-pqFocused'
+            : 'font-[500] text-pqText'
         )}
-
-        <div className="flex flex-wrap items-center gap-[16px]">
-          <ConnIcon item={item} size="lg" />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[22px] font-[600] text-pqText -tracking-[0.02em]">
-              {item.name}
-            </h2>
-            <div className="mt-[6px] flex flex-wrap items-center gap-[6px]">
-              <span
-                className={clsx(
-                  'rounded-[6px] px-[8px] py-[3px] text-[10.5px] font-[700] tracking-[0.06em]',
-                  METHOD_STYLE[item.method]
-                )}
-              >
-                {item.method}
-              </span>
-              {item.soon && (
-                <span className="rounded-[6px] bg-pqAmberSoft px-[8px] py-[3px] text-[10.5px] font-[700] tracking-[0.06em] text-pqAmber">
-                  {t('conn_soon', 'COMING SOON')}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-[8px]">
-          {item.docs.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-[34px] cursor-pointer items-center gap-[6px] rounded-pqSm bg-pqBrand px-[12px] text-[12.5px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
-            >
-              {link.label}
-              <ExternalLinkIcon size={13} className="opacity-[0.9]" />
-            </a>
-          ))}
-          {item.paths?.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-[34px] cursor-pointer items-center gap-[6px] rounded-pqSm bg-pqBtnSimple px-[12px] text-[12.5px] font-[600] text-pqText transition-colors hover:bg-pqHover"
-            >
-              {link.label}
-              <ExternalLinkIcon size={13} className="opacity-[0.7]" />
-            </a>
-          ))}
-        </div>
-
-        {tabs.length > 1 && (
-          <div
-            data-pq="conn-detail-tabs"
-            role="tablist"
-            aria-label={item.name}
-            className={clsx(
-              'sticky z-10 flex bg-pqInner py-[8px]',
-              mobile
-                ? 'top-[-20px] -mx-[16px] px-[16px]'
-                : 'top-[-28px] -mx-[32px] px-[32px]'
-            )}
-          >
-            <div className="flex w-full rounded-pqSm bg-pqSettings p-[2px]">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  data-pq={`conn-tab-${tab.id}`}
-                  onClick={() => setDetailTab(tab.id)}
-                  className={clsx(
-                    'h-[40px] min-w-0 flex-1 cursor-pointer rounded-[6px] px-[8px] text-[12.5px] font-[600]',
-                    activeTab === tab.id
-                      ? 'bg-pqInner text-pqText shadow-pqE1'
-                      : 'text-pqSoft hover:text-pqText'
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      >
+        <StrokeIcon
+          paths={NAV_ICONS[id]}
+          className={on ? 'text-pqFocused' : 'text-pqSoft'}
+        />
+        <span className="min-w-0 flex-1 truncate">{navLabels[id]}</span>
+        {count !== undefined && (
+          <span className="text-[11.5px] font-[600] tabular-nums text-pqSoft">
+            {count}
+          </span>
         )}
-
-        {activeTab === 'connect' && (
-          <div className="flex flex-col gap-[16px]" data-pq="conn-pane-connect">
-            <div>
-              <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted">
-                {t('conn_what_this_is', 'What this is')}
-              </div>
-              <p className="mt-[6px] text-[14px] leading-[1.65] text-pqText">
-                {item.intro}
-              </p>
-            </div>
-
-            {!!item.info && (
-              <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[13px] leading-[1.6] text-pqMuted">
-                {item.info}
-              </div>
-            )}
-
-            {item.section === 'media' && (
-              <Link
-                href="/settings?tab=integrations"
-                className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBrand px-[14px] text-[13px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
-              >
-                {t('connect_open_integrations', 'Open Integrations')} →
-              </Link>
-            )}
-
-            {item.id === 'oauth' && (
-              <button
-                type="button"
-                onClick={() => selectNav('oauth-apps')}
-                className="flex h-[36px] w-fit cursor-pointer items-center rounded-pqSm bg-pqBtnSimple px-[14px] text-[13px] font-[600] text-pqText transition-colors hover:bg-pqHover"
-              >
-                {t('connect_open_oauth_apps', 'Open OAuth Apps')} →
-              </button>
-            )}
-
-            <div className="flex flex-col gap-[16px] rounded-[18px] bg-pqInner p-[22px] shadow-[inset_0_0_0_1px_var(--border)]">
-              {item.steps.map((step, index) => (
-                <div key={`${step.title}-${index}`} className="flex gap-[13px]">
-                  <span className="mt-[1px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-pqBrandSoft text-[12px] font-[700] text-pqBrand">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-[600] text-pqText">{step.title}</div>
-                    {!!step.detail && (
-                      <div className="mt-[2px] text-[13.5px] leading-[1.6] text-pqMuted">
-                        {step.detail}
-                      </div>
-                    )}
-                    {!!step.code && (
-                      <CodeBlock
-                        code={maskCode(step.code)}
-                        rawCode={step.code}
-                        label={item.name}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {!!item.note && (
-              <div className="rounded-pqSm bg-pqBrandFaint p-[12px] text-[12.5px] leading-[1.55] text-pqMuted">
-                {item.note}
-              </div>
-            )}
-          </div>
+        {mobile && (
+          <StrokeIcon
+            paths={ICONS.chevron}
+            className="text-pqSoft rtl:rotate-180"
+          />
         )}
-
-        {activeTab === 'key' && showKey && (
-          <div data-pq="conn-pane-key">{credentialStrip(item.cred)}</div>
-        )}
-
-        {activeTab === 'examples' && showExamples && (
-          <div data-pq="conn-pane-examples">
-            <ExamplesBlock
-              kind={item.exampleKind}
-              examples={item.examples || []}
-              name={item.name}
-              mask={maskCode}
-            />
-          </div>
-        )}
-      </div>
+      </button>
     );
   };
 
-  const renderHub = () => {
-    // The three Account sections render for everyone. Each one answers for its
-    // own rights: API Keys masks a key it may not show, Developers refuses to
-    // fetch, Approved Apps is per-user and ungated to begin with.
+  const navGroups = (
+    <nav
+      aria-label={t('connect_postqueen', 'Connect PostQueen')}
+      className="flex flex-col gap-[12px]"
+    >
+      {(
+        [
+          [t('connect_nav_browse', 'Browse'), CONNECT_NAV_BROWSE],
+          [t('connect_nav_account', 'Account'), CONNECT_NAV_ACCOUNT],
+        ] as const
+      ).map(([label, ids], i) => (
+        <div
+          key={label}
+          className={clsx(
+            'flex flex-col gap-[1px]',
+            i > 0 && 'border-t border-pqLine pt-[12px]'
+          )}
+        >
+          <div className="px-[9px] pb-[5px] text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
+            {label}
+          </div>
+          {ids.map(navRow)}
+        </div>
+      ))}
+    </nav>
+  );
+
+  const accountView = () => {
+    // Each Account view answers for its own rights: API key masks a key it may
+    // not show, OAuth apps refuses to fetch for members, Approved Apps is per
+    // user and ungated to begin with.
     if (nav === 'api-keys') {
       return (
-        <div>
-          <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
-            {t('api_keys', 'API Keys')}
+        <div className="max-w-[880px]">
+          <h3 className="m-0 font-display text-[19px] font-[700] tracking-[-0.015em] text-pqText">
+            {t('connect_nav_api_key', 'API key')}
           </h3>
-          <div className="mt-[4px] text-[14px] text-pqMuted">
+          <div className="mt-[4px] text-[13.5px] text-pqMuted">
             {t(
               'api_keys_description',
               "Reveal or rotate this workspace's API key. The public API, the CLI and MCP use it."
             )}
           </div>
           <PublicApiKeysSection embeddedInConnect />
+          <AddressesCard apiKey={apiKey} apiUrl={apiUrl} />
         </div>
       );
     }
-
     if (nav === 'oauth-apps') {
       return (
-        <div>
-          <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
-            {t('connect_nav_oauth_apps', 'OAuth Apps')}
+        <div className="max-w-[880px]">
+          <h3 className="m-0 font-display text-[19px] font-[700] tracking-[-0.015em] text-pqText">
+            {t('connect_nav_oauth_apps', 'OAuth apps')}
             {/* Upstream 6c1c5dd6: an OAuth app belongs to one organization, and
                 someone with the same email in two of them needs to see which
                 one they are about to create it in. */}
             {!!currentOrgName && (
-              <span className="text-pqMuted"> / {currentOrgName}</span>
+              <span className="font-[500] text-pqMuted">
+                {' '}
+                / {currentOrgName}
+              </span>
             )}
           </h3>
-          <div className="mt-[4px] text-[14px] text-pqMuted">
+          <div className="mt-[4px] text-[13.5px] text-pqMuted">
             {t(
               'developers_oauth_description',
               'Build OAuth apps so other products can post on behalf of your users. After authorization you get a pos_ token that works like an API key.'
@@ -1469,520 +541,162 @@ export const ConnectPanel: FC<{
         </div>
       );
     }
-
     if (nav === 'approved-apps') {
       return (
-        <div>
-          <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
-            {t('approved_apps', 'Approved Apps')}
+        <div className="max-w-[880px]">
+          <h3 className="m-0 font-display text-[19px] font-[700] tracking-[-0.015em] text-pqText">
+            {t('connect_nav_approved_apps', 'Approved Apps')}
           </h3>
-          <div className="mt-[4px] text-[14px] text-pqMuted">
+          <div className="mt-[4px] text-[13.5px] text-pqMuted">
             {t(
-              'apps_you_have_authorized',
-              'Applications you have authorized to access your PostQueen account.'
+              'conn_approved_apps_sub',
+              'Apps you connected by signing in, with no key. Revoke one to take its access away.'
             )}
           </div>
           <ApprovedAppsComponent />
         </div>
       );
     }
-
-    const meta = hubTitles[nav];
-    if (!meta) return null;
-
-    const hubCard = (item: Connection, i: number, featured = false) => (
-      <button
-        key={item.id}
-        type="button"
-        data-connector={item.id}
-        data-conn-card="1"
-        style={
-          tourConn ? { animationDelay: `${(i % 14) * 0.38}s` } : undefined
-        }
-        onClick={() => selectItem(item.id)}
-        aria-label={
-          item.soon ? `${item.name}, ${item.method}, soon` : `${item.name}, ${item.method}`
-        }
-        className={clsx(
-          'flex min-w-0 cursor-pointer items-center gap-[10px] rounded-pqLg bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]',
-          featured ? 'p-[16px]' : 'p-[13px_14px]'
-        )}
-      >
-        <ConnIcon item={item} size={featured ? 'sm' : 'xs'} />
-        <span className="min-w-0 flex-1 text-[14px] font-[600] leading-[1.25] text-pqText">
-          {item.name}
-          {item.soon ? (
-            <span className="ms-[6px] text-[11px] font-[500] text-pqMuted">
-              {t('conn_soon_short', 'Soon')}
-            </span>
-          ) : null}
-        </span>
-      </button>
-    );
-
-    const hubGrid = (
-      items: Connection[],
-      opts: { featured?: boolean } = {}
-    ) => (
-      <div
-        className={clsx(
-          'grid gap-[10px]',
-          opts.featured
-            ? {
-                'grid-cols-1': mobile,
-                'grid-cols-2': tablet,
-                'grid-cols-4': desktop,
-              }
-            : mobile
-              ? 'grid-cols-1'
-              : '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]'
-        )}
-      >
-        {items.map((item, i) => hubCard(item, i, opts.featured))}
-      </div>
-    );
-
-    const browsingAll = nav === 'all' && !query.trim();
-
-    return (
-      <div className="flex flex-col gap-[20px]">
-        <div>
-          {nav === 'all' ? (
-            <h3 className="m-0 max-w-[42rem] font-display text-[22px] font-[500] leading-[1.3] tracking-[-0.02em] text-pqText">
-              {meta.blurb}
-            </h3>
-          ) : (
-            <>
-              <h3 className="m-0 font-display text-[20px] font-[500] tracking-[-0.01em] text-pqText">
-                {meta.title}
-              </h3>
-              <div className="mt-[4px] text-[14px] text-pqMuted">{meta.blurb}</div>
-            </>
-          )}
-        </div>
-
-        {credentialStrip('hub', true)}
-
-        {browsingAll && (
-          <div
-            className="flex flex-col gap-[10px]"
-            data-tour="connect-featured"
-            {...(tourConn ? { 'data-tourconn': '1' } : {})}
-          >
-            <div className="text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
-              {t('connect_featured', 'Featured')}
-            </div>
-            {hubGrid(featuredItems, { featured: true })}
-            {featuredCatchall && (
-              <button
-                type="button"
-                data-connector={featuredCatchall.id}
-                data-conn-card="1"
-                data-pq="featured-catchall"
-                onClick={() => selectItem(featuredCatchall.id)}
-                aria-label={`${featuredCatchall.name}, ${featuredCatchall.method}`}
-                className="flex min-w-0 cursor-pointer items-center gap-[12px] rounded-pqLg bg-pqPop px-[16px] py-[12px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-              >
-                <ConnIcon item={featuredCatchall} size="xs" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-[600] leading-[1.25] text-pqText">
-                    {featuredCatchall.name}
-                  </span>
-                  <span className="mt-[2px] block truncate text-[12.5px] leading-[1.35] text-pqMuted">
-                    {featuredCatchall.short}
-                  </span>
-                </span>
-                <svg
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  aria-hidden="true"
-                  className="shrink-0 text-pqSoft rtl:rotate-180"
-                >
-                  <path
-                    d="M9 6l6 6-6 6"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
-
-        {nav === 'cli' && !picked && (
-          <CliSetupCallout
-            apiKey={apiKey}
-            keyRevealed={keyRevealed}
-            apiUrl={customApiUrl}
-          />
-        )}
-
-        {browsingAll ? (
-          <div className="flex flex-col gap-[22px]">
-            {allPageGroups.map((group) => (
-              <div key={group.nav} className="flex flex-col gap-[8px]">
-                <div className="text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted">
-                  {navLabels[group.nav]}
-                </div>
-                {hubGrid(group.items)}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-[8px]">{hubGrid(hubItems)}</div>
-        )}
-
-        {!hubItems.length && (
-          <div className="rounded-pqMd border border-pqBorder p-[20px] text-center text-[13px] text-pqMuted">
-            {t('conn_no_results', 'Nothing matches that.')}
-          </div>
-        )}
-      </div>
-    );
+    return null;
   };
 
-  const leftNav = (
-    <nav
-      className={clsx(
-        'flex min-h-0 overflow-y-auto',
-        mobile
-          ? 'flex-col gap-[8px] p-[0_12px_10px]'
-          : 'flex-1 flex-col gap-[16px] p-[0_8px_14px]'
-      )}
-    >
-      {/* Connectors: section heading + one row labeled Connectors (not All) */}
-      {visibleConnectors.length > 0 && (
-      <div
-        className={clsx(
-          'flex',
-          'flex flex-col gap-[1px]'
-        )}
-      >
-        <div
-          className={clsx(
-            'text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted',
-            'px-[9px] pb-[5px]'
-          )}
-        >
-          {t('connect_nav_section', 'Connectors')}
-        </div>
-        {visibleConnectors.map(({ id }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectNav(id)}
-              aria-current={connectorsActive ? 'page' : undefined}
-              className={clsx(
-                navItemBase,
-                connectorsActive
-                  ? 'bg-[rgba(124,58,237,.15)] font-[600] text-pqFocused'
-                  : 'text-pqMuted'
-              )}
-            >
-              <NavIcon id={id} />
-              <span className="min-w-0 flex-1 truncate">{navLabels[id]}</span>
-            </button>
-        ))}
-      </div>
-      )}
-
-      {/* Automation: n8n / Zapier / Make open cards; Webhooks / RSS leave to Settings */}
-      {(visibleAutomationShortcuts.length > 0 ||
-        visibleSettingsExits.length > 0) && (
-      <div
-        className={clsx(
-          'flex',
-          'flex flex-col gap-[1px] border-t border-pqLine pt-[12px]'
-        )}
-      >
-        <div
-          className={clsx(
-            'text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted',
-            'px-[9px] pb-[5px]'
-          )}
-        >
-          {t('connect_nav_automation', 'Automation')}
-        </div>
-        {visibleAutomationShortcuts.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => selectItem(item.id)}
-              aria-current={picked === item.id ? 'page' : undefined}
-              className={clsx(
-                navItemBase,
-                picked === item.id
-                  ? 'bg-[rgba(124,58,237,.15)] font-[600] text-pqFocused'
-                  : 'text-pqMuted'
-              )}
-            >
-              <RailBrandIcon src={item.icon} />
-              <span className="min-w-0 flex-1 truncate">{item.name}</span>
-              {item.soon ? (
-                <span className="shrink-0 text-[11px] font-[500] text-pqMuted">
-                  {t('conn_soon_short', 'Soon')}
-                </span>
-              ) : null}
-            </button>
-        ))}
-        {visibleSettingsExits.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => openSettingsExit(item.href)}
-              className={clsx(navItemBase, 'text-pqMuted')}
-            >
-              <StrokeIcon
-                paths={SETTINGS_EXIT_ICONS[item.id] || SETTINGS_EXIT_ICONS.webhooks}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                {settingsExitLabels[item.id]}
-              </span>
-            </button>
-        ))}
-      </div>
-      )}
-
-      {/* Develop */}
-      {visibleDevelop.length > 0 && (
-      <div
-        className={clsx(
-          'flex',
-          'flex flex-col gap-[1px] border-t border-pqLine pt-[12px]'
-        )}
-      >
-        <div
-          className={clsx(
-            'text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted',
-            'px-[9px] pb-[5px]'
-          )}
-        >
-          {t('connect_nav_develop', 'Develop')}
-        </div>
-        {visibleDevelop.map(({ id }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectNav(id)}
-              aria-current={id === nav ? 'page' : undefined}
-              className={clsx(
-                navItemBase,
-                id === nav
-                  ? 'bg-[rgba(124,58,237,.15)] font-[600] text-pqFocused'
-                  : 'text-pqMuted'
-              )}
-            >
-              <NavIcon id={id} />
-              <span className="min-w-0 flex-1 truncate">{navLabels[id]}</span>
-            </button>
-        ))}
-      </div>
-      )}
-
-      {/* Account */}
-      {visibleAccount.length > 0 && (
-      <div
-        className={clsx(
-          'flex',
-          'flex flex-col gap-[1px] border-t border-pqLine pt-[12px]'
-        )}
-      >
-        <div
-          className={clsx(
-            'text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqMuted',
-            'px-[9px] pb-[5px]'
-          )}
-        >
-          {t('connect_nav_account', 'Account')}
-        </div>
-        {visibleAccount.map(({ id }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => selectNav(id)}
-              aria-current={id === nav ? 'page' : undefined}
-              className={clsx(
-                navItemBase,
-                id === nav
-                  ? 'bg-[rgba(124,58,237,.15)] font-[600] text-pqFocused'
-                  : 'text-pqMuted'
-              )}
-            >
-              <NavIcon id={id} />
-              <span className="min-w-0 flex-1 truncate">{navLabels[id]}</span>
-            </button>
-        ))}
-      </div>
-      )}
-    </nav>
+  const content = active ? (
+    <ConnectDetail
+      key={active.id}
+      item={active}
+      groups={groups}
+      apiKey={apiKey}
+      supportEmail={supportEmail}
+      layout={layout}
+      onBack={clearPicked}
+      onPick={selectItem}
+      onNav={selectNav}
+    />
+  ) : (CONNECT_NAV_ACCOUNT as ConnectNavId[]).includes(nav) && !query.trim() ? (
+    accountView()
+  ) : (
+    <ConnectHub
+      nav={nav}
+      groups={groups}
+      query={query}
+      onPick={selectItem}
+      onClearQuery={() => setQuery('')}
+      layout={layout}
+      tourConn={tourConn}
+    />
   );
 
   const showConnectIndex = mobile && !mobilePane && !picked;
+  const paneTitle = active
+    ? active.name
+    : query.trim()
+      ? t('conn_search_title', 'Search')
+      : navLabels[nav];
 
   return (
     <div
       data-connect-panel="1"
       onClick={(e) => e.stopPropagation()}
       className={clsx(
-        'relative flex shrink-0 overflow-hidden bg-pqPop shadow-[var(--e3),0_0_0_1px_var(--border)] animate-pqPop',
+        'relative flex shrink-0 flex-col overflow-hidden bg-pqPop shadow-[var(--e3),0_0_0_1px_var(--border)] animate-pqPop',
         '[&_a]:cursor-pointer [&_button]:cursor-pointer [&_button:disabled]:cursor-not-allowed',
         mobile
-          ? 'h-full w-full flex-col pb-[env(safe-area-inset-bottom)]'
+          ? 'h-full w-full pb-[env(safe-area-inset-bottom)]'
           : touch
-          ? 'h-full w-full rounded-none'
-          : 'h-[min(680px,100%)] w-[min(1040px,100%)] rounded-[16px]'
+            ? 'h-full w-full rounded-none'
+            : 'h-[min(836px,100%)] w-[min(1376px,100%)] rounded-[16px]'
       )}
     >
-      {/* Left nav. Phone: full-screen index, then a pushed pane. */}
-      <div
-        className={clsx(
-          'flex min-h-0 flex-col bg-pqSettings',
-          mobile
-            ? showConnectIndex
-              ? 'min-h-0 w-full flex-1'
-              : 'hidden'
-            : 'w-[236px] shrink-0 border-e border-pqLine'
-        )}
-      >
-        {showConnectIndex && (
-          <div className="flex h-[52px] shrink-0 items-center gap-[8px] px-[8px] pt-[6px]">
-            <div className="min-w-0 flex-1 px-[8px] text-[16px] font-[600] text-pqText">
-              {t('connect_postqueen', 'Connect PostQueen')}
-              <span className="sr-only">
-                {t('connect_categories', 'Categories')}
+      {mobile ? (
+        showConnectIndex ? (
+          <div className="flex min-h-0 flex-1 flex-col bg-pqInner">
+            <div className="flex h-[52px] shrink-0 items-center gap-[6px] border-b border-pqLine bg-pqPop px-[4px]">
+              <span className="flex ps-[10px]">
+                <SafeImage src="/postqueen.svg" alt="" width={26} height={26} />
               </span>
+              <span className="min-w-0 flex-1 truncate font-display text-[16px] font-[700] text-pqText">
+                {t('connect_postqueen', 'Connect PostQueen')}
+              </span>
+              {keyIconButton}
+              {closeButton(44)}
             </div>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={t('close', 'Close')}
-              className="grid size-[44px] cursor-pointer place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-                <path
-                  d="M6 6l12 12M18 6 6 18"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-        <div className="shrink-0 p-[14px_12px_10px]">
-            <div className="relative">
-              <svg
-                viewBox="0 0 24 24"
-                width="15"
-                height="15"
-                fill="none"
-                aria-hidden="true"
-                className="pointer-events-none absolute start-[10px] top-[10px] text-pqSoft"
-              >
-                <path
-                  d="M17 17l4 4M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t('search_connectors', 'Search connectors')}
-                className={clsx(
-                  'w-full rounded-pqSm bg-pqInner pe-[11px] ps-[31px] text-[13px] text-pqText shadow-[inset_0_0_0_1px_var(--border)] outline-none placeholder:text-pqSoft focus-visible:shadow-[inset_0_0_0_1px_var(--brand)]',
-                  mobile ? 'h-[44px]' : 'h-[34px]'
-                )}
-              />
+            <div className="flex min-h-0 flex-1 flex-col gap-[16px] overflow-y-auto p-[14px_12px_24px]">
+              <div className="flex px-[4px]">{searchBox}</div>
+              {query.trim() ? content : navGroups}
             </div>
-          </div>
-        {leftNav}
-      </div>
-
-      {/* Right content */}
-      <div
-        className={clsx(
-          'relative flex min-h-0 min-w-0 flex-col',
-          showConnectIndex ? 'hidden' : 'flex-1'
-        )}
-      >
-        {mobile ? (
-          <div className="flex h-[52px] shrink-0 items-center gap-[4px] border-b border-pqLine px-[6px]">
-            <button
-              type="button"
-              aria-label={t('back', 'Back')}
-              onClick={() => {
-                if (picked) clearPicked();
-                else setMobilePane(false);
-              }}
-              className="grid size-[44px] place-items-center rounded-[8px] text-pqText transition-colors hover:bg-pqHover"
-            >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-                <path
-                  d="M15 6l-6 6 6 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <div className="min-w-0 flex-1 truncate text-[15px] font-[600] text-pqText">
-              {t('connect_postqueen', 'Connect PostQueen')}
-            </div>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={t('close', 'Close')}
-              className="grid size-[44px] cursor-pointer place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
-            >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-                <path
-                  d="M6 6l12 12M18 6 6 18"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
           </div>
         ) : (
-          <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pqLine px-[24px]">
-            <div className="text-[14.5px] font-[600] text-pqText">
-              {t('connect_postqueen', 'Connect PostQueen')}
+          <>
+            <div className="flex h-[52px] shrink-0 items-center gap-[6px] border-b border-pqLine px-[4px]">
+              <button
+                type="button"
+                aria-label={t('back', 'Back')}
+                onClick={() => {
+                  if (picked) clearPicked();
+                  else setMobilePane(false);
+                }}
+                className="grid size-[44px] place-items-center rounded-[8px] text-pqText transition-colors hover:bg-pqHover"
+              >
+                <StrokeIcon
+                  paths={ICONS.back}
+                  size={19}
+                  className="rtl:rotate-180"
+                />
+              </button>
+              <span className="min-w-0 flex-1 truncate font-display text-[16px] font-[700] text-pqText">
+                {paneTitle}
+              </span>
+              {keyIconButton}
+              {closeButton(44)}
             </div>
+            <div
+              ref={paneRef}
+              className="min-h-0 flex-1 overflow-y-auto bg-pqInner p-[16px_14px_28px]"
+            >
+              {content}
+            </div>
+          </>
+        )
+      ) : (
+        <>
+          <div className="flex h-[60px] shrink-0 items-center gap-[16px] border-b border-pqLine bg-pqPop pe-[12px] ps-[18px]">
+            <span
+              className={clsx(
+                'flex shrink-0 items-center gap-[10px]',
+                desktop && 'w-[218px]'
+              )}
+            >
+              <SafeImage src="/postqueen.svg" alt="" width={28} height={28} />
+              <span className="whitespace-nowrap font-display text-[15px] font-[700] tracking-[-0.01em] text-pqText">
+                {t('connect_postqueen', 'Connect PostQueen')}
+              </span>
+            </span>
+            <div className="flex min-w-0 max-w-[440px] flex-1">{searchBox}</div>
+            <span className="flex-1" />
             <button
               type="button"
-              onClick={close}
-              aria-label={t('close', 'Close')}
-              className="grid h-[30px] w-[30px] cursor-pointer place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+              data-tour="connect-creds"
+              onClick={openKey}
+              className="inline-flex h-[34px] shrink-0 cursor-pointer items-center gap-[7px] rounded-[8px] bg-pqPop px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover"
             >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
-                <path
-                  d="M6 6l12 12M18 6 6 18"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <StrokeIcon paths={ICONS.key} size={15} />
+              {t('conn_your_api_key', 'Your API key')}
             </button>
+            {closeButton(36)}
           </div>
-        )}
-        <div
-          ref={paneRef}
-          className={clsx(
-            'min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner',
-            mobile ? 'p-[20px_16px_32px]' : 'p-[28px_32px_40px]'
-          )}
-        >
-          {active ? renderDetail(active) : renderHub()}
-        </div>
-      </div>
+          <div className="flex min-h-0 flex-1">
+            <div className="w-[236px] shrink-0 overflow-y-auto border-e border-pqLine bg-pqSettings p-[16px_8px_14px]">
+              {navGroups}
+            </div>
+            <div
+              ref={paneRef}
+              className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-pqInner p-[20px_28px_24px]"
+            >
+              {content}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
