@@ -323,6 +323,7 @@ billing_tax
 billing_then
 billing_then_after_trial_short
 billing_trial_bar_loading
+billing_trial_card_prepaid
 billing_trial_card_used
 billing_trial_card_used_title
 billing_trial_end

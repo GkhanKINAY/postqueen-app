@@ -53,11 +53,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
 
 /**
- * Written on a trialing subscription cancelled because its card already had a
- * free trial on another account, so `checkSubscription` can tell the checkout
- * why it ended rather than reporting a failed payment.
+ * Written on a trialing subscription cancelled before anything was charged,
+ * so `checkSubscription` can tell the checkout why it ended rather than
+ * reporting a failed payment: the card already had a free trial on another
+ * account, or it is a prepaid card, which gets no trial at all.
  */
 const TRIAL_CARD_REUSED = 'trial-card-reused';
+const TRIAL_CARD_PREPAID = 'trial-card-prepaid';
+const TRIAL_REFUSALS = [TRIAL_CARD_REUSED, TRIAL_CARD_PREPAID];
 
 /**
  * Stripe subscription statuses that mean "this customer is entitled right now".
@@ -407,17 +410,24 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Stripe's fingerprint of the card behind a payment method: the same for a
-   * card on any customer or account, which is what makes it usable against
-   * trial reuse. Apple Pay and Google Pay arrive as `card` and carry one; Link
-   * carries none, and gets its trial.
+   * What a free trial needs to know about the card behind a payment method.
+   *
+   * The fingerprint is the same for a card on any customer or account, which is
+   * what makes it usable against trial reuse. Apple Pay and Google Pay arrive
+   * as `card` and carry one; Link carries none, and gets its trial. `prepaid`
+   * is the card's funding type: the throwaway virtual cards used to farm trials
+   * are prepaid, so those get no trial and subscribe paid from day one.
    */
-  private async cardFingerprint(paymentMethodId?: string | null) {
+  private async trialCard(paymentMethodId?: string | null) {
     if (!paymentMethodId) {
-      return null;
+      return { fingerprint: null, prepaid: false };
     }
     const method = await stripe.paymentMethods.retrieve(paymentMethodId);
-    return method.card?.fingerprint || method.sepa_debit?.fingerprint || null;
+    return {
+      fingerprint:
+        method.card?.fingerprint || method.sepa_debit?.fingerprint || null,
+      prepaid: method.card?.funding === 'prepaid',
+    };
   }
 
   /**
@@ -440,16 +450,17 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * One free trial per card. A trialing subscription whose card already started
-   * a trial on another organization is cancelled before anything is charged,
-   * and the organization loses its trial, so the next checkout bills at once.
-   * Otherwise the card is recorded against this organization.
+   * One free trial per card, and none on a prepaid card. A trialing
+   * subscription whose card already started a trial on another organization,
+   * or whose card is prepaid, is cancelled before anything is charged, and the
+   * organization loses its trial, so the next checkout bills at once. Otherwise
+   * the card is recorded against this organization.
    *
    * Cancelled rather than ended early (`trial_end: 'now'`): the customer agreed
    * to "7 days free" on the checkout, and charging them today would be a charge
    * they did not agree to.
    */
-  private async refuseReusedTrialCard(subscription: Stripe.Subscription) {
+  private async refuseTrialCard(subscription: Stripe.Subscription) {
     if (subscription.status !== 'trialing') {
       return false;
     }
@@ -488,18 +499,20 @@ export class StripeService extends PaymentProviderAbstract {
       )?.id;
     }
 
-    const fingerprint = await this.cardFingerprint(paymentMethodId);
-    if (!fingerprint) {
+    const { fingerprint, prepaid } = await this.trialCard(paymentMethodId);
+    if (!fingerprint && !prepaid) {
       Logger.warn(
         `[stripe] trial ${subscription.id} has no card fingerprint; not checked for reuse`
       );
       return false;
     }
 
-    if (
-      !(await this.trialCardUsedElsewhere(org.id, fingerprint)) ||
-      granted
-    ) {
+    const refusal = prepaid
+      ? TRIAL_CARD_PREPAID
+      : (await this.trialCardUsedElsewhere(org.id, fingerprint!))
+      ? TRIAL_CARD_REUSED
+      : null;
+    if (!refusal || granted) {
       return false;
     }
 
@@ -512,14 +525,16 @@ export class StripeService extends PaymentProviderAbstract {
     const live = await stripe.subscriptions.retrieve(subscription.id);
     if (live.status !== 'canceled') {
       await stripe.subscriptions.cancel(subscription.id, {
-        cancellation_details: { comment: TRIAL_CARD_REUSED },
+        cancellation_details: { comment: refusal },
       });
     }
     await this._organizationService.withdrawTrial(org.id);
     await this._notificationService.inAppNotification(
       org.id,
       'Free trial not available',
-      'This card has already been used for a free trial on another PostQueen account. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.',
+      refusal === TRIAL_CARD_PREPAID
+        ? 'Free trials need a regular debit or credit card, and this one is prepaid. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.'
+        : 'This card has already been used for a free trial on another PostQueen account. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.',
       true,
       false,
       'info',
@@ -729,8 +744,8 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'unknown tier' };
     }
 
-    if (await this.refuseReusedTrialCard(event.data.object)) {
-      return { ok: true, granted: false, reason: 'trial card reused' };
+    if (await this.refuseTrialCard(event.data.object)) {
+      return { ok: true, granted: false, reason: 'trial card refused' };
     }
 
     // `checkValidCard` now returns false for exactly one reason: the
@@ -868,8 +883,8 @@ export class StripeService extends PaymentProviderAbstract {
 
     // Stripe promises no event order, so an `updated` can be the first event
     // to grant a trial. It gets the same check as `createSubscription`.
-    if (await this.refuseReusedTrialCard(event.data.object)) {
-      return { ok: true, granted: false, reason: 'trial card reused' };
+    if (await this.refuseTrialCard(event.data.object)) {
+      return { ok: true, granted: false, reason: 'trial card refused' };
     }
 
     // Same reasoning as createSubscription: false here means `incomplete`, so
@@ -907,11 +922,15 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
-    // A trial refused for a reused card was never granted, and recording an
-    // end date would show "your plan ended" on the paywall of an account that
-    // never had one.
-    if (event.data.object.cancellation_details?.comment === TRIAL_CARD_REUSED) {
-      return { ok: true, revoked: false, reason: 'trial card reused' };
+    // A trial refused for its card was never granted, and recording an end
+    // date would show "your plan ended" on the paywall of an account that never
+    // had one.
+    if (
+      TRIAL_REFUSALS.includes(
+        event.data.object.cancellation_details?.comment || ''
+      )
+    ) {
+      return { ok: true, revoked: false, reason: 'trial card refused' };
     }
     await this._subscriptionService.deleteSubscription(
       event.data.object.customer as string,
@@ -1796,10 +1815,13 @@ export class StripeService extends PaymentProviderAbstract {
       (p) => p.metadata.uniqueId === subscriptionId
     );
     if (subscription?.canceled_at) {
-      // 3: stopped because the card already had a free trial elsewhere, not
-      // because a payment failed.
-      return subscription.cancellation_details?.comment === TRIAL_CARD_REUSED
+      // 3 and 4: stopped because the card already had a free trial elsewhere,
+      // or because it is prepaid, not because a payment failed.
+      const comment = subscription.cancellation_details?.comment;
+      return comment === TRIAL_CARD_REUSED
         ? 3
+        : comment === TRIAL_CARD_PREPAID
+        ? 4
         : 1;
     }
 
@@ -2885,23 +2907,26 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     // A deferred fee is a free trial too: the plan now, the charge when the
-    // trial window closes. Same one-trial-per-card rule as subscriptions.
-    const fingerprint = await this.cardFingerprint(paymentMethodId);
+    // trial window closes. Same card rules as subscriptions.
+    const { fingerprint, prepaid } = await this.trialCard(paymentMethodId);
     if (
-      fingerprint &&
-      (await this.trialCardUsedElsewhere(organizationId, fingerprint))
+      prepaid ||
+      (fingerprint &&
+        (await this.trialCardUsedElsewhere(organizationId, fingerprint)))
     ) {
       await this._organizationService.withdrawTrial(organizationId);
       await this._notificationService.inAppNotification(
         organizationId,
         'Free trial not available',
-        'This card has already been used for a free trial on another PostQueen account, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.',
+        prepaid
+          ? 'Free trials need a regular debit or credit card, and this one is prepaid, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.'
+          : 'This card has already been used for a free trial on another PostQueen account, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.',
         true,
         false,
         'info',
         '/billing'
       );
-      return { ok: true, granted: false, reason: 'trial card reused' };
+      return { ok: true, granted: false, reason: 'trial card refused' };
     }
 
     return this.grantLifetimeFromPayment(
