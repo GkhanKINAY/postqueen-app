@@ -5,8 +5,10 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  OnModuleInit,
 } from '@nestjs/common';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
+import { integrationTokenEncryptionEnabled } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
   AnalyticsData,
@@ -44,7 +46,7 @@ import {
 dayjs.extend(utc);
 
 @Injectable()
-export class IntegrationService {
+export class IntegrationService implements OnModuleInit {
   private storage = UploadFactory.createStorage();
   constructor(
     private _integrationRepository: IntegrationRepository,
@@ -55,6 +57,32 @@ export class IntegrationService {
     private _refreshIntegrationService: RefreshIntegrationService,
     private _temporalService: TemporalService
   ) {}
+
+  /**
+   * Brings the stored channel tokens to the form ENCRYPT_INTEGRATION_TOKENS
+   * asks for: encrypts the ones written before encryption existed, or writes
+   * them back plain before a rollback to an older image. Not awaited, so boot
+   * never waits on it; a failure is logged and the next boot tries again.
+   */
+  onModuleInit() {
+    const encrypt = integrationTokenEncryptionEnabled();
+    this._integrationRepository
+      .syncStoredTokenEncryption(encrypt)
+      .then((count) => {
+        if (count) {
+          Logger.log(
+            `${encrypt ? 'Encrypted' : 'Decrypted'} ${count} stored channel token row(s)`,
+            'IntegrationService'
+          );
+        }
+      })
+      .catch((err) =>
+        Logger.error(
+          `Could not sync stored channel token encryption: ${err?.message}`,
+          'IntegrationService'
+        )
+      );
+  }
 
   /**
    * Stop every autopost rule for an organization that has lost the capability.

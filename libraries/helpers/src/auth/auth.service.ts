@@ -87,6 +87,29 @@ export function encrypt_legacy_using_IV(utf8Plaintext: string) {
   const out = Buffer.concat([cipher.update(utf8Plaintext, 'utf8'), cipher.final()]);
   return out.toString('hex');
 }
+
+/**
+ * Channel OAuth tokens (Integration.token and refreshToken) at rest, so a copy
+ * of the database holds nothing that can post as the user. AES-256-GCM with a
+ * fresh IV per value, under a key derived from ENCRYPTION_KEY, and
+ * authenticated, unlike the fixed-IV format above. The prefix is what tells
+ * an encrypted value from one written before this existed, or with
+ * ENCRYPT_INTEGRATION_TOKENS=false: those are read as they are.
+ */
+export const INTEGRATION_TOKEN_PREFIX = 'enc:v1:';
+const tokenKeys = new Map<string, Buffer>();
+
+function tokenKey(secret: string) {
+  let key = tokenKeys.get(secret);
+  if (!key) {
+    key = Buffer.from(
+      crypto.hkdfSync('sha256', secret, '', 'postqueen integration token', 32)
+    );
+    tokenKeys.set(secret, key);
+  }
+  return key;
+}
+
 export class AuthService {
   static hashPassword(password: string) {
     return hashSync(password, 10);
@@ -143,5 +166,58 @@ export class AuthService {
 
   static fixedDecryption(hash: string) {
     return decrypt_legacy_using_IV(hash);
+  }
+
+  static isEncryptedToken(value?: string | null) {
+    return !!value && value.startsWith(INTEGRATION_TOKEN_PREFIX);
+  }
+
+  static encryptToken(value: string) {
+    if (!value || AuthService.isEncryptedToken(value)) {
+      return value;
+    }
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(
+      'aes-256-gcm',
+      tokenKey(encryptionSecret()),
+      iv
+    );
+    const data = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+    return (
+      INTEGRATION_TOKEN_PREFIX +
+      Buffer.concat([iv, cipher.getAuthTag(), data]).toString('base64')
+    );
+  }
+
+  static decryptToken(value: string) {
+    if (!AuthService.isEncryptedToken(value)) {
+      return value;
+    }
+    const raw = Buffer.from(value.slice(INTEGRATION_TOKEN_PREFIX.length), 'base64');
+    for (const secret of [encryptionSecret(), ...legacySecrets()]) {
+      try {
+        const decipher = crypto.createDecipheriv(
+          'aes-256-gcm',
+          tokenKey(secret),
+          raw.subarray(0, 12)
+        );
+        decipher.setAuthTag(raw.subarray(12, 28));
+        return Buffer.concat([
+          decipher.update(raw.subarray(28)),
+          decipher.final(),
+        ]).toString('utf8');
+      } catch {
+        // Try the next key.
+      }
+    }
+
+    // Unreadable under every configured key. Throwing here would fail every
+    // query that includes this channel (a post list, a workflow step); an
+    // empty token fails at the platform instead, and the channel asks to be
+    // reconnected like any other expired one.
+    console.error(
+      '[integration-token] a stored token could not be decrypted with any configured key'
+    );
+    return '';
   }
 }
