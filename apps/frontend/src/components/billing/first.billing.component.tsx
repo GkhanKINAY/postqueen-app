@@ -740,6 +740,7 @@ export const FirstBillingComponent = () => {
   // Default paywall selection: Pro ($49). A plan picked on the pricing page
   // replaces it below.
   const [tier, setTier] = useState('PRO');
+  const [stripeFailed, setStripeFailed] = useState(false);
   const [period, setPeriod] = useState('MONTHLY');
   // Owner: open with Lifetime selected while the founding offer is on sale.
   // Subscription stays available via the plan grid.
@@ -759,9 +760,14 @@ export const FirstBillingComponent = () => {
     if (stripeClient) {
       // TaxIdElement (the optional company name + tax ID row in the checkout)
       // is in public preview and does not mount without this beta flag.
-      setStripe(
-        loadStripe(stripeClient, { betas: ['custom_checkout_tax_id_1'] })
-      );
+      const stripePromise = loadStripe(stripeClient, {
+        betas: ['custom_checkout_tax_id_1'],
+      });
+      // Rejects when js.stripe.com is blocked (an ad blocker, a privacy
+      // extension, a corporate proxy): say so instead of an unhandled error
+      // and a spinner that never ends.
+      stripePromise.catch(() => setStripeFailed(true));
+      setStripe(stripePromise);
     }
   }, [stripeClient]);
 
@@ -1173,6 +1179,13 @@ export const FirstBillingComponent = () => {
                       'Could not load checkout. Please refresh the page or try again in a moment.'
                     )
               }
+            />
+          ) : stripeFailed ? (
+            <CheckoutEmbedNotice
+              message={t(
+                'billing_stripe_load_failed',
+                'The payment form could not be loaded. Please disable ad blockers or privacy extensions for this page and reload.'
+              )}
             />
           ) : isLoading || !stripe ? (
             <LoadingComponent />
