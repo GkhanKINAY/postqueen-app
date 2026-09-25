@@ -12,7 +12,9 @@ import HashnodeProvider from '@gitroom/frontend/components/new-launch/providers/
 import FacebookProvider from '@gitroom/frontend/components/new-launch/providers/facebook/facebook.provider';
 import InstagramProvider from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.collaborators';
 import YoutubeProvider from '@gitroom/frontend/components/new-launch/providers/youtube/youtube.provider';
-import TiktokProvider from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.provider';
+import TiktokProvider, {
+  TiktokBusinessProvider,
+} from '@gitroom/frontend/components/new-launch/providers/tiktok/tiktok.provider';
 import PinterestProvider from '@gitroom/frontend/components/new-launch/providers/pinterest/pinterest.provider';
 import DribbbleProvider from '@gitroom/frontend/components/new-launch/providers/dribbble/dribbble.provider';
 import ThreadsProvider from '@gitroom/frontend/components/new-launch/providers/threads/threads.provider';
@@ -99,7 +101,7 @@ export const Providers = [
   },
   {
     identifier: 'tiktok-business',
-    component: TiktokProvider,
+    component: TiktokBusinessProvider,
   },
   {
     identifier: 'pinterest',

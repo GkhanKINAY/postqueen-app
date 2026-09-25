@@ -923,7 +923,9 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
                 ...(uploadPhotos?.length
                   ? { attached_media: uploadPhotos }
                   : {}),
-                ...(firstPost?.settings?.url
+                // The composer labels the embedded URL as text-post only, so
+                // like the preset it is left out once photos are attached.
+                ...(!uploadPhotos?.length && firstPost?.settings?.url
                   ? { link: firstPost.settings.url }
                   : {}),
                 ...(withPreset && presetId

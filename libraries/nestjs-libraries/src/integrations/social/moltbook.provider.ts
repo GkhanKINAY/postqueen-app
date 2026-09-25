@@ -8,6 +8,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
+import { MoltbookDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/moltbook.dto';
 
 const MOLTBOOK_API_BASE = 'https://www.moltbook.com/api/v1';
 
@@ -20,6 +21,7 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
   scopes = [] as string[];
   isWeb3 = true;
   editor = 'normal' as const;
+  dto = MoltbookDto;
 
   maxLength() {
     return 300;
