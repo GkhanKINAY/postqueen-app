@@ -72,6 +72,11 @@ export async function generateMetadata(props: {
     return {
       title,
       description,
+      // The page shows drafts and scheduled posts too; only a post that is
+      // out may be indexed.
+      ...(post[0].state !== 'PUBLISHED'
+        ? { robots: { index: false, follow: false } }
+        : {}),
       openGraph: {
         title,
         description,

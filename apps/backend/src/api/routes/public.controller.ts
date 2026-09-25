@@ -75,17 +75,18 @@ export class PublicController {
    * integration object right below was already picked field by field for
    * exactly this reason; the post itself was not.
    *
-   * It also returned DRAFTS. There is no share toggle in the product, so a
-   * customer cannot turn this off and is not told it exists — and post ids are
+   * It shows a post in every state, drafts and scheduled posts included, as
+   * upstream's does: this is where a team shows a client a post before it goes
+   * out, and takes the client's comments on it (owner, 2026-09-25). From
+   * 2026-08-09 to then it showed published posts only, because post ids are
    * cuid v1, whose randomness is `Math.random()` behind a predictable
-   * timestamp. Not brute-forceable over HTTP, but not the unguessable token the
-   * design leans on either. Unpublished work should not be one guessed id away.
+   * timestamp: not brute-forceable over HTTP, but not a random token either.
+   * The page asks crawlers not to index a post that is not published yet.
    */
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
-    return (await this._postsService.getPostsRecursively(id, true))
-      .filter((p) => p.state === 'PUBLISHED')
-      .map((p) => ({
+    return (await this._postsService.getPostsRecursively(id, true)).map(
+      (p) => ({
         id: p.id,
         content: p.content,
         publishDate: p.publishDate,
@@ -103,7 +104,8 @@ export class PublicController {
               },
             }
           : {}),
-      }));
+      })
+    );
   }
 
   // The `/data-deletion/:code` status page a platform's data deletion answer

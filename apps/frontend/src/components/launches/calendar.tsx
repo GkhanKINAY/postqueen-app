@@ -2004,9 +2004,6 @@ const CalendarItem: FC<{
     user?.impersonate &&
     post.creationMethod &&
     post.creationMethod !== 'UNKNOWN';
-  // The share page shows published posts only, so an unpublished one would
-  // open on "Post not found".
-  const canPreview = demo || rawState === 'PUBLISHED';
   const preview = useCallback(() => {
     if (demo) {
       explainDemo();
@@ -2314,11 +2311,9 @@ const CalendarItem: FC<{
             demoTooltip={demoTooltip}
             onDemo={explainDemo}
           />
-          {canPreview && (
-            <button type="button" className={dayAction} onClick={preview}>
-              <Preview tooltip={demo ? demoTooltip : undefined} />
-            </button>
-          )}
+          <button type="button" className={dayAction} onClick={preview}>
+            <Preview tooltip={demo ? demoTooltip : undefined} />
+          </button>
           <button
             type="button"
             className={clsx(dayAction, 'hover:text-pqWarn')}
@@ -2512,11 +2507,9 @@ const CalendarItem: FC<{
           demoTooltip={demoTooltip}
           onDemo={explainDemo}
         />
-        {canPreview && (
-          <button type="button" className={actionButton} onClick={preview}>
-            <Preview tooltip={demo ? demoTooltip : undefined} />
-          </button>
-        )}
+        <button type="button" className={actionButton} onClick={preview}>
+          <Preview tooltip={demo ? demoTooltip : undefined} />
+        </button>
         <button
           type="button"
           className={clsx(actionButton, 'hover:text-pqWarn')}
@@ -2576,9 +2569,6 @@ const ListItem: FC<{
   // Design list cards always show the soft method pill (WEB/API/CLI/MCP).
   const showCreationMethodBadge =
     !!post.creationMethod && post.creationMethod !== 'UNKNOWN';
-  // The share page shows published posts only, so an unpublished one would
-  // open on "Post not found".
-  const canPreview = demo || post.state === 'PUBLISHED';
   const preview = useCallback(() => {
     if (demo) {
       explainDemo();
@@ -2802,11 +2792,9 @@ const ListItem: FC<{
           demoTooltip={demoTooltip}
           onDemo={explainDemo}
         />
-        {canPreview && (
-          <button type="button" className={actionButton} onClick={preview}>
-            <Preview tooltip={demo ? demoTooltip : undefined} />
-          </button>
-        )}
+        <button type="button" className={actionButton} onClick={preview}>
+          <Preview tooltip={demo ? demoTooltip : undefined} />
+        </button>
         {!demo &&
           !(
             (post.integration.providerIdentifier === 'x' &&

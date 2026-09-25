@@ -1936,20 +1936,11 @@ export class PostsService {
     return date.clone().add(num, 'minutes').format('YYYY-MM-DDTHH:mm:00');
   }
 
-  // The share page shows published posts only (PublicController.getPreview),
-  // so its comments open with it: a draft or a scheduled post is not one
-  // guessed id away from taking anonymous comments either.
-  private async getPreviewPosts(previewId: string) {
-    return (await this.getPostsRecursively(previewId, false)).filter(
-      (p) => p.state === 'PUBLISHED'
-    );
-  }
-
   // `orgId` comes only through the signed-in route. Resolving belongs to the
   // team that owns the post, and the public page is not told which
   // organization that is.
   async getComments(previewId: string, orgId?: string) {
-    const posts = await this.getPreviewPosts(previewId);
+    const posts = await this.getPostsRecursively(previewId, false);
     const comments = await this._postRepository.getCommentsForPosts(
       posts.map((p) => p.id)
     );
@@ -1984,7 +1975,7 @@ export class PostsService {
     body: CreatePublicCommentDto,
     userId: string | null
   ) {
-    const posts = await this.getPreviewPosts(previewId);
+    const posts = await this.getPostsRecursively(previewId, false);
     if (!posts.length) {
       throw new NotFoundException('Post not found');
     }
