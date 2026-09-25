@@ -143,16 +143,6 @@ export abstract class PaymentProviderAbstract {
     return this.notSupported();
   }
 
-  async chatbaseRefundPreview(organizationId: string): Promise<any> {
-    return this.notSupported();
-  }
-
-  async chatbaseRefund(
-    organizationId: string
-  ): Promise<{ refunded: boolean; amount?: number; currency?: string }> {
-    return this.notSupported();
-  }
-
   // After a login swap, keep the provider's customer email in sync (no-op by default)
   async syncCustomerEmailsAfterSwitch(
     accounts: { id: string; email: string }[]

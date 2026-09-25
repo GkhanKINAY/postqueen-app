@@ -2933,37 +2933,6 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * No self-serve refunds (owner, 2026-09-25): cancelling stops the renewal
-   * and the plan runs to the end of the period already paid for. A refund the
-   * law requires goes through support, and an admin can still refund charges
-   * from the admin panel (`refundCharges`). The support bot keeps asking, so
-   * this answers it with the policy and the date the plan runs to.
-   */
-  async chatbaseRefundPreview(organizationId: string) {
-    const org = await this._organizationService.getOrgById(organizationId);
-    const subscription = await this.getActiveStripeSubscription(
-      org?.paymentId
-    );
-    const periodEnd = subscription?.items?.data?.[0]?.current_period_end;
-    return {
-      eligible: false as const,
-      reason: periodEnd
-        ? `Refunds are not offered. If you cancel, your plan stays active until ${new Date(
-            periodEnd * 1000
-          ).toDateString()} and does not renew.`
-        : 'Refunds are not offered. If you cancel, your plan stays active until the end of the period you paid for and does not renew.',
-    };
-  }
-
-  async chatbaseRefund(organizationId: string) {
-    const preview = await this.chatbaseRefundPreview(organizationId);
-    return {
-      refunded: false,
-      reason: preview.reason,
-    };
-  }
-
-  /**
    * Freeze the founding fee this customer was quoted. Keep an existing
    * `lifetime_quoted_cents` so a later `LIFETIME_PRICE` change cannot raise an
    * in-flight deferred charge. New checkouts freeze `LIFETIME_PRICE * 100`.

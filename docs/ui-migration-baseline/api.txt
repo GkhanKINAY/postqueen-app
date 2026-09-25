@@ -29,8 +29,6 @@
 /billing/cancel-coupon
 /billing/cancel-subscription
 /billing/charges
-/billing/chatbase-refund
-/billing/chatbase-refund/preview
 /billing/check
 /billing/check-discount
 /billing/coupon-info
