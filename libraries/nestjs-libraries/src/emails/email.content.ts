@@ -328,7 +328,9 @@ export const digestEmail = (
           ? `${needs.length === 1 ? 'One update needs' : `${needs.length} updates need`} you. Here is everything from the last hour.`
           : 'Here is everything from the last hour.',
       blocks,
-      footer: 'digest',
+      // Channel alerts come whatever the settings say, so a summary of only
+      // those offers no way to turn it off: nothing would switch them off.
+      footer: items.every((i) => i.type === 'info') ? 'alert' : 'digest',
     },
   };
 };

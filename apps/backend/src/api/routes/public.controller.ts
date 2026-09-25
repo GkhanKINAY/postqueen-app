@@ -130,9 +130,11 @@ export class PublicController {
   // Switches it off: the page's button, and the one-click unsubscribe
   // mailboxes send from the List-Unsubscribe header (RFC 8058), which posts
   // `List-Unsubscribe=One-Click` with no cookies. Never on GET, so a link
-  // scanner opening the email cannot turn anything off.
+  // scanner opening the email cannot turn anything off. Mailboxes send their
+  // one-click posts from shared addresses, so the cap is high: the token is
+  // what stops abuse, the cap only stops a flood.
   @UseGuards(ThrottlerRealIpGuard)
-  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Throttle({ default: { limit: 600, ttl: 3600000 } })
   @HttpCode(200)
   @Post('/emails/unsubscribe')
   emailUnsubscribe(@Query() query: EmailUnsubscribeDto) {
