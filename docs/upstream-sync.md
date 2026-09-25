@@ -341,6 +341,8 @@ Lessons, in the order they cost time:
   Express `trust proxy` to private hops only and reads the client with
   `ClientIp` (`libraries/nestjs-libraries/src/user/client.ip.ts`). ESLint
   refuses `nestjs-real-ip`, so a synced commit that brings it back fails CI.
+  The package itself is no longer installed; if a synced `package.json`
+  change lists it again, drop the line.
 - **Keep this fork's Sentry settings when upstream touches the
   `initialize.sentry*` files, `sentry.server.config.ts` or `global-error.tsx`.**
   Here there is no Session Replay (upstream's was unmasked), no crash-report

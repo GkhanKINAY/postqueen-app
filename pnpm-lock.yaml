@@ -458,9 +458,6 @@ importers:
       nestjs-command:
         specifier: ^3.1.5
         version: 3.1.5(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(yargs@17.7.3)
-      nestjs-real-ip:
-        specifier: ^3.0.1
-        version: 3.0.1(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))
       nestjs-temporal-core:
         specifier: ^3.4.0
         version: 3.4.0(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.28.2)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -7281,9 +7278,6 @@ packages:
     resolution: {integrity: sha512-3fVF4z3efsgwgyj64nFK+6F4/vMw0mUXD2TBbOfftJtKVNx4JNv3CSfe1fY4DCtCk0JFp8/YPNcRkzgV0HJ8cg==}
     engines: {node: '>=12.16'}
 
-  '@supercharge/request-ip@1.2.0':
-    resolution: {integrity: sha512-wlt6JW69MHqLY2M6Sm/jVyCojNRKq2CBvwH0Hbx24SFhDQQGkgEjeKxVutDxHSyrWixFaOSLXC27euzxijhyMQ==}
-
   '@svgr/babel-plugin-add-jsx-attribute@8.0.0':
     resolution: {integrity: sha512-b9MIk7yhdS1pMCZM8VeNfUlSKVRhsHZNMl5O9SfaX0l0t5wjdgu4IDzGB8bpnGBBOjGST3rRFVsaaEtI4W6f7g==}
     engines: {node: '>=14'}
@@ -13410,11 +13404,6 @@ packages:
       '@nestjs/common': ^6.0.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
       '@nestjs/core': ^6.0.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
       yargs: ^16.0.0 || ^17.0.0
-
-  nestjs-real-ip@3.0.1:
-    resolution: {integrity: sha512-vsBlvXBWXg+GorIoXmTasNaJZyeBpTypgnrq1jk9xOEL7FGv9ZFBafyhllliNbSuCDpwxeC7Sxc6hBk8onPXUg==}
-    peerDependencies:
-      '@nestjs/common': '>=8'
 
   nestjs-temporal-core@3.4.0:
     resolution: {integrity: sha512-GLCDofCHXMUkztx2UWF20fj9YkrMOKTb3gqhTGOTCAhjbzec6Ckh2lhHhdD2VIe8NiBHvZVZqDKahuf+WLX2qg==}
@@ -24652,8 +24641,6 @@ snapshots:
 
   '@stripe/stripe-js@8.11.0': {}
 
-  '@supercharge/request-ip@1.2.0': {}
-
   '@svgr/babel-plugin-add-jsx-attribute@8.0.0(@babel/core@7.29.7)':
     dependencies:
       '@babel/core': 7.29.7
@@ -33181,11 +33168,6 @@ snapshots:
       lodash.compact: 3.0.1
       lodash.flattendeep: 4.4.0
       yargs: 17.7.3
-
-  nestjs-real-ip@3.0.1(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)):
-    dependencies:
-      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@supercharge/request-ip': 1.2.0
 
   nestjs-temporal-core@3.4.0(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.28.2)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2):
     dependencies:
