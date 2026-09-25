@@ -28,7 +28,7 @@ export class GenerateVideoTool implements AgentToolInterface {
         },
       },
       description: `Start generating a video for a post. Call generateVideoOptions first for the identifiers and the customParams each generator needs; when a generator lists tools, get those values with videoFunctionTool.
-                    Generating takes minutes and uses one video credit, so this only starts the job and returns a jobId.
+                    Generating takes minutes and spends credits from the account's balance by the settings chosen (each generator's customParams say which change the price), so this only starts the job and returns a jobId.
                     In the PostQueen app the chat shows the job as a card that waits for the result: reply with one short sentence (never the job id) and stop; do not poll.
                     Over MCP or an API client, poll videoStatusTool with the jobId until the status is completed to get the video url.
                     Available generators:
@@ -69,8 +69,8 @@ export class GenerateVideoTool implements AgentToolInterface {
         if (!identifiers.includes(inputData.identifier)) {
           return {
             error: identifiers.length
-              ? `There is no video generator "${inputData.identifier}". Use one of these identifiers: ${identifiers.join(', ')}. The user's video credit was not used.`
-              : `No video generator is configured on this installation. The user's video credit was not used.`,
+              ? `There is no video generator "${inputData.identifier}". Use one of these identifiers: ${identifiers.join(', ')}. No credits were used.`
+              : `No video generator is configured on this installation. No credits were used.`,
           };
         }
         try {
@@ -90,29 +90,29 @@ export class GenerateVideoTool implements AgentToolInterface {
             jobId: value.jobId,
           };
         } catch (err) {
-          // SubscriptionException (402) carries { section, action } and its
-          // message is just "Subscription Exception", so translate it.
+          // A short balance is a 402 whose message says what the video costs
+          // and what is left, and is passed on as it is.
           // A customParams check that fails is a BadRequestException whose
           // message is just "Bad Request Exception"; what is wrong is the
           // list under `message` in its response.
+          if (err instanceof HttpException && err.getStatus() === 402) {
+            return { error: err.message };
+          }
           const invalid =
             err instanceof HttpException
               ? (err.getResponse() as { message?: unknown })?.message
               : undefined;
-          const message =
-            err instanceof HttpException && err.getStatus() === 402
-              ? 'No AI video credits are available on this account.'
-              : Array.isArray(invalid)
-              ? `customParams are not valid: ${uniq(invalid).join('; ')}`
-              : err instanceof Error
-              ? err.message
-              : String(err);
+          const message = Array.isArray(invalid)
+            ? `customParams are not valid: ${uniq(invalid).join('; ')}`
+            : err instanceof Error
+            ? err.message
+            : String(err);
           return {
             // The reason may end in its own period; the sentence adds one.
             error: `Video generation failed: ${message.replace(
               /\.+$/,
               ''
-            )}. The user's video credit was not used.`,
+            )}. No credits were used.`,
           };
         }
       },

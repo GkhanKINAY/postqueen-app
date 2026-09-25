@@ -892,7 +892,7 @@ type GeneratedImageResult =
 /** The model's reading of a failure; the person gets the translated copy. */
 const imageFailureForModel = (failure: GenerateImageFailure) =>
   failure.reason === 'credits'
-    ? 'Out of AI credits for this month.'
+    ? 'The account does not have enough credits for this image.'
     : failure.reason === 'cancelled'
     ? 'The person cancelled the image generation.'
     : failure.message || 'Could not generate an image.';
@@ -1652,17 +1652,10 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
               'ai_lock_perk_chat',
               'Copilot chat that drafts and schedules for you'
             ),
-            ...(user?.tier?.image_generator
+            ...(user?.tier?.monthly_credits
               ? [
-                  t('plan_n_ai_images', '{{count}} AI Images per month', {
-                    count: user.tier.image_generation_count,
-                  }),
-                ]
-              : []),
-            ...(user?.tier?.generate_videos
-              ? [
-                  t('plan_n_ai_videos', '{{count}} AI Videos per month', {
-                    count: user.tier.generate_videos,
+                  t('plan_n_credits_month', '{{count}} credits a month', {
+                    count: user.tier.monthly_credits,
                   }),
                 ]
               : []),

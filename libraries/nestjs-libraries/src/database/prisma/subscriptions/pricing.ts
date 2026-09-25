@@ -540,3 +540,26 @@ export const planCredits = (
   (pricing[normalizeTier(tier) || '']?.monthly_credits || 0) *
   (period === 'YEARLY' && !trial ? 12 : 1) *
   CREDIT_UNIT;
+
+export const IMAGE_QUALITIES = ['low', 'medium', 'high'] as const;
+export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
+
+/**
+ * What one AI image costs, in hundredths, by quality and shape: a portrait or
+ * landscape image is larger than a square one and the model charges more for
+ * it. The prompt rewrite that comes first is included.
+ */
+export const IMAGE_CREDIT_COSTS: Record<
+  ImageQuality,
+  { square: number; wide: number }
+> = {
+  low: { square: 30, wide: 40 },
+  medium: { square: 100, wide: 130 },
+  high: { square: 350, wide: 500 },
+};
+
+export const imageCreditCost = (
+  quality: ImageQuality = 'medium',
+  orientation: 'square' | 'portrait' | 'landscape' = 'square'
+) =>
+  IMAGE_CREDIT_COSTS[quality][orientation === 'square' ? 'square' : 'wide'];

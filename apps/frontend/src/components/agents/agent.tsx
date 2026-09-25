@@ -851,17 +851,10 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
                   'ai_lock_perk_chat',
                   'Copilot chat that drafts and schedules for you'
                 ),
-                ...(user?.tier?.image_generator
+                ...(user?.tier?.monthly_credits
                   ? [
-                      t('plan_n_ai_images', '{{count}} AI Images per month', {
-                        count: user.tier.image_generation_count,
-                      }),
-                    ]
-                  : []),
-                ...(user?.tier?.generate_videos
-                  ? [
-                      t('plan_n_ai_videos', '{{count}} AI Videos per month', {
-                        count: user.tier.generate_videos,
+                      t('plan_n_credits_month', '{{count}} credits a month', {
+                        count: user.tier.monthly_credits,
                       }),
                     ]
                   : []),

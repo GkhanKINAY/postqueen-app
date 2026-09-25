@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useSaveVideoPoster } from '@gitroom/frontend/components/media/use.video.poster';
 
 export type VideoJobStart = { jobId: string };
@@ -88,6 +89,46 @@ export const useVideoStartFailureCopy = () => {
   );
 };
 
+/**
+ * What a video with these settings costs, in credits, before it is made.
+ * Keyed by the settings, so changing one reads the price again; the last
+ * price stays on screen while the next loads. Nothing is fetched with billing
+ * off, where nothing is metered. A generator's form passes only what changes
+ * its price, not the prompt, so typing does not re-read it.
+ */
+export const useVideoQuote = (
+  type: string,
+  output: 'vertical' | 'horizontal',
+  customParams: Record<string, unknown>
+) => {
+  const fetch = useFetch();
+  const { billingEnabled } = useVariables();
+  const load = useCallback(
+    async ([, params]: [string, string]): Promise<{ credits: number }> => {
+      const response = await fetch('/media/generate-video/quote', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          output,
+          customParams: JSON.parse(params),
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Could not price this video');
+      }
+      return response.json();
+    },
+    [fetch, type, output]
+  );
+  return useSWR(
+    billingEnabled
+      ? [`video-quote-${type}-${output}`, JSON.stringify(customParams)]
+      : null,
+    load,
+    { keepPreviousData: true, revalidateOnFocus: false }
+  );
+};
+
 // One function for SWR's whole life: an inline arrow is a new value on every
 // render, and SWR restarts its poll timer whenever it changes, so a card that
 // re-renders on each streamed token would never reach the five seconds.
@@ -146,6 +187,7 @@ export const useVideoJobResult = (
   const t = useT();
   const { data } = useVideoJob(jobId);
   const savePoster = useSaveVideoPoster();
+  const { mutate } = useSWRConfig();
   // Keyed by job, so a new job id never shows the previous job's video.
   const [ready, setReady] = useState<{ jobId: string; media: VideoJobMedia } | null>(null);
   const media = ready && ready.jobId === jobId ? ready.media : null;
@@ -171,6 +213,8 @@ export const useVideoJobResult = (
     }
     if (failure) {
       settledFor.current = jobId;
+      // A failed video hands its credits back.
+      mutate('credits-balance');
       callbacksRef.current?.onFailed?.(failure);
       return;
     }
@@ -178,6 +222,7 @@ export const useVideoJobResult = (
       return;
     }
     settledFor.current = jobId;
+    mutate('credits-balance');
     const row = {
       id: done.id as string,
       path: done.path as string,
@@ -189,7 +234,7 @@ export const useVideoJobResult = (
       setReady({ jobId, media: result });
       callbacksRef.current?.onReady?.(result);
     });
-  }, [jobId, done, failure, savePoster]);
+  }, [jobId, done, failure, savePoster, mutate]);
 
   return { media, failure, pending: !!jobId && !media && !failure };
 };

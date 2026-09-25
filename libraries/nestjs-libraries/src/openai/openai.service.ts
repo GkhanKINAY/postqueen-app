@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
+import { ImageQuality } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -80,14 +81,18 @@ Clips must not overlap. Write the title and the post in this language, whatever 
 
   async generateImage(
     prompt: string,
-    orientation: ImageOrientation = 'square'
+    orientation: ImageOrientation = 'square',
+    quality?: ImageQuality
   ) {
     // gpt-image models always return base64 (b64_json) and do not accept the
-    // `response_format` parameter, unlike the deprecated dall-e-3.
+    // `response_format` parameter, unlike the deprecated dall-e-3. Left out,
+    // the quality is the model's own choice, which is only right where the
+    // image is not charged for (see MediaService.generateImage).
     const generate = (
       await openai.images.generate({
         prompt,
         model: 'chatgpt-image-latest',
+        ...(quality ? { quality } : {}),
         size:
           orientation === 'portrait'
             ? '1024x1536'

@@ -53,7 +53,8 @@ export class CreditsService {
   }
 
   spend(organizationId: string, spend: CreditSpend) {
-    if (!isBillingEnabled()) {
+    // Work that costs nothing is not a charge; the ledger only takes amounts.
+    if (!isBillingEnabled() || spend.amount === 0) {
       return Promise.resolve({ id: null, charged: false });
     }
     return this._creditsRepository.spend(organizationId, spend);

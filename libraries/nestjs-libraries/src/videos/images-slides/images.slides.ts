@@ -89,6 +89,12 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
     super();
   }
 
+  // One price whatever the length: the slides are three to five, each an
+  // image and a narration, and what they cost together stays under this.
+  cost() {
+    return 1400;
+  }
+
   async process(
     output: 'vertical' | 'horizontal',
     customParams: ImagesSlidesParams

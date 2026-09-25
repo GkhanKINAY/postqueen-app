@@ -1,11 +1,20 @@
 import { Button } from '@gitroom/react/form/button';
 import { FC, useCallback, useState } from 'react';
-import { createPortal } from 'react-dom';
-import useSWR from 'swr';
 import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
-import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  IMAGE_QUALITIES,
+  ImageQuality,
+  imageCreditCost,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { useCreditsBalance } from '@gitroom/frontend/components/billing/use.credits.balance';
+import {
+  CreditsAmount,
+  CreditsLeft,
+  CreditsShortNote,
+} from '@gitroom/frontend/components/billing/credits.amount';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -61,7 +70,6 @@ const AiImageModal: FC<{
 }> = (props) => {
   const { close, setLoading, onChange } = props;
   const t = useT();
-  const fetch = useFetch();
   const generateImage = useGenerateImage();
   const failureCopy = useGenerateImageFailureCopy();
   const toaster = useToaster();
@@ -78,21 +86,25 @@ const AiImageModal: FC<{
         selectedIntegrations.map((p) => p.integration.identifier)
       )
   );
+  const [quality, setQuality] = useState<ImageQuality>('medium');
   const { billingEnabled } = useVariables();
-  const loadCredits = useCallback(async () => {
-    if (!billingEnabled) {
-      return { credits: 1000000 };
-    }
-    return (
-      await fetch(`/copilot/credits?type=ai_images`, { method: 'GET' })
-    ).json();
-  }, [fetch, billingEnabled]);
-  // Same key the Polotno generate tab uses, so both read one number.
-  const { data: credits } = useSWR('copilot-credits', loadCredits);
+  const { data: credits } = useCreditsBalance();
+  // What this image costs with the quality and shape chosen, in credits.
+  const cost = toCredits(imageCreditCost(quality, orientation));
+  const short =
+    billingEnabled &&
+    !!credits &&
+    !credits.unlimited &&
+    (credits.balance ?? 0) < cost;
   const orientationLabel: Record<ImageOrientation, string> = {
     square: t('orientation_square', 'Square'),
     portrait: t('orientation_portrait', 'Portrait'),
     landscape: t('orientation_landscape', 'Landscape'),
+  };
+  const qualityLabel: Record<ImageQuality, string> = {
+    low: t('image_quality_low', 'Low'),
+    medium: t('image_quality_medium', 'Medium'),
+    high: t('image_quality_high', 'High'),
   };
 
   const generate = useCallback(async () => {
@@ -112,7 +124,7 @@ const AiImageModal: FC<{
       // ({ statusCode, message }), the literal `false` of no credits, and the
       // synthetic `cancelled` body customFetch returns when someone dismisses
       // the billing dialog (their own choice, not a failure) into reasons.
-      const image = await generateImage(prompt, style, orientation);
+      const image = await generateImage(prompt, style, orientation, quality);
       if (isGeneratedImage(image)) {
         onChange(image);
       } else if (image.reason !== 'cancelled') {
@@ -133,6 +145,7 @@ const AiImageModal: FC<{
     prompt,
     style,
     orientation,
+    quality,
     onChange,
     generateImage,
     failureCopy,
@@ -145,16 +158,6 @@ const AiImageModal: FC<{
 
   return (
     <div className="flex flex-col gap-[18px]">
-      {billingEnabled &&
-        createPortal(
-          <>
-            {t('n_credits_left', '{{count}} credits left', {
-              count: credits?.credits || 0,
-            })}
-          </>,
-          document.querySelector('.top-title-content') ||
-            document.createElement('div')
-        )}
       <div className="flex flex-col gap-[8px]">
         <div className="text-[12.5px] font-[600] text-pqSoft">
           {t('prompt', 'Prompt')}
@@ -214,16 +217,65 @@ const AiImageModal: FC<{
           ))}
         </div>
       </div>
-      <Button
-        type="button"
-        onClick={generate}
-        className="h-[44px] w-full text-[14.5px] font-[700]"
-      >
-        <span className="flex items-center gap-[8px]">
-          <GenerateSparkle size={16} />
-          {t('generate', 'Generate')}
-        </span>
-      </Button>
+      <div className="flex flex-col gap-[8px]">
+        <div className="text-[12.5px] font-[600] text-pqSoft">
+          {t('image_quality', 'Quality')}
+        </div>
+        <div className="flex flex-wrap gap-[8px]" data-pq="image-quality">
+          {IMAGE_QUALITIES.map((p) => (
+            <button
+              type="button"
+              key={p}
+              onClick={() => setQuality(p)}
+              aria-pressed={quality === p}
+              className={clsx(
+                'flex h-[32px] cursor-pointer items-center gap-[6px] rounded-pqSm px-[12px] text-[12px] font-[600] transition-colors',
+                quality === p
+                  ? 'bg-pqBrand text-pqOnBrand'
+                  : 'bg-pqSettings text-pqText shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover'
+              )}
+            >
+              {qualityLabel[p]}
+              {billingEnabled && (
+                <CreditsAmount
+                  amount={toCredits(imageCreditCost(p, orientation))}
+                  size={11}
+                  className={clsx(
+                    'text-[11px] font-[500]',
+                    quality === p ? 'opacity-80' : 'text-pqSoft'
+                  )}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-[8px]">
+        <Button
+          type="button"
+          onClick={generate}
+          className="h-[44px] w-full text-[14.5px] font-[700]"
+        >
+          <span className="flex items-center gap-[8px]">
+            <GenerateSparkle size={16} />
+            {t('generate', 'Generate')}
+            {billingEnabled && (
+              <CreditsAmount
+                amount={cost}
+                className="ms-[2px] text-[13px] font-[600] opacity-80"
+              />
+            )}
+          </span>
+        </Button>
+        {short && (
+          <CreditsShortNote
+            message={t(
+              'not_enough_credits_for_image',
+              "You don't have enough credits for this image."
+            )}
+          />
+        )}
+      </div>
     </div>
   );
 };
@@ -266,9 +318,10 @@ export const useAiImageModal = () => {
         title: (
           <div className="flex items-baseline gap-[10px]">
             <span>{t('generate_ai_image', 'Generate AI Image')}</span>
-            {/* Credits slot: the modal portals "N credits left" in here under
-                billing, the way Generate video does. */}
-            <span className="top-title-content text-[13px] font-[500] text-pqMuted" />
+            {/* The balance, read here rather than portalled in from the
+                body: a portal aimed before the title was mounted drew
+                nowhere once the balance was already loaded. */}
+            <CreditsLeft className="text-[13px] font-[500] text-pqMuted" />
           </div>
         ),
         size: 640,

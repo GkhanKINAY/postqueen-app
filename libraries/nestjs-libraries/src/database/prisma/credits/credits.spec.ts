@@ -92,6 +92,18 @@ describe('withCredits', () => {
     ]);
   });
 
+  it('charges nothing for work that costs nothing', async () => {
+    assert.deepEqual(
+      await service().spend('org-1', { key: 'free:1', amount: 0, action: 'video' }),
+      { id: null, charged: false }
+    );
+    assert.equal(
+      await service().withCredits('org-1', { key: 'free:2', amount: 0, action: 'video' }, async () => 'made'),
+      'made'
+    );
+    assert.deepEqual(calls, []);
+  });
+
   it('never refunds a charge an earlier attempt made', async () => {
     charged = false;
     await assert.rejects(
