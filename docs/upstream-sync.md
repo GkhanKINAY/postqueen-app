@@ -284,11 +284,12 @@ Lessons, in the order they cost time:
 ## September 2026 (fourth sync): what happened
 
 **42 commits past the watermark (`5ff9e0b2..374fb202`, merges not counted):
-37 taken, 1 already here, 4 skipped.** The first run since `main` records
-upstream as merged, so `main..upstream/main` listed exactly these. Four PRs:
+38 taken, 1 already here, 3 skipped.** The first run since `main` records
+upstream as merged, so `main..upstream/main` listed exactly these. Five PRs:
 the fixes (#261), the preview comments on their own because they carry a
 schema change and a restyle (#262), three commits upstream merged while
-those were in review (#263), and the `-s ours` merge.
+those were in review (#263), the `-s ours` merge (#264), and the preview
+opened before publishing with the MCP preview link that needs it (#265).
 
 What landed: platform errors mapped to readable reasons or the right outcome
 (Instagram checkpoints and container errors, five Facebook Graph rejections
@@ -304,14 +305,16 @@ the activation page no longer reading a response it is navigating away from.
 
 Lessons, in the order they cost time:
 
-- **Upstream's preview is a review step before publishing; ours is a share
-  page for published posts.** `f95bd486` limited `/p/:id` to published posts
-  and stopped it naming the owning organization. Upstream's comments assume
-  both: the page reads `organizationId` to decide who may resolve, and the
-  MCP schedule tool (`8c63e686`, skipped) hands out `/p/<id>` for a post that
-  was only just scheduled. Here the comment routes are published-only too,
-  and a signed-in viewer's `canResolve` comes from `GET /posts/:id/comments`.
-  Any later upstream work on the preview has to be read against that.
+- **Upstream's preview is a review step before publishing.** `f95bd486`
+  (2026-08-09) had limited `/p/:id` to published posts and stopped it naming
+  the owning organization. The comments first came in published-only to
+  match, and `8c63e686` (the MCP schedule tool handing out `/p/<id>` for a
+  post just scheduled) was skipped for it. The owner then chose upstream's
+  way (2026-09-25, #265): every state is shown again, the Preview button is
+  back on every post, and `8c63e686` is taken. What stays from `f95bd486` is
+  the field picking: the page is still not told the owning organization, so
+  a signed-in viewer's `canResolve` comes from `GET /posts/:id/comments`. An
+  unpublished post's page asks crawlers not to index it.
 - **Upstream keyed a new public rate limit on the first X-Forwarded-For entry
   again**, this time inside the global guard. The second sync's lesson
   applies unchanged: `ThrottlerRealIpGuard` on the route, global guard left
@@ -367,7 +370,6 @@ Skipped, deliberately:
 | `8b84b0dc` | Reworks the onboarding modal this fork removed, around upstream's Claude, ChatGPT, Cursor and Grok Bot directory listings |
 | `87ac77c6` `c33f2188` `5ff9e0b2` | Upstream's own README and the agent icons it shows. This fork's README is PostQueen's |
 | `305f7c0d` `38cb6a41` `b90fc691` | Upstream's own README: their cloud versus open-source section and compliance line |
-| `8c63e686` | Returns `/p/<id>?share=true` from the MCP schedule tool as a preview to open right away. `/p/:id` shows published posts only here, so for a post just scheduled it opens on "Post not found" |
 
 Already here, or empty once picked (second sync):
 
