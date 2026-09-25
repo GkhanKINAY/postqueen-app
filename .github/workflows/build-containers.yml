@@ -52,9 +52,9 @@ jobs:
           CONTAINERVER: ${{ needs.build-containers-common.outputs.containerver }}
           RAW_REF_NAME: ${{ github.ref_name }}
           # Uploads the frontend's source maps to Sentry. Handed over only for
-          # a tag pushed to this repository: never on a fork, a branch or a
-          # manual run of another ref. scripts/check-workflows.sh fails CI if
-          # the secret is used anywhere else or loses this guard.
+          # a tag pushed to this repository: never on a fork, a branch or any
+          # manual run. scripts/check-workflows.sh fails CI if the secret is
+          # used anywhere else or loses this guard.
           SENTRY_AUTH_TOKEN: ${{ github.repository == 'GkhanKINAY/postqueen-app' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && secrets.SENTRY_AUTH_TOKEN || '' }}
         run: |
           # Tags are written `v3.3.0`; the app wants a bare semver, the same
