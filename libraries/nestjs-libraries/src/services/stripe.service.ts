@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { createHash } from 'crypto';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
@@ -92,6 +93,25 @@ const tierNames = (tier: string) => [
 
 const productIsTier = (product: Stripe.Product, tier: string) =>
   tierNames(tier).includes(product.name.toUpperCase());
+
+/**
+ * The key a free trial is recorded under for an email address, so the same
+ * inbox cannot start a second trial on a new account. Case, a `+tag` and, on
+ * Gmail, dots all reach the same inbox, so they are dropped first; the address
+ * itself is stored only as a hash.
+ */
+const trialEmailCode = (email?: string | null) => {
+  const [local, domain] = (email || '').trim().toLowerCase().split('@');
+  if (!local || !domain) {
+    return null;
+  }
+  const gmail = domain === 'gmail.com' || domain === 'googlemail.com';
+  const name = local.split('+')[0];
+  const canonical = `${gmail ? name.replace(/\./g, '') : name}@${
+    gmail ? 'gmail.com' : domain
+  }`;
+  return `trial-email:${createHash('sha256').update(canonical).digest('hex')}`;
+};
 
 /**
  * How a plan change is applied. During a trial nothing has been paid, so it
@@ -496,17 +516,60 @@ export class StripeService extends PaymentProviderAbstract {
    * record, and account purge keeps it, so deleting the account and signing up
    * again does not earn a second trial.
    */
-  private async trialCardUsedElsewhere(
-    organizationId: string,
-    fingerprint: string
-  ) {
-    const code = `trial-card:${fingerprint}`;
+  private trialCardUsedElsewhere(organizationId: string, fingerprint: string) {
+    return this.trialCodeUsedElsewhere(
+      organizationId,
+      `trial-card:${fingerprint}`
+    );
+  }
+
+  /**
+   * Claims a `trial-` code for this organization, or reports that another one
+   * holds it. The codes are unique in the database
+   * (`UsedCodes_trial_code_key`), so of two organizations checking out at the
+   * same moment exactly one wins; the loser's insert fails and it reads the
+   * winner's row.
+   */
+  private async trialCodeUsedElsewhere(organizationId: string, code: string) {
     const used = await this._subscriptionService.getCode(code);
-    if (!used) {
+    if (used) {
+      return used.orgId !== organizationId;
+    }
+    try {
       await this._subscriptionService.createUsedCode(organizationId, code);
       return false;
+    } catch (err) {
+      const winner = await this._subscriptionService.getCode(code);
+      if (!winner) {
+        throw err;
+      }
+      return winner.orgId !== organizationId;
     }
-    return used.orgId !== organizationId;
+  }
+
+  /**
+   * Whether this checkout may still offer a free trial: the organization is
+   * trial-eligible, and the signed-in user's email has not had a trial on
+   * another account. When it has, the organization loses its trial for good,
+   * so the paywall stops promising one. Checked before the checkout exists, so
+   * the customer is shown the right price rather than refused afterwards.
+   */
+  private async trialStillAllowed(
+    organizationId: string,
+    userId: string,
+    allowTrial: boolean
+  ) {
+    if (!allowTrial) {
+      return false;
+    }
+    const user = await this._userService.getUserById(userId);
+    const code = trialEmailCode(user?.email);
+    const used = code ? await this._subscriptionService.getCode(code) : null;
+    if (used && used.orgId !== organizationId) {
+      await this._organizationService.withdrawTrial(organizationId);
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -573,6 +636,14 @@ export class StripeService extends PaymentProviderAbstract {
       ? TRIAL_CARD_REUSED
       : null;
     if (!refusal || granted) {
+      // The trial goes ahead, so the email is recorded with the card.
+      const userId = subscription.metadata?.userId;
+      const emailCode = userId
+        ? trialEmailCode((await this._userService.getUserById(userId))?.email)
+        : null;
+      if (!refusal && !granted && emailCode) {
+        await this.trialCodeUsedElsewhere(org.id, emailCode);
+      }
       return false;
     }
 
@@ -1466,6 +1537,11 @@ export class StripeService extends PaymentProviderAbstract {
     allowTrial: boolean,
     organizationId: string
   ) {
+    allowTrial = await this.trialStillAllowed(
+      organizationId,
+      userId,
+      allowTrial
+    );
     const user = await this._userService.getUserById(userId);
     const email =
       (user?.email ?? '').indexOf('@') > -1
@@ -1502,6 +1578,11 @@ export class StripeService extends PaymentProviderAbstract {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      // A trial is card-only: Link, SEPA and the other methods carry no card
+      // fingerprint, so the one-trial-per-card rule could not see them. Apple
+      // Pay and Google Pay are cards and stay. Without a trial every method
+      // Stripe offers stays on.
+      ...(allowTrial ? { payment_method_types: ['card'] } : {}),
       // Tax needs a location. The customer already exists, so customer_update
       // tells Checkout to write the collected billing address back to it.
       automatic_tax: { enabled: true },
@@ -1566,6 +1647,11 @@ export class StripeService extends PaymentProviderAbstract {
     allowTrial: boolean,
     organizationId: string
   ) {
+    allowTrial = await this.trialStillAllowed(
+      organizationId,
+      userId,
+      allowTrial
+    );
     const isUtm = body.utm ? `&utm_source=${body.utm}` : '';
 
     if (body.dub) {
@@ -1584,6 +1670,11 @@ export class StripeService extends PaymentProviderAbstract {
         process.env['FRONTEND_URL'] +
         `/launches?onboarding=true&trialStart=true&check=${uniqueId}${isUtm}`,
       mode: 'subscription',
+      // A trial is card-only: Link, SEPA and the other methods carry no card
+      // fingerprint, so the one-trial-per-card rule could not see them. Apple
+      // Pay and Google Pay are cards and stay. Without a trial every method
+      // Stripe offers stays on.
+      ...(allowTrial ? { payment_method_types: ['card'] } : {}),
       automatic_tax: { enabled: true },
       // Hosted Checkout draws the business name / tax ID fields itself, so the
       // server flag is the whole change on this path.
