@@ -1,3 +1,4 @@
+import { exactEmail } from '@gitroom/helpers/auth/account-security';
 import {
   PrismaRepository,
   PrismaTransaction,
@@ -662,7 +663,7 @@ export class OrganizationRepository {
         user: {
           deletedAt: null,
           email: {
-            equals: email,
+            equals: exactEmail(email),
             mode: 'insensitive',
           },
         },
@@ -685,7 +686,7 @@ export class OrganizationRepository {
         user: {
           deletedAt: null,
           email: {
-            equals: user.email,
+            equals: exactEmail(user.email),
             mode: 'insensitive',
           },
         },

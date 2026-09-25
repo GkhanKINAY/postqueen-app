@@ -12,6 +12,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   pickUserWithPassword,
   sessionsNotBeforeFrom,
+  exactEmail,
 } from '@gitroom/helpers/auth/account-security';
 
 @Injectable()
@@ -145,7 +146,7 @@ export class UsersRepository {
     return this._user.model.user.findFirst({
       where: {
         email: {
-          equals: email,
+          equals: exactEmail(email),
           mode: 'insensitive',
         },
         providerName: Provider.LOCAL,
@@ -168,7 +169,7 @@ export class UsersRepository {
     const rows = await this._user.model.user.findMany({
       where: {
         email: {
-          equals: email,
+          equals: exactEmail(email),
           mode: 'insensitive',
         },
         deletedAt: null,
@@ -191,7 +192,7 @@ export class UsersRepository {
     const rows = await this._user.model.user.findMany({
       where: {
         email: {
-          equals: email,
+          equals: exactEmail(email),
           mode: 'insensitive',
         },
         deletedAt: null,
@@ -304,7 +305,7 @@ export class UsersRepository {
     return this._user.model.user.findFirst({
       where: {
         email: {
-          equals: email,
+          equals: exactEmail(email),
           mode: 'insensitive',
         },
         id: { not: excludeUserId },
