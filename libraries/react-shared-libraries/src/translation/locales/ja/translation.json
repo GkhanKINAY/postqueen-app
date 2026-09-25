@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "このコメントと返信を削除しますか？",
   "preview_comment_delete_reply_confirm": "この返信を削除しますか？",
   "preview_comment_delete_failed": "コメントを削除できませんでした",
-  "captcha_unavailable": "キャプチャを読み込めませんでした。ブラウザまたはネットワークでブロックされている可能性があります。ページを再読み込みして、もう一度お試しください。"
+  "captcha_unavailable": "キャプチャを読み込めませんでした。ブラウザまたはネットワークでブロックされている可能性があります。ページを再読み込みして、もう一度お試しください。",
+  "email_off_title_success": "成功メールをオフにしますか？",
+  "email_off_title_failure": "失敗メールをオフにしますか？",
+  "email_off_title_streak": "連続投稿メールをオフにしますか？",
+  "email_off_title_publishing": "1時間ごとの投稿まとめをオフにしますか？",
+  "email_off_body": "このアドレスにはこれらのメールが届かなくなります。サインイン、セキュリティ、請求に関するメールは引き続き届きます。",
+  "email_off_invalid_title": "このリンクは無効になりました",
+  "email_off_invalid": "受け取るメールは、設定の「通知」で選べます。",
+  "email_off_settings": "通知設定を開く",
+  "email_off_done": "完了しました。これらのメールはもう届きません。",
+  "email_off_button": "オフにする"
 }

@@ -59,7 +59,9 @@ export async function proxy(request: NextRequest) {
     nextUrl.pathname.startsWith('/provider/') ||
     nextUrl.pathname.startsWith('/icons/') ||
     // The logo and icons in our emails, fetched by mail clients with no session.
-    nextUrl.pathname.startsWith('/email/')
+    nextUrl.pathname.startsWith('/email/') ||
+    // "Turn off these emails", opened from an inbox that may not be signed in.
+    nextUrl.pathname === '/unsubscribe'
   ) {
     return topResponse;
   }

@@ -1329,5 +1329,15 @@
   "preview_comment_delete_reply_confirm": "Delete this reply?",
   "preview_comment_delete_failed": "Could not delete the comment",
   "captcha_unavailable": "The captcha could not load. It may be blocked by your browser or network. Reload the page to try again.",
-  "cancel_upload": "Cancel upload"
+  "cancel_upload": "Cancel upload",
+  "email_off_title_success": "Turn off success emails?",
+  "email_off_title_failure": "Turn off failure emails?",
+  "email_off_title_streak": "Turn off streak emails?",
+  "email_off_title_publishing": "Turn off the hourly publishing summary?",
+  "email_off_body": "You will stop getting these emails at this address. Sign-in, security and billing emails still come.",
+  "email_off_invalid_title": "This link no longer works",
+  "email_off_invalid": "You can choose which emails you get in Settings, under Notifications.",
+  "email_off_settings": "Open notification settings",
+  "email_off_done": "Done. You will not get these emails any more.",
+  "email_off_button": "Turn them off"
 }

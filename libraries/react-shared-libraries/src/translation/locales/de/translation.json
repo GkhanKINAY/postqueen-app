@@ -835,5 +835,15 @@
   "preview_comment_delete_confirm": "Diesen Kommentar und seine Antworten löschen?",
   "preview_comment_delete_reply_confirm": "Diese Antwort löschen?",
   "preview_comment_delete_failed": "Der Kommentar konnte nicht gelöscht werden",
-  "captcha_unavailable": "Das Captcha konnte nicht geladen werden. Möglicherweise wird es von Ihrem Browser oder Netzwerk blockiert. Laden Sie die Seite neu, um es erneut zu versuchen."
+  "captcha_unavailable": "Das Captcha konnte nicht geladen werden. Möglicherweise wird es von Ihrem Browser oder Netzwerk blockiert. Laden Sie die Seite neu, um es erneut zu versuchen.",
+  "email_off_title_success": "Erfolgs-E-Mails abschalten?",
+  "email_off_title_failure": "Fehler-E-Mails abschalten?",
+  "email_off_title_streak": "Streak-E-Mails abschalten?",
+  "email_off_title_publishing": "Die stündliche Veröffentlichungsübersicht abschalten?",
+  "email_off_body": "Diese E-Mails kommen dann nicht mehr an diese Adresse. Anmelde-, Sicherheits- und Abrechnungs-E-Mails kommen weiterhin.",
+  "email_off_invalid_title": "Dieser Link funktioniert nicht mehr",
+  "email_off_invalid": "Welche E-Mails du bekommst, legst du in den Einstellungen unter Benachrichtigungen fest.",
+  "email_off_settings": "Benachrichtigungseinstellungen öffnen",
+  "email_off_done": "Erledigt. Diese E-Mails kommen nicht mehr.",
+  "email_off_button": "Abschalten"
 }

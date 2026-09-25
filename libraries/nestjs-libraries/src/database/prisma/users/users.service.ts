@@ -1,5 +1,9 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { emailContent } from '@gitroom/nestjs-libraries/emails/email.content';
+import {
+  EMAIL_UNSUBSCRIBE_FIELDS,
+  emailContent,
+  isEmailUnsubscribeKind,
+} from '@gitroom/nestjs-libraries/emails/email.content';
 import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users/users.repository';
 import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
@@ -214,6 +218,45 @@ export class UsersService {
 
   updateEmailNotifications(userId: string, body: EmailNotificationsDto) {
     return this._usersRepository.updateEmailNotifications(userId, body);
+  }
+
+  /**
+   * The unsubscribe token EmailService puts in a notification email. It names
+   * an address rather than a user: every account at that address stops getting
+   * that kind of email, since they all land in the same inbox. It carries no
+   * expiry, because an unsubscribe link has to keep working.
+   */
+  private readUnsubscribeToken(token: string) {
+    let payload: { email?: string; purpose?: string; kind?: string };
+    try {
+      payload = AuthService.verifyJWT(token) as typeof payload;
+    } catch {
+      return null;
+    }
+    if (
+      payload?.purpose !== 'email_off' ||
+      !payload.email ||
+      !isEmailUnsubscribeKind(payload.kind)
+    ) {
+      return null;
+    }
+    return { email: payload.email, kind: payload.kind };
+  }
+
+  emailUnsubscribeKind(token: string) {
+    return { kind: this.readUnsubscribeToken(token)?.kind || null };
+  }
+
+  async emailUnsubscribe(token: string) {
+    const payload = this.readUnsubscribeToken(token);
+    if (!payload) {
+      throw new HttpException('This link is not valid', 400);
+    }
+    await this._usersRepository.turnOffEmails(
+      payload.email,
+      EMAIL_UNSUBSCRIBE_FIELDS[payload.kind]
+    );
+    return { kind: payload.kind };
   }
 
   enabledOauthProviders() {

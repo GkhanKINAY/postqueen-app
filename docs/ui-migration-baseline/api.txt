@@ -123,6 +123,7 @@
 /posts/tags
 /posts/tags/${tag.id}
 /posts/valid
+/public/emails/unsubscribe
 /public/posts/${previewId}/comments
 /sets
 /sets/${data.id}
