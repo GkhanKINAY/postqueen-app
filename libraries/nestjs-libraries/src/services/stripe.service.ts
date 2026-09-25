@@ -1243,6 +1243,15 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
+    // A scheduled downgrade is dropped by cancelling: Stripe refuses to change
+    // cancellation on a subscription a schedule manages, which left the
+    // customer unable to cancel at all.
+    const scheduleId =
+      typeof sub.schedule === 'string' ? sub.schedule : sub.schedule?.id;
+    if (scheduleId) {
+      await stripe.subscriptionSchedules.release(scheduleId);
+    }
+
     // If the user is toggling back (un-cancelling), just remove the cancel
     if (sub.cancel_at_period_end) {
       const { cancel_at } = await stripe.subscriptions.update(sub.id, {
@@ -1258,10 +1267,13 @@ export class StripeService extends PaymentProviderAbstract {
 
     // Check if the latest invoice has a failed payment
     const latestInvoice = sub.latest_invoice as Stripe.Invoice | null;
+    // Not an open upgrade invoice (`subscription_update`): that is an upgrade
+    // left unpaid, and the period already paid for still stands.
     const hasFailedPayment =
       sub.status === 'past_due' ||
-      latestInvoice?.status === 'open' ||
-      latestInvoice?.status === 'uncollectible';
+      (latestInvoice?.billing_reason !== 'subscription_update' &&
+        (latestInvoice?.status === 'open' ||
+          latestInvoice?.status === 'uncollectible'));
 
     if (hasFailedPayment) {
       // Payment already failed — cancel immediately and delete subscription
@@ -2077,6 +2089,15 @@ export class StripeService extends PaymentProviderAbstract {
           ? current.schedule
           : current.schedule?.id;
 
+      // Choosing a plan means keeping one: a pending cancellation is lifted
+      // first, and on its own, because a schedule cannot be created from a
+      // subscription set to cancel and a pending update cannot carry it.
+      if (current.cancel_at_period_end) {
+        await stripe.subscriptions.update(current.id, {
+          cancel_at_period_end: false,
+        });
+      }
+
       if (change === 'at_period_end') {
         // A downgrade, or yearly to monthly: the paid period runs out on the
         // plan that was paid for and the new price starts at renewal. Applied
@@ -2087,18 +2108,26 @@ export class StripeService extends PaymentProviderAbstract {
           : await stripe.subscriptionSchedules.create({
               from_subscription: current.id,
             });
+        // A running discount (the retention offer) carries over to both.
+        const discounts = (current.discounts || []).map((discount) => ({
+          discount: typeof discount === 'string' ? discount : discount.id,
+        }));
         await stripe.subscriptionSchedules.update(schedule.id, {
           end_behavior: 'release',
           phases: [
             {
               items: [{ price: item.price.id, quantity: 1 }],
-              start_date: schedule.phases[0].start_date,
+              start_date:
+                schedule.current_phase?.start_date ||
+                schedule.phases[0].start_date,
               end_date: item.current_period_end,
+              discounts,
             },
             {
               items: [{ price: findPrice!.id, quantity: 1 }],
               proration_behavior: 'none',
               automatic_tax: { enabled: true },
+              discounts,
               metadata,
             },
           ],
@@ -2139,11 +2168,20 @@ export class StripeService extends PaymentProviderAbstract {
         };
       }
 
-      await stripe.subscriptions.update(current.id, {
-        cancel_at_period_end: false,
-        automatic_tax: { enabled: true },
-        metadata,
-      });
+      // Bookkeeping after the change: the webhook grants from the price, so a
+      // failure here must not report a paid upgrade as a failed one.
+      try {
+        await stripe.subscriptions.update(current.id, {
+          automatic_tax: { enabled: true },
+          metadata,
+        });
+      } catch (err) {
+        Logger.warn(
+          `[stripe] plan change on ${current.id} applied, metadata not written: ${
+            (err as Error)?.message || err
+          }`
+        );
+      }
 
       return { id };
     } catch (err) {
@@ -2269,7 +2307,12 @@ export class StripeService extends PaymentProviderAbstract {
       typeof subscription.latest_invoice === 'string'
         ? subscription.latest_invoice
         : subscription.latest_invoice?.id;
-    return { subscription, current: latest === invoiceId };
+    // A period's own invoice, not a proration for a mid-period upgrade:
+    // refunding that difference is goodwill, not the end of the plan.
+    const period = ['subscription_create', 'subscription_cycle'].includes(
+      invoice.billing_reason || ''
+    );
+    return { subscription, current: latest === invoiceId && period };
   }
 
   /**
@@ -2430,14 +2473,6 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * The open invoice of a subscription that has not been paid for, if any.
-   *
-   * Stripe keeps a `past_due` subscription retrying after the account is
-   * locked (see `updateSubscription`), so this is what the paywall offers in
-   * place of a new checkout: a second subscription opened next to the one still
-   * retrying would bill twice the moment either payment lands.
-   */
-  /**
    * Revokes every local Stripe plan Stripe no longer backs.
    *
    * Webhooks are the only thing that write plans, and a webhook can be lost:
@@ -2445,9 +2480,14 @@ export class StripeService extends PaymentProviderAbstract {
    * order used to leave a paid row behind a cancelled subscription. Nothing
    * looked again, so that access was permanent. Run nightly by
    * `billingReconcileWorkflowV1`; the same revoke as a `deleted` event.
+   *
+   * Only a customer Stripe has sold a subscription to is judged: a plan an
+   * admin granted (`/add-subscription`) is a `stripe` row with no Stripe
+   * subscription behind it at all, and must not be taken away here. One
+   * customer failing to load does not stop the rest.
    */
   async reconcileSubscriptions() {
-    const result = { checked: 0, revoked: 0 };
+    const result = { checked: 0, revoked: 0, failed: 0 };
     if (!isBillingEnabled()) {
       return result;
     }
@@ -2456,22 +2496,47 @@ export class StripeService extends PaymentProviderAbstract {
       if (!customer?.startsWith('cus_')) {
         continue;
       }
-      result.checked++;
-      if (await this.hasEntitlingSubscription(customer)) {
-        continue;
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer,
+          status: 'all',
+          limit: 100,
+        });
+        if (!subscriptions.data.length) {
+          continue;
+        }
+        result.checked++;
+        if (await this.hasEntitlingSubscription(customer)) {
+          continue;
+        }
+        await this._subscriptionService.deleteSubscription(
+          customer,
+          STRIPE_PROVIDER
+        );
+        result.revoked++;
+        Logger.warn(
+          `[stripe] reconcile revoked ${row.organizationId}: no entitling subscription on ${customer}`
+        );
+      } catch (err) {
+        result.failed++;
+        Logger.warn(
+          `[stripe] reconcile could not check ${row.organizationId}: ${
+            (err as Error)?.message || err
+          }`
+        );
       }
-      await this._subscriptionService.deleteSubscription(
-        customer,
-        STRIPE_PROVIDER
-      );
-      result.revoked++;
-      Logger.warn(
-        `[stripe] reconcile revoked ${row.organizationId}: no entitling subscription on ${customer}`
-      );
     }
     return result;
   }
 
+  /**
+   * The open invoice of a subscription that has not been paid for, if any.
+   *
+   * Stripe keeps a `past_due` subscription retrying after the account is
+   * locked (see `updateSubscription`), so this is what the paywall offers in
+   * place of a new checkout: a second subscription opened next to the one still
+   * retrying would bill twice the moment either payment lands.
+   */
   async pendingPayment(organization: Organization) {
     const customer = organization?.paymentId;
     if (!isBillingEnabled() || !customer?.startsWith('cus_')) {
