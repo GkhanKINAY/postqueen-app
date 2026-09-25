@@ -188,8 +188,8 @@ export const TagsComponentInner: FC<{
           tagValue.length === 0
             ? touch
               ? t('tags', 'Tags')
-              : t('add_new_tag', 'Add New Tag')
-            : tagValue[0].name
+              : t('add_tags', 'Add tags')
+            : tagValue.map((tag) => tag.name).join(', ')
         }
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
@@ -207,19 +207,26 @@ export const TagsComponentInner: FC<{
           )}
         >
           {tagValue.length === 0 ? (
-            touch ? t('tags', 'Tags') : t('add_new_tag', 'Add New Tag')
+            touch ? t('tags', 'Tags') : t('add_tags', 'Add tags')
           ) : (
-            <>
-              <div
-                className="h-full flex justify-center items-center px-[8px] rounded-[4px]"
-                style={{ backgroundColor: tagValue[0].color }}
-              >
-                <span className="text-shadow-tags text-[#fff]">
-                  {tagValue[0].name}
-                </span>
-              </div>
-              {tagValue.length > 1 ? <span>+{tagValue.length - 1}</span> : null}
-            </>
+            <span className="flex min-w-0 items-center gap-[8px]">
+              <span className="truncate">
+                {tagValue
+                  .slice(0, 2)
+                  .map((tag) => tag.name)
+                  .join(', ')}
+                {tagValue.length > 2 ? ` +${tagValue.length - 2}` : ''}
+              </span>
+              <span className="flex shrink-0 gap-[3px]" aria-hidden="true">
+                {tagValue.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag.id || tag.name}
+                    className="size-[8px] rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                ))}
+              </span>
+            </span>
           )}
         </div>
         <div className="cursor-pointer">

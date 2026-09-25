@@ -77,7 +77,7 @@ describe('composer modal chrome', () => {
     assert.match(manage, /data-pq="composer-footer-repeat"/);
     assert.match(manage, /data-pq="composer-footer-notify"/);
     assert.match(manage, /<RepeatComponent/);
-    assert.match(repeat, /t\('repeat_post_every', 'Repeat Post Every'\)/);
+    assert.match(repeat, /t\('repeat_none', "Doesn't repeat"\)/);
     assert.doesNotMatch(repeat, /Repeat Post Every\.\.\./);
     assert.match(repeat, /whitespace-nowrap/);
     assert.match(tags, /text-\[15px\] font-\[600\]/);

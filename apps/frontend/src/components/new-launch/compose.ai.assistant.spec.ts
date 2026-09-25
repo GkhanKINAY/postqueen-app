@@ -65,7 +65,6 @@ describe('compose AI assistant placement', () => {
 
   it('stays visible without an OpenAI key and looks like the Agents chatbox', () => {
     assert.match(assistant, /useAiAvailable/);
-    assert.match(assistant, /href="\/connections"/);
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.match(assistant, /data-pq="composer-ai-chat"/);
     assert.match(assistant, /className="copilotKitInputContainer"/);
@@ -80,8 +79,11 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /t\('rephrase', 'Rephrase'\)/);
     assert.match(assistant, /t\('shorten', 'Shorten'\)/);
     assert.match(assistant, /t\('expand', 'Expand'\)/);
-    assert.match(assistant, /t\('more_casual', 'More Casual'\)/);
-    assert.match(assistant, /t\('more_formal', 'More Formal'\)/);
+    assert.match(assistant, /t\('more_casual', 'More casual'\)/);
+    assert.match(assistant, /t\('more_formal', 'More formal'\)/);
+    // Make an image rides as a plain request: the server keys rewrite rules
+    // on the quick-edit marker, and an image is not a rewrite.
+    assert.match(assistant, /t\('make_an_image', 'Make an image'\)/);
     assert.match(assistant, /onSuggestionClick\(suggestion\.message\)/);
     // The label in the person's language plus a marker; the rules live in
     // chat/load.tools.service.ts, and the marker never shows in the bubble.
@@ -93,27 +95,31 @@ describe('compose AI assistant placement', () => {
     assert.match(assistant, /quick_edits/);
     assert.match(
       assistant,
-      /flex h-\[36px\] items-center gap-\[6px\] rounded-\[10px\]/,
+      /flex h-\[32px\] items-center gap-\[6px\] rounded-full/,
     );
     assert.doesNotMatch(assistant, /h-\[28px\].*text-\[12px\]/);
     assert.match(assistant, /min-h-\[36px\] flex-1 resize-none/);
     assert.match(assistant, /<AutoResizingTextarea/);
     assert.match(assistant, /write_something[\s\S]{0,40}Write something/);
     assert.doesNotMatch(assistant, /share_with_the_world/);
-    assert.match(assistant, /🔄/);
+    // Stroke icons per kind, not emoji.
+    assert.match(assistant, /QUICK_EDIT_ICONS\[quickEditKind\(suggestion\.message\) \|\| 'image'\]/);
+    assert.doesNotMatch(assistant, /🔄|✂️|😊|💼/);
     assert.match(assistant, /t\('send', 'Send'\)/);
     assert.match(assistant, /Input=\{ComposeAiInput\}/);
     assert.match(assistant, /data-pq="composer-ai-send"/);
   });
 
-  it('shows the Connections card on an empty rail instead of a CopilotKit greeting bubble', () => {
+  it('opens an empty rail on what Copilot can do for this post, not a CopilotKit greeting bubble', () => {
     // CopilotKit 1.66 never fills `useCopilotMessagesContext`; the overlay is
     // hidden by CSS from the first bubble on (agent.chat.spec pins the rule).
     assert.doesNotMatch(assistant, /useCopilotMessagesContext\(/);
     assert.match(assistant, /<ComposeAiEmptyOverlay/);
-    assert.match(assistant, /<ComposeAiEmptyHero tip=\{tip\} \/>/);
-    assert.match(assistant, /href="\/connections"/);
-    assert.match(assistant, /connections_sub/);
+    assert.match(assistant, /<ComposeAiEmptyHero \/>/);
+    assert.match(assistant, /t\('composer_ai_title_accent', 'this post'\)/);
+    // The rail stays about the post: the Connections promo lives on the
+    // Copilot page and in the menu.
+    assert.doesNotMatch(assistant, /connections_sub/);
     assert.match(assistant, /compose_ai_unconfigured_tip/);
     assert.doesNotMatch(
       assistant,

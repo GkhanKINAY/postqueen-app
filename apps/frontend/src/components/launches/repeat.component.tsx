@@ -86,7 +86,8 @@ export const RepeatComponent: FC<{
     return list.find((p) => p.value === repeat)?.label;
   }, [repeat, list]);
 
-  const emptyLabel = t('repeat_post_every', 'Repeat Post Every');
+  // The trigger says the state it is in, like Notify me / Quiet beside it.
+  const emptyLabel = t('repeat_none', "Doesn't repeat");
   // Selected trigger is just "Every Day" — prefixing repeat_post_every_label
   // would read "Repeat Post Every Every Day".
   const triggerLabel = repeat ? everyLabel : emptyLabel;

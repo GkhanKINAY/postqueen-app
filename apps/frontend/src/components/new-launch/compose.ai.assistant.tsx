@@ -12,7 +12,6 @@ import {
 } from 'react';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import clsx from 'clsx';
-import NextLink from 'next/link';
 import {
   AssistantMessage as CopilotAssistantMessage,
   AssistantMessageProps,
@@ -50,6 +49,7 @@ import {
 } from '@gitroom/frontend/components/media/use.generate.video';
 import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card';
 import { v4 as uuid } from 'uuid';
+import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import {
   useT,
   useTranslationSettings,
@@ -80,7 +80,14 @@ const ComposerThreadContext = createContext<{
   /** Whether a message was sent in this composer; the setting is written only then. */
   used: () => boolean;
   markUsed: () => void;
-}>({ threadId: '', used: () => false, markUsed: () => {} });
+  /** A fresh, empty Copilot chat for this post; the old one stays in memory. */
+  startOver: () => void;
+}>({
+  threadId: '',
+  used: () => false,
+  markUsed: () => {},
+  startOver: () => {},
+});
 
 export const useComposerThread = () => useContext(ComposerThreadContext);
 
@@ -99,7 +106,7 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
   const i18n = useTranslationSettings();
   const existingData = useExistingData();
   // A post that was written with Copilot reopens on its own thread.
-  const [threadId] = useState(() => {
+  const [threadId, setThreadId] = useState(() => {
     const saved = existingData?.settings?.[PQ_AI_THREAD_SETTING];
     return typeof saved === 'string' && saved ? saved : uuid();
   });
@@ -110,6 +117,13 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
       used: () => usedRef.current,
       markUsed: () => {
         usedRef.current = true;
+      },
+      // CopilotKit connects to the new thread id, the same way the Copilot
+      // page switches chats; the post saves whichever thread it was last
+      // used in.
+      startOver: () => {
+        usedRef.current = false;
+        setThreadId(uuid());
       },
     }),
     [threadId]
@@ -191,12 +205,19 @@ const quickEditMessage = (title: string, kind: QuickEditKind) =>
   `${title} [quick-edit:${kind}]`;
 const quickEditKind = (message: string) =>
   (message.match(/\[quick-edit:([a-z]+)\]/)?.[1] || '') as QuickEditKind | '';
-const QUICK_EDIT_MARKS: Record<QuickEditKind, string> = {
-  rephrase: '🔄',
-  shorten: '✂️',
-  expand: '➕',
-  casual: '😊',
-  formal: '💼',
+// Stroke icons, the same in every locale (the chips carried emoji before).
+const QUICK_EDIT_ICONS: Record<QuickEditKind | 'image', string> = {
+  rephrase:
+    'M3 12a9 9 0 0 1 15.3-6.4L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.3 6.4L3 16M3 21v-5h5',
+  shorten:
+    'm15 15 6 6M15 15v4.8M15 15h4.8M9 19.8V15m0 0H4.2M9 15l-6 6M15 4.2V9m0 0h4.8M15 9l6-6M9 4.2V9m0 0H4.2M9 9 3 3',
+  expand: 'M12 5v14M5 12h14',
+  casual:
+    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  formal:
+    'M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
+  image:
+    'M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21',
 };
 
 /**
@@ -359,63 +380,63 @@ const railTabClass = (active: boolean) =>
  * would render `labels.initial` as a chat bubble with faded controls, so this
  * sits in the message column instead — same idea as the Agents empty overlay.
  */
-const ComposeAiEmptyHero: FC<{ tip: string }> = ({ tip }) => {
+const ComposeAiEmptyHero: FC = () => {
   const t = useT();
   return (
     <>
-      <span className="flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-pqBrandSoft text-pqFocused">
-        <CopilotMark size={22} />
-      </span>
+      <PostQueenLogo tileClassName="size-[40px]" glyphClassName="size-[22px]" />
       <div>
-        <div className="font-display text-[18px] font-[600] tracking-[-0.02em] text-pqText">
-          {t('ai_copilot', 'AI Copilot')}
+        <div className="font-display text-[19px] font-[700] tracking-[-0.02em] text-pqText">
+          {t('composer_ai_title_lead', 'Ask Copilot about')}{' '}
+          <span className="font-serif font-[400] italic tracking-[-0.005em] text-pqFocused">
+            {t('composer_ai_title_accent', 'this post')}
+          </span>
         </div>
         <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
           {t(
-            'assistant_initial_message',
-            'Hi! I can rewrite this post, expand it for the selected channels, or generate an image and attach it.'
+            'composer_ai_sub',
+            'It can rewrite the text, fit it to each channel, or make an image and attach it.'
           )}
         </p>
       </div>
-      <NextLink
-        href="/connections"
-        className="pointer-events-auto flex w-full max-w-[360px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[12px_14px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
-      >
-        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-            <path
-              d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5ZM4 15.5 12 20l8-4.5"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-          <span className="text-[13px] font-[600] text-pqText">
-            {t('connections', 'Connections')}
-          </span>
-          <span className="text-[12px] leading-[1.45] text-pqMuted">{tip}</span>
-        </span>
-        <svg
-          viewBox="0 0 24 24"
-          width="16"
-          height="16"
-          fill="none"
-          className="shrink-0 text-pqSoft rtl:-scale-x-100"
-          aria-hidden="true"
-        >
-          <path
-            d="m9 6 6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </NextLink>
     </>
+  );
+};
+
+/** Shown once the rail's chat has messages: a clean chat for this post. */
+const ComposeAiStartOver: FC = () => {
+  const t = useT();
+  const { startOver } = useComposerThread();
+  const { messages } = useContext(LiveMessagesContext);
+  if (!messages?.length) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      data-pq="composer-ai-start-over"
+      onClick={startOver}
+      aria-label={t('start_over', 'Start over')}
+      data-tooltip-id="tooltip"
+      data-tooltip-content={t('start_over', 'Start over')}
+      className="absolute end-[10px] top-[8px] z-[3] grid size-[32px] place-items-center rounded-[9px] bg-pqPop text-pqSoft shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-pqText mobile:size-[44px]"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="15"
+        height="15"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 };
 
@@ -450,13 +471,13 @@ const ComposeAiAssistantMessage: FC<AssistantMessageProps> = (props) => {
  * global.css). CopilotKit 1.66 no longer fills `useCopilotMessagesContext`,
  * which this used to read, so it stayed up over the conversation.
  */
-const ComposeAiEmptyOverlay: FC<{ tip: string }> = ({ tip }) => {
+const ComposeAiEmptyOverlay: FC = () => {
   return (
     <div
       data-copilot-empty="1"
       className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
     >
-      <ComposeAiEmptyHero tip={tip} />
+      <ComposeAiEmptyHero />
     </div>
   );
 };
@@ -476,15 +497,16 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
       data-pq="composer-ai-chips"
       className="flex flex-col gap-[8px] px-[16px] pb-[12px]"
     >
-      <div className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
+      <div className="text-[12px] font-[600] text-pqSoft">
         {t('quick_edits', 'Quick edits')}
       </div>
-      <div className="flex flex-wrap gap-[8px]">
+      <div className="flex flex-wrap gap-[6px]">
         {suggestions.map((suggestion) => {
-          // The emoji follows the edit kind in the message, not the
-          // translated title, so it survives every locale.
-          const kind = quickEditKind(suggestion.message);
-          const mark = kind ? QUICK_EDIT_MARKS[kind] : undefined;
+          // The icon follows the edit kind in the message, not the
+          // translated title, so it survives every locale; the one chip
+          // without a kind is Make an image.
+          const icon =
+            QUICK_EDIT_ICONS[quickEditKind(suggestion.message) || 'image'];
           return (
             <button
               key={suggestion.title}
@@ -494,13 +516,24 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
                 markUsed();
                 onSuggestionClick(suggestion.message);
               }}
-              className="flex h-[36px] items-center gap-[6px] rounded-[10px] bg-pqInner px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-[32px] items-center gap-[6px] rounded-full bg-pqPop px-[11px] text-[12.5px] font-[500] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50 mobile:h-[40px]"
             >
-              {mark ? (
-                <span aria-hidden="true" className="text-[14px] leading-none">
-                  {mark}
-                </span>
-              ) : null}
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                aria-hidden="true"
+                className="shrink-0 text-pqFocused"
+              >
+                <path
+                  d={icon}
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
               {suggestion.title}
             </button>
           );
@@ -559,9 +592,44 @@ const ComposeAiInput: FC<InputProps> = ({
           disabled={!showStop && !text.trim()}
           onClick={showStop ? onStop : send}
           data-pq="composer-ai-send"
+          aria-label={showStop ? t('stop', 'Stop') : t('send', 'Send')}
           className="copilotKitInputControlButton shrink-0"
         >
-          {showStop ? t('stop', 'Stop') : t('send', 'Send')}
+          {showStop ? (
+            <svg
+              viewBox="0 0 24 24"
+              width="15"
+              height="15"
+              fill="none"
+              aria-hidden="true"
+            >
+              <rect
+                x="6.5"
+                y="6.5"
+                width="11"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              width="17"
+              height="17"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 19V5M6 11l6-6 6 6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </button>
       </div>
     </div>
@@ -1442,7 +1510,7 @@ const ComposeAiUnconfigured: FC<{
             data-copilot-empty="1"
             className="flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
           >
-            <ComposeAiEmptyHero tip={tip} />
+            <ComposeAiEmptyHero />
           </div>
         )}
       </div>
@@ -1471,7 +1539,22 @@ const ComposeAiUnconfigured: FC<{
             data-pq="composer-ai-send"
             className="copilotKitInputControlButton shrink-0"
           >
-            {t('send', 'Send')}
+            <span className="sr-only">{t('send', 'Send')}</span>
+            <svg
+              viewBox="0 0 24 24"
+              width="17"
+              height="17"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 19V5M6 11l6-6 6 6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
         </div>
       </form>
@@ -1501,13 +1584,21 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
           ['rephrase', t('rephrase', 'Rephrase')],
           ['shorten', t('shorten', 'Shorten')],
           ['expand', t('expand', 'Expand')],
-          ['casual', t('more_casual', 'More Casual')],
-          ['formal', t('more_formal', 'More Formal')],
+          ['casual', t('more_casual', 'More casual')],
+          ['formal', t('more_formal', 'More formal')],
         ] as [QuickEditKind, string][]
-      ).map(([kind, title]) => ({
-        title,
-        message: quickEditMessage(title, kind),
-      })),
+      )
+        .map(([kind, title]) => ({
+          title,
+          message: quickEditMessage(title, kind),
+        }))
+        .concat({
+          title: t('make_an_image', 'Make an image'),
+          message: t(
+            'make_an_image_for_post',
+            'Make an image for this post and attach it.'
+          ),
+        }),
     [t]
   );
 
@@ -1568,6 +1659,7 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">
             <ComposerLiveBridge>
+              <ComposeAiStartOver />
               <CopilotChat
                 className="h-full w-full"
                 suggestions={suggestions}
@@ -1577,17 +1669,15 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
                 AssistantMessage={ComposeAiAssistantMessage}
                 labels={{
                   title: label,
-                  placeholder: t('write_something', 'Write something …'),
+                  placeholder: t(
+                    'composer_ai_placeholder',
+                    'Ask for a change, like "make it shorter"'
+                  ),
                 }}
               />
             </ComposerLiveBridge>
           </div>
-          <ComposeAiEmptyOverlay
-            tip={t(
-              'connections_sub',
-              'Work with PostQueen across your favorite tools.'
-            )}
-          />
+          <ComposeAiEmptyOverlay />
         </div>
       ) : (
         <ComposeAiUnconfigured suggestions={suggestions} />

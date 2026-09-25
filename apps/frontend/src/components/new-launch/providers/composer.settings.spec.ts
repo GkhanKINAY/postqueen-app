@@ -170,7 +170,7 @@ describe('composer channel settings controls', () => {
     assert.doesNotMatch(select, /addRemoveInternal\(integration\.id\)/);
     assert.match(select, /setCurrent\(integration\.id\)/);
     const editor = read('../editor.tsx');
-    assert.match(editor, /t\('edit_content', 'Edit content'\)/);
+    assert.match(editor, /t\('write_separate_version', 'Write a separate version'\)/);
     assert.match(editor, /addRemoveInternal\(current\)/);
     assert.match(linkedin, /name="post_as_images_carousel"/);
     assert.match(linkedin, /layout="segment"/);

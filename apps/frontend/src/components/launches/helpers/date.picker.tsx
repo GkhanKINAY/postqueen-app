@@ -83,7 +83,15 @@ export const DatePicker: FC<{
           <CalendarIcon />
         </div>
         <div className="min-w-0 truncate whitespace-nowrap tabular-nums">
-          {date.format(dateTimePattern())}
+          {date.format(dateTimePattern())}{' '}
+          {/* The zone the time is read in, from the person's settings. */}
+          <span className="font-[500] text-pqSoft">
+            GMT
+            {date
+              .format('Z')
+              .replace(/:00$/, '')
+              .replace(/^([+-])0/, '$1')}
+          </span>
         </div>
       </div>
       {open && (

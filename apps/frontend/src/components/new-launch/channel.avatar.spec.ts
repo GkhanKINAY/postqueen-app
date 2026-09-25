@@ -132,8 +132,9 @@ describe('channel avatar fallback', () => {
     assert.match(picks, /ring-2 ring-pqBrand/);
     assert.doesNotMatch(picks, /border-pqBrand/);
     assert.doesNotMatch(picks, /bg-pqSettings filter /);
-    assert.match(selectCurrent, /ring-2 ring-pqPink/);
-    assert.match(selectCurrent, /ring-2 ring-pqBrand/);
+    // The version tabs mark the active one with the raised surface, not a ring.
+    assert.match(selectCurrent, /role="tab"/);
+    assert.match(selectCurrent, /aria-selected=\{isActive\}/);
     assert.doesNotMatch(selectCurrent, /inset_0_0_0_1\.5px_var\(--pink\)/);
     assert.match(pickPlatform, /aria-pressed=\{selected\}/);
     assert.match(pickPlatform, /ring-2 ring-pqBrand ring-offset-2/);

@@ -954,8 +954,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   )}>
                     <div className="flex min-w-0 flex-1 flex-col gap-[12px]">
                       <div className="flex items-center gap-[8px]">
-                        <span className="text-[11px] font-[700] uppercase tracking-[0.06em] text-pqSoft">
-                          {t('select_channels', 'Select channels')}
+                        <span className="text-[13px] font-[600] text-pqText">
+                          {t('post_to', 'Post to')}
                         </span>
                         <span className="rounded-full bg-pqInner px-[8px] py-[2px] text-[11px] font-[600] text-pqMuted shadow-[inset_0_0_0_1px_var(--border)]">
                           {selectedIntegrations.length === 0
