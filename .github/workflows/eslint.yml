@@ -19,14 +19,10 @@ on:
       - '!apps/docs/**'
       - libraries/**
 
+  # Every pull request, with no path filter: `main` requires this check before
+  # a merge, and a required check that never starts blocks the pull request
+  # for ever.
   pull_request:
-    paths:
-      - package.json
-      - pnpm-lock.yaml
-      - eslint.config.mjs
-      - apps/**
-      - '!apps/docs/**'
-      - libraries/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

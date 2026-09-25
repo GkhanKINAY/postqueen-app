@@ -18,11 +18,11 @@ on:
       - pnpm-lock.yaml
       - package.json
       - .github/workflows/dependency-scan.yml
+  # Every pull request, with no path filter: `main` requires this check before
+  # a merge, and a required check that never starts blocks the pull request
+  # for ever. The scan itself still runs only when the dependencies change;
+  # see "Did the dependencies change?" below.
   pull_request:
-    paths:
-      - pnpm-lock.yaml
-      - package.json
-      - .github/workflows/dependency-scan.yml
   schedule:
     # Weekly, because a lockfile that has not changed can still become
     # vulnerable the day an advisory is published against something in it.
@@ -38,8 +38,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # A pull request that leaves the dependency tree alone passes without a
+      # scan: an advisory published against the unchanged lockfile must not
+      # block an unrelated change. The weekly run and pushes to main still
+      # report it.
+      - name: Did the dependencies change?
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ] \
+            || git diff --name-only "$BASE_SHA" HEAD \
+              | grep -qx -E 'pnpm-lock\.yaml|package\.json|\.github/workflows/dependency-scan\.yml|\.github/osv-known\.txt|\.github/scripts/check-osv\.py'; then
+            echo "scan=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "scan=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency change in this pull request; nothing to scan."
+          fi
 
       - name: Scan the lockfile
+        if: steps.changed.outputs.scan == 'true'
         # `|| true` and a separate gate below rather than letting the scanner's
         # exit code fail the job: it exits non-zero for *any* finding, and 96
         # are known and currently unfixable — several have no released fix at
@@ -54,12 +75,13 @@ jobs:
           test -s osv.json
 
       - name: Compare against the known set
+        if: steps.changed.outputs.scan == 'true'
         run: |
           python3 .github/scripts/check-osv.py \
             osv.json .github/osv-known.txt
 
       - name: Upload the report
-        if: always()
+        if: always() && steps.changed.outputs.scan == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: osv-report
