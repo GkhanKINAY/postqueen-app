@@ -29,6 +29,7 @@ interface StatsResponse {
   publishingChannels?: StatsBlock;
   scheduledChannels?: StatsBlock;
   activeOrgsBySource?: StatsBlock;
+  connectedClients?: StatsBlock;
 }
 
 const isoDaysAgo = (days: number) => {
@@ -335,6 +336,14 @@ export const AdminStatsComponent: FC = () => {
                 />
               </div>
             )}
+            {data.connectedClients && (
+              <div className="flex-1 min-w-[220px] shrink-0">
+                <SummaryCard
+                  label="Connected clients (all clients combined)"
+                  value={data.connectedClients.total}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-[12px] items-start">
@@ -397,6 +406,14 @@ export const AdminStatsComponent: FC = () => {
                 <PerSocialTable
                   title="Active users per source"
                   block={data.activeOrgsBySource}
+                />
+              </div>
+            )}
+            {data.connectedClients && (
+              <div className="flex-1 min-w-[220px] shrink-0">
+                <PerSocialTable
+                  title="Connected clients per name"
+                  block={data.connectedClients}
                 />
               </div>
             )}

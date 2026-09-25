@@ -75,7 +75,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     status: number
   ):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'retry';
         value: string;
       }
     | undefined {
@@ -238,6 +238,43 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value: 'Facebook return: No permission to publish the video',
+      };
+    }
+    if (/"error_subcode":459\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Facebook is asking you to resolve a security check. Log in at facebook.com, complete it, then try again',
+      };
+    }
+    if (/"error_subcode":492\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Your Facebook user no longer has a role on this Page. Ask a Page admin to grant you a role, then reconnect the channel',
+      };
+    }
+    if (body.indexOf('must be granted before impersonating') > -1) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          'Facebook Page permissions are missing, please reconnect the channel and allow all permissions',
+      };
+    }
+    if (
+      /"error_subcode":33\b/.test(body) &&
+      body.indexOf('does not exist') > -1
+    ) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'The Facebook Page or post this was targeting no longer exists, please reconnect the channel and schedule again',
+      };
+    }
+    if (body.indexOf('Sorry, something went wrong') > -1) {
+      return {
+        type: 'retry' as const,
+        value: 'Facebook is temporarily unavailable, please try again later',
       };
     }
     if (body.indexOf('490') > -1) {
@@ -435,6 +472,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   async fetchPageInformation(accessToken: string, data: { page: string }) {
     const pageId = data.page;
     const fields = 'id,username,name,access_token,picture.type(large)';
+    let foundWithoutToken = false;
 
     const searchPaginated = async (startUrl: string) => {
       let url: string | undefined = startUrl;
@@ -444,7 +482,11 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
           const page = response.data.find(
             (p: any) => String(p.id) === String(pageId)
           );
-          if (page) {
+          // A page listed through a business the user has no role on comes
+          // back without a page token, keep looking for a listing that has one
+          if (page && !page.access_token) {
+            foundWithoutToken = true;
+          } else if (page) {
             return {
               id: page.id,
               name: page.name,
@@ -498,6 +540,12 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       }
     } catch {
       // Business Manager API not available for all users
+    }
+
+    if (foundWithoutToken) {
+      throw new Error(
+        'Your Facebook user has no permission to manage this page. Ask a page admin for full content access, then reconnect the channel'
+      );
     }
 
     throw new Error('Page not found in your accounts');

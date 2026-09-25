@@ -217,7 +217,7 @@ export function useUppyUploader(props: {
       });
     });
     uppy2.on('error', (result) => {
-      uppy2.clear();
+      uppy2.cancelAll();
       setLocked(false);
       props.onEnd();
       fileOrderIndex = 0;
@@ -274,10 +274,14 @@ export function useUppyUploader(props: {
       uppy2.clear();
     });
     uppy2.on('upload-success', (file, response) => {
+      const current = uppy2.getState().files[file.id];
+      if (!current) {
+        return;
+      }
       // @ts-ignore
       uppy2.setFileState(file.id, {
         // @ts-ignore
-        progress: uppy2.getState().files[file.id].progress,
+        progress: current.progress,
         // @ts-ignore
         uploadURL: response.body.Location,
         response: response,
