@@ -165,9 +165,10 @@ export class PaymentService {
   /**
    * Keeps every plan's credits in place, once a day (`creditGrantsWorkflowV1`).
    * The provider that owns a plan grants whatever its own events have not
-   * brought (`grantMissingPlanCredits`), then every paid plan past its trial
-   * gets the monthly gift. Idempotent throughout, and one organization failing
-   * does not stop the rest.
+   * brought (`grantMissingPlanCredits`); a plan with no registered provider
+   * gets its month from the plan's start day. Then every paid plan past its
+   * trial gets the monthly gift. Idempotent throughout, and one organization
+   * failing does not stop the rest.
    */
   async grantScheduledCredits() {
     const result = { checked: 0, granted: 0, failed: 0 };
@@ -184,10 +185,16 @@ export class PaymentService {
         ) {
           continue;
         }
+        // A plan no registered provider sells (one set by hand, such as the
+        // "manual" rows in production) has no events to bring its credits,
+        // so it gets them a month at a time, like a founding member's.
+        const provider = this._paymentProviderManager
+          .getProviders()
+          .find((p) => p.name === target.provider)?.provider;
         if (
-          await this._paymentProviderManager
-            .getProvider(target.provider)
-            .grantMissingPlanCredits(target)
+          provider
+            ? await provider.grantMissingPlanCredits(target)
+            : await this._subscriptionService.grantScheduledPlanCredits(target)
         ) {
           result.granted++;
         }

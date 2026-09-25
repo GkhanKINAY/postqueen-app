@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SubscriptionService } from './subscription.service.ts';
+import { PaymentService } from '../../../services/payment/payment.service.ts';
 import { CREDIT_UNIT, planCredits, pricing } from './pricing.ts';
 
 const read = (rel: string) =>
@@ -295,6 +296,59 @@ describe('Scheduled credits', () => {
   });
 });
 
+describe('The daily pass', () => {
+  const run = async (targets: any[], overdue: string[] = []) => {
+    const calls: string[] = [];
+    const payments = new PaymentService(
+      {
+        getProviders: () => [
+          {
+            name: 'stripe',
+            provider: {
+              grantMissingPlanCredits: async (t: any) => {
+                calls.push(`stripe:${t.organizationId}`);
+                return true;
+              },
+            },
+          },
+        ],
+      } as any,
+      {
+        getCreditGrantTargets: async () => targets,
+        isFoundingFeeOverdue: async (id: string) => overdue.includes(id),
+        grantScheduledPlanCredits: async (t: any) => {
+          calls.push(`scheduled:${t.organizationId}`);
+          return true;
+        },
+        grantMonthlyGift: async (t: any) => {
+          calls.push(`gift:${t.organizationId}`);
+          return true;
+        },
+      } as any
+    );
+    return { result: await payments.grantScheduledCredits(), calls };
+  };
+
+  it('asks the provider that sells a plan, and grants a plan no provider sells by the month', async () => {
+    const { result, calls } = await run([
+      { organizationId: 'a', provider: 'stripe' },
+      // production's hand-set plans: no provider is registered as "manual"
+      { organizationId: 'b', provider: 'manual' },
+    ]);
+    assert.deepEqual(calls, ['stripe:a', 'gift:a', 'scheduled:b', 'gift:b']);
+    assert.deepEqual(result, { checked: 2, granted: 4, failed: 0 });
+  });
+
+  it('skips a founding member whose fee is overdue, and does nothing with billing off', async () => {
+    const skipped = await run([{ organizationId: 'late', provider: 'manual' }], ['late']);
+    assert.deepEqual(skipped.calls, []);
+    delete process.env.STRIPE_SECRET_KEY;
+    const off = await run([{ organizationId: 'a', provider: 'stripe' }]);
+    assert.deepEqual(off.calls, []);
+    assert.equal(off.result.checked, 0);
+  });
+});
+
 describe('Wiring', () => {
   it('grants from the paid invoice, before the purchase is tracked', () => {
     const handler = stripe.slice(
@@ -323,7 +377,9 @@ describe('Wiring', () => {
   it('asks the provider that owns each plan, then gives the gift', () => {
     const payment = read('../../../services/payment/payment.service.ts');
     const providers = read('../../../services/payment/payment.provider.interface.ts');
-    assert.match(payment, /\.getProvider\(target\.provider\)\n\s+\.grantMissingPlanCredits\(target\)/);
+    // Looked up without throwing: an unregistered provider is not an error here.
+    assert.match(payment, /\.getProviders\(\)\n\s+\.find\(\(p\) => p\.name === target\.provider\)\?\.provider;/);
+    assert.match(payment, /\? await provider\.grantMissingPlanCredits\(target\)\n\s+: await this\._subscriptionService\.grantScheduledPlanCredits\(target\)/);
     assert.match(providers, /async grantMissingPlanCredits\(target: CreditGrantTarget\): Promise<boolean> \{\n\s+return false;/);
     assert.match(stripe, /override async grantMissingPlanCredits\(target: CreditGrantTarget\)/);
   });
