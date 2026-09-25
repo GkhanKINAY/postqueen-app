@@ -156,6 +156,8 @@ describe('steps', () => {
     assert.ok(text.includes('1. Connect <your> channels: One click each.'));
     assert.ok(text.includes('2. Schedule a post: Pick a time.'));
     assert.ok(text.includes('You get this because you just created an account.'));
+  });
+});
 
 describe('one-click unsubscribe', () => {
   const failure = noticeEmail({ title: 'Failed', message: 'Failed.', type: 'fail' });
