@@ -109,6 +109,19 @@ export const CheckPaymentInner: FC<{
       });
       props.mutate();
     }
+    if (status === 4) {
+      setShowLoader(false);
+      modal.open({
+        title: t('billing_trial_card_used_title', 'Free trial not available'),
+        onlyApprove: true,
+        approveLabel: t('close', 'Close'),
+        description: t(
+          'billing_trial_card_prepaid',
+          'Free trials need a regular debit or credit card, and this one is prepaid. We did not start your trial and you were not charged. You can subscribe without a trial.'
+        ),
+      });
+      props.mutate();
+    }
   }, []);
   useEffect(() => {
     checkSubscription();
