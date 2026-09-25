@@ -1,5 +1,9 @@
 import * as Sentry from '@sentry/nestjs';
 import { capitalize } from 'lodash';
+import {
+  consoleWarningsAndErrorsOnly,
+  scrubForSentry,
+} from '@gitroom/helpers/utils/sentry.scrub';
 
 export const setSentryUserContext = (params: {
   userId?: string;
@@ -63,10 +67,14 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
       integrations: [
         // Add our Profiling integration
         ...(profiling ? [profiling] : []),
-        Sentry.consoleLoggingIntegration({ levels: ['log', 'info', 'warn', 'error', 'debug', 'assert', 'trace'] }),
+        // Warnings and errors only: info and debug lines carry provider
+        // responses and user content, and they are in the pm2 logs anyway.
+        Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
+        // Spans and token counts, not the prompts and answers: those are the
+        // customer's posts and Copilot conversations.
         Sentry.openAIIntegration({
-          recordInputs: true,
-          recordOutputs: true,
+          recordInputs: false,
+          recordOutputs: false,
         }),
       ],
       tracesSampler: ({ name, attributes, normalizedRequest, inheritOrSampleWith }) => {
@@ -85,6 +93,11 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
         );
       },
       enableLogs: true,
+      // Access tokens in URLs, session cookies and API keys; see sentry.scrub.
+      beforeBreadcrumb: consoleWarningsAndErrorsOnly,
+      beforeSend: (event) => scrubForSentry(event),
+      beforeSendTransaction: (event) => scrubForSentry(event),
+      beforeSendLog: (log) => scrubForSentry(log),
 
       // Profiling
       profileSessionSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.2,

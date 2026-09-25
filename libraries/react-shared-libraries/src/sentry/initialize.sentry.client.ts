@@ -26,20 +26,17 @@ export const initializeSentryClient = (environment: string, dsn: string) =>
       // Add default integrations back
       Sentry.browserTracingIntegration(),
       Sentry.browserProfilingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        maskAllInputs: false,
-        blockAllMedia: false,
-      }),
+      // No Session Replay. Upstream recorded 40% of sessions unmasked, which
+      // carries post drafts, the API keys and MCP config blocks shown in
+      // Settings, and whatever is typed. Even masked, it keeps a session
+      // entry in the browser's storage, and the Cookie Policy on
+      // postqueen.ai lists everything the app stores.
       Sentry.feedbackIntegration({
         // Disable the injection of the default widget
         autoInject: false,
         showEmail: false,
       }),
-      Sentry.replayCanvasIntegration(),
     ],
-    replaysSessionSampleRate: 0.4,
-    replaysOnErrorSampleRate: 1.0,
 
     profilesSampleRate: environment === 'development' ? 1.0 : 0.60,
   });

@@ -1,4 +1,8 @@
 import * as Sentry from '@sentry/nextjs';
+import {
+  consoleWarningsAndErrorsOnly,
+  scrubForSentry,
+} from '@gitroom/helpers/utils/sentry.scrub';
 
 export const initializeSentryBasic = (environment: string, dsn: string, extension: any) => {
   if (!dsn) {
@@ -35,7 +39,6 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
         tags: {
           service: 'frontend',
           component: 'nextjs',
-          replaysEnabled: 'true',
         },
         contexts: {
           app: {
@@ -50,10 +53,16 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       environment: environment || 'development',
       spotlight: process.env.SENTRY_SPOTLIGHT === '1',
       dsn,
-      sendDefaultPii: true,
+      // Off: on the Next.js server this attaches request cookies, and the
+      // `auth` cookie is the session token; in the browser it stores the
+      // visitor's IP. The signed-in user is attached by setSentryUser instead.
+      sendDefaultPii: false,
       ...extension,
       debug: environment === 'development',
       tracesSampleRate: 0.1,
+      // OAuth codes in URLs and the session cookie; see sentry.scrub.
+      beforeBreadcrumb: consoleWarningsAndErrorsOnly,
+      beforeSendTransaction: (event) => scrubForSentry(event),
 
       beforeSend(event, hint) {
         if (isWalletExtensionRejection(hint?.originalException)) {
@@ -70,31 +79,12 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
               }
             }
           }
-
-          // If there's an exception and an event id, present the user report dialog.
-          if (event.event_id) {
-            // Only attempt to show the dialog in a browser environment.
-            if (typeof window !== 'undefined' && window.document) {
-              // Dynamically import the package that exports showReportDialog to avoid
-              // bundler errors when this shared lib is used in non-browser builds.
-              import('@sentry/react')
-                .then((mod) => {
-                  try {
-                    mod.showReportDialog({ eventId: event.event_id });
-                  } catch (err) {
-                    // eslint-disable-next-line no-console
-                    console.error('Sentry.showReportDialog failed:', err);
-                  }
-                })
-                .catch((importErr) => {
-                  // eslint-disable-next-line no-console
-                  console.error('Failed to import @sentry/react for report dialog:', importErr);
-                });
-            }
-          }
         }
 
-        return event; // Send the event to Sentry
+        // No crash-report dialog: Sentry's is English-only, not RTL, and it
+        // opened on every captured exception, including ones the page
+        // recovered from.
+        return scrubForSentry(event); // Send the event to Sentry
       },
     });
   } catch (err) {
