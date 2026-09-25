@@ -46,7 +46,7 @@ export const Title = () => {
     ),
     '/agents': t(
       'subtitle_agents',
-      'Draft, generate and schedule with the agent'
+      'Write posts, make images and schedule them'
     ),
     '/analytics': t('subtitle_analytics', 'How your channels are performing'),
     '/media': t('subtitle_media', 'Every asset in one place'),
