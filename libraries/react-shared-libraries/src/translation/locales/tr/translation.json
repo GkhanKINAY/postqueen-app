@@ -846,5 +846,12 @@
   "preview_comment_failed": "Yorum paylaşılırken bir hata oluştu",
   "preview_comment_detach_hint": "Seçili metindeki yorumlar, metin daha sonra değiştirilirse vurgusunu kaybeder.",
   "preview_comment_text_changed": "Metin değişti",
-  "preview_no_comments_yet": "Henüz yorum yok. Yorum yapmak için gönderide bir metin seçin veya genel bir yorum ekleyin."
+  "preview_no_comments_yet": "Henüz yorum yok. Yorum yapmak için gönderide bir metin seçin veya genel bir yorum ekleyin.",
+  "preview_click_to_open_comment": "Yorumu açmak için tıklayın",
+  "preview_select_text_to_comment": "Yorum yapmak için metin seçin",
+  "preview_comment_guest": "Misafir",
+  "preview_comment_delete_confirm": "Bu yorum ve yanıtları silinsin mi?",
+  "preview_comment_delete_reply_confirm": "Bu yanıt silinsin mi?",
+  "preview_comment_delete_failed": "Yorum silinemedi",
+  "captcha_unavailable": "Doğrulama (captcha) yüklenemedi. Tarayıcınız veya ağınız tarafından engelleniyor olabilir. Tekrar denemek için sayfayı yenileyin."
 }

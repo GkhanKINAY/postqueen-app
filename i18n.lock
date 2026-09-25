@@ -755,3 +755,10 @@ checksums:
     preview_comment_detach_hint: 6fa385ae985c409b511cf7adea2f950a
     preview_comment_text_changed: 6a4298cc0304d150e0d150689fa049f4
     preview_no_comments_yet: e9bda0977d617e8ee0079feba73b3c3a
+    preview_click_to_open_comment: 1bd2e466d3334fee110b0e4768d9322b
+    preview_select_text_to_comment: 47dcc212ee1463532dd8156f306e3b02
+    preview_comment_guest: 2aec6d6ebe0d9a1db0a5c8cd5a98b8c3
+    preview_comment_delete_confirm: fb0aadfd69ab85f03a529180d6ef02dc
+    preview_comment_delete_reply_confirm: 239623516219231b081ec6fb8ef25e42
+    preview_comment_delete_failed: 55c641890950893aa6bc9b5ff47ab07b
+    captcha_unavailable: 6235e6d25755abb9e96e744448e6d48b

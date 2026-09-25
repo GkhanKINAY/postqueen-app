@@ -828,5 +828,12 @@
   "preview_comment_failed": "تعذر نشر التعليق",
   "preview_comment_detach_hint": "التعليقات على النص المحدد تفقد تمييزها إذا تم تعديل النص لاحقًا.",
   "preview_comment_text_changed": "تم تغيير النص",
-  "preview_no_comments_yet": "لا توجد تعليقات بعد. حدد بعض النص في المنشور للتعليق عليه، أو أضف تعليقًا عامًا."
+  "preview_no_comments_yet": "لا توجد تعليقات بعد. حدد بعض النص في المنشور للتعليق عليه، أو أضف تعليقًا عامًا.",
+  "preview_click_to_open_comment": "انقر لفتح التعليق",
+  "preview_select_text_to_comment": "حدّد نصًا للتعليق عليه",
+  "preview_comment_guest": "ضيف",
+  "preview_comment_delete_confirm": "هل تريد حذف هذا التعليق والردود عليه؟",
+  "preview_comment_delete_reply_confirm": "هل تريد حذف هذا الرد؟",
+  "preview_comment_delete_failed": "تعذّر حذف التعليق",
+  "captcha_unavailable": "تعذّر تحميل اختبار التحقق (captcha). قد يكون محظورًا من المتصفح أو الشبكة. أعد تحميل الصفحة للمحاولة مرة أخرى."
 }

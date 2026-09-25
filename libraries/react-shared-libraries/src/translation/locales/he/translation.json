@@ -828,5 +828,12 @@
   "preview_comment_failed": "לא ניתן היה לפרסם את התגובה",
   "preview_comment_detach_hint": "תגובות על טקסט נבחר מאבדות הדגשה אם הטקסט נערך מאוחר יותר.",
   "preview_comment_text_changed": "הטקסט השתנה",
-  "preview_no_comments_yet": "עדיין אין תגובות. בחר טקסט בפוסט כדי להגיב עליו, או הוסף תגובה כללית."
+  "preview_no_comments_yet": "עדיין אין תגובות. בחר טקסט בפוסט כדי להגיב עליו, או הוסף תגובה כללית.",
+  "preview_click_to_open_comment": "לחצו כדי לפתוח את התגובה",
+  "preview_select_text_to_comment": "סמנו טקסט כדי להגיב",
+  "preview_comment_guest": "אורח",
+  "preview_comment_delete_confirm": "למחוק את התגובה הזו ואת התשובות שלה?",
+  "preview_comment_delete_reply_confirm": "למחוק את התשובה הזו?",
+  "preview_comment_delete_failed": "לא ניתן היה למחוק את התגובה",
+  "captcha_unavailable": "לא ניתן היה לטעון את ה-captcha. ייתכן שהיא חסומה על ידי הדפדפן או הרשת שלכם. טענו מחדש את הדף ונסו שוב."
 }

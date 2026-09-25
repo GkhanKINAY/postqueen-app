@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useThemeMode } from '@gitroom/frontend/components/layout/mode.component';
 
 interface TurnstileRenderOptions {
   sitekey: string;
@@ -103,6 +104,8 @@ export function TurnstileWidget({
   const widgetId = useRef<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const t = useT();
+  // The app's theme, not the OS's: 'auto' drew a light box on a dark page.
+  const { mode } = useThemeMode();
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +123,7 @@ export function TurnstileWidget({
       setUnavailable(false);
       widgetId.current = window.turnstile.render(ref.current, {
         sitekey: siteKey,
-        theme: 'auto',
+        theme: mode,
         callback: (token: string) => onToken(token),
         'expired-callback': () => onToken(''),
         'error-callback': () => onToken(''),
@@ -139,7 +142,7 @@ export function TurnstileWidget({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteKey]);
+  }, [siteKey, mode]);
 
   return (
     <div className="mt-[4px]">
@@ -148,7 +151,7 @@ export function TurnstileWidget({
         <div className="text-[12.5px] leading-[1.5] text-pqWarn">
           {t(
             'captcha_unavailable',
-            'The captcha could not load — it may be blocked by your browser or network. Reload the page to try again.'
+            'The captcha could not load. It may be blocked by your browser or network. Reload the page to try again.'
           )}
         </div>
       )}

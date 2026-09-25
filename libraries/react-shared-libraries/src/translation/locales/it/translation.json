@@ -828,5 +828,12 @@
   "preview_comment_failed": "Impossibile pubblicare il commento",
   "preview_comment_detach_hint": "I commenti su testo selezionato perdono l'evidenziazione se il testo viene modificato successivamente.",
   "preview_comment_text_changed": "Testo modificato",
-  "preview_no_comments_yet": "Nessun commento ancora. Seleziona del testo nel post per commentarlo, oppure aggiungi un commento generale."
+  "preview_no_comments_yet": "Nessun commento ancora. Seleziona del testo nel post per commentarlo, oppure aggiungi un commento generale.",
+  "preview_click_to_open_comment": "Fai clic per aprire il commento",
+  "preview_select_text_to_comment": "Seleziona del testo per commentare",
+  "preview_comment_guest": "Ospite",
+  "preview_comment_delete_confirm": "Eliminare questo commento e le sue risposte?",
+  "preview_comment_delete_reply_confirm": "Eliminare questa risposta?",
+  "preview_comment_delete_failed": "Impossibile eliminare il commento",
+  "captcha_unavailable": "Impossibile caricare il captcha. Potrebbe essere bloccato dal browser o dalla rete. Ricarica la pagina per riprovare."
 }
