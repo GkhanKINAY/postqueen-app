@@ -1,8 +1,9 @@
-import { IsDefined, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class MoltbookDto {
-  @MinLength(1)
-  @IsDefined()
+  // Left blank, the post goes to "general": the provider falls back to it and
+  // the composer shows it as the placeholder.
+  @IsOptional()
   @IsString()
-  submolt: string;
+  submolt?: string;
 }

@@ -74,13 +74,19 @@ export class DevToProvider extends SocialAbstract implements SocialProvider {
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
     try {
-      const { name, id, profile_image, username } = await (
-        await fetch('https://dev.to/api/users/me', {
-          headers: {
-            'api-key': body.apiKey,
-          },
-        })
-      ).json();
+      const res = await fetch('https://dev.to/api/users/me', {
+        headers: {
+          'api-key': body.apiKey,
+        },
+      });
+
+      // A rejected key comes back as a JSON error, which would otherwise be
+      // read as a profile and save a channel without an id.
+      if (!res.ok) {
+        return 'Invalid credentials';
+      }
+
+      const { name, id, profile_image, username } = await res.json();
 
       return {
         refreshToken: '',

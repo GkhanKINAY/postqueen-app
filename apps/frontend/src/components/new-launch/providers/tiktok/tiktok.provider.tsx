@@ -708,13 +708,20 @@ const TikTokSettings: FC<{
     </div>
   );
 };
-export default withProvider({
-  imageOrientation: 'portrait',
-  postComment: PostComment.COMMENT,
-  minimumCharacters: [],
-  SettingsComponent: TikTokSettings,
-  comments: false,
-  CustomPreviewComponent: TiktokPreview,
-  dto: TikTokDto,
-  maximumCharacters: 2000,
-});
+const tiktokProvider = (maximumCharacters: number) =>
+  withProvider({
+    imageOrientation: 'portrait',
+    postComment: PostComment.COMMENT,
+    minimumCharacters: [],
+    SettingsComponent: TikTokSettings,
+    comments: false,
+    CustomPreviewComponent: TiktokPreview,
+    dto: TikTokDto,
+    maximumCharacters,
+  });
+
+export default tiktokProvider(2000);
+
+// TikTok Business publishes through the Business API, which takes a longer
+// caption: 2,200, the maxLength of tiktok.business.provider.ts.
+export const TiktokBusinessProvider = tiktokProvider(2200);
