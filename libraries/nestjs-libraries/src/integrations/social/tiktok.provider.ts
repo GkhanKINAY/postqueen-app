@@ -27,6 +27,24 @@ import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
+// What a stored releaseId is, by shape. `checkPostStatus` keeps the publish_id
+// when TikTok reports no public post id, and publish ids come as
+// v_pub_url~..., v_pub_file~..., p_pub_url~... and so on. Only `v_pub_url` was
+// recognised, so every other kind went into video_ids, and /v2/video/query/
+// answers a single non-integer id by rejecting the whole batch of twenty.
+// Anything that is neither (the `missing` inbox marker, say) is skipped.
+export function classifyTikTokPostId(
+  postId: string
+): 'video' | 'publish' | 'skip' {
+  if (/^\d+$/.test(postId)) {
+    return 'video';
+  }
+  if (postId.indexOf('_pub_') > -1) {
+    return 'publish';
+  }
+  return 'skip';
+}
+
 @Rules(
   [
     'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment.',
@@ -1195,8 +1213,13 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     fromDate: number
   ): Promise<AnalyticsData[]> {
     const today = dayjs().format('YYYY-MM-DD');
+    const kind = classifyTikTokPostId(postId);
 
-    if (postId.indexOf('v_pub_url') > -1) {
+    if (kind === 'skip') {
+      return [];
+    }
+
+    if (kind === 'publish') {
       const post = await (
         await fetch(
           'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
@@ -1217,7 +1240,10 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         return [];
       }
 
-      postId = post.data.publicaly_available_post_id[0];
+      postId = String(post.data.publicaly_available_post_id[0]);
+      if (classifyTikTokPostId(postId) !== 'video') {
+        return [];
+      }
     }
 
     try {
@@ -1295,7 +1321,11 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     const requestedByResolved = new Map<string, string>();
 
     for (const postId of platformPostIds) {
-      if (postId.indexOf('v_pub_url') === -1) {
+      const kind = classifyTikTokPostId(postId);
+      if (kind === 'skip') {
+        continue;
+      }
+      if (kind === 'video') {
         resolved.push(postId);
         requestedByResolved.set(postId, postId);
         continue;
@@ -1317,8 +1347,11 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             this.identifier
           )
         ).json();
-        if (post?.data?.publicaly_available_post_id?.[0]) {
-          const publicId = String(post.data.publicaly_available_post_id[0]);
+        const publicId = String(
+          post?.data?.publicaly_available_post_id?.[0] ?? ''
+        );
+        // Only an integer ever goes into video_ids, whatever came back.
+        if (classifyTikTokPostId(publicId) === 'video') {
           resolved.push(publicId);
           requestedByResolved.set(publicId, postId);
         }
