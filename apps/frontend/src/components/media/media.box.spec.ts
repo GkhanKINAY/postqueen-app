@@ -7,6 +7,10 @@ const source = readFileSync(
   fileURLToPath(new URL('./media.box.tsx', import.meta.url)),
   'utf8',
 );
+const uploader = readFileSync(
+  fileURLToPath(new URL('./new.uploader.tsx', import.meta.url)),
+  'utf8',
+);
 
 describe('Media library thumbnails', () => {
   it('are square tiles, not 4/3 banners', () => {
@@ -31,13 +35,31 @@ describe('Media library thumbnails', () => {
     assert.match(source, /data-pq="media-uploading"/);
     assert.match(source, /uppy\.on\('upload-progress', progress\)/);
     assert.match(source, /uppy\.off\('upload-progress', progress\)/);
-    assert.equal(source.split('<UploadingTile key={upload.id}').length - 1, 2);
+    assert.equal(source.match(/<UploadingTile\s+key=\{upload\.id\}/g)?.length, 2);
     // The empty state waits for uploads too, and the tiles clear once the
     // list has been refetched, not before.
     assert.match(source, /visibleMedia\.length === 0 && uploads\.length === 0/);
     assert.match(source, /await mutate\(\);\n\s+setUploads\(\[\]\)/);
     // A video tile draws its saved poster instead of a grey frame.
     assert.match(source, /poster=\{media\.thumbnail \? mediaDirectory\.set\(media\.thumbnail\) : undefined\}/);
+  });
+
+  it('lets a file on its way in be cancelled from its tile, in both grids', () => {
+    assert.match(source, /aria-label=\{t\('cancel_upload', 'Cancel upload'\)\}/);
+    assert.match(source, /\(id: string\) => \(\) => uppy\.removeFile\(id\)/);
+    assert.equal(source.split('onCancel={cancelUpload(upload.id)}').length - 1, 2);
+    // Once the bytes are in there is no request left to abort.
+    assert.match(source, /!upload\.processing && upload\.percent < 100 && \(/);
+    // The last file gone ends the upload there and then, and the empty
+    // `complete` that follows cannot clear an upload started since.
+    assert.match(
+      uploader,
+      /on\('file-removed', \(\) => \{\n\s+if \(uppy2\.getFiles\(\)\.length > 0\) \{\n\s+return;\n\s+\}\n\s+setLocked\(false\);\n\s+props\.onEnd\(\);/,
+    );
+    assert.match(
+      uploader,
+      /on\('complete', async \(result\) => \{\n(\s+\/\/.*\n)+\s+if \(!result\.successful\?\.length && !result\.failed\?\.length\) \{\n\s+return;/,
+    );
   });
 
   it('lets the composer picker fill two full square rows instead of a 264px cap', () => {

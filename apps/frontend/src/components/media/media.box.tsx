@@ -30,6 +30,7 @@ import { Pagination } from '@gitroom/frontend/components/media/media.pagination'
 import { MediaComponentInner } from '@gitroom/frontend/components/launches/helpers/media.settings.component';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
+import { CloseIcon } from '@gitroom/frontend/components/ui/icons';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { createPortal } from 'react-dom';
@@ -154,11 +155,16 @@ type UploadTile = {
  * video sat behind a progress strip with no sign of where it was going.
  * Once the bytes are in and the server is converting a video, the
  * percentage gives way to "Processing".
+ *
+ * The × cancels the file while its bytes are still going up. It is gone once
+ * they are in: the server has the file by then, so there is no request left
+ * to abort.
  */
-const UploadingTile: FC<{ upload: UploadTile; className?: string }> = ({
-  upload,
-  className,
-}) => {
+const UploadingTile: FC<{
+  upload: UploadTile;
+  onCancel: () => void;
+  className?: string;
+}> = ({ upload, onCancel, className }) => {
   const t = useT();
   return (
     <div
@@ -177,6 +183,17 @@ const UploadingTile: FC<{ upload: UploadTile; className?: string }> = ({
         <span className="absolute inset-0 grid place-items-center font-mono text-[13px] font-[600] tabular-nums text-pqText">
           {upload.processing ? t('processing', 'Processing') : `${upload.percent}%`}
         </span>
+        {!upload.processing && upload.percent < 100 && (
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={t('cancel_upload', 'Cancel upload')}
+            title={t('cancel_upload', 'Cancel upload')}
+            className="absolute top-[6px] end-[6px] grid size-[28px] place-items-center rounded-full bg-black/65 text-white backdrop-blur-[2px] hover:bg-black/80"
+          >
+            <CloseIcon size={16} />
+          </button>
+        )}
       </div>
       <div className="truncate px-[2px] text-[12px] text-pqSoft">{upload.name}</div>
     </div>
@@ -348,6 +365,13 @@ export const MediaBox: FC<{
       uppy.off('error', cleared);
     };
   }, [uppy]);
+
+  // Removing the file is the whole cancel: the uploader aborts its request,
+  // and `file-removed` above takes the tile away.
+  const cancelUpload = useCallback(
+    (id: string) => () => uppy.removeFile(id),
+    [uppy]
+  );
 
   const enqueueFiles = useCallback(
     (files: File[]) => {
@@ -805,7 +829,11 @@ export const MediaBox: FC<{
                     data-pq="media-grid"
                   >
                     {uploads.map((upload) => (
-                      <UploadingTile key={upload.id} upload={upload} />
+                      <UploadingTile
+                        key={upload.id}
+                        upload={upload}
+                        onCancel={cancelUpload(upload.id)}
+                      />
                     ))}
                     {visibleMedia.map((media) => {
                       const menuOpenForItem = menuMedia?.id === media.id;
@@ -1140,7 +1168,11 @@ export const MediaBox: FC<{
             data-pq="media-library-grid"
           >
             {uploads.map((upload) => (
-              <UploadingTile key={upload.id} upload={upload} />
+              <UploadingTile
+                key={upload.id}
+                upload={upload}
+                onCancel={cancelUpload(upload.id)}
+              />
             ))}
             {visibleMedia.map((media) => {
               const alreadyOnPost = attachedIds.has(media.id);
