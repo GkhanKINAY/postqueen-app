@@ -56,6 +56,10 @@ export class OrganizationService {
     return this._organizationRepository.endTrial(orgId);
   }
 
+  withdrawTrial(orgId: string) {
+    return this._organizationRepository.withdrawTrial(orgId);
+  }
+
   addUserToOrg(
     userId: string,
     id: string,

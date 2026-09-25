@@ -96,6 +96,19 @@ export const CheckPaymentInner: FC<{
       setShowLoader(false);
       props.mutate();
     }
+    if (status === 3) {
+      setShowLoader(false);
+      modal.open({
+        title: t('billing_trial_card_used_title', 'Free trial not available'),
+        onlyApprove: true,
+        approveLabel: t('close', 'Close'),
+        description: t(
+          'billing_trial_card_used',
+          'This card has already been used for a free trial on another PostQueen account. We did not start your trial and you were not charged. You can subscribe without a trial.'
+        ),
+      });
+      props.mutate();
+    }
   }, []);
   useEffect(() => {
     checkSubscription();

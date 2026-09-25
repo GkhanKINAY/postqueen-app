@@ -1,6 +1,13 @@
 'use client';
 
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -24,9 +31,13 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import clsx from 'clsx';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
+import { Button } from '@gitroom/react/form/button';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import {
+  useRevalidateIdentity,
+  useUser,
+} from '@gitroom/frontend/components/layout/user.context';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
@@ -665,6 +676,62 @@ const CheckoutEmbedNotice: FC<{ message: string }> = ({ message }) => {
   );
 };
 
+// The open invoice of a subscription whose payment failed (`pendingPayment` in
+// stripe.service.ts). It is paid on Stripe's invoice page, never by starting a
+// second subscription next to the one Stripe is still retrying.
+const usePendingPayment = () => {
+  const fetch = useFetch();
+  return useSWR<{ hostedInvoiceUrl?: string }>(
+    'pending-payment',
+    async () => (await fetch('/billing/pending-payment')).json(),
+    // Paid in another tab: keep looking while an invoice is open.
+    { refreshInterval: (data) => (data?.hostedInvoiceUrl ? 5000 : 0) }
+  );
+};
+
+const PendingPaymentNotice: FC<{ hostedInvoiceUrl: string }> = ({
+  hostedInvoiceUrl,
+}) => {
+  const t = useT();
+  return (
+    <div className="billing-form flex w-full flex-1 flex-col gap-[22px] rounded-[22px] bg-pqInner p-[34px_32px] shadow-pqE1 ring-1 ring-inset ring-pqLine mobile:p-[24px_20px]">
+      <h2 className="font-display text-[21px] font-[600] tracking-[-0.02em]">
+        {t('payment_failed_title', 'Payment failed')}
+      </h2>
+      <div className="flex items-start gap-[11px] rounded-[14px] bg-pqAmberSoft p-[13px_16px] text-[14.5px] text-pqText ring-1 ring-inset ring-pqAmberLine">
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          aria-hidden="true"
+          className="mt-[1px] shrink-0 text-pqWarn"
+        >
+          <path
+            d="M12 8v4.5M12 16.2h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="font-[500] leading-[1.5]">
+          {t(
+            'billing_pending_payment_body',
+            "We couldn't take the payment for your PostQueen subscription, so your account is paused. Pay the open invoice with a working card and everything comes back as it was."
+          )}
+        </span>
+      </div>
+      <Button
+        className="self-start rounded-[12px]"
+        onClick={() => window.open(hostedInvoiceUrl, '_blank', 'noopener')}
+      >
+        {t('billing_pending_payment_cta', 'Update card and pay')}
+      </Button>
+    </div>
+  );
+};
+
 export const FirstBillingComponent = () => {
   const { stripeClient, onboardingVideoUrl } = useVariables();
   const user = useUser();
@@ -762,8 +829,31 @@ export const FirstBillingComponent = () => {
     });
   };
 
+  const { data: pending, isLoading: pendingLoading } = usePendingPayment();
+  // The invoice was paid: the plan comes back through Stripe's webhook, a few
+  // seconds after the invoice itself reads paid, so ask for the user now and
+  // once more shortly after. `/user/self` does not revalidate on focus.
+  const revalidateIdentity = useRevalidateIdentity();
+  const hadPending = useRef(false);
+  useEffect(() => {
+    if (pending?.hostedInvoiceUrl) {
+      hadPending.current = true;
+      return;
+    }
+    if (!pending || !hadPending.current) {
+      return;
+    }
+    hadPending.current = false;
+    revalidateIdentity();
+    const again = setTimeout(() => revalidateIdentity(), 5000);
+    return () => clearTimeout(again);
+  }, [pending, revalidateIdentity]);
   const { data, isLoading, error: embedFetchError } = useSWR(
-    `/billing-${tier}-${period}`,
+    // No checkout while an invoice is open: the server would refuse it. A key,
+    // not `isPaused`, so the checkout loads the moment the invoice is gone.
+    pendingLoading || pending?.hostedInvoiceUrl
+      ? null
+      : `/billing-${tier}-${period}`,
     loadCheckout,
     {
       revalidateOnFocus: false,
@@ -1062,7 +1152,11 @@ export const FirstBillingComponent = () => {
       >
         <div className="flex min-w-0 flex-1 flex-col gap-[28px]">
           <JoinOver />
-          {data?.blocked ? (
+          {pendingLoading ? (
+            <LoadingComponent />
+          ) : pending?.hostedInvoiceUrl ? (
+            <PendingPaymentNotice hostedInvoiceUrl={pending.hostedInvoiceUrl} />
+          ) : data?.blocked ? (
             <div className="rounded-[20px] p-[24px] text-[16px] font-[500] ring-[1.5px] ring-inset ring-pqBorder">
               {t(
                 'billing_other_account_subscribed',
