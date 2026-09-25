@@ -22,7 +22,11 @@ import {
   Sections,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { RegisterClientDto } from '@gitroom/nestjs-libraries/dtos/oauth/register-client.dto';
-import { extractBasicCredentials } from '@gitroom/nestjs-libraries/chat/oauth-types';
+import {
+  authorizationResponseUrl,
+  extractBasicCredentials,
+  oauthAppIssuer,
+} from '@gitroom/nestjs-libraries/chat/oauth-types';
 
 @ApiTags('OAuth')
 @Controller('/oauth')
@@ -133,14 +137,18 @@ export class OAuthAuthorizedController {
     // Dynamic clients redirect to their validated redirect_uri,
     // static apps keep using the one stored on the app
     const redirectTarget = app.dynamic ? body.redirect_uri! : app.redirectUrl;
+    // RFC 9207: every response names the issuer the client discovered, so a
+    // client that checks it (Gemini CLI does) can tell who answered
+    const iss = oauthAppIssuer(app);
 
     if (body.action === 'deny') {
-      const redirectUrl = new URL(redirectTarget);
-      redirectUrl.searchParams.set('error', 'access_denied');
-      if (body.state) {
-        redirectUrl.searchParams.set('state', body.state);
-      }
-      return { redirect: redirectUrl.toString() };
+      return {
+        redirect: authorizationResponseUrl(redirectTarget, {
+          error: 'access_denied',
+          state: body.state,
+          iss,
+        }),
+      };
     }
 
     const code = await this._oauthService.createAuthorizationCode(
@@ -156,11 +164,12 @@ export class OAuthAuthorizedController {
         : undefined
     );
 
-    const redirectUrl = new URL(redirectTarget);
-    redirectUrl.searchParams.set('code', code);
-    if (body.state) {
-      redirectUrl.searchParams.set('state', body.state);
-    }
-    return { redirect: redirectUrl.toString() };
+    return {
+      redirect: authorizationResponseUrl(redirectTarget, {
+        code,
+        state: body.state,
+        iss,
+      }),
+    };
   }
 }

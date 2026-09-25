@@ -131,6 +131,59 @@ export function joinBaseUrl(baseUrl: string, path: string): string {
   return new URL(`${baseUrl.trim().replace(/\/+$/, '')}${path}`).toString();
 }
 
+/**
+ * The base everything the MCP OAuth discovery advertises hangs off. In
+ * production NEXT_PUBLIC_BACKEND_URL is https://app.postqueen.ai/api.
+ */
+export function mcpOAuthBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL!
+  );
+}
+
+/**
+ * The two RFC 8414 path-based issuers start.mcp.ts serves metadata for.
+ * /mcp-oauth-chatgpt has no registration_endpoint, so only a pre-registered
+ * (static) app can sign in through it; /mcp-oauth-dynamic is the one DCR
+ * clients registered with.
+ */
+export function authorizationServerIssuer(
+  path: '/mcp-oauth-chatgpt' | '/mcp-oauth-dynamic',
+): string {
+  return joinBaseUrl(mcpOAuthBaseUrl(), path);
+}
+
+/**
+ * The issuer an OAuth app's authorization responses name in the RFC 9207
+ * `iss` parameter. Both issuers share one authorization endpoint, so the app
+ * decides which one its client discovered. Built by the same function as the
+ * metadata `issuer`, so the two are equal byte for byte.
+ */
+export function oauthAppIssuer(app: { dynamic: boolean }): string {
+  return authorizationServerIssuer(
+    app.dynamic ? '/mcp-oauth-dynamic' : '/mcp-oauth-chatgpt',
+  );
+}
+
+/**
+ * The redirect back to the client for an authorization response (RFC 6749
+ * §4.1.2) or an error response (§4.1.2.1). The parameters are added to the
+ * redirect URI's own query, which is kept; empty ones are left out.
+ */
+export function authorizationResponseUrl(
+  redirectUri: string,
+  params: Record<string, string | undefined>,
+): string {
+  const url = new URL(redirectUri);
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  }
+  return url.toString();
+}
+
 export function extractBearerToken(authHeader: string | null | undefined): string | undefined {
   if (!authHeader) return undefined;
 
