@@ -1,23 +1,23 @@
 /**
  * Static Connections catalog, docs-backed, not an API.
  *
- * Publishing channels live on Channels / Add Channel. This catalog covers
- * coding agents, bots, chat front doors, editors, automation, Public API / CLI
- * / Node SDK / OAuth apps, and third-party media. Code samples interpolate
+ * Publishing channels live on Channels / Add Channel. This catalog covers the
+ * assistants and bots, coding agents, editors and other MCP apps, automations
+ * and developer tools the Connect panel shows, plus the chat front doors and
+ * third-party media that only deep links open. Code samples interpolate
  * backendUrl / mcpUrl / apiKey at build time.
  *
- * OpenClaw and Hermes lead with the Agent Skill, because the Chat cards build
- * on it. Both also have native MCP clients (openclaw mcp set, Hermes
- * mcp_servers), which their cards offer as a second route.
+ * The agent pages follow the landing site's agent pages (postqueen.ai/<slug>),
+ * so the app, the site and the docs give the same steps.
  * Do not invent Typefully commands.
  */
 
 export type Kind = 'AGENT' | 'CHAT' | 'MCP' | 'SKILL' | 'FLOW' | 'API' | 'MEDIA';
 
-/** How the connector talks to PostQueen. Shown on the detail pane, not the hub card. */
+/** How the connector talks to PostQueen. */
 export type MethodId = 'MCP' | 'Skill' | 'Chat' | 'HTTP' | 'CLI' | 'API';
 
-/** How examples render in the detail pane. */
+/** How the examples read. */
 export type ExampleKind =
   | 'chat'
   | 'bot'
@@ -27,7 +27,7 @@ export type ExampleKind =
   | 'cli'
   | 'api';
 
-/** Credential the detail pane highlights. */
+/** Credential the item needs. */
 export type CredKind = 'mcp' | 'api' | 'env' | 'none';
 
 /** Catalog group ids. */
@@ -35,25 +35,41 @@ export type SectionId =
   | 'agents'
   | 'bots'
   | 'chat'
-  | 'featured'
   | 'editors'
   | 'automation'
   | 'developer'
   | 'media';
 
+/**
+ * Left-menu rows. The Browse rows are categories, each a view inside the
+ * panel; the Account rows are the key, the OAuth app console and the apps
+ * someone signed in to.
+ */
 export type ConnectNavId =
   | 'all'
-  | 'agents'
   | 'bots'
-  | 'chat'
+  | 'agents'
   | 'editors'
   | 'automation'
-  | 'public-api'
-  | 'cli'
-  | 'sdk'
-  | 'oauth-apps'
+  | 'developer'
   | 'api-keys'
+  | 'oauth-apps'
   | 'approved-apps';
+
+export const CONNECT_NAV_BROWSE: ConnectNavId[] = [
+  'all',
+  'bots',
+  'agents',
+  'editors',
+  'automation',
+  'developer',
+];
+
+export const CONNECT_NAV_ACCOUNT: ConnectNavId[] = [
+  'api-keys',
+  'oauth-apps',
+  'approved-apps',
+];
 
 /** Automation catalog ids, in display order. */
 export const AUTOMATION_CHILD_IDS = [
@@ -66,51 +82,61 @@ export const AUTOMATION_CHILD_IDS = [
 
 export type AutomationChildId = (typeof AUTOMATION_CHILD_IDS)[number];
 
-/** Featured marketplace row on All — four logo tiles. */
-export const FEATURED_IDS = [
+/** The four that lead Assistants and bots, each with a prompt to try. */
+export const FEATURED_IDS = ['grok-bot', 'muse', 'openclaw', 'hermes'] as const;
+
+/** The logos on the All hero, before "+N more". */
+export const HERO_LOGO_IDS = [
+  'grok-bot',
+  'muse',
+  'openclaw',
+  'hermes',
   'claude-apps',
   'chatgpt',
+  'claude-code',
   'cursor',
-  'grok',
 ] as const;
 
-/** Catch-all under the 4-up, not a fifth tile in the same grid. */
-export const FEATURED_CATCHALL_ID = 'other-mcp';
-
-/** Category order on the Connectors hub, after Featured. */
+/** Sections on All, after the hero, in order. */
 export const ALL_PAGE_NAV_IDS = [
-  'agents',
   'bots',
-  'chat',
+  'agents',
   'editors',
   'automation',
+  'developer',
+] as const;
+
+export const BOTS_DISPLAY_ORDER = [
+  'grok-bot',
+  'muse',
+  'openclaw',
+  'hermes',
+  'claude-apps',
+  'chatgpt',
+  'claude-cowork',
+  'grok',
+  'perplexity-computer',
+  'nanoclaw',
 ] as const;
 
 export const AGENTS_DISPLAY_ORDER = [
   'claude-code',
   'codex',
   'cursor',
-  'grok-build',
-  'muse-code',
   'gemini',
-] as const;
-
-export const BOTS_DISPLAY_ORDER = [
-  'openclaw',
-  'grok-bot',
-  'claude-cowork',
-  'hermes',
-  'perplexity-computer',
-  'nanoclaw',
+  'grok-build',
   'paperclip',
-  'muse',
 ] as const;
 
 export const EDITORS_DISPLAY_ORDER = [
   'vscode',
   'devin-desktop',
   'zed',
+  'muse-code',
+  'other-mcp',
 ] as const;
+
+export const DEVELOPER_DISPLAY_ORDER = ['api', 'cli', 'sdk', 'oauth'] as const;
 
 function sortByIdOrder(
   items: Connection[],
@@ -128,6 +154,17 @@ export interface Step {
   title: string;
   detail?: string;
   code?: string;
+  /** Label over the code box: "terminal", "message to your Bot", "mcp.json". */
+  codeLabel?: string;
+  /** Fold the code box after this many lines, behind "Show the whole message". */
+  fold?: number;
+  /**
+   * What sits inside the step instead of (or next to) code: the API key with a
+   * Copy button, or a prompt to copy and send.
+   */
+  inline?: 'key' | 'ask';
+  /** The prompt, for `inline: 'ask'`. */
+  ask?: string;
 }
 
 export interface DocLink {
@@ -141,10 +178,47 @@ export interface Example {
   body: string;
   /** Shell command or code sample. */
   code?: string;
-  /** Tool the client would call, shown as a chip. */
+  /** Tool the client would call. */
   tool?: string;
   /** What comes back: assistant line, stdout, or a short result. */
   reply?: string;
+}
+
+/** How a card says you connect, in plain words. The icon follows the kind. */
+export type WayKind =
+  | 'message'
+  | 'signin'
+  | 'command'
+  | 'config'
+  | 'connector'
+  | 'panel'
+  | 'address';
+
+export interface Way {
+  kind: WayKind;
+  label: string;
+}
+
+/** One way to connect, for the All ways to connect table. */
+export interface ConnectRoute {
+  name: string;
+  /** The address or command to copy, or `''` when the route is not out yet. */
+  address: string;
+  need: 'key' | 'none' | 'soon';
+  bestFor: string;
+  how: string;
+}
+
+/** A worked example: what you ask, the tools that run, what comes back. */
+export interface Demo {
+  ask: string;
+  rows: { tool: string; result: string }[];
+  answer: string;
+}
+
+export interface Fix {
+  symptom: string;
+  fix: string;
 }
 
 export interface Connection {
@@ -153,13 +227,16 @@ export interface Connection {
   glyph: string;
   /** Local icon under /icons/connections or /icons/third-party. */
   icon?: string;
+  /** A drawn mark for the tools that have no logo: webhooks, feeds, the API. */
+  symbol?: 'hook' | 'rss' | 'code' | 'terminal' | 'package' | 'key';
   kind: Kind;
   method: MethodId;
   cred: CredKind;
   exampleKind: ExampleKind;
   section: SectionId;
   short: string;
-  intro: string;
+  /** The longer description; the agent pages ported from the site use their steps and tips instead. */
+  intro?: string;
   examples?: Example[];
   info?: string;
   note?: string;
@@ -167,6 +244,32 @@ export interface Connection {
   docs: DocLink[];
   paths?: DocLink[];
   steps: Step[];
+  /** The card's "how you connect" line. */
+  way?: Way;
+  /** A prompt to try, on the featured cards. */
+  ask?: string;
+  isNew?: boolean;
+  /** Extra words search should find it by (chat apps for the bots you host). */
+  keywords?: string[];
+  /** The agent's page on the landing site. */
+  site?: string;
+  /** The setup heading when it is not "Connect <name>": "Set up n8n". */
+  setupTitle?: string;
+  /** The italic end of the setup heading: "Connect Grok Bot with one message." */
+  setupAccent?: string;
+  /** A version of this item that is not out yet, shown as a chip. */
+  soonNote?: string;
+  /** Steps for signing in without a key; `steps` is then the key route. */
+  signInSteps?: Step[];
+  demo?: Demo;
+  tryChips?: string[];
+  goodToKnow?: string[];
+  fixes?: Fix[];
+  routes?: ConnectRoute[];
+  /** Reachable from WhatsApp, Telegram, Slack or Discord. */
+  chatApps?: boolean;
+  /** Who has to add it first on team plans. */
+  teamNote?: string;
 }
 
 export interface Group {
@@ -176,26 +279,11 @@ export interface Group {
   items: Connection[];
 }
 
-export const KIND_STYLE: Record<Kind, string> = {
-  AGENT: 'bg-pqBrandSoft text-pqFocused',
-  CHAT: 'bg-pqBrandFaint text-pqBrand',
-  MCP: 'bg-pqOkSoft text-pqOk',
-  SKILL: 'bg-pqBrandSoft text-pqBrand',
-  FLOW: 'bg-pqAmberSoft text-pqAmber',
-  API: 'bg-pqBtnSimple text-pqSoft',
-  MEDIA: 'bg-pqBrandFaint text-pqFocused',
-};
-
-export const METHOD_STYLE: Record<MethodId, string> = {
-  MCP: 'bg-pqOkSoft text-pqOk',
-  Skill: 'bg-pqBrandSoft text-pqBrand',
-  Chat: 'bg-pqBrandFaint text-pqBrand',
-  HTTP: 'bg-pqAmberSoft text-pqAmber',
-  CLI: 'bg-pqBtnSimple text-pqSoft',
-  API: 'bg-pqBtnSimple text-pqSoft',
-};
-
-export type CatalogTranslate = (key: string, defaultValue: string) => string;
+export type CatalogTranslate = (
+  key: string,
+  defaultValue: string,
+  options?: Record<string, unknown>
+) => string;
 
 export type ConnectionsCatalogContext = {
   t: CatalogTranslate;
@@ -234,112 +322,9 @@ const apiHost = (apiUrl: string) => {
 };
 
 /**
- * Left-rail Connectors group. One row (labeled Connectors, not All) opens the
- * marketplace. Agents / Bots / Chat / Editors are headings inside that panel,
- * not extra rail rows.
+ * Webhooks and RSS AutoPost are set up in Settings. Their cards open a page
+ * here like any other, and its button leaves for the Settings tab.
  */
-export const CONNECT_NAV_CONNECTORS: {
-  id: ConnectNavId;
-  labelKey: string;
-  labelDefault: string;
-}[] = [
-  {
-    id: 'all',
-    labelKey: 'connect_nav_all',
-    labelDefault: 'Connectors',
-  },
-];
-
-/**
- * n8n, Zapier and Make stay catalog cards (they have real setup). The rail
- * opens those cards the same way Webhooks / RSS leave to Settings.
- */
-export const CONNECT_AUTOMATION_SHORTCUTS: {
-  id: 'n8n' | 'zapier' | 'make';
-  icon: string;
-  name: string;
-  soon?: boolean;
-}[] = [
-  { id: 'n8n', icon: '/icons/connections/n8n.svg', name: 'n8n' },
-  {
-    id: 'zapier',
-    icon: '/icons/connections/zapier.svg',
-    name: 'Zapier',
-    soon: true,
-  },
-  {
-    id: 'make',
-    icon: '/icons/connections/make.svg',
-    name: 'Make',
-    soon: true,
-  },
-];
-
-export function isAutomationShortcut(id: string): boolean {
-  return CONNECT_AUTOMATION_SHORTCUTS.some((item) => item.id === id);
-}
-
-export const CONNECT_NAV_DEVELOP: {
-  id: ConnectNavId;
-  labelKey: string;
-  labelDefault: string;
-}[] = [
-  {
-    id: 'public-api',
-    labelKey: 'connect_nav_public_api',
-    labelDefault: 'Public API',
-  },
-  { id: 'cli', labelKey: 'connect_nav_cli', labelDefault: 'CLI' },
-  { id: 'sdk', labelKey: 'connect_nav_sdk', labelDefault: 'Node SDK' },
-];
-
-export const CONNECT_NAV_ACCOUNT: {
-  id: ConnectNavId;
-  labelKey: string;
-  labelDefault: string;
-}[] = [
-  {
-    id: 'api-keys',
-    labelKey: 'connect_nav_api_keys',
-    labelDefault: 'API Keys',
-  },
-  {
-    id: 'oauth-apps',
-    labelKey: 'developers',
-    labelDefault: 'Developers',
-  },
-  {
-    id: 'approved-apps',
-    labelKey: 'connect_nav_approved_apps',
-    labelDefault: 'Approved Apps',
-  },
-];
-
-/**
- * Left-rail rows that leave Connect and open a Settings tab.
- * Webhooks and RSS AutoPost are not catalog cards: the overlay would only
- * tell you to open Settings.
- */
-export const CONNECT_SETTINGS_EXITS: {
-  id: string;
-  href: string;
-  labelKey: string;
-  labelDefault: string;
-}[] = [
-  {
-    id: 'webhooks',
-    href: '/settings?tab=webhooks',
-    labelKey: 'conn_webhooks_name',
-    labelDefault: 'Webhooks',
-  },
-  {
-    id: 'rss',
-    href: '/settings?tab=autopost',
-    labelKey: 'conn_rss_name',
-    labelDefault: 'RSS AutoPost',
-  },
-];
-
 export const SETTINGS_EXIT_HREF: Record<string, string> = {
   webhooks: '/settings?tab=webhooks',
   rss: '/settings?tab=autopost',
@@ -350,15 +335,15 @@ export function settingsExitHref(id: string): string | undefined {
   return SETTINGS_EXIT_HREF[id];
 }
 
-export const CONNECT_NAV = [
-  ...CONNECT_NAV_CONNECTORS,
-  ...CONNECT_NAV_DEVELOP,
-  ...CONNECT_NAV_ACCOUNT,
-];
-
-/** Left-nav Develop rows that open a catalog item instead of a card grid. */
-export const DEVELOP_NAV_ITEM: Partial<Record<ConnectNavId, string>> = {
+/**
+ * `?nav=` values from before the categories: the developer rows each opened
+ * one card, and still do, under Developer tools.
+ */
+export const LEGACY_NAV_CONNECTOR: Record<string, string> = {
   'public-api': 'api',
+  api: 'api',
+  'cli-api': 'api',
+  build: 'api',
   cli: 'cli',
   sdk: 'sdk',
 };
@@ -399,6 +384,9 @@ export const CONNECTOR_ALIASES: Record<string, string> = {
   'muse-app': 'muse',
   perplexity: 'perplexity-computer',
   'perplexity computer': 'perplexity-computer',
+  hermes: 'hermes',
+  'hermes-agent': 'hermes',
+  'hermes agent': 'hermes',
 };
 
 export function resolveConnectorId(raw: string | null): string {
@@ -407,54 +395,68 @@ export function resolveConnectorId(raw: string | null): string {
   return CONNECTOR_ALIASES[key] || key;
 }
 
-/** Legacy `?nav=` aliases + current ConnectNavId values. */
+const NAV_IDS: readonly string[] = [
+  ...CONNECT_NAV_BROWSE,
+  ...CONNECT_NAV_ACCOUNT,
+];
+
+/** Current `?nav=` values plus the ones older links carry. */
 export function resolveConnectNavId(raw: string | null): ConnectNavId | null {
   if (!raw) return null;
   const key = raw.trim().toLowerCase();
-  if (key === 'cli-api' || key === 'build' || key === 'api') return 'public-api';
+  if (NAV_IDS.includes(key)) return key as ConnectNavId;
+  if (LEGACY_NAV_CONNECTOR[key] || key === 'develop' || key === 'developer-tools') {
+    return 'developer';
+  }
+  if (key === 'developers') return 'oauth-apps';
+  if (key === 'api-key') return 'api-keys';
+  if (key === 'assistants') return 'bots';
+  if (key === 'coding') return 'agents';
+  if (key === 'automations') return 'automation';
   if (
     key === 'media' ||
     key === 'ai-agents' ||
     key === 'mcp' ||
-    key === 'assistants' ||
     key === 'agent-skills' ||
-    (ALL_PAGE_NAV_IDS as readonly string[]).includes(key)
+    key === 'chat' ||
+    key === 'connectors'
   ) {
     return 'all';
   }
-  if (key === 'developers') return 'oauth-apps';
-  if (CONNECT_NAV.some((n) => n.id === key)) return key as ConnectNavId;
   return null;
 }
 
-const DOCS = 'https://docs.postqueen.ai';
+/** Where the guides and the agent pages live; the panel links out to both. */
+export const CONNECT_DOCS_URL = 'https://docs.postqueen.ai';
+export const CONNECT_SITE_URL = 'https://postqueen.ai';
+const DOCS = CONNECT_DOCS_URL;
+const SITE = CONNECT_SITE_URL;
 
-const HUB_SECTIONS: SectionId[] = [
-  'agents',
-  'bots',
-  'chat',
-  'featured',
-  'editors',
-  'automation',
-];
+/** The chat apps you reach a hosted bot from; their pages open from the bot's. */
+export const CHAT_APP_IDS = ['whatsapp', 'telegram', 'slack-chat', 'discord-chat'];
 
-/**
- * Remaining cards on Connectors, grouped by category. Featured ids are omitted.
- * Develop (Public API, CLI, Node SDK) and Account (API Keys, Developers,
- * Approved Apps) rows are
- * panel-only. n8n / Zapier / Make are both grouped here and left-rail
- * shortcuts. Webhooks and RSS AutoPost are left-rail Settings exits, not
- * cards. Media stays in the catalog but is not a Connect nav.
- */
-export function restGroupsForAllPage(
-  groups: Group[]
-): { nav: (typeof ALL_PAGE_NAV_IDS)[number]; items: Connection[] }[] {
-  const featured = new Set<string>([...FEATURED_IDS, FEATURED_CATCHALL_ID]);
-  return ALL_PAGE_NAV_IDS.map((nav) => ({
-    nav,
-    items: connectionsForNav(groups, nav).filter((c) => !featured.has(c.id)),
-  })).filter((g) => g.items.length > 0);
-}
+/** The step that hands over the key, with a Copy button in it. */
+export const keyStepFor = (t: CatalogTranslate): Step => ({
+  title: t('conn_step_copy_key', 'Copy your API key.'),
+  detail: t('conn_step_copy_key_detail', 'Only workspace admins can see it.'),
+  inline: 'key',
+});
+
+const NAV_SECTION: Partial<Record<ConnectNavId, SectionId>> = {
+  bots: 'bots',
+  agents: 'agents',
+  editors: 'editors',
+  automation: 'automation',
+  developer: 'developer',
+};
+
+const NAV_ORDER: Partial<Record<ConnectNavId, readonly string[]>> = {
+  bots: BOTS_DISPLAY_ORDER,
+  agents: AGENTS_DISPLAY_ORDER,
+  editors: EDITORS_DISPLAY_ORDER,
+  automation: AUTOMATION_CHILD_IDS,
+  developer: DEVELOPER_DISPLAY_ORDER,
+};
 
 /** Connections for a Connect-panel nav id. */
 export function connectionsForNav(
@@ -462,42 +464,33 @@ export function connectionsForNav(
   navId: ConnectNavId
 ): Connection[] {
   const all = groups.flatMap((g) => g.items);
-  const hubCard = (c: Connection) => !SETTINGS_EXIT_HREF[c.id];
-  switch (navId) {
-    case 'all':
-      return all.filter((c) => HUB_SECTIONS.includes(c.section) && hubCard(c));
-    case 'agents':
-      return sortByIdOrder(
-        all.filter((c) => c.section === 'agents'),
-        AGENTS_DISPLAY_ORDER
-      );
-    case 'bots':
-      return sortByIdOrder(
-        all.filter((c) => c.section === 'bots'),
-        BOTS_DISPLAY_ORDER
-      );
-    case 'chat':
-      return all.filter((c) => c.section === 'chat');
-    case 'editors':
-      return sortByIdOrder(
-        all.filter((c) => c.section === 'editors'),
-        EDITORS_DISPLAY_ORDER
-      );
-    case 'automation':
-      return all.filter((c) => c.section === 'automation' && hubCard(c));
-    case 'public-api':
-      return all.filter((c) => c.id === 'api');
-    case 'cli':
-      return all.filter((c) => c.id === 'cli');
-    case 'sdk':
-      return all.filter((c) => c.id === 'sdk');
-    case 'oauth-apps':
-    case 'api-keys':
-    case 'approved-apps':
-      return [];
-    default:
-      return [];
+  if (navId === 'all') {
+    return ALL_PAGE_NAV_IDS.flatMap((id) => connectionsForNav(groups, id));
   }
+  const section = NAV_SECTION[navId];
+  if (!section) return [];
+  return sortByIdOrder(
+    all.filter((c) => c.section === section),
+    NAV_ORDER[navId] || []
+  );
+}
+
+/**
+ * Search across every category. Matches the name, the card line, the way you
+ * connect and the item's keywords, so "whatsapp" finds the bots you reach
+ * from WhatsApp.
+ */
+export function searchConnections(
+  groups: Group[],
+  query: string
+): Connection[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return connectionsForNav(groups, 'all').filter((c) =>
+    [c.name, c.short, c.way?.label || '', ...(c.keywords || [])].some((text) =>
+      text.toLowerCase().includes(q)
+    )
+  );
 }
 
 export function findConnection(
@@ -511,12 +504,23 @@ export function findConnection(
   return undefined;
 }
 
+/** The category an item's page sits under, for the left menu. */
 export function defaultNavForConnection(item: Connection): ConnectNavId {
-  if (item.id === 'api') return 'public-api';
-  if (item.id === 'cli') return 'cli';
-  if (item.id === 'sdk') return 'sdk';
-  if (item.id === 'oauth') return 'oauth-apps';
-  return 'all';
+  switch (item.section) {
+    case 'bots':
+    case 'chat':
+      return 'bots';
+    case 'agents':
+      return 'agents';
+    case 'editors':
+      return 'editors';
+    case 'automation':
+      return 'automation';
+    case 'developer':
+      return 'developer';
+    default:
+      return 'all';
+  }
 }
 
 export function buildConnectionsCatalog(
@@ -537,9 +541,48 @@ export function buildConnectionsCatalog(
       ]
     : [];
   const mcpUrlWithKey = `${mcpUrl}/${apiKey}`;
+  // The card's "how you connect" line, in plain words.
+  const way = {
+    message: { kind: 'message', label: t('conn_way_message', 'One message') },
+    signIn: { kind: 'signin', label: t('conn_way_sign_in', 'Sign in, no key') },
+    oneCommand: { kind: 'command', label: t('conn_way_one_command', 'One command') },
+    threeCommands: {
+      kind: 'command',
+      label: t('conn_way_three_commands', 'Three commands'),
+    },
+    cliSkill: { kind: 'command', label: t('conn_way_cli_skill', 'CLI and skill') },
+    config: { kind: 'config', label: t('conn_way_config', 'Add to config') },
+    mcpJson: { kind: 'config', label: t('conn_way_mcp_json', 'Add to mcp.json') },
+    settings: { kind: 'config', label: t('conn_way_settings', 'Add to settings') },
+    connector: {
+      kind: 'connector',
+      label: t('conn_way_connector', 'Custom connector'),
+    },
+    appsPanel: { kind: 'panel', label: t('conn_way_apps_panel', 'Apps panel') },
+    address: { kind: 'address', label: t('conn_way_address', 'One address') },
+  } satisfies Record<string, Way>;
+  // WhatsApp, Telegram, Slack and Discord reach the bots you host, not PostQueen.
+  const chatAppWords = ['WhatsApp', 'Telegram', 'Slack', 'Discord'];
   // The sign-in address: a workspace admin approves, and it serves every tool
   // but ask_postqueen
   const mcpSignInUrl = `${backendUrl}/mcp-oauth-dynamic`;
+  // Addresses inside tips and fixes. Unescaped: these are URLs, and React
+  // escapes the text anyway.
+  const urlVars = {
+    mcp: mcpUrl,
+    signin: mcpSignInUrl,
+    host: apiHost(backendUrl),
+    interpolation: { escapeValue: false },
+  };
+  // The key sits in the step that needs it, with a Copy button.
+  const keyStep = keyStepFor(t);
+  // Prompts to try after connecting, shared by the agent pages.
+  const chip = {
+    channels: t('conn_chip_channels', 'List my PostQueen channels'),
+    thisWeek: t('conn_chip_this_week', 'What is scheduled this week?'),
+    lastMonth: t('conn_chip_last_month', 'How did last month’s posts do?'),
+    tomorrow: t('conn_chip_tomorrow', 'What goes out tomorrow?'),
+  };
   const signInStep = (detail: string): Step => ({
     title: t('conn_step_sign_in', 'Or sign in instead of a key'),
     detail,
@@ -566,9 +609,9 @@ export function buildConnectionsCatalog(
     {
       title: t('conn_step_skill_key', 'Give it your API key'),
       detail: t(
-        'conn_step_skill_key_detail',
-        'The agent and the CLI read this from the environment. Put it in the profile the gateway or agent actually runs in. Get the key from Connections → API Keys (workspace admins only).'
-      ),
+            'conn_step_skill_key_body',
+            'The agent and the CLI read this from the environment. Put it in the profile the gateway or agent actually runs in. Copy the key from Your API key, at the top of this panel.'
+          ),
       code: `export POSTQUEEN_API_KEY="${apiKey}"`,
     },
     ...apiUrlStep,
@@ -723,91 +766,160 @@ openclaw pairing approve discord <CODE>`,
           cred: 'env',
           exampleKind: 'bot',
           section: 'bots',
-          short: t('conn_openclaw_short', 'A bot you host that posts from chat'),
-          intro: t(
-            'conn_openclaw_intro',
-            'OpenClaw is a self hosted personal agent that stays running on your machine. Message it from WhatsApp, Telegram, Slack or Discord. It is a bot, not a coding session. It drives the postqueen CLI through an Agent Skill, and it can also call PostQueen over MCP with openclaw mcp set.'
+          way: way.cliSkill,
+          keywords: chatAppWords,
+          chatApps: true,
+          site: `${SITE}/openclaw`,
+          ask: t(
+            'conn_openclaw_ask',
+            'Share today’s blog post on LinkedIn, X and Bluesky at 5pm.'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_openclaw_ex', 'Post this photo to Instagram tonight at 7 as a draft, caption about skipping the SIM booth at the airport'),
-              reply: t('conn_openclaw_ex_reply', 'Got it. That photo is an Instagram draft for tonight at 19:00 with the SIM booth caption. I will wait for you to confirm in WhatsApp before it goes out.'),
-              code: 'postqueen posts:create',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_openclaw_ex_x', 'Schedule this video on X tomorrow at 8am as a draft, copy about the Japan eSIM going live'),
-              reply: t('conn_openclaw_ex_x_reply', 'Japan eSIM video is queued on X as a draft for tomorrow at 08:00. Open the calendar if you want a last look.'),
-              code: 'postqueen posts:create',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_openclaw_ex_multi', 'Share this photo to Instagram, X and LinkedIn on Friday at 10, leave them as drafts, same Japan launch caption'),
-              reply: t('conn_openclaw_ex_multi_reply', 'Same Japan launch photo is drafted to Instagram, X and LinkedIn for Friday at 10:00. Say the word when they should go live.'),
-              code: 'postqueen posts:create',
-            }),
-          ],
-          info: t(
-            'conn_openclaw_note',
-            'The same install powers the Chat cards. Keep the Gateway awake. Chat credentials stay on your machine; PostQueen only sees the API key the CLI uses. Keep a human in the loop before anything goes out.'
+          short: t(
+            'conn_openclaw_line',
+            'Ask from WhatsApp, Telegram, Slack or Discord'
           ),
           docs: [
             {
-              label: t('conn_docs_openclaw', 'OpenClaw guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/openclaw`,
             },
-          ],
-          paths: [
             {
-              label: t('conn_path_skill', 'Install via CLI skill'),
-              href: `${DOCS}/agents/skill-install`,
+              label: t('conn_docs_chat_apps', 'Chat apps guide'),
+              href: `${DOCS}/agents/chat-channels`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_openclaw_step_install', 'Install OpenClaw'),
+              title: t('conn_openclaw_step_2', 'Install the CLI and skill.'),
               detail: t(
-                'conn_openclaw_step_install_detail',
-                'On macOS or Linux run the installer, then onboard so the Gateway stays running. Windows uses the PowerShell script. OpenClaw is a separate project; Node 22.22.3+, 24.15+ or 25.9+.'
+                'conn_openclaw_step_2_detail',
+                'Run these where OpenClaw runs, on your gateway.'
               ),
-              code: `curl -fsSL https://openclaw.ai/install.sh | bash
-openclaw onboard --install-daemon`,
-            },
-            ...skillInstall,
-            {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_openclaw_verify',
-                'A JSON list of your channels means the CLI half is ready. Then link a chat app: Telegram needs a BotFather token; WhatsApp, Slack and Discord are plugins. Pairing steps live on each Chat card.'
-              ),
-              code: 'postqueen integrations:list',
+              code: `npm install -g postqueen\nnpx skills add GkhanKINAY/postqueen-agent`,
+              codeLabel: 'terminal',
             },
             {
-              title: t('conn_openclaw_step_channel', 'Link a chat app'),
+              title: t('conn_openclaw_step_3', 'Give OpenClaw your key.'),
               detail: t(
-                'conn_openclaw_step_channel_detail',
-                'openclaw channels add installs the plugin and starts that channel\'s setup. Restart the Gateway after a plugin install. Full pairing: docs.postqueen.ai/agents/chat-channels.'
+                'conn_openclaw_step_3_detail',
+                'Set it in the environment the gateway starts with, or under `skills.entries.postqueen.env` in `openclaw.json`.'
               ),
-              code: 'openclaw channels add',
+              code: `export POSTQUEEN_API_KEY=${apiKey}`,
+              codeLabel: 'terminal',
             },
             {
-              title: t('conn_openclaw_step_mcp', 'Or connect over MCP'),
+              title: t('conn_openclaw_step_4', 'Check that it is listed.'),
               detail: t(
-                'conn_openclaw_step_mcp_detail',
-                'Instead of the skill, you can use OpenClaw\'s own MCP client. Set transport to streamable-http, because OpenClaw assumes SSE when it is left out. probe connects and lists the tools. MCP tools show up in the coding and messaging tool profiles, not in minimal. Get the key from Connections → API Keys (workspace admins only).'
+                'conn_openclaw_step_4_detail',
+                'Look for `postqueen` in the list, then ask OpenClaw to list your channels.'
               ),
-              code: `openclaw mcp set postqueen '${JSON.stringify({
-                url: mcpUrlWithKey,
-                transport: 'streamable-http',
-              })}'
-openclaw mcp probe postqueen`,
+              code: `openclaw skills list --eligible`,
+              codeLabel: 'terminal',
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_openclaw_demo_ask',
+              'Share today’s blog post on LinkedIn, X and Bluesky at 5pm.'
+            ),
+            rows: [
+              { tool: 'postqueen integrations:list', result: t('conn_openclaw_demo_row_1', '3 channels') },
+              { tool: 'postqueen posts:create', result: t('conn_openclaw_demo_row_2', '3 posts, 17:00') },
+            ],
+            answer: t(
+              'conn_openclaw_demo_answer',
+              'Scheduled on LinkedIn, X and Bluesky for 17:00. Each one is written for its own network.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_openclaw_tip_1',
+              'The skill counts as eligible only when the `postqueen` command is on the `PATH` and `POSTQUEEN_API_KEY` is set; otherwise OpenClaw leaves it out.'
+            ),
+            t(
+              'conn_openclaw_tip_2',
+              'An `export` in your own terminal does not reach a gateway that already runs as a background service. Put the key in `openclaw.json` (`skills.entries.postqueen.env`) or in the service’s own environment, then restart the gateway.'
+            ),
+            t(
+              'conn_openclaw_tip_app_1',
+              'Keep the gateway running: OpenClaw only answers while it is up.'
+            ),
+            t(
+              'conn_openclaw_tip_app_2',
+              'Your chat app logins stay on your machine. PostQueen only sees the API key.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_openclaw_fix_1',
+                '`postqueen` is not in `openclaw skills list --eligible`'
+              ),
+              fix: t(
+                'conn_openclaw_fix_1_detail',
+                'Put the `postqueen` command on the `PATH` and set `POSTQUEEN_API_KEY`.'
+              ),
+            },
+            {
+              symptom: t('conn_openclaw_fix_2', 'The gateway does not see your key'),
+              fix: t(
+                'conn_openclaw_fix_2_detail',
+                'An `export` in your terminal does not reach a background gateway. Put the key in `openclaw.json` and restart the gateway.'
+              ),
+            },
+            {
+              symptom: t('conn_openclaw_fix_3', 'MCP connects but no tools appear'),
+              fix: t(
+                'conn_openclaw_fix_3_detail',
+                'Add `--transport streamable-http`. Without it OpenClaw assumes SSE.'
+              ),
+            },
+            {
+              symptom: t('conn_openclaw_fix_4', 'You followed a NanoClaw guide'),
+              fix: t(
+                'conn_openclaw_fix_4_detail',
+                'NanoClaw is a different app with its own setup. Open its page in this panel.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_openclaw_route_1', 'CLI and skill'),
+              address: 'npm install -g postqueen',
+              need: 'key',
+              bestFor: t('conn_openclaw_route_1_best', 'The standard OpenClaw setup'),
+              how: t(
+                'conn_openclaw_route_1_how',
+                '`POSTQUEEN_API_KEY` in the gateway’s environment or in `openclaw.json`.'
+              ),
+            },
+            {
+              name: t('conn_openclaw_route_2', 'MCP with a header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_openclaw_route_2_best', 'Using PostQueen’s MCP tools'),
+              how: t(
+                'conn_openclaw_route_2_how',
+                '`openclaw mcp add` with an Authorization header.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_openclaw_route_3_how',
+                '`--auth oauth`, then `openclaw mcp login postqueen`.'
+              ),
             },
           ],
         },
         {
           id: 'hermes',
-          name: 'Hermes',
+          name: 'Hermes Agent',
           glyph: 'H',
           icon: '/icons/connections/hermes.svg',
           kind: 'AGENT',
@@ -815,84 +927,147 @@ openclaw mcp probe postqueen`,
           cred: 'env',
           exampleKind: 'bot',
           section: 'bots',
-          short: t('conn_hermes_short', 'Hand it a brief. It plans the week.'),
-          intro: t(
-            'conn_hermes_intro',
-            'Hermes is Nous Research\'s open-source agent. It runs on your machine (Python, not Node), keeps memory across sessions, and drives the postqueen CLI. Hand it one brief and it can plan, write and schedule a week. It can also front the same chat apps as OpenClaw, and it has a built-in MCP client if you would rather connect over MCP.'
+          way: way.config,
+          keywords: chatAppWords,
+          chatApps: true,
+          site: `${SITE}/hermes-agent`,
+          ask: t(
+            'conn_hermes_ask',
+            'Every weekday at 9, post one tip from my notes to Threads.'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_hermes_ex', 'Draft a caption for this photo about Monday\'s webinar and save it to Instagram for Monday 9am'),
-              reply: t('conn_hermes_ex_reply', 'Webinar caption is drafted with the photo for Instagram on Monday at 09:00. Check the calendar if you want to edit it first.'),
-              code: 'postqueen posts:create -t draft',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_hermes_ex_x', 'Queue this video on X for Tuesday 8am as a draft, three reasons to get an eSIM before you fly'),
-              reply: t('conn_hermes_ex_x_reply', 'The three reasons video sits on X as a draft for Tuesday at 08:00. I will not publish until you confirm.'),
-              code: 'postqueen posts:create -t draft',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_hermes_ex_multi', 'Put this photo on Instagram, X and LinkedIn Wednesday at 10, all drafts, caption for the Product Hunt launch'),
-              reply: t('conn_hermes_ex_multi_reply', 'Product Hunt photo is drafted on Instagram, X and LinkedIn for Wednesday at 10:00. Confirm each one when you are ready.'),
-              code: 'postqueen posts:create -t draft',
-            }),
-          ],
-          info: t(
-            'conn_hermes_note',
-            'The skills CLI installs into ~/.agents/skills. Hermes loads ~/.hermes/skills plus skills.external_dirs, so point it at that folder. Recurring jobs use hermes cron create. Keep a human in the loop before anything publishes.'
-          ),
+          short: t('conn_hermes_line', 'Ask from Telegram, Discord, Slack or WhatsApp'),
           docs: [
             {
-              label: t('conn_docs_hermes', 'Hermes guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/hermes`,
             },
-          ],
-          paths: [
             {
-              label: t('conn_path_skill', 'Install via CLI skill'),
-              href: `${DOCS}/agents/skill-install`,
+              label: t('conn_docs_chat_apps', 'Chat apps guide'),
+              href: `${DOCS}/agents/chat-channels`,
             },
           ],
           steps: [
             {
-              title: t('conn_hermes_step_install', 'Install Hermes'),
+              title: t('conn_hermes_step_1', 'Add this to your Hermes config.'),
               detail: t(
-                'conn_hermes_step_install_detail',
-                'The installer pulls uv and Python 3.11. Windows uses the PowerShell script. Chat apps are linked with hermes gateway setup, then hermes gateway keeps them awake.'
+                'conn_hermes_step_1_detail',
+                'Put it in `~/.hermes/config.yaml`, with your key in the address.'
               ),
-              code: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash',
-            },
-            ...skillInstall,
-            {
-              title: t('conn_hermes_step_skills_dir', 'Point Hermes at the skill folder'),
-              detail: t(
-                'conn_hermes_step_skills_dir_detail',
-                'Add this to ~/.hermes/config.yaml so Hermes reads the skill the next time it starts.'
-              ),
-              code: `skills:
-  external_dirs:
-    - ~/.agents/skills`,
+              code: `mcp_servers:\n  postqueen:\n    url: "${mcpUrlWithKey}"`,
+              codeLabel: '~/.hermes/config.yaml',
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_hermes_step_2', 'Reload Hermes.'),
               detail: t(
-                'conn_hermes_verify',
-                'A JSON list of your channels means Hermes can drive PostQueen. Then give it a brief, or hook a chat app with hermes gateway setup.'
+                'conn_hermes_step_2_detail',
+                'Start a new `hermes chat`, or type `/reload-mcp` in a running session.'
               ),
-              code: 'postqueen integrations:list',
             },
             {
-              title: t('conn_hermes_step_mcp', 'Or connect over MCP'),
+              title: t('conn_hermes_step_3', 'Check the connection.'),
               detail: t(
-                'conn_hermes_step_mcp_detail',
-                'Instead of the skill, you can use the MCP client that ships with the standard Hermes install. Add this to ~/.hermes/config.yaml, then start hermes chat, or run /reload-mcp in a session that is already open, and ask it to list your connected channels. Get the key from Connections → API Keys (workspace admins only).'
+                'conn_hermes_step_3_detail',
+                'Run this, then ask Hermes to list your channels.'
               ),
-              code: `mcp_servers:
-  postqueen:
-    url: "${mcpUrlWithKey}"`,
+              code: `hermes mcp test postqueen`,
+              codeLabel: 'terminal',
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_hermes_demo_ask',
+              'Every weekday at 9, post one tip from my notes to Threads.'
+            ),
+            rows: [
+              { tool: 'hermes cron create', result: t('conn_hermes_demo_row_1', 'weekdays, 9:00') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_hermes_demo_row_2', 'first post tomorrow') },
+            ],
+            answer: t(
+              'conn_hermes_demo_answer',
+              'Set up. Every weekday at 9:00 I will pick a tip from your notes and post it to Threads. The first one goes out tomorrow.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_hermes_tip_1',
+              'The `hermes mcp catalog` and the setup card you get by asking in chat cover only servers Nous has approved; add PostQueen with `hermes mcp add` or in `config.yaml`.'
+            ),
+            t(
+              'conn_hermes_tip_2',
+              'To keep the key out of the file, run `hermes mcp add postqueen --url {{mcp}} --auth header` and paste the key when asked; Hermes keeps it in `~/.hermes/.env`.',
+              urlVars
+            ),
+            t(
+              'conn_hermes_tip_3',
+              'Hermes can also sign in instead of using a key: set `auth: oauth` with the URL `{{signin}}`.',
+              urlVars
+            ),
+            t(
+              'conn_hermes_tip_4',
+              'Recurring jobs use `hermes cron create`; there is no `tasks` section in the config file.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_hermes_fix_1', 'PostQueen is not in `hermes mcp catalog`'),
+              fix: t(
+                'conn_hermes_fix_1_detail',
+                'The catalog lists only servers Nous has approved. Add PostQueen with `hermes mcp add` or in `config.yaml`.'
+              ),
+            },
+            {
+              symptom: t('conn_hermes_fix_2', 'The tools do not show in a running chat'),
+              fix: t(
+                'conn_hermes_fix_2_detail',
+                'Type `/reload-mcp`, or start a new `hermes chat`.'
+              ),
+            },
+            {
+              symptom: t('conn_hermes_fix_3', 'You are not sure it connected'),
+              fix: t('conn_hermes_fix_3_detail', 'Run `hermes mcp test postqueen`.'),
+            },
+            {
+              symptom: t('conn_hermes_fix_4', 'The key is rejected'),
+              fix: t(
+                'conn_hermes_fix_4_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t(
+                'conn_hermes_route_1_how',
+                'The key is part of the address in `config.yaml`.'
+              ),
+            },
+            {
+              name: t('conn_route_name_header', 'Authorization header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t(
+                'conn_hermes_route_2_best',
+                'Keeping the key out of config.yaml'
+              ),
+              how: t(
+                'conn_hermes_route_2_how',
+                '`hermes mcp add --auth header` asks for the key and keeps it in `~/.hermes/.env`.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_hermes_route_3_how',
+                '`auth: oauth`, then you sign in to PostQueen in the browser.'
+              ),
             },
           ],
         },
@@ -906,63 +1081,128 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'cli',
           section: 'agents',
-          short: t('conn_cc_short', 'Schedule from the Claude Code session'),
-          intro: t(
-            'conn_cc_intro',
-            'Claude Code is Anthropic\'s terminal and IDE agent, not claude.ai or Claude Desktop. Same pairing as Codex vs ChatGPT. Point it at PostQueen over MCP with one command, then schedule from the session you already have open.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_cc_ex', 'Generate a photo of a passport next to a boarding pass and draft it to Instagram tonight at 7, caption about roaming without a SIM'),
-              reply: t('conn_cc_ex_reply', 'Passport photo is saved as an Instagram draft for tonight at 19:00. Take a look on the calendar before it publishes.'),
-              code: 'claude', tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_cc_ex_x', 'Create a video about installing a Japan eSIM in four steps and queue it on X tomorrow at 8am as a draft'),
-              reply: t('conn_cc_ex_x_reply', 'Four-step eSIM video is queued on X as a draft for tomorrow at 08:00. Nothing goes out until you confirm.'),
-              code: 'claude', tool: 'generateVideoTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_cc_ex_multi', 'Save the same Japan launch post as drafts on Instagram, X and LinkedIn for Friday at 10'),
-              reply: t('conn_cc_ex_multi_reply', 'Japan launch is drafted to Instagram, X and LinkedIn for Friday at 10:00. Open the calendar if you want to tweak any of them.'),
-              code: 'claude', tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_cc_note',
-            'claude_desktop_config.json is the Claude chat app, not Claude Code. Config for this product is ~/.claude.json or a project .mcp.json. Official install is claude mcp add --transport http. A custom connector on claude.ai does not replace that command. Prefer MCP here; the Agent Skill is optional if you also want postqueen on the PATH (npm install -g postqueen).'
-          ),
+          way: way.oneCommand,
+          site: `${SITE}/claude-code`,
+          short: t('conn_cc_line', 'Make slideshows and videos for your product'),
           docs: [
             {
-              label: t('conn_docs_claude_code', 'Claude Code guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/claude-code`,
             },
           ],
-          paths: [
+          steps: [
+            keyStep,
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/claude-code`,
+              title: t('conn_cc_step_2', 'Run this in your terminal.'),
+              detail: t(
+                'conn_cc_step_2_detail',
+                'It adds PostQueen’s tools to Claude Code.'
+              ),
+              code: `claude mcp add --transport http postqueen \\\n  ${mcpUrlWithKey}`,
+              codeLabel: 'terminal',
             },
             {
-              label: t('conn_path_skill', 'Install via CLI skill'),
-              href: `${DOCS}/agents/skill-install`,
+              title: t('conn_cc_step_3', 'Check it.'),
+              detail: t(
+                'conn_cc_step_3_detail',
+                'Look for postqueen in the list, then start a new session so the tools load.'
+              ),
+              code: `claude mcp list`,
+              codeLabel: 'terminal',
             },
           ],
-          steps: [
+          demo: {
+            ask: t(
+              'conn_cc_demo_ask',
+              'Make a TikTok slideshow a day for our app next week, at 6pm'
+            ),
+            rows: [
+              { tool: 'postqueen · generateImageTool', result: t('conn_cc_demo_row_1', '6 slides × 5') },
+              { tool: 'postqueen · integrationSchedulePostTool', result: t('conn_cc_demo_row_2', '5 posts, 18:00') },
+            ],
+            answer: t(
+              'conn_cc_demo_answer',
+              'Five slideshows are on your PostQueen calendar, Monday to Friday at 18:00.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_cc_tip_1',
+              'The default scope is local (this project, stored in `~/.claude.json`); add `--scope user` for every project or `--scope project` to write a shared `.mcp.json`.'
+            ),
+            t(
+              'conn_cc_tip_2',
+              'To keep the key out of the URL: `claude mcp add --transport http postqueen {{mcp}} --header "Authorization: Bearer YOUR_API_KEY"`.',
+              urlVars
+            ),
+            t(
+              'conn_cc_tip_3',
+              'Prefer to sign in? Add `{{signin}}` instead, then run `/mcp` and sign in to PostQueen as a workspace admin.',
+              urlVars
+            ),
+            t(
+              'conn_cc_tip_app_1',
+              'Claude Code is not Claude on the web or desktop: a connector added there does not reach Claude Code.'
+            ),
+          ],
+          fixes: [
             {
-              title: t('conn_cc_step_add', 'Register the server'),
-              detail: t(
-                'conn_cc_step_add_detail',
-                'Run this in your terminal. The key sits in the URL. Get it from Connections → API Keys (workspace admins only).'
+              symptom: t('conn_cc_fix_1', 'PostQueen is missing from a session'),
+              fix: t(
+                'conn_cc_fix_1_detail',
+                'Run `claude mcp list`, then start a new session so the tools load.'
               ),
-              code: `claude mcp add --transport http postqueen ${mcpUrlWithKey}`,
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              code: 'claude mcp list',
+              symptom: t('conn_cc_fix_2', 'It works in one project only'),
+              fix: t(
+                'conn_cc_fix_2_detail',
+                'The default scope is local. Add it again with `--scope user` for every project.'
+              ),
+            },
+            {
+              symptom: t('conn_cc_fix_3', 'The key is rejected'),
+              fix: t(
+                'conn_cc_fix_3_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+            {
+              symptom: t('conn_cc_fix_4', 'You meant the Claude app'),
+              fix: t(
+                'conn_cc_fix_4_detail',
+                'Claude and Claude Cowork use a connector instead. Open their pages in this panel.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t('conn_route_how_key_url', 'The key is part of the address.'),
+            },
+            {
+              name: t('conn_route_name_header', 'Authorization header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_cc_route_2_best', 'Keeping the key out of the address'),
+              how: t(
+                'conn_cc_route_2_how',
+                '`--header` sends the key as a Bearer token.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_cc_route_3_how',
+                'Run `/mcp` and sign in to PostQueen as a workspace admin.'
+              ),
             },
           ],
         },
@@ -976,62 +1216,147 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'cli',
           section: 'agents',
+          way: way.oneCommand,
+          site: `${SITE}/grok-build`,
           short: t(
-            'conn_grok_build_short',
-            'Grok Build MCP from the terminal'
-          ),
-          intro: t(
-            'conn_grok_build_intro',
-            'Grok Build is xAI\'s terminal coding agent, not grok.com chat and not Grok Bot. Same split as Claude Code vs Claude. Register PostQueen with grok mcp add. A custom connector at grok.com/connectors does not register this product.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_grok_build_ex', 'Queue a draft on X for 8am: we just launched Japan eSIM, keep it under 280 characters'),
-              reply: t('conn_grok_build_ex_reply', 'Japan eSIM post is drafted to X for 08:00. Confirm it on the calendar before it publishes.'),
-              code: 'grok', tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_grok_build_ex_ig', 'Generate a photo of a phone unlocking at airport arrivals and draft it to Instagram tonight at 7, caption about landing ready to roam'),
-              reply: t('conn_grok_build_ex_ig_reply', 'Arrivals photo is an Instagram draft for tonight at 19:00. Have a look before it goes live.'),
-              code: 'grok', tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_grok_build_ex_multi', 'Put Friday\'s launch recap on Instagram, X and LinkedIn at 10 as drafts'),
-              reply: t('conn_grok_build_ex_multi_reply', 'Launch recap is queued as drafts on Instagram, X and LinkedIn for Friday at 10:00. Confirm in this session when you are happy with them.'),
-              code: 'grok', tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_grok_build_note',
-            'A custom connector on grok.com does not replace grok mcp add. The command writes ~/.grok/config.toml. Grok Build may pick up a Cursor or Claude Code MCP entry as a fallback. Official setup is the grok command, then grok mcp list. grok mcp doctor postqueen diagnoses connectivity.'
+            'conn_grok_build_line',
+            'Works in your terminal on macOS, Linux and Windows'
           ),
           docs: [
             {
-              label: t('conn_docs_grok_build', 'Grok Build guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/grok-build`,
             },
           ],
-          paths: [
+          steps: [
+            keyStep,
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/grok-build`,
+              title: t('conn_grok_build_step_2', 'Run this in your terminal.'),
+              detail: t(
+                'conn_grok_build_step_2_detail',
+                'It adds PostQueen’s tools to Grok Build.'
+              ),
+              code: `grok mcp add --transport http postqueen \\\n  ${mcpUrlWithKey}`,
+              codeLabel: 'terminal',
+            },
+            {
+              title: t('conn_grok_build_step_3', 'Check it.'),
+              detail: t(
+                'conn_grok_build_step_3_detail',
+                'Or open `/mcps` inside the TUI.'
+              ),
+              code: `grok mcp doctor postqueen`,
+              codeLabel: 'terminal',
             },
           ],
-          steps: [
+          demo: {
+            ask: t(
+              'conn_grok_build_demo_ask',
+              'Post a quick tip about our app on Threads tonight at 7'
+            ),
+            rows: [
+              { tool: 'postqueen · integrationSchema', result: t('conn_grok_build_demo_row_1', 'Threads rules') },
+              { tool: 'postqueen · integrationSchedulePostTool', result: t('conn_grok_build_demo_row_2', '1 post, 19:00') },
+            ],
+            answer: t(
+              'conn_grok_build_demo_answer',
+              'Wrote one Threads post with a tip about the app and scheduled it for 19:00.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_grok_build_tip_1',
+              'Header form: `grok mcp add --transport http postqueen {{mcp}} --header \'Authorization: Bearer ${POSTQUEEN_API_KEY}\'`. Keep the single quotes so Grok reads the key from your environment; with double quotes your shell writes the key itself into `config.toml`.',
+              urlVars
+            ),
+            t(
+              'conn_grok_build_tip_2',
+              '`--scope project` writes `.grok/config.toml`. Grok Build also reads `~/.claude.json`, `.cursor/mcp.json` and `.mcp.json` at lower priority.'
+            ),
+            t(
+              'conn_grok_build_tip_3',
+              'Prefer to sign in? Add `{{signin}}` instead, press `i` on PostQueen in `/mcps` and sign in to PostQueen as a workspace admin.',
+              urlVars
+            ),
+            t(
+              'conn_grok_build_tip_4',
+              'Grok Build is not Grok on grok.com and not Grok Bot; each is set up on its own.'
+            ),
+          ],
+          fixes: [
             {
-              title: t('conn_grok_build_step_add', 'Register the server'),
-              detail: t(
-                'conn_grok_build_step_add_detail',
-                'Run this in your terminal. The key sits in the URL. Get it from Connections → API Keys (workspace admins only). Add --header "Authorization: Bearer KEY" if you prefer the key out of the URL.'
+              symptom: t('conn_grok_build_fix_1', 'PostQueen tools do not show up'),
+              fix: t(
+                'conn_grok_build_fix_1_detail',
+                'Run `grok mcp doctor postqueen`, or open `/mcps` in the TUI and check the server.'
               ),
-              code: `grok mcp add --transport http postqueen ${mcpUrlWithKey}`,
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              code: 'grok mcp list',
+              symptom: t('conn_grok_build_fix_2', 'Your key ended up in config.toml'),
+              fix: t(
+                'conn_grok_build_fix_2_detail',
+                'Add the server again with the header in single quotes, so Grok reads `${POSTQUEEN_API_KEY}` from your environment.'
+              ),
+            },
+            {
+              symptom: t('conn_grok_build_fix_3', 'The key is rejected'),
+              fix: t(
+                'conn_grok_build_fix_3_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+            {
+              symptom: t('conn_grok_build_fix_4', 'You set up Grok or Grok Bot instead'),
+              fix: t(
+                'conn_grok_build_fix_4_detail',
+                'Each one is set up on its own. Open its page in this panel.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t('conn_route_how_key_url', 'The key is part of the address.'),
+            },
+            {
+              name: t('conn_route_name_header', 'Authorization header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t(
+                'conn_grok_build_route_2_best',
+                'Keeping the key out of config.toml'
+              ),
+              how: t(
+                'conn_grok_build_route_2_how',
+                '`--header` with `${POSTQUEEN_API_KEY}`, read from your environment.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_grok_build_route_3_how',
+                'Press `i` on PostQueen in `/mcps` and sign in as a workspace admin.'
+              ),
+            },
+            {
+              name: t('conn_grok_build_route_4', 'Plugin with the CLI'),
+              address: 'grok plugin install postqueen --trust',
+              need: 'key',
+              bestFor: t(
+                'conn_grok_build_route_4_best',
+                'Using the PostQueen CLI from Grok'
+              ),
+              how: t(
+                'conn_grok_build_route_4_how',
+                'The skill runs the PostQueen CLI with `POSTQUEEN_API_KEY`.'
+              ),
             },
           ],
         },
@@ -1045,71 +1370,141 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'cli',
           section: 'agents',
-          short: t('conn_codex_short', 'Schedule from the Codex coding agent'),
-          intro: t(
-            'conn_codex_intro',
-            'Codex is OpenAI\'s coding agent, not ChatGPT. Same pairing as Claude Code vs Claude. Register PostQueen over MCP with one codex mcp add command. The Agent Skill and the postqueen CLI are optional. Adding a plugin in ChatGPT does not install this product.'
+          way: way.oneCommand,
+          site: `${SITE}/codex`,
+          short: t(
+            'conn_codex_line',
+            'Plan a week of posts without leaving your editor'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_codex_ex', 'What is scheduled this week?'),
-              reply: t('conn_codex_ex_reply', 'This week: Instagram Tuesday at 19:00 and X Wednesday at 08:00. Want a change?'),
-              code: 'codex "What is scheduled this week?"',
-              tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_codex_ex_ig', 'Generate a photo of someone holding a phone at Narita arrivals and draft it to Instagram tonight at 7'),
-              reply: t('conn_codex_ex_ig_reply', 'Narita photo is drafted to Instagram for tonight at 19:00. Check the calendar if you want to change the caption.'),
-              code: 'codex "Generate a photo of someone holding a phone at Narita arrivals and draft it to Instagram tonight at 7"',
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_codex_ex_multi', 'Draft the same Narita arrivals post to Instagram, X and LinkedIn Friday at 10'),
-              reply: t('conn_codex_ex_multi_reply', 'Narita arrivals is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
-              code: 'codex "Draft the same Narita arrivals post to Instagram, X and LinkedIn Friday at 10"',
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
           docs: [
             {
-              label: t('conn_docs_codex', 'Codex guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/codex`,
             },
           ],
-          paths: [
+          steps: [
+            keyStep,
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/codex`,
+              title: t('conn_codex_step_2', 'Run this in your terminal.'),
+              detail: t(
+                'conn_codex_step_2_detail',
+                'It adds PostQueen’s tools to Codex.'
+              ),
+              code: `codex mcp add postqueen \\\n  --url ${mcpUrlWithKey}`,
+              codeLabel: 'terminal',
             },
             {
-              label: t('conn_path_skill', 'Install via CLI skill'),
-              href: `${DOCS}/agents/skill-install`,
+              title: t('conn_codex_step_3', 'Check it.'),
+              detail: t(
+                'conn_codex_step_3_detail',
+                'Look for postqueen in the list, or type `/mcp` inside Codex.'
+              ),
+              code: `codex mcp list`,
+              codeLabel: 'terminal',
+            },
+            {
+              title: t(
+                'conn_codex_step_4',
+                'Using the IDE extension or the desktop app?'
+              ),
+              detail: t(
+                'conn_codex_step_4_detail',
+                'In the extension: gear menu > MCP servers > Add server > Streamable HTTP, paste the URL, save and choose Restart extension. In the ChatGPT desktop app: Settings > MCP servers > Add server, then Restart.'
+              ),
             },
           ],
-          steps: [
+          demo: {
+            ask: t(
+              'conn_codex_demo_ask',
+              'Write five TikTok hooks for our app and turn the best two into slideshows for this week'
+            ),
+            rows: [
+              { tool: 'postqueen · generateImageTool', result: t('conn_codex_demo_row_1', '2 × 6 slides') },
+              { tool: 'postqueen · integrationSchedulePostTool', result: t('conn_codex_demo_row_2', 'TikTok, Wed and Fri') },
+            ],
+            answer: t(
+              'conn_codex_demo_answer',
+              'Here are five hooks. The two strongest are now slideshows, scheduled for Wednesday and Friday at 18:00.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_codex_tip_1',
+              'Prefer MCP over the PostQueen CLI in Codex: the default workspace-write sandbox has network access off, so every CLI call asks for approval and unattended runs fail.'
+            ),
+            t(
+              'conn_codex_tip_2',
+              'To keep the key out of the file: `codex mcp add postqueen --url {{mcp}} --bearer-token-env-var POSTQUEEN_API_KEY`.',
+              urlVars
+            ),
+            t(
+              'conn_codex_tip_3',
+              'Prefer to sign in? Use `{{signin}}` as the URL. Codex opens the PostQueen sign-in, which a workspace admin approves.',
+              urlVars
+            ),
+          ],
+          fixes: [
             {
-              title: t('conn_codex_step_add', 'Register the server'),
-              detail: t(
-                'conn_codex_step_add_detail',
-                'Run this in your terminal. It writes ~/.codex/config.toml, which the Codex CLI, the IDE extension and the ChatGPT desktop app share. The key sits in the URL. Get it from Connections → API Keys (workspace admins only). To keep the key out of the file, register the bare /mcp URL with --bearer-token-env-var POSTQUEEN_API_KEY instead.'
+              symptom: t(
+                'conn_codex_fix_1',
+                'Every PostQueen CLI call asks for approval'
               ),
-              code: `codex mcp add postqueen --url ${mcpUrlWithKey}`,
-            },
-            {
-              title: t('conn_step_verify', 'Check it worked'),
-              code: 'codex "list my social media integrations"',
-            },
-            {
-              title: t('conn_codex_step_cli', 'Or add the skill and CLI'),
-              detail: t(
-                'conn_codex_step_cli_detail',
-                'Codex runs shell commands with network access turned off by default, so every postqueen CLI call asks for your approval. To allow it, set network_access = true under [sandbox_workspace_write] in ~/.codex/config.toml. The MCP server above does not need this.'
+              fix: t(
+                'conn_codex_fix_1_detail',
+                'The default sandbox has network access off. Use the MCP server instead of the CLI.'
               ),
             },
-            ...skillInstall,
+            {
+              symptom: t('conn_codex_fix_2', 'The IDE extension does not see PostQueen'),
+              fix: t(
+                'conn_codex_fix_2_detail',
+                'Choose Restart extension after you add the server.'
+              ),
+            },
+            {
+              symptom: t('conn_codex_fix_3', 'ChatGPT on the web does not see it'),
+              fix: t(
+                'conn_codex_fix_3_detail',
+                'It does not read Codex’s config. Add PostQueen to ChatGPT on its own.'
+              ),
+            },
+            {
+              symptom: t('conn_codex_fix_4', 'The key is rejected'),
+              fix: t(
+                'conn_codex_fix_4_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t('conn_route_how_key_url', 'The key is part of the address.'),
+            },
+            {
+              name: t('conn_codex_route_2', 'Token from your environment'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_codex_route_2_best', 'Keeping the key out of config.toml'),
+              how: t(
+                'conn_codex_route_2_how',
+                '`--bearer-token-env-var POSTQUEEN_API_KEY` reads the key when Codex starts.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_codex_route_3_how',
+                'Codex opens the PostQueen sign-in, which a workspace admin approves.'
+              ),
+            },
           ],
         },
         {
@@ -1121,7 +1516,8 @@ openclaw mcp probe postqueen`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
-          section: 'agents',
+          section: 'editors',
+          way: way.config,
           short: t('conn_muse_code_short', 'Muse Code over streamable HTTP MCP'),
           intro: t(
             'conn_muse_code_intro',
@@ -1163,9 +1559,9 @@ openclaw mcp probe postqueen`,
             {
               title: t('conn_muse_code_step_file', 'Edit Muse Code settings'),
               detail: t(
-                'conn_muse_code_step_file_detail',
-                'Add this to ~/.config/muse/settings.json. Get the key from Connections → API Keys (workspace admins only). Restart Muse Code after saving.'
-              ),
+            'conn_muse_code_step_file_body',
+            'Add this to `~/.config/muse/settings.json`, then restart Muse Code.'
+          ),
               code: JSON.stringify(
                 {
                   schema_version: 1,
@@ -1385,11 +1781,11 @@ openclaw mcp probe postqueen`,
       ],
     },
     {
-      id: 'featured',
-      label: t('conn_group_featured', 'Featured'),
+      id: 'bots',
+      label: t('conn_group_bots_assistants', 'Assistants and bots'),
       blurb: t(
-        'conn_group_featured_blurb',
-        'Chat products and any other MCP client. One URL, 21 tools.'
+        'conn_group_bots_assistants_blurb',
+        'Chat products, bots you host and any other MCP client.'
       ),
       items: [
         {
@@ -1401,69 +1797,178 @@ openclaw mcp probe postqueen`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'chat',
-          section: 'featured',
-          short: t('conn_claude_apps_short', 'Chat on claude.ai, Desktop or phone'),
-          intro: t(
-            'conn_claude_apps_intro',
-            'This is Anthropic\'s chat: claude.ai, Claude Desktop, iOS and Android. PostQueen is not in Anthropic\'s Connectors Directory. You paste our public MCP URL yourself. Claude\'s UI calls that Add custom connector; that is their name for a remote MCP server, not a listing we published. One add follows the account (web, Desktop and phone). For LAN or VPN, use mcp-remote in the Desktop config instead. Claude Code is a different product, use that card under Agents, like Codex vs ChatGPT.'
+          section: 'bots',
+          way: way.signIn,
+          site: `${SITE}/claude`,
+          short: t(
+            'conn_claude_apps_line',
+            'Works on the web, in the desktop app and on your phone'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_claude_apps_ex', 'What is in my PostQueen queue this week?'),
-              reply: t('conn_claude_apps_ex_reply', 'This week you have Instagram on Tuesday at 19:00, X on Wednesday at 08:00, and a YouTube draft waiting. Want me to move anything?'),
-              tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_claude_apps_ex_ig', 'Generate a photo of a passport stamp and draft it to Instagram tonight at 7, caption about collecting countries not SIM cards'),
-              reply: t('conn_claude_apps_ex_ig_reply', 'Passport stamp photo is saved as an Instagram draft for tonight at 19:00. Open the calendar if you want to tweak the caption.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_claude_apps_ex_multi', 'Draft the same passport stamp post to Instagram, X and LinkedIn Friday at 10'),
-              reply: t('conn_claude_apps_ex_multi_reply', 'Passport stamp post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you say so.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_claude_apps_note',
-            'Not listed at claude.com/connectors. Browse will not find PostQueen. Do not search the directory. A plain "url" in claude_desktop_config.json does not work. Customize → Connectors does not install Claude Code. Adding connectors from the mobile apps is in beta; the web and Desktop remain the main way to add one.'
+          teamNote: t(
+            'conn_claude_apps_team_note',
+            'On Team and Enterprise plans, an Owner adds it first under Organization settings > Connectors > Add > Custom > Web.'
           ),
           docs: [
             {
-              label: t('conn_docs_claude_apps', 'Claude MCP setup'),
-              href: `${DOCS}/mcp/clients/claude`,
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
+              href: `${DOCS}/agents/claude`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t(
-                'conn_claude_apps_step_desktop',
-                'Paste the MCP URL'
-              ),
+              title: t('conn_claude_apps_step_2', 'Open Claude’s connectors.'),
               detail: t(
-                'conn_claude_apps_step_desktop_detail',
-                'Do not browse Connectors looking for PostQueen. Customize → Connectors → + → Add custom connector (Claude Desktop may still say Settings → Connectors). Name it PostQueen and paste the MCP URL (key in the path). Leave OAuth / Advanced empty; the key in the URL is the auth. On Team/Enterprise an Owner adds it under Organization settings → Connectors → Add → Custom → Web, then members click Connect. For LAN or VPN, skip that dialog: Desktop → Developer → Edit Config and mcp-remote instead.'
-              ),
-              code: mcpUrlWithKey,
-            },
-            {
-              title: t(
-                'conn_claude_apps_step_web',
-                'Enable it in a chat'
-              ),
-              detail: t(
-                'conn_claude_apps_step_web_detail',
-                'In a conversation, open + → Connectors and turn PostQueen on. One add follows the account, so Desktop, claude.ai and iOS/Android pick it up after you add it once. Adding connectors from the mobile apps is in beta, so the web or Desktop is the surer place to add it.'
+                'conn_claude_apps_step_2_detail',
+                'In Claude, open Customize > Connectors, then + > Add custom connector.'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_claude_apps_step_3', 'Paste this address.'),
               detail: t(
-                'conn_claude_apps_verify',
-                'Start a new conversation and ask Claude to list your connected social media accounts.'
+                'conn_claude_apps_step_3_detail',
+                'Name it PostQueen and use this as the URL, with no slash at the end. With your key in it, there is no sign-in step.'
+              ),
+              code: `Name: PostQueen\nURL:  ${mcpUrlWithKey}`,
+              codeLabel: t('conn_claude_apps_step_3_code_label', 'custom connector'),
+            },
+            {
+              title: t('conn_claude_apps_step_4', 'Switch it on in a chat.'),
+              detail: t(
+                'conn_claude_apps_step_4_detail',
+                'Open + (or type /), choose Connectors and switch PostQueen on. Then ask:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          signInSteps: [
+            {
+              title: t('conn_claude_apps_signin_step_1', 'Open Claude’s connectors.'),
+              detail: t(
+                'conn_claude_apps_signin_step_1_detail',
+                'In Claude, open Customize > Connectors, then + > Add custom connector.'
+              ),
+            },
+            {
+              title: t('conn_claude_apps_signin_step_2', 'Paste this address.'),
+              detail: t(
+                'conn_claude_apps_signin_step_2_detail',
+                'Name it PostQueen and use this as the URL, with no slash at the end. Leave the OAuth client ID and secret empty and click Add.'
+              ),
+              code: `Name: PostQueen\nURL:  ${mcpSignInUrl}`,
+              codeLabel: t('conn_claude_apps_signin_step_2_code_label', 'custom connector'),
+            },
+            {
+              title: t('conn_claude_apps_signin_step_3', 'Sign in and approve.'),
+              detail: t(
+                'conn_claude_apps_signin_step_3_detail',
+                'Click Connect, sign in to PostQueen and approve access. Only a workspace admin can approve.'
+              ),
+            },
+            {
+              title: t('conn_claude_apps_signin_step_4', 'Switch it on in a chat.'),
+              detail: t(
+                'conn_claude_apps_signin_step_4_detail',
+                'Open + (or type /), choose Connectors and switch PostQueen on. Then ask:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_claude_apps_demo_ask',
+              'Turn my notes into a LinkedIn post and an X thread, and schedule both for Tuesday at 9am.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_claude_apps_demo_row_1', '4 channels') },
+              { tool: 'integrationSchema', result: t('conn_claude_apps_demo_row_2', 'LinkedIn and X rules') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_claude_apps_demo_row_3', '2 posts, Tue 9:00') },
+            ],
+            answer: t(
+              'conn_claude_apps_demo_answer',
+              'Done. The LinkedIn post and a five-part X thread are scheduled for Tuesday at 9:00. Both are on your calendar if you want to change anything.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_claude_apps_tip_1',
+              'Only a workspace admin can connect PostQueen. Admins alone see the API key and approve the sign-in, because either one gives full access to the workspace.'
+            ),
+            t(
+              'conn_claude_apps_tip_2',
+              'The sign-in stays until you revoke it under Approved Apps in this panel.'
+            ),
+            t(
+              'conn_claude_apps_tip_3',
+              'The upload widget works on the web, in Claude Desktop, in Cowork and in the iOS and Android apps, so you can add a photo or video from your device.'
+            ),
+            t(
+              'conn_claude_apps_tip_app_1',
+              'This is Claude on the web, the desktop app and your phone. Claude Code, the terminal agent, is set up on its own.'
+            ),
+            t(
+              'conn_claude_apps_tip_app_2',
+              'PostQueen on a private network, such as a LAN or VPN? Claude connects from Anthropic’s servers, so use mcp-remote in Claude Desktop’s config instead.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_claude_apps_fix_1',
+                'Searching Connectors does not find PostQueen'
+              ),
+              fix: t(
+                'conn_claude_apps_fix_1_detail',
+                'PostQueen is not in Anthropic’s directory. Add it as a custom connector with the address from Setup.'
+              ),
+            },
+            {
+              symptom: t('conn_claude_apps_fix_2', 'Claude refuses the address'),
+              fix: t(
+                'conn_claude_apps_fix_2_detail',
+                'Paste it with no slash at the end. Claude checks that it matches exactly.'
+              ),
+            },
+            {
+              symptom: t('conn_claude_apps_fix_3', '“Only an admin can approve”'),
+              fix: t(
+                'conn_claude_apps_fix_3_detail',
+                'Ask a PostQueen workspace admin to sign in and approve, or to connect it with the key.'
+              ),
+            },
+            {
+              symptom: t('conn_claude_apps_fix_4', 'The tools do not show up in a chat'),
+              fix: t(
+                'conn_claude_apps_fix_4_detail',
+                'Open + (or type /), choose Connectors and switch PostQueen on.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_claude_apps_route_1_how',
+                'You sign in to PostQueen and approve access. Claude registers itself.'
+              ),
+            },
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t(
+                'conn_claude_apps_route_2_best',
+                'Skipping the sign-in. Anthropic advises against secrets in a URL.'
+              ),
+              how: t(
+                'conn_claude_apps_route_2_how',
+                'The key is part of the address, so there is no sign-in step.'
               ),
             },
           ],
@@ -1477,72 +1982,167 @@ openclaw mcp probe postqueen`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'chat',
-          section: 'featured',
-          short: t('conn_chatgpt_short', 'Schedule posts from ChatGPT on the web'),
-          intro: t(
-            'conn_chatgpt_intro',
-            'ChatGPT reaches PostQueen over MCP in Developer mode. She is not in the ChatGPT app store or GPT store. Turn on Developer mode, then create your own plugin at chatgpt.com/plugins and paste the MCP URL; do not search the directory. In July 2026 OpenAI replaced the App Directory with the Plugin Directory, so older guides and some accounts still say Apps. Web only, not the Free plan, not the mobile apps. Codex is a different product, use that card under Agents.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_chatgpt_ex', 'Generate a photo of a phone with an eSIM QR on screen and draft it to Instagram tonight at 7'),
-              reply: t('conn_chatgpt_ex_reply', 'eSIM QR photo is drafted to Instagram for tonight at 19:00. Have a look before it goes out.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_chatgpt_ex_x', 'Create a video about three reasons to get an eSIM before you fly and queue it on X tomorrow at 8am as a draft'),
-              reply: t('conn_chatgpt_ex_x_reply', 'Three reasons video is queued on X as a draft for tomorrow at 08:00. Check it once before it publishes.'),
-              tool: 'generateVideoTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_chatgpt_ex_multi', 'How did Instagram, X and LinkedIn do in the last 30 days?'),
-              reply: t('conn_chatgpt_ex_multi_reply', 'Last 30 days: Instagram leads on comments, X on impressions, LinkedIn is quiet. The Japan launch post is in front.'),
-              tool: 'analyticsSummaryTool',
-            }),
-          ],
-          info: t(
-            'conn_chatgpt_note',
-            'She is not listed in the ChatGPT app store. Searching the Plugin Directory will not find PostQueen. OpenAI Help Center currently says full MCP write (schedule/publish) is for Business and Enterprise/Edu. Plus and Pro can usually connect, but write tools such as integrationSchedulePostTool may stay blocked. Authentication: No Authentication, the key is already in the URL. A ChatGPT plugin does not install Codex.'
-          ),
+          section: 'bots',
+          way: way.signIn,
+          site: `${SITE}/chatgpt`,
+          short: t('conn_chatgpt_line', 'Upload photos in the chat and schedule them'),
           docs: [
             {
-              label: t('conn_docs_chatgpt', 'ChatGPT guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/chatgpt`,
             },
           ],
-          paths: [
+          steps: [
+            keyStep,
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/chatgpt`,
+              title: t('conn_chatgpt_step_2', 'Turn on Developer mode.'),
+              detail: t(
+                'conn_chatgpt_step_2_detail',
+                'In ChatGPT on the web, open Settings > Security and login and turn on Developer mode. On Business, Enterprise and Edu an admin first allows it under Workspace settings > Permissions & roles.'
+              ),
+            },
+            {
+              title: t('conn_chatgpt_step_3', 'Add PostQueen as an app.'),
+              detail: t(
+                'conn_chatgpt_step_3_detail',
+                'Go to chatgpt.com/plugins, press +, and enter the name PostQueen, a description and this address under Connection.'
+              ),
+              code: `Name:           PostQueen\nConnection URL: ${mcpUrlWithKey}\nAuthentication: No Authentication`,
+              codeLabel: 'chatgpt.com/plugins > New app',
+            },
+            {
+              title: t('conn_chatgpt_step_4', 'Pick it in a chat.'),
+              detail: t(
+                'conn_chatgpt_step_4_detail',
+                'Open the + menu, choose Developer mode and select PostQueen. ChatGPT asks you to confirm each action that changes something.'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
             },
           ],
-          steps: [
+          signInSteps: [
             {
-              title: t(
-                'conn_chatgpt_step_devmode',
-                'Turn on Developer mode'
-              ),
+              title: t('conn_chatgpt_signin_step_1', 'Turn on Developer mode.'),
               detail: t(
-                'conn_chatgpt_step_devmode_detail',
-                'ChatGPT on the web → Settings → Security and login → Developer mode. On Business, Enterprise and Edu an admin allows it first under Workspace settings → Permissions & Roles, and the switch may sit under Settings → Apps → Advanced settings. It is not available on the Free plan.'
+                'conn_chatgpt_signin_step_1_detail',
+                'In ChatGPT on the web, open Settings > Security and login and turn on Developer mode. On Business, Enterprise and Edu an admin first allows it under Workspace settings > Permissions & roles.'
               ),
             },
             {
-              title: t('conn_chatgpt_step_plugin', 'Create the plugin'),
+              title: t('conn_chatgpt_signin_step_2', 'Add PostQueen as an app.'),
               detail: t(
-                'conn_chatgpt_step_plugin_detail',
-                'Do not search the app store. Go to chatgpt.com/plugins and press +. Name it PostQueen, paste the MCP URL under Connection, set Authentication to No Authentication, then create it. It is listed under Drafts. Enable it in a chat via + → Developer mode, then pick PostQueen.'
+                'conn_chatgpt_signin_step_2_detail',
+                'Go to chatgpt.com/plugins, press +, and enter the name PostQueen, a description and this address under Connection.'
               ),
-              code: mcpUrlWithKey,
+              code: `Name:           PostQueen\nConnection URL: ${mcpSignInUrl}\nAuthentication: OAuth`,
+              codeLabel: 'chatgpt.com/plugins > New app',
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_chatgpt_signin_step_3', 'Sign in and approve.'),
               detail: t(
-                'conn_chatgpt_verify',
-                'Ask ChatGPT to list your connected social media accounts.'
+                'conn_chatgpt_signin_step_3_detail',
+                'Create it, then sign in to PostQueen and approve. Only a workspace admin can approve. It appears under Drafts.'
+              ),
+            },
+            {
+              title: t('conn_chatgpt_signin_step_4', 'Pick it in a chat.'),
+              detail: t(
+                'conn_chatgpt_signin_step_4_detail',
+                'Open the + menu, choose Developer mode and select PostQueen. ChatGPT asks you to confirm each action that changes something.'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_chatgpt_demo_ask',
+              'Write a post about our weekend sale and schedule it on Instagram and Facebook for Friday at 6pm.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_chatgpt_demo_row_1', '5 channels') },
+              { tool: 'generateImageTool', result: t('conn_chatgpt_demo_row_2', '1 image') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_chatgpt_demo_row_3', 'Confirmed by you, 2 posts') },
+            ],
+            answer: t(
+              'conn_chatgpt_demo_answer',
+              'Scheduled for Friday at 18:00 on Instagram and Facebook, with the image I made. You approved the change when I asked.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_chatgpt_tip_1',
+              'Menus that say Settings > Apps > Advanced settings are the older path; developer mode apps now live on the Plugins page.'
+            ),
+            t(
+              'conn_chatgpt_tip_2',
+              'ChatGPT shows the PostQueen upload widget, so you can add a file from your device.'
+            ),
+            t(
+              'conn_chatgpt_tip_3',
+              'The ChatGPT desktop app’s MCP servers setting belongs to Codex, not the web chat.'
+            ),
+            t(
+              'conn_chatgpt_tip_app_1',
+              'Codex, OpenAI’s coding agent, is a different product and is set up on its own.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_chatgpt_fix_1', 'There is no Developer mode option'),
+              fix: t(
+                'conn_chatgpt_fix_1_detail',
+                'Turn it on under Settings > Security and login. On Business, Enterprise and Edu an admin allows it first under Workspace settings > Permissions & roles.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_chatgpt_fix_2',
+                'A guide says Settings > Apps > Advanced settings'
+              ),
+              fix: t(
+                'conn_chatgpt_fix_2_detail',
+                'That is the older path. Add PostQueen at chatgpt.com/plugins.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_chatgpt_fix_3',
+                'The desktop app’s MCP servers setting does nothing in chat'
+              ),
+              fix: t(
+                'conn_chatgpt_fix_3_detail',
+                'That setting belongs to Codex. Add PostQueen to ChatGPT on the web.'
+              ),
+            },
+            {
+              symptom: t('conn_chatgpt_fix_4', '“Only an admin can approve”'),
+              fix: t(
+                'conn_chatgpt_fix_4_detail',
+                'Ask a PostQueen workspace admin to sign in and approve, or to set it up with the key address.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_chatgpt_route_1_how',
+                'Authentication set to OAuth. You sign in to PostQueen and approve.'
+              ),
+            },
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_skip_sign_in', 'Skipping the sign-in'),
+              how: t(
+                'conn_chatgpt_route_2_how',
+                'Authentication set to No Authentication. The key is part of the address.'
               ),
             },
           ],
@@ -1556,69 +2156,114 @@ openclaw mcp probe postqueen`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'chat',
-          section: 'featured',
-          short: t('conn_grok_short', 'Paste the MCP URL on grok.com'),
-          intro: t(
-            'conn_grok_intro',
-            'Grok can call a remote MCP server through a custom connector. PostQueen is not in xAI\'s connector catalog. Paste the MCP URL yourself at grok.com/connectors → New Connector → Custom. The server must be reachable over the public internet. Grok Bot and Grok Build are different products, use those cards.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_grok_ex', 'Put tonight\'s launch photo on X tomorrow at 8am as a draft'),
-              reply: t('conn_grok_ex_reply', 'Tonight\'s launch photo is drafted to X for tomorrow at 08:00. Nothing publishes until you say so.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_grok_ex_ig', 'Generate a photo of a phone on a passport and draft it to Instagram tonight at 7, caption about landing with data'),
-              reply: t('conn_grok_ex_ig_reply', 'Passport phone photo is an Instagram draft for tonight at 19:00. Take a look first.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_grok_ex_multi', 'Queue this launch photo on Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_grok_ex_multi_reply', 'Launch photo is queued as drafts on Instagram, X and LinkedIn for Friday at 10:00. Confirm when you are ready.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_grok_note',
-            'Searching the catalog will not find PostQueen. On Grok Business and Enterprise, an admin must add a custom MCP URL in console.x.ai (Other) first. grok.com/connectors does not install PostQueen on Grok Bot or Grok Build.'
+          section: 'bots',
+          way: way.connector,
+          site: `${SITE}/grok`,
+          short: t('conn_grok_line', 'Works on grok.com and in the Grok apps'),
+          teamNote: t(
+            'conn_grok_team_note',
+            'On Business and Enterprise, an admin first adds it at console.x.ai under Grok Business > Connectors > + Add Connector > Other. Members then connect at grok.com/connectors.'
           ),
           docs: [
             {
-              label: t('conn_docs_grok', 'Grok MCP setup'),
-              href: `${DOCS}/mcp/clients/grok`,
-            },
-          ],
-          paths: [
-            {
-              label: t('conn_docs_grok_hub', 'Grok guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/grok`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_grok_step_open', 'Open Grok connectors'),
+              title: t('conn_grok_step_2', 'Open grok.com/connectors.'),
+              detail: t('conn_grok_step_2_detail', 'Choose New Connector, then Custom.'),
+            },
+            {
+              title: t('conn_grok_step_3', 'Paste this address.'),
               detail: t(
-                'conn_grok_step_open_detail',
-                'Go to grok.com/connectors → New Connector → Custom. Do not pick a catalog connector; the next step is pasting the MCP URL.'
+                'conn_grok_step_3_detail',
+                'Use it as the MCP server URL and save. With your key in it, no extra sign-in is needed.'
+              ),
+              code: `MCP server URL: ${mcpUrlWithKey}`,
+              codeLabel: t('conn_grok_step_3_code_label', 'custom connector'),
+            },
+            {
+              title: t('conn_grok_step_4', 'Check it.'),
+              detail: t('conn_grok_step_4_detail', 'In a Grok chat, ask:'),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_grok_demo_ask',
+              'How did our X posts do this week? Draft three more like the best one.'
+            ),
+            rows: [
+              { tool: 'analyticsPostsTool', result: t('conn_grok_demo_row_1', 'X, last 7 days') },
+              { tool: 'integrationSchema', result: t('conn_grok_demo_row_2', 'X rules') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_grok_demo_row_3', '3 drafts') },
+            ],
+            answer: t(
+              'conn_grok_demo_answer',
+              'Your Tuesday thread did best. Three drafts in the same style are waiting on your calendar, and none goes out until you schedule it.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_grok_tip_1',
+              'Grok on grok.com is separate from Grok Bot and Grok Build; each is set up on its own.'
+            ),
+            t(
+              'conn_grok_tip_2',
+              'The link carries your API key, so keep it private. If it leaks, a workspace admin can rotate the key under API key in this panel.'
+            ),
+            t(
+              'conn_grok_tip_app_1',
+              'Grok connects from xAI’s servers, so your PostQueen address must be reachable over the public internet.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_grok_fix_1', 'The key is rejected'),
+              fix: t(
+                'conn_grok_fix_1_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
               ),
             },
             {
-              title: t('conn_grok_step_url', 'Paste the MCP URL'),
-              detail: t(
-                'conn_grok_step_url_detail',
-                'Enter the streamable HTTP URL with your API key in the path. Get the key from Connections → API Keys (workspace admins only). Leave extra auth empty unless you prefer a Bearer header instead.'
+              symptom: t('conn_grok_fix_2', 'The address with your key leaked'),
+              fix: t(
+                'conn_grok_fix_2_detail',
+                'A workspace admin can rotate the key under API key in this panel. Then update the connector.'
               ),
-              code: mcpUrlWithKey,
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_grok_verify',
-                'In a Grok chat, ask it to list your connected social media accounts.'
+              symptom: t(
+                'conn_grok_fix_3',
+                'On Business or Enterprise, you cannot add it'
+              ),
+              fix: t(
+                'conn_grok_fix_3_detail',
+                'An admin adds it first at console.x.ai under Grok Business > Connectors.'
+              ),
+            },
+            {
+              symptom: t('conn_grok_fix_4', 'You are using Grok Bot or Grok Build'),
+              fix: t(
+                'conn_grok_fix_4_detail',
+                'Each one is set up on its own. Open its page in this panel.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_grok_route_1_best', 'grok.com and the Grok apps'),
+              how: t(
+                'conn_grok_route_1_how',
+                'Paste it as the MCP server URL of a custom connector at grok.com/connectors.'
               ),
             },
           ],
@@ -1633,68 +2278,159 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'chat',
           section: 'bots',
-          short: t('conn_grok_bot_short', 'Ask Grok Bot in chat to connect PostQueen'),
-          intro: t(
-            'conn_grok_bot_intro',
-            'Grok Bot is xAI\'s cloud agent app, not grok.com chat and not Grok Build. It does not read grok.com/connectors, Cursor mcp.json or ~/.grok/config.toml. Ask the Bot in chat to connect PostQueen as an MCP server, and give it your API key through its secure prompt. The URL must be public HTTPS, localhost and stdio do not work.'
+          way: way.message,
+          isNew: true,
+          site: `${SITE}/grok-bot`,
+          ask: t(
+            'conn_grok_bot_ask',
+            'Every Friday at 4pm, write our week in review for LinkedIn and save it as a PostQueen draft.'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_grok_bot_ex', 'Draft this photo to X for tomorrow 8am, caption about the waitlist opening'),
-              reply: t('conn_grok_bot_ex_reply', 'Waitlist photo is drafted to X for tomorrow at 08:00. I will wait for you here before it goes out.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_grok_bot_ex_ig', 'Draft this picture to Instagram tonight at 7, caption for the waitlist'),
-              reply: t('conn_grok_bot_ex_ig_reply', 'Waitlist picture is an Instagram draft for tonight at 19:00. Reply in this chat if you want a change.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_grok_bot_ex_multi', 'Post this picture to Instagram, X and LinkedIn Friday at 10 as drafts, waitlist caption on each'),
-              reply: t('conn_grok_bot_ex_multi_reply', 'Waitlist picture is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm here before they publish.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_grok_bot_note',
-            'PostQueen is not a Grok Bot marketplace plugin yet, so there is nothing to install from Marketplace. Servers you add from chat are managed under Plugins → Yours. Keep the API key out of the chat itself; the secure prompt keeps it out of the transcript. Teams inherit Cursor MCP allowlists. Same MCP server as Grok chat, different product.'
+          short: t(
+            'conn_grok_bot_line',
+            'Routines write and schedule posts while your laptop is closed'
           ),
+          setupAccent: t('conn_grok_bot_setup_accent', 'with one message.'),
+          soonNote: t('conn_grok_bot_soon_note', 'Marketplace plugin soon'),
           docs: [
             {
-              label: t('conn_docs_grok_bot', 'Grok Bot MCP setup'),
-              href: `${DOCS}/mcp/clients/grok-bot`,
-            },
-          ],
-          paths: [
-            {
-              label: t('conn_docs_grok_bot_guide', 'Grok Bot guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/grok-bot`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_grok_bot_step_ask', 'Ask the Bot to connect PostQueen'),
+              title: t('conn_grok_bot_step_2', 'Send this message to your Bot.'),
               detail: t(
-                'conn_grok_bot_step_ask_detail',
-                'Open Grok Bot in the desktop or mobile app. There is no grok.com/connectors form here. In a Bot chat, send this message. It uses the URL without your key.'
+                'conn_grok_bot_step_2_detail',
+                'Open a Bot chat in the Grok Bot desktop app or on your phone.'
               ),
-              code: `Connect PostQueen as an MCP server at ${mcpUrl}`,
+              code: `Connect PostQueen as an MCP server at\n${mcpUrl}`,
+              codeLabel: t('conn_grok_bot_step_2_code_label', 'message to your Bot'),
             },
             {
-              title: t('conn_grok_bot_step_url', 'Give it the key in the secure prompt'),
+              title: t('conn_grok_bot_step_3', 'Choose Connect on the card.'),
               detail: t(
-                'conn_grok_bot_step_url_detail',
-                'The Bot shows a secure card. Choose Connect and paste your API key into the secure prompt, never into the chat. Get the key from Connections → API Keys (workspace admins only). Tools show up on the next message.'
+                'conn_grok_bot_step_3_detail',
+                'Paste the key into the secure prompt, never into the chat.'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_grok_bot_step_4', 'Check the tools.'),
               detail: t(
-                'conn_grok_bot_verify',
-                'In that Grok Bot chat, ask it to list your connected social media accounts. The server is also listed under Plugins → Yours.'
+                'conn_grok_bot_step_4_detail',
+                'Ask this. If nothing shows, turn PostQueen on under Marketplace > Your plugins.'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+            {
+              title: t('conn_grok_bot_step_5', 'Put it on a routine.'),
+              detail: t(
+                'conn_grok_bot_step_5_detail',
+                'Ask for one, saved as a draft so you see it before it goes out.'
+              ),
+              inline: 'ask',
+              ask: t(
+                'conn_grok_bot_step_5_ask',
+                'Every Friday at 4pm, draft our week in review for LinkedIn.'
+              ),
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_grok_bot_demo_ask',
+              'Every Friday at 4pm, write our week in review for LinkedIn and save it as a PostQueen draft.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_grok_bot_demo_row_1', 'LinkedIn') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_grok_bot_demo_row_2', 'draft, Fri 16:00') },
+            ],
+            answer: t(
+              'conn_grok_bot_demo_answer',
+              'Routine saved. Every Friday at 16:00 I will draft it and leave it on your PostQueen calendar for you to schedule.'
+            ),
+          },
+          tryChips: [chip.channels, chip.tomorrow, t('conn_grok_bot_chip_3', 'Make an image for Friday’s post')],
+          goodToKnow: [
+            t(
+              'conn_grok_bot_tip_1',
+              'Never paste the key into the chat itself; the Bot’s secure prompt keeps it out of the chat history.'
+            ),
+            t(
+              'conn_grok_bot_tip_2',
+              'If the tools do not show up, open Marketplace > Your plugins and make sure the PostQueen server is enabled.'
+            ),
+            t(
+              'conn_grok_bot_tip_3',
+              'On Enterprise, PostQueen’s address must be on your team’s MCP allowlist.'
+            ),
+            t(
+              'conn_grok_bot_tip_4',
+              'PostQueen is coming to the Grok Bot Marketplace soon. Until then, connect it in chat as Setup shows.'
+            ),
+            t(
+              'conn_grok_bot_tip_app_1',
+              'Grok Bot runs in the cloud, so your PostQueen address must be public HTTPS. A localhost address does not work.'
+            ),
+            t(
+              'conn_grok_bot_tip_app_2',
+              'Grok Bot is not Grok on grok.com and not Grok Build; each is set up on its own.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_grok_bot_fix_1', 'The tools do not show up'),
+              fix: t(
+                'conn_grok_bot_fix_1_detail',
+                'Open Marketplace > Your plugins and make sure the PostQueen server is enabled.'
+              ),
+            },
+            {
+              symptom: t('conn_grok_bot_fix_2', 'You pasted the key into the chat'),
+              fix: t(
+                'conn_grok_bot_fix_2_detail',
+                'Use the secure prompt on the Connect card instead. A workspace admin can rotate the key under API key in this panel.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_grok_bot_fix_3',
+                'On Enterprise, the connection is blocked'
+              ),
+              fix: t(
+                'conn_grok_bot_fix_3_detail',
+                'Ask your admin to add PostQueen’s address to the team’s MCP allowlist.'
+              ),
+            },
+            {
+              symptom: t('conn_grok_bot_fix_4', 'The sign-in address fails'),
+              fix: t(
+                'conn_grok_bot_fix_4_detail',
+                'Use `{{mcp}}` with the key in the secure prompt instead.',
+                urlVars
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_grok_bot_route_1', 'Ask in chat'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_grok_bot_route_1_best', 'The desktop app and your phone'),
+              how: t(
+                'conn_grok_bot_route_1_how',
+                'Send the message from Setup, then paste your key into the Bot’s secure card.'
+              ),
+            },
+            {
+              name: t('conn_grok_bot_route_2', 'Grok Bot Marketplace plugin'),
+              address: '',
+              need: 'soon',
+              bestFor: t('conn_grok_bot_route_2_best', 'Installing from the Marketplace'),
+              how: t(
+                'conn_grok_bot_route_2_how',
+                'PostQueen is coming to the Grok Bot Marketplace. Until then, connect it in chat.'
               ),
             },
           ],
@@ -1709,65 +2445,164 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'chat',
           section: 'bots',
+          way: way.signIn,
+          site: `${SITE}/claude-cowork`,
           short: t(
-            'conn_claude_cowork_short',
-            'Hand Cowork a task that ends in a post'
-          ),
-          intro: t(
-            'conn_claude_cowork_intro',
-            'Claude Cowork is Anthropic\'s agent for everyday work in Claude Desktop, and in beta on claude.ai and the mobile apps. It uses the same custom connector as the Claude card: add the MCP URL once and Cowork can call PostQueen. Cowork is on the Pro, Max, Team and Enterprise plans, not Free. Claude Code is a different product, use that card under Agents.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_claude_cowork_ex', 'Look at my PostQueen calendar for next week and tell me which days have nothing scheduled'),
-              reply: t('conn_claude_cowork_ex_reply', 'Next week Monday and Thursday are empty. Instagram on Tuesday at 19:00 and X on Wednesday at 08:00 are already queued.'),
-              tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_claude_cowork_ex_ig', 'Generate a photo of a phone showing a boarding pass and draft it to Instagram tonight at 7, caption about travel days without SIM swaps'),
-              reply: t('conn_claude_cowork_ex_ig_reply', 'Boarding pass photo is an Instagram draft for tonight at 19:00. Open the calendar if you want to change the caption.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_claude_cowork_ex_multi', 'Turn this week\'s product update into drafts for Instagram, X and LinkedIn on Friday at 10'),
-              reply: t('conn_claude_cowork_ex_multi_reply', 'The product update is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_claude_cowork_note',
-            'There is no separate Cowork install. If PostQueen is already a custom connector on your Claude account, Cowork can use it. On Team and Enterprise an Owner adds the connector for the organization first.'
+            'conn_claude_cowork_line',
+            'Hand Cowork a week of posts and review the drafts'
           ),
           docs: [
             {
-              label: t('conn_docs_claude_apps', 'Claude MCP setup'),
-              href: `${DOCS}/mcp/clients/claude`,
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
+              href: `${DOCS}/agents/claude-cowork`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_claude_cowork_step_add', 'Add the custom connector'),
+              title: t('conn_claude_cowork_step_2', 'Add the connector in Claude.'),
               detail: t(
-                'conn_claude_cowork_step_add_detail',
-                'Skip this if the Claude card is already set up. On claude.ai or Claude Desktop: Customize → Connectors → + → Add custom connector. Name it PostQueen and paste the MCP URL (key in the path). Leave the advanced OAuth fields empty.'
+                'conn_claude_cowork_step_2_detail',
+                'Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL, with your key in it. Skip this if Claude already has it.'
               ),
-              code: mcpUrlWithKey,
+              code: `Name: PostQueen\nURL:  ${mcpUrlWithKey}`,
+              codeLabel: t('conn_claude_cowork_step_2_code_label', 'custom connector'),
             },
             {
-              title: t('conn_claude_cowork_step_use', 'Use it in a Cowork task'),
+              title: t('conn_claude_cowork_step_3', 'Turn it on in Cowork.'),
               detail: t(
-                'conn_claude_cowork_step_use_detail',
-                'Start a Cowork task and make sure PostQueen is turned on in its connectors. On Pro and Max, Cowork is gradually becoming part of the regular Claude chat, so you may not see a separate Cowork option.'
+                'conn_claude_cowork_step_3_detail',
+                'In a Cowork session, switch PostQueen on from the + menu in the chat box, or from Customize > Connectors. Then ask:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          signInSteps: [
+            {
+              title: t(
+                'conn_claude_cowork_signin_step_1',
+                'Add the connector in Claude.'
+              ),
+              detail: t(
+                'conn_claude_cowork_signin_step_1_detail',
+                'Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL. Skip this if Claude already has it.'
+              ),
+              code: `Name: PostQueen\nURL:  ${mcpSignInUrl}`,
+              codeLabel: t(
+                'conn_claude_cowork_signin_step_1_code_label',
+                'custom connector'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_claude_cowork_signin_step_2', 'Sign in and approve.'),
               detail: t(
-                'conn_claude_cowork_verify',
-                'Ask Cowork to list your connected social media accounts.'
+                'conn_claude_cowork_signin_step_2_detail',
+                'Click Connect and sign in to PostQueen. Only a workspace admin can approve.'
+              ),
+            },
+            {
+              title: t('conn_claude_cowork_signin_step_3', 'Turn it on in Cowork.'),
+              detail: t(
+                'conn_claude_cowork_signin_step_3_detail',
+                'In a Cowork session, switch PostQueen on from the + menu in the chat box, or from Customize > Connectors. Then ask:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_claude_cowork_demo_ask',
+              'Go through this week’s product notes and schedule three posts for our Instagram and Facebook pages.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_claude_cowork_demo_row_1', 'Instagram, Facebook') },
+              { tool: 'generateImageTool', result: t('conn_claude_cowork_demo_row_2', '3 images') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_claude_cowork_demo_row_3', '6 posts, Wed to Fri') },
+            ],
+            answer: t(
+              'conn_claude_cowork_demo_answer',
+              'I wrote three posts from your notes, made an image for each and scheduled them on both pages, one a day from Wednesday.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_claude_cowork_tip_1',
+              'An environment variable or a terminal command on your own computer does not reach Cowork’s cloud sessions; use the connector.'
+            ),
+            t(
+              'conn_claude_cowork_tip_2',
+              'Only a workspace admin can connect PostQueen: admins alone see the API key and approve the sign-in.'
+            ),
+            t(
+              'conn_claude_cowork_tip_3',
+              'Interactive connectors work in Cowork, so the upload widget can add a file from your device.'
+            ),
+            t(
+              'conn_claude_cowork_tip_app_1',
+              'Cowork is on the Pro, Max, Team and Enterprise plans.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_claude_cowork_fix_1',
+                'PostQueen is missing in a Cowork session'
+              ),
+              fix: t(
+                'conn_claude_cowork_fix_1_detail',
+                'Turn it on from the + menu in the chat box, or from Customize > Connectors.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_claude_cowork_fix_2',
+                'A key you set on your computer does nothing'
+              ),
+              fix: t(
+                'conn_claude_cowork_fix_2_detail',
+                'Cowork’s cloud sessions do not see your computer’s environment. Add PostQueen as a connector.'
+              ),
+            },
+            {
+              symptom: t('conn_claude_cowork_fix_3', '“Only an admin can approve”'),
+              fix: t(
+                'conn_claude_cowork_fix_3_detail',
+                'Ask a PostQueen workspace admin to sign in and approve.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_claude_cowork_fix_4',
+                'Cowork is missing on the web or mobile'
+              ),
+              fix: t(
+                'conn_claude_cowork_fix_4_detail',
+                'On Enterprise, an admin turns on Cowork for the web and mobile.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_claude_cowork_route_1_how',
+                'You sign in to PostQueen and approve access, once for Claude and Cowork.'
+              ),
+            },
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_skip_sign_in', 'Skipping the sign-in'),
+              how: t(
+                'conn_claude_cowork_route_2_how',
+                'The key is part of the address, so there is no sign-in step.'
               ),
             },
           ],
@@ -1782,72 +2617,133 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'agents',
-          short: t('conn_cursor_short', 'Schedule from Cursor in the editor'),
-          intro: t(
-            'conn_cursor_intro',
-            'Cursor reads MCP servers from mcp.json. PostQueen is not in the Cursor Marketplace, so do not browse Customize → MCPs looking for her. Add a remote streamable HTTP server with a url field (Cursor infers the transport), or open Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP) and paste the JSON; all write the same file.'
+          way: way.config,
+          site: `${SITE}/cursor`,
+          short: t(
+            'conn_cursor_line',
+            'Ask the agent to draft and schedule posts while you code'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_cursor_ex', 'Generate a photo for the waitlist opening and schedule it to Instagram tonight at 7'),
-              reply: t('conn_cursor_ex_reply', 'Waitlist photo is scheduled to Instagram for tonight at 19:00 as a draft. Check the calendar before it publishes.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_cursor_ex_x', 'Create a video about how the waitlist works in four steps and queue it on X tomorrow at 8am as a draft'),
-              reply: t('conn_cursor_ex_x_reply', 'Waitlist steps video is queued on X as a draft for tomorrow at 08:00. Have a look first.'),
-              tool: 'generateVideoTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_cursor_ex_multi', 'Which of my Instagram, X and LinkedIn posts got the most comments in the last 30 days?'),
-              reply: t('conn_cursor_ex_multi_reply', 'Most comments in the last 30 days: the Japan launch on Instagram, then the waitlist post on X. LinkedIn is behind.'),
-              tool: 'analyticsPostsTool',
-            }),
-          ],
           docs: [
             {
-              label: t('conn_docs_cursor', 'Cursor guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/cursor`,
-            },
-          ],
-          paths: [
-            {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/cursor`,
-            },
-            {
-              label: t('conn_path_cli', 'Drive via CLI'),
-              href: `${DOCS}/cli/introduction`,
             },
           ],
           steps: [
             {
-              title: t('conn_cursor_step_ui', 'Add the server'),
+              title: t('conn_cursor_step_1', 'Open mcp.json.'),
               detail: t(
-                'conn_cursor_step_ui_detail',
-                'Do not search the Cursor Marketplace. Cursor Settings → Tools & MCP (older builds: Tools & Integrations → MCP), then add a streamable HTTP server named postqueen. Or create ~/.cursor/mcp.json (global) or .cursor/mcp.json (this project).'
+                'conn_cursor_step_1_detail',
+                '`~/.cursor/mcp.json` covers all projects, `.cursor/mcp.json` one project. In the app, MCP servers live under Customize > MCPs.'
               ),
             },
             {
-              title: t('conn_cursor_step_url', 'Paste this JSON'),
+              title: t('conn_cursor_step_2', 'Add this entry.'),
               detail: t(
-                'conn_cursor_step_url_detail',
-                'url is correct for Cursor. Do not put this block in Claude Desktop\'s config, that client does not accept a plain url field.'
+                'conn_cursor_step_2_detail',
+                'Save the file, with your key in the address.'
               ),
-              code: JSON.stringify(
-                { mcpServers: { postqueen: { url: mcpUrlWithKey } } },
-                null,
-                2
+              code: `{\n  "mcpServers": {\n    "postqueen": {\n      "url": "${mcpUrlWithKey}"\n    }\n  }\n}`,
+              codeLabel: 'mcp.json',
+            },
+            {
+              title: t('conn_cursor_step_3', 'Check it.'),
+              detail: t('conn_cursor_step_3_detail', 'Ask the agent:'),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_cursor_demo_ask',
+              'We just shipped dark mode. Post a short update to X and Threads now.'
+            ),
+            rows: [
+              { tool: 'postqueen · integrationList', result: t('conn_cursor_demo_row_1', 'x, threads') },
+              { tool: 'postqueen · integrationSchedulePostTool', result: t('conn_cursor_demo_row_2', '2 posts, now') },
+            ],
+            answer: t(
+              'conn_cursor_demo_answer',
+              'Posted to X and Threads. Want a longer LinkedIn version for tomorrow morning?'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_cursor_tip_1',
+              'Header form: `"url": "{{mcp}}"` with `"headers": {"Authorization": "Bearer ${env:POSTQUEEN_API_KEY}"}`; `${env:NAME}` works in `url` and `headers`.',
+              urlVars
+            ),
+            t(
+              'conn_cursor_tip_2',
+              'Prefer to sign in? Set `"url"` to `{{signin}}` with no headers. Cursor opens the PostQueen sign-in, which a workspace admin approves.',
+              urlVars
+            ),
+            t(
+              'conn_cursor_tip_3',
+              'The Cursor CLI runs the same sign-in with `agent mcp login postqueen`.'
+            ),
+            t(
+              'conn_cursor_tip_app_1',
+              'PostQueen is not in the Cursor Marketplace; add it to mcp.json as Setup shows.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_cursor_fix_1', 'The agent does not list PostQueen'),
+              fix: t(
+                'conn_cursor_fix_1_detail',
+                'Check that the `postqueen` entry is in `~/.cursor/mcp.json` or `.cursor/mcp.json`, and look under Customize > MCPs.'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_cursor_verify',
-                'In agent mode, ask Cursor to list your connected channels.'
+              symptom: t('conn_cursor_fix_2', 'It works in one project only'),
+              fix: t(
+                'conn_cursor_fix_2_detail',
+                '`.cursor/mcp.json` covers one project. Use `~/.cursor/mcp.json` for all of them.'
+              ),
+            },
+            {
+              symptom: t('conn_cursor_fix_3', 'The Cursor CLI does not sign in'),
+              fix: t('conn_cursor_fix_3_detail', 'Run `agent mcp login postqueen`.'),
+            },
+            {
+              symptom: t('conn_cursor_fix_4', 'The key is rejected'),
+              fix: t(
+                'conn_cursor_fix_4_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t(
+                'conn_cursor_route_1_how',
+                'The key is part of the address in `mcp.json`.'
+              ),
+            },
+            {
+              name: t('conn_route_name_header', 'Authorization header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_cursor_route_2_best', 'Keeping the key out of mcp.json'),
+              how: t(
+                'conn_cursor_route_2_how',
+                '`headers` sends `Bearer ${env:POSTQUEEN_API_KEY}`.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_cursor_route_3_how',
+                'Cursor opens the PostQueen sign-in, which a workspace admin approves.'
               ),
             },
           ],
@@ -1862,6 +2758,7 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'editors',
+          way: way.mcpJson,
           short: t(
             'conn_vscode_short',
             'Schedule from VS Code Copilot MCP'
@@ -1911,9 +2808,9 @@ openclaw mcp probe postqueen`,
             {
               title: t('conn_vscode_step_json', 'Paste this JSON'),
               detail: t(
-                'conn_vscode_step_json_detail',
-                'The key is servers, not mcpServers. type must be http. Put the API key in the URL or in a headers Authorization Bearer. Get the key from Connections → API Keys (workspace admins only).'
-              ),
+            'conn_vscode_step_json_body',
+            'The key is `servers`, not `mcpServers`, and `type` must be `http`. The API key goes in the URL, as here, or in an Authorization Bearer header.'
+          ),
               code: JSON.stringify(
                 {
                   servers: {
@@ -1937,11 +2834,13 @@ openclaw mcp probe postqueen`,
           id: 'devin-desktop',
           name: 'Devin Desktop',
           glyph: 'Dv',
+          icon: '/icons/connections/devin-desktop.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'editors',
+          way: way.oneCommand,
           short: t(
             'conn_devin_desktop_short',
             'Schedule from Devin Desktop'
@@ -1985,10 +2884,11 @@ openclaw mcp probe postqueen`,
             {
               title: t('conn_devin_desktop_step_ui', 'Add it from the terminal'),
               detail: t(
-                'conn_devin_desktop_step_ui_detail',
-                'PostQueen is not in the Devin Desktop marketplace. Run this once. -s user makes the server available in every project; without it, it is saved for the current project only. Get the key from Connections → API Keys (workspace admins only).'
-              ),
+            'conn_devin_desktop_step_ui_body',
+            'PostQueen is not in the Devin Desktop marketplace. Run this once. `-s user` makes the server available in every project; without it, it is saved for the current project only.'
+          ),
               code: `devin mcp add -s user postqueen ${mcpUrlWithKey}`,
+              codeLabel: 'terminal',
             },
             {
               title: t('conn_devin_desktop_step_json', 'Or paste this JSON'),
@@ -2025,6 +2925,7 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'editors',
+          way: way.settings,
           short: t('conn_zed_short', 'Zed editor remote MCP from JSON'),
           intro: t(
             'conn_zed_intro',
@@ -2071,9 +2972,9 @@ openclaw mcp probe postqueen`,
             {
               title: t('conn_zed_step_json', 'Paste this JSON'),
               detail: t(
-                'conn_zed_step_json_detail',
-                'The key is context_servers. This form sends the key in an Authorization header on the bare /mcp URL. A url with the key in the path also works on its own, without headers. Get the key from Connections → API Keys (workspace admins only).'
-              ),
+            'conn_zed_step_json_body',
+            'The key is `context_servers`. This form sends the key in an Authorization header on the bare /mcp URL. A url with the key in the path also works on its own, without headers.'
+          ),
               code: JSON.stringify(
                 {
                   context_servers: {
@@ -2106,75 +3007,120 @@ openclaw mcp probe postqueen`,
           cred: 'mcp',
           exampleKind: 'cli',
           section: 'agents',
-          short: t('conn_gemini_short', 'Gemini CLI talks over streamable HTTP'),
-          intro: t(
-            'conn_gemini_intro',
-            'Gemini CLI reads MCP servers from ~/.gemini/settings.json. A remote server uses url with type "http", which is what gemini mcp add --transport http writes. The older httpUrl key still works but is deprecated. This is the terminal CLI, not gemini.google.com.'
-          ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_gemini_ex', 'Show me everything queued through Sunday'),
-              reply: t('conn_gemini_ex_reply', 'Through Sunday: Instagram Tuesday at 19:00 and X Wednesday at 08:00.'),
-              code: 'gemini', tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_gemini_ex_ig', 'Generate a photo of a phone on airplane mode over a map and draft it to Instagram tonight at 7'),
-              reply: t('conn_gemini_ex_ig_reply', 'Airplane mode photo is drafted to Instagram for tonight at 19:00. Check the calendar before it goes out.'),
-              code: 'gemini', tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_gemini_ex_multi', 'Schedule the airplane mode post to Instagram, X and LinkedIn Friday at 10 as drafts'),
-              reply: t('conn_gemini_ex_multi_reply', 'Airplane mode post is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm when the set looks right.'),
-              code: 'gemini', tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_gemini_note',
-            'This settings.json does not appear in gemini.google.com. Google Connected Apps / Spark is a separate product with its own eligibility, do not expect the phone apps to pick up Gemini CLI.'
-          ),
+          way: way.oneCommand,
+          site: `${SITE}/gemini-cli`,
+          short: t('conn_gemini_line', 'Free with a personal Google account'),
           docs: [
             {
-              label: t('conn_docs_gemini', 'Gemini CLI guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/gemini-cli`,
             },
           ],
-          paths: [
+          steps: [
+            keyStep,
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/clients/gemini-cli`,
+              title: t('conn_gemini_step_2', 'Run this in your terminal.'),
+              detail: t(
+                'conn_gemini_step_2_detail',
+                'It adds PostQueen for every folder you open Gemini CLI in.'
+              ),
+              code: `gemini mcp add --transport http --scope user \\\n  postqueen ${mcpUrlWithKey}`,
+              codeLabel: 'terminal',
+            },
+            {
+              title: t('conn_gemini_step_3', 'Check it.'),
+              detail: t(
+                'conn_gemini_step_3_detail',
+                'Start Gemini CLI and type `/mcp` to see the PostQueen tools.'
+              ),
+              code: `/mcp`,
+              codeLabel: 'gemini',
             },
           ],
-          steps: [
+          demo: {
+            ask: t(
+              'conn_gemini_demo_ask',
+              'Make a short video about our new feature for TikTok, Reels and Shorts on Friday at 6pm'
+            ),
+            rows: [
+              { tool: 'postqueen · generateVideoTool', result: t('conn_gemini_demo_row_1', '8 s, with sound') },
+              { tool: 'postqueen · integrationSchedulePostTool', result: t('conn_gemini_demo_row_2', '3 posts, Fri 18:00') },
+            ],
+            answer: t(
+              'conn_gemini_demo_answer',
+              'The video is ready and scheduled on TikTok, Instagram and YouTube for Friday at 18:00, with a caption for each.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_gemini_tip_1',
+              'The default scope is project (`.gemini/settings.json`); `--scope user` writes `~/.gemini/settings.json`.'
+            ),
+            t(
+              'conn_gemini_tip_2',
+              'The command writes `"url"` with `"type": "http"`, which works. The older key is `httpUrl`.'
+            ),
+            t(
+              'conn_gemini_tip_3',
+              'Header form: `gemini mcp add --transport http --scope user --header "Authorization: Bearer YOUR_API_KEY" postqueen {{mcp}}`',
+              urlVars
+            ),
+            t(
+              'conn_gemini_tip_app_1',
+              'This is Gemini CLI in your terminal. It does not add PostQueen to gemini.google.com or the Gemini apps.'
+            ),
+          ],
+          fixes: [
             {
-              title: t('conn_gemini_step_cli', 'Add it from the CLI'),
-              detail: t(
-                'conn_gemini_step_cli_detail',
-                'Prefer this over hand-editing JSON. Pass --scope user so it is not written into a project file you might commit.'
+              symptom: t('conn_gemini_fix_1', 'The sign-in address fails'),
+              fix: t(
+                'conn_gemini_fix_1_detail',
+                'Gemini CLI refuses PostQueen’s sign-in. Use the key address from Setup.'
               ),
-              code: `gemini mcp add --transport http --scope user postqueen ${mcpUrlWithKey}`,
             },
             {
-              title: t('conn_gemini_step_config', 'Or edit settings.json'),
-              detail: t(
-                'conn_gemini_step_config_detail',
-                'Add this to ~/.gemini/settings.json. Use url with type "http". An existing entry that uses httpUrl keeps working, but that key is deprecated.'
-              ),
-              code: JSON.stringify(
-                { mcpServers: { postqueen: { url: mcpUrlWithKey, type: 'http' } } },
-                null,
-                2
+              symptom: t('conn_gemini_fix_2', 'PostQueen is missing in another folder'),
+              fix: t(
+                'conn_gemini_fix_2_detail',
+                'The default scope is project. Add it again with `--scope user`.'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_gemini_verify',
-                'Start Gemini CLI and run the slash command /mcp. postqueen should show as connected with 21 tools. Then ask it to list your connected social media accounts.'
+              symptom: t('conn_gemini_fix_3', 'A guide says your `url` setting is wrong'),
+              fix: t(
+                'conn_gemini_fix_3_detail',
+                '`url` with `"type": "http"` works. `httpUrl` is the older key.'
               ),
-              code: '/mcp',
+            },
+            {
+              symptom: t('conn_gemini_fix_4', 'The key is rejected'),
+              fix: t(
+                'conn_gemini_fix_4_detail',
+                'Copy it again from Your API key, at the top of this panel. Only workspace admins see it.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t('conn_route_how_key_url', 'The key is part of the address.'),
+            },
+            {
+              name: t('conn_route_name_header', 'Authorization header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t(
+                'conn_gemini_route_2_best',
+                'Keeping the key out of the address'
+              ),
+              how: t(
+                'conn_gemini_route_2_how',
+                '`--header` sends the key as a Bearer token.'
+              ),
             },
           ],
         },
@@ -2182,71 +3128,142 @@ openclaw mcp probe postqueen`,
           id: 'perplexity-computer',
           name: 'Perplexity Computer',
           glyph: 'Px',
+          icon: '/icons/connections/perplexity-computer.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'chat',
           section: 'bots',
+          way: way.connector,
+          site: `${SITE}/perplexity-computer`,
           short: t(
-            'conn_perplexity_short',
-            'Hand Perplexity Computer a task that ends in a post'
+            'conn_perplexity_line',
+            'Describe a single post or a whole campaign'
           ),
-          intro: t(
-            'conn_perplexity_intro',
-            'Perplexity Computer is Perplexity\'s agent that carries out multi-step tasks in a cloud sandbox with a browser, files and your connected tools. Add PostQueen as a custom remote connector with the MCP URL, and Computer can call her. It is on the Pro, Max, Education Pro, Enterprise Pro and Enterprise Max plans, not Free. Perplexity search is a different product.'
+          teamNote: t(
+            'conn_perplexity_team_note',
+            'On Enterprise, an admin first turns on Allow members to add custom connectors under Enterprise settings > Permissions, or adds PostQueen for the whole organization there.'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_perplexity_ex', 'Check my PostQueen queue for next week and list the days with no posts'),
-              reply: t('conn_perplexity_ex_reply', 'Next week Monday and Friday have no posts. Instagram on Tuesday at 19:00 and X on Wednesday at 08:00 are already queued.'),
-              tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_perplexity_ex_ig', 'Generate a photo of a SIM tray next to a passport and draft it to Instagram tonight at 7, caption with three eSIM tips'),
-              reply: t('conn_perplexity_ex_ig_reply', 'SIM tray photo is an Instagram draft for tonight at 19:00 with the three tips. Open the calendar if you want to trim the caption.'),
-              tool: 'generateImageTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_perplexity_ex_multi', 'Find last month\'s best post and draft a follow up to Instagram, X and LinkedIn for Friday at 10'),
-              reply: t('conn_perplexity_ex_multi_reply', 'The Japan launch did best. A follow up is drafted to Instagram, X and LinkedIn for Friday at 10:00. Nothing publishes until you confirm.'),
-              tool: 'analyticsPostsTool',
-            }),
-          ],
-          info: t(
-            'conn_perplexity_note',
-            'From Perplexity\'s docs, not tested by PostQueen yet. Add it under Account settings → Connectors, not Settings → MCP servers, which is for servers on your own device. Use the MCP URL with the key; PostQueen\'s sign-in address is not supported with Perplexity yet. On Enterprise, an admin first allows members to add custom connectors under Enterprise settings → Permissions.'
-          ),
-          docs: [],
-          paths: [
+          docs: [
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/introduction`,
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
+              href: `${DOCS}/agents/perplexity-computer`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_perplexity_step_open', 'Open Perplexity connectors'),
+              title: t('conn_perplexity_step_2', 'Add a custom connector.'),
               detail: t(
-                'conn_perplexity_step_open_detail',
-                'In Perplexity on the web, open Account settings → Connectors, click + Custom connector and choose Remote.'
+                'conn_perplexity_step_2_detail',
+                'In Perplexity on the web, open Account settings > Connectors, click + Custom connector and choose Remote.'
               ),
             },
             {
-              title: t('conn_perplexity_step_url', 'Paste the MCP URL'),
+              title: t('conn_perplexity_step_3', 'Fill it in like this.'),
               detail: t(
-                'conn_perplexity_step_url_detail',
-                'Name it PostQueen and paste this as the MCP Server URL. Set Authentication to None, because the key is already in the URL, and Transport to Streamable HTTP. Get the key from Connections → API Keys (workspace admins only). Tick the acknowledgement box, click Add, then click the PostQueen card to enable it.'
+                'conn_perplexity_step_3_detail',
+                'Tick the acknowledgement box, click Add, then click the PostQueen card to enable it.'
               ),
-              code: mcpUrlWithKey,
+              code: `Name:           PostQueen\nMCP Server URL: ${mcpUrlWithKey}\nAuthentication: None\nTransport:      Streamable HTTP`,
+              codeLabel: t('conn_perplexity_step_3_code_label', 'custom connector'),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_perplexity_step_4', 'Check it in Computer.'),
               detail: t(
-                'conn_perplexity_verify',
-                'In Computer, check that PostQueen is on under Connectors, then ask it to list your connected channels.'
+                'conn_perplexity_step_4_detail',
+                'Make sure PostQueen is on under Connectors, then ask:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_perplexity_demo_ask',
+              'Draft three LinkedIn posts from this week’s blog articles and keep them as drafts.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_perplexity_demo_row_1', 'LinkedIn') },
+              { tool: 'integrationSchema', result: t('conn_perplexity_demo_row_2', 'LinkedIn rules') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_perplexity_demo_row_3', '3 drafts') },
+            ],
+            answer: t(
+              'conn_perplexity_demo_answer',
+              'Three drafts are on your PostQueen calendar. None goes out until you schedule it.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_perplexity_tip_1',
+              'Keep Authentication on None: the key is already in the address.'
+            ),
+            t(
+              'conn_perplexity_tip_2',
+              'Use the key address, not PostQueen’s sign-in address, which does not work with Perplexity yet.'
+            ),
+            t(
+              'conn_perplexity_tip_3',
+              'Add PostQueen under Connectors, not under Settings, then MCP servers: that setting is for servers on your own device, which cloud Computer tasks do not use.'
+            ),
+            t(
+              'conn_perplexity_tip_4',
+              'Use the connector rather than the PostQueen CLI: Computer keeps saved keys in its Credential vault and never passes them into its sandbox.'
+            ),
+            t(
+              'conn_perplexity_tip_5',
+              'Perplexity Computer is not Perplexity search, and not the Perplexity Computer MCP server, which lets other apps use Computer.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_perplexity_fix_1',
+                'PostQueen tools do not show up in a task'
+              ),
+              fix: t(
+                'conn_perplexity_fix_1_detail',
+                'Click the PostQueen card under Account settings, then Connectors to enable it, and check that it is on under Connectors in Computer.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_perplexity_fix_2',
+                'You added it under Settings, then MCP servers'
+              ),
+              fix: t(
+                'conn_perplexity_fix_2_detail',
+                'That setting is for servers on your own device. Add PostQueen as a custom connector under Connectors instead.'
+              ),
+            },
+            {
+              symptom: t('conn_perplexity_fix_3', 'The connection is refused'),
+              fix: t(
+                'conn_perplexity_fix_3_detail',
+                'Use the key address with Authentication set to None, and copy the key again from Your API key, at the top of this panel.'
+              ),
+            },
+            {
+              symptom: t('conn_perplexity_fix_4', 'On Enterprise you cannot add it'),
+              fix: t(
+                'conn_perplexity_fix_4_detail',
+                'Ask an admin to turn on Allow members to add custom connectors under Enterprise settings, then Permissions.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_route_name_key_url', 'Key in the address'),
+              address: `${mcpUrl}/YOUR_API_KEY`,
+              need: 'key',
+              bestFor: t(
+                'conn_perplexity_route_1_best',
+                'Computer on the web, iOS and Android'
+              ),
+              how: t(
+                'conn_perplexity_route_1_how',
+                'Paste it as the MCP Server URL, with Authentication set to None.'
               ),
             },
           ],
@@ -2255,70 +3272,154 @@ openclaw mcp probe postqueen`,
           id: 'nanoclaw',
           name: 'NanoClaw',
           glyph: 'NC',
+          icon: '/icons/connections/nanoclaw.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'bot',
           section: 'bots',
-          short: t('conn_nanoclaw_short', 'An assistant you host, each agent in its own container'),
-          intro: t(
-            'conn_nanoclaw_intro',
-            'NanoClaw is an open-source assistant that runs each agent in its own Docker container on your machine. You talk to it from Slack, Telegram, Discord, WhatsApp and other chat apps. Add PostQueen as an MCP server and keep the key in NanoClaw\'s OneCLI vault, so the agent never sees it. NanoClaw is not OpenClaw; each has its own setup.'
+          way: way.threeCommands,
+          keywords: chatAppWords,
+          chatApps: true,
+          site: `${SITE}/nanoclaw`,
+          short: t(
+            'conn_nanoclaw_line',
+            'Ask from WhatsApp, Telegram, Slack or Discord'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_ig', 'One channel: Instagram'),
-              body: t('conn_nanoclaw_ex', 'Draft this photo to Instagram tonight at 7, caption about the new Japan eSIM plans'),
-              reply: t('conn_nanoclaw_ex_reply', 'Japan eSIM photo is an Instagram draft for tonight at 19:00. Reply here when it should go live.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_nanoclaw_ex_x', 'Queue this clip on X tomorrow at 8am as a draft, copy about roaming without a SIM swap'),
-              reply: t('conn_nanoclaw_ex_x_reply', 'Roaming clip is drafted to X for tomorrow at 08:00. I will wait for your yes in this chat.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_nanoclaw_ex_multi', 'Send this photo to Instagram, X and LinkedIn on Friday at 10 as drafts, caption for the spring sale'),
-              reply: t('conn_nanoclaw_ex_multi_reply', 'Spring sale photo is drafted to Instagram, X and LinkedIn for Friday at 10:00. Confirm here before they publish.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_nanoclaw_note',
-            'From NanoClaw\'s docs, not tested by PostQueen yet. Use the MCP server: the postqueen CLI and skill do not work inside NanoClaw\'s containers. NanoClaw has no sign-in flow for MCP servers, so use the API key, and keep it in the vault rather than in the URL.'
-          ),
-          docs: [],
-          paths: [
+          docs: [
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/introduction`,
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
+              href: `${DOCS}/agents/nanoclaw`,
+            },
+            {
+              label: t('conn_docs_chat_apps', 'Chat apps guide'),
+              href: `${DOCS}/agents/chat-channels`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_nanoclaw_step_vault', 'Save the key in the OneCLI vault'),
+              title: t('conn_nanoclaw_step_2', 'Save the key in the OneCLI vault.'),
               detail: t(
-                'conn_nanoclaw_step_vault_detail',
-                'On the machine that runs NanoClaw. The vault adds the key to the agent\'s requests to PostQueen. Get the key from Connections → API Keys (workspace admins only).'
+                'conn_nanoclaw_step_2_detail',
+                'On the machine that runs NanoClaw. NanoClaw then adds it to the agent’s requests, so the agent never sees it.'
               ),
-              code: `onecli secrets create --name PostQueen --type generic --value "${apiKey}" --host-pattern ${apiHost(backendUrl)} --header-name Authorization --value-format "Bearer {value}"`,
+              code: `onecli secrets create --name PostQueen --type generic \\\n  --value ${apiKey} --host-pattern ${apiHost(backendUrl)} \\\n  --header-name Authorization --value-format "Bearer {value}"`,
+              codeLabel: 'terminal',
             },
             {
-              title: t('conn_nanoclaw_step_group', 'Add PostQueen to your agent group'),
+              title: t('conn_nanoclaw_step_3', 'Add PostQueen to your agent group.'),
               detail: t(
-                'conn_nanoclaw_step_group_detail',
-                'Find the group id with ncl groups list, then add the server on the bare /mcp URL and restart the group. The vault supplies the key.'
+                'conn_nanoclaw_step_3_detail',
+                'Find the group with `ncl groups list`, then add the server and restart the group.'
               ),
-              code: `ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url ${mcpUrl}
-ncl groups restart --id YOUR_GROUP_ID`,
+              code: `ncl groups config add-mcp-server --id YOUR_GROUP_ID \\\n  --name postqueen --url ${mcpUrl}\n\nncl groups restart --id YOUR_GROUP_ID`,
+              codeLabel: 'terminal',
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
-              detail: t(
-                'conn_nanoclaw_verify',
-                'Message the agent and ask it to list your connected channels.'
+              title: t('conn_nanoclaw_step_4', 'Check it.'),
+              detail: t('conn_nanoclaw_step_4_detail', 'Message the agent and ask:'),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_nanoclaw_demo_ask',
+              'Draft two posts about Saturday’s event for Instagram and Facebook.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_nanoclaw_demo_row_1', 'Instagram, Facebook') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_nanoclaw_demo_row_2', '2 drafts') },
+            ],
+            answer: t(
+              'conn_nanoclaw_demo_answer',
+              'Two drafts are waiting on your PostQueen calendar. Nothing goes out until you schedule them.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_nanoclaw_tip_1',
+              'If the PostQueen tools do not load, add the server with the key as a header instead: `ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url {{mcp}} --headers \'{"Authorization":"Bearer YOUR_API_KEY"}\'`, then restart the group. The key then sits in the group’s config, where the agent can read it.',
+              urlVars
+            ),
+            t(
+              'conn_nanoclaw_tip_2',
+              'Do not use the address with the key in it: NanoClaw expects keys in the OneCLI vault, not in a URL.'
+            ),
+            t(
+              'conn_nanoclaw_tip_3',
+              'NanoClaw has no sign-in flow for MCP servers, so use the API key rather than PostQueen’s sign-in address.'
+            ),
+            t(
+              'conn_nanoclaw_tip_4',
+              'The PostQueen CLI and skill do not work inside NanoClaw’s containers; use the MCP server.'
+            ),
+            t(
+              'conn_nanoclaw_tip_5',
+              'NanoClaw is not OpenClaw; each has its own setup.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t('conn_nanoclaw_fix_1', 'PostQueen tools do not load'),
+              fix: t(
+                'conn_nanoclaw_fix_1_detail',
+                'Restart the group with `ncl groups restart`. If they still do not load, add the server with the key as a header, as Good to know shows.'
+              ),
+            },
+            {
+              symptom: t('conn_nanoclaw_fix_2', 'You put the key in the address'),
+              fix: t(
+                'conn_nanoclaw_fix_2_detail',
+                'NanoClaw expects keys in the OneCLI vault. Save it there and use `{{mcp}}`.',
+                urlVars
+              ),
+            },
+            {
+              symptom: t(
+                'conn_nanoclaw_fix_3',
+                'The PostQueen CLI does nothing inside NanoClaw'
+              ),
+              fix: t(
+                'conn_nanoclaw_fix_3_detail',
+                'Its containers never get your environment. Use the MCP server.'
+              ),
+            },
+            {
+              symptom: t('conn_nanoclaw_fix_4', 'You followed an OpenClaw guide'),
+              fix: t(
+                'conn_nanoclaw_fix_4_detail',
+                'OpenClaw is a different app with its own setup. Open its page in this panel.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_nanoclaw_route_1', 'Key in the vault'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t(
+                'conn_nanoclaw_route_1_best',
+                'Keeping the key away from the agent'
+              ),
+              how: t(
+                'conn_nanoclaw_route_1_how',
+                'The OneCLI vault adds the key to each request, so the agent never sees it.'
+              ),
+            },
+            {
+              name: t('conn_nanoclaw_route_2', 'Key as a header'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t(
+                'conn_nanoclaw_route_2_best',
+                'When the tools do not load through the vault'
+              ),
+              how: t(
+                'conn_nanoclaw_route_2_how',
+                '`--headers` keeps the key in the group’s config, where the agent can read it.'
               ),
             },
           ],
@@ -2327,84 +3428,164 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'paperclip',
           name: 'Paperclip',
           glyph: 'Pc',
+          icon: '/icons/connections/paperclip.svg',
           kind: 'MCP',
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
-          section: 'bots',
-          short: t('conn_paperclip_short', 'Give your agent company a social media desk'),
-          intro: t(
-            'conn_paperclip_intro',
-            'Paperclip is an open-source app for running a team of AI agents as a company: you set goals, hire agents, set budgets and approve their work from one dashboard. Connect PostQueen once under Apps and its Claude Code and Codex agents can use her tools.'
+          section: 'agents',
+          way: way.appsPanel,
+          site: `${SITE}/paperclip`,
+          short: t(
+            'conn_paperclip_line',
+            'Any agent in your Paperclip company can post'
           ),
-          examples: [
-            sample({
-              title: t('conn_ex_label_week', 'Check the calendar'),
-              body: t('conn_paperclip_ex', 'List everything scheduled on PostQueen this week and flag the empty days'),
-              reply: t('conn_paperclip_ex_reply', 'This week: Instagram Tuesday at 19:00 and X Wednesday at 08:00. Monday, Thursday and Friday are empty.'),
-              tool: 'postsListTool',
-            }),
-            sample({
-              title: t('conn_ex_label_x', 'One channel: X'),
-              body: t('conn_paperclip_ex_x', 'Draft an X post for tomorrow at 8am announcing the Korea eSIM, under 280 characters'),
-              reply: t('conn_paperclip_ex_x_reply', 'Korea eSIM post is drafted to X for tomorrow at 08:00. It waits for your approval before it is scheduled.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-            sample({
-              title: t('conn_ex_label_multi', 'Several channels'),
-              body: t('conn_paperclip_ex_multi', 'Turn Friday\'s product update into drafts for Instagram, X and LinkedIn at 10'),
-              reply: t('conn_paperclip_ex_multi_reply', 'The product update is drafted to Instagram, X and LinkedIn for Friday at 10:00. Approve them when you are ready.'),
-              tool: 'integrationSchedulePostTool',
-            }),
-          ],
-          info: t(
-            'conn_paperclip_note',
-            'From Paperclip\'s docs, not tested by PostQueen yet. PostQueen\'s tools reach Paperclip\'s Claude Code and Codex agents; other agent types use their own MCP settings. There is no paperclipai command for MCP connections yet, so use the Apps page.'
-          ),
-          docs: [],
-          paths: [
+          docs: [
             {
-              label: t('conn_path_mcp', 'Connect via MCP'),
-              href: `${DOCS}/mcp/introduction`,
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
+              href: `${DOCS}/agents/paperclip`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_paperclip_step_add', 'Connect your own MCP server'),
+              title: t('conn_paperclip_step_2', 'Connect your own MCP server.'),
               detail: t(
-                'conn_paperclip_step_add_detail',
-                'In Paperclip, open Apps → Connect an app → Connect your own MCP server. Enter this URL and press Check link.'
+                'conn_paperclip_step_2_detail',
+                'In Paperclip, open Apps > Connect an app > Connect your own MCP server, enter this address and press Check link.'
               ),
-              code: mcpUrl,
+              code: `${mcpUrl}`,
+              codeLabel: 'value',
             },
             {
-              title: t('conn_paperclip_step_key', 'Give it the key'),
+              title: t('conn_paperclip_step_3', 'Paste the key.'),
               detail: t(
-                'conn_paperclip_step_key_detail',
-                'Under Advanced authentication choose Key or token and paste the key on its own, without the word Bearer. Get the key from Connections → API Keys (workspace admins only).'
-              ),
-              code: apiKey,
-            },
-            {
-              title: t('conn_paperclip_step_tools', 'Choose tools and who can use them'),
-              detail: t(
-                'conn_paperclip_step_tools_detail',
-                'Reading tools start on. Tools that change something, such as scheduling a post, start off until you turn them on, and then ask for approval by default. Give an agent, a project or the whole company access to PostQueen.'
+                'conn_paperclip_step_3_detail',
+                'Under Advanced authentication choose Key or token and paste the key on its own, without the word Bearer.'
               ),
             },
             {
-              title: t('conn_step_verify', 'Check it worked'),
+              title: t('conn_paperclip_step_4', 'Turn on the tools you want.'),
               detail: t(
-                'conn_paperclip_verify',
-                'Assign an agent a task such as listing your connected channels.'
+                'conn_paperclip_step_4_detail',
+                'Reading tools start on. Tools that change something, such as scheduling a post, start off until you turn them on, and then ask for approval.'
               ),
             },
-            signInStep(
-              t(
-                'conn_paperclip_step_sign_in_detail',
-                'Enter this address instead, choose Sign in to continue and approve as a PostQueen workspace admin. Not tested by PostQueen yet.'
-              )
+            {
+              title: t('conn_paperclip_step_5', 'Give it to your agents.'),
+              detail: t(
+                'conn_paperclip_step_5_detail',
+                'Give an agent, a project or the whole company access to PostQueen, then assign a task such as:'
+              ),
+              inline: 'ask',
+              ask: chip.channels,
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_paperclip_demo_ask',
+              'Plan next week’s launch posts for LinkedIn and X and save them as drafts.'
             ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_paperclip_demo_row_1', 'LinkedIn, X') },
+              { tool: 'integrationSchema', result: t('conn_paperclip_demo_row_2', 'LinkedIn and X rules') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_paperclip_demo_row_3', 'Approved by you, 4 drafts') },
+            ],
+            answer: t(
+              'conn_paperclip_demo_answer',
+              'Four drafts are on your PostQueen calendar, two for each network. Your Claude Code agent wrote them and you approved the save.'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_paperclip_tip_1',
+              'Paperclip hands PostQueen’s tools to its Claude Code and Codex agents. Other agent types in Paperclip use their own MCP settings.'
+            ),
+            t(
+              'conn_paperclip_tip_2',
+              'Every value you enter becomes an encrypted Paperclip secret and is never shown again.'
+            ),
+            t(
+              'conn_paperclip_tip_3',
+              'When Paperclip manages MCP servers for a Claude Code agent, that agent ignores servers added on the same machine with `claude mcp add`.'
+            ),
+            t(
+              'conn_paperclip_tip_4',
+              'Agents that run commands can use the PostQueen CLI instead: install it with `npm install -g postqueen` where they run, bind a company secret to `POSTQUEEN_API_KEY` and import the skill in the Skills Store.'
+            ),
+            t(
+              'conn_paperclip_tip_5',
+              'There is no `paperclipai` command for MCP connections yet; use the Apps page.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_paperclip_fix_1',
+                'A Claude Code agent does not see PostQueen'
+              ),
+              fix: t(
+                'conn_paperclip_fix_1_detail',
+                'Give that agent, its project or the company access in Apps. Servers added with `claude mcp add` are ignored while Paperclip manages MCP.'
+              ),
+            },
+            {
+              symptom: t('conn_paperclip_fix_2', 'Scheduling a post does nothing'),
+              fix: t(
+                'conn_paperclip_fix_2_detail',
+                'Tools that change something start off. Turn them on in Apps, then approve each call when Paperclip asks.'
+              ),
+            },
+            {
+              symptom: t('conn_paperclip_fix_3', 'The key is rejected'),
+              fix: t(
+                'conn_paperclip_fix_3_detail',
+                'Paste the key on its own, without the word Bearer, copied from Your API key, at the top of this panel.'
+              ),
+            },
+            {
+              symptom: t(
+                'conn_paperclip_fix_4',
+                'Another agent type cannot use PostQueen'
+              ),
+              fix: t(
+                'conn_paperclip_fix_4_detail',
+                'Only Claude Code and Codex agents get the Apps connection. Give other agents the PostQueen CLI instead.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_paperclip_route_1', 'Key or token in Apps'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_route_best_quickest', 'The quickest setup'),
+              how: t(
+                'conn_paperclip_route_1_how',
+                'Paperclip sends the key as a Bearer token and keeps it as an encrypted secret.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_paperclip_route_2_how',
+                'Choose Sign in to continue and approve as a PostQueen admin.'
+              ),
+            },
+            {
+              name: t('conn_paperclip_route_3', 'CLI and skill'),
+              address: 'npm install -g postqueen',
+              need: 'key',
+              bestFor: t('conn_paperclip_route_3_best', 'Agent types that run commands'),
+              how: t(
+                'conn_paperclip_route_3_how',
+                '`POSTQUEEN_API_KEY` from a company secret, with the skill from the Skills Store.'
+              ),
+            },
           ],
         },
         {
@@ -2414,37 +3595,131 @@ ncl groups restart --id YOUR_GROUP_ID`,
           icon: '/icons/connections/muse.svg',
           kind: 'MCP',
           method: 'MCP',
-          cred: 'none',
+          cred: 'mcp',
           exampleKind: 'chat',
           section: 'bots',
-          short: t('conn_muse_short', 'Meta\'s personal agent. Not tested yet'),
-          intro: t(
-            'conn_muse_intro',
-            'Muse is Meta\'s personal agent in the Muse app, on muse.ai and in WhatsApp. PostQueen cannot be added to it by URL yet. Meta documents asking Muse in chat to build a custom connector from a service\'s API information, not from an MCP address, and no PostQueen connector has been built that way yet, so this route is not tested by PostQueen yet. Muse Code is a separate product, Meta\'s coding agent, and it connects today: use that card under Agents.'
+          way: way.message,
+          isNew: true,
+          site: `${SITE}/muse`,
+          ask: t(
+            'conn_muse_ask',
+            'Plan three Instagram posts for next week about our new menu, make an image for each, and save them as drafts.'
           ),
-          info: t(
-            'conn_muse_note',
-            'Do not paste the MCP URL into Muse Settings → Connectors expecting it to work like Claude; that screen lists the connectors Meta has reviewed. If you try the chat route, enter your API key only in the secure prompt Muse shows, never in the chat.'
+          short: t(
+            'conn_muse_line',
+            'Works in the Muse app, on muse.ai and in WhatsApp'
           ),
+          setupAccent: t('conn_muse_setup_accent', 'with one message.'),
           docs: [
             {
-              label: t('conn_docs_muse', 'Muse guide'),
+              label: t('conn_docs_full_guide', 'Full guide in the docs'),
               href: `${DOCS}/agents/muse`,
             },
           ],
           steps: [
+            keyStep,
             {
-              title: t('conn_muse_step_code', 'Use Muse Code today'),
+              title: t('conn_muse_step_2', 'Send this message to Muse.'),
               detail: t(
-                'conn_muse_step_code_detail',
-                'Open the Muse Code card under Agents and add PostQueen to ~/.config/muse/settings.json over streamable HTTP.'
+                'conn_muse_step_2_detail',
+                'Start a new chat in the Muse app, on muse.ai or in WhatsApp.'
+              ),
+              code: `Create a custom connector for PostQueen, my social media scheduler.\nIts MCP server is ${mcpUrl} and it takes my PostQueen API key as a Bearer token.\nAsk me for the key in a secure prompt, not in this chat.\nSave a skill so every request to post, schedule or check my social media goes through PostQueen.\nWhen you are connected, list my PostQueen channels.`,
+              codeLabel: t('conn_muse_step_2_code_label', 'new message to Muse'),
+              fold: 4,
+            },
+            {
+              title: t('conn_muse_step_3', 'Use the secure prompt.'),
+              detail: t(
+                'conn_muse_step_3_detail',
+                'When Muse asks for the key, paste it there, never into the chat. Muse then asks before it acts: Allow once, Allow for this task or Always allow.'
               ),
             },
             {
-              title: t('conn_muse_step_app', 'Muse app'),
+              title: t('conn_muse_step_4', 'Start asking.'),
               detail: t(
-                'conn_muse_step_app_detail',
-                'PostQueen is not in Muse\'s connector list. Muse builds custom connectors in chat from API information, not from an MCP server URL, and that route is not tested by PostQueen yet.'
+                'conn_muse_step_4_detail',
+                'Muse lists your channels. Ask it to write, schedule or check your posts.'
+              ),
+              inline: 'ask',
+              ask: t(
+                'conn_muse_step_4_ask',
+                'Plan three Instagram posts for next week, with an image for each.'
+              ),
+            },
+          ],
+          demo: {
+            ask: t(
+              'conn_muse_demo_ask',
+              'Plan three Instagram posts for next week about our new menu, make an image for each, and save them as drafts.'
+            ),
+            rows: [
+              { tool: 'integrationList', result: t('conn_muse_demo_row_1', 'Instagram') },
+              { tool: 'generateImageTool', result: t('conn_muse_demo_row_2', '3 images') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_muse_demo_row_3', '3 drafts') },
+            ],
+            answer: t(
+              'conn_muse_demo_answer',
+              'Done. Three drafts with images are on your PostQueen calendar for Monday, Wednesday and Friday at 11:00. Want me to add Facebook too?'
+            ),
+          },
+          tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
+          goodToKnow: [
+            t(
+              'conn_muse_tip_1',
+              'Listed connectors are added under Settings > Connectors after Meta reviews them. PostQueen is not listed there yet.'
+            ),
+            t(
+              'conn_muse_tip_2',
+              'Meta does not review custom connectors or how they use your information, so grant access with care.'
+            ),
+            t(
+              'conn_muse_tip_3',
+              'Muse is not Muse Code. Muse Code, Meta’s coding agent for the terminal, connects to PostQueen’s MCP address directly; the MCP server guide covers it.'
+            ),
+          ],
+          fixes: [
+            {
+              symptom: t(
+                'conn_muse_fix_1',
+                'PostQueen is not under Settings > Connectors'
+              ),
+              fix: t(
+                'conn_muse_fix_1_detail',
+                'It is not in Meta’s reviewed directory yet. Ask Muse in chat to create a custom connector instead.'
+              ),
+            },
+            {
+              symptom: t('conn_muse_fix_2', 'Muse asks for the key in the chat'),
+              fix: t(
+                'conn_muse_fix_2_detail',
+                'Do not paste it there; use the secure prompt. If the key was sent in a chat, a workspace admin can rotate it under API key in this panel.'
+              ),
+            },
+            {
+              symptom: t('conn_muse_fix_3', 'You wanted Meta’s terminal agent'),
+              fix: t(
+                'conn_muse_fix_3_detail',
+                'That is Muse Code. It connects to PostQueen’s MCP address; follow the MCP server guide.'
+              ),
+            },
+            {
+              symptom: t('conn_muse_fix_4', 'Muse is not available to you'),
+              fix: t(
+                'conn_muse_fix_4_detail',
+                'Muse is rolling out in the US and is not in every location yet.'
+              ),
+            },
+          ],
+          routes: [
+            {
+              name: t('conn_muse_route_1', 'Custom connector in chat'),
+              address: `${mcpUrl}`,
+              need: 'key',
+              bestFor: t('conn_muse_route_1_best', 'The Muse app, muse.ai and WhatsApp'),
+              how: t(
+                'conn_muse_route_1_how',
+                'Muse builds the connector from your message and asks for the key in its secure prompt.'
               ),
             },
           ],
@@ -2468,7 +3743,8 @@ ncl groups restart --id YOUR_GROUP_ID`,
           method: 'MCP',
           cred: 'mcp',
           exampleKind: 'agent',
-          section: 'featured',
+          section: 'editors',
+          way: way.address,
           short: t('conn_other_mcp_short', 'Any other MCP client with the URL'),
           intro: t(
             'conn_other_mcp_intro',
@@ -2545,6 +3821,8 @@ ncl groups restart --id YOUR_GROUP_ID`,
           cred: 'api',
           exampleKind: 'workflow',
           section: 'automation',
+          setupTitle: t('conn_n8n_setup_title', 'Set up n8n'),
+          setupAccent: t('conn_n8n_setup_accent', 'in a few minutes.'),
           short: t('conn_n8n_short', 'Schedule posts from an n8n workflow'),
           intro: t(
             'conn_n8n_intro',
@@ -2595,10 +3873,10 @@ ncl groups restart --id YOUR_GROUP_ID`,
             {
               title: t('conn_n8n_step_cred', 'Add the credential'),
               detail: t(
-                'conn_n8n_step_cred_detail',
-                'Create a PostQueen API credential. Paste your key from Connections → API Keys (workspace admins only). The Public API wants the raw key, n8n handles the Authorization header for you.'
-              ),
-              code: apiKey,
+            'conn_n8n_step_cred_body',
+            'Create a PostQueen API credential and paste your key. n8n sends the Authorization header for you.'
+          ),
+              inline: 'key',
             },
             ...(apiUrl
               ? [
@@ -2634,6 +3912,8 @@ ncl groups restart --id YOUR_GROUP_ID`,
           cred: 'api',
           exampleKind: 'workflow',
           section: 'automation',
+          setupTitle: t('conn_zapier_setup_title', 'Use Zapier'),
+          setupAccent: t('conn_zapier_setup_accent', 'over HTTP today.'),
           soon: true,
           short: t('conn_zapier_short', 'HTTP today. Official Zapier app soon'),
           intro: t(
@@ -2702,6 +3982,8 @@ ncl groups restart --id YOUR_GROUP_ID`,
           cred: 'api',
           exampleKind: 'http',
           section: 'automation',
+          setupTitle: t('conn_make_setup_title', 'Use Make'),
+          setupAccent: t('conn_make_setup_accent', 'over HTTP today.'),
           soon: true,
           short: t('conn_make_short', 'HTTP today. Official Make app soon'),
           intro: t(
@@ -2761,11 +4043,14 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'webhooks',
           name: t('conn_webhooks_name', 'Webhooks'),
           glyph: 'WH',
+          symbol: 'hook',
           kind: 'FLOW',
           method: 'HTTP',
           cred: 'none',
           exampleKind: 'http',
           section: 'automation',
+          setupTitle: t('conn_webhooks_setup_title', 'Set up a webhook'),
+          setupAccent: t('conn_webhooks_setup_accent', 'in Settings.'),
           short: t('conn_webhooks_short', 'Get an HTTP call when a post goes live'),
           intro: t(
             'conn_webhooks_intro',
@@ -2811,15 +4096,21 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'rss',
           name: t('conn_rss_name', 'RSS AutoPost'),
           glyph: 'RSS',
+          symbol: 'rss',
           kind: 'FLOW',
           method: 'HTTP',
           cred: 'none',
           exampleKind: 'workflow',
           section: 'automation',
-          short: t('conn_rss_short', 'Turn RSS items into calendar drafts'),
+          setupTitle: t('conn_rss_setup_title', 'Set up RSS AutoPost'),
+          setupAccent: t('conn_rss_setup_accent', 'in Settings.'),
+          short: t(
+            'conn_rss_line',
+            'Post new feed items for you, or keep them as drafts to review'
+          ),
           intro: t(
-            'conn_rss_intro',
-            'Configure feeds under Settings → Autopost. Each new item can become a draft on your calendar on an hourly check.'
+            'conn_rss_about',
+            'Add feeds under Settings → Autopost. Each new item becomes a post on the channels you pick: published automatically, at the next free slot or right away, or saved as a draft to review. Feeds are checked every hour.'
           ),
           examples: [
             {
@@ -2847,9 +4138,9 @@ ncl groups restart --id YOUR_GROUP_ID`,
             {
               title: t('conn_rss_step_channels', 'Pick channels and timing'),
               detail: t(
-                'conn_rss_step_channels_detail',
-                'Choose where new items land and whether they stay as drafts for review.'
-              ),
+            'conn_rss_step_channels_body',
+            'Choose the channels, then whether each new item is published automatically, at the next free slot or right away, or saved as a draft for review.'
+          ),
             },
           ],
         },
@@ -2867,11 +4158,14 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'cli',
           name: t('conn_cli_name', 'Command line'),
           glyph: 'CLI',
+          symbol: 'terminal',
           kind: 'API',
           method: 'CLI',
           cred: 'env',
           exampleKind: 'cli',
           section: 'developer',
+          setupTitle: t('conn_cli_setup_title', 'Set up the CLI'),
+          setupAccent: t('conn_cli_setup_accent', 'in about a minute.'),
           short: t('conn_cli_short', 'Run postqueen commands in a shell'),
           intro: t(
             'conn_cli_intro',
@@ -2924,14 +4218,16 @@ ncl groups restart --id YOUR_GROUP_ID`,
                 'Or `pnpm install -g postqueen`. Verify with `postqueen --help`.'
               ),
               code: 'npm install -g postqueen',
+              codeLabel: 'terminal',
             },
             {
               title: t('conn_cli_step_login', 'Authenticate'),
               detail: t(
-                'conn_cli_step_login_detail',
-                'Copy the key from Connections → API Keys (workspace admins only), then export it. The CLI logs in with the API key only.'
-              ),
+            'conn_cli_step_login_body',
+            'Export your key where you run the CLI. The CLI logs in with the API key only.'
+          ),
               code: `export POSTQUEEN_API_KEY="${apiKey}"`,
+              codeLabel: 'terminal',
             },
             ...apiUrlStep,
             {
@@ -2941,6 +4237,7 @@ ncl groups restart --id YOUR_GROUP_ID`,
                 'First command that reaches the API, lists your connected channels as JSON.'
               ),
               code: 'postqueen integrations:list',
+              codeLabel: 'terminal',
             },
           ],
         },
@@ -2948,11 +4245,14 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'api',
           name: t('conn_api_name', 'Public API'),
           glyph: 'API',
+          symbol: 'code',
           kind: 'API',
           method: 'API',
           cred: 'api',
           exampleKind: 'api',
           section: 'developer',
+          setupTitle: t('conn_api_setup_title', 'Use the Public API'),
+          setupAccent: t('conn_api_setup_accent', 'from any language.'),
           short: t('conn_api_short', 'REST for channels, posts and media'),
           intro: t(
             'conn_api_intro',
@@ -2990,6 +4290,7 @@ ncl groups restart --id YOUR_GROUP_ID`,
                 'Send your key in the Authorization header on every request. Do not prefix Bearer, that is for MCP, not this API.'
               ),
               code: `curl -H "Authorization: ${apiKey}" ${backendUrl}/public/v1/integrations`,
+              codeLabel: 'terminal',
             },
             {
               title: t('conn_api_step_post', 'Schedule a post'),
@@ -3005,11 +4306,14 @@ ncl groups restart --id YOUR_GROUP_ID`,
           id: 'sdk',
           name: t('conn_sdk_name', 'Node SDK'),
           glyph: 'JS',
+          symbol: 'package',
           kind: 'API',
           method: 'API',
           cred: 'env',
           exampleKind: 'api',
           section: 'developer',
+          setupTitle: t('conn_sdk_setup_title', 'Use the Node SDK'),
+          setupAccent: t('conn_sdk_setup_accent', 'in your own code.'),
           short: t('conn_sdk_short', 'Typed Node client for the Public API'),
           intro: t(
             'conn_sdk_intro',
@@ -3041,13 +4345,14 @@ await pq.post({
             {
               title: t('conn_sdk_step_install', 'Install it'),
               code: 'npm install @postqueen/node',
+              codeLabel: 'terminal',
             },
             {
               title: t('conn_sdk_step_key', 'Authenticate'),
               detail: t(
-                'conn_sdk_step_key_detail',
-                'Pass your API key when you construct the client. Get it from Connections → API Keys (workspace admins only).'
-              ),
+            'conn_sdk_step_key_body',
+            'Pass your API key when you construct the client, or set it in the environment.'
+          ),
               code: `POSTQUEEN_API_KEY="${apiKey}"`,
             },
             ...(apiUrl
@@ -3068,11 +4373,14 @@ await pq.post({
           id: 'oauth',
           name: t('conn_oauth_name', 'OAuth apps'),
           glyph: 'OA',
+          symbol: 'key',
           kind: 'API',
           method: 'API',
           cred: 'none',
           exampleKind: 'api',
           section: 'developer',
+          setupTitle: t('conn_oauth_setup_title', 'Build an OAuth app'),
+          setupAccent: t('conn_oauth_setup_accent', 'for your users.'),
           short: t('conn_oauth_short', 'Let other apps post for your users'),
           intro: t(
             'conn_oauth_intro',
@@ -3088,9 +4396,9 @@ await pq.post({
             {
               title: t('conn_oauth_step_create', 'Create the app'),
               detail: t(
-                'conn_oauth_step_create_detail',
-                'Connections → Developers, or Settings → Developers. Set your redirect URL there. This is not where the workspace API key lives, that is API Keys.'
-              ),
+            'conn_oauth_step_create_body',
+            'Open OAuth apps in this panel, or Settings → Developers, and set your redirect URL there. This is not the workspace API key; that lives under API key.'
+          ),
             },
             {
               title: t('conn_oauth_step_token', 'Use the token'),

@@ -161,6 +161,17 @@
     --ltOutline: rgba(245, 158, 11, 0.34);
     --ltTick: rgba(245, 158, 11, 0.85);
     --ltTickFg: #1a1205;
+    /* Connect PostQueen: the hero band and the copyable code boxes stay dark in
+       both themes, the way a terminal does. */
+    --connHero: linear-gradient(135deg, #241d38, #1d1a29);
+    --connHeroRing: rgba(124, 58, 237, 0.28);
+    --connHeroText: #ffffff;
+    --connHeroMuted: #a1a1aa;
+    --connHeroAccent: #d8ccfe;
+    --connCode: #0b0b0d;
+    --connCodeLine: #26262c;
+    --connCodeText: #ededf0;
+    --connCodeMuted: #9b9ba4;
     /* Post previews. Themed rather than the platforms' brand hexes, so light
        mode works. */
     --linkedinBg: #1b1f23;
@@ -308,6 +319,15 @@
     --ltOutline: rgba(217, 119, 6, 0.34);
     --ltTick: #d97706;
     --ltTickFg: #fffaf2;
+    --connHero: #18181b;
+    --connHeroRing: transparent;
+    --connHeroText: #ffffff;
+    --connHeroMuted: #a1a1aa;
+    --connHeroAccent: #d8ccfe;
+    --connCode: #18181b;
+    --connCodeLine: #27272a;
+    --connCodeText: #ededf0;
+    --connCodeMuted: #9b9ba4;
     --linkedinBg: #ffffff;
     --linkedinText: #707070;
     --linkedinBorder: #e9e5df;

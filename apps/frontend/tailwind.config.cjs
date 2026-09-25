@@ -96,6 +96,15 @@ module.exports = {
         pqLtOutline: 'var(--ltOutline)',
         pqLtTick: 'var(--ltTick)',
         pqLtTickFg: 'var(--ltTickFg)',
+        // Connect PostQueen hero band and code boxes.
+        pqConnHeroRing: 'var(--connHeroRing)',
+        pqConnHeroText: 'var(--connHeroText)',
+        pqConnHeroMuted: 'var(--connHeroMuted)',
+        pqConnHeroAccent: 'var(--connHeroAccent)',
+        pqConnCode: 'var(--connCode)',
+        pqConnCodeLine: 'var(--connCodeLine)',
+        pqConnCodeText: 'var(--connCodeText)',
+        pqConnCodeMuted: 'var(--connCodeMuted)',
         // --- end redesign token layer ---------------------------------------
 
         primary: 'var(--color-primary)',
@@ -238,6 +247,9 @@ module.exports = {
           'SFMono-Regular',
           'monospace',
         ],
+        // Italic accent words in Connect headings ("with one message."), as on
+        // the landing site. Latin only: other scripts fall back to the serif.
+        serif: ['var(--font-instrument-serif)', 'serif'],
       },
       // The design's radius scale. Modals are 24px and pills 999px, both of
       // which Tailwind already covers as `rounded-3xl` / `rounded-full`.

@@ -48,7 +48,7 @@ describe('product tour Connect steps', () => {
     }
     assert.match(TOUR_COPY['connect-pq'].text, /Channels/);
     assert.match(TOUR_COPY['connect-pq'].title, /not a channel/i);
-    assert.match(TOUR_COPY['connect-featured'].text, /Featured/);
+    assert.match(TOUR_COPY['connect-featured'].text, /featured/i);
     assert.doesNotMatch(TOUR_COPY['connect-featured'].text, /left rail/);
     assert.match(TOUR_COPY['connect-creds'].text, /API key|MCP URL/i);
     assert.match(TOUR_COPY['nav-channels'].text, /not an assistant/);
