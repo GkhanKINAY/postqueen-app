@@ -1379,5 +1379,6 @@
   "credits_per_credit": "${{price}} a credit",
   "credits_buy": "Buy",
   "plan_n_credits_year": "{{count}} credits a year, up front",
-  "billing_credits_per_year": "credits a year, up front"
+  "billing_credits_per_year": "credits a year, up front",
+  "withdrawal_waiver_checkout_required": "Tick the box in Payment details to continue with yearly."
 }

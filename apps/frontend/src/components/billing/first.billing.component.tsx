@@ -1205,7 +1205,10 @@ export const FirstBillingComponent = () => {
           ) : pending?.hostedInvoiceUrl ? (
             <PendingPaymentNotice hostedInvoiceUrl={pending.hostedInvoiceUrl} />
           ) : needsWaiver ? (
-            <YearlyWaiverNotice checked={waiver} onChange={setWaiver} />
+            // A founding-member purchase has no year to consent to.
+            activeMode === 'subscription' ? (
+              <YearlyWaiverNotice checked={waiver} onChange={setWaiver} />
+            ) : null
           ) : data?.blocked ? (
             <div className="rounded-[20px] p-[24px] text-[16px] font-[500] ring-[1.5px] ring-inset ring-pqBorder">
               {t(
@@ -1451,6 +1454,14 @@ export const FirstBillingComponent = () => {
           period={period}
           allowTrial={!!user?.allowTrial}
           pending={isLoading || !stripe}
+          blockedMessage={
+            needsWaiver
+              ? t(
+                  'withdrawal_waiver_checkout_required',
+                  'Tick the box in Payment details to continue with yearly.'
+                )
+              : undefined
+          }
         />
       )}
     </div>

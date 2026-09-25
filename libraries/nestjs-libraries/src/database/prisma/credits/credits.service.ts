@@ -116,11 +116,14 @@ export class CreditsService {
   }
 
   /** A refunded or disputed pack: what is left of it goes. */
-  revokeByPaymentRef(paymentRef: string) {
+  revokeByPaymentRef(organizationId: string, paymentRef: string) {
     if (!isBillingEnabled()) {
       return Promise.resolve({ count: 0 });
     }
-    return this._creditsRepository.revokeByPaymentRef(paymentRef);
+    return this._creditsRepository.revokeByPaymentRef(
+      organizationId,
+      paymentRef
+    );
   }
 
   revokeGrants(organizationId: string, sources: string[]) {

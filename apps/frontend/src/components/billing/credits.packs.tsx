@@ -1,8 +1,9 @@
 'use client';
 
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@gitroom/react/form/button';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { Checkbox } from '@gitroom/react/form/checkbox';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -45,11 +46,11 @@ export const WithdrawalWaiver: FC<{
           kind === 'yearly'
             ? t(
                 'withdrawal_waiver_yearly',
-                'I want my yearly credits right away, and I understand I lose my 14-day right to withdraw once I use them.'
+                'I want my yearly credits right away, and I understand I lose my 14-day right to withdraw once I use them.',
               )
             : t(
                 'withdrawal_waiver_credits',
-                'I want these credits right away, and I understand I lose my 14-day right to withdraw once I use them.'
+                'I want these credits right away, and I understand I lose my 14-day right to withdraw once I use them.',
               )
         }
       />
@@ -60,9 +61,36 @@ export const WithdrawalWaiver: FC<{
 // What a credit costs in the smallest pack, which the larger ones save on.
 const BASE_PRICE = CREDIT_PACKS[0].price / CREDIT_PACKS[0].credits;
 
+/** The card's shape while the balance loads: header, divider, the packs. */
+const CreditsPacksGhost: FC = () => (
+  <div className="flex flex-col gap-[18px] rounded-[16px] bg-pqInner p-[20px_22px] outline outline-1 -outline-offset-1 outline-pqBorder">
+    <div className="flex items-start gap-[14px]">
+      <Skeleton className="size-[38px] shrink-0 !rounded-[12px]" />
+      <div className="flex flex-1 flex-col gap-[8px] pt-[3px]">
+        <Skeleton className="h-[18px] w-[90px]" />
+        <Skeleton className="h-[13px] w-full max-w-[380px]" />
+      </div>
+      <Skeleton className="h-[29px] w-[130px] shrink-0 mobile:hidden" />
+    </div>
+    <div className="h-[1px] bg-pqLine" />
+    <div className="flex flex-col gap-[6px]">
+      <Skeleton className="h-[14px] w-[130px]" />
+      <Skeleton className="h-[12.5px] w-full max-w-[420px]" />
+    </div>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-[11px]">
+      {CREDIT_PACKS.map((pack) => (
+        <Skeleton
+          key={pack.id}
+          className="h-[146px] !rounded-[14px] mobile:h-[82px]"
+        />
+      ))}
+    </div>
+  </div>
+);
+
 /**
  * The Billing page's credits: the balance, when the soonest of it runs out,
- * and the packs that top it up. Nothing with billing off.
+ * and the packs that top it up. Nothing for an unlimited balance.
  */
 export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
   tier,
@@ -71,29 +99,45 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
   const t = useT();
   const fetch = useFetch();
   const toast = useToaster();
+  const router = useRouter();
+  const pathname = usePathname();
   const queryParams = useSearchParams();
-  const { data, mutate } = useCreditsBalance();
+  const { data, isLoading, mutate } = useCreditsBalance();
   const [waiver, setWaiver] = useState(false);
   const [buying, setBuying] = useState<CreditPackId | null>(null);
 
   // Back from Stripe. The credits come with the webhook, which can land a
   // moment after this page does, so the balance is read again shortly after.
-  // Once per return, however often the toaster or `t` change identity.
+  // Announced once, and the flag leaves the address so a reload does not
+  // announce it again; the reads outlive that, until the page is left.
   const purchased = queryParams.get('credits') === 'purchased';
-  const announced = useRef(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => {
-    if (!purchased || announced.current) {
+    if (!purchased) {
       return;
     }
-    announced.current = true;
     toast.show(
       t(
         'credits_purchased',
-        'Payment received. Your credits will show up in a moment.'
-      )
+        'Payment received. Your credits will show up in a moment.',
+      ),
     );
-    [3000, 8000].forEach((ms) => setTimeout(() => mutate(), ms));
-  }, [purchased, mutate, toast, t]);
+    timers.current = [3000, 8000].map((ms) => setTimeout(() => mutate(), ms));
+    router.replace(pathname, { scroll: false });
+  }, [purchased, mutate, toast, t, router, pathname]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // Back from Stripe with the browser's back button, the page can come out of
+  // the cache as it was left: mid-purchase, every Buy button disabled.
+  useEffect(() => {
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setBuying(null);
+      }
+    };
+    window.addEventListener('pageshow', restored);
+    return () => window.removeEventListener('pageshow', restored);
+  }, []);
 
   const buy = useCallback(
     (pack: CreditPackId) => async () => {
@@ -101,38 +145,56 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
         toast.show(
           t(
             'withdrawal_waiver_required',
-            'Tick the box below the packs to continue.'
+            'Tick the box below the packs to continue.',
           ),
-          'warning'
+          'warning',
         );
         return;
       }
       setBuying(pack);
-      const response = await fetch('/billing/credits/checkout', {
-        method: 'POST',
-        body: JSON.stringify({ pack, withdrawalWaiver: true }),
-      });
-      const { url } = response?.ok
-        ? await response.json().catch(() => ({} as any))
-        : ({} as any);
-      if (!url) {
+      try {
+        const response = await fetch('/billing/credits/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ pack, withdrawalWaiver: true }),
+        });
+        const body = await response.json().catch(() => ({}) as any);
+        if (response.ok && body?.url) {
+          window.location.href = body.url;
+          return;
+        }
+        // A refusal says why ("Choose a plan before buying credits."); a
+        // server error says nothing worth showing.
+        toast.show(
+          response.status < 500 && typeof body?.message === 'string'
+            ? body.message
+            : t(
+                'credits_checkout_failed',
+                'We could not start the checkout, please try again',
+              ),
+          'warning',
+        );
+        setBuying(null);
+      } catch (err) {
         setBuying(null);
         toast.show(
           t(
             'credits_checkout_failed',
-            'We could not start the checkout, please try again'
+            'We could not start the checkout, please try again',
           ),
-          'warning'
+          'warning',
         );
-        return;
       }
-      window.location.href = url;
     },
-    [waiver, fetch, toast, t]
+    [waiver, fetch, toast, t],
   );
 
-  if (!data || data.unlimited) {
+  // Billing off never reaches this page (BillingComponent says so instead),
+  // and an unlimited balance has nothing to top up.
+  if (data?.unlimited) {
     return null;
+  }
+  if (isLoading && !data) {
+    return <CreditsPacksGhost />;
   }
 
   const planCredits = tier ? pricing[tier]?.monthly_credits : 0;
@@ -156,37 +218,45 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
                 ? t(
                     'credits_card_sub_yearly',
                     'AI images and videos spend credits. Your plan adds {{amount}} each year.',
-                    { amount: planCredits * 12 }
+                    { amount: planCredits * 12 },
                   )
                 : t(
                     'credits_card_sub',
                     'AI images and videos spend credits. Your plan adds {{amount}} each month.',
-                    { amount: planCredits }
+                    { amount: planCredits },
                   )
               : t(
                   'credits_card_sub_plain',
-                  'AI images and videos spend credits.'
+                  'AI images and videos spend credits.',
                 )}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-[3px] mobile:w-full mobile:items-start mobile:ps-[52px]">
-          <div className="flex items-baseline gap-[6px]">
-            <span className="font-display text-[29px] font-[600] leading-none -tracking-[0.02em] text-pqText">
-              {formatCredits(data.balance ?? 0)}
-            </span>
-            <span className="text-[13px] text-pqMuted">
-              {t('credits_left_short', 'credits left')}
-            </span>
-          </div>
-          {!!data.expiring && (
-            <div className="text-[12.5px] text-pqSoft">
-              {t('credits_expiring', '{{amount}} of them expire on {{date}}', {
-                amount: formatCredits(data.expiring.amount),
-                date: newDayjs(data.expiring.at).local().format('D MMM, YYYY'),
-              })}
+        {!!data && (
+          <div className="flex shrink-0 flex-col items-end gap-[3px] mobile:w-full mobile:items-start mobile:ps-[52px]">
+            <div className="flex items-baseline gap-[6px]">
+              <span className="font-display text-[29px] font-[600] leading-none -tracking-[0.02em] text-pqText">
+                {formatCredits(data.balance ?? 0)}
+              </span>
+              <span className="text-[13px] text-pqMuted">
+                {t('credits_left_short', 'credits left')}
+              </span>
             </div>
-          )}
-        </div>
+            {!!data.expiring && (
+              <div className="text-[12.5px] text-pqSoft">
+                {t(
+                  'credits_expiring',
+                  '{{amount}} of them expire on {{date}}',
+                  {
+                    amount: formatCredits(data.expiring.amount),
+                    date: newDayjs(data.expiring.at)
+                      .local()
+                      .format('D MMM, YYYY'),
+                  },
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="h-[1px] bg-pqLine" />
@@ -199,7 +269,7 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
           {t(
             'credits_pack_validity',
             'Bought credits last {{months}} months. The credits closest to running out are spent first.',
-            { months: CREDIT_PACK_MONTHS }
+            { months: CREDIT_PACK_MONTHS },
           )}
         </div>
       </div>

@@ -11,7 +11,6 @@ import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
-  CREDIT_UNIT,
   CreditPackId,
   LIFETIME_GRANT_TIER,
   LIFETIME_PRICE,
@@ -36,8 +35,6 @@ import {
 } from '@gitroom/nestjs-libraries/services/payment/payment.provider.interface';
 
 import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
-import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
-import dayjs from 'dayjs';
 
 /**
  * What a credits pack's buyer agreed to, on their receipt: the durable record
@@ -161,9 +158,7 @@ export class StripeService extends PaymentProviderAbstract {
     private _trackService: TrackService,
     // For `paymentFailed` — a failed renewal has to reach the customer, and
     // this is the same service the cancellation email already goes through.
-    private _notificationService: NotificationService,
-    // Credits packs: granted on payment, taken back on a refund or dispute.
-    private _creditsService: CreditsService
+    private _notificationService: NotificationService
   ) {
     super();
   }
@@ -2336,6 +2331,15 @@ export class StripeService extends PaymentProviderAbstract {
         });
       }
 
+      // The consent to a yearly plan's credits is written first and on its
+      // own: an upgrade that waits on payment returns below before the rest
+      // of the metadata is written.
+      if (metadata.withdrawal_waiver_at) {
+        await stripe.subscriptions.update(current.id, {
+          metadata: { withdrawal_waiver_at: metadata.withdrawal_waiver_at },
+        });
+      }
+
       if (change === 'at_period_end') {
         // A downgrade, or yearly to monthly: the paid period runs out on the
         // plan that was paid for and the new price starts at renewal. Applied
@@ -3304,132 +3308,6 @@ export class StripeService extends PaymentProviderAbstract {
    * Deferred sessions also set `lifetime_deferred: '1'` and snapshot
    * `lifetime_quoted_cents` on the customer so settle uses the quoted amount.
    */
-  /**
-   * A credits pack, bought on top of a plan through hosted Checkout. The
-   * session is tagged `kind: 'credit_pack'` (and so is its payment) so the
-   * webhook, a refund and a dispute all tell it apart from the founding-member
-   * purchase that shares `mode: 'payment'`. No promotion codes: a 100%-off
-   * code would hand out credits for nothing.
-   */
-  async createCreditPackCheckout(
-    organization: Organization,
-    packId: CreditPackId
-  ) {
-    const pack = CREDIT_PACKS.find((p) => p.id === packId);
-    if (!pack) {
-      throw new HttpException('Unknown credits pack', HttpStatus.BAD_REQUEST);
-    }
-
-    const customer = await this.createOrGetCustomer(organization);
-    const metadata = {
-      service: SUBSCRIPTION_SERVICE_TAG,
-      organizationId: organization.id,
-      kind: 'credit_pack',
-      pack: pack.id,
-      credits: String(pack.credits),
-      withdrawal_waiver_at: new Date().toISOString(),
-    };
-    const { url } = await stripe.checkout.sessions.create({
-      customer,
-      mode: 'payment',
-      success_url: process.env['FRONTEND_URL'] + '/billing?credits=purchased',
-      cancel_url: process.env['FRONTEND_URL'] + '/billing',
-      automatic_tax: { enabled: true },
-      tax_id_collection: { enabled: true },
-      customer_update: { address: 'auto', name: 'auto' },
-      billing_address_collection: 'required',
-      allow_promotion_codes: false,
-      invoice_creation: {
-        enabled: true,
-        invoice_data: { footer: CREDITS_WAIVER_NOTE, metadata },
-      },
-      metadata,
-      payment_intent_data: { metadata },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: pack.price * 100,
-            // Taxed as the plans are (see createLifetimeCheckout).
-            tax_behavior: 'exclusive',
-            product_data: {
-              name: `PostQueen credits (${pack.credits})`,
-              description: `${pack.credits} credits for AI images, videos and more, usable for ${CREDIT_PACK_MONTHS} months.`,
-              tax_code: 'txcd_10103001',
-            },
-          },
-        },
-      ],
-    });
-    return { url };
-  }
-
-  /**
-   * A paid credits pack: its credits, once per checkout session, good for
-   * `CREDIT_PACK_MONTHS`. An async payment completes the session before the
-   * money lands and is granted on `async_payment_succeeded` instead. The
-   * amount is the one the session was sold with.
-   */
-  private async grantCreditPack(
-    organizationId: string | undefined,
-    session: {
-      id: string;
-      payment_status?: string;
-      payment_intent?: string | { id?: string } | null;
-      metadata?: Record<string, string>;
-    }
-  ) {
-    if (!organizationId) {
-      throw new Error(`credits pack session ${session.id} has no organizationId`);
-    }
-    if (session.payment_status !== 'paid') {
-      return { ok: true, granted: false, reason: session.payment_status };
-    }
-    const credits =
-      Number(session.metadata?.credits) ||
-      CREDIT_PACKS.find((p) => p.id === session.metadata?.pack)?.credits;
-    if (!credits) {
-      throw new Error(`credits pack session ${session.id} names no pack`);
-    }
-    const paymentIntent =
-      typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent?.id;
-    const { granted } = await this._creditsService.grant(organizationId, {
-      source: 'topup',
-      amount: credits * CREDIT_UNIT,
-      expiresAt: dayjs().add(CREDIT_PACK_MONTHS, 'month').toDate(),
-      externalRef: session.id,
-      paymentRef: paymentIntent || null,
-    });
-    return { ok: true, granted };
-  }
-
-  /**
-   * Whether a charge paid for a credits pack, taking back what is left of it
-   * when it did. A pack is not a plan: the refund and dispute paths below
-   * would otherwise end the plan, a founding member's above all, over a pack.
-   */
-  private async revokeCreditPackOfCharge(charge: Stripe.Charge) {
-    const paymentIntent =
-      typeof charge.payment_intent === 'string'
-        ? charge.payment_intent
-        : charge.payment_intent?.id;
-    if (!paymentIntent) {
-      return false;
-    }
-    const intent = await stripe.paymentIntents.retrieve(paymentIntent);
-    if (
-      intent.metadata?.service !== SUBSCRIPTION_SERVICE_TAG ||
-      intent.metadata?.kind !== 'credit_pack'
-    ) {
-      return false;
-    }
-    await this._creditsService.revokeByPaymentRef(paymentIntent);
-    return true;
-  }
-
   async createLifetimeCheckout(organization: Organization) {
     const customer = await this.createOrGetCustomer(organization);
     // Mid-trial converts are usually past `allowTrial` (trial already started).
@@ -3508,6 +3386,160 @@ export class StripeService extends PaymentProviderAbstract {
     });
 
     return { url };
+  }
+
+  /**
+   * A credits pack, bought on top of a plan through hosted Checkout. The
+   * session is tagged `kind: 'credit_pack'` (and so is its payment) so the
+   * webhook, a refund and a dispute all tell it apart from the founding-member
+   * purchase that shares `mode: 'payment'`. No promotion codes: a 100%-off
+   * code would hand out credits for nothing.
+   */
+  async createCreditPackCheckout(
+    organization: Organization,
+    packId: CreditPackId,
+    withdrawalWaiver: boolean
+  ) {
+    const pack = CREDIT_PACKS.find((p) => p.id === packId);
+    if (!pack) {
+      throw new HttpException('Unknown credits pack', HttpStatus.BAD_REQUEST);
+    }
+    // Checked here as well as in the DTO, as a yearly plan's is: the stamp
+    // below records a consent this call has seen.
+    if (withdrawalWaiver !== true) {
+      throw new HttpException(
+        'Please confirm that your credits start now and that your right of withdrawal ends once you use them.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const customer = await this.createOrGetCustomer(organization);
+    const metadata = {
+      service: SUBSCRIPTION_SERVICE_TAG,
+      organizationId: organization.id,
+      kind: 'credit_pack',
+      pack: pack.id,
+      credits: String(pack.credits),
+      withdrawal_waiver_at: new Date().toISOString(),
+    };
+    const { url } = await stripe.checkout.sessions.create({
+      customer,
+      mode: 'payment',
+      success_url: process.env['FRONTEND_URL'] + '/billing?credits=purchased',
+      cancel_url: process.env['FRONTEND_URL'] + '/billing',
+      automatic_tax: { enabled: true },
+      tax_id_collection: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
+      billing_address_collection: 'required',
+      allow_promotion_codes: false,
+      invoice_creation: {
+        enabled: true,
+        invoice_data: { footer: CREDITS_WAIVER_NOTE, metadata },
+      },
+      metadata,
+      payment_intent_data: { metadata },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: pack.price * 100,
+            // Taxed as the plans are (see createLifetimeCheckout).
+            tax_behavior: 'exclusive',
+            product_data: {
+              name: `PostQueen credits (${pack.credits})`,
+              description: `${pack.credits} credits for AI images, videos and more, usable for ${CREDIT_PACK_MONTHS} months.`,
+              tax_code: 'txcd_10103001',
+            },
+          },
+        },
+      ],
+    });
+    return { url };
+  }
+
+  /**
+   * A paid credits pack: its credits, once per checkout session. An async
+   * payment completes the session before the money lands and is granted on
+   * `async_payment_succeeded` instead. The amount is the one the session was
+   * sold with.
+   */
+  private async grantCreditPack(
+    organizationId: string | undefined,
+    session: {
+      id: string;
+      payment_status?: string;
+      payment_intent?: string | { id?: string } | null;
+      metadata?: Record<string, string>;
+    }
+  ) {
+    if (!organizationId) {
+      throw new Error(`credits pack session ${session.id} has no organizationId`);
+    }
+    if (session.payment_status !== 'paid') {
+      return { ok: true, granted: false, reason: session.payment_status };
+    }
+    const credits =
+      Number(session.metadata?.credits) ||
+      CREDIT_PACKS.find((p) => p.id === session.metadata?.pack)?.credits;
+    if (!credits) {
+      throw new Error(`credits pack session ${session.id} names no pack`);
+    }
+    const paymentIntent =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+    // A retry that lands after the payment was refunded or disputed grants
+    // nothing: the revoke then ran before there was anything to take back.
+    if (paymentIntent) {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntent, {
+        expand: ['latest_charge'],
+      });
+      const charge = intent.latest_charge as Stripe.Charge | null;
+      if (charge?.refunded || charge?.disputed) {
+        return { ok: true, granted: false, reason: 'refunded or disputed' };
+      }
+    }
+    const granted = await this._subscriptionService.grantCreditPack(
+      organizationId,
+      { credits, externalRef: session.id, paymentRef: paymentIntent || null }
+    );
+    return { ok: true, granted };
+  }
+
+  /**
+   * Whether a charge paid for a credits pack, taking back what is left of it
+   * when it did. A pack is not a plan: the refund and dispute paths below
+   * would otherwise end the plan, a founding member's above all, over a pack.
+   */
+  private async revokeCreditPackOfCharge(charge: Stripe.Charge) {
+    const paymentIntent =
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+    if (!paymentIntent) {
+      return false;
+    }
+    const intent = await stripe.paymentIntents.retrieve(paymentIntent);
+    if (
+      intent.metadata?.service !== SUBSCRIPTION_SERVICE_TAG ||
+      intent.metadata?.kind !== 'credit_pack'
+    ) {
+      return false;
+    }
+    const organizationId = intent.metadata.organizationId;
+    const { count } = organizationId
+      ? await this._subscriptionService.revokeCreditPack(
+          organizationId,
+          paymentIntent
+        )
+      : { count: 0 };
+    if (!count) {
+      Logger.warn(
+        `[stripe] credits pack ${paymentIntent} left without its credits, but none were found to take back`
+      );
+    }
+    return true;
   }
 
   /**

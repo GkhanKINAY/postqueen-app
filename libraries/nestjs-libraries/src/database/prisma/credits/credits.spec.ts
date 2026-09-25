@@ -252,11 +252,15 @@ describe('Credits packs', () => {
     assert.ok(pack < checkout.indexOf('grantLifetimeFromPayment'));
   });
 
-  it('grant once per checkout, only when paid, for the months a pack lasts', () => {
+  it('grant once per checkout, only when paid and still paid, for the months a pack lasts', () => {
     const grant = between(stripe, 'private async grantCreditPack(', 'private async revokeCreditPackOfCharge(');
     assert.match(grant, /if \(session\.payment_status !== 'paid'\) \{/);
-    assert.match(grant, /externalRef: session\.id,/);
-    assert.match(grant, /dayjs\(\)\.add\(CREDIT_PACK_MONTHS, 'month'\)/);
+    assert.match(grant, /if \(charge\?\.refunded \|\| charge\?\.disputed\) \{/);
+    assert.match(grant, /externalRef: session\.id, paymentRef: paymentIntent \|\| null/);
+    // through the subscription service, like every other grant
+    const subscription = read('../subscriptions/subscription.service.ts');
+    assert.match(subscription, /source: 'topup',\n\s+amount: pack\.credits \* CREDIT_UNIT,\n\s+expiresAt: dayjs\(\)\.add\(CREDIT_PACK_MONTHS, 'month'\)\.toDate\(\),/);
+    assert.doesNotMatch(stripe, /CreditsService/);
   });
 
   it('are sold without promotion codes, tagged on the payment as well', () => {

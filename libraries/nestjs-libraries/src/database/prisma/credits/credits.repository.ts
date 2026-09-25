@@ -416,15 +416,7 @@ export class CreditsRepository {
    * Takes back what is left of the grant a payment bought: a pack refunded in
    * full or disputed. What was already spent stays spent.
    */
-  async revokeByPaymentRef(paymentRef: string) {
-    const found = await this._creditGrant.model.creditGrant.findFirst({
-      where: { paymentRef },
-      select: { organizationId: true },
-    });
-    if (!found) {
-      return { count: 0 };
-    }
-    const organizationId = found.organizationId;
+  async revokeByPaymentRef(organizationId: string, paymentRef: string) {
     return this._transaction.model.$transaction(async (tx) => {
       await this.lock(tx, organizationId);
       return tx.creditGrant.updateMany({

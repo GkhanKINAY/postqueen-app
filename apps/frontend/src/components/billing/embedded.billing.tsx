@@ -621,7 +621,9 @@ export const SubmitBarFallback: FC<{
    * looking disabled.
    */
   pending?: boolean;
-}> = ({ tier, period, allowTrial }) => {
+  /** What a click says instead, when something other than the card waits. */
+  blockedMessage?: string;
+}> = ({ tier, period, allowTrial, blockedMessage }) => {
   const t = useT();
   const toaster = useToaster();
   const plan = pricing[tier] || pricing.PRO;
@@ -665,10 +667,11 @@ export const SubmitBarFallback: FC<{
           type="button"
           onClick={() => {
             toaster.show(
-              t(
-                'billing_complete_payment_details',
-                'Complete your payment details above, then try again.'
-              ),
+              blockedMessage ||
+                t(
+                  'billing_complete_payment_details',
+                  'Complete your payment details above, then try again.'
+                ),
               'warning'
             );
           }}

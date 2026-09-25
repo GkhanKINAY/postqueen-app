@@ -2645,6 +2645,7 @@ welcome_back
 what_do_you_want_to_do
 whats_new
 which_version_editing
+withdrawal_waiver_checkout_required
 withdrawal_waiver_credits
 withdrawal_waiver_required
 withdrawal_waiver_yearly
