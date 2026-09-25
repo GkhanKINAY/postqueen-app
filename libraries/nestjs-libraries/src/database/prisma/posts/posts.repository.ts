@@ -436,7 +436,15 @@ export class PostsRepository {
         deletedAt: null,
       },
       include: {
-        integration: true,
+        // The group is sent to the browser as it is (GET /posts/group/:group),
+        // so the channel comes without what it signs in with.
+        integration: {
+          omit: {
+            token: true,
+            refreshToken: true,
+            customInstanceDetails: true,
+          },
+        },
         tags: {
           where: {
             tag: {

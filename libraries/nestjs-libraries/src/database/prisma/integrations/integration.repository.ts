@@ -12,6 +12,14 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
 import { INTEGRATION_TOKEN_PREFIX } from '@gitroom/helpers/auth/auth.service';
 
+// What a channel signs in with. Rows these methods return go straight back
+// to the browser as the response, which has no use for them.
+const CREDENTIALS = {
+  token: true,
+  refreshToken: true,
+  customInstanceDetails: true,
+} as const;
+
 @Injectable()
 export class IntegrationRepository {
   private storage = UploadFactory.createStorage();
@@ -542,6 +550,7 @@ export class IntegrationRepository {
 
   updateNameAndUrl(id: string, name: string, url: string) {
     return this._integration.model.integration.update({
+      omit: CREDENTIALS,
       where: {
         id,
       },
@@ -630,6 +639,7 @@ export class IntegrationRepository {
         }));
 
     return this._integration.model.integration.update({
+      omit: CREDENTIALS,
       where: {
         id,
         organizationId: org,
@@ -668,6 +678,7 @@ export class IntegrationRepository {
     }
 
     return this._integration.model.integration.update({
+      omit: CREDENTIALS,
       where: {
         id,
         organizationId: org,
