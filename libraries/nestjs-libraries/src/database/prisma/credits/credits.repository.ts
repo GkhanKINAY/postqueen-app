@@ -412,6 +412,28 @@ export class CreditsRepository {
     });
   }
 
+  /**
+   * Takes back what is left of the grant a payment bought: a pack refunded in
+   * full or disputed. What was already spent stays spent.
+   */
+  async revokeByPaymentRef(paymentRef: string) {
+    const found = await this._creditGrant.model.creditGrant.findFirst({
+      where: { paymentRef },
+      select: { organizationId: true },
+    });
+    if (!found) {
+      return { count: 0 };
+    }
+    const organizationId = found.organizationId;
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+      return tx.creditGrant.updateMany({
+        where: { organizationId, paymentRef, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+  }
+
   // Points unpaid allocations at live grants, oldest debt first, splitting an
   // allocation when one grant covers only part of it.
   private async payDebt(tx: Tx, organizationId: string) {

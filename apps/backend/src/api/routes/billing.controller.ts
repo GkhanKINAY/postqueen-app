@@ -3,6 +3,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
+import { BuyCreditsDto } from '@gitroom/nestjs-libraries/dtos/billing/buy.credits.dto';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import {
   LIFETIME_ON_SALE,
@@ -491,6 +492,24 @@ export class BillingController {
     }
 
     return this._stripeService.createLifetimeCheckout(org);
+  }
+
+  @Post('/credits/checkout')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async creditsCheckout(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: BuyCreditsDto
+  ) {
+    this.assertBillingEnabled();
+    // Packs top up a plan; they are not a way to use PostQueen without one.
+    if (!(await this._subscriptionService.getSubscriptionByOrganizationId(org.id))) {
+      throw new HttpException(
+        { success: false, message: 'Choose a plan before buying credits.' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return this._stripeService.createCreditPackCheckout(org, body.pack);
   }
 
   @Post('/add-subscription')
