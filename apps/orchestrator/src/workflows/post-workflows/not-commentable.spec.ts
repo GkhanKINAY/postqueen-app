@@ -13,8 +13,9 @@ import { fileURLToPath } from 'node:url';
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-describe('not-commentable reason', () => {
-  const workflow = read('./post.workflow.v1.0.11.ts');
+for (const file of ['./post.workflow.v1.0.11.ts', './post.workflow.v1.0.12.ts'])
+describe(`not-commentable reason (${file})`, () => {
+  const workflow = read(file);
   const activity = read('../../activities/post.activity.ts');
 
   it('is the same literal in the workflow and in changeState', () => {
@@ -48,7 +49,7 @@ describe('not-commentable reason', () => {
     assert.match(block, /for \(const part of droppedParts\)/);
     assert.match(block, /changeState\(part\.id, 'ERROR', NOT_COMMENTABLE/);
     assert.equal(
-      (block.match(/inAppNotification\(/g) || []).length,
+      (block.match(/(inAppNotification|publishingNotice)\(/g) || []).length,
       1,
       'one notice for the whole set, not one per part'
     );

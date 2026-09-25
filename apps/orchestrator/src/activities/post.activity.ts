@@ -36,7 +36,25 @@ import {
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 import { publishNoticeReleaseUrl } from '@gitroom/helpers/utils/post.publish.notice';
-import { EmailRow } from '@gitroom/nestjs-libraries/emails/email.content';
+import {
+  EmailContent,
+  EmailLink,
+  EmailRow,
+} from '@gitroom/nestjs-libraries/emails/email.content';
+import { capitalize } from 'lodash';
+
+/** What happened to a post, as post.workflow v1.0.12 and up reports it. */
+export type PublishingNotice =
+  | 'published'
+  | 'processing'
+  | 'no_comments'
+  | 'reconnect'
+  | 'disabled'
+  | 'unfinished'
+  | 'unconfirmed'
+  | 'unconfirmed_comment'
+  | 'bad_body'
+  | 'bad_body_comment';
 
 /**
  * Written to `Post.error` when a scheduled post could not run because the org
@@ -128,12 +146,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
-      // v1011, matching posts.service.ts. The recovery sweep starting an older
+      // v1012, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.
       await this._temporalService.client
         .getRawClient()
-        .workflow.signalWithStart('postWorkflowV1011', {
+        .workflow.signalWithStart('postWorkflowV1012', {
           workflowId: `post_${post.id}`,
           taskQueue: 'main',
           signal: 'poke',
@@ -470,7 +488,7 @@ export class PostActivity {
     try {
       await this._temporalService.client
         .getRawClient()
-        .workflow.start('streakWorkflowV2', {
+        .workflow.start('streakWorkflowV3', {
           args: [{ organizationId: integration.organizationId }],
           workflowId: `streak_${integration.organizationId}`,
           taskQueue: 'main',
@@ -571,40 +589,318 @@ export class PostActivity {
       type,
       url,
       row
-        ? {
+        ? this.publishedEmail(network, published!.integration!.name, row, url!)
+        : undefined,
+      row,
+    );
+  }
+
+  private publishedEmail(
+    network: string,
+    account: string,
+    row: EmailRow,
+    url: string
+  ): EmailContent {
+    return {
+      stream: 'notifications',
+      category: 'Published',
+      preheader: row.title,
+      tone: 'ok',
+      icon: 'check',
+      title: 'Your post is',
+      accent: 'live.',
+      lead: `PostQueen published it to ${account} on ${network}.`,
+      blocks: [
+        {
+          type: 'rows',
+          rows: [
+            { ...row, link: undefined, chip: { label: 'Published', tone: 'ok' } },
+          ],
+        },
+        {
+          type: 'button',
+          link: { label: `View on ${network}`, url },
+          secondary: { label: 'Open calendar', url: '/launches' },
+        },
+        {
+          type: 'note',
+          text: 'Publishing updates come as one email an hour at most. This hour had just this one.',
+        },
+      ],
+      footer: 'success',
+    };
+  }
+
+  /**
+   * Every notice post.workflow v1.0.12 and up sends. The workflow says what
+   * happened to which post; the wording lives here, so it can change without a
+   * new workflow version. The in-app text keeps the provider identifier the
+   * notifications panel reads its icon from, and the email names the network
+   * and shows the post. All of it waits for the hourly summary.
+   */
+  @ActivityMethod()
+  async publishingNotice(
+    orgId: string,
+    postId: string,
+    notice: PublishingNotice,
+    detail = ''
+  ) {
+    const [post] = await this._postService
+      .getPostsRecursively(postId, true)
+      .catch(() => []);
+    const id = post?.integration?.providerIdentifier || '';
+    const provider = capitalize(id);
+    const account = post?.integration?.name || 'your channel';
+    const network = this.networkName(id || undefined);
+    const channelLink = post?.integration
+      ? `/channels?${new URLSearchParams({
+          channel: id,
+          focus: post.integration.id,
+        }).toString()}`
+      : '/channels';
+    const postRow = (chip?: EmailRow['chip']): EmailRow => ({
+      platform: id || undefined,
+      meta: `${network} · ${account}`,
+      title: this.excerpt(post?.content) || 'Your post',
+      chip,
+    });
+    const channelRow = (label: string): EmailRow => ({
+      platform: id || undefined,
+      meta: network,
+      title: account,
+      chip: { label, tone: 'warn' },
+    });
+    const summary = (text: string | undefined, link: EmailLink): EmailRow => ({
+      ...postRow(),
+      text,
+      link,
+    });
+    const channelNotice = (
+      subject: string,
+      message: string,
+      title: string,
+      lead: string,
+      chip: string,
+      next: string,
+      button: string,
+      icon: 'plug' | 'power',
+      short: string
+    ) => ({
+      subject,
+      message,
+      type: 'info' as const,
+      sendEmail: true,
+      link: channelLink,
+      email: {
+        stream: 'notifications',
+        category: 'Channel alert',
+        preheader: `${lead} ${next}`,
+        tone: 'warn',
+        icon,
+        title,
+        lead,
+        blocks: [
+          { type: 'rows', rows: [channelRow(chip)] },
+          { type: 'text', text: next },
+          { type: 'button', link: { label: button, url: channelLink } },
+        ],
+        footer: 'alert',
+      } satisfies EmailContent,
+      row: summary(short, { label: 'Open', url: channelLink }),
+    });
+
+    let n: {
+      subject: string;
+      message: string;
+      type: NotificationType;
+      sendEmail: boolean;
+      link?: string;
+      email?: EmailContent;
+      row?: EmailRow;
+    };
+    switch (notice) {
+      case 'published':
+        // Quiet posts (pq_notify off) opt out of this one; failures still speak.
+        if (this._postService.shouldSkipPublishNotice(post)) {
+          return;
+        }
+        n = {
+          subject: `Your post is live on ${network}`,
+          message: `Your post has been published on ${provider} at ${detail}`,
+          type: 'success',
+          sendEmail: true,
+          link: detail,
+          email: this.publishedEmail(network, account, postRow(), detail),
+          row: summary(undefined, { label: 'View', url: detail }),
+        };
+        break;
+      case 'processing':
+        n = {
+          subject: `Publishing your post on ${provider}`,
+          message: `${provider} accepted your post and is still processing it. It will be confirmed here once it is live.`,
+          type: 'info',
+          sendEmail: false,
+        };
+        break;
+      case 'no_comments': {
+        const parts = Number(detail) || 1;
+        n = {
+          subject: `${provider} cannot post comments`,
+          message: `${provider} has no way to add ${
+            parts === 1 ? 'a comment' : 'comments'
+          } to a post, so ${
+            parts === 1
+              ? 'the extra part of this post was'
+              : `the ${parts} extra parts of this post were`
+          } not published. The first part is unaffected.`,
+          type: 'info',
+          sendEmail: false,
+        };
+        break;
+      }
+      case 'reconnect':
+        n = channelNotice(
+          `Reconnect ${network} to publish your post`,
+          `We couldn't post to ${id} for ${account} because you need to reconnect it. Reconnect it, then try again.`,
+          `Reconnect ${network} to publish`,
+          `Your post to ${account} on ${network} didn’t go out, because PostQueen lost access to the channel.`,
+          'Needs reconnect',
+          'Reconnect it, then schedule the post again from your calendar.',
+          `Reconnect ${network}`,
+          'plug',
+          'Not published. The channel needs reconnecting.'
+        );
+        break;
+      case 'disabled':
+        n = channelNotice(
+          `Turn ${network} back on to publish`,
+          `We couldn't post to ${id} for ${account} because it's disabled. Please enable it and try again.`,
+          `${network} is turned off`,
+          `Your post to ${account} on ${network} didn’t go out, because the channel is turned off in PostQueen.`,
+          'Off',
+          'Turn it on from Channels, then schedule the post again.',
+          'Open channels',
+          'power',
+          'Not published. The channel is turned off.'
+        );
+        break;
+      case 'unfinished':
+        n = channelNotice(
+          `Finish connecting ${network} to publish`,
+          `We couldn't post to ${id} for ${account} because connecting it was never finished. Open the channel to finish connecting it, then try again.`,
+          `Finish connecting ${network}`,
+          `Your post to ${account} on ${network} didn’t go out, because connecting the channel was never finished.`,
+          'Setup unfinished',
+          'Open the channel, pick the page or account to post to, then schedule the post again.',
+          'Finish connecting',
+          'plug',
+          'Not published. Connecting the channel was never finished.'
+        );
+        break;
+      case 'unconfirmed':
+      case 'unconfirmed_comment': {
+        const what = notice === 'unconfirmed' ? 'post' : 'comment';
+        n = {
+          subject: `Check ${network} before you post again`,
+          message: `Your ${what} was sent to ${provider}, but we couldn't confirm it was published. Please check your ${account} account before posting again to avoid duplicates.`,
+          type: 'fail',
+          sendEmail: true,
+          link: '/launches',
+          email: {
             stream: 'notifications',
-            category: 'Published',
-            preheader: row.title,
-            tone: 'ok',
-            icon: 'check',
-            title: 'Your post is',
-            accent: 'live.',
-            lead: `PostQueen published it to ${published!.integration!.name} on ${network}.`,
+            category: 'Check your account',
+            preheader: `We sent your ${what}, but ${network} never confirmed it went live.`,
+            tone: 'warn',
+            icon: 'help',
+            title: `We couldn’t confirm your ${what} on ${network}`,
+            lead: `We sent your ${what} to ${network}, but ${network} never told us it went live. It may be there already.`,
             blocks: [
               {
                 type: 'rows',
-                rows: [
-                  {
-                    ...row,
-                    link: undefined,
-                    chip: { label: 'Published', tone: 'ok' },
-                  },
-                ],
+                rows: [postRow({ label: 'Not confirmed', tone: 'warn' })],
+              },
+              {
+                type: 'callout',
+                text: `Look at ${account} on ${network} before you post it again, so it doesn’t go out twice.`,
               },
               {
                 type: 'button',
-                link: { label: `View on ${network}`, url: url! },
-                secondary: { label: 'Open calendar', url: '/launches' },
-              },
-              {
-                type: 'note',
-                text: 'Publishing updates come as one email an hour at most. This hour had just this one.',
+                link: { label: 'Open the post', url: '/launches' },
               },
             ],
-            footer: 'success',
-          }
-        : undefined,
-      row,
+            footer: 'failure',
+          },
+          row: summary(
+            `Not confirmed. Check ${network} before you post it again.`,
+            { label: 'Open', url: '/launches' }
+          ),
+        };
+        break;
+      }
+      case 'bad_body':
+      case 'bad_body_comment': {
+        const comment = notice === 'bad_body_comment';
+        const title = comment
+          ? `${network} didn’t accept a comment on your post`
+          : `${network} didn’t accept your post`;
+        n = {
+          subject: title,
+          message: `An error occurred while posting${
+            comment ? ' comments ' : ' '
+          }on ${id}${detail ? `: ${detail}` : ''}`,
+          type: 'fail',
+          sendEmail: true,
+          link: '/launches',
+          email: {
+            stream: 'notifications',
+            category: 'Not published',
+            preheader: detail ? `${network} said: ${detail}` : title,
+            tone: 'danger',
+            icon: 'x-circle',
+            title,
+            lead: comment
+              ? `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
+              : `We sent your post from ${account} to ${network}, and ${network} returned an error, so it was not published.`,
+            blocks: [
+              ...(detail
+                ? [
+                    {
+                      type: 'reason' as const,
+                      label: `What ${network} said`,
+                      text: detail,
+                    },
+                  ]
+                : []),
+              {
+                type: 'rows',
+                rows: [postRow({ label: 'Failed', tone: 'danger' })],
+              },
+              {
+                type: 'button',
+                link: { label: 'Open the post', url: '/launches' },
+              },
+            ],
+            footer: 'failure',
+          },
+          row: summary(detail || 'Not published.', {
+            label: 'Open',
+            url: '/launches',
+          }),
+        };
+        break;
+      }
+    }
+
+    await this._notificationService.inAppNotification(
+      orgId,
+      n.subject,
+      n.message,
+      n.sendEmail,
+      true,
+      n.type,
+      n.link,
+      n.email,
+      n.row
     );
   }
 

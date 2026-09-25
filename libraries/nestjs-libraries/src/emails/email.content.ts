@@ -28,6 +28,7 @@ export type EmailIcon =
   | 'check'
   | 'check-check'
   | 'flame'
+  | 'help'
   | 'key'
   | 'lock'
   | 'mail'
