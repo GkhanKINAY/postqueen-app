@@ -1,6 +1,7 @@
 import React, {
   ReactNode,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -9,11 +10,10 @@ import { useCopilotContext } from '@copilotkit/react-core';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
 import { useChatContext } from '@copilotkit/react-ui';
 import { InputProps } from '@copilotkit/react-ui';
-import { PropertiesContext } from '@gitroom/frontend/components/agents/agent';
-import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
-import SafeImage from '@gitroom/react/helpers/safe.image';
-import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
-import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  ChannelPickerButton,
+  PropertiesContext,
+} from '@gitroom/frontend/components/agents/agent';
 const MAX_NEWLINES = 6;
 
 export const Input = ({
@@ -34,8 +34,7 @@ export const Input = ({
 }) => {
   const context = useChatContext();
   const copilotContext = useCopilotContext();
-  const { properties, openChannels } = useContext(PropertiesContext);
-  const t = useT();
+  const { composerSeed } = useContext(PropertiesContext);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setIsComposing] = useState(false);
@@ -54,6 +53,22 @@ export const Input = ({
   };
 
   const [text, setText] = useState('');
+
+  // An empty-state suggestion fills the box and leaves sending to the person.
+  // `onChange` is a fresh closure on every render of the SDK's chat, so it is
+  // read through a ref rather than re-running this on each keystroke.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  // The seed lives in the page layout and outlives this box: a box that
+  // mounts later (New chat, another chat) must not pick up an old one.
+  const appliedSeed = useRef(composerSeed.n);
+  useEffect(() => {
+    if (composerSeed.n === appliedSeed.current) return;
+    appliedSeed.current = composerSeed.n;
+    setText(composerSeed.text);
+    onChangeRef.current(composerSeed.text);
+    textareaRef.current?.focus();
+  }, [composerSeed.n, composerSeed.text]);
   const send = () => {
     if (inProgress) return;
     onSend(text);
@@ -86,66 +101,11 @@ export const Input = ({
   return (
     <div className="copilotKitInputContainer">
       <div className="mx-auto flex w-full max-w-[840px] flex-col gap-[8px] pb-[env(safe-area-inset-bottom)]">
-        <div className="flex flex-wrap items-center gap-[6px] p-[0_2px_2px]">
-          {properties.length === 0 ? (
-            // Design soft label is "No channel selected"; owner polish: muted
-            // pill CTA that opens the left channel list (same selection WORK).
-            <button
-              type="button"
-              onClick={openChannels}
-              className="flex h-[26px] items-center gap-[6px] rounded-full bg-pqSettings px-[9px] text-[11.5px] font-[600] text-pqSoft shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover hover:text-pqText"
-            >
-              <span>{t('no_channels_selected', 'No channels selected')}</span>
-              <span className="text-pqMuted" aria-hidden="true">
-                ·
-              </span>
-              <span>{t('select_channels', 'Select channels')}</span>
-            </button>
-          ) : (
-            <>
-              <span className="text-[11.5px] text-pqSoft">
-                {t('agent_posting_to', 'Posting to')}
-              </span>
-              {properties.map((p) => (
-                <span
-                  key={p.id}
-                  title={channelNameWithHandle(p)}
-                  className="flex h-[26px] items-center gap-[6px] rounded-full bg-pqSettings ps-[4px] pe-[9px] text-[11.5px] font-[600] text-pqText"
-                >
-                  <span className="relative h-[18px] w-[18px] shrink-0">
-                    <ImageWithFallback
-                      fallbackSrc={`/icons/platforms/${p.identifier}.png`}
-                      src={p.picture}
-                      className="rounded-[5px]"
-                      alt={p.identifier}
-                      width={18}
-                      height={18}
-                    />
-                    <span className="absolute -bottom-[4px] -end-[4px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqBadgeRing">
-                      <SafeImage
-                        src={`/icons/platforms/${p.identifier}.png`}
-                        className="rounded-full"
-                        alt={p.identifier}
-                        width={11}
-                        height={11}
-                      />
-                    </span>
-                  </span>
-                  {p.name}
-                  {!!formatChannelHandle(p.display) && (
-                    <span className="font-[500] text-pqMuted">
-                      {formatChannelHandle(p.display)}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </>
-          )}
-        </div>
         <div
           className="copilotKitInput flex cursor-text flex-col gap-[7px]"
           onClick={handleDivClick}
         >
+          <ChannelPickerButton />
           {attachments}
           <AutoResizingTextarea
             ref={textareaRef}

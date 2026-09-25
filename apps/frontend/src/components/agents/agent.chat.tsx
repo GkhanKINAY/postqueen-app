@@ -22,6 +22,7 @@ import {
   UserMessageProps,
 } from '@copilotkit/react-ui';
 import Link from 'next/link';
+import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.textarea';
 import {
@@ -32,6 +33,7 @@ import {
   useCopilotReadable,
 } from '@copilotkit/react-core';
 import {
+  ChannelPickerButton,
   MediaPortal,
   PropertiesContext,
   threadTitleWait,
@@ -83,10 +85,8 @@ import {
 } from '@gitroom/frontend/components/agents/agent.tool.step';
 import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card';
 import { VideoJobMedia } from '@gitroom/frontend/components/media/use.generate.video';
-import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
-import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
-import SafeImage from '@gitroom/react/helpers/safe.image';
 
 type AgentIntegration = Integrations & {
   refreshNeeded?: boolean;
@@ -204,7 +204,7 @@ export const AgentChat: FC = () => {
                   title: t('ai_copilot', 'AI Copilot'),
                   placeholder: t(
                     'agent_placeholder',
-                    'Ask Copilot to draft, schedule or generate…'
+                    'Describe a post, or ask Copilot to schedule, edit or make an image'
                   ),
                 }}
                 AssistantMessage={AssistantMessage}
@@ -227,71 +227,98 @@ export const AgentChat: FC = () => {
  */
 const EmptyStateHero: FC = () => {
   const t = useT();
+  const { seedComposer } = useContext(PropertiesContext);
+  // Each one is something the agent's tools do today: posts per channel,
+  // images, and reading analytics. Clicking fills the box; the person sends.
+  const suggestions = [
+    {
+      key: 'plan',
+      icon: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z',
+      title: t('agent_suggest_plan_title', 'Plan the week'),
+      prompt: t(
+        'agent_suggest_plan',
+        'Plan five posts for next week about our spring launch'
+      ),
+    },
+    {
+      key: 'fit',
+      icon: 'm12.8 2.2 8.6 3.9a1 1 0 0 1 0 1.8l-8.6 3.9a2 2 0 0 1-1.6 0L2.6 7.9a1 1 0 0 1 0-1.8l8.6-3.9a2 2 0 0 1 1.6 0ZM22 17.7l-9.2 4.1a2 2 0 0 1-1.6 0L2 17.7M22 12.7l-9.2 4.1a2 2 0 0 1-1.6 0L2 12.7',
+      title: t('agent_suggest_fit_title', 'Fit it to each channel'),
+      prompt: t(
+        'agent_suggest_fit',
+        'Turn this announcement into an X post and a LinkedIn post'
+      ),
+    },
+    {
+      key: 'image',
+      icon: 'M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21',
+      title: t('agent_suggest_image_title', 'Make an image'),
+      prompt: t(
+        'agent_suggest_image',
+        'Make a square image for our spring sale in soft pastel colors'
+      ),
+    },
+    {
+      key: 'analytics',
+      icon: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+      title: t('agent_suggest_analytics_title', 'See what worked'),
+      prompt: t(
+        'agent_suggest_analytics',
+        'Which of my posts did best last week?'
+      ),
+    },
+  ];
   return (
     <>
-      <span className="flex h-[54px] w-[54px] items-center justify-center rounded-[16px] bg-pqBrandSoft text-pqFocused">
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
-          <path
-            d="M12 3l1.9 4.8 4.8 1.9-4.8 1.9L12 16.4l-1.9-4.8L5.3 9.7l4.8-1.9L12 3ZM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
+      <PostQueenLogo tileClassName="size-[48px]" glyphClassName="size-[26px]" />
       <div>
-        <div className="font-display text-[24px] font-[600] tracking-[-0.02em]">
-          {t('agent_empty_title', 'What are we posting today?')}
-        </div>
-        <div className="mx-auto mt-[8px] max-w-[440px] text-[14.5px] leading-[1.6] text-pqMuted">
+        <h1 className="m-0 font-display text-[32px] font-[700] leading-[1.15] tracking-[-0.02em] text-pqText mobile:text-[27px]">
+          {t('agent_empty_title_lead', 'What are we')}{' '}
+          <span className="font-serif font-[400] italic tracking-[-0.005em] text-pqFocused">
+            {t('agent_empty_title_accent', 'posting today?')}
+          </span>
+        </h1>
+        <p className="mx-auto mb-0 mt-[12px] max-w-[520px] text-[15px] leading-[1.6] text-pqMuted mobile:text-[14px]">
           {t(
-            'agent_empty_sub',
-            'Describe the idea. Copilot writes it per channel, makes the images and puts it on your calendar.'
+            'agent_empty_sub_v2',
+            'Describe the idea. Copilot writes it for each channel, makes the image and puts it on your calendar.'
           )}
-        </div>
+        </p>
+      </div>
+      <div className="grid w-full max-w-[720px] grid-cols-2 gap-[12px] mobile:grid-cols-1 mobile:gap-[8px]">
+        {suggestions.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            data-pq={`agent-suggest-${s.key}`}
+            onClick={() => seedComposer(s.prompt)}
+            className="pointer-events-auto flex flex-col gap-[6px] rounded-[14px] bg-pqPop p-[14px_16px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)] mobile:flex-row mobile:items-center mobile:gap-[10px] mobile:p-[10px_14px]"
+          >
+            <span className="flex items-center gap-[8px] text-[13px] font-[600] text-pqText mobile:text-[14px] mobile:font-[500]">
+              <span className="grid size-[26px] shrink-0 place-items-center rounded-[8px] bg-pqBrandSoft text-pqFocused">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+                  <path d={s.icon} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              {s.title}
+            </span>
+            <span className="text-[13px] leading-[1.45] text-pqMuted mobile:hidden">
+              {s.prompt}
+            </span>
+          </button>
+        ))}
       </div>
       <Link
         href="/connections"
-        className="pointer-events-auto flex w-full max-w-[640px] items-center gap-[12px] rounded-[14px] bg-pqPop p-[14px_18px] text-start shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqBrandSoft hover:shadow-[inset_0_0_0_1px_var(--brand)]"
+        className="pointer-events-auto flex flex-wrap items-center justify-center gap-x-[6px] gap-y-[2px] text-[13px] text-pqMuted"
       >
-        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] bg-pqBrandSoft text-pqFocused">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-            <path
-              d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5ZM4 15.5 12 20l8-4.5"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+        {t('agent_connect_lead', 'Prefer Claude or ChatGPT?')}
+        <span className="inline-flex items-center gap-[4px] font-[600] text-pqFocused">
+          {t('agent_connect_cta', 'Connect them to PostQueen')}
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" className="rtl:-scale-x-100">
+            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
-          <span className="text-[13px] font-[600] text-pqText">
-            {t('agent_mcp_card_title', 'Prefer your own AI tool?')}
-          </span>
-          <span className="text-[12px] leading-[1.45] text-pqMuted">
-            {t(
-              'agent_mcp_card_sub',
-              'Drive PostQueen from Claude, ChatGPT or Cursor over MCP — or automate with n8n.'
-            )}
-          </span>
-        </span>
-        <svg
-          viewBox="0 0 24 24"
-          width="16"
-          height="16"
-          fill="none"
-          className="shrink-0 text-pqSoft rtl:-scale-x-100"
-        >
-          <path
-            d="m9 6 6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
       </Link>
     </>
   );
@@ -317,7 +344,7 @@ const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
     // swallow the suggestion card's clicks.
     <div
       data-copilot-empty="1"
-      className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[18px] px-[16px] pt-[24px] pb-[30px] text-center sm:px-[40px] sm:pt-[56px]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[24px] px-[16px] pt-[28px] pb-[30px] text-center sm:px-[40px] sm:pt-[64px]"
     >
       <EmptyStateHero />
     </div>
@@ -332,11 +359,19 @@ const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
  */
 const UnconfiguredAgentShell: FC = () => {
   const t = useT();
-  const { properties, openChannels } = useContext(PropertiesContext);
+  const { composerSeed } = useContext(PropertiesContext);
   const [messages, setMessages] = useState<{ id: string; content: string }[]>(
     []
   );
   const [text, setText] = useState('');
+  // Same as the live box: a suggestion fills it once, the person sends.
+  const appliedSeed = useRef(composerSeed.n);
+  useEffect(() => {
+    if (composerSeed.n === appliedSeed.current) return;
+    appliedSeed.current = composerSeed.n;
+    setText(composerSeed.text);
+    textareaRef.current?.focus();
+  }, [composerSeed.n, composerSeed.text]);
   const [media, setMedia] = useState<{ path: string; id: string }[]>([]);
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -401,7 +436,7 @@ const UnconfiguredAgentShell: FC = () => {
           {!messages.length ? (
             <div
               data-copilot-empty="1"
-              className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[18px] px-[16px] pt-[24px] pb-[30px] text-center sm:px-[40px] sm:pt-[56px]"
+              className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[24px] px-[16px] pt-[28px] pb-[30px] text-center sm:px-[40px] sm:pt-[64px]"
             >
               <EmptyStateHero />
             </div>
@@ -420,66 +455,11 @@ const UnconfiguredAgentShell: FC = () => {
         </div>
         <div className="copilotKitInputContainer">
           <div className="mx-auto flex w-full max-w-[840px] flex-col gap-[8px]">
-            <div className="flex flex-wrap items-center gap-[6px] p-[0_2px_2px]">
-              {properties.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={openChannels}
-                  className="flex h-[26px] items-center gap-[6px] rounded-full bg-pqSettings px-[9px] text-[11.5px] font-[600] text-pqSoft shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover hover:text-pqText"
-                >
-                  <span>
-                    {t('no_channels_selected', 'No channels selected')}
-                  </span>
-                  <span className="text-pqMuted" aria-hidden="true">
-                    ·
-                  </span>
-                  <span>{t('select_channels', 'Select channels')}</span>
-                </button>
-              ) : (
-                <>
-                  <span className="text-[11.5px] text-pqSoft">
-                    {t('agent_posting_to', 'Posting to')}
-                  </span>
-                  {properties.map((p: AgentIntegration) => (
-                    <span
-                      key={p.id}
-                      title={channelNameWithHandle(p)}
-                      className="flex h-[26px] items-center gap-[6px] rounded-full bg-pqSettings ps-[4px] pe-[9px] text-[11.5px] font-[600] text-pqText"
-                    >
-                      <span className="relative h-[18px] w-[18px] shrink-0">
-                        <ImageWithFallback
-                          fallbackSrc={`/icons/platforms/${p.identifier}.png`}
-                          src={p.picture}
-                          className="rounded-[5px]"
-                          alt={p.identifier}
-                          width={18}
-                          height={18}
-                        />
-                        <span className="absolute -bottom-[4px] -end-[4px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqBadgeRing">
-                          <SafeImage
-                            src={`/icons/platforms/${p.identifier}.png`}
-                            className="rounded-full"
-                            alt={p.identifier}
-                            width={11}
-                            height={11}
-                          />
-                        </span>
-                      </span>
-                      {p.name}
-                      {!!formatChannelHandle(p.display) && (
-                        <span className="font-[500] text-pqMuted">
-                          {formatChannelHandle(p.display)}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                </>
-              )}
-            </div>
             <div
               className="copilotKitInput flex cursor-text flex-col gap-[7px]"
               onClick={handleComposerClick}
             >
+              <ChannelPickerButton />
               <MediaPortal
                 part="thumbs"
                 value={text}
@@ -490,7 +470,7 @@ const UnconfiguredAgentShell: FC = () => {
                 ref={textareaRef}
                 placeholder={t(
                   'agent_placeholder',
-                  'Ask Copilot to draft, schedule or generate…'
+                  'Describe a post, or ask Copilot to schedule, edit or make an image'
                 )}
                 autoFocus={false}
                 maxRows={6}
@@ -567,20 +547,28 @@ const LiveChatContext = createContext<{
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
   const message = props.message as { content?: unknown };
   const rest = useExtraToolCalls(props);
-  if (!message?.content) {
-    return (
-      <>
-        <CopilotAssistantMessage {...props} />
-        {rest}
-      </>
-    );
-  }
+  const t = useT();
+  // Every assistant message sits in the same column, so a card that arrives
+  // before the reply's text does not jump sideways when the text lands. The
+  // mark and the name only go on messages that say something.
+  const speaks = !!message?.content;
   return (
-    <div className="flex items-start gap-[10px]">
-      <span className="mt-[10px] flex h-[26px] w-[26px] shrink-0 select-none items-center justify-center rounded-[8px] bg-pqBrandSoft text-[10.5px] font-[700] text-pqFocused">
-        PQ
-      </span>
+    <div className="flex items-start gap-[12px]">
+      {speaks ? (
+        <PostQueenLogo
+          className="mt-[2px] shrink-0"
+          tileClassName="size-[28px] rounded-[8px] shadow-none"
+          glyphClassName="size-[15px]"
+        />
+      ) : (
+        <span aria-hidden="true" className="w-[28px] shrink-0" />
+      )}
       <div className="min-w-0 flex-1">
+        {speaks && (
+          <div className="flex h-[28px] items-center text-[12.5px] font-[600] text-pqText">
+            {t('copilot_name', 'Copilot')}
+          </div>
+        )}
         <CopilotAssistantMessage {...props} />
         {rest}
       </div>
@@ -1366,7 +1354,7 @@ const AgentImageCard: FC<{
       media={current || undefined}
       error={error}
       used={added || onCard ? 'added' : undefined}
-      useLabel={t('add_to_card', 'Add to card')}
+      useLabel={t('add_to_post', 'Add to post')}
       onUse={() => {
         if (!current) {
           return;
@@ -1423,7 +1411,7 @@ const AgentVideoCard: FC<{
       provider={args?.identifier}
       orientation={args?.output}
       used={added || onCard ? 'added' : undefined}
-      useLabel={t('add_to_card', 'Add to card')}
+      useLabel={t('add_to_post', 'Add to post')}
       onReady={setMedia}
       onUse={(video) => {
         const outcome = onAdd(video);

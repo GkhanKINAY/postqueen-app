@@ -1092,18 +1092,18 @@ html[dir='rtl'] .lbox {
     font-family: inherit;
   }
 
-  /* Message column: an 840px centred column, 24px padding, 16px rhythm. */
+  /* Message column: a 760px centred column, the design's 22px rhythm. */
   .copilotKitMessagesContainer {
     width: 100%;
-    max-width: 840px;
+    max-width: 760px;
     margin: 0 auto;
-    padding: 24px;
-    gap: 16px;
+    padding: 28px 24px;
+    gap: 22px;
   }
 
   .copilotKitMessage {
     margin-bottom: 0;
-    font-size: 13.5px;
+    font-size: 14.5px;
     line-height: 1.65;
   }
 
@@ -1148,24 +1148,52 @@ html[dir='rtl'] .lbox {
   li.copilotKitMarkdownElement .copilotKitParagraph {
     padding: 0.1em 0;
   }
+  /* Preflight strips list markers; a numbered answer needs its numbers. */
+  ol.copilotKitMarkdownElement {
+    list-style: decimal;
+    padding-inline-start: 1.4em;
+  }
+  ul.copilotKitMarkdownElement {
+    list-style: disc;
+    padding-inline-start: 1.3em;
+  }
+  /* Code and tables follow the theme instead of the SDK's fixed near-black. */
+  .copilotKitCodeBlock {
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--connCode);
+    color: var(--connCodeText);
+  }
+  .copilotKitMessage table {
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .copilotKitMessage th,
+  .copilotKitMessage td {
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    text-align: start;
+  }
 
-  /* User bubble: brand fill, tucked corner on the sending side. Logical
-     radii and margins so the bubble mirrors correctly in RTL. */
+  /* User bubble: a soft brand tint with the page's text, tucked corner on
+     the sending side. Logical radii and margins so it mirrors in RTL. */
   .copilotKitMessage.copilotKitUserMessage {
     max-width: 78%;
     margin-left: 0;
     margin-inline-start: auto;
-    padding: 10px 13px;
-    border-start-start-radius: 14px;
-    border-start-end-radius: 14px;
-    border-end-end-radius: 5px;
-    border-end-start-radius: 14px;
+    padding: 10px 14px;
+    background: var(--brandSoft);
+    color: var(--text);
+    border-start-start-radius: 18px;
+    border-start-end-radius: 18px;
+    border-end-end-radius: 6px;
+    border-end-start-radius: 18px;
   }
 
-  /* Assistant: no bubble at all — bare text beside the PQ tile. */
+  /* Assistant: no bubble at all — bare text under the Copilot name. */
   .copilotKitMessage.copilotKitAssistantMessage {
     max-width: 100%;
-    padding: 10px 0;
+    padding: 2px 0 10px;
     padding-inline-start: 2px;
     border-radius: 0;
     color: var(--text);
@@ -1187,15 +1215,23 @@ html[dir='rtl'] .lbox {
     color: var(--text);
     background: var(--hover);
   }
+  /* No feedback handler is wired to the SDK's thumbs, so they did nothing;
+     Regenerate and Copy stay. */
+  .copilotKitMessageControlButton[aria-label='Thumbs up'],
+  .copilotKitMessageControlButton[aria-label='Thumbs down'] {
+    display: none;
+  }
 
+  /* Attachments keep their square instead of being stretched to 200px. */
   .copilotKitMessage img {
-    width: 200px;
+    max-width: 100%;
+    object-fit: cover;
   }
   .copilotKitMessage a {
     color: var(--focused);
   }
   .copilotKitMessage.copilotKitUserMessage a {
-    color: var(--onBrand);
+    color: var(--focused);
     text-decoration: underline;
   }
 
@@ -1216,11 +1252,11 @@ html[dir='rtl'] .lbox {
     width: 100%;
     min-height: 0;
     margin: 0;
-    padding: 11px 12px 9px;
+    padding: 12px 12px 10px 16px;
     border: 0;
-    border-radius: var(--r-lg);
+    border-radius: 20px;
     background: var(--pop);
-    box-shadow: inset 0 0 0 1px var(--border), var(--e1);
+    box-shadow: inset 0 0 0 1px var(--border), var(--e2);
   }
   .copilotKitInput textarea {
     /* The SDK gives the textarea `flex: 1` (basis 0) for its own row layout;
@@ -1253,7 +1289,7 @@ html[dir='rtl'] .lbox {
     height: 40px !important;
     min-width: 40px;
     min-height: 40px;
-    border-radius: 12px;
+    border-radius: 999px;
     background: var(--brand) !important;
     color: var(--onBrand) !important;
     line-height: 0;
@@ -1803,6 +1839,12 @@ html[dir='rtl'] .lbox {
   .copilotKitMessageControlButton:hover {
     color: var(--text);
     background: var(--hover);
+  }
+  /* No feedback handler is wired to the SDK's thumbs, so they did nothing;
+     Regenerate and Copy stay. */
+  .copilotKitMessageControlButton[aria-label='Thumbs up'],
+  .copilotKitMessageControlButton[aria-label='Thumbs down'] {
+    display: none;
   }
 
   .suggestions {

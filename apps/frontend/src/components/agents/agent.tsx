@@ -4,6 +4,7 @@ import React, {
   createContext,
   FC,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -18,9 +19,7 @@ import { useIntegrationList } from '@gitroom/frontend/components/launches/helper
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
-import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
-import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -32,6 +31,11 @@ import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launche
 import { ChannelsListEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
+import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { useClickOutside } from '@mantine/hooks';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -49,7 +53,9 @@ export const useAgentRouteId = () => {
   return pathname?.split('/').filter(Boolean).pop() || 'new';
 };
 
-type ThreadList = { threads: { id: string; title?: string }[] };
+type ThreadList = {
+  threads: { id: string; title?: string; createdAt?: string; updatedAt?: string }[];
+};
 
 /** How often the Chats rail asks for a fresh thread's title, and for how long. */
 const THREAD_TITLE_POLL_MS = 2000;
@@ -149,90 +155,23 @@ export const MediaPortal: FC<{
 };
 
 export const AgentList: FC<{
-  /** The selection lives in `Agent` (one source for the list, the pills
-   *  and the chat); this column only paints and toggles it. */
+  /** The selection lives in `Agent` (one source for the list, the pill
+   *  and the chat); this list only paints and toggles it. */
   selected: Integrations[];
   onChange: (arr: any[]) => void;
-  /** Bumped when the composer empty CTA asks to focus this column. */
-  expandNonce?: number;
-  /** Channel ⋮ menu — same Menu as Channels; stopPropagation keeps row select. */
-  showKebab?: boolean;
-}> = ({ selected, onChange, expandNonce = 0, showKebab = true }) => {
-  const fetch = useFetch();
+}> = ({ selected, onChange }) => {
   const t = useT();
-  const toast = useToaster();
   const router = useRouter();
   const openReconnectInChannels = useOpenReconnectInChannels();
-  const colRef = useRef<HTMLDivElement>(null);
-
-  const { mobile, tablet } = useViewport();
-  const [collapseMenu, setCollapseMenu] = useCookie('collapseMenu', '0');
-  // Below 760 this column lives in a drawer (see `Agent`), where it gets the
-  // full 264px and should be the expanded list, not the icon rail. The rail is
-  // only for the desktop collapse toggle.
-  const channelsCollapsed = !mobile && collapseMenu === '1';
-  const autoCollapsed = useRef(false);
-
-  // Design `_autoSide`: collapse under 1180 on viewport transitions only.
-  // `collapseMenu` must stay out of the deps — otherwise expanding on tablet
-  // immediately re-fires this and forces the rail shut again.
-  useEffect(() => {
-    if (mobile) return;
-    if (tablet) {
-      autoCollapsed.current = true;
-      setCollapseMenu('1', { days: 365 });
-      return;
-    }
-    if (autoCollapsed.current) {
-      autoCollapsed.current = false;
-      setCollapseMenu('0', { days: 365 });
-    }
-  }, [mobile, tablet, setCollapseMenu]);
-
-  const toggleCollapse = useCallback(() => {
-    autoCollapsed.current = false;
-    setCollapseMenu(collapseMenu === '1' ? '0' : '1', { days: 365 });
-  }, [collapseMenu, setCollapseMenu]);
-
-  useEffect(() => {
-    if (!expandNonce) return;
-    if (collapseMenu === '1') {
-      autoCollapsed.current = false;
-      setCollapseMenu('0', { days: 365 });
-    }
-    colRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [expandNonce, collapseMenu, setCollapseMenu]);
+  const [query, setQuery] = useState('');
 
   // Shared `/integrations/list` cache (array shape). Do not use the bare
   // `'integrations'` key — webhooks/autopost historically cached `{ integrations }`.
-  const { data, mutate, isLoading } = useIntegrationList();
+  const { data, isLoading } = useIntegrationList();
 
   const openAddChannel = useCallback(() => {
     router.push('/channels?add=1');
   }, [router]);
-
-  // A channel that was deleted, or now needs a reconnect, leaves the
-  // selection the moment the live list says so.
-  const pruneSelected = useCallback(
-    (
-      prev: Integrations[],
-      fresh: Array<
-        Integrations & {
-          refreshNeeded?: boolean;
-          inBetweenSteps?: boolean;
-        }
-      >
-    ) => {
-      const next = prev.filter((p) => {
-        const row = fresh.find((d) => d.id === p.id);
-        return row && !needsAttention(row);
-      });
-      if (next.length !== prev.length) {
-        onChange(next);
-      }
-    },
-    [onChange]
-  );
 
   const setIntegration = useCallback(
     (integration: Integrations) => () => {
@@ -253,296 +192,294 @@ export const AgentList: FC<{
     return sortIntegrationsByProviderImportance(data || []) as Array<
       Integrations & {
         refreshNeeded?: boolean;
-        internalId?: string;
+        inBetweenSteps?: boolean;
       }
     >;
   }, [data]);
 
-  // Same OAuth reconnect the Channels page uses — Menu needs a factory that
-  // returns the click handler for the row's integration.
-  const refreshChannel = useCallback(
-    (
-      integration: Integration & {
-        identifier: string;
-        internalId?: string;
-      }
-    ) =>
-      () => {
-        void (async () => {
-          const { url } = await (
-            await fetch(
-              `/integrations/social/${integration.identifier}?refresh=${integration.internalId}`,
-              { method: 'GET' }
-            )
-          ).json();
-          if (!url) {
-            toast.show(
-              t(
-                'could_not_connect_platform',
-                'Could not connect to the platform, please try again later'
-              ),
-              'warning'
-            );
-            return;
-          }
-          window.location.href = url;
-        })();
-      },
-    [fetch, t, toast]
-  );
-
-  useEffect(() => {
-    if (!data?.length) return;
-    pruneSelected(selected, data);
-  }, [data, selected, pruneSelected]);
-
-  const onMenuChange = useCallback(
-    (shouldReload: boolean) => {
-      void mutate().then((fresh) => {
-        if (!shouldReload || !fresh) return;
-        pruneSelected(selected, fresh);
-      });
-    },
-    [mutate, selected, pruneSelected]
-  );
+  const shown = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase();
+    return q
+      ? sortedIntegrations.filter((integration) =>
+          channelNameWithHandle(integration).toLocaleLowerCase().includes(q)
+        )
+      : sortedIntegrations;
+  }, [sortedIntegrations, query]);
 
   return (
-    <div
-      ref={colRef}
-      data-pq="agent-channel-col"
-      data-cr="1"
-      className={clsx(
-        'trz relative flex shrink-0 flex-col bg-pqInner transition-all',
-        mobile
-          ? 'w-full max-w-full'
-          : channelsCollapsed
-          ? 'group sidebar w-[100px] flex-[0_0_100px]'
-          : 'w-[260px] flex-[0_0_260px]'
-      )}
-    >
-      <div className="absolute inset-0 flex flex-col">
-        <div className="flex shrink-0 items-center gap-[8px] border-b border-pqLine p-[16px_14px_12px]">
-          <div
-            data-crl="1"
-            className="flex min-w-0 flex-1 items-baseline gap-[7px] group-[.sidebar]:hidden"
-          >
-            <span className="whitespace-nowrap text-[12px] font-[600] uppercase tracking-[0.06em] text-pqMuted">
-              {t('select_channels', 'Select Channels')}
-            </span>
-            <span className="text-[11px] font-[600] text-pqSoft opacity-75">
-              {sortedIntegrations.length}
-            </span>
-          </div>
-          <button
-            type="button"
-            data-tooltip-id="tooltip"
-            data-tooltip-content={
-              channelsCollapsed
-                ? t('show_channels', 'Show channels')
-                : t('hide_channels', 'Hide channels')
-            }
-            onClick={toggleCollapse}
-            aria-label={
-              channelsCollapsed
-                ? t('show_channels', 'Show channels')
-                : t('hide_channels', 'Hide channels')
-            }
-            className={clsx(
-              'grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText group-[.sidebar]:mx-auto group-[.sidebar]:rotate-180',
-              mobile && 'hidden'
-            )}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
-              <path
-                d="M14 8l-4 4 4 4"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M19 4.5v15"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div
-          className={clsx(
-            'flex shrink-0 items-center gap-[7px] p-[12px_12px_10px]',
-            channelsCollapsed ? 'flex-col' : 'flex-row'
-          )}
-        >
-          <button
-            type="button"
-            data-pq="agent-add-channel"
-            {...(channelsCollapsed && {
-              'data-tooltip-id': 'tooltip',
-              'data-tooltip-content': t('add_channel', 'Add Channel'),
-              'aria-label': t('add_channel', 'Add Channel'),
-            })}
-            onClick={openAddChannel}
-            className={clsx(
-              'flex h-[36px] items-center justify-center gap-[7px] rounded-[9px] text-[12.5px] font-[600] transition-colors',
-              channelsCollapsed ? 'w-[36px] shrink-0' : 'min-w-0 flex-1',
-              !sortedIntegrations.length
-                ? 'bg-pqBrand text-pqOnBrand shadow-[0_6px_18px_-8px_rgba(124,58,237,.9)] hover:bg-pqBrandHover'
-                : 'bg-pqSettings text-pqText hover:bg-pqBrandSoft'
-            )}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="16"
-              height="16"
-              fill="none"
-              className="shrink-0"
-            >
-              <path
-                d="M12 5.5v13M5.5 12h13"
-                stroke="currentColor"
-                strokeWidth="2.1"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span
-              data-crl="1"
-              className="whitespace-nowrap group-[.sidebar]:hidden"
-            >
-              {t('add_channel', 'Add Channel')}
-            </span>
-          </button>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[12px]">
-          {/* `fallbackData: []` makes a load look identical to an empty list,
-              so the empty art waits for the fetch — same reason as the
-              Channels rail and the posts panel. */}
-          {isLoading &&
-            Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-[10px] rounded-pqSm py-[7px] pe-[6px] ps-[9px]"
-              >
-                <Skeleton className="size-[32px] shrink-0 rounded-full" />
-                <Skeleton
-                  className={clsx(
-                    'h-[12px] group-[.sidebar]:hidden',
-                    i % 3 === 0 ? 'w-[68%]' : i % 3 === 1 ? 'w-[54%]' : 'w-[61%]'
-                  )}
-                />
-              </div>
-            ))}
-          {!isLoading && !sortedIntegrations.length && (
-            <ChannelsListEmpty
-              hint={t(
-                'agent_channels_list_empty_hint',
-                'Connect an account to draft and schedule with Copilot.'
-              )}
+    <div data-pq="agent-channel-picker" className="flex min-h-0 flex-col">
+      {sortedIntegrations.length > 0 && (
+        <div className="shrink-0 p-[12px_12px_6px]">
+          <label className="flex h-[36px] items-center gap-[8px] rounded-[9px] bg-pqInner px-[10px] shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--brand)]">
+            <SearchGlyph />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('search_channels', 'Search channels')}
+              aria-label={t('search_channels', 'Search channels')}
+              className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-pqText outline-none placeholder:text-pqSoft"
             />
-          )}
-          {sortedIntegrations.map((integration) => {
-            const blocked = needsAttention(integration);
-            const isSelected =
-              !blocked && selected.some((p) => p.id === integration.id);
-            return (
-              <div
-                onClick={setIntegration(integration)}
-                key={integration.id}
-                title={channelNameWithHandle(integration)}
+          </label>
+        </div>
+      )}
+      <div
+        role="group"
+        aria-label={t('choose_channels', 'Choose channels')}
+        className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden p-[2px_6px_6px]"
+      >
+        {/* `fallbackData: []` makes a load look identical to an empty list,
+            so the empty art waits for the fetch — same reason as the
+            Channels rail and the posts panel. */}
+        {isLoading &&
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-[11px] rounded-pqSm px-[10px] py-[9px]"
+            >
+              <Skeleton className="size-[18px] shrink-0 rounded-[5px]" />
+              <Skeleton className="size-[28px] shrink-0 rounded-full" />
+              <Skeleton
                 className={clsx(
-                  'relative flex items-center gap-[10px] rounded-pqSm py-[7px] ps-[9px] pe-[6px] text-start transition-colors group-[.sidebar]:justify-center group-[.sidebar]:px-0',
-                  blocked
-                    ? 'cursor-not-allowed opacity-60'
-                    : 'cursor-pointer',
-                  isSelected
-                    ? 'bg-pqBrandSoft'
-                    : !blocked && 'opacity-60 hover:bg-pqHover hover:opacity-100'
+                  'h-[12px]',
+                  i % 2 === 0 ? 'w-[58%]' : 'w-[46%]'
                 )}
-              >
-                <span className="relative h-[32px] w-[32px] shrink-0">
+              />
+            </div>
+          ))}
+        {!isLoading && !sortedIntegrations.length && (
+          <ChannelsListEmpty
+            hint={t(
+              'agent_channels_list_empty_hint',
+              'Connect an account to draft and schedule with Copilot.'
+            )}
+          />
+        )}
+        {shown.map((integration) => {
+          const blocked = needsAttention(integration);
+          const isSelected =
+            !blocked && selected.some((p) => p.id === integration.id);
+          return (
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={isSelected}
+              onClick={setIntegration(integration)}
+              key={integration.id}
+              title={channelNameWithHandle(integration)}
+              className={clsx(
+                'flex min-h-[48px] w-full items-center gap-[11px] rounded-pqSm px-[10px] py-[7px] text-start transition-colors hover:bg-pqHover mobile:min-h-[56px]',
+                blocked && 'opacity-60'
+              )}
+            >
+              {blocked ? (
+                <span className="size-[18px] shrink-0" />
+              ) : (
+                <span
+                  className={clsx(
+                    'flex size-[18px] shrink-0 items-center justify-center rounded-[5px]',
+                    isSelected
+                      ? 'bg-pqBrand text-pqOnBrand'
+                      : 'shadow-[inset_0_0_0_1.5px_var(--border)]'
+                  )}
+                >
                   {isSelected && (
-                    <span className="absolute -start-[4px] -top-[4px] z-[2] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-pqBrand text-pqOnBrand">
-                      <svg viewBox="0 0 24 24" width="10" height="10" fill="none">
-                        <path
-                          d="M5 12.5l4.5 4.5L19 7.5"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
+                      <path
+                        d="M5 12.5l4.5 4.5L19 7.5"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   )}
-                  <ImageWithFallback
-                    fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                    src={integration.picture || '/no-picture.jpg'}
-                    className="rounded-full"
-                    alt={integration.identifier}
-                    width={32}
-                    height={32}
-                  />
-                  <img
-                    src={`/icons/platforms/${integration.identifier}.png`}
-                    alt=""
-                    className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
-                  />
-                  {(integration.inBetweenSteps ||
-                    integration.refreshNeeded) && (
-                    <span className="absolute -start-[2px] -top-[2px] z-[3] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqWarn text-[10px] font-[700] text-pqOnBrand">
-                      !
-                    </span>
-                  )}
+                </span>
+              )}
+              <ChannelAvatar integration={integration} size={28} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-[600] text-pqText">
+                  {integration.name}
                 </span>
                 <span
-                  data-crl="1"
-                  className="min-w-0 flex-1 group-[.sidebar]:hidden"
+                  className={clsx(
+                    'block truncate text-[12px]',
+                    blocked ? 'text-pqWarn' : 'text-pqMuted'
+                  )}
                 >
-                  <span className="block truncate text-[14px]">
-                    {integration.name}
-                  </span>
-                  <span
-                    className={clsx(
-                      'block truncate text-[12px]',
-                      integration.refreshNeeded || integration.inBetweenSteps
-                        ? 'text-pqWarn'
-                        : 'text-pqMuted'
-                    )}
-                  >
-                    {integration.refreshNeeded || integration.inBetweenSteps
-                      ? t('needs_reconnect', 'Needs reconnect')
-                      : channelListSubtitle(integration)}
-                  </span>
+                  {blocked
+                    ? t('needs_reconnect', 'Needs reconnect')
+                    : channelListSubtitle(integration)}
                 </span>
-                {showKebab && (
-                  <div
-                    data-crl="1"
-                    className="shrink-0 group-[.sidebar]:hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Menu
-                      id={integration.id}
-                      canEnable={!!integration.disabled}
-                      canDisable={!integration.disabled}
-                      canChangeProfilePicture={!!integration.changeProfilePicture}
-                      canChangeNickName={!!integration.changeNickName}
-                      refreshChannel={refreshChannel}
-                      mutate={() => {
-                        void mutate();
-                      }}
-                      onChange={onMenuChange}
-                      integrations={sortedIntegrations}
-                      reloadCalendarView={() => {
-                        void mutate();
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              </span>
+              {blocked && (
+                <span className="shrink-0 text-[12px] font-[600] text-pqWarn">
+                  {t('reconnect', 'Reconnect')}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
+      <div className="flex h-[46px] shrink-0 items-center gap-[8px] border-t border-pqLine ps-[14px] pe-[8px]">
+        <span className="text-[12.5px] text-pqMuted">
+          {t('n_channels_selected', '{{count}} selected', {
+            count: selected.length,
+          })}
+        </span>
+        <button
+          type="button"
+          data-pq="agent-add-channel"
+          onClick={openAddChannel}
+          className="ms-auto flex h-[30px] items-center gap-[6px] rounded-[8px] px-[8px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText mobile:h-[44px]"
+        >
+          <PlusGlyph size={14} />
+          {t('add_channel', 'Add Channel')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/** A channel's picture with its platform badge, as the pickers draw it. */
+const ChannelAvatar: FC<{
+  integration: { identifier: string; picture?: string | null };
+  size: number;
+}> = ({ integration, size }) => (
+  <span className="relative shrink-0" style={{ width: size, height: size }}>
+    <ImageWithFallback
+      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+      src={integration.picture || '/no-picture.jpg'}
+      className="rounded-full"
+      alt={integration.identifier}
+      width={size}
+      height={size}
+    />
+    <img
+      src={`/icons/platforms/${integration.identifier}.png`}
+      alt=""
+      className="absolute -bottom-[2px] -end-[2px] rounded-full border border-pqPop"
+      style={{ width: Math.round(size * 0.5), height: Math.round(size * 0.5) }}
+    />
+  </span>
+);
+
+const SearchGlyph: FC = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" className="shrink-0 text-pqSoft">
+    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+    <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+const PlusGlyph: FC<{ size?: number }> = ({ size = 15 }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" className="shrink-0">
+    <path d="M12 5.5v13M5.5 12h13" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+  </svg>
+);
+
+/**
+ * "Posting to" in the message box: the selected channels at a glance, and
+ * the way in to change them. Desktop opens the picker above the pill; a
+ * phone gets it as a sheet. `openChannels` from the context opens the same
+ * picker (an empty-state button, a card asking for a channel).
+ */
+export const ChannelPickerButton: FC = () => {
+  const t = useT();
+  const { mobile } = useViewport();
+  const { properties, onChannelsChange, pickerOpen, setPickerOpen } =
+    useContext(PropertiesContext);
+  const { referenceRef, floatingRef } = useAnchoredPopover<
+    HTMLButtonElement,
+    HTMLDivElement
+  >(pickerOpen && !mobile, 'start', { placement: 'top-start', offsetPx: 8 });
+  const wrapRef = useClickOutside(() => {
+    if (!mobile) setPickerOpen(false);
+  });
+  const count = properties.length;
+  const label = !count
+    ? t('choose_channels', 'Choose channels')
+    : count === 1
+    ? t('agent_posting_to_one', 'Posting to 1 channel')
+    : t('agent_posting_to_many', 'Posting to {{count}} channels', { count });
+
+  return (
+    // The message box focuses its textarea on any click that is not on a
+    // button, which would pull focus out of the picker's search field.
+    <div ref={wrapRef} className="flex" onClick={(e) => e.stopPropagation()}>
+      <button
+        ref={referenceRef}
+        type="button"
+        data-pq="agent-posting-to"
+        onClick={() => setPickerOpen(!pickerOpen)}
+        aria-haspopup="dialog"
+        aria-expanded={pickerOpen}
+        className={clsx(
+          'flex h-[30px] max-w-full items-center gap-[8px] rounded-full text-[12.5px] font-[600] transition-colors mobile:h-[44px]',
+          !count
+            ? 'border border-dashed border-pqBrand bg-pqBrandSoft px-[11px] text-pqFocused'
+            : pickerOpen
+            ? 'bg-pqBrandSoft ps-[4px] pe-[8px] text-pqText shadow-[inset_0_0_0_1.5px_var(--brand)]'
+            : 'bg-pqSettings ps-[4px] pe-[8px] text-pqText hover:bg-pqHover'
+        )}
+      >
+        {!count ? (
+          <PlusGlyph size={13} />
+        ) : (
+          <span className="flex shrink-0 items-center">
+            {properties.slice(0, 4).map((p, i) => (
+              <span
+                key={p.id}
+                className={clsx(
+                  'flex rounded-full shadow-[0_0_0_2px_var(--pop)]',
+                  i > 0 && '-ms-[6px]'
+                )}
+                title={channelNameWithHandle(p)}
+              >
+                <ChannelAvatar integration={p} size={22} />
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="truncate">{label}</span>
+        {!!count && (
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            className={clsx('shrink-0 text-pqSoft', pickerOpen && 'rotate-180')}
+          >
+            <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
+      {pickerOpen && !mobile && (
+        <div
+          ref={floatingRef}
+          role="dialog"
+          aria-label={t('choose_channels', 'Choose channels')}
+          className="z-[80] flex max-h-[min(460px,70vh)] w-[340px] flex-col overflow-hidden rounded-[16px] border border-pqBorder bg-pqPop shadow-menu"
+        >
+          <AgentList selected={properties} onChange={onChannelsChange} />
+        </div>
+      )}
+      {mobile && (
+        <MobileSheet
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          title={t('agent_posting_to', 'Posting to')}
+          footer={
+            <button
+              type="button"
+              onClick={() => setPickerOpen(false)}
+              className="h-[46px] w-full rounded-[10px] bg-pqBrand text-[14.5px] font-[600] text-pqOnBrand"
+            >
+              {t('done', 'Done')}
+            </button>
+          }
+        >
+          <AgentList selected={properties} onChange={onChannelsChange} />
+        </MobileSheet>
+      )}
     </div>
   );
 };
@@ -617,7 +554,14 @@ export const PropertiesContext = createContext<{
    * names its channel from here, whether or not it is selected right now.
    */
   allChannels: any[];
+  /** Opens the channel picker (the "Posting to" pill in the message box). */
   openChannels: () => void;
+  onChannelsChange: (next: Integrations[]) => void;
+  pickerOpen: boolean;
+  setPickerOpen: (open: boolean) => void;
+  /** Text an empty-state suggestion puts in the message box; `n` makes a repeat land. */
+  composerSeed: { text: string; n: number };
+  seedComposer: (text: string) => void;
   /** Outcomes of the Post Preview cards in this thread, keyed by card id. */
   cards: ThreadCardOutcomes;
   setCardOutcome: (cardId: string, groupKey: string, outcome: unknown) => void;
@@ -632,6 +576,11 @@ export const PropertiesContext = createContext<{
   properties: [],
   allChannels: [],
   openChannels: () => {},
+  onChannelsChange: () => {},
+  pickerOpen: false,
+  setPickerOpen: () => {},
+  composerSeed: { text: '', n: 0 },
+  seedComposer: () => {},
   cards: {},
   setCardOutcome: () => {},
   media: {},
@@ -802,25 +751,36 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   const user = useUser();
   const { mobile } = useViewport();
   const rowRef = useRef<HTMLDivElement>(null);
-  const [panel, setPanel] = useState<'channels' | 'threads' | null>(null);
+  const [chatsOpen, setChatsOpen] = useState(false);
   const [drawerTop, setDrawerTop] = useState(0);
-  const [channelExpandNonce, setChannelExpandNonce] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [composerSeed, setComposerSeed] = useState({ text: '', n: 0 });
   // Design: Copilot waits until the trial ends (or the person ends it early).
   // Lock-until-paid also blocks when the deferred founding fee is still owed.
   const trialLocked =
     !!user?.isTrailing || !!user?.lifetimePaymentPending;
 
-  // Below 760 both side columns leave the chat about 200px — two or three
-  // words a line, and a message box the shape of a bookmark. They become
-  // off-canvas drawers instead, the same move the rail makes, so the chat gets
-  // the full width. The design does this from a header button; here the two
-  // toggles sit above the chat, because the header slot already carries the
-  // page action.
+  // A channel that was deleted, or now needs a reconnect, leaves the
+  // selection the moment the live list says so, whether or not the picker
+  // is open.
+  useEffect(() => {
+    if (!allChannels.length) return;
+    const next = properties.filter((p) => {
+      const row = allChannels.find((d: Integrations) => d.id === p.id);
+      return row && !needsAttention(row);
+    });
+    if (next.length !== properties.length) {
+      onChannelsChange(next);
+    }
+  }, [allChannels, properties, onChannelsChange]);
+
+  // Below 760 the Chats list leaves the chat no room, so it becomes a sheet
+  // opened from the chat's own bar, below the app chrome.
   const asDrawer = mobile;
 
   useEffect(() => {
     if (!asDrawer) {
-      setPanel(null);
+      setChatsOpen(false);
       return;
     }
     // The drawers open *below* the app chrome rather than over it, so their top
@@ -839,33 +799,19 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   }, [asDrawer]);
 
   useEffect(() => {
-    if (!panel) return;
+    if (!chatsOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPanel(null);
+      if (e.key === 'Escape') setChatsOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [panel]);
+  }, [chatsOpen]);
 
-  const toggle = (which: 'channels' | 'threads', label: string) => (
-    <button
-      type="button"
-      data-pq={`agent-${which}`}
-      onClick={() => setPanel((p) => (p === which ? null : which))}
-      aria-expanded={panel === which}
-          className="h-[44px] min-h-[44px] flex-1 rounded-pqSm border border-pqBorder bg-pqInner px-[12px] text-[13px] font-[500] text-pqText"
-    >
-      {label}
-    </button>
+  const openChannels = useCallback(() => setPickerOpen(true), []);
+  const seedComposer = useCallback(
+    (text: string) => setComposerSeed((prev) => ({ text, n: prev.n + 1 })),
+    []
   );
-
-  const openChannels = useCallback(() => {
-    if (asDrawer) {
-      setPanel('channels');
-      return;
-    }
-    setChannelExpandNonce((n) => n + 1);
-  }, [asDrawer]);
 
   return (
     <PropertiesContext.Provider
@@ -873,6 +819,11 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
         properties,
         allChannels,
         openChannels,
+        onChannelsChange,
+        pickerOpen,
+        setPickerOpen,
+        composerSeed,
+        seedComposer,
         cards,
         setCardOutcome,
         media,
@@ -880,38 +831,9 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
       }}
     >
       <div ref={rowRef} className="relative flex min-w-0 flex-1">
-        {asDrawer && panel && (
-          <div
-            onClick={() => setPanel(null)}
-            style={{ top: drawerTop }}
-            className="fixed inset-x-0 bottom-0 z-[72] bg-pqPopup"
-          />
-        )}
-        <AgentDrawer
-          active={asDrawer}
-          open={panel === 'channels'}
-          side="start"
-          top={drawerTop}
-          label={t('select_channels', 'Select Channels')}
-        >
-          <AgentList
-            selected={properties}
-            onChange={onChannelsChange}
-            expandNonce={channelExpandNonce}
-            showKebab
-          />
-        </AgentDrawer>
+        {!asDrawer && <Threads />}
 
-        {/* Trial lock covers the chat column only — Select Channels stays
-            interactive (design keeps the channel list outside the AI lock). */}
-        <div
-          className={clsx(
-            'bg-pqInner relative flex flex-1 flex-col min-w-0',
-            // The hairline between the chat and the rail belongs to the
-            // desktop layout — in drawer mode the rail is off-canvas.
-            !asDrawer && 'border-e border-pqLine'
-          )}
-        >
+        <div className="bg-pqInner relative flex flex-1 flex-col min-w-0">
           {trialLocked && (
             <TrialLockCard
               variant="overlay"
@@ -946,24 +868,28 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
               ]}
             />
           )}
-          {asDrawer && (
-            <div className="flex shrink-0 items-center gap-[8px] border-b border-pqLine px-[12px] py-[8px]">
-              {toggle('channels', t('select_channels', 'Select Channels'))}
-              {toggle('threads', t('conversations', 'Conversations'))}
-            </div>
-          )}
+          <ChatBar onOpenChats={() => setChatsOpen(true)} />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
         </div>
 
-        <AgentDrawer
-          active={asDrawer}
-          open={panel === 'threads'}
-          side="end"
-          top={drawerTop}
-          label={t('conversations', 'Conversations')}
-        >
-          <Threads />
-        </AgentDrawer>
+        {asDrawer && chatsOpen && (
+          <div
+            onClick={() => setChatsOpen(false)}
+            style={{ top: drawerTop }}
+            className="fixed inset-x-0 bottom-0 z-[72] bg-pqPopup"
+          />
+        )}
+        {asDrawer && (
+          <AgentDrawer
+            active
+            open={chatsOpen}
+            side="start"
+            top={drawerTop}
+            label={t('chats', 'Chats')}
+          >
+            <Threads sheet onNavigate={() => setChatsOpen(false)} />
+          </AgentDrawer>
+        )}
       </div>
     </PropertiesContext.Provider>
   );
@@ -1004,11 +930,327 @@ const AgentDrawer: FC<{
   );
 };
 
-const Threads: FC = () => {
+/**
+ * Rename, delete and clear, shared by the Chats list and the chat's own
+ * header. Chats belong to the workspace, so the confirmations say that a
+ * delete reaches everyone. Titles are interpolated unescaped: they are the
+ * person's own text and React escapes them where they are drawn.
+ */
+const useThreadActions = () => {
   const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const router = useRouter();
+  const routeId = useAgentRouteId();
+  const { mutate } = useCopilotThreads();
+
+  const rename = useCallback(
+    async (id: string, title: string) => {
+      const name = title.trim();
+      if (!name) {
+        return false;
+      }
+      const response = await fetch(`/copilot/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ title: name }),
+      });
+      if (!response.ok) {
+        toaster.show(
+          t('chat_rename_failed', 'Could not rename this chat, please try again'),
+          'warning'
+        );
+        return false;
+      }
+      await mutate();
+      return true;
+    },
+    [fetch, mutate, t, toaster]
+  );
+
+  const remove = useCallback(
+    async (id: string, title: string): Promise<boolean> => {
+      if (
+        !(await deleteDialog(
+          t(
+            'delete_chat_body',
+            '"{{title}}" will be deleted for everyone in your workspace. Posts it scheduled and images it made stay where they are.',
+            { title, interpolation: { escapeValue: false } }
+          ),
+          t('delete_chat_confirm', 'Delete chat'),
+          t('delete_chat_title', 'Delete this chat?')
+        ))
+      ) {
+        return false;
+      }
+      const response = await fetch(`/copilot/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        toaster.show(
+          response.status === 409
+            ? t(
+                'chat_still_answering',
+                'This chat is still answering. Try again when it has finished.'
+              )
+            : t('chat_delete_failed', 'Could not delete this chat, please try again'),
+          'warning'
+        );
+        return false;
+      }
+      await mutate();
+      toaster.show(t('chat_deleted', 'Chat deleted'), 'success');
+      if (id === routeId) {
+        router.push('/agents');
+        return true;
+      }
+      return false;
+    },
+    [fetch, mutate, routeId, router, t, toaster]
+  );
+
+  const clearAll = useCallback(
+    async (count: number) => {
+      if (
+        !(await deleteDialog(
+          t(
+            'clear_chats_body',
+            'Every Copilot chat in your workspace will be deleted for everyone. Scheduled posts and your media library are not affected. This can\'t be undone.'
+          ),
+          t('clear_chats_confirm', 'Clear all chats'),
+          t('clear_chats_title', 'Clear all {{count}} chats?', { count })
+        ))
+      ) {
+        return;
+      }
+      const response = await fetch('/copilot', { method: 'DELETE' });
+      if (!response.ok) {
+        toaster.show(
+          t('chats_clear_failed', 'Could not clear the chats, please try again'),
+          'warning'
+        );
+        return;
+      }
+      const { running } = (await response.json()) as { running: number };
+      await mutate();
+      toaster.show(
+        running
+          ? t(
+              'chats_cleared_kept_running',
+              'Chats cleared. {{count}} still answering were kept.',
+              { count: running }
+            )
+          : t('chats_cleared', 'Chats cleared'),
+        'success'
+      );
+      if (routeId !== 'new') {
+        router.push('/agents');
+      }
+    },
+    [fetch, mutate, routeId, router, t, toaster]
+  );
+
+  return { rename, remove, clearAll };
+};
+
+type ThreadRowData = {
+  id: string;
+  title?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+/** Today / Yesterday / Previous 7 days / Earlier, by last activity. */
+const useThreadGroups = (threads: ThreadRowData[]) => {
+  const t = useT();
+  return useMemo(() => {
+    const today = newDayjs().startOf('day');
+    const groups: { key: string; label: string; rows: ThreadRowData[] }[] = [
+      { key: 'today', label: t('chat_group_today', 'Today'), rows: [] },
+      { key: 'yesterday', label: t('chat_group_yesterday', 'Yesterday'), rows: [] },
+      { key: 'week', label: t('chat_group_week', 'Previous 7 days'), rows: [] },
+      { key: 'earlier', label: t('chat_group_earlier', 'Earlier'), rows: [] },
+    ];
+    for (const thread of threads) {
+      const at = newDayjs(thread.updatedAt || thread.createdAt);
+      const index = !at.isValid()
+        ? 3
+        : !at.isBefore(today)
+        ? 0
+        : !at.isBefore(today.subtract(1, 'day'))
+        ? 1
+        : !at.isBefore(today.subtract(7, 'day'))
+        ? 2
+        : 3;
+      groups[index].rows.push(thread);
+    }
+    return groups.filter((group) => group.rows.length);
+  }, [threads, t]);
+};
+
+/** The searched part of a title, marked. */
+const Highlight: FC<{ text: string; query: string }> = ({ text, query }) => {
+  const q = query.trim();
+  const at = q ? text.toLocaleLowerCase().indexOf(q.toLocaleLowerCase()) : -1;
+  if (at < 0) {
+    return <>{text}</>;
+  }
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="rounded-[3px] bg-pqBrandSoft px-[1px] text-pqFocused">
+        {text.slice(at, at + q.length)}
+      </mark>
+      {text.slice(at + q.length)}
+    </>
+  );
+};
+
+const ThreadRow: FC<{
+  thread: ThreadRowData;
+  active: boolean;
+  query: string;
+  touch: boolean;
+  renaming: boolean;
+  setRenaming: (id: string | null) => void;
+  onOpen?: () => void;
+  onActions?: (thread: ThreadRowData) => void;
+}> = ({ thread, active, query, touch, renaming, setRenaming, onOpen, onActions }) => {
+  const t = useT();
+  const { rename, remove } = useThreadActions();
+  const [value, setValue] = useState(thread.title || '');
+  const title = thread.title || '';
+  useEffect(() => {
+    if (renaming) {
+      setValue(thread.title || '');
+    }
+  }, [renaming, thread.title]);
+
+  if (renaming) {
+    const save = async () => {
+      if (value.trim() && value.trim() !== title) {
+        await rename(thread.id, value);
+      }
+      setRenaming(null);
+    };
+    return (
+      <div className="flex h-[34px] items-center gap-[2px] rounded-pqSm bg-pqPop ps-[10px] pe-[3px] shadow-[inset_0_0_0_1.5px_var(--brand)] mobile:h-[44px]">
+        <input
+          autoFocus
+          value={value}
+          maxLength={120}
+          aria-label={t('chat_name', 'Chat name')}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void save();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setRenaming(null);
+            }
+          }}
+          className="h-full min-w-0 flex-1 bg-transparent text-[13.5px] text-pqText outline-none"
+        />
+        <RowIconButton label={t('save_name', 'Save name')} onClick={() => void save()} size={touch ? 44 : 26}>
+          <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </RowIconButton>
+        <RowIconButton label={t('cancel', 'Cancel')} onClick={() => setRenaming(null)} size={touch ? 44 : 26}>
+          <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </RowIconButton>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={clsx(
+        'group/row flex h-[34px] items-center rounded-pqSm transition-colors mobile:h-[44px]',
+        active ? 'bg-pqNavOn text-pqText' : 'text-pqMuted hover:bg-pqHover hover:text-pqText'
+      )}
+    >
+      <Link
+        href={`/agents/${thread.id}`}
+        onClick={onOpen}
+        className={clsx(
+          'min-w-0 flex-1 truncate ps-[10px] pe-[6px] text-[13.5px] leading-[34px] outline-none mobile:text-[14px] mobile:leading-[44px]',
+          active && 'font-[600]'
+        )}
+      >
+        <Highlight text={title} query={query} />
+      </Link>
+      {touch ? (
+        <RowIconButton
+          label={t('chat_actions', 'Chat actions')}
+          onClick={() => onActions?.(thread)}
+          size={44}
+        >
+          <circle cx="5" cy="12" r="1.6" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+          <circle cx="19" cy="12" r="1.6" fill="currentColor" />
+        </RowIconButton>
+      ) : (
+        <span className="hidden shrink-0 items-center gap-[1px] pe-[3px] group-focus-within/row:flex group-hover/row:flex">
+          <RowIconButton label={t('rename_chat', 'Rename')} onClick={() => setRenaming(thread.id)}>
+            <path d="M12 20h9M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6l-4 1 1-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </RowIconButton>
+          <RowIconButton
+            label={t('delete_chat', 'Delete chat')}
+            danger
+            onClick={() => void remove(thread.id, title)}
+          >
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M8 12h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </RowIconButton>
+        </span>
+      )}
+    </div>
+  );
+};
+
+const RowIconButton: FC<{
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  size?: number;
+  children: ReactNode;
+}> = ({ label, onClick, danger, size = 26, children }) => (
+  <button
+    type="button"
+    aria-label={label}
+    data-tooltip-id="tooltip"
+    data-tooltip-content={label}
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }}
+    style={{ width: size, height: size }}
+    className={clsx(
+      'grid shrink-0 place-items-center rounded-[7px] transition-colors hover:bg-pqHover',
+      danger ? 'text-pqDanger' : 'text-pqSoft hover:text-pqText'
+    )}
+  >
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+      {children}
+    </svg>
+  </button>
+);
+
+/**
+ * The Chats list: New chat, search, the chats grouped by day, and per-chat
+ * rename and delete. Desktop and tablet show it beside the chat; a phone gets
+ * it in a sheet (`sheet`), where rows carry a ⋯ button instead of hover
+ * actions.
+ */
+const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
+  sheet = false,
+  onNavigate,
+}) => {
+  const t = useT();
+  const user = useUser();
   // From the pathname, so the row lights up once a fresh thread's address
   // has been moved to its id.
   const id = useAgentRouteId();
+  const { clearAll, remove } = useThreadActions();
 
   const { data, isLoading } = useCopilotThreads();
   // A thread is named after its first run finishes; until then, and for the
@@ -1018,125 +1260,126 @@ const Threads: FC = () => {
     () => (data?.threads || []).filter((p) => !!p.title),
     [data]
   );
-  const { mobile } = useViewport();
+  const [query, setQuery] = useState('');
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [actionsFor, setActionsFor] = useState<ThreadRowData | null>(null);
+  const matches = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase();
+    return q
+      ? threads.filter((p) => (p.title || '').toLocaleLowerCase().includes(q))
+      : threads;
+  }, [threads, query]);
+  const groups = useThreadGroups(query.trim() ? [] : matches);
+  const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
+
   const [collapseRail, setCollapseRail] = useCookie('agentRailCollapse', '0');
-  // The pin toggle only means anything on desktop — in the mobile drawer
-  // (see `Agent`) the rail fills the drawer and has no narrow state.
-  const collapsed = !mobile && collapseRail === '1';
+  const collapsed = !sheet && collapseRail === '1';
+  // No hover on a touch screen: rows carry a ⋯ button and a sheet instead.
+  const { touch: touchScreen } = useViewport();
+  const touch = sheet || touchScreen;
+
+  if (collapsed) {
+    return (
+      <div
+        data-pq="agent-chats"
+        className="flex w-[56px] shrink-0 flex-col items-center gap-[6px] border-e border-pqLine bg-pqInner pt-[14px]"
+      >
+        <RailIconButton
+          label={t('show_chats', 'Show chats')}
+          onClick={() => setCollapseRail('0', { days: 365 })}
+        >
+          <rect x="3" y="4" width="18" height="16" rx="2.2" stroke="currentColor" strokeWidth="1.7" />
+          <path d="M9 4v16" stroke="currentColor" strokeWidth="1.7" />
+        </RailIconButton>
+        <Link
+          href="/agents"
+          aria-label={t('new_chat', 'New chat')}
+          data-tooltip-id="tooltip"
+          data-tooltip-content={t('new_chat', 'New chat')}
+          className="grid size-[34px] place-items-center rounded-[9px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+        >
+          <NewChatGlyph />
+        </Link>
+      </div>
+    );
+  }
+
+  const row = (p: ThreadRowData) => (
+    <ThreadRow
+      key={p.id}
+      thread={p}
+      active={p.id === id}
+      query={query}
+      touch={touch}
+      renaming={renaming === p.id}
+      setRenaming={setRenaming}
+      onOpen={onNavigate}
+      onActions={setActionsFor}
+    />
+  );
 
   return (
-    // Below 760 this lives in a drawer (see `Agent`) and fills it. Two fixed
-    // side columns beside the chat left it nothing at phone widths — the page
-    // rendered with no usable conversation area at all, and did so before the
-    // migration too.
     <div
+      data-pq="agent-chats"
       className={clsx(
-        'trz bg-pqInner relative flex shrink-0 flex-col gap-[9px] overflow-y-auto p-[16px_12px] transition-[width]',
-        mobile
-          ? 'w-full'
-          : clsx(
-              'group/rail border-s border-pqLine',
-              collapsed ? 'w-[56px] hover:w-[232px]' : 'w-[232px]'
-            )
+        'flex min-h-0 shrink-0 flex-col bg-pqInner',
+        sheet ? 'w-full flex-1' : 'w-[272px] border-e border-pqLine'
       )}
     >
-      <div className="flex shrink-0 items-center gap-[6px] p-[0_2px_2px]">
-        <div
-          className={clsx(
-            'min-w-0 flex-1 text-[10.5px] font-[600] uppercase tracking-[0.07em] text-pqSoft',
-            collapsed && 'hidden group-hover/rail:block'
+      <div className="flex shrink-0 flex-col gap-[10px] p-[14px_14px_0]">
+        <div className="flex h-[30px] items-center gap-[8px]">
+          <span className="font-display text-[14px] font-[700] text-pqText">
+            {t('chats', 'Chats')}
+          </span>
+          {!!threads.length && (
+            <span className="text-[12px] font-[500] text-pqSoft">
+              {threads.length}
+            </span>
           )}
-        >
-          {t('chats', 'Chats')}
+          {!sheet && (
+            <span className="ms-auto">
+              <RailIconButton
+                label={t('hide_chats', 'Hide chats')}
+                onClick={() => setCollapseRail('1', { days: 365 })}
+              >
+                <rect x="3" y="4" width="18" height="16" rx="2.2" stroke="currentColor" strokeWidth="1.7" />
+                <path d="M9 4v16" stroke="currentColor" strokeWidth="1.7" />
+              </RailIconButton>
+            </span>
+          )}
         </div>
-        {!mobile && (
-          <button
-            type="button"
-            data-tooltip-id="tooltip"
-            data-tooltip-content={
-              collapsed
-                ? t('pin_chats', 'Pin chats')
-                : t('unpin_chats', 'Unpin chats')
-            }
-            aria-label={
-              collapsed
-                ? t('pin_chats', 'Pin chats')
-                : t('unpin_chats', 'Unpin chats')
-            }
-            onClick={() =>
-              setCollapseRail(collapsed ? '0' : '1', { days: 365 })
-            }
-            className={clsx(
-              'h-[26px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-[7px] px-[8px] text-[11.5px] font-[600] text-pqSoft hover:bg-pqHover hover:text-pqText',
-              collapsed ? 'hidden group-hover/rail:flex' : 'flex'
-            )}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="14"
-              height="14"
-              fill="none"
-              className="shrink-0"
-            >
-              <rect
-                x="3"
-                y="4"
-                width="18"
-                height="16"
-                rx="2.2"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              />
-              <path d="M14.5 4v16" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-            {collapsed
-              ? t('pin_chats', 'Pin chats')
-              : t('unpin_chats', 'Unpin chats')}
-          </button>
-        )}
-      </div>
-      <Link
-        href={`/agents`}
-        {...(collapsed && {
-          'data-tooltip-id': 'tooltip',
-          'data-tooltip-content': t('new_chat', 'New chat'),
-          'aria-label': t('new_chat', 'New chat'),
-        })}
-        className={clsx(
-          'flex h-[34px] shrink-0 items-center justify-center gap-[7px] whitespace-nowrap rounded-pqSm bg-pqBrand text-[13px] font-[600] text-pqOnBrand outline-none transition-colors hover:bg-pqBrandHover',
-          collapsed ? 'px-0 group-hover/rail:px-[12px]' : 'px-[12px]'
-        )}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          width="15"
-          height="15"
-          fill="none"
-          className="shrink-0"
+        <Link
+          href="/agents"
+          onClick={onNavigate}
+          data-pq="agent-new-chat"
+          className="flex h-[36px] items-center justify-center gap-[7px] rounded-[9px] bg-pqPop text-[13px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover mobile:h-[44px]"
         >
-          <path
-            d="M12 5.5v13M5.5 12h13"
-            stroke="currentColor"
-            strokeWidth="2.1"
-            strokeLinecap="round"
-          />
-        </svg>
-        <span className={clsx(collapsed && 'hidden group-hover/rail:inline')}>
+          <NewChatGlyph />
           {t('new_chat', 'New chat')}
-        </span>
-      </Link>
-      <div
-        className={clsx(
-          'flex flex-col gap-[1px]',
-          collapsed && 'hidden group-hover/rail:flex'
-        )}
-      >
+        </Link>
+        <label className="flex h-[34px] items-center gap-[8px] rounded-[9px] bg-pqPop px-[10px] shadow-[inset_0_0_0_1px_var(--border)] focus-within:shadow-[inset_0_0_0_1.5px_var(--brand)] mobile:h-[42px]">
+          <SearchGlyph />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('search_chats', 'Search chats')}
+            aria-label={t('search_chats', 'Search chats')}
+            className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-pqText outline-none placeholder:text-pqSoft"
+          />
+          {!!query && (
+            <RowIconButton label={t('clear_search', 'Clear search')} onClick={() => setQuery('')} size={touch ? 44 : 24}>
+              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </RowIconButton>
+          )}
+        </label>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden p-[2px_8px_8px]">
         {isLoading &&
           Array.from({ length: 6 }).map((_, i) => (
             <Skeleton
               key={i}
               className={clsx(
-                'h-[30px] rounded-pqSm',
+                'mt-[6px] h-[26px] rounded-pqSm',
                 i % 3 === 0 ? 'w-[86%]' : i % 3 === 1 ? 'w-[68%]' : 'w-[77%]'
               )}
             />
@@ -1159,19 +1402,211 @@ const Threads: FC = () => {
             </div>
           </div>
         )}
-        {threads.map((p) => (
-          <Link
-            className={clsx(
-              'overflow-hidden text-ellipsis whitespace-nowrap rounded-pqSm p-[7px_9px] text-[12.5px] hover:bg-pqHover hover:text-pqText',
-              p.id === id ? 'bg-pqNavOn text-pqText' : 'text-pqMuted'
-            )}
-            href={`/agents/${p.id}`}
-            key={p.id}
-          >
-            {p.title}
-          </Link>
+        {!!query.trim() && (
+          <>
+            <div className="px-[10px] pb-[5px] pt-[14px] text-[11.5px] font-[600] text-pqSoft">
+              {matches.length
+                ? t('chat_search_results', 'Results')
+                : t('no_chats_match', 'No chats match')}
+            </div>
+            {matches.map(row)}
+          </>
+        )}
+        {groups.map((group) => (
+          <div key={group.key} className="flex flex-col">
+            <div className="px-[10px] pb-[5px] pt-[14px] text-[11.5px] font-[600] text-pqSoft">
+              {group.label}
+            </div>
+            {group.rows.map(row)}
+          </div>
         ))}
       </div>
+      <div className="flex h-[48px] shrink-0 items-center gap-[8px] border-t border-pqLine ps-[14px] pe-[10px] mobile:h-[56px]">
+        <span className="flex min-w-0 items-center gap-[7px] text-[12px] text-pqSoft">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" className="shrink-0">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="truncate">{t('chats_visible_to_team', 'Visible to your team')}</span>
+        </span>
+        {isAdmin && !!threads.length && (
+          <button
+            type="button"
+            data-pq="agent-clear-chats"
+            onClick={() => void clearAll(threads.length)}
+            className="ms-auto flex h-[28px] shrink-0 items-center gap-[6px] rounded-[7px] px-[8px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqDanger mobile:h-[44px]"
+          >
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none">
+              <path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {t('clear_all_chats_short', 'Clear all')}
+          </button>
+        )}
+      </div>
+      {touch && (
+        <MobileSheet
+          open={!!actionsFor}
+          onClose={() => setActionsFor(null)}
+          title={actionsFor?.title || t('chat_actions', 'Chat actions')}
+        >
+          <div className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => {
+                setRenaming(actionsFor!.id);
+                setActionsFor(null);
+              }}
+              className="flex h-[52px] items-center gap-[12px] px-[4px] text-[15px] font-[500] text-pqText"
+            >
+              {t('rename_chat', 'Rename')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const target = actionsFor!;
+                setActionsFor(null);
+                void remove(target.id, target.title || '').then((left) => {
+                  if (left) onNavigate?.();
+                });
+              }}
+              className="flex h-[52px] items-center gap-[12px] px-[4px] text-[15px] font-[500] text-pqDanger"
+            >
+              {t('delete_chat', 'Delete chat')}
+            </button>
+          </div>
+        </MobileSheet>
+      )}
+    </div>
+  );
+};
+
+const RailIconButton: FC<{ label: string; onClick: () => void; children: ReactNode }> = ({
+  label,
+  onClick,
+  children,
+}) => (
+  <button
+    type="button"
+    aria-label={label}
+    data-tooltip-id="tooltip"
+    data-tooltip-content={label}
+    onClick={onClick}
+    className="grid size-[30px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
+  >
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" className="rtl:-scale-x-100">
+      {children}
+    </svg>
+  </button>
+);
+
+const NewChatGlyph: FC = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" className="shrink-0">
+    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12.4 14.6l-4 1 1-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/**
+ * The chat's own header: its name, renamed in place, and delete. On a phone
+ * it also carries the way to the Chats sheet and to a new chat.
+ */
+const ChatBar: FC<{ onOpenChats?: () => void }> = ({ onOpenChats }) => {
+  const t = useT();
+  const routeId = useAgentRouteId();
+  const { data } = useCopilotThreads();
+  const { rename, remove } = useThreadActions();
+  const { mobile } = useViewport();
+  const thread = data?.threads?.find((p) => p.id === routeId);
+  const title = thread?.title || t('new_chat', 'New chat');
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+
+  const save = async () => {
+    if (thread && value.trim() && value.trim() !== thread.title) {
+      await rename(thread.id, value);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div
+      data-pq="agent-chat-bar"
+      className="flex h-[52px] shrink-0 items-center gap-[4px] border-b border-pqLine px-[16px] mobile:h-[48px] mobile:px-[6px]"
+    >
+      {mobile && (
+        <button
+          type="button"
+          data-pq="agent-threads"
+          onClick={onOpenChats}
+          className="flex h-[44px] shrink-0 items-center gap-[7px] rounded-[9px] px-[10px] text-[13.5px] font-[600] text-pqText"
+        >
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {t('chats', 'Chats')}
+        </button>
+      )}
+      {editing ? (
+        <input
+          autoFocus
+          value={value}
+          maxLength={120}
+          aria-label={t('chat_name', 'Chat name')}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => void save()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void save();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          className="h-[32px] min-w-0 max-w-[420px] flex-1 rounded-[8px] bg-pqPop px-[8px] font-display text-[14px] font-[600] text-pqText shadow-[inset_0_0_0_1.5px_var(--brand)] outline-none"
+        />
+      ) : (
+        <span
+          className={clsx(
+            'min-w-0 truncate font-display text-[14px] font-[600] text-pqText',
+            mobile && 'flex-1 text-center font-[500] text-pqMuted'
+          )}
+        >
+          {title}
+        </span>
+      )}
+      {!!thread?.title && !editing && !mobile && (
+        <span className="flex shrink-0 items-center">
+          <RowIconButton
+            label={t('rename_chat', 'Rename')}
+            onClick={() => {
+              setValue(thread.title || '');
+              setEditing(true);
+            }}
+            size={30}
+          >
+            <path d="M12 20h9M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6l-4 1 1-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </RowIconButton>
+          <RowIconButton
+            label={t('delete_chat', 'Delete chat')}
+            danger
+            onClick={() => void remove(thread.id, thread.title || '')}
+            size={30}
+          >
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M8 12h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </RowIconButton>
+        </span>
+      )}
+      {mobile && (
+        <Link
+          href="/agents"
+          aria-label={t('new_chat', 'New chat')}
+          className="grid size-[44px] shrink-0 place-items-center rounded-[9px] text-pqText"
+        >
+          <NewChatGlyph />
+        </Link>
+      )}
     </div>
   );
 };
