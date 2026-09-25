@@ -102,10 +102,11 @@
 /posts/${item.id}/date
 /posts/${item.id}/status
 /posts/${post.group}
-/posts/${postId}/comments
 /posts/${postId}/missing
 /posts/${postId}/release-id
 /posts/${postId}/statistics
+/posts/${previewId}/comments
+/posts/comments/${comment.id}/resolve
 /posts/count
 /posts/find-slot
 /posts/find-slot/${current.id}
@@ -121,7 +122,7 @@
 /posts/tags
 /posts/tags/${tag.id}
 /posts/valid
-/public/posts/${postId}/comments
+/public/posts/${previewId}/comments
 /sets
 /sets/${data.id}
 /settings/github

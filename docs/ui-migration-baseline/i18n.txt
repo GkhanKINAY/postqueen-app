@@ -27,6 +27,8 @@ activation_link_not_valid
 active
 add
 add_a_channel
+add_a_comment
+add_a_comment_placeholder
 add_a_post_at
 add_a_signature
 add_a_social_set
@@ -428,7 +430,9 @@ client_id
 client_secret
 close
 code_sent_to
+collapse
 coming_soon
+comment
 comment_delay_after
 comment_delete_failed
 comments
@@ -1050,6 +1054,7 @@ connected_accounts_description
 connections
 connections_sub
 contact_support
+continue
 continue_to
 continue_with_apple
 continue_with_farcaster
@@ -1524,8 +1529,6 @@ loading
 loading_voices
 login_failed_try_again
 login_instead
-login_register_to_add_comments
-login_to_leave_feedback
 logout_from
 long_post
 lt_channels
@@ -1807,7 +1810,15 @@ posting_days
 posting_days_hint
 posts
 preview
+preview_click_to_open_comment
+preview_comment_detach_hint
+preview_comment_failed
+preview_comment_name_required
+preview_comment_text_changed
+preview_comment_your_name
+preview_no_comments_yet
 preview_post
+preview_select_text_to_comment
 previous
 previous_day
 privacy
@@ -1859,9 +1870,11 @@ remove_from_customer
 remove_image
 remove_social_account
 removes_the_channel_and_its_scheduled_posts
+reopen
 repeat_password
 repeat_post_every
 rephrase
+reply
 report_a_bug
 republish_at
 republish_confirm
@@ -1872,10 +1885,13 @@ researching_your_content
 resend_activation_email
 resend_available_in
 resend_code
+resolve
+resolved
 restore
 resume_publishing_to_this_channel
 retry
 reveal
+reviewer
 revoke
 role
 rotate
@@ -2225,6 +2241,7 @@ whats_new
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
+write_a_reply
 write_anything
 write_something
 write_your_post
