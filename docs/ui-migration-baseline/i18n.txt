@@ -1590,6 +1590,7 @@ faq_what_are_team_members
 farcaster
 farcaster_approval_timeout
 farcaster_copy_link
+farcaster_rate_limited
 farcaster_scan_instructions
 farcaster_signer_failed
 farcaster_signer_revoked

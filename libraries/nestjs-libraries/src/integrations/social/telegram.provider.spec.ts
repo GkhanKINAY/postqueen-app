@@ -24,7 +24,12 @@ describe('Telegram caption limit', () => {
   it('holds any entry that carries media to 1,024, counted as displayed', () => {
     assert.match(
       checkValidity,
-      /\(media\?\.length \?\? 0\) > 0 &&\s*striptags\(telegramText\(texts\[index\] \|\| ''\)\)\.length > 1024/
+      /\(media\?\.length \?\? 0\) > 0 &&\s*telegramLength\(texts\[index\] \|\| ''\) > 1024/
+    );
+    // Displayed: without tags, and an entity counts as one character.
+    assert.match(
+      provider,
+      /const telegramLength = \(message: string\) =>\s*striptags\(telegramText\(message\)\)\.replace\(\s*new RegExp\(`&\$\{TELEGRAM_ENTITY\}`, 'gi'\),\s*'&'\s*\)\.length;/
     );
     assert.match(
       checkValidity,
@@ -34,6 +39,48 @@ describe('Telegram caption limit', () => {
 
   it('measures the same text it sends', () => {
     assert.match(sendMessage, /const text = telegramText\(message\.message\);/);
+  });
+});
+
+describe('Telegram HTML text', () => {
+  const helpers = provider.slice(
+    provider.indexOf('const TELEGRAM_ENTITY'),
+    provider.indexOf('const telegramLength')
+  );
+
+  it('escapes a bare "&", "<" and ">" again, since the html path decoded them', () => {
+    assert.match(
+      helpers,
+      /const TELEGRAM_ENTITY = '\(\?:amp\|lt\|gt\|quot\|#\\\\d\+\|#x\[\\\\da-f\]\+\);';/
+    );
+    assert.match(
+      helpers,
+      /\.replace\(new RegExp\(`&\(\?!\$\{TELEGRAM_ENTITY\}\)`, 'gi'\), '&amp;'\)\s*\.replace\(\/<\/g, '&lt;'\)\s*\.replace\(\/>\/g, '&gt;'\)/
+    );
+  });
+
+  it('reads only the tags the html path keeps as tags, and escapes the text between them', () => {
+    assert.match(
+      helpers,
+      /\.split\(\/\(<\\\/\?\(\?:p\|strong\|u\|a\|ul\|li\|h\[1-3\]\)\(\?:\\s\[\^<>\]\*\)\?>\)\/\)\s*\.map\(\(part, index\) =>\s*index % 2 \? striptags\(part, \['u', 'strong', 'p'\]\) : telegramEscape\(part\)\s*\)/
+    );
+    // Still bold as <b> and a line per paragraph.
+    assert.match(helpers, /\.replace\(\/<strong>\/g, '<b>'\)/);
+    assert.match(helpers, /\.replace\(\/<p>\(\.\*\?\)<\\\/p>\/g, '\$1\\n'\)/);
+  });
+});
+
+describe('Telegram connect clean-up', () => {
+  it('counts the chat owner as an admin that can delete messages', () => {
+    const botIsAdmin = provider.slice(provider.indexOf('async botIsAdmin('));
+    assert.match(
+      botIsAdmin,
+      /if \(member\.status === 'creator'\) \{\s*return true;\s*\}/
+    );
+    assert.match(
+      botIsAdmin,
+      /if \(member\.status === 'administrator'\) \{\s*return !!member\.can_delete_messages;/
+    );
   });
 });
 

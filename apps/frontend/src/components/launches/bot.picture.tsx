@@ -28,13 +28,21 @@ export const BotPicture: FC<{
   const submitForm: FormEventHandler<HTMLFormElement> = useCallback(
     async (e) => {
       e.preventDefault();
-      await fetch(`/integrations/${props.integration.id}/nickname`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: nick,
-          picture,
-        }),
-      });
+      const res = await fetch(
+        `/integrations/${props.integration.id}/nickname`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: nick,
+            picture,
+          }),
+        }
+      );
+      // The platform can refuse the change, and this said Updated all the same.
+      if (!res.ok) {
+        toast.show(t('could_not_save', 'Could not save'), 'warning');
+        return;
+      }
       props.mutate();
       toast.show(t('updated', 'Updated'), 'success');
       modal.closeAll();

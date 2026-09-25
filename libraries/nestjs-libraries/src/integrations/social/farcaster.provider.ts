@@ -35,6 +35,17 @@ const SIGNED_KEY_REQUEST_TYPE = [
   { name: 'deadline', type: 'uint256' },
 ] as const;
 
+// Neynar answers 429 once the app's rate limit is reached, and the connect
+// screen showed its bare axios message ("Request failed with status code
+// 429"). A module function rather than a method: /integrations/function can
+// call any provider method by name.
+const neynarError = (err: any): never => {
+  if (err?.response?.status === 429) {
+    throw new Error('Farcaster rate limit reached, please try again later');
+  }
+  throw err;
+};
+
 @Rules(
   'Farcaster/Warpcast can only accept pictures'
 )
@@ -114,7 +125,7 @@ export class FarcasterProvider
     }
 
     const appFid = Number(process.env.NEYNAR_APP_FID);
-    const signer = await client.createSigner();
+    const signer = await client.createSigner().catch(neynarError);
     const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
     const signature = await mnemonicToAccount(
       process.env.NEYNAR_APP_MNEMONIC
@@ -129,15 +140,17 @@ export class FarcasterProvider
       },
     });
 
-    const registered = await client.registerSignedKey({
-      signerUuid: signer.signer_uuid,
-      appFid,
-      deadline,
-      signature,
-      ...(process.env.NEYNAR_SPONSOR_SIGNERS === 'true'
-        ? { sponsor: { sponsored_by_neynar: true } }
-        : {}),
-    });
+    const registered = await client
+      .registerSignedKey({
+        signerUuid: signer.signer_uuid,
+        appFid,
+        deadline,
+        signature,
+        ...(process.env.NEYNAR_SPONSOR_SIGNERS === 'true'
+          ? { sponsor: { sponsored_by_neynar: true } }
+          : {}),
+      })
+      .catch(neynarError);
 
     return {
       signerUuid: registered.signer_uuid,

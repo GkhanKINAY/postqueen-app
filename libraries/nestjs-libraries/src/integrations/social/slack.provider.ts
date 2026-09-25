@@ -315,9 +315,10 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
     const channel = commentPost.settings.channel;
-    const threadTs = lastCommentId || postId;
 
-    // Post the threaded reply
+    // Post the threaded reply. thread_ts is always the post's own ts: Slack
+    // threads are one level deep and want the parent's ts, never a reply's
+    // (lastCommentId), which it used to be from the second reply on.
     const posted = await (
       await fetch(`https://slack.com/api/chat.postMessage`, {
         method: 'POST',
@@ -329,7 +330,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
           channel,
           username: integration.name,
           icon_url: integration.picture,
-          thread_ts: threadTs,
+          thread_ts: postId,
           blocks: [
             ...slackSectionBlocks(commentPost.message),
             ...(commentPost.media?.length

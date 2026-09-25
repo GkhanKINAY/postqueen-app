@@ -63,9 +63,11 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
   }
   // Bot permissions asked for on install: View Channel (1 << 10), Send
   // Messages (1 << 11), Embed Links (1 << 14), Attach Files (1 << 15),
-  // Create Public / Private Threads (1 << 35, 1 << 36) and Send Messages in
-  // Threads (1 << 38). The first, third and fourth were missing, so a server
-  // whose roles did not already grant them refused media and link previews.
+  // Change Nickname (1 << 26), Create Public / Private Threads (1 << 35,
+  // 1 << 36) and Send Messages in Threads (1 << 38). View Channel, Embed Links
+  // and Attach Files were missing, so a server whose roles did not already
+  // grant them refused media and link previews; without Change Nickname,
+  // renaming the bot (changeNickname) was refused the same way.
   // Only new installs (or a reconnect) see this; an existing install keeps
   // the permissions its server gave it.
   async generateAuthUrl() {
@@ -73,7 +75,7 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     return {
       url: `https://discord.com/oauth2/authorize?client_id=${
         process.env.DISCORD_CLIENT_ID
-      }&permissions=377957174272&response_type=code&redirect_uri=${encodeURIComponent(
+      }&permissions=378024283136&response_type=code&redirect_uri=${encodeURIComponent(
         `${process.env.FRONTEND_URL}/integrations/social/discord`
       )}&integration_type=0&scope=bot+identify+guilds&state=${state}`,
       codeVerifier: makeId(10),
