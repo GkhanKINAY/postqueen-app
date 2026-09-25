@@ -57,7 +57,9 @@ export async function proxy(request: NextRequest) {
     // asked, who may have no PostQueen account at all.
     nextUrl.pathname.startsWith('/data-deletion/') ||
     nextUrl.pathname.startsWith('/provider/') ||
-    nextUrl.pathname.startsWith('/icons/')
+    nextUrl.pathname.startsWith('/icons/') ||
+    // The logo and icons in our emails, fetched by mail clients with no session.
+    nextUrl.pathname.startsWith('/email/')
   ) {
     return topResponse;
   }

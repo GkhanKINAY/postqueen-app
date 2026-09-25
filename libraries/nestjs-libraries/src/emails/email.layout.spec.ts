@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import {
   DigestItem,
@@ -185,5 +187,20 @@ describe('the hourly summary', () => {
     assert.ok(rows && rows.type === 'rows');
     assert.equal(rows.rows[0].text, undefined);
     assert.equal(rows.rows[0].link?.url, 'https://network.test/1');
+  });
+});
+
+describe('the images an email shows', () => {
+  it('are public, since mail clients fetch them with no session', () => {
+    // v3.6.104 shipped them behind the frontend's sign-in redirect, and every
+    // email arrived without its logo and icons.
+    const proxy = readFileSync(
+      fileURLToPath(
+        new URL('../../../../apps/frontend/src/proxy.ts', import.meta.url)
+      ),
+      'utf8'
+    );
+    assert.match(proxy, /startsWith\('\/email\/'\)/);
+    assert.match(proxy, /startsWith\('\/icons\/'\)/);
   });
 });
