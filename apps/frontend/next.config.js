@@ -83,13 +83,11 @@ export default withSentryConfig(nextConfig, {
   // Sourcemap configuration optimized for monorepo
   sourcemaps: {
     disable: false,
-    // More comprehensive asset patterns for monorepo
-    assets: [
-      '.next/static/**/*.js',
-      '.next/static/**/*.js.map',
-      '.next/server/**/*.js',
-      '.next/server/**/*.js.map',
-    ],
+    // No `assets`: the Turbopack build uploads them as given, one bundle per
+    // pattern, so separate patterns for `.js` and `.js.map` put every file
+    // and its map in different bundles, and Sentry, which reads one bundle
+    // per debug ID, answered "Source code was not found" for each frame.
+    // Left unset it uploads the whole `.next` once, each file with its map.
     ignore: [
       '**/node_modules/**',
       '**/*hot-update*',
