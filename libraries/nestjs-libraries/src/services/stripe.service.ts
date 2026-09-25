@@ -53,6 +53,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
 
 /**
+ * Written on a trialing subscription cancelled because its card already had a
+ * free trial on another account, so `checkSubscription` can tell the checkout
+ * why it ended rather than reporting a failed payment.
+ */
+const TRIAL_CARD_REUSED = 'trial-card-reused';
+
+/**
  * Stripe subscription statuses that mean "this customer is entitled right now".
  *
  * `past_due` is in deliberately: Stripe is still retrying, and dunning is the
@@ -358,7 +365,150 @@ export class StripeService extends PaymentProviderAbstract {
       status: 'all',
       limit: 100,
     });
-    return all.data.some((s) => ENTITLED_STATUSES.includes(s.status));
+    for (const subscription of all.data) {
+      if (await this.isEntitled(subscription)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Whether a subscription has ever taken money.
+   *
+   * `amount_paid`, not the status: a trial opens with a $0 invoice that Stripe
+   * marks `paid`, so "has a paid invoice" is true of every trial from its
+   * first second.
+   */
+  private async hasPaidInvoice(subscriptionId: string) {
+    const invoices = await stripe.invoices.list({
+      subscription: subscriptionId,
+      status: 'paid',
+      limit: 100,
+    });
+    return invoices.data.some((invoice) => invoice.amount_paid > 0);
+  }
+
+  /**
+   * `ENTITLED_STATUSES`, except that `past_due` only entitles a subscription
+   * that has paid before. The dunning grace is for a customer whose renewal
+   * failed; a trial whose first charge failed has paid nothing, and granting it
+   * the same two weeks of retries was two more free weeks.
+   */
+  private async isEntitled(subscription: Stripe.Subscription) {
+    if (!ENTITLED_STATUSES.includes(subscription.status)) {
+      return false;
+    }
+    if (subscription.status !== 'past_due') {
+      return true;
+    }
+    return this.hasPaidInvoice(subscription.id);
+  }
+
+  /**
+   * Stripe's fingerprint of the card behind a payment method: the same for a
+   * card on any customer or account, which is what makes it usable against
+   * trial reuse. Apple Pay and Google Pay arrive as `card` and carry one; Link
+   * carries none, and gets its trial.
+   */
+  private async cardFingerprint(paymentMethodId?: string | null) {
+    if (!paymentMethodId) {
+      return null;
+    }
+    const method = await stripe.paymentMethods.retrieve(paymentMethodId);
+    return method.card?.fingerprint || method.sepa_debit?.fingerprint || null;
+  }
+
+  /**
+   * Records that this card started a free trial for this organization, or
+   * reports that it already started one for another. `UsedCodes` holds the
+   * record, and account purge keeps it, so deleting the account and signing up
+   * again does not earn a second trial.
+   */
+  private async trialCardUsedElsewhere(
+    organizationId: string,
+    fingerprint: string
+  ) {
+    const code = `trial-card:${fingerprint}`;
+    const used = await this._subscriptionService.getCode(code);
+    if (!used) {
+      await this._subscriptionService.createUsedCode(organizationId, code);
+      return false;
+    }
+    return used.orgId !== organizationId;
+  }
+
+  /**
+   * One free trial per card. A trialing subscription whose card already started
+   * a trial on another organization is cancelled before anything is charged,
+   * and the organization loses its trial, so the next checkout bills at once.
+   * Otherwise the card is recorded against this organization.
+   *
+   * Cancelled rather than ended early (`trial_end: 'now'`): the customer agreed
+   * to "7 days free" on the checkout, and charging them today would be a charge
+   * they did not agree to.
+   */
+  private async refuseReusedTrialCard(subscription: Stripe.Subscription) {
+    if (subscription.status !== 'trialing') {
+      return false;
+    }
+
+    const organizationId = subscription.metadata?.organizationId;
+    const org =
+      (await this._organizationService.getOrgByCustomerId(
+        subscription.customer as string
+      )) ||
+      (organizationId
+        ? await this._organizationService.getOrgById(organizationId)
+        : null);
+    if (!org) {
+      return false;
+    }
+
+    let paymentMethodId =
+      typeof subscription.default_payment_method === 'string'
+        ? subscription.default_payment_method
+        : subscription.default_payment_method?.id;
+    if (!paymentMethodId) {
+      const methods = await stripe.paymentMethods.list({
+        customer: subscription.customer as string,
+      });
+      paymentMethodId = methods.data.reduce<Stripe.PaymentMethod | undefined>(
+        (latest, method) =>
+          !latest || method.created > latest.created ? method : latest,
+        undefined
+      )?.id;
+    }
+
+    const fingerprint = await this.cardFingerprint(paymentMethodId);
+    if (!fingerprint) {
+      Logger.warn(
+        `[stripe] trial ${subscription.id} has no card fingerprint; not checked for reuse`
+      );
+      return false;
+    }
+
+    if (!(await this.trialCardUsedElsewhere(org.id, fingerprint))) {
+      return false;
+    }
+
+    // Linked first, so `checkSubscription` can find the cancelled subscription
+    // on this organization's customer and tell the checkout why.
+    await this.adoptSubscriptionCustomer(subscription);
+    await stripe.subscriptions.cancel(subscription.id, {
+      cancellation_details: { comment: TRIAL_CARD_REUSED },
+    });
+    await this._organizationService.withdrawTrial(org.id);
+    await this._notificationService.inAppNotification(
+      org.id,
+      'Free trial not available',
+      'This card has already been used for a free trial on another PostQueen account. We did not start your trial and you were not charged. You can subscribe without a trial from Billing.',
+      true,
+      false,
+      'info',
+      '/billing'
+    );
+    return true;
   }
 
   /**
@@ -562,6 +712,10 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'unknown tier' };
     }
 
+    if (await this.refuseReusedTrialCard(event.data.object)) {
+      return { ok: true, granted: false, reason: 'trial card reused' };
+    }
+
     // `checkValidCard` now returns false for exactly one reason: the
     // subscription is still `incomplete`, meaning Stripe has not taken the
     // money yet and will send another event when it does. Answering 2xx there
@@ -657,6 +811,36 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
+    // The first charge after a trial failed. Stripe keeps retrying on its own
+    // schedule, and a retry that lands turns the subscription `active`, which
+    // grants again below. Until then the account is locked like any lapsed one,
+    // and `pendingPayment` shows the open invoice instead of a new checkout.
+    const entitled = await this.isEntitled(event.data.object);
+    if (!entitled) {
+      const customer = event.data.object.customer as string;
+      if (
+        event.data.object.status === 'past_due' &&
+        !(await this.hasEntitlingSubscription(customer))
+      ) {
+        await this._subscriptionService.deleteSubscription(
+          customer,
+          STRIPE_PROVIDER
+        );
+        const org = await this._organizationService.getOrgByCustomerId(
+          customer
+        );
+        if (org) {
+          await this._organizationService.endTrial(org.id);
+        }
+        return {
+          ok: true,
+          granted: false,
+          revoked: true,
+          reason: 'first payment after the trial failed',
+        };
+      }
+    }
+
     // Same guard as createSubscription — see the note there.
     if (!pricing[billing]) {
       Logger.warn(
@@ -671,18 +855,24 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'incomplete' };
     }
 
-    // Only `ENTITLED_STATUSES` writes the paid tier. The gate used to be
-    // `status !== 'incomplete'`, which let `canceled`, `unpaid`,
-    // `incomplete_expired` and `paused` all through and wrote the full tier back
-    // with `deletedAt: null`. Stripe does not promise event ordering either, so
+    // Only an entitled subscription (see `isEntitled`) writes the paid tier.
+    // The gate used to be `status !== 'incomplete'`, which let `canceled`,
+    // `unpaid`, `incomplete_expired` and `paused` all through and wrote the
+    // full tier back with `deletedAt: null`. Stripe does not promise event ordering either, so
     // a `deleted` processed before a trailing `updated` had its row deleted and
     // then recreated — permanently entitled, with nothing left to correct it.
-    if (!ENTITLED_STATUSES.includes(event.data.object.status)) {
+    if (!entitled) {
       return {
         ok: true,
         granted: false,
         reason: `status ${event.data.object.status}`,
       };
+    }
+
+    // Stripe promises no event order, so an `updated` can be the first event
+    // to grant a trial. It gets the same check as `createSubscription`.
+    if (await this.refuseReusedTrialCard(event.data.object)) {
+      return { ok: true, granted: false, reason: 'trial card reused' };
     }
 
     await this.adoptSubscriptionCustomer(event.data.object);
@@ -700,6 +890,12 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
+    // A trial refused for a reused card was never granted, and recording an
+    // end date would show "your plan ended" on the paywall of an account that
+    // never had one.
+    if (event.data.object.cancellation_details?.comment === TRIAL_CARD_REUSED) {
+      return { ok: true, revoked: false, reason: 'trial card reused' };
+    }
     await this._subscriptionService.deleteSubscription(
       event.data.object.customer as string,
       STRIPE_PROVIDER
@@ -1579,12 +1775,15 @@ export class StripeService extends PaymentProviderAbstract {
       return 0;
     }
 
-    if (
-      getCustomerSubscriptions.data.find(
-        (p) => p.metadata.uniqueId === subscriptionId
-      )?.canceled_at
-    ) {
-      return 1;
+    const subscription = getCustomerSubscriptions.data.find(
+      (p) => p.metadata.uniqueId === subscriptionId
+    );
+    if (subscription?.canceled_at) {
+      // 3: stopped because the card already had a free trial elsewhere, not
+      // because a payment failed.
+      return subscription.cancellation_details?.comment === TRIAL_CARD_REUSED
+        ? 3
+        : 1;
     }
 
     return 0;
@@ -1611,9 +1810,16 @@ export class StripeService extends PaymentProviderAbstract {
       throw new Error('This organization already has an active subscription');
     }
 
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (await this.pendingPayment(org!)) {
+      throw new HttpException(
+        'A payment for your subscription is still open. Pay it from Billing instead of starting a new subscription.',
+        HttpStatus.CONFLICT
+      );
+    }
+
     const id = makeId(10);
     const priceData = pricing[body.billing];
-    const org = await this._organizationService.getOrgById(organizationId);
     // The paywall loads this on render, so creating the customer here left an
     // empty Stripe customer behind for everyone who only looked at it. Without
     // one, Checkout creates the customer when the subscription is made, and
@@ -1766,6 +1972,14 @@ export class StripeService extends PaymentProviderAbstract {
       await this._subscriptionService.getSubscription(organizationId);
 
     if (!getCurrentSubscriptions) {
+      // Same guard as `embedded`: no second subscription next to one that is
+      // still retrying an unpaid invoice.
+      if (await this.pendingPayment(org!)) {
+        throw new HttpException(
+          'A payment for your subscription is still open. Pay it from Billing instead of starting a new subscription.',
+          HttpStatus.CONFLICT
+        );
+      }
       return this.createCheckoutSession(
         uniqueId,
         id,
@@ -1876,10 +2090,24 @@ export class StripeService extends PaymentProviderAbstract {
     // the one type the preference filter always lets through. Losing your
     // subscription because a notice was filed as a success is not a preference
     // anyone expressed.
+    //
+    // The first charge after a trial is told apart: that account is locked
+    // right away (see `updateSubscription`), so "nothing is cancelled yet"
+    // would be the wrong thing to say.
+    const subscriptionId =
+      event.data.object.parent?.subscription_details?.subscription;
+    const firstCharge =
+      !!subscriptionId &&
+      !(await this.hasPaidInvoice(
+        typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id
+      ));
+
     await this._notificationService.inAppNotification(
       org.id,
       'Payment failed',
-      "We could not charge your card for PostQueen. Update your payment method from Billing and we'll try again — nothing is cancelled yet.",
+      firstCharge
+        ? "Your free trial has ended and we couldn't charge your card. PostQueen is paused until the payment goes through. Update your card from Billing to continue; your channels and posts are kept."
+        : "We could not charge your card for PostQueen. Update your payment method from Billing and we'll try again — nothing is cancelled yet.",
       true,
       false,
       'info',
@@ -2009,6 +2237,42 @@ export class StripeService extends PaymentProviderAbstract {
     } catch (err) {
       return false;
     }
+  }
+
+  /**
+   * The open invoice of a subscription that has not been paid for, if any.
+   *
+   * Stripe keeps a `past_due` subscription retrying after the account is
+   * locked (see `updateSubscription`), so this is what the paywall offers in
+   * place of a new checkout: a second subscription opened next to the one still
+   * retrying would bill twice the moment either payment lands.
+   */
+  async pendingPayment(organization: Organization) {
+    const customer = organization?.paymentId;
+    if (!isBillingEnabled() || !customer?.startsWith('cus_')) {
+      return null;
+    }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 20,
+      expand: ['data.latest_invoice'],
+    });
+    for (const subscription of subscriptions.data) {
+      if (!['past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+        continue;
+      }
+      const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+      if (invoice?.status === 'open' && invoice.hosted_invoice_url) {
+        return {
+          hostedInvoiceUrl: invoice.hosted_invoice_url,
+          amountDue: invoice.amount_due,
+          currency: invoice.currency,
+        };
+      }
+    }
+    return null;
   }
 
   async getCharges(organizationId: string) {
@@ -2599,6 +2863,26 @@ export class StripeService extends PaymentProviderAbstract {
       await stripe.customers.update(customerId, {
         invoice_settings: { default_payment_method: paymentMethodId },
       });
+    }
+
+    // A deferred fee is a free trial too: the plan now, the charge when the
+    // trial window closes. Same one-trial-per-card rule as subscriptions.
+    const fingerprint = await this.cardFingerprint(paymentMethodId);
+    if (
+      fingerprint &&
+      (await this.trialCardUsedElsewhere(organizationId, fingerprint))
+    ) {
+      await this._organizationService.withdrawTrial(organizationId);
+      await this._notificationService.inAppNotification(
+        organizationId,
+        'Free trial not available',
+        'This card has already been used for a free trial on another PostQueen account, so the founding-member fee cannot wait for the end of a trial. Nothing was charged and the plan was not added. You can buy it with a payment today from Billing.',
+        true,
+        false,
+        'info',
+        '/billing'
+      );
+      return { ok: true, granted: false, reason: 'trial card reused' };
     }
 
     return this.grantLifetimeFromPayment(

@@ -39,6 +39,7 @@
 /billing/finish-trial
 /billing/is-trial-finished
 /billing/lifetime-checkout
+/billing/pending-payment
 /billing/portal
 /billing/prorate
 /billing/refund-charges

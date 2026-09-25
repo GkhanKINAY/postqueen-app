@@ -33,6 +33,17 @@ export class OrganizationRepository {
     });
   }
 
+  /**
+   * No free trial for this organization, now or later: its card already had
+   * one on another account (see `refuseReusedTrialCard` in stripe.service.ts).
+   */
+  withdrawTrial(id: string) {
+    return this._organization.model.organization.update({
+      where: { id },
+      data: { allowTrial: false, isTrailing: false },
+    });
+  }
+
   createMaxUser(id: string, name: string, saasName: string, email: string) {
     return this._organization.model.organization.create({
       select: {

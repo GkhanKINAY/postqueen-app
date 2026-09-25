@@ -296,6 +296,8 @@ billing_payment_details
 billing_payment_form_error_hint
 billing_payment_form_unavailable
 billing_payment_method_required
+billing_pending_payment_body
+billing_pending_payment_cta
 billing_per_month
 billing_per_month_short
 billing_per_year
@@ -321,6 +323,8 @@ billing_tax
 billing_then
 billing_then_after_trial_short
 billing_trial_bar_loading
+billing_trial_card_used
+billing_trial_card_used_title
 billing_trial_end
 billing_trial_ended_on
 billing_trial_hero_sub

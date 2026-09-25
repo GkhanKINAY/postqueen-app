@@ -302,6 +302,19 @@ export class BillingController {
     };
   }
 
+  // The open invoice of a subscription whose payment failed, shown by the
+  // paywall in place of a new checkout. `{}` when there is nothing to pay.
+  // Straight to Stripe, like `/portal`: the provider lookup throws for an
+  // organization on a local `manual` row, and only Stripe keeps retrying.
+  @Get('/pending-payment')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async pendingPayment(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return {};
+    }
+    return (await this._stripeService.pendingPayment(org)) || {};
+  }
+
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {
