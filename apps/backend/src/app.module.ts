@@ -16,7 +16,10 @@ import { getTemporalModule } from '@gitroom/nestjs-libraries/temporal/temporal.m
 import { TemporalRegisterMissingSearchAttributesModule } from '@gitroom/nestjs-libraries/temporal/temporal.register';
 import { InfiniteWorkflowRegisterModule } from '@gitroom/nestjs-libraries/temporal/infinite.workflow.register';
 import { PreviousUploadUrlsModule } from '@gitroom/nestjs-libraries/upload/previous.upload.urls';
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import {
+  MemoryThrottlerStorage,
+  RedisThrottlerStorage,
+} from '@gitroom/nestjs-libraries/throttler/throttler.storage';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 @Global()
@@ -41,16 +44,16 @@ import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
           limit: process.env.API_LIMIT ? Number(process.env.API_LIMIT) : 90,
         },
       ],
-      // Only when there is a real Redis. Without REDIS_URL, `ioRedis` is the
-      // MockRedis in redis.service.ts, which implements get/set/del and nothing
-      // else — and this storage runs `redis.call('eval', …)`, so every upload
-      // and every public-API post answered 500 on an install that had not set
-      // one. Omitting the key makes @nestjs/throttler fall back to its own
-      // in-memory store, which counts per process: right for a single node,
-      // and the same trade AbuseGuardService already makes for the same reason.
-      ...(process.env.REDIS_URL
-        ? { storage: new ThrottlerStorageRedisService(ioRedis) }
-        : {}),
+      // Redis only when there is a real one. Without REDIS_URL, `ioRedis` is
+      // the MockRedis in redis.service.ts, which implements get/set/del and
+      // nothing else — and this storage runs `redis.call('eval', …)`, so every
+      // upload and every public-API post answered 500 on an install that had
+      // not set one. The memory storage counts per process: right for a single
+      // node, and the same trade AbuseGuardService already makes for the same
+      // reason. Both can give a hit back (ThrottlerRefundInterceptor).
+      storage: process.env.REDIS_URL
+        ? new RedisThrottlerStorage(ioRedis)
+        : new MemoryThrottlerStorage(),
     }),
   ],
   controllers: [],

@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -59,7 +60,12 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { SuperAdminGuard } from '@gitroom/backend/services/auth/super.admin.guard';
 import { GetOrgActivityDto } from '@gitroom/nestjs-libraries/dtos/analytics/get.org.activity.dto';
+import {
+  spendThrottlerHits,
+  ThrottlerRefundInterceptor,
+} from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import dayjs from 'dayjs';
+import { Request } from 'express';
 
 @ApiTags('Public API')
 @Controller('/public/v1')
@@ -155,9 +161,11 @@ export class PublicIntegrationsController {
 
   @Post('/posts')
   @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
+  @UseInterceptors(ThrottlerRefundInterceptor)
   async createPost(
     @GetOrgFromRequest() org: Organization,
-    @Body() rawBody: any
+    @Body() rawBody: any,
+    @Req() req: Request
   ) {
     Sentry.metrics.count('public_api-request', 1);
 
@@ -242,6 +250,11 @@ export class PublicIntegrationsController {
       ? (rawBody.creationMethod as 'CLI' | 'API')
       : 'API';
 
+    // A 400 up to here gives the hourly allowance back. createPost saves one
+    // channel at a time, and can still refuse a later one (media that is not
+    // this organization's, a post already published) after an earlier one is
+    // saved, so from here the request has spent it.
+    spendThrottlerHits(req);
     return this._postsService.createPost(org.id, body, creationMethod);
   }
 
