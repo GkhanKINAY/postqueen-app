@@ -28,6 +28,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The repository is public: no workflow may run fork code with its
+      # secrets, and the Sentry token stays in the tag build. Runs before
+      # anything else, so a pull request that breaks either rule is red.
+      - name: Workflow guard
+        run: scripts/check-workflows.sh
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:

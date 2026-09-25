@@ -35,6 +35,16 @@ COPY . /app
 COPY var/docker/nginx.conf /etc/nginx/nginx.conf
 
 RUN pnpm install
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
+# Sentry source maps. The maintainer's tag builds pass the token as a BuildKit
+# secret, readable only while this RUN executes, so it never reaches a layer,
+# the image history or the environment. Without it (forks, self-hosted builds)
+# the frontend builds exactly as before and uploads nothing. The maps are
+# deleted after the upload (next.config.js), so none are served either.
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG GITHUB_SHA
+RUN --mount=type=secret,id=sentry_auth_token,required=false \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null)" \
+    NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
 
 CMD ["sh", "-c", "nginx && pnpm run pm2"]

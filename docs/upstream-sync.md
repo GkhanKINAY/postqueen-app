@@ -355,6 +355,14 @@ Lessons, in the order they cost time:
   sign-in bodies, which put provider access tokens, the `auth` session token,
   passwords and visitors' IPs in Sentry. The privacy policy on postqueen.ai
   describes what is left; loosening any of it needs the policy changed first.
+- **Never take a workflow change that exposes secrets to forks.** The repo is
+  public and holds one secret, `SENTRY_AUTH_TOKEN`, which only the container
+  build reads, only for a tag pushed here, and only as a BuildKit secret.
+  `scripts/check-workflows.sh` (first step of `build.yml`) fails CI if any
+  workflow gains `pull_request_target` or `workflow_run`, if another workflow
+  reads the token, or if `build-containers.yml` loses its guard. If a synced
+  commit trips it, drop or rewrite that workflow change; never loosen the
+  script.
 - **Copy an upstream hash with `git rev-parse`, never by eye.** Two
   "(cherry picked / adapted from commit ...)" lines in this run first went in
   with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`
