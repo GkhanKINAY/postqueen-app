@@ -83,10 +83,9 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
     // that adding an unauthenticated route to that list is a rate limit that
     // keys on something else, rather than a 500.
     //
-    // The class name notwithstanding, this has never read a forwarded IP and
-    // still does not: nothing calls `app.set('trust proxy')`, and turning that
-    // on so `req.ips` populates would also let a client pick its own
-    // X-Forwarded-For, which is a worse bucket than the socket address.
+    // `req.ip` is the client (TRUSTED_PROXIES in user/client.ip.ts): Express
+    // resolves it past our own proxies only, so a header the client writes
+    // does not move it.
     const org = req.org?.id;
 
     return (org || 'ip:' + req.ip) + '_' + bucket;
@@ -96,22 +95,17 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
 // Route-level guard for public endpoints, keyed by the client address rather
 // than the org the global guard expects.
 //
-// The LAST X-Forwarded-For entry, not the first. Our nginx appends the peer it
-// accepted the connection from ($proxy_add_x_forwarded_for), so the last entry
-// is the one no client can write; the first is whatever the client sent, and
-// keying on it (upstream's version) gave every request with a fresh header a
-// fresh bucket. Behind a further proxy (a CDN) the last entry is that proxy's
-// address, which makes the bucket coarser, never bypassable. Without a proxy
-// there is no header and the socket address is used.
+// That address is `req.ip`, which Express resolves with `trust proxy` set to
+// TRUSTED_PROXIES (user/client.ip.ts). Neither end of X-Forwarded-For will do
+// on its own. The first entry is whatever the client sent (upstream's version
+// keyed on it), so a fresh header meant a fresh bucket. The last entry is our
+// own container nginx's peer, the Docker gateway, the same for every request
+// in production, so keying on it made each limit one bucket for everybody.
 @Injectable()
 export class ThrottlerRealIpGuard extends ThrottlerGuard {
   protected override async getTracker(
     req: Record<string, any>
   ): Promise<string> {
-    const forwarded = String(req.headers?.['x-forwarded-for'] || '')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean);
-    return forwarded[forwarded.length - 1] || req.ip;
+    return req.ip;
   }
 }

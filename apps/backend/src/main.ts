@@ -13,6 +13,8 @@ process.env.TZ = 'UTC';
 import cookieParser from 'cookie-parser';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { TRUSTED_PROXIES } from '@gitroom/nestjs-libraries/user/client.ip';
 import { AppModule } from './app.module';
 
 import { SubscriptionExceptionFilter } from '@gitroom/backend/services/auth/permissions/subscription.exception';
@@ -23,7 +25,7 @@ import { startMcp } from '@gitroom/nestjs-libraries/chat/start.mcp';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 
 async function start() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
     cors: {
       // Always allow credentials for the FRONTEND_URL allowlist. Uppy's local
@@ -56,6 +58,11 @@ async function start() {
       ],
     },
   });
+
+  // `req.ip` is the client, not our own proxies: see TRUSTED_PROXIES. Every
+  // per-address limit (the abuse guard, the throttlers) reads it through
+  // ClientIp or req.ip.
+  app.set('trust proxy', TRUSTED_PROXIES);
 
   await startMcp(app);
 

@@ -24,7 +24,7 @@ import { OtpVerifyDto } from '@gitroom/nestjs-libraries/dtos/auth/otp.verify.dto
 import { ApiTags } from '@nestjs/swagger';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
-import { RealIP } from 'nestjs-real-ip';
+import { ClientIp } from '@gitroom/nestjs-libraries/user/client.ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -76,7 +76,7 @@ export class AuthController {
     @Req() req: Request,
     @Body() body: CreateOrgUserDto,
     @Res({ passthrough: false }) response: Response,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
   ) {
     if (await this.isAbusive('register', body.email, ip)) {
@@ -160,7 +160,7 @@ export class AuthController {
     @Req() req: Request,
     @Body() body: LoginUserDto,
     @Res({ passthrough: false }) response: Response,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
   ) {
     if (await this.isAbusive('login', body.email, ip)) {
@@ -225,7 +225,7 @@ export class AuthController {
   }
 
   @Post('/forgot')
-  async forgot(@Body() body: ForgotPasswordDto, @RealIP() ip: string) {
+  async forgot(@Body() body: ForgotPasswordDto, @ClientIp() ip: string) {
     try {
       if (!(await this.isAbusive('forgot', body.email, ip))) {
         await this._authService.forgot(body.email);
@@ -390,7 +390,7 @@ export class AuthController {
     @Body('redirect_uri') redirect_uri: string,
     @Body('state') state: string,
     @Param('provider') provider: string,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
     @Res({ passthrough: false }) response: Response,
   ) {
@@ -503,7 +503,7 @@ export class AuthController {
   @Post('/otp/request')
   async otpRequest(
     @Body() body: OtpRequestDto,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @Res({ passthrough: false }) response: Response,
   ) {
     if (process.env.PASSWORDLESS_LOGIN !== 'true') {
@@ -521,7 +521,7 @@ export class AuthController {
   @Post('/otp/verify')
   async otpVerify(
     @Body() body: OtpVerifyDto,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
     @Res({ passthrough: false }) response: Response,
   ) {

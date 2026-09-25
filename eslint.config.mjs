@@ -136,6 +136,32 @@ const eslintConfig = [
   },
 
   {
+    // `@RealIP()` returns the first X-Forwarded-For entry, which the client
+    // writes, so a per-address limit keyed on it can be stepped around with a
+    // made-up header. Upstream still uses it, so a synced commit would bring it
+    // back silently; this stops it at lint instead.
+    files: [
+      'apps/backend/**/*.ts',
+      'apps/orchestrator/**/*.ts',
+      'libraries/nestjs-libraries/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'nestjs-real-ip',
+              message:
+                'Use ClientIp from @gitroom/nestjs-libraries/user/client.ip: it resolves the client past our own proxies only.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     // Carried over verbatim from the previous config. These are deliberate
     // project-wide decisions, not a backlog: the codebase leans on `any` at
     // integration boundaries and on ts-comments around generated Prisma types.

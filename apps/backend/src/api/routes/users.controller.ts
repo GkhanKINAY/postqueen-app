@@ -43,7 +43,7 @@ import {
   oauthLinkNonceFromState,
 } from '@gitroom/helpers/auth/account-security';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
-import { RealIP } from 'nestjs-real-ip';
+import { ClientIp } from '@gitroom/nestjs-libraries/user/client.ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
@@ -290,7 +290,7 @@ export class UsersController {
     @Param('provider') provider: string,
     @Req() req: Request,
     @Res({ passthrough: true }) response: Response,
-    @RealIP() ip: string
+    @ClientIp() ip: string
   ) {
     this.assertNotImpersonating(req);
     if (!isLinkableProvider(provider)) {
@@ -337,7 +337,7 @@ export class UsersController {
     @GetUserFromRequest() user: User,
     @Param('provider') provider: string,
     @Req() req: Request,
-    @RealIP() ip: string
+    @ClientIp() ip: string
   ) {
     this.assertNotImpersonating(req);
     await this.assertAbuse('identity_link', user.email, ip);
@@ -350,7 +350,7 @@ export class UsersController {
     @GetUserFromRequest() user: User,
     @Body() body: ChangePasswordDto,
     @Req() req: Request,
-    @RealIP() ip: string
+    @ClientIp() ip: string
   ) {
     this.assertNotImpersonating(req);
     await this.assertAbuse('password_change', user.email, ip);
@@ -367,7 +367,7 @@ export class UsersController {
     @GetUserFromRequest() user: User,
     @Body() body: RequestEmailChangeDto,
     @Req() req: Request,
-    @RealIP() ip: string
+    @ClientIp() ip: string
   ) {
     this.assertNotImpersonating(req);
     await this.assertAbuse('email_change', user.email, ip);
@@ -626,7 +626,7 @@ export class UsersController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
     @GetUserFromRequest() user: User,
-    @RealIP() ip: string,
+    @ClientIp() ip: string,
     @UserAgent() userAgent: string,
     @Body()
     body: { tt: TrackEnum; fbclid: string; additional: Record<string, any> }
