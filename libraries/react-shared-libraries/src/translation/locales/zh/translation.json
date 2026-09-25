@@ -845,5 +845,8 @@
   "email_off_invalid": "你可以在“设置”的“通知”中选择要接收的邮件。",
   "email_off_settings": "打开通知设置",
   "email_off_done": "完成。你将不再收到这些邮件。",
-  "email_off_button": "关闭"
+  "email_off_button": "关闭",
+  "signup_product_news_notice": "我们会不时向您发送产品资讯。每封邮件都可以一键退订。",
+  "product_news": "产品资讯",
+  "product_news_description": "不时接收有关新功能和改进的邮件"
 }

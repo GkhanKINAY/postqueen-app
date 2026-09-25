@@ -32,6 +32,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { ProductNewsDto } from '@gitroom/nestjs-libraries/dtos/users/product-news.dto';
 import { ChangePasswordDto } from '@gitroom/nestjs-libraries/dtos/users/change.password.dto';
 import { RequestEmailChangeDto } from '@gitroom/nestjs-libraries/dtos/users/request.email.change.dto';
 import { ConfirmEmailChangeDto } from '@gitroom/nestjs-libraries/dtos/users/confirm.email.change.dto';
@@ -434,6 +435,20 @@ export class UsersController {
     @Body() body: EmailNotificationsDto
   ) {
     return this._userService.updateEmailNotifications(user.id, body);
+  }
+
+  @Get('/product-news')
+  async getProductNews(@GetUserFromRequest() user: User) {
+    return this._userService.getProductNews(user.email);
+  }
+
+  @Post('/product-news')
+  @UseGuards(SameOriginGuard)
+  async updateProductNews(
+    @GetUserFromRequest() user: User,
+    @Body() body: ProductNewsDto
+  ) {
+    return this._userService.updateProductNews(user.email, body);
   }
 
   @Post('/api-key/rotate')

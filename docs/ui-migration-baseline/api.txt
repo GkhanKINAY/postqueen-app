@@ -172,6 +172,7 @@
 /user/organizations
 /user/password
 /user/personal
+/user/product-news
 /user/self
 /user/switch
 /webhooks

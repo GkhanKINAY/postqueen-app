@@ -845,5 +845,8 @@
   "email_off_invalid": "אפשר לבחור אילו הודעות לקבל בהגדרות, תחת התראות.",
   "email_off_settings": "פתיחת הגדרות ההתראות",
   "email_off_done": "בוצע. ההודעות האלה לא יגיעו יותר.",
-  "email_off_button": "לכבות"
+  "email_off_button": "לכבות",
+  "signup_product_news_notice": "מדי פעם נשלח אליך עדכוני מוצר. אפשר לבטל את המינוי מכל אחד מהם בלחיצה אחת.",
+  "product_news": "עדכוני מוצר",
+  "product_news_description": "קבלת אימייל מדי פעם על תכונות חדשות ושיפורים"
 }

@@ -2226,6 +2226,8 @@ previous_day
 privacy
 privacy_policy
 processing
+product_news
+product_news_description
 profile
 profile_description
 profile_picture
@@ -2390,6 +2392,7 @@ signature_delete_failed
 signature_deleted_successfully
 signature_editor_description
 signatures
+signup_product_news_notice
 six_days
 six_digit_code
 size

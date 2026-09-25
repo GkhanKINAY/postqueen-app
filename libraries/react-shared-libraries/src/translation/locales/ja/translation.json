@@ -845,5 +845,8 @@
   "email_off_invalid": "受け取るメールは、設定の「通知」で選べます。",
   "email_off_settings": "通知設定を開く",
   "email_off_done": "完了しました。これらのメールはもう届きません。",
-  "email_off_button": "オフにする"
+  "email_off_button": "オフにする",
+  "signup_product_news_notice": "製品ニュースを時々お送りします。各メールからワンクリックで配信を停止できます。",
+  "product_news": "製品ニュース",
+  "product_news_description": "新機能や改善についてのメールを時々受け取る"
 }

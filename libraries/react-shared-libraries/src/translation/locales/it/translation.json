@@ -845,5 +845,8 @@
   "email_off_invalid": "Puoi scegliere quali email ricevere in Impostazioni, sotto Notifiche.",
   "email_off_settings": "Apri le impostazioni delle notifiche",
   "email_off_done": "Fatto. Non riceverai più queste email.",
-  "email_off_button": "Disattivale"
+  "email_off_button": "Disattivale",
+  "signup_product_news_notice": "Di tanto in tanto ti invieremo novità sul prodotto. Puoi annullare l’iscrizione da ognuna con un clic.",
+  "product_news": "Novità sul prodotto",
+  "product_news_description": "Ricevi di tanto in tanto un’email su nuove funzionalità e miglioramenti"
 }

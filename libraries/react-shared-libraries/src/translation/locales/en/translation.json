@@ -1339,5 +1339,8 @@
   "email_off_invalid": "You can choose which emails you get in Settings, under Notifications.",
   "email_off_settings": "Open notification settings",
   "email_off_done": "Done. You will not get these emails any more.",
-  "email_off_button": "Turn them off"
+  "email_off_button": "Turn them off",
+  "signup_product_news_notice": "We’ll email you product news now and then. Unsubscribe from any of them in one click.",
+  "product_news": "Product news",
+  "product_news_description": "Receive an email about new features and improvements, now and then"
 }

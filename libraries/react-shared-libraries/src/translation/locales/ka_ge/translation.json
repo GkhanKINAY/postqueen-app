@@ -553,5 +553,8 @@
   "start_writing_your_post": "დაიწყეთ თქვენი პოსტის წერა წინასწარი ხედვისთვის",
   "faq_can_i_trust_postqueen_gitroom": "Შემიძლია ვენდო PostQueen-ს?",
   "ai_not_configured_title": "AI is not configured",
-  "ai_not_configured_body": "AI features are not configured on this installation."
+  "ai_not_configured_body": "AI features are not configured on this installation.",
+  "signup_product_news_notice": "დროდადრო გამოგიგზავნით პროდუქტის სიახლეებს. ნებისმიერი მათგანიდან გამოწერის გაუქმება ერთი დაწკაპუნებით შეგიძლიათ.",
+  "product_news": "პროდუქტის სიახლეები",
+  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ"
 }

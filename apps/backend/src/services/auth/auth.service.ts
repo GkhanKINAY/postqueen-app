@@ -17,6 +17,7 @@ import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/for
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { emailContent } from '@gitroom/nestjs-libraries/emails/email.content';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { isProductNewsEnabled } from '@gitroom/helpers/utils/product.news.enabled';
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 import { isEmailActivationRequired } from '@gitroom/helpers/utils/activation.required';
@@ -209,6 +210,7 @@ export class AuthService {
       // An account made earlier that never followed its activation link is
       // ready from here; a new one had its welcome above.
       if (!isNew) {
+        await NewsletterService.register(email);
         await this.sendWelcome(email);
       }
     }
@@ -289,6 +291,7 @@ export class AuthService {
           );
         } else {
           // Ready to use now; with activation, the welcome waits for it.
+          await NewsletterService.register(body.email);
           await this.sendWelcome(body.email);
         }
         return obj;
@@ -857,6 +860,15 @@ export class AuthService {
               type: 'note',
               text: 'Stuck on a step? Reply to this email and we’ll help.',
             },
+            // Said again where the address was given, as the sign-up form does.
+            ...(isProductNewsEnabled()
+              ? [
+                  {
+                    type: 'note' as const,
+                    text: 'Now and then we’ll also email you product news. Turn it off in Settings under Notifications, or in one click from any of those emails.',
+                  },
+                ]
+              : []),
           ],
           footer: 'welcome',
         }),

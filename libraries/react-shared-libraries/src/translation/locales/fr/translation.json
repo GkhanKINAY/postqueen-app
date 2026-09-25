@@ -845,5 +845,8 @@
   "email_off_invalid": "Vous pouvez choisir les e-mails que vous recevez dans Paramètres, sous Notifications.",
   "email_off_settings": "Ouvrir les paramètres de notification",
   "email_off_done": "C'est fait. Vous ne recevrez plus ces e-mails.",
-  "email_off_button": "Les désactiver"
+  "email_off_button": "Les désactiver",
+  "signup_product_news_notice": "Nous vous enverrons de temps en temps des nouveautés sur le produit. Vous pouvez vous désabonner depuis chacune d’elles en un clic.",
+  "product_news": "Nouveautés du produit",
+  "product_news_description": "Recevoir de temps en temps un e-mail sur les nouvelles fonctionnalités et améliorations"
 }
