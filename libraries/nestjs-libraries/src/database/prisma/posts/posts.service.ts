@@ -70,6 +70,8 @@ import {
   Sections,
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { postContentPlainText } from '@gitroom/helpers/utils/sanitize.post.content';
+import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
 
 type PostWithConditionals = Post & {
   integration?: Integration;
@@ -1367,6 +1369,11 @@ export class PostsService {
         return [] as any[];
       }
 
+      const existingIds = (post.value || []).map((p) => p.id).filter(Boolean);
+      await this.detachStaleAnchors(
+        posts.filter((p) => existingIds.includes(p.id))
+      );
+
       if (body.type !== 'update') {
         // The row is already written, so a failure here does not undo the post:
         // it leaves it in QUEUE with nothing scheduled to publish it. Swallowing
@@ -1921,8 +1928,185 @@ export class PostsService {
     return date.clone().add(num, 'minutes').format('YYYY-MM-DDTHH:mm:00');
   }
 
-  getComments(postId: string) {
-    return this._postRepository.getComments(postId);
+  // The share page shows published posts only (PublicController.getPreview),
+  // so its comments open with it: a draft or a scheduled post is not one
+  // guessed id away from taking anonymous comments either.
+  private async getPreviewPosts(previewId: string) {
+    return (await this.getPostsRecursively(previewId, false)).filter(
+      (p) => p.state === 'PUBLISHED'
+    );
+  }
+
+  // `orgId` comes only through the signed-in route. Resolving belongs to the
+  // team that owns the post, and the public page is not told which
+  // organization that is.
+  async getComments(previewId: string, orgId?: string) {
+    const posts = await this.getPreviewPosts(previewId);
+    const comments = await this._postRepository.getCommentsForPosts(
+      posts.map((p) => p.id)
+    );
+
+    return {
+      canResolve: !!orgId && posts[0]?.organizationId === orgId,
+      comments: comments.map((comment) => ({
+        id: comment.id,
+        postId: comment.postId,
+        parentId: comment.parentId,
+        content: comment.content,
+        anchorStart: comment.anchorStart,
+        anchorEnd: comment.anchorEnd,
+        anchorQuote: comment.anchorQuote,
+        resolvedAt: comment.resolvedAt,
+        createdAt: comment.createdAt,
+        name: comment.userId
+          ? [comment.user?.name, comment.user?.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .trim() || null
+          : comment.displayName,
+      })),
+    };
+  }
+
+  async createPublicComment(
+    previewId: string,
+    body: CreatePublicCommentDto,
+    userId: string | null,
+    ip: string
+  ) {
+    const posts = await this.getPreviewPosts(previewId);
+    if (!posts.length) {
+      throw new NotFoundException('Post not found');
+    }
+
+    let post = body.postId ? posts.find((p) => p.id === body.postId) : posts[0];
+    if (!post) {
+      throw new BadRequestException('Post does not belong to this preview');
+    }
+
+    if (!userId) {
+      if (!body.displayName?.trim()) {
+        throw new BadRequestException('Name is required');
+      }
+      await this.verifyRecaptcha(body.recaptchaToken, ip);
+    }
+
+    const hasStart = typeof body.anchorStart === 'number';
+    const hasEnd = typeof body.anchorEnd === 'number';
+    if (hasStart !== hasEnd) {
+      throw new BadRequestException('Both anchor offsets are required');
+    }
+
+    if (body.parentId) {
+      const parent = await this._postRepository.getCommentById(body.parentId);
+      if (!parent || !posts.some((p) => p.id === parent.postId)) {
+        throw new BadRequestException('Parent comment not found');
+      }
+      if (parent.parentId) {
+        throw new BadRequestException(
+          'Replies can only be added to a root comment'
+        );
+      }
+      if (hasStart || body.anchorQuote) {
+        throw new BadRequestException('Replies cannot be anchored');
+      }
+      post = posts.find((p) => p.id === parent.postId)!;
+    }
+
+    if (hasStart) {
+      const plainText = postContentPlainText(post.content);
+      if (
+        body.anchorStart! < 0 ||
+        body.anchorStart! >= body.anchorEnd! ||
+        body.anchorEnd! > plainText.length
+      ) {
+        throw new BadRequestException('Anchor is out of range');
+      }
+      if (
+        body.anchorQuote !== plainText.slice(body.anchorStart!, body.anchorEnd!)
+      ) {
+        throw new BadRequestException('Anchor does not match the post text');
+      }
+    }
+
+    return this._postRepository.createComment(
+      post.organizationId,
+      userId,
+      post.id,
+      body.content,
+      {
+        displayName: userId ? undefined : body.displayName!.trim(),
+        parentId: body.parentId,
+        anchorStart: hasStart ? body.anchorStart : undefined,
+        anchorEnd: hasStart ? body.anchorEnd : undefined,
+        anchorQuote: hasStart ? body.anchorQuote : undefined,
+      }
+    );
+  }
+
+  private async verifyRecaptcha(token: string | undefined, ip: string) {
+    if (!process.env.RECAPTCHA_SECRET_KEY) {
+      return;
+    }
+
+    if (!token) {
+      throw new BadRequestException('Captcha verification failed');
+    }
+
+    const result = await (
+      await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: token,
+          remoteip: ip,
+        }),
+      })
+    ).json();
+
+    if (!result?.success) {
+      throw new BadRequestException('Captcha verification failed');
+    }
+  }
+
+  async resolveComment(orgId: string, commentId: string, resolved: boolean) {
+    const comment = await this._postRepository.getCommentById(commentId);
+    if (!comment || comment.post.organizationId !== orgId) {
+      throw new NotFoundException('Comment not found');
+    }
+    if (comment.parentId) {
+      throw new BadRequestException('Only root comments can be resolved');
+    }
+
+    return this._postRepository.setCommentResolved(
+      commentId,
+      resolved ? new Date() : null
+    );
+  }
+
+  // A comment anchored to a span of text keeps its quote but loses the
+  // highlight once the span no longer reads the same on the new content.
+  async detachStaleAnchors(posts: { id: string; content: string }[]) {
+    for (const post of posts) {
+      const anchored = await this._postRepository.getAnchoredCommentsForPost(
+        post.id
+      );
+      if (!anchored.length) {
+        continue;
+      }
+
+      const plainText = postContentPlainText(post.content);
+      const stale = anchored
+        .filter(
+          (c) => c.anchorQuote !== plainText.slice(c.anchorStart!, c.anchorEnd!)
+        )
+        .map((c) => c.id);
+
+      if (stale.length) {
+        await this._postRepository.detachAnchorsForPost(post.id, stale);
+      }
+    }
   }
 
   getTags(orgId: string) {
@@ -1939,14 +2123,5 @@ export class PostsService {
 
   deleteTag(id: string, orgId: string) {
     return this._postRepository.deleteTag(id, orgId);
-  }
-
-  createComment(
-    orgId: string,
-    userId: string,
-    postId: string,
-    comment: string
-  ) {
-    return this._postRepository.createComment(orgId, userId, postId, comment);
   }
 }

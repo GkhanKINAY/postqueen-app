@@ -8,8 +8,11 @@ import {
   Req,
   Res,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { RealIP } from 'nestjs-real-ip';
@@ -33,6 +36,7 @@ import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/we
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
+import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
 
 const pump = promisify(pipeline);
 
@@ -109,7 +113,20 @@ export class PublicController {
 
   @Get(`/posts/:id/comments`)
   async getComments(@Param('id') postId: string) {
-    return { comments: await this._postsService.getComments(postId) };
+    return this._postsService.getComments(postId);
+  }
+
+  // Anyone holding the link can write here, signed in or not, so it is capped
+  // per client address, like the public Farcaster signer route.
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Post(`/posts/:id/comments`)
+  async createComment(
+    @Param('id') postId: string,
+    @Body() body: CreatePublicCommentDto,
+    @RealIP() ip: string
+  ) {
+    return this._postsService.createPublicComment(postId, body, null, ip);
   }
 
   @Post('/t')

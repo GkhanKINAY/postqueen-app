@@ -188,6 +188,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           googleAdsId={process.env.NEXT_PUBLIC_GTM_ID}
           googleAdsTrialTracking={process.env.NEXT_PUBLIC_TRACKING_TRIAL}
           language={language}
+          recaptchaSiteKey={process.env.RECAPTCHA_SITE_KEY || ''}
         >
           <SentryComponent>
             {/*<SetTimezone />*/}
