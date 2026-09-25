@@ -827,5 +827,12 @@
   "preview_comment_failed": "মন্তব্যটি পোস্ট করা যায়নি",
   "preview_comment_detach_hint": "নির্বাচিত টেক্সটে মন্তব্য করলে, টেক্সট সম্পাদনার পর হাইলাইট হারিয়ে যেতে পারে।",
   "preview_comment_text_changed": "টেক্সট পরিবর্তিত হয়েছে",
-  "preview_no_comments_yet": "এখনও কোনো মন্তব্য নেই। পোস্টে কিছু টেক্সট নির্বাচন করে অথবা সাধারণ মন্তব্য যোগ করে মন্তব্য করুন।"
+  "preview_no_comments_yet": "এখনও কোনো মন্তব্য নেই। পোস্টে কিছু টেক্সট নির্বাচন করে অথবা সাধারণ মন্তব্য যোগ করে মন্তব্য করুন।",
+  "preview_click_to_open_comment": "মন্তব্য খুলতে ক্লিক করুন",
+  "preview_select_text_to_comment": "মন্তব্য করতে টেক্সট নির্বাচন করুন",
+  "preview_comment_guest": "অতিথি",
+  "preview_comment_delete_confirm": "এই মন্তব্য এবং এর উত্তরগুলো মুছবেন?",
+  "preview_comment_delete_reply_confirm": "এই উত্তরটি মুছবেন?",
+  "preview_comment_delete_failed": "মন্তব্যটি মোছা যায়নি",
+  "captcha_unavailable": "ক্যাপচা লোড করা যায়নি। এটি আপনার ব্রাউজার বা নেটওয়ার্ক ব্লক করে থাকতে পারে। আবার চেষ্টা করতে পৃষ্ঠাটি রিলোড করুন।"
 }

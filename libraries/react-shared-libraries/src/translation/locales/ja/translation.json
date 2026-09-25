@@ -828,5 +828,12 @@
   "preview_comment_failed": "コメントの投稿に失敗しました",
   "preview_comment_detach_hint": "選択テキストへのコメントは、テキストが後から編集されるとハイライトが失われます。",
   "preview_comment_text_changed": "テキストが変更されました",
-  "preview_no_comments_yet": "まだコメントはありません。投稿内のテキストを選択してコメントするか、一般的なコメントを追加してください。"
+  "preview_no_comments_yet": "まだコメントはありません。投稿内のテキストを選択してコメントするか、一般的なコメントを追加してください。",
+  "preview_click_to_open_comment": "クリックしてコメントを開く",
+  "preview_select_text_to_comment": "テキストを選択してコメント",
+  "preview_comment_guest": "ゲスト",
+  "preview_comment_delete_confirm": "このコメントと返信を削除しますか？",
+  "preview_comment_delete_reply_confirm": "この返信を削除しますか？",
+  "preview_comment_delete_failed": "コメントを削除できませんでした",
+  "captcha_unavailable": "キャプチャを読み込めませんでした。ブラウザまたはネットワークでブロックされている可能性があります。ページを再読み込みして、もう一度お試しください。"
 }

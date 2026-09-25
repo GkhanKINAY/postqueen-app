@@ -1319,5 +1319,12 @@
   "preview_comment_failed": "Could not post the comment",
   "preview_comment_detach_hint": "Comments on selected text lose their highlight if the text is edited later.",
   "preview_comment_text_changed": "Text changed",
-  "preview_no_comments_yet": "No comments yet. Select some text in the post to comment on it, or add a general comment."
+  "preview_no_comments_yet": "No comments yet. Select some text in the post to comment on it, or add a general comment.",
+  "preview_click_to_open_comment": "Click to open the comment",
+  "preview_select_text_to_comment": "Select text to comment",
+  "preview_comment_guest": "Guest",
+  "preview_comment_delete_confirm": "Delete this comment and its replies?",
+  "preview_comment_delete_reply_confirm": "Delete this reply?",
+  "preview_comment_delete_failed": "Could not delete the comment",
+  "captcha_unavailable": "The captcha could not load. It may be blocked by your browser or network. Reload the page to try again."
 }

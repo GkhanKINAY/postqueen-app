@@ -828,5 +828,12 @@
   "preview_comment_failed": "Kommentar konnte nicht veröffentlicht werden",
   "preview_comment_detach_hint": "Kommentare zu ausgewähltem Text verlieren ihre Markierung, wenn der Text später bearbeitet wird.",
   "preview_comment_text_changed": "Text geändert",
-  "preview_no_comments_yet": "Noch keine Kommentare. Wählen Sie einen Text im Beitrag aus, um ihn zu kommentieren, oder fügen Sie einen allgemeinen Kommentar hinzu."
+  "preview_no_comments_yet": "Noch keine Kommentare. Wählen Sie einen Text im Beitrag aus, um ihn zu kommentieren, oder fügen Sie einen allgemeinen Kommentar hinzu.",
+  "preview_click_to_open_comment": "Klicken, um den Kommentar zu öffnen",
+  "preview_select_text_to_comment": "Text markieren, um zu kommentieren",
+  "preview_comment_guest": "Gast",
+  "preview_comment_delete_confirm": "Diesen Kommentar und seine Antworten löschen?",
+  "preview_comment_delete_reply_confirm": "Diese Antwort löschen?",
+  "preview_comment_delete_failed": "Der Kommentar konnte nicht gelöscht werden",
+  "captcha_unavailable": "Das Captcha konnte nicht geladen werden. Möglicherweise wird es von Ihrem Browser oder Netzwerk blockiert. Laden Sie die Seite neu, um es erneut zu versuchen."
 }

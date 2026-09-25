@@ -828,5 +828,12 @@
   "preview_comment_failed": "No se pudo publicar el comentario",
   "preview_comment_detach_hint": "Los comentarios sobre texto seleccionado pierden su resalte si el texto se edita más tarde.",
   "preview_comment_text_changed": "Texto modificado",
-  "preview_no_comments_yet": "Aún no hay comentarios. Selecciona texto en la publicación para comentarlo o agrega un comentario general."
+  "preview_no_comments_yet": "Aún no hay comentarios. Selecciona texto en la publicación para comentarlo o agrega un comentario general.",
+  "preview_click_to_open_comment": "Haz clic para abrir el comentario",
+  "preview_select_text_to_comment": "Selecciona texto para comentar",
+  "preview_comment_guest": "Invitado",
+  "preview_comment_delete_confirm": "¿Eliminar este comentario y sus respuestas?",
+  "preview_comment_delete_reply_confirm": "¿Eliminar esta respuesta?",
+  "preview_comment_delete_failed": "No se pudo eliminar el comentario",
+  "captcha_unavailable": "No se pudo cargar el captcha. Puede que tu navegador o tu red lo estén bloqueando. Recarga la página para volver a intentarlo."
 }

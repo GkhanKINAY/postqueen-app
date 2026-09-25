@@ -828,5 +828,12 @@
   "preview_comment_failed": "Impossible de publier le commentaire",
   "preview_comment_detach_hint": "Les commentaires sur le texte sélectionné perdent leur surlignement si le texte est modifié par la suite.",
   "preview_comment_text_changed": "Texte modifié",
-  "preview_no_comments_yet": "Aucun commentaire pour le moment. Sélectionnez du texte dans la publication pour le commenter, ou ajoutez un commentaire général."
+  "preview_no_comments_yet": "Aucun commentaire pour le moment. Sélectionnez du texte dans la publication pour le commenter, ou ajoutez un commentaire général.",
+  "preview_click_to_open_comment": "Cliquez pour ouvrir le commentaire",
+  "preview_select_text_to_comment": "Sélectionnez du texte pour commenter",
+  "preview_comment_guest": "Invité",
+  "preview_comment_delete_confirm": "Supprimer ce commentaire et ses réponses ?",
+  "preview_comment_delete_reply_confirm": "Supprimer cette réponse ?",
+  "preview_comment_delete_failed": "Impossible de supprimer le commentaire",
+  "captcha_unavailable": "Le captcha n’a pas pu se charger. Il est peut-être bloqué par votre navigateur ou votre réseau. Rechargez la page pour réessayer."
 }
