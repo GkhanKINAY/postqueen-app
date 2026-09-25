@@ -330,7 +330,7 @@ export const AgentList: FC<{
           type="button"
           data-pq="agent-add-channel"
           onClick={openAddChannel}
-          className="ms-auto flex h-[30px] items-center gap-[6px] rounded-[8px] px-[8px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+          className="ms-auto flex h-[30px] items-center gap-[6px] rounded-[8px] px-[8px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText mobile:h-[44px]"
         >
           <PlusGlyph size={14} />
           {t('add_channel', 'Add Channel')}
@@ -402,7 +402,9 @@ export const ChannelPickerButton: FC = () => {
     : t('agent_posting_to_many', 'Posting to {{count}} channels', { count });
 
   return (
-    <div ref={wrapRef} className="flex">
+    // The message box focuses its textarea on any click that is not on a
+    // button, which would pull focus out of the picker's search field.
+    <div ref={wrapRef} className="flex" onClick={(e) => e.stopPropagation()}>
       <button
         ref={referenceRef}
         type="button"
@@ -411,7 +413,7 @@ export const ChannelPickerButton: FC = () => {
         aria-haspopup="dialog"
         aria-expanded={pickerOpen}
         className={clsx(
-          'flex h-[30px] max-w-full items-center gap-[8px] rounded-full text-[12.5px] font-[600] transition-colors mobile:h-[36px]',
+          'flex h-[30px] max-w-full items-center gap-[8px] rounded-full text-[12.5px] font-[600] transition-colors mobile:h-[44px]',
           !count
             ? 'border border-dashed border-pqBrand bg-pqBrandSoft px-[11px] text-pqFocused'
             : pickerOpen
@@ -966,7 +968,7 @@ const useThreadActions = () => {
   );
 
   const remove = useCallback(
-    async (id: string, title: string) => {
+    async (id: string, title: string): Promise<boolean> => {
       if (
         !(await deleteDialog(
           t(
@@ -978,7 +980,7 @@ const useThreadActions = () => {
           t('delete_chat_title', 'Delete this chat?')
         ))
       ) {
-        return;
+        return false;
       }
       const response = await fetch(`/copilot/${id}`, { method: 'DELETE' });
       if (!response.ok) {
@@ -991,13 +993,15 @@ const useThreadActions = () => {
             : t('chat_delete_failed', 'Could not delete this chat, please try again'),
           'warning'
         );
-        return;
+        return false;
       }
       await mutate();
       toaster.show(t('chat_deleted', 'Chat deleted'), 'success');
       if (id === routeId) {
         router.push('/agents');
+        return true;
       }
+      return false;
     },
     [fetch, mutate, routeId, router, t, toaster]
   );
@@ -1113,6 +1117,11 @@ const ThreadRow: FC<{
   const { rename, remove } = useThreadActions();
   const [value, setValue] = useState(thread.title || '');
   const title = thread.title || '';
+  useEffect(() => {
+    if (renaming) {
+      setValue(thread.title || '');
+    }
+  }, [renaming, thread.title]);
 
   if (renaming) {
     const save = async () => {
@@ -1141,10 +1150,10 @@ const ThreadRow: FC<{
           }}
           className="h-full min-w-0 flex-1 bg-transparent text-[13.5px] text-pqText outline-none"
         />
-        <RowIconButton label={t('save_name', 'Save name')} onClick={() => void save()}>
+        <RowIconButton label={t('save_name', 'Save name')} onClick={() => void save()} size={touch ? 44 : 26}>
           <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </RowIconButton>
-        <RowIconButton label={t('cancel', 'Cancel')} onClick={() => setRenaming(null)}>
+        <RowIconButton label={t('cancel', 'Cancel')} onClick={() => setRenaming(null)} size={touch ? 44 : 26}>
           <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </RowIconButton>
       </div>
@@ -1172,7 +1181,7 @@ const ThreadRow: FC<{
         <RowIconButton
           label={t('chat_actions', 'Chat actions')}
           onClick={() => onActions?.(thread)}
-          size={40}
+          size={44}
         >
           <circle cx="5" cy="12" r="1.6" fill="currentColor" />
           <circle cx="12" cy="12" r="1.6" fill="currentColor" />
@@ -1265,6 +1274,9 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
 
   const [collapseRail, setCollapseRail] = useCookie('agentRailCollapse', '0');
   const collapsed = !sheet && collapseRail === '1';
+  // No hover on a touch screen: rows carry a ⋯ button and a sheet instead.
+  const { touch: touchScreen } = useViewport();
+  const touch = sheet || touchScreen;
 
   if (collapsed) {
     return (
@@ -1298,7 +1310,7 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
       thread={p}
       active={p.id === id}
       query={query}
-      touch={sheet}
+      touch={touch}
       renaming={renaming === p.id}
       setRenaming={setRenaming}
       onOpen={onNavigate}
@@ -1355,7 +1367,7 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
             className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-pqText outline-none placeholder:text-pqSoft"
           />
           {!!query && (
-            <RowIconButton label={t('clear_search', 'Clear search')} onClick={() => setQuery('')} size={24}>
+            <RowIconButton label={t('clear_search', 'Clear search')} onClick={() => setQuery('')} size={touch ? 44 : 24}>
               <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </RowIconButton>
           )}
@@ -1421,7 +1433,7 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
             type="button"
             data-pq="agent-clear-chats"
             onClick={() => void clearAll(threads.length)}
-            className="ms-auto flex h-[28px] shrink-0 items-center gap-[6px] rounded-[7px] px-[8px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqDanger mobile:h-[40px]"
+            className="ms-auto flex h-[28px] shrink-0 items-center gap-[6px] rounded-[7px] px-[8px] text-[12px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqDanger mobile:h-[44px]"
           >
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none">
               <path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -1430,7 +1442,7 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
           </button>
         )}
       </div>
-      {sheet && (
+      {touch && (
         <MobileSheet
           open={!!actionsFor}
           onClose={() => setActionsFor(null)}
@@ -1452,7 +1464,9 @@ const Threads: FC<{ sheet?: boolean; onNavigate?: () => void }> = ({
               onClick={() => {
                 const target = actionsFor!;
                 setActionsFor(null);
-                void remove(target.id, target.title || '');
+                void remove(target.id, target.title || '').then((left) => {
+                  if (left) onNavigate?.();
+                });
               }}
               className="flex h-[52px] items-center gap-[12px] px-[4px] text-[15px] font-[500] text-pqDanger"
             >
@@ -1478,7 +1492,7 @@ const RailIconButton: FC<{ label: string; onClick: () => void; children: ReactNo
     onClick={onClick}
     className="grid size-[30px] place-items-center rounded-[8px] text-pqSoft transition-colors hover:bg-pqHover hover:text-pqText"
   >
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" className="rtl:-scale-x-100">
       {children}
     </svg>
   </button>
@@ -1523,7 +1537,7 @@ const ChatBar: FC<{ onOpenChats?: () => void }> = ({ onOpenChats }) => {
           type="button"
           data-pq="agent-threads"
           onClick={onOpenChats}
-          className="flex h-[40px] shrink-0 items-center gap-[7px] rounded-[9px] px-[10px] text-[13.5px] font-[600] text-pqText"
+          className="flex h-[44px] shrink-0 items-center gap-[7px] rounded-[9px] px-[10px] text-[13.5px] font-[600] text-pqText"
         >
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none">
             <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

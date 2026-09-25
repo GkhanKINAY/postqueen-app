@@ -364,9 +364,11 @@ const UnconfiguredAgentShell: FC = () => {
     []
   );
   const [text, setText] = useState('');
-  // Same as the live box: a suggestion fills it, the person sends.
+  // Same as the live box: a suggestion fills it once, the person sends.
+  const appliedSeed = useRef(composerSeed.n);
   useEffect(() => {
-    if (!composerSeed.n) return;
+    if (composerSeed.n === appliedSeed.current) return;
+    appliedSeed.current = composerSeed.n;
     setText(composerSeed.text);
     textareaRef.current?.focus();
   }, [composerSeed.n, composerSeed.text]);
@@ -545,20 +547,28 @@ const LiveChatContext = createContext<{
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
   const message = props.message as { content?: unknown };
   const rest = useExtraToolCalls(props);
-  if (!message?.content) {
-    return (
-      <>
-        <CopilotAssistantMessage {...props} />
-        {rest}
-      </>
-    );
-  }
+  const t = useT();
+  // Every assistant message sits in the same column, so a card that arrives
+  // before the reply's text does not jump sideways when the text lands. The
+  // mark and the name only go on messages that say something.
+  const speaks = !!message?.content;
   return (
-    <div className="flex items-start gap-[10px]">
-      <span className="mt-[10px] flex h-[26px] w-[26px] shrink-0 select-none items-center justify-center rounded-[8px] bg-pqBrandSoft text-[10.5px] font-[700] text-pqFocused">
-        PQ
-      </span>
+    <div className="flex items-start gap-[12px]">
+      {speaks ? (
+        <PostQueenLogo
+          className="mt-[2px] shrink-0"
+          tileClassName="size-[28px] rounded-[8px] shadow-none"
+          glyphClassName="size-[15px]"
+        />
+      ) : (
+        <span aria-hidden="true" className="w-[28px] shrink-0" />
+      )}
       <div className="min-w-0 flex-1">
+        {speaks && (
+          <div className="flex h-[28px] items-center text-[12.5px] font-[600] text-pqText">
+            {t('copilot_name', 'Copilot')}
+          </div>
+        )}
         <CopilotAssistantMessage {...props} />
         {rest}
       </div>
@@ -1344,7 +1354,7 @@ const AgentImageCard: FC<{
       media={current || undefined}
       error={error}
       used={added || onCard ? 'added' : undefined}
-      useLabel={t('add_to_card', 'Add to card')}
+      useLabel={t('add_to_post', 'Add to post')}
       onUse={() => {
         if (!current) {
           return;
@@ -1401,7 +1411,7 @@ const AgentVideoCard: FC<{
       provider={args?.identifier}
       orientation={args?.output}
       used={added || onCard ? 'added' : undefined}
-      useLabel={t('add_to_card', 'Add to card')}
+      useLabel={t('add_to_post', 'Add to post')}
       onReady={setMedia}
       onUse={(video) => {
         const outcome = onAdd(video);

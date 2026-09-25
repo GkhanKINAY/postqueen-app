@@ -132,7 +132,7 @@ export const GeneratedMediaCard: FC<{
             <span className="text-[12.5px] font-[600] text-pqMuted">
               {used === 'attached'
                 ? t('suggestion_applied', 'Applied')
-                : t('added_to_card', 'Added to card')}
+                : t('added_to_post', 'Added to post')}
             </span>
           )}
           {status === 'ready' && used && onUndo && (

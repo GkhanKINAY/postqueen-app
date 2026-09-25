@@ -46,10 +46,16 @@ describe('Copilot channels live in the message box', () => {
   it('lets a suggestion fill the box without sending it', () => {
     assert.match(chat, /onClick=\{\(\) => seedComposer\(s\.prompt\)\}/);
     const seedEffect = input.slice(
-      input.indexOf('if (!composerSeed.n) return;'),
+      input.indexOf('appliedSeed.current = composerSeed.n;'),
       input.indexOf('}, [composerSeed.n, composerSeed.text]);')
     );
     assert.match(seedEffect, /setText\(composerSeed\.text\)/);
     assert.doesNotMatch(seedEffect, /onSend\(|send\(\)/);
+    // A box that mounts later (New chat) must not pick up an old seed.
+    assert.match(input, /const appliedSeed = useRef\(composerSeed\.n\)/);
+  });
+
+  it('keeps clicks inside the picker away from the message box', () => {
+    assert.match(agent, /<div ref=\{wrapRef\} className="flex" onClick=\{\(e\) => e\.stopPropagation\(\)\}>/);
   });
 });

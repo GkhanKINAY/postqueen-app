@@ -552,7 +552,7 @@ const DraftGroupView: FC<{
   return (
     <article
       data-pq="agent-draft-group"
-      className="flex flex-col gap-[10px] border-t border-pqLine pt-[12px] first:border-t-0 first:pt-0"
+      className="flex flex-col gap-[10px] border-t border-pqLine px-[16px] py-[12px] first:border-t-0"
     >
       <button
         type="button"
@@ -580,7 +580,11 @@ const DraftGroupView: FC<{
             {stateLabel}
           </span>
         )}
-        <span className="shrink-0 font-mono text-[11px] text-pqSoft">
+        <span className="flex shrink-0 items-center gap-[5px] text-[12px] text-pqMuted">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           {when(date)}
         </span>
         <ChevronDownIcon
@@ -709,33 +713,41 @@ export const AgentDraftCard: FC<{
     <div
       data-pq="agent-draft-card"
       data-state={state}
-      className="my-[8px] flex w-full max-w-[560px] flex-col gap-[14px] rounded-[14px] bg-pqPop p-[14px_16px] shadow-[inset_0_0_0_1px_var(--border)]"
+      className="my-[8px] flex w-full max-w-[640px] flex-col overflow-hidden rounded-[16px] bg-pqPop shadow-[inset_0_0_0_1px_var(--border),var(--e1)]"
     >
-      <div className="flex items-center gap-[8px]">
-        <div className="min-w-0 flex-1 text-[13px] font-[600] text-pqText">
+      <div className="flex items-center gap-[10px] border-b border-pqLine px-[16px] py-[12px]">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true" className="shrink-0 text-pqFocused">
+          <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM9 16l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <div className="min-w-0 truncate font-display text-[13.5px] font-[700] text-pqText">
           {groups.length && groups.every((group) => group.existing)
             ? t('update_post', 'Update post')
             : t('post_preview', 'Post Preview')}
         </div>
         {state === 'checking' && (
-          <span className="flex items-center gap-[6px] text-[12px] text-pqMuted">
-            <Spinner width={14} height={14} />
+          <span className="flex shrink-0 items-center gap-[6px] rounded-full bg-pqBrandSoft px-[8px] py-[3px] text-[11.5px] font-[600] text-pqFocused">
+            <Spinner width={12} height={12} />
             {t('checking_channel_rules', 'Checking channel rules')}
           </span>
         )}
+        {state === 'ready' && pending.length > 0 && (
+          <span className="shrink-0 rounded-full bg-pqSettings px-[8px] py-[3px] text-[11.5px] font-[600] text-pqMuted">
+            {t('draft_ready_to_schedule', 'Ready to schedule')}
+          </span>
+        )}
         {state === 'legacy' && (
-          <span className="text-[12px] text-pqSoft">
-            {t('draft_from_earlier_session', 'From an earlier session')}
+          <span className="shrink-0 rounded-full bg-pqSettings px-[8px] py-[3px] text-[11.5px] font-[600] text-pqMuted">
+            {t('draft_earlier_preview', 'Earlier preview')}
           </span>
         )}
       </div>
       {groups.length === 0 ? (
-        <div className="flex flex-col gap-[10px]" data-pq="agent-draft-loading">
+        <div className="flex flex-col gap-[10px] p-[16px]" data-pq="agent-draft-loading">
           <Skeleton className="h-[18px] w-[40%]" />
           <Skeleton className="h-[52px] w-full" />
         </div>
       ) : (
-        <div className="flex flex-col gap-[12px]">
+        <div className="flex flex-col">
           {groups.map((group, index) => (
             <DraftGroupView
               key={group.key}
@@ -771,7 +783,7 @@ export const AgentDraftCard: FC<{
       {state === 'invalid' && (
         <div
           data-pq="agent-draft-invalid"
-          className="flex flex-col gap-[4px] rounded-[10px] bg-pqSettings p-[10px_12px] text-[12.5px] text-pqMuted"
+          className="mx-[16px] mb-[14px] flex flex-col gap-[4px] rounded-[12px] bg-pqSettings p-[12px_14px] text-[12.5px] text-pqMuted"
         >
           <span className="font-[600] text-pqText">
             {stopped
@@ -786,8 +798,16 @@ export const AgentDraftCard: FC<{
           ))}
         </div>
       )}
+      {state === 'legacy' && (
+        <div className="flex items-center gap-[8px] border-t border-pqLine px-[16px] py-[11px] text-[12.5px] text-pqMuted">
+          {t(
+            'draft_legacy_note',
+            'This preview can no longer be scheduled from the chat. Ask Copilot to draft it again.'
+          )}
+        </div>
+      )}
       {actionable && pending.length > 1 && (
-        <div className="flex items-center justify-between gap-[8px] border-t border-pqLine pt-[12px]">
+        <div className="flex items-center justify-between gap-[8px] border-t border-pqLine bg-pqInner px-[16px] py-[12px]">
           <span className="text-[12.5px] text-pqMuted">
             {t('n_posts_waiting', '{count} posts waiting').replace(
               '{count}',

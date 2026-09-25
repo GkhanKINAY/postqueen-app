@@ -61,11 +61,11 @@ add_signature
 add_subreddit
 add_team_member
 add_time_slot
-add_to_card
+add_to_post
 add_webhook
 add_your_first_channel
 added_successfully
-added_to_card
+added_to_post
 adding_channel
 admin
 affiliate
@@ -1412,6 +1412,7 @@ continue_with_farcaster
 continue_with_google
 continue_with_wallet
 continue_without_set
+copilot_name
 copilot_step_analytics
 copilot_step_calendar
 copilot_step_card
@@ -1555,9 +1556,11 @@ download_invoice
 draft
 draft_changes_saved
 draft_could_not_be_fixed
-draft_from_earlier_session
+draft_earlier_preview
+draft_legacy_note
 draft_needs_a_fix
 draft_posted_now
+draft_ready_to_schedule
 draft_redone
 draft_saved_as_draft
 draft_saved_from_composer

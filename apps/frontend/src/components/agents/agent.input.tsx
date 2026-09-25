@@ -59,8 +59,12 @@ export const Input = ({
   // read through a ref rather than re-running this on each keystroke.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  // The seed lives in the page layout and outlives this box: a box that
+  // mounts later (New chat, another chat) must not pick up an old one.
+  const appliedSeed = useRef(composerSeed.n);
   useEffect(() => {
-    if (!composerSeed.n) return;
+    if (composerSeed.n === appliedSeed.current) return;
+    appliedSeed.current = composerSeed.n;
     setText(composerSeed.text);
     onChangeRef.current(composerSeed.text);
     textareaRef.current?.focus();
