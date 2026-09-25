@@ -399,6 +399,9 @@ model CreditGrant {
   /// The Stripe payment behind a purchased pack, so a refund or a dispute can
   /// find the grant it paid for.
   paymentRef     String?
+  /// The plan a plan or trial grant was made for, so an upgrade part-way
+  /// through a period can be topped up by the difference.
+  tier           String?
   periodStart    DateTime?
   periodEnd      DateTime?
   revokedAt      DateTime?

@@ -31,6 +31,7 @@ export interface CreditGrantInput {
   expiresAt?: Date | null;
   externalRef?: string | null;
   paymentRef?: string | null;
+  tier?: string | null;
   periodStart?: Date | null;
   periodEnd?: Date | null;
 }
@@ -308,6 +309,7 @@ export class CreditsRepository {
           expiresAt: grant.expiresAt,
           externalRef: grant.externalRef,
           paymentRef: grant.paymentRef,
+          tier: grant.tier,
           periodStart: grant.periodStart,
           periodEnd: grant.periodEnd,
         },

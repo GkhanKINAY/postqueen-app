@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS "CreditGrant" (
     "expiresAt" TIMESTAMP(3),
     "externalRef" TEXT,
     "paymentRef" TEXT,
+    "tier" TEXT,
     "periodStart" TIMESTAMP(3),
     "periodEnd" TIMESTAMP(3),
     "revokedAt" TIMESTAMP(3),
