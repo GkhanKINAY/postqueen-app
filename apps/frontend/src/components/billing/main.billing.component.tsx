@@ -44,6 +44,10 @@ import {
   FoundingPaidSurface,
 } from '@gitroom/frontend/components/billing/lifetime.deal';
 import { BillingPortalRow } from '@gitroom/frontend/components/billing/billing.portal.row';
+import {
+  CreditsPacksCard,
+  WithdrawalWaiver,
+} from '@gitroom/frontend/components/billing/credits.packs';
 import { BillingFeatures } from '@gitroom/frontend/components/billing/first.billing.component';
 
 type SubscriptionWithPlatform = Subscription & {
@@ -125,8 +129,10 @@ export const Prorate: FC<{
 };
 export const Features: FC<{
   pack: AnyTier;
+  /** A yearly plan's credits come as the year's twelve months at once. */
+  period?: 'MONTHLY' | 'YEARLY';
 }> = (props) => {
-  const { pack } = props;
+  const { pack, period } = props;
   const t = useT();
   const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
@@ -174,9 +180,14 @@ export const Features: FC<{
     // One balance pays for AI images, videos and the rest, by what each costs.
     if (currentPricing?.monthly_credits) {
       list.push({
-        label: t('plan_n_credits_month', '{{count}} credits a month', {
-          count: currentPricing.monthly_credits,
-        }),
+        label:
+          period === 'YEARLY'
+            ? t('plan_n_credits_year', '{{count}} credits a year, up front', {
+                count: currentPricing.monthly_credits * 12,
+              })
+            : t('plan_n_credits_month', '{{count}} credits a month', {
+                count: currentPricing.monthly_credits,
+              }),
       });
     }
     // Off until a clipping processor is configured: no plan advertises
@@ -191,7 +202,7 @@ export const Features: FC<{
       });
     }
     return list;
-  }, [pack, t, clippingEnabled]);
+  }, [pack, period, t, clippingEnabled]);
   return (
     <div className="flex flex-col gap-[9px]">
       {features.map((feature) => (
@@ -566,6 +577,9 @@ export const MainBillingComponent: FC<{
   const [monthlyOrYearly, setMonthlyOrYearly] = useState<'on' | 'off'>(
     period === 'MONTHLY' ? 'off' : 'on'
   );
+  // A yearly plan's credits arrive at once, so it is sold with the customer's
+  // consent to that (see WithdrawalWaiver); the server refuses it without.
+  const [waiver, setWaiver] = useState(false);
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
   );
@@ -868,6 +882,16 @@ export const MainBillingComponent: FC<{
           setLoading(false);
           return;
         }
+        if (monthlyOrYearly === 'on' && !waiver) {
+          toast.show(
+            t(
+              'withdrawal_waiver_yearly_required',
+              'Tick the box above the plans to continue with yearly.'
+            ),
+            'warning'
+          );
+          return;
+        }
         if (
           messages.length &&
           !(await deleteDialog(messages.join(', '), 'Yes, continue'))
@@ -882,6 +906,7 @@ export const MainBillingComponent: FC<{
             utm,
             billing,
             ...(dub ? { dub } : {}),
+            ...(monthlyOrYearly === 'on' ? { withdrawalWaiver: waiver } : {}),
           }),
         });
 
@@ -984,7 +1009,7 @@ export const MainBillingComponent: FC<{
         }
         setLoading(false);
       },
-    [monthlyOrYearly, subscription, user, utm, modal, mutate, fetch, toast, t, dub, track]
+    [monthlyOrYearly, waiver, subscription, user, utm, modal, mutate, fetch, toast, t, dub, track]
   );
   // An organization subscribed through the mobile app's store is managed
   // there: nothing on this page can change it, so say where to go instead.
@@ -1324,6 +1349,10 @@ export const MainBillingComponent: FC<{
         </div>
       )}
 
+      {!lifetimePaid && monthlyOrYearly === 'on' && (
+        <WithdrawalWaiver kind="yearly" checked={waiver} onChange={setWaiver} />
+      )}
+
       {!lifetimePaid && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(238px,1fr))] gap-[13px]">
           {Object.entries(pricing)
@@ -1471,7 +1500,10 @@ export const MainBillingComponent: FC<{
                     </Button>
                   )}
                   <div className="h-[1px] bg-pqLine" />
-                  <Features pack={name.toUpperCase() as AnyTier} />
+                  <Features
+                    pack={name.toUpperCase() as AnyTier}
+                    period={monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY'}
+                  />
                 </div>
               );
             })}
@@ -1479,9 +1511,19 @@ export const MainBillingComponent: FC<{
       )}
 
       {lifetimePaid ? (
-        <FoundingPaidSurface memberSince={subscription?.createdAt} />
+        <FoundingPaidSurface
+          memberSince={subscription?.createdAt}
+          extra={<CreditsPacksCard tier={subscription?.subscriptionTier} />}
+        />
       ) : (
         <>
+          {/* Packs top up a plan, so they are offered with one. */}
+          {!!subscription?.id && (
+            <CreditsPacksCard
+              tier={subscription.subscriptionTier}
+              period={subscription.period}
+            />
+          )}
           {/* Payment method / invoices: Stripe Customer Portal. Founding
               members share FoundingPaidSurface above so this row is only the
               monthly / trial path. */}

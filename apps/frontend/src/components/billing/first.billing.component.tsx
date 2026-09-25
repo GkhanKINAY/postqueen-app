@@ -53,6 +53,8 @@ import {
   CheckoutPayBarShell,
 } from '@gitroom/frontend/components/billing/checkout-pay-bar';
 import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billing-period-toggle';
+import { CreditsIcon } from '@gitroom/frontend/components/billing/credits.amount';
+import { WithdrawalWaiver } from '@gitroom/frontend/components/billing/credits.packs';
 import { CouponChrome } from '@gitroom/frontend/components/billing/coupon-chrome';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
@@ -676,6 +678,40 @@ const CheckoutEmbedNotice: FC<{ message: string }> = ({ message }) => {
   );
 };
 
+/**
+ * Stands where the payment form goes while a yearly plan waits for the
+ * customer's consent: a year of credits arrives at once, so the checkout is
+ * not even created until they have agreed to that.
+ */
+const YearlyWaiverNotice: FC<{
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}> = ({ checked, onChange }) => {
+  const t = useT();
+  return (
+    <div
+      data-pq="yearly-waiver"
+      className="billing-form flex w-full flex-1 flex-col gap-[22px] rounded-[22px] bg-pqInner p-[34px_32px] shadow-pqE1 ring-1 ring-inset ring-pqLine mobile:p-[24px_20px]"
+    >
+      <h2 className="font-display text-[21px] font-[600] tracking-[-0.02em]">
+        {t('billing_payment_details', 'Payment details')}
+      </h2>
+      <div className="flex items-start gap-[11px] rounded-[14px] bg-pqBrandSoft p-[13px_16px] text-[14.5px] text-pqText">
+        <span className="mt-[2px] text-pqBrand">
+          <CreditsIcon size={17} />
+        </span>
+        <span className="min-w-0 flex-1 leading-[1.5]">
+          {t(
+            'billing_yearly_credits_note',
+            'A yearly plan adds a full year of credits as soon as the year is paid.'
+          )}
+        </span>
+      </div>
+      <WithdrawalWaiver kind="yearly" checked={checked} onChange={onChange} />
+    </div>
+  );
+};
+
 // The open invoice of a subscription whose payment failed (`pendingPayment` in
 // stripe.service.ts). It is paid on Stripe's invoice page, never by starting a
 // second subscription next to the one Stripe is still retrying.
@@ -742,6 +778,10 @@ export const FirstBillingComponent = () => {
   const [tier, setTier] = useState('PRO');
   const [stripeFailed, setStripeFailed] = useState(false);
   const [period, setPeriod] = useState('MONTHLY');
+  // Consent to a yearly plan's credits starting at once; the checkout for a
+  // yearly plan is only created with it (see YearlyWaiverNotice).
+  const [waiver, setWaiver] = useState(false);
+  const needsWaiver = period === 'YEARLY' && !waiver;
   // Owner: open with Lifetime selected while the founding offer is on sale.
   // Subscription stays available via the plan grid.
   const [checkoutMode, setCheckoutMode] = useState<'subscription' | 'lifetime'>(
@@ -805,6 +845,7 @@ export const FirstBillingComponent = () => {
           ? { datafast_visitor_id, datafast_session_id }
           : {}),
         ...(dub ? { dub } : {}),
+        ...(period === 'YEARLY' ? { withdrawalWaiver: waiver } : {}),
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -818,7 +859,7 @@ export const FirstBillingComponent = () => {
       throw new Error(message);
     }
     return json;
-  }, [tier, period, datafast_visitor_id, datafast_session_id, dub, fetch]);
+  }, [tier, period, waiver, datafast_visitor_id, datafast_session_id, dub, fetch]);
 
   const showYouTube = () => {
     modals.openModal({
@@ -855,9 +896,10 @@ export const FirstBillingComponent = () => {
     return () => clearTimeout(again);
   }, [pending, revalidateIdentity]);
   const { data, isLoading, error: embedFetchError } = useSWR(
-    // No checkout while an invoice is open: the server would refuse it. A key,
-    // not `isPaused`, so the checkout loads the moment the invoice is gone.
-    pendingLoading || pending?.hostedInvoiceUrl
+    // No checkout while an invoice is open, or while a yearly plan waits for
+    // consent: the server would refuse either. A key, not `isPaused`, so the
+    // checkout loads the moment the invoice is gone or the box is ticked.
+    pendingLoading || pending?.hostedInvoiceUrl || needsWaiver
       ? null
       : `/billing-${tier}-${period}`,
     loadCheckout,
@@ -1162,6 +1204,8 @@ export const FirstBillingComponent = () => {
             <LoadingComponent />
           ) : pending?.hostedInvoiceUrl ? (
             <PendingPaymentNotice hostedInvoiceUrl={pending.hostedInvoiceUrl} />
+          ) : needsWaiver ? (
+            <YearlyWaiverNotice checked={waiver} onChange={setWaiver} />
           ) : data?.blocked ? (
             <div className="rounded-[20px] p-[24px] text-[16px] font-[500] ring-[1.5px] ring-inset ring-pqBorder">
               {t(
@@ -1375,7 +1419,7 @@ export const FirstBillingComponent = () => {
                   plan: tierLabel(tier),
                 })}
               </div>
-              <BillingFeatures tier={tier} />
+              <BillingFeatures tier={tier} period={period} />
             </div>
           </div>
           {/* Order summary bottom-right (portals from EmbeddedBilling). */}
@@ -1391,6 +1435,7 @@ export const FirstBillingComponent = () => {
               allowTrial={!!user?.allowTrial}
               checkoutUnavailable={
                 !isLoading &&
+                !needsWaiver &&
                 (!!embedFetchError || !!data?.blocked || !data?.client_secret)
               }
             />
@@ -1425,7 +1470,9 @@ export const BillingFeatures: FC<{
    * founding-member card (amber tick tiles on the lt text colours).
    */
   tone?: 'brand' | 'lifetime';
-}> = ({ tier, tone = 'brand' }) => {
+  /** A yearly plan's credits come as the year's twelve months at once. */
+  period?: string;
+}> = ({ tier, tone = 'brand', period }) => {
   const t = useT();
   const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
@@ -1484,11 +1531,19 @@ export const BillingFeatures: FC<{
     });
     // One balance pays for AI images, videos and the rest, by what each costs.
     if (currentPricing?.monthly_credits) {
-      list.push({
-        key: 'billing_credits_per_month',
-        defaultValue: 'credits a month',
-        prefix: currentPricing.monthly_credits,
-      });
+      list.push(
+        period === 'YEARLY'
+          ? {
+              key: 'billing_credits_per_year',
+              defaultValue: 'credits a year, up front',
+              prefix: currentPricing.monthly_credits * 12,
+            }
+          : {
+              key: 'billing_credits_per_month',
+              defaultValue: 'credits a month',
+              prefix: currentPricing.monthly_credits,
+            }
+      );
     }
     // Off until a clipping processor is configured: no plan advertises
     // minutes nobody can spend
@@ -1500,7 +1555,7 @@ export const BillingFeatures: FC<{
       });
     }
     return list;
-  }, [tier, clippingEnabled]);
+  }, [tier, period, clippingEnabled]);
 
   const renderFeature = (feature: FeatureItem) => {
     const translatedText = t(feature.key, feature.defaultValue);
