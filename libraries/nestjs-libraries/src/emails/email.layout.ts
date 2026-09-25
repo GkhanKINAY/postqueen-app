@@ -316,6 +316,21 @@ const block = (env: EmailEnv, b: EmailBlock): string => {
           'padding:12px 14px;border-radius:12px;',
         )
       );
+    case 'steps':
+      return (
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">` +
+        b.items
+          .map(
+            (item, i) =>
+              `<tr><td width="46" valign="top" style="width:46px;${i < b.items.length - 1 ? 'padding-bottom:18px;' : ''}">` +
+              `<div class="pq-soft-brand pq-tone-brand" style="width:32px;height:32px;border-radius:50%;background-color:${TONES.brand.soft};color:${TONES.brand.ink};font:800 14px/32px ${SANS};text-align:center;">${i + 1}</div></td>` +
+              `<td valign="top" style="padding-top:5px;${i < b.items.length - 1 ? 'padding-bottom:18px;' : ''}">` +
+              `<div class="pq-ink" style="font:800 15.5px/1.4 ${SANS};color:${LIGHT.ink};">${esc(item.title)}</div>` +
+              `<div class="pq-text" style="margin-top:3px;font:400 14.5px/1.55 ${SANS};color:${LIGHT.text};">${esc(item.text)}</div></td></tr>`,
+          )
+          .join('') +
+        `</table>`
+      );
     case 'note':
       return (
         `<div class="pq-rule" style="height:1px;line-height:1px;font-size:0;background-color:${LIGHT.line};">&nbsp;</div>` +
@@ -339,6 +354,7 @@ const FOOTER_WHY: Record<EmailFooter, string> = {
   billing: 'Billing emails about your plan are always on.',
   internal:
     'Internal. Sent to the support inbox when a customer does something the team should know about.',
+  welcome: 'You get this because you just created an account.',
   general: 'You get this because you have an account.',
 };
 const MANAGE: EmailFooter[] = ['success', 'failure', 'digest', 'streak'];
@@ -502,6 +518,12 @@ const text = (env: EmailEnv, c: EmailContent) => {
         break;
       case 'fallback':
         if (b.note) out.push(b.note);
+        break;
+      case 'steps':
+        out.push(
+          '',
+          ...b.items.map((item, i) => `${i + 1}. ${item.title}: ${item.text}`),
+        );
         break;
     }
   }

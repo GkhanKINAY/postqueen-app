@@ -130,6 +130,33 @@ describe('renderEmail', () => {
   });
 });
 
+describe('steps', () => {
+  it('numbers them in the HTML and in the text part', () => {
+    const { html, text } = renderEmail(env, 'Welcome', {
+      stream: 'account',
+      category: 'Welcome',
+      preheader: 'Ready.',
+      tone: 'brand',
+      title: 'Welcome to',
+      accent: 'PostQueen.',
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            { title: 'Connect <your> channels', text: 'One click each.' },
+            { title: 'Schedule a post', text: 'Pick a time.' },
+          ],
+        },
+      ],
+      footer: 'welcome',
+    });
+    assert.ok(html.includes('Connect &lt;your&gt; channels'));
+    assert.ok(text.includes('1. Connect <your> channels: One click each.'));
+    assert.ok(text.includes('2. Schedule a post: Pick a time.'));
+    assert.ok(text.includes('You get this because you just created an account.'));
+  });
+});
+
 describe('renderLegacyEmail', () => {
   it('keeps the old markup and its links inside the new frame', () => {
     const { html, text } = renderLegacyEmail(

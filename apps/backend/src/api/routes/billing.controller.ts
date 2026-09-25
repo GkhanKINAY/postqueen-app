@@ -348,13 +348,22 @@ export class BillingController {
     @Body() body: { feedback: string }
   ) {
     this.assertBillingEnabled();
-    await this._organizationService.sendCancellationFeedback(
-      org,
-      user.email,
-      body.feedback
-    );
-
-    return (await this.provider(org)).setToCancel(org.id);
+    // The same call un-cancels a cancelled plan, and then `cancel_at` is
+    // empty: only a cancellation tells the team and confirms to the customer.
+    const result = await (await this.provider(org)).setToCancel(org.id);
+    if (result?.cancel_at) {
+      await this._organizationService.sendCancellationFeedback(
+        org,
+        user.email,
+        body.feedback
+      );
+      await this._organizationService.sendCancellationConfirmation(
+        org,
+        user.email,
+        result.cancel_at
+      );
+    }
+    return result;
   }
 
   @Post('/prorate')

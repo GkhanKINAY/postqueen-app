@@ -199,6 +199,7 @@ export class AuthService {
       isNew = true;
       this._track('register', email, '').catch(() => {});
       await NewsletterService.register(email);
+      await this.sendWelcome(email);
     }
 
     // The code proves ownership of the inbox, so the account is verified.
@@ -281,6 +282,9 @@ export class AuthService {
             this.activationEmail(create.users[0].user),
             'top',
           );
+        } else {
+          // Ready to use now; with activation, the welcome waits for it.
+          await this.sendWelcome(body.email);
         }
         return obj;
       }
@@ -412,6 +416,7 @@ export class AuthService {
     );
 
     await NewsletterService.register(providerUser.email);
+    await this.sendWelcome(providerUser.email);
 
     try {
       if (providerInstance?.postRegistration) {
@@ -563,6 +568,7 @@ export class AuthService {
     user.activated = true;
     this._track('register', user.email, tracking).catch((err) => {});
     await NewsletterService.register(user.email);
+    await this.sendWelcome(user.email);
     // Signed from the row, not from the link, so none of the link's claims
     // end up in the session.
     return this.jwt(user);
@@ -777,6 +783,7 @@ export class AuthService {
 
       this._track('register', identity.email, '').catch(() => {});
       await NewsletterService.register(identity.email);
+      await this.sendWelcome(identity.email);
 
       return {
         jwt: await this.jwt(create.users[0].user),
@@ -797,6 +804,59 @@ export class AuthService {
       { expiresIn: ACTIVATION_LIFETIME },
     );
     return `${process.env.FRONTEND_URL}/auth/activate/${token}`;
+  }
+
+  /**
+   * Sent once, when an account is ready to use: at sign-up, or at activation
+   * where the install requires it. Behind the sign-in and security emails in
+   * the queue, and from the support address, so a reply reaches a person.
+   */
+  private async sendWelcome(email: string) {
+    // A welcome that cannot be queued must not fail the sign-up it follows.
+    await this._emailService
+      .sendEmail(
+      email,
+      'Welcome to PostQueen',
+      emailContent({
+        stream: 'account',
+        category: 'Welcome',
+        preheader: 'Your account is ready. Here is how to get your first post out.',
+        tone: 'brand',
+        title: 'Welcome to',
+        accent: 'PostQueen.',
+        lead: 'Your account is ready. Three steps and your first post is on its way.',
+        blocks: [
+          {
+            type: 'steps',
+            items: [
+              {
+                title: 'Connect your channels',
+                text: 'Instagram, TikTok, LinkedIn, X and more. Each one connects with the network’s own sign-in.',
+              },
+              {
+                title: 'Bring your AI agent',
+                text: 'Connect Claude, ChatGPT, Grok Bot or another agent, then ask it to post for you.',
+              },
+              {
+                title: 'Schedule your first post',
+                text: 'Write it yourself or ask the AI Copilot, then pick a time on your calendar.',
+              },
+            ],
+          },
+          {
+            type: 'button',
+            link: { label: 'Open my calendar', url: '/launches' },
+          },
+          {
+            type: 'note',
+            text: 'Stuck on a step? Reply to this email and we’ll help.',
+          },
+        ],
+        footer: 'welcome',
+      }),
+      'bottom',
+      )
+      .catch((err) => console.error('[auth] welcome email not queued', err));
   }
 
   private activationEmail(user: { id: string; email: string }) {

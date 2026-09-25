@@ -5,9 +5,13 @@ import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prism
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { AddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/add.team.member.dto';
 import { AdminAddTeamMemberDto } from '@gitroom/nestjs-libraries/dtos/settings/admin.add.team.member.dto';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  normalizeTier,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Organization, Role, ShortLinkPreference, User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
@@ -20,6 +24,8 @@ import {
   canTransferOwnership,
   isLastSuperAdmin,
 } from '@gitroom/nestjs-libraries/database/prisma/organizations/team-roles';
+
+dayjs.extend(utc);
 
 @Injectable()
 export class OrganizationService {
@@ -245,6 +251,70 @@ export class OrganizationService {
         footer: 'internal',
       }),
       email
+    );
+  }
+
+  /**
+   * Confirms a cancellation to the admin who made it: what plan, and until
+   * when it keeps working. A cancellation that ends the plan at once (a
+   * failed payment, a founding-member trial) says so instead.
+   */
+  async sendCancellationConfirmation(
+    org: Organization,
+    email: string,
+    cancelAt: Date
+  ) {
+    const plan =
+      // @ts-ignore
+      pricing[normalizeTier(org?.subscription?.subscriptionTier)]?.label ||
+      'PostQueen';
+    const endsNow = dayjs(cancelAt).isBefore(dayjs().add(1, 'hour'));
+    const date = dayjs.utc(cancelAt).format('MMMM D, YYYY');
+    await this._notificationsService.sendEmail(
+      email,
+      'Your PostQueen subscription is cancelled',
+      emailContent({
+        stream: 'account',
+        category: 'Billing',
+        preheader: endsNow
+          ? 'Your plan has ended. You won’t be charged again.'
+          : `Your ${plan} plan stays active until ${date}. You won’t be charged again.`,
+        tone: 'brand',
+        icon: 'check',
+        title: 'Your subscription is cancelled',
+        lead: endsNow
+          ? 'Your plan has ended and you won’t be charged again. Your account and posts stay, and you can pick a plan again any time from Billing.'
+          : `Your ${plan} plan stays active until the end of the period you paid for. After that it won’t renew, and you won’t be charged again.`,
+        blocks: [
+          {
+            type: 'details',
+            rows: endsNow
+              ? [
+                  ['Plan', plan],
+                  ['Ended', date],
+                ]
+              : [
+                  ['Plan', plan],
+                  ['Active until', date],
+                  ['Next charge', 'None'],
+                ],
+          },
+          ...(endsNow
+            ? []
+            : [
+                {
+                  type: 'text' as const,
+                  text: `Changed your mind? You can keep your plan from Billing before ${date}.`,
+                },
+              ]),
+          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+          {
+            type: 'note',
+            text: 'Questions about a charge? Reply to this email.',
+          },
+        ],
+        footer: 'billing',
+      })
     );
   }
 
