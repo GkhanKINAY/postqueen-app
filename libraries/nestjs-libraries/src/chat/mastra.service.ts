@@ -99,6 +99,102 @@ export class MastraService {
     });
   }
 
+  /** The Copilot page's chats, newest first. Composer chats live under their own resource and never show here. */
+  async listThreads(organizationId: string) {
+    const memory = await this.memory();
+    const list = await memory.listThreads({
+      filter: { resourceId: this.resourceId(organizationId, 'agent') },
+      perPage: 100000,
+      page: 0,
+      orderBy: { field: 'createdAt', direction: 'DESC' },
+    });
+    return list.threads.map((p) => ({
+      id: p.id,
+      title: p.title,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+  }
+
+  /**
+   * A page chat of this organization, or null. Rename and delete only ever
+   * reach the Chats list's own threads, never a composer chat.
+   */
+  private async findPageThread(organizationId: string, threadId: string) {
+    const { thread } = await this.findThread(organizationId, threadId);
+    return thread?.resourceId === this.resourceId(organizationId, 'agent')
+      ? thread
+      : null;
+  }
+
+  /** Runs live in a process-wide store, so any runner instance sees them. */
+  private async isRunning(organizationId: string, threadId: string) {
+    const runner = await this.threadRunner(organizationId);
+    return runner.isRunning({ threadId });
+  }
+
+  /**
+   * Mastra only names a thread while its title is empty, so a name given
+   * here is never overwritten by the next message. Null: not this
+   * organization's chat.
+   */
+  async renameThread(organizationId: string, threadId: string, title: string) {
+    const name = title.trim();
+    if (!name) {
+      throw new BadRequestException('A chat needs a name.');
+    }
+    const thread = await this.findPageThread(organizationId, threadId);
+    if (!thread) {
+      return null;
+    }
+    const memory = await this.memory();
+    const updated = await memory.updateThread({
+      id: thread.id,
+      title: name,
+      metadata: thread.metadata || {},
+    });
+    return { id: updated.id, title: updated.title };
+  }
+
+  /**
+   * Deletes the transcript and the thread in one go. A chat that is still
+   * answering is left alone: the end of its run saves the transcript and
+   * would bring the thread back. Posts it scheduled and media it made are
+   * not part of the thread and stay.
+   */
+  async deleteThread(
+    organizationId: string,
+    threadId: string
+  ): Promise<'deleted' | 'missing' | 'running'> {
+    const thread = await this.findPageThread(organizationId, threadId);
+    if (!thread) {
+      return 'missing';
+    }
+    if (await this.isRunning(organizationId, threadId)) {
+      return 'running';
+    }
+    const memory = await this.memory();
+    await memory.deleteThread(thread.id);
+    return 'deleted';
+  }
+
+  /** Every page chat of the organization, except the ones still answering. */
+  async clearThreads(organizationId: string) {
+    const threads = await this.listThreads(organizationId);
+    const memory = await this.memory();
+    let deleted = 0;
+    let running = 0;
+    for (const thread of threads) {
+      if (await this.isRunning(organizationId, thread.id)) {
+        running++;
+        continue;
+      }
+      await memory.deleteThread(thread.id);
+      deleted++;
+    }
+    return { deleted, running };
+  }
+
   async getThreadState(organizationId: string, threadId: string) {
     const { thread } = await this.findThread(organizationId, threadId);
     const state = thread?.metadata?.[THREAD_STATE_KEY];
