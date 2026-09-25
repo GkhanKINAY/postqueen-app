@@ -16,14 +16,18 @@ export * from './post-workflows/post.workflow.v1.0.11';
 // with, so removing it would break every autopost rule not yet migrated to v2.
 export * from './autopost.workflow';
 export * from './autopost.workflow.v2';
+// v1 stays exported: each organization's summary is one execution that runs
+// forever, and those started against v1 replay its code until terminated.
 export * from './digest.email.workflow';
-// v1 stays exported for the same reason as the two above: the singleton started
-// against it replays its own code until it is terminated by hand on deploy.
+export * from './digest.email.workflow.v2';
+// v1 stays exported for the same reason as the autopost pair: the singleton
+// started against it replays its own code until it is terminated by hand on deploy.
 export * from './missing.post.workflow';
 export * from './missing.post.workflow.v2';
 export * from './send.email.workflow';
 export * from './refresh.token.workflow';
 export * from './streak.workflow';
+export * from './streak.workflow.v2';
 export * from './generate.video.workflow';
 export * from './process.media.workflow';
 export * from './founding.fee.workflow';

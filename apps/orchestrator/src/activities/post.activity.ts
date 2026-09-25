@@ -36,6 +36,7 @@ import {
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
 import { publishNoticeReleaseUrl } from '@gitroom/helpers/utils/post.publish.notice';
+import { EmailRow } from '@gitroom/nestjs-libraries/emails/email.content';
 
 /**
  * Written to `Post.error` when a scheduled post could not run because the org
@@ -469,7 +470,7 @@ export class PostActivity {
     try {
       await this._temporalService.client
         .getRawClient()
-        .workflow.start('streakWorkflow', {
+        .workflow.start('streakWorkflowV2', {
           args: [{ organizationId: integration.organizationId }],
           workflowId: `streak_${integration.organizationId}`,
           taskQueue: 'main',
@@ -524,29 +525,86 @@ export class PostActivity {
     digest = false,
     type: NotificationType = 'success'
   ) {
+    // The frozen workflows only say "published on Tiktok at <url>". The url
+    // finds the post, so the email can name the network properly and show
+    // which post it was.
+    const url =
+      type === 'success' ? publishNoticeReleaseUrl(message) : undefined;
+    const published = url
+      ? await this._postService
+          .getPublishedByReleaseUrl(orgId, url)
+          .catch(() => null)
+      : null;
+
     // Frozen workflows always fire a digested success notice after
     // updatePost. Quiet posts opt out of that one; failures still speak.
     if (
       digest &&
-      type === 'success' &&
-      typeof message === 'string' &&
-      message.startsWith('Your post has been published')
+      url &&
+      message.startsWith('Your post has been published') &&
+      this._postService.shouldSkipPublishNotice(published)
     ) {
-      const url = publishNoticeReleaseUrl(message);
-      if (
-        url &&
-        (await this._postService.shouldSkipPublishNotice(orgId, url))
-      ) {
-        return;
-      }
+      return;
     }
+
+    const network = this.networkName(
+      published?.integration?.providerIdentifier,
+    );
+    const row: EmailRow | undefined = published?.integration
+      ? {
+          platform: published.integration.providerIdentifier,
+          meta: `${network} · ${published.integration.name}`,
+          title: this.excerpt(published.content) || 'Your post',
+          link: { label: 'View', url: url! },
+        }
+      : undefined;
+
+    // Every notice a post workflow sends is about publishing, so all of them
+    // wait for the hourly summary (the frozen workflows pass digest only for
+    // successes). One email an hour is what keeps these out of spam folders.
     await this._notificationService.inAppNotification(
       orgId,
-      subject,
+      row ? `Your post is live on ${network}` : subject,
       message,
       sendEmail,
-      digest,
-      type
+      true,
+      type,
+      url,
+      row
+        ? {
+            stream: 'notifications',
+            category: 'Published',
+            preheader: row.title,
+            tone: 'ok',
+            icon: 'check',
+            title: 'Your post is',
+            accent: 'live.',
+            lead: `PostQueen published it to ${published!.integration!.name} on ${network}.`,
+            blocks: [
+              {
+                type: 'rows',
+                rows: [
+                  {
+                    ...row,
+                    link: undefined,
+                    chip: { label: 'Published', tone: 'ok' },
+                  },
+                ],
+              },
+              {
+                type: 'button',
+                link: { label: `View on ${network}`, url: url! },
+                secondary: { label: 'Open calendar', url: '/launches' },
+              },
+              {
+                type: 'note',
+                text: 'Publishing updates come as one email an hour at most. This hour had just this one.',
+              },
+            ],
+            footer: 'success',
+          }
+        : undefined,
+      row,
     );
   }
 
@@ -645,11 +703,20 @@ export class PostActivity {
         return;
       }
       const channel = post.integration?.name || 'your channel';
+      const network = this.networkName(post.integration?.providerIdentifier);
+      const row: EmailRow = {
+        platform: post.integration?.providerIdentifier,
+        meta: `${network} · ${channel}`,
+        title: this.excerpt(post.content) || 'Your post',
+        chip: lapsed
+          ? { label: 'Not published', tone: 'warn' }
+          : { label: 'Failed', tone: 'danger' },
+      };
       await this._notificationService.inAppNotification(
         post.organizationId,
         lapsed
-          ? `Your post to ${channel} was not published`
-          : `We couldn't publish your post to ${channel}`,
+          ? `Your post to ${network} was not published`
+          : `We couldn't publish your post to ${network}`,
         lapsed
           ? // Not a failure of ours and not something retrying fixes, so it
             // says what happened and what to do, and is classed like the
@@ -659,13 +726,87 @@ export class PostActivity {
               reason ? `: ${reason}` : ''
             }. Open the post on your calendar to see the details.`,
         true,
-        false,
+        true,
         lapsed ? 'info' : 'fail',
-        lapsed ? '/billing' : '/launches'
+        lapsed ? '/billing' : '/launches',
+        lapsed
+          ? {
+              stream: 'notifications',
+              category: 'Not published',
+              preheader:
+                'Your subscription is no longer active. Renew it to publish again.',
+              tone: 'warn',
+              icon: 'card',
+              title: 'Your post wasn’t published',
+              lead: `Your post to ${channel} on ${network} didn’t go out, because your PostQueen subscription is no longer active.`,
+              blocks: [
+                { type: 'rows', rows: [row] },
+                {
+                  type: 'text',
+                  text: 'Renew your plan from Billing, then reschedule the post from your calendar.',
+                },
+                {
+                  type: 'button',
+                  link: { label: 'Renew my plan', url: '/billing' },
+                },
+              ],
+              footer: 'billing',
+            }
+          : {
+              stream: 'notifications',
+              category: 'Not published',
+              preheader: reason
+                ? `${network} said: ${reason}`
+                : `Your post to ${network} didn’t go out.`,
+              tone: 'danger',
+              icon: 'x-circle',
+              title: 'Your post didn’t go out',
+              lead: `We tried to publish this post to ${channel} on ${network}, and it failed.`,
+              blocks: [
+                ...(reason
+                  ? [{ type: 'reason' as const, label: 'Reason', text: reason }]
+                  : []),
+                { type: 'rows', rows: [row] },
+                {
+                  type: 'button',
+                  link: { label: 'Open the post', url: '/launches' },
+                },
+                {
+                  type: 'note',
+                  text: 'Fix it in your calendar, then schedule the post again.',
+                },
+              ],
+              footer: 'failure',
+            },
+        {
+          ...row,
+          text: lapsed
+            ? 'Not published: the subscription is no longer active.'
+            : reason || undefined,
+          chip: undefined,
+          link: { label: 'Open', url: lapsed ? '/billing' : '/launches' },
+        },
       );
     } catch (e) {
       // Never let the notification take down the state change itself.
     }
+  }
+
+  private networkName(providerIdentifier?: string) {
+    return providerIdentifier
+      ? this._integrationManager.getSocialIntegrationName(providerIdentifier)
+      : 'your channel';
+  }
+
+  /** The post's first words, for an email that has to say which post. */
+  private excerpt(content?: string | null) {
+    const text = stripHtmlValidation(
+      'none',
+      (content || '').replace(/<\/p>|<br\s*\/?>/gi, ' $&'),
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.length > 140 ? `${text.slice(0, 139).trimEnd()}…` : text;
   }
 
   @ActivityMethod()

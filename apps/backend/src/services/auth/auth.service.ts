@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
+import { emailContent } from '@gitroom/nestjs-libraries/emails/email.content';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 import { OtpService } from '@gitroom/nestjs-libraries/database/prisma/otp/otp.service';
 import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
@@ -103,7 +104,23 @@ export class AuthService {
     await this._notificationService.sendEmail(
       email,
       'Your PostQueen sign-in code',
-      `Your sign-in code is <strong style="font-size:20px;letter-spacing:2px">${code}</strong>.<br />It expires in 10 minutes. If you didn't request it, you can ignore this email.`,
+      emailContent({
+        stream: 'account',
+        category: 'Sign-in',
+        preheader: `Use it within 10 minutes to sign in as ${email}.`,
+        tone: 'brand',
+        icon: 'key',
+        title: 'Your sign-in code',
+        lead: `Enter this code on the PostQueen sign-in page to continue as **${email}**.`,
+        blocks: [
+          { type: 'code', code, note: 'Expires in 10 minutes' },
+          {
+            type: 'note',
+            text: 'Didn’t ask for a code? You can ignore this email. Your account stays as it is.',
+          },
+        ],
+        footer: 'security',
+      }),
     );
 
     // Never reveal whether the email maps to an existing account.
@@ -260,10 +277,8 @@ export class AuthService {
         if (isEmailActivationRequired()) {
           await this._emailService.sendEmail(
             body.email,
-            'Activate your account',
-            `Click <a href="${this.activationLink(
-              create.users[0].user,
-            )}">here</a> to activate your account`,
+            'Activate your PostQueen account',
+            this.activationEmail(create.users[0].user),
             'top',
           );
         }
@@ -449,10 +464,28 @@ export class AuthService {
       { expiresIn: RESET_LIFETIME },
     );
 
+    const link = `${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`;
     await this._notificationService.sendEmail(
       user.email,
-      'Reset your password',
-      `You have requested to reset your password. <br />Click <a href="${process.env.FRONTEND_URL}/auth/forgot/${resetValues}">here</a> to reset your password<br />The link will expire in 20 minutes`,
+      'Reset your PostQueen password',
+      emailContent({
+        stream: 'account',
+        category: 'Sign-in',
+        preheader: 'Choose a new password. The link works for 20 minutes.',
+        tone: 'brand',
+        icon: 'lock',
+        title: 'Reset your password',
+        lead: `We got a request to reset the password for **${user.email}**. Choose a new one with the button below.`,
+        blocks: [
+          { type: 'button', link: { label: 'Choose a new password', url: link } },
+          { type: 'fallback', url: link, note: 'It works for 20 minutes.' },
+          {
+            type: 'note',
+            text: 'Didn’t ask for this? Ignore this email. Your password stays the same.',
+          },
+        ],
+        footer: 'security',
+      }),
     );
   }
 
@@ -548,10 +581,8 @@ export class AuthService {
 
     await this._emailService.sendEmail(
       user.email,
-      'Activate your account',
-      `Click <a href="${this.activationLink(
-        user,
-      )}">here</a> to activate your account`,
+      'Activate your PostQueen account',
+      this.activationEmail(user),
       'top',
     );
 
@@ -766,6 +797,29 @@ export class AuthService {
       { expiresIn: ACTIVATION_LIFETIME },
     );
     return `${process.env.FRONTEND_URL}/auth/activate/${token}`;
+  }
+
+  private activationEmail(user: { id: string; email: string }) {
+    const link = this.activationLink(user);
+    return emailContent({
+      stream: 'account',
+      category: 'Account',
+      preheader:
+        'Confirm your email to finish signing up. The link works for 7 days.',
+      tone: 'brand',
+      icon: 'mail-check',
+      title: 'Confirm your email',
+      lead: `Thanks for signing up. Confirm that **${user.email}** is your email, and your account is ready to use.`,
+      blocks: [
+        { type: 'button', link: { label: 'Activate my account', url: link } },
+        { type: 'fallback', url: link, note: 'It works for 7 days.' },
+        {
+          type: 'note',
+          text: 'Didn’t sign up for PostQueen? Ignore this email and the account won’t be activated.',
+        },
+      ],
+      footer: 'security',
+    });
   }
 
   private async jwt(user: User) {

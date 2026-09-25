@@ -507,7 +507,8 @@ export class PostsRepository {
     });
   }
 
-  getSettingsByReleaseUrl(orgId: string, releaseURL: string) {
+  /** The post behind a publish notice: whether it wants one, and what it said. */
+  getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
     return this._post.model.post.findFirst({
       where: {
         organizationId: orgId,
@@ -516,6 +517,13 @@ export class PostsRepository {
       },
       select: {
         settings: true,
+        content: true,
+        integration: {
+          select: {
+            name: true,
+            providerIdentifier: true,
+          },
+        },
       },
     });
   }
