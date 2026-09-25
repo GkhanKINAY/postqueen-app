@@ -262,7 +262,9 @@ export default withProvider({
   CustomPreviewComponent: undefined,
   dto: XDto,
   maximumCharacters: (settings) => {
-    if (settings?.[0]?.value) {
+    // The server's `maxLength` holds an account X said has no subscription to
+    // 280 whatever the switch says, so the counter does too.
+    if (settings?.[0]?.value && settings?.[0]?.subscriptionType !== 'None') {
       return 4000;
     }
     return 280;

@@ -21,11 +21,14 @@ export function publishingOptionCopy(
     description?: string;
     type?: string;
     value?: unknown;
+    subscriptionType?: string;
   },
   t: Translate
 ) {
   if (option.title === 'Verified') {
-    const on = option.value === true;
+    // X's `maxLength` keeps an account X said has no subscription at 280
+    // whatever the switch says, so the status does too.
+    const on = option.value === true && option.subscriptionType !== 'None';
     return {
       title: t('x_long_posts', 'Long posts'),
       hint: t(

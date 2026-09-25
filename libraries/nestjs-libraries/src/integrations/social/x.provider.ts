@@ -97,10 +97,36 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   editor = 'html' as const;
   dto = XDto;
 
+  /**
+   * Whether X said, when this channel was connected, that the account has no
+   * subscription. `authenticate` keeps `subscription_type` on the "Verified"
+   * entry of additionalSettings, so nothing is asked of X per post.
+   *
+   * Only exactly `None` counts, the same one-directional rule the composer
+   * applies to the live answer from `subscriptionInfo`: a paid tier, a value
+   * this code has not seen, and a channel connected before the answer was kept
+   * all leave every option standing, because refusing something X would have
+   * allowed is the worse failure. The kept answer is as old as the connection;
+   * a reconnect refreshes it, and the refusals below say so.
+   */
+  private withoutPremium(additionalSettings?: any) {
+    return (
+      Array.isArray(additionalSettings) &&
+      additionalSettings.find((p: any) => p?.title === 'Verified')
+        ?.subscriptionType === 'None'
+    );
+  }
+
   maxLength(additionalSettings?: any, settings?: any) {
     // Articles are long-form content, the tweet character limit doesn't apply.
     if (settings?.post_type === 'article') {
       return 100000;
+    }
+
+    // Posts over 280 characters are a subscription feature, so the "Long
+    // posts" switch cannot unlock them for an account X said has none.
+    if (this.withoutPremium(additionalSettings)) {
+      return 280;
     }
 
     // Accepts either the parsed additionalSettings array (from validation) or a
@@ -127,8 +153,18 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   override async checkValidity(
     [firstPost, ...comments]: Array<{ path: string }[]>,
     settings: any,
+    additionalSettings: any[],
   ): Promise<string | true> {
+    const withoutPremium = this.withoutPremium(additionalSettings);
+
     if (settings?.post_type !== 'article') {
+      if (
+        withoutPremium &&
+        ['subscribers', 'verified'].includes(settings?.who_can_reply_post)
+      ) {
+        return 'X only lets Premium accounts limit replies to subscribers or verified accounts, reconnect the channel if this account has Premium now';
+      }
+
       // Every tweet, the first and each thread reply, takes up to 4 pictures,
       // or one GIF, or one video, never a mix (create-post reference:
       // media.media_ids holds at most 4, and a GIF or a video goes alone).
@@ -144,6 +180,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         }
       }
       return true;
+    }
+
+    if (withoutPremium) {
+      return 'X articles need an X Premium subscription, reconnect the channel if this account has Premium now';
     }
 
     if (
@@ -495,12 +535,20 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       await startingClient.login(code);
 
     const {
-      data: { username, verified, profile_image_url, name, id },
+      data: {
+        username,
+        verified,
+        profile_image_url,
+        name,
+        id,
+        subscription_type,
+      },
     } = await client.v2.me({
       'user.fields': [
         'username',
         'verified',
         'verified_type',
+        'subscription_type',
         'profile_image_url',
         'name',
       ],
@@ -519,7 +567,12 @@ export class XProvider extends SocialAbstract implements SocialProvider {
           title: 'Verified',
           description: 'Is this a verified user? (Premium)',
           type: 'checkbox' as const,
-          value: verified,
+          // A business or government check is `verified` without a
+          // subscription, so an account X says has none starts on 280.
+          value: subscription_type === 'None' ? false : verified,
+          // Read by `withoutPremium`. Kept as X said it, with no fallback:
+          // "X did not say" must stay apart from "X said None".
+          subscriptionType: subscription_type,
         },
       ],
     };
