@@ -574,11 +574,7 @@ export class UsersRepository {
     });
   }
 
-  /**
-   * Every account at the address, whatever the case it was typed in.
-   * `mode: 'insensitive'` compiles to ILIKE, where `_` and `%` are wildcards:
-   * unescaped, john_smith@ would also match john.smith@.
-   */
+  /** Every account at the address, whatever the case it was typed in. */
   turnOffEmails(
     email: string,
     fields: readonly (
@@ -590,7 +586,7 @@ export class UsersRepository {
     return this._user.model.user.updateMany({
       where: {
         email: {
-          equals: email.replace(/[\\%_]/g, '\\$&'),
+          equals: exactEmail(email),
           mode: 'insensitive',
         },
       },
