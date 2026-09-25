@@ -93,6 +93,29 @@ const tierNames = (tier: string) => [
 const productIsTier = (product: Stripe.Product, tier: string) =>
   tierNames(tier).includes(product.name.toUpperCase());
 
+/**
+ * How a plan change is applied. During a trial nothing has been paid, so it
+ * changes at once. A cheaper plan, or yearly to monthly, waits for the end of
+ * the paid period. Everything else (a dearer plan, monthly to yearly) is an
+ * upgrade, charged now and applied once paid.
+ */
+const planChangeKind = (
+  from: Stripe.Price,
+  to: Stripe.Price,
+  status: Stripe.Subscription.Status
+): 'in_trial' | 'at_period_end' | 'upgrade' => {
+  if (status === 'trialing') {
+    return 'in_trial';
+  }
+  const perMonth = (price: Stripe.Price) =>
+    (price.unit_amount || 0) / (price.recurring?.interval === 'year' ? 12 : 1);
+  const yearlyToMonthly =
+    from.recurring?.interval === 'year' && to.recurring?.interval === 'month';
+  return yearlyToMonthly || perMonth(to) < perMonth(from)
+    ? 'at_period_end'
+    : 'upgrade';
+};
+
 @PaymentProvider({ provider: STRIPE_PROVIDER })
 export class StripeService extends PaymentProviderAbstract {
   platform: PaymentPlatform = 'web';
@@ -409,6 +432,43 @@ export class StripeService extends PaymentProviderAbstract {
     return this.hasPaidInvoice(subscription.id);
   }
 
+  private retrieveSubscription(id: string) {
+    return stripe.subscriptions.retrieve(id, {
+      expand: ['items.data.price.product'],
+    });
+  }
+
+  /**
+   * The tier and period a subscription is actually billed for, read from its
+   * price. `metadata.billing` is only what was written at checkout: a plan
+   * change applied by Stripe later (a pending upgrade once paid, a scheduled
+   * downgrade at period end) changes the price and leaves the metadata behind.
+   * The metadata is the fallback for a price whose product is not one of ours.
+   */
+  private tierOfSubscription(subscription: Stripe.Subscription) {
+    const price = subscription.items?.data?.[0]?.price;
+    const product = price?.product;
+    const name =
+      product && typeof product === 'object' && 'name' in product
+        ? product.name.toUpperCase()
+        : undefined;
+    const fromPrice = name
+      ? Object.keys(pricing).find(
+          (tier) => tier !== 'FREE' && tierNames(tier).includes(name)
+        )
+      : undefined;
+    const interval = price?.recurring?.interval;
+    return {
+      billing: (fromPrice ||
+        normalizeTier(subscription.metadata?.billing)) as PaidTier,
+      period: (interval === 'year'
+        ? 'YEARLY'
+        : interval === 'month'
+        ? 'MONTHLY'
+        : subscription.metadata?.period) as 'MONTHLY' | 'YEARLY',
+    };
+  }
+
   /**
    * What a free trial needs to know about the card behind a payment method.
    *
@@ -544,109 +604,21 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * A $1 off-session authorization against the card, for trial signups.
+   * Whether Stripe has the money, or the card, for this subscription yet.
+   * `incomplete` means it has neither and will send another event when it
+   * does, so there is nothing to grant.
    *
-   * It no longer cancels anything. It used to: if the probe came back as
-   * anything other than `requires_capture`, or threw, it detached the card and
-   * called `subscriptions.cancel` on the subscription the customer had just
-   * completed Checkout for. Every new organization carries `allowTrial: true`
-   * until this webhook clears it, so that branch was on the path of the *first*
-   * subscription of every account.
-   *
-   * Three ways it fired on a perfectly good card: `off_session: true` throws
-   * `authentication_required` for any card that wants 3DS, which in an EU
-   * account is most of them; `currency: 'usd'` is hardcoded, and some issuers
-   * refuse a foreign-currency zero-value-style auth; and the detach used
-   * `paymentMethods.data[0].id` while the probe used `latestMethod.id`, so it
-   * could unlink a different card than the one that failed.
-   *
-   * Stripe Checkout has already validated and, where required, 3DS-verified the
-   * card before this event exists. A second off-session probe adds no signal
-   * worth a false positive that cancels a paid subscription, so the result is
-   * now advisory: logged, never acted on.
+   * This used to also place a $1 off-session authorization on trial cards.
+   * Its result had long been ignored (a probe that cancelled on failure took
+   * out good 3DS cards), so all it still did was trigger 3DS prompts and issuer
+   * fraud flags. Checkout validates the card itself before this event exists.
    */
   async checkValidCard(
     event:
       | Stripe.CustomerSubscriptionCreatedEvent
       | Stripe.CustomerSubscriptionUpdatedEvent
   ) {
-    if (event.data.object.status === 'incomplete') {
-      return false;
-    }
-
-    // A first checkout creates its customer (see `embedded`), so this event
-    // can arrive before `adoptSubscriptionCustomer` links it to the org.
-    const organizationId = event.data.object.metadata?.organizationId;
-    const getOrgFromCustomer =
-      (await this._organizationService.getOrgByCustomerId(
-        event.data.object.customer as string
-      )) ||
-      (organizationId
-        ? await this._organizationService.getOrgById(organizationId)
-        : null);
-
-    if (!getOrgFromCustomer?.allowTrial) {
-      return true;
-    }
-
-    console.log('Checking card');
-
-    const paymentMethods = await stripe.paymentMethods.list({
-      customer: event.data.object.customer as string,
-    });
-
-    // find the last one created
-    const latestMethod = paymentMethods.data.reduce(
-      (prev, current) => {
-        if (prev.created < current.created) {
-          return current;
-        }
-        return prev;
-      },
-      { created: -100 } as Stripe.PaymentMethod
-    );
-
-    if (!latestMethod.id) {
-      Logger.warn(
-        `[stripe] no payment method on customer ${event.data.object.customer}; granting anyway`
-      );
-      return true;
-    }
-
-    try {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: 100,
-        currency: 'usd',
-        payment_method: latestMethod.id,
-        customer: event.data.object.customer as string,
-        off_session: true,
-        capture_method: 'manual', // Authorize without capturing
-        confirm: true, // Confirm the PaymentIntent
-      });
-
-      if (paymentIntent.status === 'requires_capture') {
-        await stripe.paymentIntents.cancel(paymentIntent.id as string);
-      } else {
-        // Release the hold if one was placed. Without this a failed probe left
-        // a $1 authorization sitting on the card until it expired.
-        try {
-          await stripe.paymentIntents.cancel(paymentIntent.id as string);
-        } catch {
-          /* nothing to release */
-        }
-        Logger.warn(
-          `[stripe] card probe for ${event.data.object.customer} came back ${paymentIntent.status}; granting anyway`
-        );
-      }
-    } catch (err) {
-      Logger.warn(
-        `[stripe] card probe for ${event.data.object.customer} threw (${
-          (err as Error)?.message || err
-        }); granting anyway`
-      );
-    }
-
-    return true;
+    return event.data.object.status !== 'incomplete';
   }
 
   /**
@@ -716,20 +688,19 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
-    const {
-      uniqueId,
-      billing: writtenBilling,
-      period,
-    } = event.data.object.metadata as {
-      // Stripe hands this back as whatever was written when the subscription
-      // was created, so it has to name every tier that can be sold, not the
-      // two that could when this was written.
-      billing: PaidTier;
-      period: 'MONTHLY' | 'YEARLY';
-      uniqueId: string;
+    // Decided on the subscription as it is now, not as the event recorded it.
+    // Stripe retries a failed event for days and promises no order, so the
+    // event copy can be an `active` that was cancelled since; granting from it
+    // brought a deleted subscription back, with nothing left to correct it.
+    event = {
+      ...event,
+      data: {
+        ...event.data,
+        object: await this.retrieveSubscription(event.data.object.id),
+      },
     };
-    // Subscriptions made before the rename still say AGENCY.
-    const billing = normalizeTier(writtenBilling);
+    const { uniqueId } = event.data.object.metadata as { uniqueId: string };
+    const { billing, period } = this.tierOfSubscription(event.data.object);
 
     // `pricing[billing]` used to be dereferenced unguarded a few lines down.
     // `billing` comes from Stripe metadata, so a subscription created outside
@@ -746,6 +717,19 @@ export class StripeService extends PaymentProviderAbstract {
 
     if (await this.refuseTrialCard(event.data.object)) {
       return { ok: true, granted: false, reason: 'trial card refused' };
+    }
+
+    // Read live above, so a `created` delivered after the subscription was
+    // cancelled or went unpaid no longer grants it.
+    if (
+      event.data.object.status !== 'incomplete' &&
+      !(await this.isEntitled(event.data.object))
+    ) {
+      return {
+        ok: true,
+        granted: false,
+        reason: `status ${event.data.object.status}`,
+      };
     }
 
     // `checkValidCard` now returns false for exactly one reason: the
@@ -784,20 +768,19 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async updateSubscription(event: Stripe.CustomerSubscriptionUpdatedEvent) {
-    const {
-      uniqueId,
-      billing: writtenBilling,
-      period,
-    } = event.data.object.metadata as {
-      // Stripe hands this back as whatever was written when the subscription
-      // was created, so it has to name every tier that can be sold, not the
-      // two that could when this was written.
-      billing: PaidTier;
-      period: 'MONTHLY' | 'YEARLY';
-      uniqueId: string;
+    // Decided on the subscription as it is now, not as the event recorded it.
+    // Stripe retries a failed event for days and promises no order, so the
+    // event copy can be an `active` that was cancelled since; granting from it
+    // brought a deleted subscription back, with nothing left to correct it.
+    event = {
+      ...event,
+      data: {
+        ...event.data,
+        object: await this.retrieveSubscription(event.data.object.id),
+      },
     };
-    // Subscriptions made before the rename still say AGENCY.
-    const billing = normalizeTier(writtenBilling);
+    const { uniqueId } = event.data.object.metadata as { uniqueId: string };
+    const { billing, period } = this.tierOfSubscription(event.data.object);
 
     // Terminal statuses are handled FIRST, before the metadata and card checks
     // below. Both of those exist to decide what to *grant*, and neither has any
@@ -1153,9 +1136,26 @@ export class StripeService extends PaymentProviderAbstract {
     };
 
     try {
+      const current = currentUserSubscription?.data?.[0];
+      const item = current?.items?.data?.[0];
+      // Same rule as `subscribe`: a downgrade or yearly to monthly costs
+      // nothing now and changes at renewal.
+      if (
+        current &&
+        item &&
+        planChangeKind(item.price, findPrice!, current.status) ===
+          'at_period_end'
+      ) {
+        return {
+          price: 0,
+          scheduledAt: new Date(item.current_period_end * 1000),
+        };
+      }
+
       const price = await stripe.invoices.createPreview({
         customer,
-        subscription: currentUserSubscription?.data?.[0]?.id,
+        subscription: current?.id,
+        automatic_tax: { enabled: true },
         subscription_details: {
           // The same behaviour as the upgrade itself (the
           // `subscriptions.update` further down), so the "Pay Today" figure on
@@ -1243,6 +1243,15 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
+    // A scheduled downgrade is dropped by cancelling: Stripe refuses to change
+    // cancellation on a subscription a schedule manages, which left the
+    // customer unable to cancel at all.
+    const scheduleId =
+      typeof sub.schedule === 'string' ? sub.schedule : sub.schedule?.id;
+    if (scheduleId) {
+      await stripe.subscriptionSchedules.release(scheduleId);
+    }
+
     // If the user is toggling back (un-cancelling), just remove the cancel
     if (sub.cancel_at_period_end) {
       const { cancel_at } = await stripe.subscriptions.update(sub.id, {
@@ -1258,10 +1267,13 @@ export class StripeService extends PaymentProviderAbstract {
 
     // Check if the latest invoice has a failed payment
     const latestInvoice = sub.latest_invoice as Stripe.Invoice | null;
+    // Not an open upgrade invoice (`subscription_update`): that is an upgrade
+    // left unpaid, and the period already paid for still stands.
     const hasFailedPayment =
       sub.status === 'past_due' ||
-      latestInvoice?.status === 'open' ||
-      latestInvoice?.status === 'uncollectible';
+      (latestInvoice?.billing_reason !== 'subscription_update' &&
+        (latestInvoice?.status === 'open' ||
+          latestInvoice?.status === 'uncollectible'));
 
     if (hasFailedPayment) {
       // Payment already failed — cancel immediately and delete subscription
@@ -1721,6 +1733,13 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
+    // Once per customer. Eligibility only asked "monthly, no discount right
+    // now", so after the three months ran out, cancelling again earned another
+    // three at half price, as often as anyone liked.
+    if (await this._subscriptionService.getCode(`retention:${customer}`)) {
+      return false;
+    }
+
     // The env var being non-empty says nothing about the coupon existing.
     // Coupon ids are per-mode, so the id that works in test is absent in live —
     // and without this the offer was shown, the customer accepted it, and the
@@ -1790,6 +1809,10 @@ export class StripeService extends PaymentProviderAbstract {
         },
       ],
     });
+    await this._subscriptionService.createUsedCode(
+      organization.id,
+      `retention:${customer}`
+    );
 
     return true;
   }
@@ -2040,32 +2063,125 @@ export class StripeService extends PaymentProviderAbstract {
       ).data.filter((f) => f.status === 'active' || f.status === 'trialing'),
     };
 
+    const metadata = {
+      service: SUBSCRIPTION_SERVICE_TAG,
+      ...body,
+      userId,
+      id,
+      // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
+      // `ud` and no `uniqueId`, so the resulting subscription.updated carried
+      // `identifier: undefined` — Prisma reads undefined as "leave this column
+      // alone", so the row silently kept the previous identifier and
+      // `/billing/check/<new id>` could never resolve.
+      uniqueId,
+      ud: uniqueId,
+    };
+
     try {
-      await stripe.subscriptions.update(currentUserSubscription.data[0].id, {
-        cancel_at_period_end: false,
-        metadata: {
-          service: SUBSCRIPTION_SERVICE_TAG,
-          ...body,
-          userId,
+      const current = currentUserSubscription.data[0];
+      const item = current.items.data[0];
+      const change = planChangeKind(item.price, findPrice!, current.status);
+
+      // A pending downgrade scheduled earlier is replaced by whatever is asked
+      // now; an upgrade or an in-trial change cannot sit under a schedule.
+      const scheduleId =
+        typeof current.schedule === 'string'
+          ? current.schedule
+          : current.schedule?.id;
+
+      // Choosing a plan means keeping one: a pending cancellation is lifted
+      // first, and on its own, because a schedule cannot be created from a
+      // subscription set to cancel and a pending update cannot carry it.
+      if (current.cancel_at_period_end) {
+        await stripe.subscriptions.update(current.id, {
+          cancel_at_period_end: false,
+        });
+      }
+
+      if (change === 'at_period_end') {
+        // A downgrade, or yearly to monthly: the paid period runs out on the
+        // plan that was paid for and the new price starts at renewal. Applied
+        // at once it used to leave the unused time as account credit, which a
+        // refund of the original charge then paid out a second time.
+        const schedule = scheduleId
+          ? await stripe.subscriptionSchedules.retrieve(scheduleId)
+          : await stripe.subscriptionSchedules.create({
+              from_subscription: current.id,
+            });
+        // A running discount (the retention offer) carries over to both.
+        const discounts = (current.discounts || []).map((discount) => ({
+          discount: typeof discount === 'string' ? discount : discount.id,
+        }));
+        await stripe.subscriptionSchedules.update(schedule.id, {
+          end_behavior: 'release',
+          phases: [
+            {
+              items: [{ price: item.price.id, quantity: 1 }],
+              start_date:
+                schedule.current_phase?.start_date ||
+                schedule.phases[0].start_date,
+              end_date: item.current_period_end,
+              discounts,
+            },
+            {
+              items: [{ price: findPrice!.id, quantity: 1 }],
+              proration_behavior: 'none',
+              automatic_tax: { enabled: true },
+              discounts,
+              metadata,
+            },
+          ],
+        });
+        return {
           id,
-          // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
-          // `ud` and no `uniqueId`, so the resulting subscription.updated
-          // carried `identifier: undefined` — Prisma reads undefined as "leave
-          // this column alone", so the row silently kept the previous
-          // identifier and `/billing/check/<new id>` could never resolve. The
-          // customer had already been invoiced by `always_invoice` below.
-          uniqueId,
-          ud: uniqueId,
-        },
-        proration_behavior: 'always_invoice',
-        items: [
-          {
-            id: currentUserSubscription.data[0].items.data[0].id,
-            price: findPrice!.id,
-            quantity: 1,
-          },
-        ],
+          scheduledAt: new Date(item.current_period_end * 1000),
+        };
+      }
+
+      if (scheduleId) {
+        await stripe.subscriptionSchedules.release(scheduleId);
+      }
+
+      // An upgrade is applied only once it is paid. With the default
+      // `allow_incomplete` Stripe switched the price even when the upgrade
+      // invoice was declined, and the higher tier was granted for the whole
+      // retry window. `pending_if_incomplete` keeps the old price until the
+      // invoice is paid, and the webhook grants from the price actually billed.
+      // Metadata cannot ride on a pending update, so it is written after.
+      const updated = await stripe.subscriptions.update(current.id, {
+        ...(change === 'upgrade'
+          ? {
+              payment_behavior: 'pending_if_incomplete' as const,
+              proration_behavior: 'always_invoice' as const,
+            }
+          : { proration_behavior: 'none' as const }),
+        items: [{ id: item.id, price: findPrice!.id, quantity: 1 }],
+        expand: ['latest_invoice'],
       });
+
+      if (updated.pending_update) {
+        const invoice = updated.latest_invoice as Stripe.Invoice | null;
+        return {
+          portal:
+            invoice?.hosted_invoice_url ||
+            (await this.createBillingPortalLink(customer)).url,
+        };
+      }
+
+      // Bookkeeping after the change: the webhook grants from the price, so a
+      // failure here must not report a paid upgrade as a failed one.
+      try {
+        await stripe.subscriptions.update(current.id, {
+          automatic_tax: { enabled: true },
+          metadata,
+        });
+      } catch (err) {
+        Logger.warn(
+          `[stripe] plan change on ${current.id} applied, metadata not written: ${
+            (err as Error)?.message || err
+          }`
+        );
+      }
 
       return { id };
     } catch (err) {
@@ -2157,6 +2273,74 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * The subscription a charge paid for, found through the invoice it settled,
+   * and whether that invoice is the subscription's latest. A Charge no longer
+   * carries its invoice on this API version, so the link is the invoice payment
+   * behind the charge's PaymentIntent.
+   */
+  private async subscriptionOfCharge(charge: Stripe.Charge) {
+    const paymentIntent =
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+    if (!paymentIntent) {
+      return null;
+    }
+    const payments = await stripe.invoicePayments.list({
+      payment: { type: 'payment_intent', payment_intent: paymentIntent },
+      limit: 1,
+    });
+    const invoiceRef = payments.data[0]?.invoice;
+    const invoiceId =
+      typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id;
+    if (!invoiceId) {
+      return null;
+    }
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+    const ref = invoice.parent?.subscription_details?.subscription;
+    const subscriptionId = typeof ref === 'string' ? ref : ref?.id;
+    if (!subscriptionId) {
+      return null;
+    }
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const latest =
+      typeof subscription.latest_invoice === 'string'
+        ? subscription.latest_invoice
+        : subscription.latest_invoice?.id;
+    // A period's own invoice, not a proration for a mid-period upgrade:
+    // refunding that difference is goodwill, not the end of the plan.
+    const period = ['subscription_create', 'subscription_cycle'].includes(
+      invoice.billing_reason || ''
+    );
+    return { subscription, current: latest === invoiceId && period };
+  }
+
+  /**
+   * Ends the subscription a charge paid for, at once and without a refund or
+   * proration. Used when the money for it is gone (a chargeback, a full refund
+   * of the current period): leaving it running would bill again next month and
+   * keep the plan on in between.
+   */
+  private async cancelSubscriptionOfCharge(
+    charge: Stripe.Charge,
+    onlyCurrentPeriod: boolean
+  ) {
+    const found = await this.subscriptionOfCharge(charge);
+    if (
+      !found ||
+      found.subscription.status === 'canceled' ||
+      (onlyCurrentPeriod && !found.current)
+    ) {
+      return false;
+    }
+    await stripe.subscriptions.cancel(found.subscription.id, {
+      invoice_now: false,
+      prorate: false,
+    });
+    return true;
+  }
+
+  /**
    * A chargeback. The money is already gone and the bank has taken a fee on top,
    * so access goes with it — until now a disputed charge cost the payment, the
    * fee, and continued service.
@@ -2195,8 +2379,14 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true };
     }
 
+    // The subscription the disputed money paid for ends now. It used to keep
+    // running, since it was still `active`: the check below read it as a live
+    // customer, nothing was revoked, and the next month billed again, ready
+    // for the next dispute.
+    await this.cancelSubscriptionOfCharge(charge, false);
+
     // A dispute on an old charge must not cut off someone who is currently
-    // paying on a live subscription.
+    // paying on another live subscription.
     if (await this.hasEntitlingSubscription(customer)) {
       return { ok: true, revoked: false, reason: 'still subscribed' };
     }
@@ -2237,7 +2427,11 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true };
     }
 
-    // Refunding one past invoice is not a reason to end a running subscription.
+    // A full refund of the current period's charge ends that subscription: the
+    // period is no longer paid for. Refunding one past invoice is not a reason
+    // to end a running subscription, so only the latest invoice counts.
+    await this.cancelSubscriptionOfCharge(charge, true);
+
     if (await this.hasEntitlingSubscription(customer)) {
       return { ok: true, revoked: false, reason: 'still subscribed' };
     }
@@ -2276,6 +2470,63 @@ export class StripeService extends PaymentProviderAbstract {
     } catch (err) {
       return false;
     }
+  }
+
+  /**
+   * Revokes every local Stripe plan Stripe no longer backs.
+   *
+   * Webhooks are the only thing that write plans, and a webhook can be lost:
+   * Stripe gives up after three days of failures, and an event handled out of
+   * order used to leave a paid row behind a cancelled subscription. Nothing
+   * looked again, so that access was permanent. Run nightly by
+   * `billingReconcileWorkflowV1`; the same revoke as a `deleted` event.
+   *
+   * Only a customer Stripe has sold a subscription to is judged: a plan an
+   * admin granted (`/add-subscription`) is a `stripe` row with no Stripe
+   * subscription behind it at all, and must not be taken away here. One
+   * customer failing to load does not stop the rest.
+   */
+  async reconcileSubscriptions() {
+    const result = { checked: 0, revoked: 0, failed: 0 };
+    if (!isBillingEnabled()) {
+      return result;
+    }
+    for (const row of await this._subscriptionService.getStripeSubscriptionCustomers()) {
+      const customer = row.organization?.paymentId;
+      if (!customer?.startsWith('cus_')) {
+        continue;
+      }
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer,
+          status: 'all',
+          limit: 100,
+        });
+        if (!subscriptions.data.length) {
+          continue;
+        }
+        result.checked++;
+        if (await this.hasEntitlingSubscription(customer)) {
+          continue;
+        }
+        await this._subscriptionService.deleteSubscription(
+          customer,
+          STRIPE_PROVIDER
+        );
+        result.revoked++;
+        Logger.warn(
+          `[stripe] reconcile revoked ${row.organizationId}: no entitling subscription on ${customer}`
+        );
+      } catch (err) {
+        result.failed++;
+        Logger.warn(
+          `[stripe] reconcile could not check ${row.organizationId}: ${
+            (err as Error)?.message || err
+          }`
+        );
+      }
+    }
+    return result;
   }
 
   /**
@@ -2590,148 +2841,34 @@ export class StripeService extends PaymentProviderAbstract {
     return { cancelled: true };
   }
 
+  /**
+   * No self-serve refunds (owner, 2026-09-25): cancelling stops the renewal
+   * and the plan runs to the end of the period already paid for. A refund the
+   * law requires goes through support, and an admin can still refund charges
+   * from the admin panel (`refundCharges`). The support bot keeps asking, so
+   * this answers it with the policy and the date the plan runs to.
+   */
   async chatbaseRefundPreview(organizationId: string) {
     const org = await this._organizationService.getOrgById(organizationId);
-    if (!org?.paymentId) {
-      return {
-        eligible: false as const,
-        reason: 'No payment customer found for this organization',
-      };
-    }
-
-    const customer = org.paymentId;
-
-    const subscriptions = (
-      await stripe.subscriptions.list({
-        customer,
-        status: 'all',
-      })
-    ).data.filter((f) => f.status !== 'canceled');
-
-    if (!subscriptions.length) {
-      return {
-        eligible: false as const,
-        reason: 'No active subscription found for this customer',
-      };
-    }
-
-    const charges = (
-      await stripe.charges.list({
-        customer,
-        limit: 100,
-      })
-    ).data.filter((f) => f.status === 'succeeded');
-
-    if (charges.some((f) => f.refunded || f.amount_refunded > 0)) {
-      return {
-        eligible: false as const,
-        reason: 'A refund was already issued for this customer',
-      };
-    }
-
-    // only refund a charge that was created by the active subscription,
-    // never a one-off payment
-    let lastCharge: (typeof charges)[number] | undefined = undefined;
-    let chargeSubscription: (typeof subscriptions)[number] | undefined =
-      undefined;
-
-    for (const charge of charges) {
-      const invoiceId = (charge as any).invoice;
-      if (!invoiceId || typeof invoiceId !== 'string') {
-        continue;
-      }
-
-      try {
-        const invoice = await stripe.invoices.retrieve(invoiceId);
-        const invoiceSubscription =
-          invoice.parent?.subscription_details?.subscription;
-        const subscriptionId =
-          typeof invoiceSubscription === 'string'
-            ? invoiceSubscription
-            : invoiceSubscription?.id;
-
-        chargeSubscription = subscriptions.find((f) => f.id === subscriptionId);
-
-        if (chargeSubscription) {
-          lastCharge = charge;
-          break;
-        }
-      } catch {
-        // ignore if invoice can't be fetched
-      }
-    }
-
-    if (!lastCharge || !chargeSubscription) {
-      return {
-        eligible: false as const,
-        reason: 'No subscription payment found for this customer',
-      };
-    }
-
-    // The published policy: a charge is refunded in full when the customer asks
-    // within 30 days of it, monthly or yearly alike.
-    const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
-    if (lastCharge.created < thirtyDaysAgo) {
-      return {
-        eligible: false as const,
-        reason: 'The last subscription payment is older than 30 days',
-      };
-    }
-
-    const amount = lastCharge.amount;
-
-    const currentSubscription =
-      await this._subscriptionService.getSubscriptionByOrganizationId(
-        organizationId
-      );
-
+    const subscription = await this.getActiveStripeSubscription(
+      org?.paymentId
+    );
+    const periodEnd = subscription?.items?.data?.[0]?.current_period_end;
     return {
-      eligible: true as const,
-      chargeId: lastCharge.id,
-      amount: amount / 100,
-      currency: lastCharge.currency,
-      tier: currentSubscription?.subscriptionTier || null,
-      period: currentSubscription?.period || null,
-      subscriptionIds: subscriptions.map((f) => f.id),
+      eligible: false as const,
+      reason: periodEnd
+        ? `Refunds are not offered. If you cancel, your plan stays active until ${new Date(
+            periodEnd * 1000
+          ).toDateString()} and does not renew.`
+        : 'Refunds are not offered. If you cancel, your plan stays active until the end of the period you paid for and does not renew.',
     };
   }
 
   async chatbaseRefund(organizationId: string) {
     const preview = await this.chatbaseRefundPreview(organizationId);
-    if (!preview.eligible) {
-      return {
-        refunded: false,
-        reason: preview.reason,
-      };
-    }
-
-    const org = await this._organizationService.getOrgById(organizationId);
-
-    await stripe.refunds.create({
-      charge: preview.chargeId,
-      amount: Math.round(preview.amount * 100),
-      metadata: {
-        reason: 'chatbase_refund',
-        organizationId,
-      },
-    });
-
-    for (const subscriptionId of preview.subscriptionIds) {
-      await stripe.subscriptions.cancel(subscriptionId);
-    }
-
-    if (preview.subscriptionIds.length) {
-      await this._subscriptionService.deleteSubscription(
-        org?.paymentId!,
-        STRIPE_PROVIDER
-      );
-    }
-
     return {
-      refunded: true,
-      amount: preview.amount,
-      currency: preview.currency,
-      subscriptionCancelled: preview.subscriptionIds.length > 0,
+      refunded: false,
+      reason: preview.reason,
     };
   }
 
@@ -2956,16 +3093,7 @@ export class StripeService extends PaymentProviderAbstract {
     if (!subscription?.isLifetime) {
       return false;
     }
-    const codes = await this._subscriptionService.getCodesByOrgId(
-      organizationId
-    );
-    const codeList = codes.map((c) => c.code);
-    const hasDeferred = codeList.some((c) => c.startsWith('lifetime-setup:'));
-    const alreadyPaid =
-      codeList.some((c) => c.startsWith('lifetime-charge:')) ||
-      codeList.some((c) => c.startsWith('lifetime-retention:')) ||
-      codeList.some((c) => /^cs_/.test(c));
-    return hasDeferred && !alreadyPaid;
+    return this._subscriptionService.isFoundingFeeUnpaid(organizationId);
   }
 
   /**

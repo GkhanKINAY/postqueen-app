@@ -24,8 +24,13 @@ export class PermissionsService {
       await this._subscriptionService.getSubscriptionByOrganizationId(orgId);
 
     // Billing off: the top tier, whatever row is left (same rule as /user/self).
+    // A founding row whose deferred fee is overdue grants nothing until it is
+    // paid; it used to be locked in the app only, while the API still acted.
     const tier = !isBillingEnabled()
       ? 'ULTIMATE'
+      : subscription?.isLifetime &&
+        (await this._subscriptionService.isFoundingFeeOverdue(orgId))
+      ? 'FREE'
       : subscription?.subscriptionTier || 'FREE';
 
     const { channel, ...all } = pricing[tier];

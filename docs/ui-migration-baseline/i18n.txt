@@ -235,6 +235,7 @@ billing_cancel_notice_lapsed
 billing_cancel_notice_title
 billing_cancel_notice_trial
 billing_card_declined
+billing_changes_on
 billing_checkout
 billing_checkout_load_failed
 billing_checkout_unavailable
@@ -303,6 +304,7 @@ billing_per_month_short
 billing_per_year
 billing_per_year_short
 billing_pick_up
+billing_plan_change_scheduled
 billing_popular
 billing_portal_failed
 billing_powered_by_stripe
