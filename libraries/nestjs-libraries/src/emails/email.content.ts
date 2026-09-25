@@ -52,6 +52,7 @@ export type EmailFooter =
   | 'alert'
   | 'billing'
   | 'internal'
+  | 'welcome'
   | 'general';
 
 export interface EmailLink {
@@ -80,6 +81,7 @@ export type EmailBlock =
   | { type: 'rows'; rows: EmailRow[]; label?: string; tone?: EmailTone }
   | { type: 'button'; link: EmailLink; secondary?: EmailLink }
   | { type: 'fallback'; url: string; note?: string }
+  | { type: 'steps'; items: { title: string; text: string }[] }
   | { type: 'note'; text: string };
 
 export interface EmailContent {

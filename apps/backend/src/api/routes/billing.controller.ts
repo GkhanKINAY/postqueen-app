@@ -348,13 +348,24 @@ export class BillingController {
     @Body() body: { feedback: string }
   ) {
     this.assertBillingEnabled();
-    await this._organizationService.sendCancellationFeedback(
-      org,
-      user.email,
-      body.feedback
-    );
-
-    return (await this.provider(org)).setToCancel(org.id);
+    // The same call un-cancels a cancelled plan, and then `cancel_at` is
+    // empty: only a cancellation tells the team and confirms to the customer.
+    // A plan that was already cancelled (a repeated submit) is not news.
+    const wasCancelled = !!(
+      await this._subscriptionService.getSubscriptionByOrganizationId(org.id)
+    )?.cancelAt;
+    const result = await (await this.provider(org)).setToCancel(org.id);
+    if (result?.cancel_at && !wasCancelled) {
+      // The plan is already cancelled: an email that cannot be queued must
+      // not answer 500, or the customer's retry would un-cancel it.
+      await this._organizationService
+        .sendCancellationFeedback(org, user.email, body.feedback)
+        .catch((err) => Logger.error('cancel feedback email not queued', err));
+      await this._organizationService
+        .sendCancellationConfirmation(org, user.email, result.cancel_at)
+        .catch((err) => Logger.error('cancel confirmation not queued', err));
+    }
+    return result;
   }
 
   @Post('/prorate')
