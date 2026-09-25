@@ -77,7 +77,9 @@ const RATELIMIT_UNITS: Record<string, number> = {
 
 // How long Reddit asked us to wait, in milliseconds: `json.ratelimit` (seconds)
 // when present, otherwise the number in its message ("Take a break for 5
-// minutes before trying again", "try again in 30 seconds").
+// minutes before trying again", "try again in 30 seconds"). The message rounds
+// down, so "5 minutes" can mean 5:40 are left: a minute or an hour there is
+// given one unit more, or the retry lands inside the limit and fails the post.
 export const redditRateLimitWait = (json: any): number | undefined => {
   const seconds = Number(json?.ratelimit);
   if (Number.isFinite(seconds) && seconds > 0) {
@@ -88,9 +90,12 @@ export const redditRateLimitWait = (json: any): number | undefined => {
     .map((e: any[]) => e?.[1] || '')
     .join(' ');
   const match = text.match(/(\d+)\s*(millisecond|second|minute|hour)s?\b/i);
-  return match
-    ? Number(match[1]) * RATELIMIT_UNITS[match[2].toLowerCase()]
-    : undefined;
+  if (!match) {
+    return undefined;
+  }
+
+  const unit = RATELIMIT_UNITS[match[2].toLowerCase()];
+  return (Number(match[1]) + (unit >= RATELIMIT_UNITS.minute ? 1 : 0)) * unit;
 };
 
 const subredditName = (subreddit: string) =>

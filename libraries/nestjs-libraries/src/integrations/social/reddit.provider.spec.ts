@@ -78,14 +78,14 @@ describe('redditRateLimitWait', () => {
     );
   });
 
-  it('reads the wait from the message', () => {
+  it('reads the wait from the message, a unit up for minutes', () => {
     assert.equal(
       redditRateLimitWait(
         RATELIMIT(
           "Looks like you've been doing that a lot. Take a break for 5 minutes before trying again."
         ).json
       ),
-      5 * MINUTE
+      6 * MINUTE
     );
     assert.equal(
       redditRateLimitWait(
@@ -95,7 +95,7 @@ describe('redditRateLimitWait', () => {
     );
     assert.equal(
       redditRateLimitWait(RATELIMIT('try again in 1 minute').json),
-      MINUTE
+      2 * MINUTE
     );
   });
 
@@ -122,8 +122,8 @@ describe('Reddit RATELIMIT', () => {
     assert.equal(result.pendingData.armed, undefined);
     assert.equal(calls.length, 1);
     const until = result.pendingData.rateLimit.until;
-    assert.ok(until >= before + 9 * MINUTE + 15 * 1000);
-    assert.ok(until <= Date.now() + 9 * MINUTE + 15 * 1000);
+    assert.ok(until >= before + 10 * MINUTE + 15 * 1000);
+    assert.ok(until <= Date.now() + 10 * MINUTE + 15 * 1000);
     assert.equal(result.pendingData.rateLimit.cursor, 0);
   });
 
