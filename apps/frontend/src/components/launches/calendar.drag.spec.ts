@@ -8,6 +8,10 @@ const calendar = readFileSync(
   fileURLToPath(new URL('./calendar.tsx', import.meta.url)),
   'utf8',
 );
+const moveSheet = readFileSync(
+  fileURLToPath(new URL('../layout/move-post-sheet.tsx', import.meta.url)),
+  'utf8',
+);
 const service = readFileSync(
   fileURLToPath(
     new URL(
@@ -54,5 +58,23 @@ describe('calendar drop does not publish drafts', () => {
       service,
       /if \(getPostById\?\.state === 'DRAFT'\) \{\s*action = 'update';/s,
     );
+  });
+});
+
+describe('every reschedule path restarts the publish job', () => {
+  it('the touch Move sheet sends the same action as a drop', () => {
+    // Without an action the server defaults to `update`, which only rewrites
+    // publishDate: the workflow keeps sleeping and posts at the old time.
+    assert.match(
+      moveSheet,
+      /action: dateChangeActionForDrop\(item\.state\)/,
+    );
+  });
+
+  it('both drop sites opt in to republishing after the modal said so', () => {
+    const optIns = [
+      ...calendar.matchAll(/\.\.\.\(action === 'schedule' \? \{ republish: true \} : \{\}\)/g),
+    ];
+    assert.equal(optIns.length, 2, 'week/month cell and DayHourSection');
   });
 });

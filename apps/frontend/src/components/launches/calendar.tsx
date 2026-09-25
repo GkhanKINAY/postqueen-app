@@ -2968,6 +2968,10 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
               body: JSON.stringify({
                 date: getDate.utc().format('YYYY-MM-DDTHH:mm:ss'),
                 action,
+                // Same opt-in as the week drop: a published post only gets
+                // here after "Reschedule the post" in the modal above, and
+                // without the flag the server refuses the republish.
+                ...(action === 'schedule' ? { republish: true } : {}),
               }),
             }));
           } catch (e) {
