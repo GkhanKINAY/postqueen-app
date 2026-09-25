@@ -340,11 +340,10 @@ export class BillingController {
     @Body() body: { feedback: string }
   ) {
     this.assertBillingEnabled();
-    await this._notificationService.sendEmail(
-      process.env.EMAIL_FROM_ADDRESS,
-      'Subscription Cancelled',
-      `Organization ${org.name} has cancelled their subscription because: ${body.feedback}`,
-      user.email
+    await this._organizationService.sendCancellationFeedback(
+      org,
+      user.email,
+      body.feedback
     );
 
     return (await this.provider(org)).setToCancel(org.id);

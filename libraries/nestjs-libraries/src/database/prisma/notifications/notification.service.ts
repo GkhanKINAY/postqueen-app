@@ -5,6 +5,13 @@ import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prism
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
+import {
+  DigestItem,
+  EmailContent,
+  EmailRow,
+  emailContent,
+  noticeEmail,
+} from '@gitroom/nestjs-libraries/emails/email.content';
 
 export type NotificationType = 'success' | 'fail' | 'info';
 
@@ -42,6 +49,12 @@ export class NotificationService {
     return this._notificationRepository.markAllAsRead(userId);
   }
 
+  /**
+   * `email` is what the email says when the in-app line alone would make a poor
+   * one. Without it the email is drawn from the subject, message and link.
+   *
+   * `digest` sends it with the hourly publishing summary instead of right away.
+   */
   async inAppNotification(
     orgId: string,
     subject: string,
@@ -49,37 +62,35 @@ export class NotificationService {
     sendEmail = false,
     digest = false,
     type: NotificationType = 'success',
-    link?: string | null
+    link?: string | null,
+    email?: EmailContent,
+    row?: EmailRow,
   ) {
     await this._notificationRepository.createNotification(orgId, message, link);
     if (!sendEmail) {
       return;
     }
 
-    const emailMessage = link
-      ? `${message} ${
-          link.startsWith('http')
-            ? link
-            : `${process.env.FRONTEND_URL || ''}${link}`
-        }`
-      : message;
+    const item: DigestItem = {
+      title: subject,
+      message,
+      type,
+      link,
+      email,
+      row,
+    };
 
     if (digest) {
       try {
+        // v2 draws one summary from these items. It runs under its own id: the
+        // v1 executions (`digest_email_workflow_<org>`) join raw messages, and
+        // keep doing so for whatever they already hold.
         await this._temporalService.client
           .getRawClient()
-          ?.workflow.signalWithStart('digestEmailWorkflow', {
-            workflowId: 'digest_email_workflow_' + orgId,
+          ?.workflow.signalWithStart('digestEmailWorkflowV2', {
+            workflowId: 'digest_email_v2_' + orgId,
             signal: 'email',
-            signalArgs: [
-              [
-                {
-                  title: subject,
-                  message: emailMessage,
-                  type,
-                },
-              ],
-            ],
+            signalArgs: [[item]],
             taskQueue: 'main',
             workflowIdConflictPolicy: 'USE_EXISTING',
             args: [{ organizationId: orgId }],
@@ -95,7 +106,12 @@ export class NotificationService {
       return;
     }
 
-    await this.sendEmailsToOrg(orgId, subject, emailMessage, type);
+    await this.sendEmailsToOrg(
+      orgId,
+      subject,
+      emailContent(email || noticeEmail(item)),
+      type,
+    );
   }
 
   async sendEmailsToOrg(

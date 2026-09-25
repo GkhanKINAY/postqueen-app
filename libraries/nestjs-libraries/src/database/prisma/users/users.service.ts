@@ -1,4 +1,5 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
+import { emailContent } from '@gitroom/nestjs-libraries/emails/email.content';
 import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users/users.repository';
 import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
@@ -108,11 +109,31 @@ export class UsersService {
             .sendEmail(
               account.email,
               'Your PostQueen login was changed',
-              `An administrator changed the login for your PostQueen account. ` +
-                `You can now sign in using ${account.email}. ` +
-                `Your subscription and plan were not changed by this switch — ` +
-                `if you intended to cancel a subscription, please do that ` +
-                `separately from your billing settings.`
+              emailContent({
+                stream: 'account',
+                category: 'Account',
+                preheader: `You now sign in with ${account.email}. Your plan did not change.`,
+                tone: 'brand',
+                icon: 'user-cog',
+                title: 'Your login was changed',
+                lead: 'A PostQueen administrator changed the login for your account. From now on, you sign in with:',
+                blocks: [
+                  { type: 'address', text: account.email },
+                  {
+                    type: 'callout',
+                    text: 'Your subscription and plan did not change. If you meant to cancel a subscription, do that from Billing.',
+                  },
+                  {
+                    type: 'button',
+                    link: { label: 'Sign in', url: '/auth/login' },
+                  },
+                  {
+                    type: 'note',
+                    text: 'Didn’t expect this? Reply to this email and we’ll look into it.',
+                  },
+                ],
+                footer: 'security',
+              }),
             )
             .catch((err) =>
               this._logger.error(`Failed to notify ${account.email}`, err)
@@ -414,10 +435,29 @@ export class UsersService {
       },
       { expiresIn: '20m' }
     );
+    const link = `${process.env.FRONTEND_URL}/settings?tab=account&setPassword=${token}`;
     await this._notificationService.sendEmail(
       user.email,
-      'Set your PostQueen password',
-      `Click <a href="${process.env.FRONTEND_URL}/settings?tab=account&setPassword=${token}">here</a> to set a password. The link expires in 20 minutes.`
+      'Set a password for PostQueen',
+      emailContent({
+        stream: 'account',
+        category: 'Account',
+        preheader:
+          'Add a password to your account. The link works for 20 minutes.',
+        tone: 'brand',
+        icon: 'key',
+        title: 'Set your password',
+        lead: 'You asked to add a password to your PostQueen account. Once it is set, you can also sign in with your email and password.',
+        blocks: [
+          { type: 'button', link: { label: 'Set my password', url: link } },
+          { type: 'fallback', url: link, note: 'It works for 20 minutes.' },
+          {
+            type: 'note',
+            text: 'Didn’t ask for this? Ignore this email. Nothing changes on your account.',
+          },
+        ],
+        footer: 'security',
+      }),
     );
     return { emailed: true };
   }
@@ -475,16 +515,61 @@ export class UsersService {
       { expiresIn: '20m' }
     );
 
+    const link = `${process.env.FRONTEND_URL}/settings?tab=account&confirmEmail=${token}`;
     await this._notificationService.sendEmail(
       email,
       'Confirm your new PostQueen email',
-      `Click <a href="${process.env.FRONTEND_URL}/settings?tab=account&confirmEmail=${token}">here</a> to confirm this as your new email. The link expires in 20 minutes.`
+      emailContent({
+        stream: 'account',
+        category: 'Account',
+        preheader: 'One click and this address becomes your PostQueen login.',
+        tone: 'brand',
+        icon: 'mail',
+        title: 'Confirm your new email',
+        lead: `You asked to use **${email}** for your PostQueen account. Confirm it to finish the change. Until then, you sign in with ${user.email}.`,
+        blocks: [
+          { type: 'button', link: { label: 'Confirm new email', url: link } },
+          { type: 'fallback', url: link, note: 'It works for 20 minutes.' },
+          {
+            type: 'note',
+            text: 'Didn’t ask for this? Ignore this email and nothing changes.',
+          },
+        ],
+        footer: 'security',
+      }),
     );
     await this._notificationService
       .sendEmail(
         user.email,
         'Your PostQueen email is being changed',
-        `Someone requested to change the email on your PostQueen account to ${email}. If this was not you, sign in and change your password.`
+        emailContent({
+          stream: 'account',
+          category: 'Security',
+          preheader: `Someone asked to move your account to ${email}. Not you? Change your password.`,
+          tone: 'warn',
+          icon: 'shield-alert',
+          title: 'Your email is being changed',
+          lead: 'Someone asked to change the email on your PostQueen account to:',
+          blocks: [
+            { type: 'address', text: email },
+            {
+              type: 'text',
+              text: 'The change only happens after the new address is confirmed. Not you? Sign in and change your password now.',
+            },
+            {
+              type: 'button',
+              link: {
+                label: 'Change my password',
+                url: '/settings?tab=account',
+              },
+            },
+            {
+              type: 'note',
+              text: 'If you asked for this change, there is nothing else to do.',
+            },
+          ],
+          footer: 'security',
+        }),
       )
       .catch((err) =>
         this._logger.error(`Failed to notify ${user.email} of email change`, err)

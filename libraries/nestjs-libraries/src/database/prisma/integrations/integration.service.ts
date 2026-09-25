@@ -1,3 +1,4 @@
+import { EmailRow } from '@gitroom/nestjs-libraries/emails/email.content';
 import {
   forwardRef,
   HttpException,
@@ -179,7 +180,36 @@ export class IntegrationService implements OnModuleInit {
           true,
           false,
           'info',
-          '/settings?tab=autopost'
+          '/settings?tab=autopost',
+          {
+            stream: 'notifications',
+            category: 'Plan change',
+            preheader: 'Your plan includes Auto Post again.',
+            tone: 'ok',
+            icon: 'rss',
+            title: 'Auto Post is',
+            accent: 'back on.',
+            lead: `Your plan includes Auto Post again, so ${
+              data.length > 1 ? `your ${data.length} rules are` : 'your rule is'
+            } running again.`,
+            blocks: [
+              {
+                type: 'rows',
+                rows: data.map((rule) => ({
+                  title: rule.title || 'Auto Post rule',
+                  chip: { label: 'Running', tone: 'ok' as const },
+                })),
+              },
+              {
+                type: 'button',
+                link: {
+                  label: 'Open Auto Post',
+                  url: '/settings?tab=autopost',
+                },
+              },
+            ],
+            footer: 'billing',
+          },
         );
       } catch (err) {
         console.error(`[autopost] restore notice failed for ${orgId}`, err);
@@ -453,18 +483,30 @@ export class IntegrationService implements OnModuleInit {
     );
   }
 
+  /** A channel as one line of an email: its network icon, name and state. */
+  private channelRow(
+    channel: { name: string; providerIdentifier: string },
+    label: string,
+    tone: 'ok' | 'warn',
+  ): EmailRow {
+    return {
+      platform: channel.providerIdentifier,
+      meta: this._integrationManager.getSocialIntegrationName(
+        channel.providerIdentifier
+      ),
+      title: channel.name,
+      chip: { label, tone },
+    };
+  }
+
   async informAboutRefreshError(
     orgId: string,
     integration: Integration,
     err = ''
   ) {
-    const providerName = (
-      this._integrationManager.getSocialIntegration(
-        integration.providerIdentifier
-      )?.name || integration.providerIdentifier
-    )
-      .split('\n')[0]
-      .trim();
+    const providerName = this._integrationManager.getSocialIntegrationName(
+      integration.providerIdentifier
+    );
     const account = integration.name?.trim();
     const who =
       account && account.toLowerCase() !== providerName.toLowerCase()
@@ -477,12 +519,47 @@ export class IntegrationService implements OnModuleInit {
     const link = `/channels?${params.toString()}`;
     await this._notificationService.inAppNotification(
       orgId,
-      message,
+      `Reconnect your ${providerName} channel`,
       message,
       true,
       false,
       'info',
-      link
+      link,
+      {
+        stream: 'notifications',
+        category: 'Channel alert',
+        preheader: `PostQueen lost access to ${
+          account || providerName
+        } on ${providerName}. Posts to it won’t go out until you reconnect.`,
+        tone: 'warn',
+        icon: 'plug',
+        title: `Reconnect ${providerName}`,
+        lead: `PostQueen could not refresh its access to ${
+          account || 'your channel'
+        } on ${providerName}. This usually happens after a password change, or when the access runs out.`,
+        blocks: [
+          {
+            type: 'rows',
+            rows: [
+              {
+                platform: integration.providerIdentifier,
+                meta: providerName,
+                title: account || providerName,
+                chip: { label: 'Needs reconnect', tone: 'warn' },
+              },
+            ],
+          },
+          {
+            type: 'text',
+            text: 'Posts to this channel won’t go out until you reconnect it.',
+          },
+          {
+            type: 'button',
+            link: { label: `Reconnect ${providerName}`, url: link },
+          },
+        ],
+        footer: 'alert',
+      },
     );
     if (err?.trim()) {
       console.error(
@@ -654,7 +731,38 @@ export class IntegrationService implements OnModuleInit {
           true,
           false,
           'info',
-          '/billing'
+          '/billing',
+          {
+            stream: 'notifications',
+            category: 'Plan change',
+            preheader: `Your plan now allows fewer channels, so ${disabled.length} of them won’t publish.`,
+            tone: 'warn',
+            icon: 'power',
+            title: `${disabled.length} channel${
+              disabled.length > 1 ? 's were' : ' was'
+            } switched off`,
+            lead: `Your plan now allows fewer channels, so ${
+              disabled.length > 1 ? 'these were' : 'this one was'
+            } switched off and won’t publish:`,
+            blocks: [
+              {
+                type: 'rows',
+                rows: disabled.map((c) => this.channelRow(c, 'Off', 'warn')),
+              },
+              {
+                type: 'text',
+                text: `Upgrade, or remove another channel, to turn ${
+                  disabled.length > 1 ? 'them' : 'it'
+                } back on.`,
+              },
+              {
+                type: 'button',
+                link: { label: 'See plans', url: '/billing' },
+                secondary: { label: 'Manage channels', url: '/channels' },
+              },
+            ],
+            footer: 'billing',
+          },
         );
       } catch (err) {
         console.error(`[integrations] downgrade notice failed for ${org}`, err);
@@ -693,7 +801,31 @@ export class IntegrationService implements OnModuleInit {
           true,
           false,
           'info',
-          '/channels'
+          '/channels',
+          {
+            stream: 'notifications',
+            category: 'Plan change',
+            preheader:
+              'Your plan allows more channels again. They can publish now.',
+            tone: 'ok',
+            icon: 'power',
+            title: `Your channel${enabled.length > 1 ? 's are' : ' is'}`,
+            accent: 'back on.',
+            lead: `Your plan allows more channels again, so ${
+              enabled.length > 1 ? 'these were' : 'this one was'
+            } switched back on and can publish:`,
+            blocks: [
+              {
+                type: 'rows',
+                rows: enabled.map((c) => this.channelRow(c, 'On', 'ok')),
+              },
+              {
+                type: 'button',
+                link: { label: 'Open channels', url: '/channels' },
+              },
+            ],
+            footer: 'billing',
+          },
         );
       } catch (err) {
         console.error(`[integrations] upgrade notice failed for ${org}`, err);

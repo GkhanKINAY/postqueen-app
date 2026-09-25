@@ -1,4 +1,5 @@
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
+import { emailContent } from '@gitroom/nestjs-libraries/emails/email.content';
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -168,16 +169,83 @@ export class OrganizationService {
         id,
       })}`;
     if (body.sendEmail) {
-      const inviter = user.name
-        ? `${user.name} (${user.email})`
-        : user.email;
+      const inviter = user.name || user.email;
+      // Everything here is text the inviter typed (their name, the workspace
+      // name) going to someone else's inbox. The layout escapes it; it used to
+      // be pasted into the HTML as is, so a workspace name could carry a link.
       await this._notificationsService.sendEmail(
         body.email,
-        `${user.name || user.email} invited you to join "${org.name}"`,
-        `${inviter} has invited you to join the "${org.name}" team.<br /><a href="${url}">Accept the invitation</a> to get started.<br />The link will expire in 2 days.`
+        `${inviter} invited you to ${org.name} on PostQueen`,
+        emailContent({
+          stream: 'account',
+          category: 'Invitation',
+          preheader:
+            'Join the team to plan and publish posts together. The invitation works for 2 days.',
+          tone: 'brand',
+          initial: org.name,
+          title: `Join ${org.name}`,
+          accent: 'on PostQueen.',
+          lead: `**${inviter}**${
+            user.name ? ` (${user.email})` : ''
+          } invited you to plan and publish posts with the ${org.name} team.`,
+          blocks: [
+            {
+              type: 'details',
+              rows: [
+                ['Workspace', org.name],
+                ['Invited by', inviter],
+                ['Expires', 'In 2 days'],
+              ],
+            },
+            { type: 'button', link: { label: 'Accept invitation', url } },
+            { type: 'fallback', url },
+            {
+              type: 'note',
+              text: `Don’t know ${inviter}? Ignore this email. The invitation expires on its own.`,
+            },
+          ],
+          footer: 'invite',
+        }),
       );
     }
     return { url };
+  }
+
+  /** Tells the team inbox that a workspace cancelled, and why. Replies go to the admin. */
+  async sendCancellationFeedback(
+    org: Organization,
+    email: string,
+    feedback?: string
+  ) {
+    await this._notificationsService.sendEmail(
+      process.env.EMAIL_FROM_ADDRESS!,
+      `Cancelled: ${org.name}`,
+      emailContent({
+        stream: 'account',
+        category: 'Internal',
+        preheader: `Reason: ${feedback || 'none given'}`,
+        tone: 'brand',
+        icon: 'x-circle',
+        title: `${org.name} cancelled`,
+        lead: 'The workspace admin cancelled the subscription and gave this reason:',
+        blocks: [
+          { type: 'callout', text: feedback || 'No reason given.' },
+          {
+            type: 'details',
+            rows: [
+              ['Workspace', org.name],
+              ['Cancelled by', email],
+            ],
+          },
+          {
+            type: 'button',
+            link: { label: 'Reply to the customer', url: `mailto:${email}` },
+          },
+        ],
+        footer: 'internal',
+      }),
+      email
+    );
   }
 
   async addTeamMemberByEmail(org: Organization, body: AdminAddTeamMemberDto) {

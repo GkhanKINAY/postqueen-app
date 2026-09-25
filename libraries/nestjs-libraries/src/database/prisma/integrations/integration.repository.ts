@@ -1160,6 +1160,7 @@ export class IntegrationRepository {
       select: {
         id: true,
         name: true,
+        providerIdentifier: true,
       },
     });
 
@@ -1204,6 +1205,7 @@ export class IntegrationRepository {
       select: {
         id: true,
         name: true,
+        providerIdentifier: true,
       },
     });
 
