@@ -486,6 +486,8 @@
   "yes_logout": "Yes logout",
   "are_you_sure_you_want_to_delete_this_slot": "Are you sure you want to delete this slot?",
   "are_you_sure_you_want_to_delete_this_subreddit": "Are you sure you want to delete this Subreddit?",
+  "are_you_sure_you_want_to_delete_this_community": "Are you sure you want to delete this community?",
+  "are_you_sure_you_want_to_delete_this_farcaster_channel": "Are you sure you want to delete this channel?",
   "are_you_sure_you_want_to_close_the_window": "Are you sure you want to close the window?",
   "yes_close": "Yes, close",
   "link_copied_to_clipboard": "Link copied to clipboard",

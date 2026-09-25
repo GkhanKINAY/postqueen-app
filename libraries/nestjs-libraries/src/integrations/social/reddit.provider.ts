@@ -775,39 +775,62 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
 
-    // Reddit uses thing_id format like t3_xxx for posts
-    const thingId = postId.startsWith('t3_') ? postId : `t3_${postId}`;
+    // postId is comma-separated when the post went to several subreddits
+    // (completedResponse): the comment goes under each of them, like Lemmy's
+    // communities. It used to be sent as one thing_id and Reddit refused it.
+    const postIds = postId.split(',');
+    const valueArray: PostResponse[] = [];
 
-    const {
-      json: {
-        data: {
-          things: [
-            {
-              data: { id: commentId, permalink },
-            },
-          ],
-        },
-      },
-    } = await (
-      await this.fetch('https://oauth.reddit.com/api/comment', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          text: commentPost.message,
-          thing_id: thingId,
-          api_type: 'json',
-        }),
-      })
-    ).json();
+    for (const singlePostId of postIds) {
+      // Reddit uses thing_id format like t3_xxx for posts
+      const thingId = singlePostId.startsWith('t3_')
+        ? singlePostId
+        : `t3_${singlePostId}`;
 
-    return [
-      {
+      const all = await (
+        await this.fetch('https://oauth.reddit.com/api/comment', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            text: commentPost.message,
+            thing_id: thingId,
+            api_type: 'json',
+          }),
+        })
+      ).json();
+
+      // Reddit refuses a comment with a 200 and an errors array (a locked
+      // thread, RATELIMIT), like a submit: surface its reason instead of
+      // failing on the missing comment.
+      if (all?.json?.errors?.length) {
+        throw new BadBody(
+          this.identifier,
+          JSON.stringify(all),
+          Buffer.from('{}'),
+          `Reddit rejected the comment on post ${singlePostId}: ${all.json.errors
+            .map((e: any[]) => e?.[1] || e?.[0] || '')
+            .join(', ')}`
+        );
+      }
+
+      const { id: commentId, permalink } = all.json.data.things[0].data;
+
+      valueArray.push({
         postId: commentId,
         releaseURL: 'https://www.reddit.com' + permalink,
         id: commentPost.id,
+        status: 'published',
+      });
+    }
+
+    return [
+      {
+        id: commentPost.id,
+        postId: valueArray.map((p) => p.postId).join(','),
+        releaseURL: valueArray.map((p) => p.releaseURL).join(','),
         status: 'published',
       },
     ];

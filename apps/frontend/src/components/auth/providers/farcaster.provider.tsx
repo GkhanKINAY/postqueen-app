@@ -147,9 +147,26 @@ export const FarcasterApproval: FC<{
 
   const start = async (isActive: () => boolean) => {
     try {
-      const data = await (
-        await fetch('/auth/farcaster/signer', { method: 'POST' })
-      ).json();
+      const response = await fetch('/auth/farcaster/signer', {
+        method: 'POST',
+      });
+      if (!isActive()) {
+        return;
+      }
+      // The route's own rate limit answers 429 with no `error` in the body,
+      // which read as "Failed to start the Farcaster connection".
+      if (response.status === 429) {
+        toaster.show(
+          t(
+            'farcaster_rate_limited',
+            'Too many Farcaster connection attempts, please try again later'
+          ),
+          'warning'
+        );
+        onFail();
+        return;
+      }
+      const data = await response.json();
       if (!isActive()) {
         return;
       }

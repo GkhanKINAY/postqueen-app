@@ -106,6 +106,31 @@ describe('Slack publishing', () => {
     assert.equal(blocks[0].text.text.length, 3000);
     assert.equal(blocks[1].text.text.length, 500);
   });
+
+  it('threads every reply under the post, not under the previous reply', async () => {
+    const threads: string[] = [];
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      if (String(url).includes('chat.postMessage')) {
+        threads.push(JSON.parse(init?.body || '{}').thread_ts);
+      }
+      return {
+        json: async () => ({ ts: 'reply', channel: 'C1', permalink: '' }),
+      };
+    }) as any;
+
+    for (const lastCommentId of [undefined, 'previous-reply']) {
+      await provider.comment(
+        'id',
+        'post-ts',
+        lastCommentId,
+        'token',
+        [{ id: 'c', message: 'hi', settings: { channel: 'C1' } }] as any,
+        { name: 'Bot', picture: '' } as any
+      );
+    }
+
+    assert.deepEqual(threads, ['post-ts', 'post-ts']);
+  });
 });
 
 describe('Slack editor', () => {

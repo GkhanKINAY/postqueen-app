@@ -23,13 +23,43 @@ const telegramBot = new TelegramBot(process.env.TELEGRAM_TOKEN!);
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5000';
 const mediaStorage = process.env.STORAGE_PROVIDER || 'local';
 
+// An entity Telegram's HTML parse mode reads: the four named ones it supports
+// and any numeric one.
+const TELEGRAM_ENTITY = '(?:amp|lt|gt|quot|#\\d+|#x[\\da-f]+);';
+
+// The composer's HTML reaches the provider with its entities already decoded
+// (stripHtmlValidation's html path), so a typed "<", ">" or "&" arrives bare,
+// and Telegram refuses the message ("can't parse entities") or loses the text
+// after it. They are escaped again here; an entity is left alone, as plain
+// API text arrives still escaped.
+const telegramEscape = (text: string) =>
+  text
+    .replace(new RegExp(`&(?!${TELEGRAM_ENTITY})`, 'gi'), '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
 // What Telegram receives as the text or caption: HTML parse mode, with
-// <strong> as <b> and each paragraph on its own line.
+// <strong> as <b> and each paragraph on its own line. Only the tags the html
+// path keeps are read as tags (and of those only u, strong and p are sent);
+// anything else that looks like one, a typed "<3" or "<b>", is text.
 const telegramText = (message: string) =>
-  striptags(message || '', ['u', 'strong', 'p'])
+  (message || '')
+    .split(/(<\/?(?:p|strong|u|a|ul|li|h[1-3])(?:\s[^<>]*)?>)/)
+    .map((part, index) =>
+      index % 2 ? striptags(part, ['u', 'strong', 'p']) : telegramEscape(part)
+    )
+    .join('')
     .replace(/<strong>/g, '<b>')
     .replace(/<\/strong>/g, '</b>')
     .replace(/<p>(.*?)<\/p>/g, '$1\n');
+
+// The length Telegram counts: tags and entities are markup, "&amp;" is one
+// character.
+const telegramLength = (message: string) =>
+  striptags(telegramText(message)).replace(
+    new RegExp(`&${TELEGRAM_ENTITY}`, 'gi'),
+    '&'
+  ).length;
 
 // One file, through the method its type needs. A module function rather than
 // a method: /integrations/function can call any provider method by name, and
@@ -84,8 +114,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     if (
       (posts || []).some(
         (media, index) =>
-          (media?.length ?? 0) > 0 &&
-          striptags(telegramText(texts[index] || '')).length > 1024
+          (media?.length ?? 0) > 0 && telegramLength(texts[index] || '') > 1024
       )
     ) {
       return 'Telegram captions can be at most 1,024 characters when the message has media';
@@ -443,13 +472,19 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       // types `status` as a bare `string` on every arm, so it is not a
       // discriminant. Hence the explicit shape.
       //
-      // The owner arm has no such field — the Bot API does not send one — so
-      // this has always answered false for a chat owner. Preserved rather than
-      // quietly changed here, but worth revisiting: an owner can always delete.
+      // The owner arm has no such field (the Bot API does not send one), so an
+      // owner has to be answered by its status: it has every administrator
+      // right, deleting messages included. Only the bot is ever checked here,
+      // and a bot cannot own a chat today, so this is for correctness rather
+      // than a case that happens.
       const member = chatMember as {
         status: string;
         can_delete_messages?: boolean;
       };
+
+      if (member.status === 'creator') {
+        return true;
+      }
 
       if (member.status === 'administrator') {
         return !!member.can_delete_messages;

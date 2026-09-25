@@ -9,10 +9,19 @@ const bits = (value: bigint) =>
   );
 
 describe('Discord install permissions', () => {
-  it('ask for View Channel, Embed Links and Attach Files on top of the old set', async () => {
+  it('ask for View Channel, Embed Links, Attach Files and Change Nickname on top of the old set', async () => {
     const { url } = await new DiscordProvider().generateAuthUrl();
     const permissions = BigInt(new URL(url).searchParams.get('permissions')!);
-    assert.deepEqual(bits(permissions), [10n, 11n, 14n, 15n, 35n, 36n, 38n]);
+    assert.deepEqual(bits(permissions), [
+      10n,
+      11n,
+      14n,
+      15n,
+      26n,
+      35n,
+      36n,
+      38n,
+    ]);
     // Everything the old integer asked for is still asked for.
     assert.equal(permissions & 377957124096n, 377957124096n);
   });

@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { FarcasterProvider } from './farcaster.provider.ts';
 
 const provider = new FarcasterProvider();
@@ -55,5 +56,58 @@ describe('Farcaster casts', () => {
       'utf8'
     );
     assert.match(component, /maximumCharacters: 1024,/);
+  });
+});
+
+/**
+ * Neynar answers 429 once the app's rate limit is reached. The connect screen
+ * showed the bare axios message ("Request failed with status code 429").
+ */
+describe('Farcaster connect', () => {
+  const KEYS = ['NEYNAR_APP_FID', 'NEYNAR_APP_MNEMONIC'];
+  const previous = Object.fromEntries(
+    KEYS.map((key) => [key, process.env[key]])
+  );
+  const realCreateSigner = NeynarAPIClient.prototype.createSigner;
+
+  afterEach(() => {
+    NeynarAPIClient.prototype.createSigner = realCreateSigner;
+    for (const key of KEYS) {
+      if (previous[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = previous[key];
+      }
+    }
+  });
+
+  // createSigner checks the app is configured before it calls Neynar.
+  const refuse = (status: number) => {
+    process.env.NEYNAR_APP_FID = '1';
+    process.env.NEYNAR_APP_MNEMONIC = 'test test test';
+    NeynarAPIClient.prototype.createSigner = async () => {
+      throw Object.assign(
+        new Error(`Request failed with status code ${status}`),
+        {
+          response: { status },
+        }
+      );
+    };
+  };
+
+  it('says so when Neynar is rate limiting', async () => {
+    refuse(429);
+    await assert.rejects(
+      provider.createSigner(),
+      /^Error: Farcaster rate limit reached, please try again later$/
+    );
+  });
+
+  it('passes any other failure on as it was', async () => {
+    refuse(500);
+    await assert.rejects(
+      provider.createSigner(),
+      /Request failed with status code 500/
+    );
   });
 });
