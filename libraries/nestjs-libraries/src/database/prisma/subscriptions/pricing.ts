@@ -490,3 +490,18 @@ export const effectiveIsTrailing = (
       ? TRIAL_DAYS * 2
       : TRIAL_DAYS
   ).open;
+
+/**
+ * Credit amounts are stored and passed around as whole hundredths of a credit,
+ * so fractional costs (an X post is 0.4) add up without float drift. Only the
+ * edges that show a number to a person divide by this.
+ */
+export const CREDIT_UNIT = 100;
+
+/** Hundredths of a credit as the credits a person reads. */
+export const toCredits = (units: number) =>
+  Math.round(units) / CREDIT_UNIT;
+
+/** How long credits handed back by a refund stay spendable when the grant
+ * they came from has already expired. */
+export const CREDIT_REFUND_DAYS = 30;

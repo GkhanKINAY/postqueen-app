@@ -48,6 +48,7 @@ model Organization {
   autoPost            AutoPost[]
   Comments            Comments[]
   credits             Credits[]
+  creditGrants        CreditGrant[]
   clippings           Clipping[]
   customers           Customer[]
   errors              Errors[]
@@ -354,17 +355,81 @@ model SocialMediaAgencyNiche {
   @@id([agencyId, niche])
 }
 
+/// Usage ledger. Rows of `type = 'credits'` are spends from the credits
+/// balance, in hundredths of a credit, paid for by CreditGrant rows through
+/// CreditAllocation. The older per-feature types (`ai_images`, `ai_videos`,
+/// `clipping_minutes`) count one unit each against a monthly plan quota and
+/// never touch the balance.
 model Credits {
-  id             String       @id @default(uuid())
+  id             String             @id @default(uuid())
   organizationId String
   credits        Int
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  type           String       @default("ai_images")
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  type           String             @default("ai_images")
+  /// Balance spends only. The caller's key for the work being paid for, so a
+  /// retried request or activity is charged once. Unique per organization.
+  idempotencyKey String?
+  action         String?
+  /// Balance spends only: `settled` or `refunded`.
+  status         String?
+  meta           Json?
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  allocations    CreditAllocation[]
 
+  @@unique([organizationId, idempotencyKey])
   @@index([organizationId])
   @@index([createdAt])
+}
+
+/// Credits added to an organization's balance: a plan period, a trial, a
+/// monthly gift, a purchased pack, a refund or an admin grant. `remaining`
+/// goes down as spends draw on it; a grant past `expiresAt` or with
+/// `revokedAt` set no longer counts. Amounts are hundredths of a credit.
+model CreditGrant {
+  id             String             @id @default(uuid())
+  organizationId String
+  source         String
+  amount         Int
+  remaining      Int
+  expiresAt      DateTime?
+  /// What this grant was made for (a Stripe invoice, a checkout session, a
+  /// month), unique so the same event never grants twice.
+  externalRef    String?            @unique
+  /// The Stripe payment behind a purchased pack, so a refund or a dispute can
+  /// find the grant it paid for.
+  paymentRef     String?
+  /// The plan a plan or trial grant was made for, so an upgrade part-way
+  /// through a period can be topped up by the difference.
+  tier           String?
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  allocations    CreditAllocation[]
+
+  @@index([organizationId, expiresAt])
+  @@index([paymentRef])
+}
+
+/// Which grant paid how much of a spend, so a refund goes back to the grant it
+/// came from. No grant means the spend ran the balance below zero, and the
+/// next grant pays that off first.
+model CreditAllocation {
+  id        String       @id @default(uuid())
+  spendId   String
+  grantId   String?
+  amount    Int
+  createdAt DateTime     @default(now())
+  spend     Credits      @relation(fields: [spendId], references: [id], onDelete: Cascade)
+  /// Restrict: a grant that paid for something is never deleted out from
+  /// under it, which would turn the paid part back into debt.
+  grant     CreditGrant? @relation(fields: [grantId], references: [id], onDelete: Restrict)
+
+  @@index([spendId])
+  @@index([grantId])
 }
 
 model Clipping {
