@@ -25,6 +25,7 @@ import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { BillingSyncDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.sync.dto';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 
 @ApiTags('Billing')
 @Controller('/billing')
@@ -37,7 +38,8 @@ export class BillingController {
     private _paymentService: PaymentService,
     // Stripe-only flows (lifetime, the founding fee, the retention offer) have
     // no counterpart on the other payment providers, so they stay on Stripe.
-    private _stripeService: StripeService
+    private _stripeService: StripeService,
+    private _creditsService: CreditsService
   ) {}
 
   // Billing routes are the web platform; the org's own provider (or the web
@@ -177,6 +179,12 @@ export class BillingController {
       ...(error ? { error } : {}),
       ...(status ? { status } : {}),
     };
+  }
+
+  // The organization's credits balance, in credits (not hundredths).
+  @Get('/credits')
+  credits(@GetOrgFromRequest() org: Organization) {
+    return this._creditsService.balance(org.id);
   }
 
   @Get('/is-trial-finished')

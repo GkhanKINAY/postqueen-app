@@ -376,8 +376,12 @@ export class AccountPurgeService {
         return repository.purgeThirdParty(orgId, apply);
       case 'notifications':
         return repository.purgeNotifications(orgId, apply);
+      case 'creditAllocations':
+        return repository.purgeCreditAllocations(orgId, apply);
       case 'credits':
         return repository.purgeCredits(orgId, apply);
+      case 'creditGrants':
+        return repository.purgeCreditGrants(orgId, apply);
       case 'github':
         return repository.purgeGithub(orgId, apply);
       case 'clips':
