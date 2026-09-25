@@ -51,15 +51,30 @@ jobs:
         env:
           CONTAINERVER: ${{ needs.build-containers-common.outputs.containerver }}
           RAW_REF_NAME: ${{ github.ref_name }}
+          # Uploads the frontend's source maps to Sentry. Handed over only for
+          # a tag pushed to this repository: never on a fork, a branch or any
+          # manual run. scripts/check-workflows.sh fails CI if the secret is
+          # used anywhere else or loses this guard.
+          SENTRY_AUTH_TOKEN: ${{ github.repository == 'GkhanKINAY/postqueen-app' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && secrets.SENTRY_AUTH_TOKEN || '' }}
         run: |
           # Tags are written `v3.3.0`; the app wants a bare semver, the same
           # shape package.json gives when this is unset. Without the strip the
           # logo splits on "." and renders "vv3.3".
           APP_VERSION="${RAW_REF_NAME#v}"
+          # A BuildKit secret, so the token never reaches a layer or the image
+          # history; without it the image builds the same and uploads nothing.
+          SENTRY_SECRET=()
+          if [ -n "$SENTRY_AUTH_TOKEN" ]; then
+            SENTRY_SECRET=(--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN)
+          fi
           docker buildx build --platform linux/${{ matrix.arch }} \
             -f Dockerfile.dev \
             -t ghcr.io/gkhankinay/postqueen-app:${{ env.CONTAINERVER }}-${{ matrix.arch }} \
             --build-arg NEXT_PUBLIC_APP_VERSION="$APP_VERSION" \
+            --build-arg SENTRY_ORG=forceplay-ou \
+            --build-arg SENTRY_PROJECT=postqueen-app \
+            --build-arg GITHUB_SHA="$GITHUB_SHA" \
+            "${SENTRY_SECRET[@]}" \
             --pull \
             --no-cache \
             --provenance=false --sbom=false \

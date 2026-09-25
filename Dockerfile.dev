@@ -35,6 +35,22 @@ COPY . /app
 COPY var/docker/nginx.conf /etc/nginx/nginx.conf
 
 RUN pnpm install
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
+# Sentry source maps. The maintainer's tag builds pass the token as a BuildKit
+# secret, readable only while this RUN executes, so it never reaches the image
+# history or the environment. Without it (forks, self-hosted builds) the
+# frontend builds exactly as before and uploads nothing. The maps are deleted
+# after the upload (next.config.js), so none are served either.
+#
+# The Turbopack build cache is removed in the same RUN, before the layer is
+# written: Next 16 hands Turbopack the whole environment and its filesystem
+# cache stores it, so the token would otherwise sit in apps/frontend/.next/cache
+# of a public image. The cache is also ~740 MB nothing reads at runtime.
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG GITHUB_SHA
+RUN --mount=type=secret,id=sentry_auth_token,required=false \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null)" \
+    NODE_OPTIONS="--max-old-space-size=4096" pnpm run build \
+ && rm -rf apps/frontend/.next/cache
 
 CMD ["sh", "-c", "nginx && pnpm run pm2"]
