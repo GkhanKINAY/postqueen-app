@@ -11,6 +11,7 @@ import { joinBaseUrl } from './oauth-types';
 import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/upload.widget';
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 type AppResources = NonNullable<
   ConstructorParameters<typeof MCPServer>[0]['appResources']
@@ -41,13 +42,17 @@ export const startMcp = async (app: INestApplication) => {
   const oauthService = app.get(OAuthService, { strict: false });
   const loadToolsService = app.get(LoadToolsService, { strict: false });
 
+  // The same rule as the public API (`PublicAuthMiddleware`): with billing on,
+  // an organization without a plan gets nothing. It used to stop at the key,
+  // so an account whose trial ended unpaid kept every MCP tool.
   const resolveAuth = async (token: string) => {
-    if (token.startsWith('pos_')) {
-      const authorization = await oauthService.getOrgByOAuthToken(token);
-      if (!authorization) return null;
-      return authorization.organization;
+    const org = token.startsWith('pos_')
+      ? (await oauthService.getOrgByOAuthToken(token))?.organization
+      : await organizationService.getOrgByApiKey(token);
+    if (!org || (isBillingEnabled() && !org.subscription)) {
+      return null;
     }
-    return organizationService.getOrgByApiKey(token);
+    return org;
   };
 
   const mastra = await mastraService.mastra();
@@ -370,7 +375,7 @@ export const startMcp = async (app: INestApplication) => {
     req.auth = await resolveAuth(token);
     // @ts-ignore
     if (!req.auth) {
-      res.status(401).send('Invalid API Key or OAuth token');
+      res.status(401).send('Invalid API Key or OAuth token, or no active subscription');
       return;
     }
 
@@ -405,10 +410,10 @@ export const startMcp = async (app: INestApplication) => {
     }
 
     // @ts-ignore
-    req.auth = await organizationService.getOrgByApiKey(req.params.id);
+    req.auth = await resolveAuth(req.params.id);
     // @ts-ignore
     if (!req.auth) {
-      res.status(400).send('Invalid API Key');
+      res.status(400).send('Invalid API Key or no active subscription');
       return;
     }
 
@@ -449,10 +454,10 @@ export const startMcp = async (app: INestApplication) => {
     }
 
     // @ts-ignore
-    req.auth = await organizationService.getOrgByApiKey(req.params.id);
+    req.auth = await resolveAuth(req.params.id);
     // @ts-ignore
     if (!req.auth) {
-      res.status(400).send('Invalid API Key');
+      res.status(400).send('Invalid API Key or no active subscription');
       return;
     }
 

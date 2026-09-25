@@ -376,9 +376,10 @@ export class StripeService extends PaymentProviderAbstract {
   /**
    * Whether a subscription has ever taken money.
    *
-   * `amount_paid`, not the status: a trial opens with a $0 invoice that Stripe
-   * marks `paid`, so "has a paid invoice" is true of every trial from its
-   * first second.
+   * The total, not the status alone: a trial opens with a $0 invoice that
+   * Stripe marks `paid`, so "has a paid invoice" is true of every trial from its
+   * first second. Not `amount_paid` either, which is 0 on an invoice settled
+   * from the customer's credit balance.
    */
   private async hasPaidInvoice(subscriptionId: string) {
     const invoices = await stripe.invoices.list({
@@ -386,7 +387,7 @@ export class StripeService extends PaymentProviderAbstract {
       status: 'paid',
       limit: 100,
     });
-    return invoices.data.some((invoice) => invoice.amount_paid > 0);
+    return invoices.data.some((invoice) => invoice.total > 0);
   }
 
   /**
@@ -465,6 +466,13 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
+    // Only before anything was granted. Once this organization holds a plan
+    // from Stripe, refusing here would leave that plan in place for free (the
+    // `deleted` event skips refused trials), and the case that reaches it is a
+    // card changed mid-trial, not a second trial.
+    const granted =
+      await this._subscriptionService.getSubscriptionByOrganizationId(org.id);
+
     let paymentMethodId =
       typeof subscription.default_payment_method === 'string'
         ? subscription.default_payment_method
@@ -488,16 +496,25 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
-    if (!(await this.trialCardUsedElsewhere(org.id, fingerprint))) {
+    if (
+      !(await this.trialCardUsedElsewhere(org.id, fingerprint)) ||
+      granted
+    ) {
       return false;
     }
 
     // Linked first, so `checkSubscription` can find the cancelled subscription
     // on this organization's customer and tell the checkout why.
     await this.adoptSubscriptionCustomer(subscription);
-    await stripe.subscriptions.cancel(subscription.id, {
-      cancellation_details: { comment: TRIAL_CARD_REUSED },
-    });
+    // Read live: `created` and `updated` arrive close together and either can be
+    // redelivered, and cancelling a cancelled subscription is an error that
+    // would 500 the webhook on every retry, before the trial is withdrawn.
+    const live = await stripe.subscriptions.retrieve(subscription.id);
+    if (live.status !== 'canceled') {
+      await stripe.subscriptions.cancel(subscription.id, {
+        cancellation_details: { comment: TRIAL_CARD_REUSED },
+      });
+    }
     await this._organizationService.withdrawTrial(org.id);
     await this._notificationService.inAppNotification(
       org.id,
@@ -849,6 +866,12 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'unknown tier' };
     }
 
+    // Stripe promises no event order, so an `updated` can be the first event
+    // to grant a trial. It gets the same check as `createSubscription`.
+    if (await this.refuseReusedTrialCard(event.data.object)) {
+      return { ok: true, granted: false, reason: 'trial card reused' };
+    }
+
     // Same reasoning as createSubscription: false here means `incomplete`, so
     // nothing to grant and nothing to retry.
     if (!(await this.checkValidCard(event))) {
@@ -867,12 +890,6 @@ export class StripeService extends PaymentProviderAbstract {
         granted: false,
         reason: `status ${event.data.object.status}`,
       };
-    }
-
-    // Stripe promises no event order, so an `updated` can be the first event
-    // to grant a trial. It gets the same check as `createSubscription`.
-    if (await this.refuseReusedTrialCard(event.data.object)) {
-      return { ok: true, granted: false, reason: 'trial card reused' };
     }
 
     await this.adoptSubscriptionCustomer(event.data.object);
@@ -2106,7 +2123,7 @@ export class StripeService extends PaymentProviderAbstract {
       org.id,
       'Payment failed',
       firstCharge
-        ? "Your free trial has ended and we couldn't charge your card. PostQueen is paused until the payment goes through. Update your card from Billing to continue; your channels and posts are kept."
+        ? "We couldn't take the first payment for your PostQueen subscription, so PostQueen is paused until it goes through. Update your card from Billing to continue; your channels and posts are kept."
         : "We could not charge your card for PostQueen. Update your payment method from Billing and we'll try again — nothing is cancelled yet.",
       true,
       false,
@@ -2260,7 +2277,9 @@ export class StripeService extends PaymentProviderAbstract {
       expand: ['data.latest_invoice'],
     });
     for (const subscription of subscriptions.data) {
-      if (!['past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+      // Not `incomplete`: that is a checkout still waiting on an async payment
+      // method, not a payment that failed.
+      if (!['past_due', 'unpaid'].includes(subscription.status)) {
         continue;
       }
       const invoice = subscription.latest_invoice as Stripe.Invoice | null;

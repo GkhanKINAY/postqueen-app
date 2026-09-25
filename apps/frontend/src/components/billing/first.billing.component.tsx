@@ -1,6 +1,13 @@
 'use client';
 
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -27,7 +34,10 @@ import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { Button } from '@gitroom/react/form/button';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useUser } from '@gitroom/frontend/components/layout/user.context';
+import {
+  useRevalidateIdentity,
+  useUser,
+} from '@gitroom/frontend/components/layout/user.context';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
@@ -671,8 +681,11 @@ const CheckoutEmbedNotice: FC<{ message: string }> = ({ message }) => {
 // second subscription next to the one Stripe is still retrying.
 const usePendingPayment = () => {
   const fetch = useFetch();
-  return useSWR<{ hostedInvoiceUrl?: string }>('pending-payment', async () =>
-    (await fetch('/billing/pending-payment')).json()
+  return useSWR<{ hostedInvoiceUrl?: string }>(
+    'pending-payment',
+    async () => (await fetch('/billing/pending-payment')).json(),
+    // Paid in another tab: keep looking while an invoice is open.
+    { refreshInterval: (data) => (data?.hostedInvoiceUrl ? 5000 : 0) }
   );
 };
 
@@ -817,8 +830,30 @@ export const FirstBillingComponent = () => {
   };
 
   const { data: pending, isLoading: pendingLoading } = usePendingPayment();
+  // The invoice was paid: the plan comes back through Stripe's webhook, a few
+  // seconds after the invoice itself reads paid, so ask for the user now and
+  // once more shortly after. `/user/self` does not revalidate on focus.
+  const revalidateIdentity = useRevalidateIdentity();
+  const hadPending = useRef(false);
+  useEffect(() => {
+    if (pending?.hostedInvoiceUrl) {
+      hadPending.current = true;
+      return;
+    }
+    if (!pending || !hadPending.current) {
+      return;
+    }
+    hadPending.current = false;
+    revalidateIdentity();
+    const again = setTimeout(() => revalidateIdentity(), 5000);
+    return () => clearTimeout(again);
+  }, [pending, revalidateIdentity]);
   const { data, isLoading, error: embedFetchError } = useSWR(
-    `/billing-${tier}-${period}`,
+    // No checkout while an invoice is open: the server would refuse it. A key,
+    // not `isPaused`, so the checkout loads the moment the invoice is gone.
+    pendingLoading || pending?.hostedInvoiceUrl
+      ? null
+      : `/billing-${tier}-${period}`,
     loadCheckout,
     {
       revalidateOnFocus: false,
