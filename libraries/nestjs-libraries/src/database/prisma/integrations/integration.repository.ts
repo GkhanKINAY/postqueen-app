@@ -1032,31 +1032,34 @@ export class IntegrationRepository {
       }),
     ]);
 
-    const encryptedToken = new Set(tokens.map((p) => p.id));
-    const encryptedRefreshToken = new Set(refreshTokens.map((p) => p.id));
+    const rewriteToken = new Set(tokens.map((p) => p.id));
+    const rewriteRefreshToken = new Set(refreshTokens.map((p) => p.id));
     let rewritten = 0;
-    for (const id of new Set([...encryptedToken, ...encryptedRefreshToken])) {
+    for (const id of new Set([...rewriteToken, ...rewriteRefreshToken])) {
       const row = await this._integration.model.integration.findUnique({
         where: { id },
-        select: { id: true, token: true, refreshToken: true, updatedAt: true },
+        select: { token: true, refreshToken: true, updatedAt: true },
       });
-      if (!row) {
-        continue;
-      }
+
+      // Only the fields in the wrong form are written, so a field that is
+      // already right, and possibly encrypted under a key no longer set, is
+      // never read back and written out as empty.
+      const data = {
+        ...(rewriteToken.has(id) ? { token: row?.token } : {}),
+        ...(rewriteRefreshToken.has(id)
+          ? { refreshToken: row?.refreshToken }
+          : {}),
+      };
 
       // Read back empty means no configured key could decrypt it. Writing
       // that out would lose a value the right key may still open.
-      if (
-        !encrypt &&
-        ((encryptedToken.has(id) && !row.token) ||
-          (encryptedRefreshToken.has(id) && !row.refreshToken))
-      ) {
+      if (!row || Object.values(data).some((value) => !value)) {
         continue;
       }
 
       const { count } = await this._integration.model.integration.updateMany({
         where: { id, updatedAt: row.updatedAt },
-        data: { token: row.token, refreshToken: row.refreshToken },
+        data,
       });
       rewritten += count;
     }

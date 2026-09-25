@@ -199,7 +199,8 @@ export class AuthService {
         const decipher = crypto.createDecipheriv(
           'aes-256-gcm',
           tokenKey(secret),
-          raw.subarray(0, 12)
+          raw.subarray(0, 12),
+          { authTagLength: 16 }
         );
         decipher.setAuthTag(raw.subarray(12, 28));
         return Buffer.concat([

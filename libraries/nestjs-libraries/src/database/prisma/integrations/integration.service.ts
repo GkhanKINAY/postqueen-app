@@ -8,7 +8,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
-import { integrationTokenEncryptionEnabled } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/integration.token.encryption.enabled';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
   AnalyticsData,
@@ -65,7 +65,7 @@ export class IntegrationService implements OnModuleInit {
    * never waits on it; a failure is logged and the next boot tries again.
    */
   onModuleInit() {
-    const encrypt = integrationTokenEncryptionEnabled();
+    const encrypt = isIntegrationTokenEncryptionEnabled();
     this._integrationRepository
       .syncStoredTokenEncryption(encrypt)
       .then((count) => {

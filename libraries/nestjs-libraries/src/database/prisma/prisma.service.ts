@@ -5,15 +5,9 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
+import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/integration.token.encryption.enabled';
 
 const TOKEN_FIELDS = ['token', 'refreshToken'] as const;
-
-// ENCRYPT_INTEGRATION_TOKENS=false stores new tokens as issued, and the boot
-// sync (IntegrationService.onModuleInit) writes the stored ones back the same
-// way. It is the step before running an image older than this change, which
-// cannot read the encrypted format. Reads decrypt either way.
-export const integrationTokenEncryptionEnabled = () =>
-  process.env.ENCRYPT_INTEGRATION_TOKENS !== 'false';
 
 function encryptTokenFields(row: any) {
   if (!row || typeof row !== 'object') {
@@ -37,13 +31,17 @@ function encryptTokenFields(row: any) {
  * repository shares, covers each write and each read, including an
  * integration included from a post, without any caller knowing: provider and
  * workflow code, ours and upstream's, keeps using `integration.token`.
+ *
+ * Integration rows come back as Prisma proxies, so `delete row.token` no
+ * longer removes the token: strip it with `select`, a mapped copy or rest
+ * destructuring before a row leaves the server.
  */
 const integrationTokenEncryption = Prisma.defineExtension({
   name: 'integration-token-encryption',
   query: {
     integration: {
       $allOperations({ args, query }) {
-        if (!integrationTokenEncryptionEnabled()) {
+        if (!isIntegrationTokenEncryptionEnabled()) {
           return query(args);
         }
         const write = args as any;
