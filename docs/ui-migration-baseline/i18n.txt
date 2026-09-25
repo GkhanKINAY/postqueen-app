@@ -1813,6 +1813,7 @@ preview
 preview_click_to_open_comment
 preview_comment_detach_hint
 preview_comment_failed
+preview_comment_guest
 preview_comment_name_required
 preview_comment_text_changed
 preview_comment_your_name

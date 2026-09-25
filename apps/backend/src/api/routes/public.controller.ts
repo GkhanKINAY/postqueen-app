@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -37,6 +38,7 @@ import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf
 import { areCookiesSecured } from '@gitroom/helpers/utils/cookies.secured';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
+import { AbuseGuardService } from '@gitroom/nestjs-libraries/services/abuse-guard.service';
 
 const pump = promisify(pipeline);
 
@@ -48,7 +50,8 @@ export class PublicController {
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
     private _subscriptionService: SubscriptionService,
-    private _platformCallbacksService: PlatformCallbacksService
+    private _platformCallbacksService: PlatformCallbacksService,
+    private _abuseGuardService: AbuseGuardService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -126,7 +129,17 @@ export class PublicController {
     @Body() body: CreatePublicCommentDto,
     @RealIP() ip: string
   ) {
-    return this._postsService.createPublicComment(postId, body, null, ip);
+    // Turnstile, when TURNSTILE_SECRET is set, like the passwordless login.
+    const decision = await this._abuseGuardService.challenge({
+      action: 'preview_comment',
+      ip,
+      captchaToken: body.captchaToken,
+    });
+    if (!decision.allow) {
+      throw new BadRequestException('Captcha verification failed');
+    }
+
+    return this._postsService.createPublicComment(postId, body, null);
   }
 
   @Post('/t')

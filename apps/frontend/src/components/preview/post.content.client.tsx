@@ -336,7 +336,7 @@ export const PostContentClient: FC<{ postId: string; html: string }> = ({
       {!!hint && !selection && !ownPending && (
         <div
           style={{ top: hint.top, left: hint.left }}
-          className="pointer-events-none absolute z-[10] flex h-[24px] items-center gap-[6px] whitespace-nowrap rounded-[6px] border border-pqBorder bg-pqInner px-[8px] text-[12px] text-pqText shadow-lg"
+          className="pointer-events-none absolute z-[10] flex h-[24px] items-center gap-[6px] whitespace-nowrap rounded-[6px] border border-pqBorder bg-pqInner px-[8px] text-[12px] text-pqText shadow-pqE2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -368,7 +368,7 @@ export const PostContentClient: FC<{ postId: string; html: string }> = ({
           }}
           onClick={startComment}
           style={{ top: selection.top, left: selection.left }}
-          className="absolute z-[10] flex h-[28px] items-center gap-[6px] rounded-[6px] bg-pqBrand px-[10px] text-[12px] font-[500] text-pqOnBrand shadow-lg hover:bg-pqBrandHover"
+          className="absolute z-[10] flex h-[28px] items-center gap-[6px] rounded-[6px] bg-pqBrand px-[10px] text-[12px] font-[500] text-pqOnBrand shadow-pqE2 hover:bg-pqBrandHover"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

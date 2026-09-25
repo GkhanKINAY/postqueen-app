@@ -23,6 +23,7 @@ export interface PreviewComment {
   resolvedAt: string | null;
   createdAt: string;
   name: string | null;
+  guest: boolean;
 }
 
 export interface PendingAnchor {
@@ -50,6 +51,11 @@ const useComments = (previewId: string, signedIn: boolean) => {
     const response = signedIn
       ? await fetch(`/posts/${previewId}/comments`)
       : await fetch(`/public/posts/${previewId}/comments`);
+    // customFetch resolves 4xx/5xx. Read as data, a failed revalidation would
+    // empty the list and show "No comments yet"; thrown, SWR keeps what it has.
+    if (!response.ok) {
+      throw new Error(`Could not load comments (${response.status})`);
+    }
     return response.json();
   }, [fetch, previewId, signedIn]);
   return useSWR<{ comments: PreviewComment[]; canResolve: boolean }>(

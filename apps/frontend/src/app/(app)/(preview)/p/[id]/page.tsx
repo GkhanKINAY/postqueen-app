@@ -5,7 +5,7 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
-import { PreviewCommentsPane } from '@gitroom/frontend/components/preview/comments.components';
+import { CommentsComponents } from '@gitroom/frontend/components/preview/comments.components';
 import { PreviewCommentsProvider } from '@gitroom/frontend/components/preview/preview.comments.context';
 import { PostContentClient } from '@gitroom/frontend/components/preview/post.content.client';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
@@ -127,6 +127,7 @@ export default async function Auth(
 
   return (
     <PreviewCommentsProvider
+      key={id}
       previewId={id}
       postIds={post.map((p: any) => p.id)}
     >
@@ -221,7 +222,7 @@ export default async function Auth(
 
           <aside className="w-full shrink-0 lg:sticky lg:top-[20px] lg:w-[320px]">
             <div className="rounded-[14px] border border-pqBorder bg-pqInner p-[18px] lg:max-h-[calc(100dvh-40px)] lg:overflow-y-auto">
-              <PreviewCommentsPane />
+              <CommentsComponents />
             </div>
           </aside>
         </div>

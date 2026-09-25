@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { UpdateReleaseIdDto } from '@gitroom/nestjs-libraries/dtos/posts/update.release.id.dto';
@@ -36,7 +37,8 @@ import {
   CreatePublicCommentDto,
   ResolveCommentDto,
 } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
-import { RealIP } from 'nestjs-real-ip';
+import { Throttle } from '@nestjs/throttler';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 
 @ApiTags('Posts')
 @Controller('/posts')
@@ -85,14 +87,17 @@ export class PostsController {
     return this._postsService.getComments(id, org.id);
   }
 
+  // Any account can comment on any published preview, so this is capped per
+  // address like the anonymous route, with room for a reviewer's busy hour.
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 60, ttl: 3600000 } })
   @Post('/:id/comments')
   async createComment(
     @GetUserFromRequest() user: User,
     @Param('id') id: string,
-    @Body() body: CreatePublicCommentDto,
-    @RealIP() ip: string
+    @Body() body: CreatePublicCommentDto
   ) {
-    return this._postsService.createPublicComment(id, body, user.id, ip);
+    return this._postsService.createPublicComment(id, body, user.id);
   }
 
   @Put('/comments/:commentId/resolve')

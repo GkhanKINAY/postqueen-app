@@ -47,7 +47,7 @@ export class CreatePublicCommentDto extends AddCommentDto {
 
   @IsOptional()
   @IsString()
-  recaptchaToken?: string;
+  captchaToken?: string;
 }
 
 export class ResolveCommentDto {

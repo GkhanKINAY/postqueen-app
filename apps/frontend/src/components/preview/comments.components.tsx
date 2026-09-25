@@ -11,8 +11,7 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
-import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
+import { TurnstileWidget } from '@gitroom/frontend/components/auth/turnstile.widget';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import {
@@ -40,60 +39,20 @@ const saveReviewerName = (name: string) => {
   }
 };
 
-// Invisible reCAPTCHA v2: one widget for the page. Google only shows a puzzle
-// when it considers the visitor risky; otherwise the token comes back at once.
-// Google does not report a dismissed puzzle, so an attempt stays pending until
-// it gets a token, expires, errors, or the reviewer clicks Post again (which
-// abandons the previous attempt with null).
-let recaptchaWidget: {
-  id: number;
-  resolve?: (token: string | null) => void;
-} | null = null;
+interface GuestIdentity {
+  name: string;
+  captchaToken: string;
+}
 
-const loadRecaptchaToken = async (siteKey: string) => {
-  if (!(window as any).grecaptcha?.render) {
-    await new Promise<void>((resolve, reject) => {
-      (window as any).onPreviewRecaptchaLoad = () => resolve();
-      const script = document.createElement('script');
-      script.src =
-        'https://www.google.com/recaptcha/api.js?onload=onPreviewRecaptchaLoad&render=explicit';
-      script.async = true;
-      script.onerror = () => reject(new Error('recaptcha failed to load'));
-      document.head.appendChild(script);
-    });
-  }
-  const grecaptcha = (window as any).grecaptcha;
-  if (!recaptchaWidget) {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const widget: NonNullable<typeof recaptchaWidget> = { id: 0 };
-    const settle = (token: string | null) => {
-      const resolve = widget.resolve;
-      widget.resolve = undefined;
-      resolve?.(token);
-    };
-    widget.id = grecaptcha.render(container, {
-      sitekey: siteKey,
-      size: 'invisible',
-      callback: (token: string) => settle(token),
-      'expired-callback': () => settle(null),
-      'error-callback': () => settle(null),
-    });
-    recaptchaWidget = widget;
-  }
-  const widget = recaptchaWidget;
-  widget.resolve?.(null);
-  grecaptcha.reset(widget.id);
-  return new Promise<string | null>((resolve) => {
-    widget.resolve = resolve;
-    grecaptcha.execute(widget.id);
-  });
-};
-
-const ReviewerNameForm: FC<{ onConfirm: (name: string) => void }> = ({
+// Asked on every comment left without an account: the name (remembered for
+// next time) and, where TURNSTILE_SITE_KEY is set, the same Turnstile check the
+// passwordless login uses. Its tokens are single-use, so one per comment.
+const ReviewerNameForm: FC<{ onConfirm: (guest: GuestIdentity) => void }> = ({
   onConfirm,
 }) => {
   const t = useT();
+  const { turnstileSiteKey } = useVariables();
+  const [captchaToken, setCaptchaToken] = useState('');
   const form = useForm({
     values: { name: readReviewerName() },
     mode: 'onChange',
@@ -105,9 +64,9 @@ const ReviewerNameForm: FC<{ onConfirm: (name: string) => void }> = ({
         return;
       }
       saveReviewerName(name);
-      onConfirm(name);
+      onConfirm({ name, captchaToken });
     },
-    [onConfirm]
+    [onConfirm, captchaToken]
   );
 
   return (
@@ -127,7 +86,18 @@ const ReviewerNameForm: FC<{ onConfirm: (name: string) => void }> = ({
             maxLength={80}
             autoFocus={true}
           />
-          <Button type="submit">{t('continue', 'Continue')}</Button>
+          {!!turnstileSiteKey && (
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onToken={setCaptchaToken}
+            />
+          )}
+          <Button
+            type="submit"
+            disabled={!!turnstileSiteKey && !captchaToken}
+          >
+            {t('continue', 'Continue')}
+          </Button>
         </div>
       </form>
     </FormProvider>
@@ -143,7 +113,6 @@ const CommentComposer: FC<{
   const fetch = useFetch();
   const toast = useToaster();
   const modals = useModals();
-  const { recaptchaSiteKey } = useVariables();
   const { previewId, pending, setPending, mutate } = usePreviewComments();
   const [loading, setLoading] = useState(false);
   const form = useForm({ values: { content: '' } });
@@ -159,18 +128,16 @@ const CommentComposer: FC<{
 
   const askForName = useCallback(
     () =>
-      new Promise<string | null>((resolve) => {
+      new Promise<GuestIdentity | null>((resolve) => {
         modals.openModal({
           title: t('preview_comment_your_name', 'Your name'),
           withCloseButton: true,
-          classNames: {
-            modal: 'w-[100%] max-w-[420px]',
-          },
+          compact: 420,
           onClose: () => resolve(null),
           children: (close) => (
             <ReviewerNameForm
-              onConfirm={(name) => {
-                resolve(name);
+              onConfirm={(guest) => {
+                resolve(guest);
                 close();
               }}
             />
@@ -187,29 +154,11 @@ const CommentComposer: FC<{
         return;
       }
 
-      let displayName: string | undefined;
-      let recaptchaToken: string | undefined;
+      let guest: GuestIdentity | null = null;
       if (!user?.id) {
-        const name = await askForName();
-        if (!name) {
+        guest = await askForName();
+        if (!guest) {
           return;
-        }
-        displayName = name;
-
-        if (recaptchaSiteKey) {
-          const token = await loadRecaptchaToken(recaptchaSiteKey).catch(
-            (): null => {
-              toast.show(
-                t('preview_comment_failed', 'Could not post the comment'),
-                'warning'
-              );
-              return null;
-            }
-          );
-          if (!token) {
-            return;
-          }
-          recaptchaToken = token;
         }
       }
 
@@ -228,8 +177,10 @@ const CommentComposer: FC<{
                   anchorQuote: anchor.quote,
                 }
               : {}),
-            ...(displayName ? { displayName } : {}),
-            ...(recaptchaToken ? { recaptchaToken } : {}),
+            ...(guest ? { displayName: guest.name } : {}),
+            ...(guest?.captchaToken
+              ? { captchaToken: guest.captchaToken }
+              : {}),
           }),
         };
         const response = user?.id
@@ -258,7 +209,6 @@ const CommentComposer: FC<{
     },
     [
       user?.id,
-      recaptchaSiteKey,
       previewId,
       parentId,
       anchor,
@@ -361,9 +311,14 @@ const CommentBody: FC<{ comment: PreviewComment }> = ({ comment }) => {
       <div className="whitespace-pre-wrap break-words text-[14px] text-pqText">
         {comment.content}
       </div>
-      <div className="text-[12px] text-pqMuted">
-        {comment.name || t('reviewer', 'Reviewer')} ·{' '}
-        {dayjs(comment.createdAt).format('MMM D, YYYY HH:mm')}
+      <div className="flex flex-wrap items-center gap-x-[6px] text-[12px] text-pqMuted">
+        <span>{comment.name || t('reviewer', 'Reviewer')}</span>
+        {comment.guest && (
+          <span className="rounded-[4px] bg-pqBtnSimple px-[5px] text-[11px] text-pqText">
+            {t('preview_comment_guest', 'Guest')}
+          </span>
+        )}
+        <span>· {dayjs(comment.createdAt).format('MMM D, YYYY HH:mm')}</span>
       </div>
     </div>
   );
@@ -575,33 +530,5 @@ export const CommentsComponents: FC = () => {
         ))}
       </div>
     </div>
-  );
-};
-
-/** Public `/p/[id]` comments: inline on desktop, a sheet on phone. */
-export const PreviewCommentsPane: FC = () => {
-  const { touch } = useViewport();
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  if (!touch) {
-    return <CommentsComponents />;
-  }
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-[44px] w-full items-center justify-center rounded-[12px] bg-pqInner text-[14px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)]"
-      >
-        {t('comments', 'Comments')}
-      </button>
-      <MobileSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        title={t('comments', 'Comments')}
-      >
-        <CommentsComponents />
-      </MobileSheet>
-    </>
   );
 };

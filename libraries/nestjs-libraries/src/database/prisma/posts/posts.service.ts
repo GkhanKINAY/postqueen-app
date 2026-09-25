@@ -1369,11 +1369,6 @@ export class PostsService {
         return [] as any[];
       }
 
-      const existingIds = (post.value || []).map((p) => p.id).filter(Boolean);
-      await this.detachStaleAnchors(
-        posts.filter((p) => existingIds.includes(p.id))
-      );
-
       if (body.type !== 'update') {
         // The row is already written, so a failure here does not undo the post:
         // it leaves it in QUEUE with nothing scheduled to publish it. Swallowing
@@ -1396,6 +1391,19 @@ export class PostsService {
           );
         });
       }
+
+      // After the workflow has started, and never able to fail the save: a
+      // highlight that outlives its text is cosmetic, a post with nothing
+      // scheduled to publish it is not.
+      const existingIds = (post.value || []).map((p) => p.id).filter(Boolean);
+      await this.detachStaleAnchors(
+        posts.filter((p) => existingIds.includes(p.id))
+      ).catch((err) => {
+        Sentry.captureException(err, {
+          tags: { area: 'preview_comment_anchors' },
+          extra: { postId: posts[0].id, orgId },
+        });
+      });
 
       Sentry.metrics.count('post_created', 1);
       postList.push({
@@ -1964,6 +1972,9 @@ export class PostsService {
               .join(' ')
               .trim() || null
           : comment.displayName,
+        // A typed name is not an account: the page marks it, so nobody can
+        // pass as a member of the team by typing their name.
+        guest: !comment.userId,
       })),
     };
   }
@@ -1971,8 +1982,7 @@ export class PostsService {
   async createPublicComment(
     previewId: string,
     body: CreatePublicCommentDto,
-    userId: string | null,
-    ip: string
+    userId: string | null
   ) {
     const posts = await this.getPreviewPosts(previewId);
     if (!posts.length) {
@@ -1984,11 +1994,8 @@ export class PostsService {
       throw new BadRequestException('Post does not belong to this preview');
     }
 
-    if (!userId) {
-      if (!body.displayName?.trim()) {
-        throw new BadRequestException('Name is required');
-      }
-      await this.verifyRecaptcha(body.recaptchaToken, ip);
+    if (!userId && !body.displayName?.trim()) {
+      throw new BadRequestException('Name is required');
     }
 
     const hasStart = typeof body.anchorStart === 'number';
@@ -2042,32 +2049,6 @@ export class PostsService {
         anchorQuote: hasStart ? body.anchorQuote : undefined,
       }
     );
-  }
-
-  private async verifyRecaptcha(token: string | undefined, ip: string) {
-    if (!process.env.RECAPTCHA_SECRET_KEY) {
-      return;
-    }
-
-    if (!token) {
-      throw new BadRequestException('Captcha verification failed');
-    }
-
-    const result = await (
-      await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          secret: process.env.RECAPTCHA_SECRET_KEY,
-          response: token,
-          remoteip: ip,
-        }),
-      })
-    ).json();
-
-    if (!result?.success) {
-      throw new BadRequestException('Captcha verification failed');
-    }
   }
 
   async resolveComment(orgId: string, commentId: string, resolved: boolean) {
