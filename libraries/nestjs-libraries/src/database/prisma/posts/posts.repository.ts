@@ -714,6 +714,22 @@ export class PostsRepository {
     });
   }
 
+  // Counts the posts among `ids` that belong to another organization.
+  // createOrUpdatePost refuses those ids only once it is writing; this lets a
+  // caller refuse them before anything is saved.
+  countPostsOfOtherOrganizations(orgId: string, ids: string[]) {
+    return this._post.model.post.count({
+      where: {
+        id: {
+          in: ids,
+        },
+        organizationId: {
+          not: orgId,
+        },
+      },
+    });
+  }
+
   async createOrUpdatePost(
     state: 'draft' | 'schedule' | 'now' | 'update',
     orgId: string,

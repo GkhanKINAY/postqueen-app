@@ -1237,7 +1237,13 @@ export class PostsService {
       await this.guardUpdateTargets(orgId, body.posts);
     }
 
-    const postList = [];
+    // Every check that can refuse the request runs for every channel before
+    // any channel is written. Checked one channel at a time, a refusal on the
+    // second channel came after the first was saved and scheduled, and a
+    // caller retrying the error (an agent, usually) got the first one twice.
+    // Writing one channel does not change what these checks read for
+    // another, unless two channels name the same post, so the same requests
+    // are refused, only before anything is saved.
     for (const post of body.posts) {
       if (
         (body.type === 'schedule' || body.type === 'now') &&
@@ -1249,32 +1255,6 @@ export class PostsService {
           'createPost'
         );
       }
-      const provider = this._integrationManager.getSocialIntegration(
-        (post.settings as any)?.__type
-      );
-      const removeLinks = !!provider?.stripLinks?.();
-
-      // A settings-only update promises the content stays as it is.
-      if (body.type !== 'update') {
-        const finished = this.withThreadFinisher(post);
-        post.value = finished.value;
-        post.settings = finished.settings;
-      }
-
-      const messages = (post.value || []).map((p) => p.content);
-      // No point shortlinking links on platforms that strip them out anyway
-      const updateContent =
-        !body.shortLink || removeLinks
-          ? messages
-          : await this._shortLinkService.convertTextToShortLinks(
-              orgId,
-              messages
-            );
-
-      post.value = (post.value || []).map((p, i) => ({
-        ...p,
-        content: removeLinks ? stripLinks(updateContent[i]) : updateContent[i],
-      }));
 
       // Media entries carrying an id but no path are resolved from the database
       // at publish time by id alone, so a borrowed id would pull another
@@ -1355,6 +1335,56 @@ export class PostsService {
         }
       }
 
+      // createOrUpdatePost refuses a post id of another organization, but
+      // only once it is writing. Checking here as well refuses the id before
+      // the first channel is saved. A plain Error, like the repository's, so
+      // the response stays what it was.
+      const postIds = (post.value || []).map((p) => p.id).filter(Boolean);
+      if (
+        postIds.length &&
+        (await this._postRepository.countPostsOfOtherOrganizations(
+          orgId,
+          postIds
+        ))
+      ) {
+        throw new Error('Post not found');
+      }
+    }
+
+    // Then prepare the content of every channel (thread finisher, short links,
+    // stripped links), so a link shortener failing on the second channel does
+    // not leave the first one saved either.
+    for (const post of body.posts) {
+      const provider = this._integrationManager.getSocialIntegration(
+        (post.settings as any)?.__type
+      );
+      const removeLinks = !!provider?.stripLinks?.();
+
+      // A settings-only update promises the content stays as it is.
+      if (body.type !== 'update') {
+        const finished = this.withThreadFinisher(post);
+        post.value = finished.value;
+        post.settings = finished.settings;
+      }
+
+      const messages = (post.value || []).map((p) => p.content);
+      // No point shortlinking links on platforms that strip them out anyway
+      const updateContent =
+        !body.shortLink || removeLinks
+          ? messages
+          : await this._shortLinkService.convertTextToShortLinks(
+              orgId,
+              messages
+            );
+
+      post.value = (post.value || []).map((p, i) => ({
+        ...p,
+        content: removeLinks ? stripLinks(updateContent[i]) : updateContent[i],
+      }));
+    }
+
+    const postList = [];
+    for (const post of body.posts) {
       const { posts } = await this._postRepository.createOrUpdatePost(
         body.type,
         orgId,
