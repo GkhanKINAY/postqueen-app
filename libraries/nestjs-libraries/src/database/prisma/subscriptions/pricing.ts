@@ -343,6 +343,17 @@ export const LIFETIME_WINDOW_HOURS = 24;
 export const LIFETIME_PRICE = 99;
 
 /**
+ * Whether the founding-member offer is sold to anyone new. Off since
+ * 2026-09-25 (owner): new signups pick a subscription instead. Existing
+ * founding members, and founding fees already deferred to the end of a trial,
+ * are not affected — only the checkout, the upsells and the cancel-flow offer
+ * (hidden in the UI; its endpoint stays open so a paid-but-unfinished
+ * retention can still complete).
+ * Flip back to `true` to sell it again.
+ */
+export const LIFETIME_ON_SALE = false;
+
+/**
  * Cancel-flow retention price for a founding-member trial: 50% off the one-time
  * founding fee (`LIFETIME_PRICE / 2`). Shown instead of the monthly 50%×3 coupon.
  */

@@ -12,6 +12,7 @@ import { PostQueenLogo, appVersionLabel } from '@gitroom/frontend/components/ui/
 import {
   effectiveMonthly,
   LIFETIME_GRANT_TIER,
+  LIFETIME_ON_SALE,
   LIFETIME_PRICE,
   lifetimeWindow,
   monthsFree,
@@ -509,8 +510,8 @@ const LifetimeOrderSummary: FC = () => {
   );
 };
 
-/** Re-enable when the founding-member deal is retired from First Billing. */
-const SHOW_PRO_POPULAR_BADGE = false;
+/** Shown only while the founding-member deal is off First Billing. */
+const SHOW_PRO_POPULAR_BADGE = !LIFETIME_ON_SALE;
 
 /** Fixed pay bar for Lifetime — hosted Checkout, not Embedded confirm. */
 const LifetimePayBar: FC = () => {
@@ -669,13 +670,14 @@ export const FirstBillingComponent = () => {
   const user = useUser();
   const dub = useDubClickId();
   const [stripe, setStripe] = useState<null | Promise<Stripe>>(null);
-  // Default paywall selection (entry sellable tier).
-  const [tier, setTier] = useState('CREATOR');
+  // Default paywall selection: Pro ($49). A plan picked on the pricing page
+  // replaces it below.
+  const [tier, setTier] = useState('PRO');
   const [period, setPeriod] = useState('MONTHLY');
-  // Owner: open with Lifetime selected when the founding window is available
-  // (radio was empty before). Subscription stays available via the plan grid.
+  // Owner: open with Lifetime selected while the founding offer is on sale.
+  // Subscription stays available via the plan grid.
   const [checkoutMode, setCheckoutMode] = useState<'subscription' | 'lifetime'>(
-    'lifetime'
+    LIFETIME_ON_SALE ? 'lifetime' : 'subscription'
   );
   const fetch = useFetch();
   const modals = useModals();
@@ -784,6 +786,7 @@ export const FirstBillingComponent = () => {
   // still on trial (`isTrailing`) — same rule as Main Billing's retention
   // offer. Closed window + no trial → no lifetime CTA/mode (plan cards only).
   const canBuyLifetime =
+    LIFETIME_ON_SALE &&
     !user?.isLifetime &&
     (!!user?.isTrailing || lifetimeWindow(user?.createdAt).open);
   const activeMode =
@@ -1161,8 +1164,7 @@ export const FirstBillingComponent = () => {
                           {tierLabel(key)}
                         </span>
                         {/* Design puts Popular on PRO. Hidden while the
-                            founding deal steers checkout — flip
-                            SHOW_PRO_POPULAR_BADGE when that deal retires. */}
+                            founding deal is on sale (SHOW_PRO_POPULAR_BADGE). */}
                         {key === 'PRO' && SHOW_PRO_POPULAR_BADGE && (
                           <span
                             data-plan-popular="1"
