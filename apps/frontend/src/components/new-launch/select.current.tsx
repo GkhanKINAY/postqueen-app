@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, RefObject, useEffect, useState } from 'react';
+import { FC } from 'react';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import clsx from 'clsx';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
@@ -8,51 +8,26 @@ import { useShallow } from 'zustand/react/shallow';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 
-export function useHasScroll(ref: RefObject<HTMLElement | null>): boolean {
-  const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
-
-  useEffect(() => {
-    if (!ref.current) return;
-
-    const checkScroll = () => {
-      const el = ref.current;
-      if (el) {
-        setHasHorizontalScroll(el.scrollWidth > el.clientWidth);
-      }
-    };
-
-    checkScroll(); // initial check
-
-    const resizeObserver = new ResizeObserver(checkScroll);
-    resizeObserver.observe(ref.current);
-
-    const mutationObserver = new MutationObserver(checkScroll);
-    mutationObserver.observe(ref.current, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [ref]);
-
-  return hasHorizontalScroll;
-}
-
 export const SelectCurrent: FC = () => {
-  const { selectedIntegrations, current, setCurrent, locked, setHide } =
-    useLaunchStore(
-      useShallow((state) => ({
-        selectedIntegrations: state.selectedIntegrations,
-        current: state.current,
-        setCurrent: state.setCurrent,
-        locked: state.locked,
-        setHide: state.setHide,
-      }))
-    );
+  const {
+    selectedIntegrations,
+    current,
+    setCurrent,
+    locked,
+    setHide,
+    hasOwnVersion,
+  } = useLaunchStore(
+    useShallow((state) => ({
+      selectedIntegrations: state.selectedIntegrations,
+      current: state.current,
+      setCurrent: state.setCurrent,
+      locked: state.locked,
+      setHide: state.setHide,
+      hasOwnVersion: !!state.internal.find(
+        (p) => p.integration.id === state.current
+      ),
+    }))
+  );
 
   const t = useT();
   const isGlobal = current === 'global';
@@ -63,11 +38,11 @@ export const SelectCurrent: FC = () => {
   // Which version is being edited, named: the shared post, or one channel's
   // own. Picking a channel only switches the view (`setCurrent`); writing a
   // separate version for it is the editor's "Write a version" step.
-  const tab = (active: boolean) =>
+  const tabClass = (active: boolean) =>
     clsx(
-      'flex h-[34px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[9px] ps-[7px] pe-[12px] text-[13px] transition-colors mobile:h-[40px]',
+      'flex h-[34px] shrink-0 items-center gap-[7px] whitespace-nowrap rounded-[9px] ps-[7px] pe-[12px] text-[13px] transition-colors disabled:cursor-not-allowed mobile:h-[44px]',
       active
-        ? 'bg-pqPop font-[600] text-pqText shadow-pqE1 ring-1 ring-pqBorder'
+        ? 'bg-pqInner font-[600] text-pqText shadow-pqE1'
         : 'text-pqMuted hover:text-pqText'
     );
 
@@ -85,11 +60,12 @@ export const SelectCurrent: FC = () => {
           type="button"
           role="tab"
           aria-selected={isGlobal}
+          disabled={locked}
           onClick={() => {
             setHide(true);
             setCurrent('global');
           }}
-          className={tab(isGlobal)}
+          className={tabClass(isGlobal)}
         >
           <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqBrandSoft text-pqFocused">
             <svg
@@ -123,13 +99,15 @@ export const SelectCurrent: FC = () => {
               type="button"
               role="tab"
               aria-selected={isActive}
+              disabled={locked}
               key={integration.id}
               onClick={() => {
                 setHide(true);
                 setCurrent(integration.id);
               }}
-              title={channelNameWithHandle(integration)}
-              className={tab(isActive)}
+              data-tooltip-id="tooltip"
+              data-tooltip-content={channelNameWithHandle(integration)}
+              className={tabClass(isActive)}
             >
               <ChannelAvatar
                 integration={integration}
@@ -142,21 +120,25 @@ export const SelectCurrent: FC = () => {
           );
         })}
       </div>
-      <span className="min-w-0 text-[12.5px] text-pqMuted">
-        {isGlobal
-          ? t(
-              'editing_shared_post_hint',
-              'Edits here reach every channel without its own version'
-            )
-          : t(
-              'editing_channel_version_hint',
-              'Only {{name}} gets this version',
-              {
-                name: currentChannel?.name || '',
-                interpolation: { escapeValue: false },
-              }
-            )}
-      </span>
+      {/* A channel still on the shared post gets no line here: the card
+          over its editor says so, with the way to write its own. */}
+      {(isGlobal || hasOwnVersion) && (
+        <span className="min-w-0 text-[12.5px] text-pqMuted">
+          {isGlobal
+            ? t(
+                'editing_shared_post_hint',
+                'Edits here reach every channel without its own version'
+              )
+            : t(
+                'editing_channel_version_hint',
+                'Only {{name}} gets this version',
+                {
+                  name: currentChannel?.name || '',
+                  interpolation: { escapeValue: false },
+                }
+              )}
+        </span>
+      )}
     </div>
   );
 };

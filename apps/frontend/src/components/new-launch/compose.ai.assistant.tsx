@@ -49,6 +49,7 @@ import {
 } from '@gitroom/frontend/components/media/use.generate.video';
 import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card';
 import { v4 as uuid } from 'uuid';
+import NextLink from 'next/link';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import {
   useT,
@@ -80,7 +81,7 @@ const ComposerThreadContext = createContext<{
   /** Whether a message was sent in this composer; the setting is written only then. */
   used: () => boolean;
   markUsed: () => void;
-  /** A fresh, empty Copilot chat for this post; the old one stays in memory. */
+  /** A fresh, empty Copilot chat for this post; the old one stays saved. */
   startOver: () => void;
 }>({
   threadId: '',
@@ -119,8 +120,8 @@ export const ComposerCopilotProvider: FC<{ children: ReactNode }> = ({
         usedRef.current = true;
       },
       // CopilotKit connects to the new thread id, the same way the Copilot
-      // page switches chats; the post saves whichever thread it was last
-      // used in.
+      // page switches chats. The post saves the new thread once a message
+      // is sent in it, and none if nothing is.
       startOver: () => {
         usedRef.current = false;
         setThreadId(uuid());
@@ -376,11 +377,14 @@ const railTabClass = (active: boolean) =>
   );
 
 /**
- * Empty-rail hero: Connections card plus the Copilot subtitle. CopilotKit
- * would render `labels.initial` as a chat bubble with faded controls, so this
- * sits in the message column instead — same idea as the Agents empty overlay.
+ * Empty-rail hero: the PostQueen mark, the title and what Copilot can do
+ * here. CopilotKit would render `labels.initial` as a chat bubble with faded
+ * controls, so this sits in the message column instead, same idea as the
+ * Agents empty overlay. `unconfigured` swaps the line for why it cannot.
  */
-const ComposeAiEmptyHero: FC = () => {
+const ComposeAiEmptyHero: FC<{ unconfigured?: string }> = ({
+  unconfigured,
+}) => {
   const t = useT();
   return (
     <>
@@ -393,12 +397,21 @@ const ComposeAiEmptyHero: FC = () => {
           </span>
         </div>
         <p className="mx-auto mt-[8px] max-w-[360px] text-[13.5px] leading-[1.55] text-pqMuted">
-          {t(
-            'composer_ai_sub',
-            'It can rewrite the text, fit it to each channel, or make an image and attach it.'
-          )}
+          {unconfigured ||
+            t(
+              'composer_ai_sub',
+              'It can rewrite the text, fit it to each channel, or make an image and attach it.'
+            )}
         </p>
       </div>
+      {!!unconfigured && (
+        <NextLink
+          href="/connections"
+          className="pointer-events-auto text-[13px] font-[600] text-pqFocused hover:underline"
+        >
+          {t('open_connections', 'Open Connections')}
+        </NextLink>
+      )}
     </>
   );
 };
@@ -416,10 +429,7 @@ const ComposeAiStartOver: FC = () => {
       type="button"
       data-pq="composer-ai-start-over"
       onClick={startOver}
-      aria-label={t('start_over', 'Start over')}
-      data-tooltip-id="tooltip"
-      data-tooltip-content={t('start_over', 'Start over')}
-      className="absolute end-[10px] top-[8px] z-[3] grid size-[32px] place-items-center rounded-[9px] bg-pqPop text-pqSoft shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:text-pqText mobile:size-[44px]"
+      className="me-[12px] mt-[8px] flex h-[30px] shrink-0 items-center gap-[6px] self-end rounded-[8px] px-[9px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText mobile:h-[44px]"
     >
       <svg
         viewBox="0 0 24 24"
@@ -436,6 +446,7 @@ const ComposeAiStartOver: FC = () => {
           strokeLinejoin="round"
         />
       </svg>
+      {t('start_over', 'Start over')}
     </button>
   );
 };
@@ -598,8 +609,8 @@ const ComposeAiInput: FC<InputProps> = ({
           {showStop ? (
             <svg
               viewBox="0 0 24 24"
-              width="15"
-              height="15"
+              width="17"
+              height="17"
               fill="none"
               aria-hidden="true"
             >
@@ -1510,7 +1521,7 @@ const ComposeAiUnconfigured: FC<{
             data-copilot-empty="1"
             className="flex flex-col items-center gap-[14px] px-[16px] pb-[16px] pt-[20px] text-center"
           >
-            <ComposeAiEmptyHero />
+            <ComposeAiEmptyHero unconfigured={tip} />
           </div>
         )}
       </div>
@@ -1530,16 +1541,19 @@ const ComposeAiUnconfigured: FC<{
                 send();
               }
             }}
-            placeholder={t('write_something', 'Write something …')}
+            placeholder={t(
+              'composer_ai_placeholder',
+              'Ask for a change, like "make it shorter"'
+            )}
             rows={1}
             className="min-h-[36px] flex-1 resize-none"
           />
           <button
             type="submit"
             data-pq="composer-ai-send"
+            aria-label={t('send', 'Send')}
             className="copilotKitInputControlButton shrink-0"
           >
-            <span className="sr-only">{t('send', 'Send')}</span>
             <svg
               viewBox="0 0 24 24"
               width="17"
@@ -1657,11 +1671,11 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
       )}
       {aiOk ? (
         <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 flex flex-col">
             <ComposerLiveBridge>
               <ComposeAiStartOver />
               <CopilotChat
-                className="h-full w-full"
+                className="min-h-0 w-full flex-1"
                 suggestions={suggestions}
                 RenderSuggestionsList={ComposeAiSuggestionList}
                 Input={ComposeAiInput}

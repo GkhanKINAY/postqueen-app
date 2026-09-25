@@ -85,7 +85,10 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                     'data-tooltip-content': channelNameWithHandle(integration),
                   })}
                 >
-                  <div
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={channelNameWithHandle(integration)}
                     onClick={() => {
                       if (exising.integration) {
                         return;
@@ -125,7 +128,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                       badgeSize={16}
                       className="min-h-[42px] min-w-[42px]"
                     />
-                  </div>
+                  </button>
                 </div>
                 );
               })}

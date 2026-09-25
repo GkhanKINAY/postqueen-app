@@ -203,7 +203,7 @@ export const TagsComponentInner: FC<{
         <div
           className={clsx(
             'whitespace-nowrap',
-            touch ? 'min-w-0 truncate' : ''
+            touch ? 'min-w-0 truncate' : 'min-w-0 max-w-[220px]'
           )}
         >
           {tagValue.length === 0 ? (

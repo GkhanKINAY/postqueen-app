@@ -150,8 +150,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const [composerPane, setComposerPane] = useState<ComposerPane>('edit');
   const [studioRail, setStudioRail] = useState<StudioRail>('assistant');
   const [maximized, setMaximized] = useState(false);
-  // Desktop default: one right rail, AI Copilot first (Connections lives
-  // there). Post Preview is revealed once when text or media appears.
+  // Desktop default: one right rail, AI Copilot first. Post Preview is
+  // revealed once when text or media appears.
   // Full screen keeps write | preview | AI as three columns.
   const tabbedRail = !compactChrome && !maximized;
   const previewRevealedRef = useRef(false);
@@ -593,7 +593,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // Phone submit lives on Schedule; tablet submit can be on Preview.
         // Bounce back to Write so the toast has a visible surface to fix.
         // Content errors must not call preview()/setCurrent — that switches
-        // off global editing and locks the editor behind "Edit content".
+        // off global editing and locks the editor behind "Write a separate
+        // version".
         const revealWriteForIssue = (kind: 'settings' | 'content') => {
           setComposerPane('edit');
           if (kind === 'settings') {
@@ -839,6 +840,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       t,
       notifyOnPublish,
       fetch,
+      // Start over gives the rail a new thread id; the post saves that one.
+      copilotThread,
     ]
   );
 

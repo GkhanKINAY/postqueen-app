@@ -84,7 +84,7 @@ export const DatePicker: FC<{
         </div>
         <div className="min-w-0 truncate whitespace-nowrap tabular-nums">
           {date.format(dateTimePattern())}{' '}
-          {/* The zone the time is read in, from the person's settings. */}
+          {/* The UTC offset of the time beside it. */}
           <span className="font-[500] text-pqSoft">
             GMT
             {date
