@@ -1,4 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import dynamic from 'next/dynamic';
 import { useSWRConfig } from 'swr';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
@@ -24,6 +30,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 
 /**
  * The generator and the set picker are heavy and this control now renders on
@@ -53,6 +60,106 @@ const SetSelectionModal = dynamic(
     ),
   { ssr: false }
 );
+
+/** One row of the Create menu: what it makes and, in a line, how. */
+const CreateMenuItem: FC<{
+  icon: ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+  brand?: boolean;
+  locked?: boolean;
+  big?: boolean;
+}> = ({ icon, title, description, onClick, brand, locked, big }) => (
+  <button
+    type="button"
+    role="menuitem"
+    onClick={onClick}
+    className={clsx(
+      'flex w-full items-center gap-[12px] rounded-[12px] text-start outline-none transition-colors hover:bg-pqHover focus-visible:bg-pqHover',
+      big ? 'min-h-[66px] p-[12px]' : 'p-[10px]',
+      locked && 'opacity-[0.45]'
+    )}
+  >
+    <span
+      className={clsx(
+        'flex shrink-0 items-center justify-center',
+        big ? 'size-[42px] rounded-[12px]' : 'size-[34px] rounded-[10px]',
+        brand ? 'bg-pqBrandSoft text-pqFocused' : 'bg-pqSettings text-pqMuted'
+      )}
+    >
+      {icon}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span
+        className={clsx(
+          'block font-[600] text-pqText',
+          big ? 'text-[15px]' : 'text-[13.5px]'
+        )}
+      >
+        {title}
+      </span>
+      <span
+        className={clsx(
+          'mt-[1px] block text-pqMuted',
+          big ? 'text-[13px]' : 'text-[12.5px]'
+        )}
+      >
+        {description}
+      </span>
+    </span>
+    {locked && (
+      <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        aria-hidden="true"
+        className="shrink-0 text-pqMuted"
+      >
+        <rect
+          x="3"
+          y="7"
+          width="10"
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.3"
+        />
+        <path
+          d="M5.5 7V5.2a2.5 2.5 0 015 0V7"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      </svg>
+    )}
+  </button>
+);
+
+const createMenuIcon = (d: string, size: number) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d={d}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const PEN_PATH = 'M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4';
+const SPARKLES_PATH =
+  'M12 3l1.9 4.8 4.8 1.9-4.8 1.9L12 16.4l-1.9-4.8L5.3 9.7l4.8-1.9L12 3ZM18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z';
+const CHAT_PATH =
+  'M20 12a8 8 0 0 1-11.6 7.1L4 20l.9-4.4A8 8 0 1 1 20 12ZM8.5 10.5h7M8.5 14h4';
 
 /**
  * Create Post split control (Blank / AI), rendered by the chrome header on
@@ -98,11 +205,25 @@ export const NewPost = () => {
   const aiAvailable = useAiAvailable();
   const addProvider = useAddProvider(mutateIntegrations);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useClickOutside(() => setMenuOpen(false));
+  // The phone sheet is portalled, so a tap inside it is "outside" this
+  // wrapper; it closes through its own scrim instead.
+  const menuRef = useClickOutside(() => {
+    if (!mobile) setMenuOpen(false);
+  });
   const { referenceRef, floatingRef } = useAnchoredPopover<
     HTMLDivElement,
     HTMLDivElement
-  >(menuOpen, 'end');
+  >(menuOpen && !mobile, 'end');
+
+  // The phone sheet closes itself on Escape; the desktop menu needs its own.
+  useEffect(() => {
+    if (!menuOpen || mobile) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen, mobile]);
 
   // The calendar and list views key off `/posts-...` and `/posts-list-...`.
   // Matching the prefix reaches both, and reaches them from pages where the
@@ -369,6 +490,48 @@ export const NewPost = () => {
   // that changes nothing.
   const aiLocked = billingEnabled && !user?.tier?.ai;
 
+  const planWithCopilot = useCallback(() => {
+    setMenuOpen(false);
+    router.push('/agents');
+  }, [router]);
+
+  // The same three ways to start, as a menu on desktop and a sheet on phones
+  // (where AI post had no way in before).
+  const menuItems = (big: boolean) => (
+    <>
+      <CreateMenuItem
+        big={big}
+        icon={createMenuIcon(PEN_PATH, big ? 19 : 17)}
+        title={t('blank_post', 'Blank post')}
+        description={t('create_blank_post_sub', 'Write it yourself')}
+        onClick={createAPost}
+      />
+      <CreateMenuItem
+        big={big}
+        brand
+        locked={aiLocked}
+        icon={createMenuIcon(SPARKLES_PATH, big ? 19 : 17)}
+        title={t('ai_post', 'AI post')}
+        description={t(
+          'create_ai_post_sub',
+          'Describe it and get a first draft'
+        )}
+        onClick={createAiPost}
+      />
+      {!big && <div className="mx-[6px] my-[4px] h-px bg-pqLine" />}
+      <CreateMenuItem
+        big={big}
+        icon={createMenuIcon(CHAT_PATH, big ? 19 : 17)}
+        title={t('plan_with_copilot', 'Plan with AI Copilot')}
+        description={t(
+          'plan_with_copilot_sub',
+          'Several posts, images and times in one chat'
+        )}
+        onClick={planWithCopilot}
+      />
+    </>
+  );
+
   return (
     <div className="relative shrink-0" ref={menuRef}>
       <div
@@ -382,7 +545,8 @@ export const NewPost = () => {
           type="button"
           data-pq="create-post"
           aria-label={t('create_new_post', 'Create Post')}
-          onClick={createAPost}
+          aria-haspopup={mobile ? 'dialog' : undefined}
+          onClick={mobile ? () => setMenuOpen(true) : createAPost}
           className={clsx(
             'flex h-full items-center justify-center outline-none transition-colors hover:bg-black/10',
             mobile ? 'w-full' : 'gap-[6px] ps-[14px] pe-[10px]'
@@ -413,6 +577,7 @@ export const NewPost = () => {
           type="button"
           data-pq="create-post-menu"
           aria-expanded={menuOpen}
+          aria-haspopup="menu"
           aria-label={t('create_post_options', 'Create post options')}
           onClick={() => setMenuOpen((open) => !open)}
           className={clsx(
@@ -446,60 +611,23 @@ export const NewPost = () => {
       {menuOpen && !mobile && (
         <div
           ref={floatingRef}
+          role="menu"
           data-pq="create-post-dropdown"
-          className="z-[80] min-w-[188px] overflow-hidden rounded-pqMd border border-pqBorder bg-pqPop py-[4px] shadow-menu"
+          className="z-[80] w-[330px] overflow-hidden rounded-[16px] border border-pqBorder bg-pqPop p-[6px] shadow-menu"
         >
-          <button
-            type="button"
-            onClick={createAPost}
-            className="flex w-full items-center gap-[10px] px-[12px] py-[9px] text-start text-[13.5px] font-[500] text-pqText transition-colors hover:bg-pqHover"
-          >
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
-              <path
-                d="M10 4v12M4 10h12"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            {t('blank_post', 'Blank post')}
-          </button>
-          <button
-            type="button"
-            onClick={createAiPost}
-            style={{ opacity: aiLocked ? 0.45 : 1 }}
-            className="flex w-full items-center gap-[10px] px-[12px] py-[9px] text-start text-[13.5px] font-[500] text-pqText transition-colors hover:bg-pqHover"
-          >
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
-              <path
-                d="M10 2.5l1.2 3.1c.2.6.4.9.7 1.1.3.2.6.4 1.2.6L16.2 8.5l-3.1 1.2c-.6.2-.9.4-1.1.7-.2.3-.4.6-.6 1.2L10 14.7l-1.2-3.1c-.2-.6-.4-.9-.7-1.1-.3-.2-.6-.4-1.2-.6L3.8 8.5l3.1-1.2c.6-.2.9-.4 1.1-.7.2-.3.4-.6.6-1.2L10 2.5z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="flex-1">{t('ai_post', 'AI post')}</span>
-            {aiLocked && (
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
-                <rect
-                  x="3"
-                  y="7"
-                  width="10"
-                  height="7"
-                  rx="1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                />
-                <path
-                  d="M5.5 7V5.2a2.5 2.5 0 015 0V7"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            )}
-          </button>
+          {menuItems(false)}
         </div>
+      )}
+      {mobile && (
+        <MobileSheet
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          title={t('create', 'Create')}
+        >
+          <div role="menu" className="flex flex-col px-[6px] pb-[10px]">
+            {menuItems(true)}
+          </div>
+        </MobileSheet>
       )}
     </div>
   );
