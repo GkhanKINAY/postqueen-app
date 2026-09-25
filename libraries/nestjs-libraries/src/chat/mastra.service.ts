@@ -99,14 +99,18 @@ export class MastraService {
     });
   }
 
-  /** The Copilot page's chats, newest first. Composer chats live under their own resource and never show here. */
+  /**
+   * The Copilot page's chats, most recently active first (the list groups
+   * them by that day). Composer chats live under their own resource and
+   * never show here.
+   */
   async listThreads(organizationId: string) {
     const memory = await this.memory();
     const list = await memory.listThreads({
       filter: { resourceId: this.resourceId(organizationId, 'agent') },
       perPage: 100000,
       page: 0,
-      orderBy: { field: 'createdAt', direction: 'DESC' },
+      orderBy: { field: 'updatedAt', direction: 'DESC' },
     });
     return list.threads.map((p) => ({
       id: p.id,
@@ -127,7 +131,12 @@ export class MastraService {
       : null;
   }
 
-  /** Runs live in a process-wide store, so any runner instance sees them. */
+  /**
+   * Live runs sit in CopilotKit's in-memory store, which is per process: any
+   * runner instance in this process sees them. Production runs one backend
+   * process; with several, a delete could land on one that does not know
+   * about the run.
+   */
   private async isRunning(organizationId: string, threadId: string) {
     const runner = await this.threadRunner(organizationId);
     return runner.isRunning({ threadId });
