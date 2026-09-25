@@ -1,6 +1,13 @@
 'use client';
 
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter } from 'next/navigation';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -18,33 +25,76 @@ import {
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
-import { Select } from '@gitroom/react/form/select';
+import { FormChoice } from '@gitroom/react/form/form.choice';
+import { Spinner } from '@gitroom/react/ui/spinner';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 
-const FirstStep: FC = (props) => {
+/**
+ * The generation graph's nodes, grouped into the steps a person reads. The
+ * image step only shows when an image was asked for.
+ */
+const GENERATOR_STEPS: { nodes: string[]; picture?: boolean }[] = [
+  { nodes: ['agent', 'research', 'find-category', 'find-topic'] },
+  { nodes: ['find-popular-posts'] },
+  { nodes: ['generate-hook'] },
+  { nodes: ['generate-content'] },
+  { nodes: ['generate-picture', 'upload-pictures'], picture: true },
+  { nodes: ['post-time'] },
+];
+
+type GeneratorForm = GeneratorDto & {
+  /** Length and shape are asked apart and sent as one `format`. */
+  length: 'short' | 'long';
+  shape: 'one' | 'thread';
+};
+
+const FirstStep: FC = () => {
   const { integrations, reloadCalendarView } = useCalendar();
   const modal = useModals();
+  const router = useRouter();
   const fetch = useFetch();
   const toaster = useToaster();
   const [loading, setLoading] = useState(false);
-  const [showStep, setShowStep] = useState('');
+  const [step, setStep] = useState(-1);
+  const abortRef = useRef<AbortController | null>(null);
   const t = useT();
   const resolver = useMemo(() => {
     return classValidatorResolver(GeneratorDto);
   }, []);
-  const form = useForm<GeneratorDto>({
+  const form = useForm<GeneratorForm>({
     mode: 'all',
-    resolver,
+    resolver: resolver as any,
     values: {
       research: '',
       isPicture: false,
       format: 'one_short',
       tone: 'personal',
+      length: 'short',
+      shape: 'one',
     },
   });
-  const [research] = form.watch(['research']);
+  const [research, length, shape, isPicture] = form.watch([
+    'research',
+    'length',
+    'shape',
+    'isPicture',
+  ]);
+
+  useEffect(() => {
+    form.setValue('format', `${shape}_${length}` as GeneratorDto['format']);
+  }, [form, shape, length]);
+
+  const stepLabels = [
+    t('ai_post_step_topic', 'Understanding the topic'),
+    t('ai_post_step_popular', 'Finding popular posts to learn from'),
+    t('ai_post_step_hook', 'Writing the hook'),
+    t('ai_post_step_post', 'Writing the post'),
+    t('ai_post_step_image', 'Making the image'),
+    t('ai_post_step_time', 'Finding a free time'),
+  ];
+
   const generateStep = useCallback(
     async (reader: ReadableStreamDefaultReader) => {
       const decoder = new TextDecoder('utf-8');
@@ -73,84 +123,53 @@ const FirstStep: FC = (props) => {
           if (data?.error) {
             throw new Error(
               data.message ||
-                t('generation_failed', 'Failed to generate posts, please try again.')
+                t(
+                  'generation_failed',
+                  'Failed to generate posts, please try again.'
+                )
             );
           }
 
-          {
-            switch (data.name) {
-              case 'agent':
-                setShowStep(t('agent_starting', 'Agent starting'));
-                break;
-              case 'research':
-                setShowStep(
-                  t('researching_your_content', 'Researching your content...')
-                );
-                break;
-              case 'find-category':
-                setShowStep(
-                  t(
-                    'understanding_the_category',
-                    'Understanding the category...'
-                  )
-                );
-                break;
-              case 'find-topic':
-                setShowStep(t('finding_the_topic', 'Finding the topic...'));
-                break;
-              case 'find-popular-posts':
-                setShowStep(
-                  t(
-                    'finding_popular_posts_to_match_with',
-                    'Finding popular posts to match with...'
-                  )
-                );
-                break;
-              case 'generate-hook':
-                setShowStep(t('generating_hook', 'Generating hook...'));
-                break;
-              case 'generate-content':
-                setShowStep(t('generating_content', 'Generating content...'));
-                break;
-              case 'generate-picture':
-                setShowStep(t('generating_pictures', 'Generating pictures...'));
-                break;
-              case 'upload-pictures':
-                setShowStep(t('uploading_pictures', 'Uploading pictures...'));
-                break;
-              case 'post-time':
-                setShowStep(
-                  t('finding_time_to_post', 'Finding time to post...')
-                );
-                break;
-            }
-            lastResponse = data;
+          const index = GENERATOR_STEPS.findIndex((s) =>
+            s.nodes.includes(data.name)
+          );
+          if (index > -1) {
+            setStep(index);
           }
+          lastResponse = data;
         }
       }
     },
     [t]
   );
-  const onSubmit: SubmitHandler<{
-    research: string;
-  }> = useCallback(
-    async (value) => {
+  const onSubmit: SubmitHandler<GeneratorForm> = useCallback(
+    async ({ length: _length, shape: _shape, ...value }) => {
       setLoading(true);
+      setStep(0);
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
         const response = await fetch('/posts/generator', {
           method: 'POST',
           body: JSON.stringify(value),
+          signal: controller.signal,
         });
         if (!response.body) {
           throw new Error(
-            t('generation_failed', 'Failed to generate posts, please try again.')
+            t(
+              'generation_failed',
+              'Failed to generate posts, please try again.'
+            )
           );
         }
         const reader = response.body.getReader();
         const load = await generateStep(reader);
         if (!load?.content) {
           throw new Error(
-            t('generation_failed', 'Failed to generate posts, please try again.')
+            t(
+              'generation_failed',
+              'Failed to generate posts, please try again.'
+            )
           );
         }
         const messages = load.content.map((p: any, index: number) => {
@@ -173,7 +192,6 @@ const FirstStep: FC = (props) => {
               : {}),
           };
         });
-        setShowStep('');
         modal.openModal({
           id: 'add-edit-modal',
           closeOnClickOutside: false,
@@ -202,90 +220,201 @@ const FirstStep: FC = (props) => {
           size: '80%',
         });
       } catch (e: any) {
-        toaster.show(
-          e?.message ||
-            t('generation_failed', 'Failed to generate posts, please try again.'),
-          'warning'
-        );
+        // Cancel aborts the request on purpose; nothing to report.
+        if (!controller.signal.aborted) {
+          toaster.show(
+            e?.message ||
+              t(
+                'generation_failed',
+                'Failed to generate posts, please try again.'
+              ),
+            'warning'
+          );
+        }
       } finally {
-        setShowStep('');
+        abortRef.current = null;
+        setStep(-1);
         setLoading(false);
       }
     },
     [integrations, reloadCalendarView, fetch, generateStep, modal, toaster, t]
   );
-  return (
-    <form
-      onSubmit={form.handleSubmit(onSubmit)}
-      className={loading ? 'pointer-events-none select-none opacity-75' : ''}
-    >
-      <FormProvider {...form}>
-        {/* The step line keeps its height so the form does not jump when
-            generation starts. `.loading-shimmer` paints white text, which
-            vanished on the light theme. */}
-        <div className="mb-[4px] min-h-[20px] text-[13px] text-pqPink" aria-live="polite">
-          {showStep}
+
+  const planInCopilot = useCallback(() => {
+    modal.closeCurrent();
+    router.push('/agents');
+  }, [modal, router]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col">
+        <div className="rounded-[12px] bg-pqSettings px-[16px] py-[14px] text-[13px] leading-[1.5] text-pqMuted">
+          {research}
         </div>
-        <div className="flex flex-col gap-[12px]">
-          <Textarea
-            label={t('write_anything', 'Write anything')}
-            disabled={loading}
-            placeholder={t(
-              'you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you',
-              'You can write anything you want, and also add links, we will do the research for you...'
+        <ol className="mt-[14px] flex flex-col" aria-live="polite">
+          {GENERATOR_STEPS.map((s, index) => {
+            if (s.picture && !isPicture) {
+              return null;
+            }
+            const state =
+              index < step ? 'done' : index === step ? 'run' : 'todo';
+            return (
+              <li
+                key={index}
+                className={clsx(
+                  'flex h-[38px] items-center gap-[12px] text-[14px]',
+                  state === 'run'
+                    ? 'font-[600] text-pqText'
+                    : state === 'done'
+                      ? 'font-[500] text-pqMuted'
+                      : 'font-[500] text-pqSoft'
+                )}
+              >
+                {state === 'done' ? (
+                  <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqOkSoft text-pqOk">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M5 12.5l4.5 4.5L19 7.5"
+                        stroke="currentColor"
+                        strokeWidth="2.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                ) : state === 'run' ? (
+                  <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqBrandSoft text-pqFocused">
+                    <Spinner width={12} height={12} borderWidth={2} />
+                  </span>
+                ) : (
+                  <span className="size-[22px] shrink-0 rounded-full shadow-[inset_0_0_0_1.5px_var(--border)]" />
+                )}
+                {stepLabels[index]}
+              </li>
+            );
+          })}
+        </ol>
+        <div className="mt-[18px] flex items-center gap-[8px] border-t border-pqLine pt-[16px]">
+          <span className="text-[12.5px] text-pqSoft">
+            {t(
+              'ai_post_opens_when_done',
+              'Create Post opens with the draft when this is done.'
             )}
-            {...form.register('research')}
-          />
-          <Select
-            label={t('output_format', 'Output format')}
-            className="h-[44px]"
-            {...form.register('format')}
+          </span>
+          <button
+            type="button"
+            onClick={() => abortRef.current?.abort()}
+            className="ms-auto h-[38px] rounded-[10px] px-[14px] text-[13.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
           >
-            <option value="one_short">{t('short_post', 'Short post')}</option>
-            <option value="one_long">{t('long_post', 'Long post')}</option>
-            <option value="thread_short">
-              {t('a_thread_with_short_posts', 'A thread with short posts')}
-            </option>
-            <option value="thread_long">
-              {t('a_thread_with_long_posts', 'A thread with long posts')}
-            </option>
-          </Select>
-          <Select
-            // Prototype template also labels this "Output format" (bug);
-            // field is genTone / form `tone` — use Tone.
-            label={t('tone', 'Tone')}
-            className="h-[44px]"
-            {...form.register('tone')}
-          >
-            <option value="personal">
-              {t(
-                'personal_voice_i_am_happy_to_announce',
-                'Personal voice ("I am happy to announce")'
+            {t('cancel', 'Cancel')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      <FormProvider {...form}>
+        <p className="-mt-[4px] mb-[16px] text-[12.5px] text-pqMuted">
+          {t(
+            'ai_post_sub',
+            'You get a draft in Create Post. Nothing is scheduled until you say so.'
+          )}
+        </p>
+        <div className="flex flex-col gap-[16px]">
+          <div>
+            <Textarea
+              label={t('ai_post_about', 'What is the post about?')}
+              placeholder={t(
+                'ai_post_about_placeholder',
+                'Our spring collection launches on Monday: light layers and soft colors. Keep it friendly.'
               )}
-            </option>
-            <option value="company">
-              {t(
-                'company_voice_we_are_happy_to_announce',
-                'Company voice ("We are happy to announce")'
-              )}
-            </option>
-          </Select>
-          <div className={clsx('flex items-center pt-[4px]', loading && 'opacity-50')}>
-            <Checkbox
-              disabled={loading}
-              {...form.register('isPicture')}
-              label={t('add_pictures', 'Add pictures?')}
+              {...form.register('research')}
             />
+            <div className="mt-[6px] text-[12px] text-pqSoft">
+              {t(
+                'ai_post_about_hint',
+                'At least 10 characters. Say who it is for and how it should sound.'
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-x-[18px] gap-y-[14px] mobile:grid-cols-1">
+            <FormChoice
+              name="length"
+              layout="segment"
+              label={t('ai_post_length', 'Length')}
+              options={[
+                { label: t('ai_post_short', 'Short'), value: 'short' },
+                { label: t('ai_post_long', 'Long'), value: 'long' },
+              ]}
+            />
+            <FormChoice
+              name="shape"
+              layout="segment"
+              label={t('ai_post_shape', 'Shape')}
+              options={[
+                { label: t('ai_post_one', 'One post'), value: 'one' },
+                { label: t('ai_post_thread', 'Thread'), value: 'thread' },
+              ]}
+            />
+            <FormChoice
+              name="tone"
+              layout="segment"
+              label={t('ai_post_voice', 'Voice')}
+              options={[
+                {
+                  label: t('ai_post_personal', 'Personal (I)'),
+                  value: 'personal',
+                },
+                {
+                  label: t('ai_post_company', 'Company (We)'),
+                  value: 'company',
+                },
+              ]}
+            />
+            <div className="flex flex-col gap-[5px]">
+              <div className="text-[13px] font-[500] text-pqMuted">
+                {t('ai_post_image', 'Image')}
+              </div>
+              <div className="flex h-[40px] items-center">
+                <Checkbox
+                  {...form.register('isPicture')}
+                  label={t('ai_post_make_image', 'Make an image for it')}
+                />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="mt-[16px] flex justify-end">
-          <Button
-            type="submit"
-            disabled={research.length < 10}
-            loading={loading}
+        <div className="mt-[20px] flex flex-wrap items-center gap-[8px] border-t border-pqLine pt-[16px]">
+          <button
+            type="button"
+            onClick={planInCopilot}
+            className="flex min-h-[38px] items-center gap-[6px] text-[13px] font-[600] text-pqFocused hover:underline"
           >
-            {t('generate', 'Generate')}
-          </Button>
+            {t(
+              'ai_post_plan_in_copilot',
+              'Several posts? Plan them in AI Copilot'
+            )}
+          </button>
+          <span className="ms-auto flex gap-[8px]">
+            <button
+              type="button"
+              onClick={() => modal.closeCurrent()}
+              className="h-[38px] rounded-[10px] px-[14px] text-[13.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+            >
+              {t('cancel', 'Cancel')}
+            </button>
+            <Button type="submit" disabled={research.trim().length < 10}>
+              {t('ai_post_write_draft', 'Write the draft')}
+            </Button>
+          </span>
         </div>
       </FormProvider>
     </form>
@@ -318,7 +447,7 @@ export const GeneratorComponent = () => {
       return;
     }
     modal.openModal({
-      title: t('generate_posts', 'Generate Posts'),
+      title: t('write_a_post_with_ai', 'Write a post with AI'),
       withCloseButton: true,
       classNames: {
         modal: 'text-pqText',

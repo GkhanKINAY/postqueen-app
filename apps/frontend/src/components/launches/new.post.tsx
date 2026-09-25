@@ -464,7 +464,7 @@ export const NewPost = () => {
       return;
     }
     modal.openModal({
-      title: t('generate_posts', 'Generate Posts'),
+      title: t('write_a_post_with_ai', 'Write a post with AI'),
       withCloseButton: true,
       // Opaque --inner card (modal shell). Never bg-transparent — that let the
       // calendar list bleed through. Width matches prototype generator card.
