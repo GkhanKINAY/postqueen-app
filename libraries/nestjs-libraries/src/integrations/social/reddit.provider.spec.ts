@@ -269,3 +269,80 @@ describe('Reddit RATELIMIT', () => {
     assert.ok(Date.now() - started < 5000);
   });
 });
+
+/**
+ * A post sent to several subreddits stores one id per subreddit, joined with
+ * commas. The comment went out as a single thing_id `t3_a,b`, which Reddit
+ * refuses, so every follow-up comment on such a post failed.
+ */
+describe('Reddit comments', () => {
+  const comment = (postId: string) => {
+    const things: string[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      const thing = new URLSearchParams(String(init?.body)).get('thing_id')!;
+      things.push(thing);
+      const id = `c_${thing.replace('t3_', '')}`;
+      return new Response(
+        JSON.stringify({
+          json: {
+            data: {
+              things: [{ data: { id, permalink: `/r/x/comments/${id}/` } }],
+            },
+          },
+        }),
+        { status: 200 }
+      );
+    }) as typeof fetch;
+
+    return {
+      things,
+      result: new RedditProvider().comment(
+        'id',
+        postId,
+        undefined,
+        'token',
+        [{ id: 'c1', message: 'More', settings: {} } as any],
+        integration
+      ),
+    };
+  };
+
+  it('go under each subreddit the post was sent to', async () => {
+    const { things, result } = comment('a,t3_b');
+    const [response] = await result;
+
+    assert.deepEqual(things, ['t3_a', 't3_b']);
+    assert.equal(response.id, 'c1');
+    assert.equal(response.postId, 'c_a,c_b');
+    assert.equal(
+      response.releaseURL,
+      'https://www.reddit.com/r/x/comments/c_a/,https://www.reddit.com/r/x/comments/c_b/'
+    );
+  });
+
+  it('still go under a post sent to one subreddit', async () => {
+    const { things, result } = comment('a');
+    const [response] = await result;
+
+    assert.deepEqual(things, ['t3_a']);
+    assert.equal(response.postId, 'c_a');
+  });
+
+  it('fail with Reddit’s reason when it refuses one', async () => {
+    answer({
+      json: { errors: [['THREAD_LOCKED', 'that thread is locked', 'parent']] },
+    });
+
+    await rejectsWith(
+      new RedditProvider().comment(
+        'id',
+        'a',
+        undefined,
+        'token',
+        [{ id: 'c1', message: 'More', settings: {} } as any],
+        integration
+      ),
+      /Reddit rejected the comment on post a: that thread is locked/
+    );
+  });
+});
