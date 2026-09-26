@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import useSWR from 'swr';
 import { Slider } from '@gitroom/react/form/slider';
@@ -8,6 +8,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 interface EmailNotifications {
   sendSuccessEmails: boolean;
@@ -32,12 +33,71 @@ export const useEmailNotifications = () => {
   });
 };
 
+interface ProductNews {
+  /** Null when this install keeps no choice to show. */
+  subscribed: boolean | null;
+}
+
+// Kept on the mailing list rather than the account, so it loads and saves on
+// its own, and only where the install sends product news at all.
+export const useProductNews = (enabled: boolean) => {
+  const fetch = useFetch();
+
+  const load = useCallback(async () => {
+    const response = await fetch('/user/product-news');
+    if (!response.ok) {
+      throw new Error('Failed to load product news');
+    }
+    return response.json();
+  }, [fetch]);
+
+  return useSWR<ProductNews>(enabled ? 'product-news' : null, load, {
+    // A list that is down hides the row; retrying would only repeat the 500.
+    shouldRetryOnError: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    revalidateOnMount: true,
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+  });
+};
+
+const SwitchRow: FC<{
+  name: string;
+  description: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}> = ({ name, description, on, onChange }) => (
+  <div className="flex items-center gap-[14px] border-t border-pqLine py-[11px]">
+    <div className="min-w-0 flex-1">
+      <div className="text-[13px] font-[500] text-pqText">{name}</div>
+      <div className="mt-[2px] text-[12px] text-pqMuted">{description}</div>
+    </div>
+    <Slider
+      value={on ? 'on' : 'off'}
+      onChange={(value) => onChange(value === 'on')}
+      fill={true}
+    />
+  </div>
+);
+
 const EmailNotificationsComponent = () => {
   const t = useT();
   const user = useUser();
   const fetch = useFetch();
   const toaster = useToaster();
   const { data, isLoading } = useEmailNotifications();
+  const { productNewsEnabled } = useVariables();
+  const {
+    data: news,
+    isLoading: newsLoading,
+    mutate: mutateNews,
+  } = useProductNews(productNewsEnabled);
+  const newsOn = typeof news?.subscribed === 'boolean' ? news.subscribed : null;
+  // Each save is several calls to the list, so a second click waits for the
+  // first instead of racing it.
+  const savingNews = useRef(false);
 
   const [localSettings, setLocalSettings] = useState<EmailNotifications>({
     sendSuccessEmails: true,
@@ -87,6 +147,37 @@ const EmailNotificationsComponent = () => {
     [fetch, toaster, t]
   );
 
+  const updateNews = useCallback(
+    async (value: boolean) => {
+      if (savingNews.current) {
+        return;
+      }
+      savingNews.current = true;
+      const previous = news;
+      mutateNews({ subscribed: value }, { revalidate: false });
+
+      try {
+        const response = await fetch('/user/product-news', {
+          method: 'POST',
+          body: JSON.stringify({ subscribed: value }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to update product news');
+        }
+        toaster.show(t('settings_updated', 'Settings updated'), 'success');
+      } catch {
+        mutateNews(previous, { revalidate: false });
+        toaster.show(
+          t('something_went_wrong', 'Something went wrong'),
+          'warning'
+        );
+      } finally {
+        savingNews.current = false;
+      }
+    },
+    [fetch, toaster, t, news, mutateNews]
+  );
+
   const rows: {
     key: keyof EmailNotifications;
     name: string;
@@ -121,7 +212,7 @@ const EmailNotificationsComponent = () => {
   if (isLoading) {
     return (
       <div className="mt-[18px] flex flex-col gap-[12px] rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: productNewsEnabled ? 4 : 3 }).map((_, i) => (
           <div key={i} className="flex items-center gap-[12px]">
             <Skeleton className="h-[13px] min-w-0 flex-1" />
             <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />
@@ -147,25 +238,31 @@ const EmailNotificationsComponent = () => {
           </div>
         </div>
         {rows.map((row) => (
-          <div
+          <SwitchRow
             key={row.key}
-            className="flex items-center gap-[14px] border-t border-pqLine py-[11px]"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-[500] text-pqText">{row.name}</div>
-              <div className="mt-[2px] text-[12px] text-pqMuted">
-                {row.description}
-              </div>
-            </div>
-            <Slider
-              value={localSettings[row.key] ? 'on' : 'off'}
-              onChange={(value) =>
-                updateSetting(row.key, value === 'on')
-              }
-              fill={true}
-            />
-          </div>
+            name={row.name}
+            description={row.description}
+            on={localSettings[row.key]}
+            onChange={(on) => updateSetting(row.key, on)}
+          />
         ))}
+        {newsLoading && (
+          <div className="flex items-center gap-[12px] border-t border-pqLine py-[11px]">
+            <Skeleton className="h-[13px] min-w-0 flex-1" />
+            <Skeleton className="h-[20px] w-[38px] shrink-0 rounded-full" />
+          </div>
+        )}
+        {newsOn !== null && (
+          <SwitchRow
+            name={t('product_news', 'Product news')}
+            description={t(
+              'product_news_description',
+              'Receive an email about new features and improvements, now and then'
+            )}
+            on={newsOn}
+            onChange={updateNews}
+          />
+        )}
       </div>
     </div>
   );

@@ -845,5 +845,8 @@
   "email_off_invalid": "Welche E-Mails du bekommst, legst du in den Einstellungen unter Benachrichtigungen fest.",
   "email_off_settings": "Benachrichtigungseinstellungen öffnen",
   "email_off_done": "Erledigt. Diese E-Mails kommen nicht mehr.",
-  "email_off_button": "Abschalten"
+  "email_off_button": "Abschalten",
+  "signup_product_news_notice": "Wir schicken Ihnen ab und zu Produktneuigkeiten. Jede davon können Sie mit einem Klick abbestellen.",
+  "product_news": "Produktneuigkeiten",
+  "product_news_description": "Ab und zu eine E-Mail zu neuen Funktionen und Verbesserungen erhalten"
 }

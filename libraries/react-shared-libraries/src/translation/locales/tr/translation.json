@@ -863,5 +863,8 @@
   "email_off_invalid": "Hangi e-postaları alacağınızı Ayarlar'da, Bildirimler altında seçebilirsiniz.",
   "email_off_settings": "Bildirim ayarlarını aç",
   "email_off_done": "Tamam. Bu e-postalar artık gelmeyecek.",
-  "email_off_button": "Kapat"
+  "email_off_button": "Kapat",
+  "signup_product_news_notice": "Zaman zaman size ürün haberleri göndereceğiz. Her birinden tek tıkla abonelikten çıkabilirsiniz.",
+  "product_news": "Ürün haberleri",
+  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın"
 }

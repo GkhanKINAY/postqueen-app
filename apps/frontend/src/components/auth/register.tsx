@@ -96,7 +96,7 @@ export function RegisterAfter({
   provider: string;
 }) {
   const t = useT();
-  const { walletLogin, legalUrl } = useVariables();
+  const { walletLogin, legalUrl, productNewsEnabled } = useVariables();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const fireEvents = useFireEvents();
@@ -229,6 +229,16 @@ export function RegisterAfter({
             {t('privacy_policy', 'Privacy Policy')}
           </a>
           &nbsp;
+        </div>
+      )}
+      {/* Customers get product news unless they turn it off, so they are told
+          here, where they give the address, and how to get out of it. */}
+      {productNewsEnabled && (
+        <div className="text-[12px] text-textItemBlur">
+          {t(
+            'signup_product_news_notice',
+            'We’ll email you product news now and then. Unsubscribe from any of them in one click.',
+          )}
         </div>
       )}
       <div className="w-full flex">

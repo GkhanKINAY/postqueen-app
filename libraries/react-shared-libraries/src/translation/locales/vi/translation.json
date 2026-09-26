@@ -845,5 +845,8 @@
   "email_off_invalid": "Bạn có thể chọn loại email muốn nhận trong Cài đặt, mục Thông báo.",
   "email_off_settings": "Mở cài đặt thông báo",
   "email_off_done": "Xong. Bạn sẽ không nhận các email này nữa.",
-  "email_off_button": "Tắt"
+  "email_off_button": "Tắt",
+  "signup_product_news_notice": "Thỉnh thoảng chúng tôi sẽ gửi cho bạn tin tức sản phẩm. Bạn có thể hủy đăng ký từ bất kỳ email nào chỉ bằng một cú nhấp.",
+  "product_news": "Tin tức sản phẩm",
+  "product_news_description": "Thỉnh thoảng nhận email về tính năng mới và cải tiến"
 }

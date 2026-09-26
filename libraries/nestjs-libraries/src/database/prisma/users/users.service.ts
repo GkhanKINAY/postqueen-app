@@ -8,6 +8,7 @@ import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users
 import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { ProductNewsDto } from '@gitroom/nestjs-libraries/dtos/users/product-news.dto';
 import { ChangePasswordDto } from '@gitroom/nestjs-libraries/dtos/users/change.password.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
@@ -15,6 +16,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
+import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 import dayjs from 'dayjs';
 import {
   canCompleteSetPasswordWithToken,
@@ -169,6 +171,7 @@ export class UsersService {
   }
 
   async deleteAccount(userId: string) {
+    const user = await this._usersRepository.getUserById(userId);
     const deletedOrgs = await this.getOrgsToDeleteForAccount(userId);
     const orgs = await this._organizationRepository.getOrgsByUserId(userId);
 
@@ -186,6 +189,10 @@ export class UsersService {
     }
 
     await this._usersRepository.deleteAccount(userId);
+
+    if (user) {
+      await this.leaveProductNews(user.email, userId);
+    }
 
     this._logger.log(
       `Account ${userId} deleted, organizations removed: ${deletedOrgs
@@ -218,6 +225,33 @@ export class UsersService {
 
   updateEmailNotifications(userId: string, body: EmailNotificationsDto) {
     return this._usersRepository.updateEmailNotifications(userId, body);
+  }
+
+  async getProductNews(email: string) {
+    return { subscribed: await NewsletterService.subscribed(email) };
+  }
+
+  async updateProductNews(email: string, body: ProductNewsDto) {
+    return {
+      subscribed: await NewsletterService.setSubscribed(email, body.subscribed),
+    };
+  }
+
+  /**
+   * Takes an address this account no longer has off the product news list,
+   * unless another live account still signs in with it. The row no longer
+   * says which address it was, so a failure names it for removal by hand.
+   */
+  private async leaveProductNews(email: string, userId: string) {
+    if (await this._usersRepository.findEmailConflict(email, userId)) {
+      return;
+    }
+    await NewsletterService.remove(email).catch((err) =>
+      this._logger.error(
+        `Failed to take ${email} off product news; remove the contact in Resend`,
+        err
+      )
+    );
   }
 
   /**
@@ -626,6 +660,7 @@ export class UsersService {
     if (!payload?.email || payload.id !== userId) {
       throw new HttpException('Invalid or expired token', 400);
     }
+    const user = await this._usersRepository.getUserById(userId);
 
     const conflict = await this._usersRepository.findEmailConflict(
       payload.email,
@@ -636,6 +671,15 @@ export class UsersService {
     }
 
     await this._usersRepository.updateEmail(userId, normalizeEmail(payload.email));
+    if (user) {
+      await NewsletterService.changeEmail(
+        user.email,
+        normalizeEmail(payload.email)
+      ).catch((err) =>
+        this._logger.error(`Failed to move ${userId} on product news`, err)
+      );
+      await this.leaveProductNews(user.email, userId);
+    }
     return { changed: true };
   }
 

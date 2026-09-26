@@ -845,5 +845,8 @@
   "email_off_invalid": "Puedes elegir qué correos recibes en Ajustes, en Notificaciones.",
   "email_off_settings": "Abrir los ajustes de notificaciones",
   "email_off_done": "Listo. Ya no recibirás estos correos.",
-  "email_off_button": "Desactivarlos"
+  "email_off_button": "Desactivarlos",
+  "signup_product_news_notice": "De vez en cuando te enviaremos novedades del producto. Puedes darte de baja desde cualquiera de ellas con un clic.",
+  "product_news": "Novedades del producto",
+  "product_news_description": "Recibe de vez en cuando un correo sobre nuevas funciones y mejoras"
 }
