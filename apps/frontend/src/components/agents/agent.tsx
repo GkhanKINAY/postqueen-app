@@ -36,6 +36,7 @@ import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anch
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useClickOutside } from '@mantine/hooks';
+import { CopilotCreditsChip } from '@gitroom/frontend/components/agents/agent.credits';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -1591,6 +1592,7 @@ const ChatBar: FC<{ onOpenChats?: () => void }> = ({ onOpenChats }) => {
           </RowIconButton>
         </span>
       )}
+      <CopilotCreditsChip className="ms-auto" />
       {mobile && (
         <Link
           href="/agents"

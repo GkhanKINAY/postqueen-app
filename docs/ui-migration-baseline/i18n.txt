@@ -1412,6 +1412,7 @@ continue_with_google
 continue_with_wallet
 continue_without_set
 copilot_name
+copilot_out_of_credits
 copilot_step_analytics
 copilot_step_calendar
 copilot_step_card

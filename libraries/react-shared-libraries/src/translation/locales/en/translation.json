@@ -1360,5 +1360,6 @@
   "video_length": "Length",
   "n_seconds": "{{count}} s",
   "plan_n_credits_month": "{{count}} credits a month",
-  "billing_credits_per_month": "credits a month"
+  "billing_credits_per_month": "credits a month",
+  "copilot_out_of_credits": "You are out of credits, so Copilot cannot answer."
 }
