@@ -150,6 +150,37 @@ export class CreditsService {
     }
   }
 
+  /** See `CreditsRepository.reserve`: sets aside, adjusts or releases what
+   * work costs when it runs. */
+  reserve(organizationId: string, spend: CreditSpend) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve({ id: null, charged: false });
+    }
+    return this._creditsRepository.reserve(organizationId, spend);
+  }
+
+  /** See `CreditsRepository.settle`: a reservation used by its work. */
+  settle(organizationId: string, key: string, suffix: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.settle(organizationId, key, suffix);
+  }
+
+  async reservations(organizationId: string, prefix: string) {
+    if (!isBillingEnabled()) {
+      return [];
+    }
+    return this._creditsRepository.reservations(organizationId, prefix);
+  }
+
+  everReserved(organizationId: string, prefix: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.everReserved(organizationId, prefix);
+  }
+
   grant(organizationId: string, grant: CreditGrantInput, close: string[] = []) {
     if (!isBillingEnabled()) {
       return Promise.resolve({ id: null, granted: false });

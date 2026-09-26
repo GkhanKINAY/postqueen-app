@@ -17,7 +17,9 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { Integration, Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import dayjs from 'dayjs';
+import { createHash } from 'crypto';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -46,6 +48,28 @@ import {
 
 dayjs.extend(utc);
 
+// Provider methods that publish, read analytics, handle tokens or price
+// work. The workflows and the app's own routes run them, with their checks
+// and charges; `/integrations/function` never does. Plugs are added per
+// provider (`getPlugMethodNames`).
+const NOT_CALLABLE_FUNCTIONS = [
+  'post',
+  'postPending',
+  'comment',
+  'finalizePost',
+  'checkPostStatus',
+  'checkValidity',
+  'analytics',
+  'postAnalytics',
+  'postsAnalytics',
+  'refreshToken',
+  'reConnect',
+  'authenticate',
+  'generateAuthUrl',
+  'fetchPageInformation',
+  'creditCost',
+];
+
 @Injectable()
 export class IntegrationService implements OnModuleInit {
   private storage = UploadFactory.createStorage();
@@ -56,7 +80,8 @@ export class IntegrationService implements OnModuleInit {
     private _notificationService: NotificationService,
     @Inject(forwardRef(() => RefreshIntegrationService))
     private _refreshIntegrationService: RefreshIntegrationService,
-    private _temporalService: TemporalService
+    private _temporalService: TemporalService,
+    private _creditsService: CreditsService
   ) {}
 
   /**
@@ -1109,6 +1134,29 @@ export class IntegrationService implements OnModuleInit {
       getIntegration.providerIdentifier
     );
 
+    // Paid before it acts, once per channel and post. A balance that cannot
+    // pay skips it and says so.
+    const cost = getSocialIntegration?.creditCost?.({
+      type: 'plug-trigger',
+      plug: getAllInternalPlugs.methodName,
+      fields: {},
+    });
+    if (cost) {
+      try {
+        await this._creditsService.spend(data.orgId, {
+          key: `plug:${getAllInternalPlugs.methodName}:${getIntegration.id}:${data.post}`,
+          amount: cost,
+          action: 'plug',
+        });
+      } catch (err) {
+        if (!(err instanceof HttpException && err.getStatus() === 402)) {
+          throw err;
+        }
+        await this.plugShortNotice(data.orgId, getIntegration.name);
+        return;
+      }
+    }
+
     // @ts-ignore
     await getSocialIntegration?.[getAllInternalPlugs.methodName]?.(
       getIntegration,
@@ -1118,6 +1166,82 @@ export class IntegrationService implements OnModuleInit {
     );
 
     return;
+  }
+
+  /** Whether the app may call a provider method by name. */
+  isCallableFunction(providerIdentifier: string, name: string) {
+    return (
+      !NOT_CALLABLE_FUNCTIONS.includes(name) &&
+      !this._integrationManager
+        .getPlugMethodNames(providerIdentifier)
+        .includes(name)
+    );
+  }
+
+  /**
+   * A provider method the app calls by name, for a network that bills the
+   * call: answered from the day's copy when there is one (the network bills
+   * reading the same thing once a UTC day), otherwise charged and run, and
+   * handed back if it fails. A balance that cannot pay answers nothing, which
+   * every caller already reads as "no answer".
+   */
+  async withFunctionCredits<T>(
+    orgId: string,
+    integration: Integration,
+    name: string,
+    data: unknown,
+    run: () => Promise<T>
+  ): Promise<T | undefined> {
+    const cost = this._integrationManager
+      .getSocialIntegration(integration.providerIdentifier)
+      ?.creditCost?.({ type: 'function', name });
+    if (!cost || !isBillingEnabled()) {
+      return run();
+    }
+
+    const day = dayjs.utc().format('YYYY-MM-DD');
+    const key = `function:${integration.id}:${name}:${createHash('sha256')
+      .update(JSON.stringify(data ?? null))
+      .digest('hex')
+      .slice(0, 24)}:${day}`;
+    const cached = await ioRedis.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    try {
+      const result = await this._creditsService.withCredits(
+        orgId,
+        { key, amount: cost, action: 'provider_function', meta: { name } },
+        run
+      );
+      if (result) {
+        await ioRedis.set(
+          key,
+          JSON.stringify(result),
+          'EX',
+          dayjs.utc().endOf('day').diff(dayjs.utc(), 'second') + 1
+        );
+      }
+      return result;
+    } catch (err) {
+      if (err instanceof HttpException && err.getStatus() === 402) {
+        return undefined;
+      }
+      throw err;
+    }
+  }
+
+  private plugShortNotice(orgId: string, channel: string) {
+    return this._notificationService.inAppNotification(
+      orgId,
+      'A plug stopped: not enough credits',
+      `A plug on ${channel} stopped because the credits balance could not pay for it. Add credits to keep plugs running on new posts.`,
+      false,
+      false,
+      'fail',
+      '/billing'
+    );
   }
 
   async processPlugs(data: {
@@ -1135,18 +1259,57 @@ export class IntegrationService implements OnModuleInit {
     const integration = this._integrationManager.getSocialIntegration(
       getPlugById.integration.providerIdentifier
     );
+    const fields = JSON.parse(getPlugById.data).reduce(
+      (all: any, current: any) => {
+        all[current.name] = current.value;
+        return all;
+      },
+      {}
+    );
+
+    // Each run reads the post it watches, and firing acts on it. A run
+    // starts only when the balance could pay for both, so a plug never
+    // fires unpaid; one that cannot is ended, with a notice.
+    const orgId = getPlugById.organizationId;
+    const plug = getPlugById.plugFunction;
+    const check = integration.creditCost?.({ type: 'plug-check', plug }) || 0;
+    const trigger =
+      integration.creditCost?.({ type: 'plug-trigger', plug, fields }) || 0;
+    if (check || trigger) {
+      try {
+        await this._creditsService.assertAvailable(orgId, check + trigger);
+        // The network bills a read of the same post once a UTC day.
+        await this._creditsService.spend(orgId, {
+          key: `plug-check:${getPlugById.id}:${data.postId}:${dayjs
+            .utc()
+            .format('YYYY-MM-DD')}`,
+          amount: check,
+          action: 'plug',
+        });
+      } catch (err) {
+        if (!(err instanceof HttpException && err.getStatus() === 402)) {
+          throw err;
+        }
+        await this.plugShortNotice(orgId, getPlugById.integration.name);
+        return true;
+      }
+    }
 
     // @ts-ignore
     const process = await integration[getPlugById.plugFunction](
       getPlugById.integration,
       data.postId,
-      JSON.parse(getPlugById.data).reduce((all: any, current: any) => {
-        all[current.name] = current.value;
-        return all;
-      }, {})
+      fields
     );
 
     if (process) {
+      // Done by now, so charged whatever the balance.
+      await this._creditsService.spend(orgId, {
+        key: `plug:${getPlugById.id}:${data.postId}`,
+        amount: trigger,
+        action: 'plug',
+        allowOverdraft: true,
+      });
       return true;
     }
 

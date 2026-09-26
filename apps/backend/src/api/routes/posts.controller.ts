@@ -34,6 +34,7 @@ import {
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
 import { SeparatePostsDto } from '@gitroom/nestjs-libraries/dtos/posts/separate.posts.dto';
+import { PublishCreditsDto } from '@gitroom/nestjs-libraries/dtos/posts/publish.credits.dto';
 import {
   CreatePublicCommentDto,
   ResolveCommentDto,
@@ -221,6 +222,20 @@ export class PostsController {
     @Body() rawBody: any
   ) {
     return this._postsService.validatePosts(org.id, rawBody?.posts || []);
+  }
+
+  // What the posts being written will cost from the credits balance, for the
+  // composer to show next to Schedule.
+  @Post('/credits')
+  publishCredits(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: PublishCreditsDto
+  ) {
+    return this._postsService.quotePublishCredits(
+      org.id,
+      body.type,
+      body.posts
+    );
   }
 
   @Post('/')

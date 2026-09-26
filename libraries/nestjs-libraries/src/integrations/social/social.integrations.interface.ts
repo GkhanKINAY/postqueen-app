@@ -197,12 +197,35 @@ export type FetchPageInformationResult = {
   username: string;
 };
 
+/**
+ * Something a provider does that its network bills PostQueen for, priced by
+ * the provider's `creditCost`.
+ * - `publish`: one item of a thread (`index` 0 is the post itself), with the
+ *   text as it is saved and the post's settings.
+ * - `function`: a provider method the app calls by name
+ *   (`/integrations/function`).
+ * - `plug-check`: one run of a plug, which reads the post it watches.
+ * - `plug-trigger`: a plug firing, or an internal plug acting.
+ */
+export type CreditOperation =
+  | { type: 'publish'; message: string; settings: any; index: number }
+  | { type: 'function'; name: string }
+  | { type: 'plug-check'; plug: string }
+  | { type: 'plug-trigger'; plug: string; fields: Record<string, string> };
+
 export interface SocialProvider
   extends IAuthenticator, ISocialMediaIntegration {
   identifier: string;
   refreshWait?: boolean;
   convertToJPEG?: boolean;
   stripLinks?: () => boolean;
+  /**
+   * What an action costs from the credits balance, in hundredths
+   * (`CREDIT_UNIT`), for a network that bills PostQueen per call. Nothing, or
+   * 0, is free. The generic code asks and charges; what the price depends on
+   * stays here.
+   */
+  creditCost?(op: CreditOperation): number | undefined;
   refreshCron?: boolean;
   dto?: any;
   maxLength: (additionalSettings?: any, settings?: any) => number;

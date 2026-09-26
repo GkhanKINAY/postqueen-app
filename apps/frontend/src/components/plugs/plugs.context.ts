@@ -23,6 +23,8 @@ export interface PlugsInterface {
   runEveryMilliseconds: number;
   methodName: string;
   fields: FieldsInterface[];
+  /** What it takes from the credits balance, in credits. */
+  credits?: { check: number; trigger: number; withLink?: number };
 }
 export const PlugsContext = createContext<PlugInterface>({
   providerId: '',

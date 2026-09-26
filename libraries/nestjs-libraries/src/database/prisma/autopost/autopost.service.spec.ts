@@ -42,6 +42,7 @@ let validated: number;
 let notifications: string[];
 let refunds: string[];
 let failPublish: boolean;
+let publishShort: boolean;
 
 // Every collaborator faked. The AI calls themselves never run: the fake
 // credits service stands in for the work it would have paid for.
@@ -62,6 +63,11 @@ const service = (autopost = rule) =>
       createPost: async (_org: string, body: any) => {
         if (failPublish) {
           throw new Error('X is down');
+        }
+        // What an X post sets aside when it is scheduled, refused before
+        // anything is saved.
+        if (publishShort && body.type !== 'draft') {
+          throw insufficientCredits(500, 20);
         }
         posts.push(body.type);
         return [];
@@ -120,6 +126,7 @@ beforeEach(() => {
   notifications = [];
   refunds = [];
   failPublish = false;
+  publishShort = false;
 });
 
 describe('Autopost and credits', () => {
@@ -210,6 +217,20 @@ describe('Autopost and credits', () => {
     assert.equal(balance, 10);
     assert.deepEqual(posts, ['now', 'now']);
     assert.deepEqual(notifications, []);
+  });
+
+  it('saves a draft when the balance cannot cover publishing the post', async () => {
+    publishShort = true;
+    await run({
+      ...rule,
+      generateContent: false,
+      addPicture: false,
+      content: 'Fixed text',
+    });
+    assert.deepEqual(posts, ['draft']);
+    assert.deepEqual(notifications, [
+      'Autopost saved a draft: not enough credits to publish',
+    ]);
   });
 
   it('asks nothing of the balance for a rule without AI', async () => {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -373,15 +374,31 @@ export class IntegrationsController {
       throw new Error('Invalid provider');
     }
 
+    if (
+      !this._integrationService.isCallableFunction(
+        getIntegration.providerIdentifier,
+        body.name
+      )
+    ) {
+      throw new BadRequestException('This function cannot be called');
+    }
+
     // @ts-ignore
     if (integrationProvider[body.name]) {
       try {
-        // @ts-ignore
-        const load = await integrationProvider[body.name](
-          getIntegration.token,
+        const load = await this._integrationService.withFunctionCredits(
+          org.id,
+          getIntegration,
+          body.name,
           body.data,
-          getIntegration.internalId,
-          getIntegration
+          () =>
+            // @ts-ignore
+            integrationProvider[body.name](
+              getIntegration.token,
+              body.data,
+              getIntegration.internalId,
+              getIntegration
+            )
         );
 
         return load;

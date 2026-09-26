@@ -216,3 +216,119 @@ describe('X keeps the subscription when a channel connects', () => {
     assert.equal(provider.maxLength([verified], post), 4000);
   });
 });
+
+describe('What X bills, from the credits balance', () => {
+  const publish = (message: string, index = 0, settings: any = post) =>
+    provider.creditCost({ type: 'publish', message, settings, index });
+
+  it('prices a post by whether its text carries a link', () => {
+    assert.equal(publish('<p>Launch day</p>'), 40);
+    assert.equal(publish('<p>Launch day https://example.com/launch</p>'), 500);
+    // X links a bare domain the same way
+    assert.equal(publish('<p>Read more on example.com</p>'), 500);
+    assert.equal(publish('<p>write to hello@example.com</p>'), 40);
+    // every item of a thread on its own
+    assert.equal(publish('<p>and a reply</p>', 1), 40);
+  });
+
+  it('prices a link this instance strips as a plain post', (t) => {
+    t.mock.method(provider, 'stripLinks', () => true);
+    assert.equal(publish('<p>Launch day https://example.com/launch</p>'), 40);
+  });
+
+  it('prices an article by its body', () => {
+    const article = { post_type: 'article' };
+    assert.equal(publish('<h1>Notes</h1><p>plain</p>', 0, article), 40);
+    assert.equal(
+      publish('<p>see <a href="https://example.com">this</a></p>', 0, article),
+      500
+    );
+  });
+
+  it('charges the two methods the app calls that read a user, and nothing else', () => {
+    for (const name of ['mention', 'subscriptionInfo']) {
+      assert.equal(provider.creditCost({ type: 'function', name }), 25);
+    }
+    assert.equal(
+      provider.creditCost({ type: 'function', name: 'other' }),
+      undefined
+    );
+  });
+
+  it('prices a plug by its look at the post and what it does when it fires', () => {
+    assert.equal(
+      provider.creditCost({ type: 'plug-check', plug: 'autoRepostPost' }),
+      13
+    );
+    for (const plug of ['autoRepostPost', 'repostPostUsers']) {
+      assert.equal(
+        provider.creditCost({ type: 'plug-trigger', plug, fields: {} }),
+        40
+      );
+    }
+    const reply = (text: string) =>
+      provider.creditCost({
+        type: 'plug-trigger',
+        plug: 'autoPlugPost',
+        fields: { post: text },
+      });
+    assert.equal(reply('<p>Thanks for the likes</p>'), 40);
+    assert.equal(reply('<p>Get it at https://example.com</p>'), 500);
+  });
+});
+
+describe('X plugs read the like count from the post', () => {
+  const client = (likes: number, calls: string[]) => ({
+    singleTweet: async (id: string, params: any) => {
+      calls.push(`read ${id} ${params['tweet.fields']}`);
+      return { data: { id, public_metrics: { like_count: likes } } };
+    },
+    tweetLikedBy: async () => {
+      calls.push('likers');
+      return { meta: { result_count: 0 } };
+    },
+    retweet: async (user: string, id: string) => {
+      calls.push(`repost ${id} as ${user}`);
+    },
+    me: async () => {
+      calls.push('me');
+      return { data: { id: 'someone-else' } };
+    },
+  });
+  const integration = { token: 'a:b', internalId: '42' } as any;
+
+  it('reposts once the post has the likes, with one post read', async (t) => {
+    const calls: string[] = [];
+    t.mock.getter(TwitterApi.prototype, 'v2', () => client(250, calls));
+    // It waits two seconds before reposting.
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let result: boolean | undefined;
+    const done = provider
+      .autoRepostPost(integration, '7', { likesAmount: '200' })
+      .then((value) => (result = value));
+    while (result === undefined) {
+      await new Promise((resolve) => setImmediate(resolve));
+      t.mock.timers.tick(2000);
+    }
+    await done;
+    assert.equal(result, true);
+    assert.deepEqual(calls, ['read 7 public_metrics', 'repost 7 as 42']);
+  });
+
+  it('waits while the post has fewer', async (t) => {
+    const calls: string[] = [];
+    t.mock.getter(TwitterApi.prototype, 'v2', () => client(3, calls));
+    assert.equal(
+      await provider.autoRepostPost(integration, '7', { likesAmount: '200' }),
+      false
+    );
+    assert.deepEqual(calls, ['read 7 public_metrics']);
+  });
+
+  it('reposts from a re-poster channel by its own id, without asking X who it is', async (t) => {
+    const calls: string[] = [];
+    t.mock.getter(TwitterApi.prototype, 'v2', () => client(0, calls));
+    await provider.repostPostUsers(integration, integration, '7', {});
+    assert.deepEqual(calls, ['repost 7 as 42']);
+  });
+});

@@ -652,6 +652,26 @@ export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
 };
 
 /**
+ * What X bills PostQueen for each call, in hundredths, by the same rule:
+ * X's price times 25, rounded up. X bills a read of the same post or user
+ * once per UTC day, and a post whose text carries a link at over ten times
+ * the price of one without.
+ * - `post`: a post, or one item of a thread, $0.015.
+ * - `postWithLink`: a post whose text carries a link, $0.20.
+ * - `postRead`: reading one post (a plug checking its likes), $0.005.
+ * - `userRead`: reading one user (a mention search, the account's
+ *   subscription), $0.010.
+ * - `interaction`: a repost, $0.015.
+ */
+export const X_CREDIT_COSTS = {
+  post: 40,
+  postWithLink: 500,
+  postRead: 13,
+  userRead: 25,
+  interaction: 40,
+};
+
+/**
  * Credits sold on their own, on top of a plan, in whole credits and whole
  * dollars. The larger packs cost less a credit. Bought credits outlive the
  * plan's: they stay spendable for `CREDIT_PACK_MONTHS`.

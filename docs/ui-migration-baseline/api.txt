@@ -113,6 +113,7 @@
 /posts/comments/${comment.id}
 /posts/comments/${comment.id}/resolve
 /posts/count
+/posts/credits
 /posts/find-slot
 /posts/find-slot/${current.id}
 /posts/find-slot/${integration.id}

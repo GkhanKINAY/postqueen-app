@@ -11,6 +11,7 @@ import { Textarea } from '@gitroom/react/form/textarea';
 import { FormSection } from '@gitroom/react/form/form.section';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { PlugCredits } from '@gitroom/frontend/components/plugs/plug.credits';
 const delayOptions = [
   {
     name: 'Immediately',
@@ -50,6 +51,7 @@ export const InternalChannels: FC<{
     identifier: string;
     title: string;
     description: string;
+    credits?: { check: number; trigger: number; withLink?: number };
     pickIntegration: string[];
     fields: {
       name: string;
@@ -105,6 +107,7 @@ const Plug: FC<{
     identifier: string;
     title: string;
     description: string;
+    credits?: { check: number; trigger: number; withLink?: number };
     pickIntegration: string[];
     fields: {
       name: string;
@@ -163,6 +166,7 @@ const Plug: FC<{
           <div className="text-[13px] leading-[1.45] text-pqMuted">
             {plug.description}
           </div>
+          <PlugCredits credits={plug.credits} />
           {!allowedIntegrations.length ? (
             <div className="text-[13px] text-pqMuted">
               No available accounts
