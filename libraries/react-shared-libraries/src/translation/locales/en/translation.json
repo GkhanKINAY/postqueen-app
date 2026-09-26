@@ -1384,7 +1384,7 @@
   "publish_credits_hint": "Set aside from your credits when the post is scheduled, and given back if it is deleted or saved as a draft. A post with a link can cost more.",
   "publish_credits_short": "Not enough credits",
   "publish_credits_to_publish": "to publish",
-  "plug_credits_check_and_act": "Uses credits: {{check}} each time it checks the post, and {{trigger}} when it acts on it. It stops if the balance runs out.",
+  "plug_credits_check_and_act": "Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it. It stops if the balance runs out.",
   "plug_credits_act": "Uses {{trigger}} credits each time it acts on the post. It is skipped if the balance runs out.",
-  "plug_credits_check_and_act_link": "Uses credits: {{check}} each time it checks the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out."
+  "plug_credits_check_and_act_link": "Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out."
 }

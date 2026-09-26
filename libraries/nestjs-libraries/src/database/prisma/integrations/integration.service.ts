@@ -1199,9 +1199,11 @@ export class IntegrationService implements OnModuleInit {
       return run();
     }
 
+    // Per connection as well as per question: a reconnect (after the
+    // account changed its subscription, say) asks again.
     const day = dayjs.utc().format('YYYY-MM-DD');
     const key = `function:${integration.id}:${name}:${createHash('sha256')
-      .update(JSON.stringify(data ?? null))
+      .update(JSON.stringify([integration.token, data ?? null]))
       .digest('hex')
       .slice(0, 24)}:${day}`;
     const cached = await ioRedis.get(key);
@@ -1278,11 +1280,12 @@ export class IntegrationService implements OnModuleInit {
     if (check || trigger) {
       try {
         await this._creditsService.assertAvailable(orgId, check + trigger);
-        // The network bills a read of the same post once a UTC day.
+        // The network bills a read of the same post once a UTC day, however
+        // many plugs watch it.
         await this._creditsService.spend(orgId, {
-          key: `plug-check:${getPlugById.id}:${data.postId}:${dayjs
-            .utc()
-            .format('YYYY-MM-DD')}`,
+          key: `plug-check:${getPlugById.integration.id}:${
+            data.postId
+          }:${dayjs.utc().format('YYYY-MM-DD')}`,
           amount: check,
           action: 'plug',
         });
@@ -1303,13 +1306,20 @@ export class IntegrationService implements OnModuleInit {
     );
 
     if (process) {
-      // Done by now, so charged whatever the balance.
-      await this._creditsService.spend(orgId, {
-        key: `plug:${getPlugById.id}:${data.postId}`,
-        amount: trigger,
-        action: 'plug',
-        allowOverdraft: true,
-      });
+      // Done by now, so charged whatever the balance, and never failing the
+      // run: a retry would act on the post again.
+      await this._creditsService
+        .spend(orgId, {
+          key: `plug:${getPlugById.id}:${data.postId}`,
+          amount: trigger,
+          action: 'plug',
+          allowOverdraft: true,
+        })
+        .catch((err) =>
+          Logger.error(
+            `Could not charge plug ${getPlugById.id} on ${data.postId}: ${err}`
+          )
+        );
       return true;
     }
 

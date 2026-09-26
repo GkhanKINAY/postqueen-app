@@ -220,9 +220,12 @@ export class IntegrationManager {
   private plugCredits(
     provider: SocialProvider,
     plug: string,
-    fields: { name: string }[] = []
+    fields: { name: string }[] = [],
+    checks = true
   ) {
-    const check = provider.creditCost?.({ type: 'plug-check', plug }) || 0;
+    const check = checks
+      ? provider.creditCost?.({ type: 'plug-check', plug }) || 0
+      : 0;
     const trigger =
       provider.creditCost?.({ type: 'plug-trigger', plug, fields: {} }) || 0;
     const withLink =
@@ -291,7 +294,9 @@ export class IntegrationManager {
           .filter((f: any) => !f.disabled)
           .map((f: any) => ({
             ...f,
-            credits: this.plugCredits(p, f.methodName, f.fields),
+            // An internal plug acts once, on the post it is attached to,
+            // without watching it first.
+            credits: this.plugCredits(p, f.methodName, f.fields, false),
           })) || [],
     };
   }

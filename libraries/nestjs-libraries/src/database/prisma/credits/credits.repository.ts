@@ -249,8 +249,26 @@ export class CreditsRepository {
     });
   }
 
+  /**
+   * Hands a reservation back: a refund, except that parts whose grant has
+   * expired meanwhile are not given back. A reservation can be held for
+   * weeks, and handing back what expired while it was held would carry a
+   * period's credits into the next one.
+   */
+  async release(organizationId: string, key: string) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+      return this.refundIn(tx, organizationId, key, false);
+    });
+  }
+
   // A refund inside a transaction that already holds the lock.
-  private async refundIn(tx: Tx, organizationId: string, key: string) {
+  private async refundIn(
+    tx: Tx,
+    organizationId: string,
+    key: string,
+    keepExpired = true
+  ) {
     const spend = await tx.credits.findUnique({
       where: {
         organizationId_idempotencyKey: {
@@ -285,7 +303,7 @@ export class CreditsRepository {
         continue;
       }
       if (grant.expiresAt && grant.expiresAt <= now) {
-        expired += allocation.amount;
+        expired += keepExpired ? allocation.amount : 0;
         continue;
       }
       await tx.creditGrant.update({
@@ -324,8 +342,9 @@ export class CreditsRepository {
    * Sets aside what a piece of work will cost when it runs, under its key.
    * The first call charges it, a later one with another amount replaces it
    * (the old amount is handed back first, so only the difference has to be
-   * free), and an amount of 0 releases it. One transaction, so a reservation
-   * is never left released without being made again.
+   * free), and an amount of 0 releases it, as `release` does. One
+   * transaction, so a reservation is never left released without being made
+   * again.
    */
   async reserve(organizationId: string, spend: CreditSpend) {
     return this._transaction.model.$transaction(async (tx) => {
@@ -344,7 +363,7 @@ export class CreditsRepository {
         return { id: existing.id, charged: false };
       }
       if (existing) {
-        await this.refundIn(tx, organizationId, spend.key);
+        await this.refundIn(tx, organizationId, spend.key, false);
       }
       if (!spend.amount) {
         return { id: null, charged: false };

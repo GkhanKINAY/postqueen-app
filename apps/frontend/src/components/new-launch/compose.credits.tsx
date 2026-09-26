@@ -37,9 +37,12 @@ type PublishCreditsPost = {
 export const usePublishCredits = (posts: PublishCreditsPost[]) => {
   const fetch = useFetch();
   const { billingEnabled } = useVariables();
+  const channels = posts.map((post) => post.integration.id).join(',');
   const [body] = useDebounce(JSON.stringify({ type: 'schedule', posts }), 400);
   const load = useCallback(
-    async ([, payload]: [string, string]): Promise<PublishCredits> => {
+    async ([, payload]: [string, string]): Promise<
+      PublishCredits & { for: string }
+    > => {
       const response = await fetch('/posts/credits', {
         method: 'POST',
         body: payload,
@@ -47,17 +50,23 @@ export const usePublishCredits = (posts: PublishCreditsPost[]) => {
       if (!response.ok) {
         throw new Error('Could not price this post');
       }
-      return response.json();
+      const priced = JSON.parse(payload) as { posts: PublishCreditsPost[] };
+      return {
+        ...(await response.json()),
+        for: priced.posts.map((post) => post.integration.id).join(','),
+      };
     },
     [fetch]
   );
-  // The key follows every keystroke: the last price stays up while the next
-  // one is asked for, instead of blinking out.
-  return useSWR(
+  // The key follows every keystroke, so the last price stays up while the
+  // next one is asked for, instead of blinking out. Only for the same
+  // channels: another set's price under this one's would be a wrong price.
+  const { data } = useSWR(
     billingEnabled && posts.length ? ['publish-credits', body] : null,
     load,
     { keepPreviousData: true, revalidateOnFocus: false }
   );
+  return data?.for === channels ? data : undefined;
 };
 
 /**
@@ -98,7 +107,7 @@ export const ComposeCredits: FC<{
     [global, internal, selectedIntegrations]
   );
 
-  const { data } = usePublishCredits(posts);
+  const data = usePublishCredits(posts);
   const { data: balance } = useCreditsBalance();
 
   if (!data?.credits) {
