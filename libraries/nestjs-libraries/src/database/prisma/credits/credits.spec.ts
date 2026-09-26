@@ -298,6 +298,14 @@ describe('Withdrawal waiver', () => {
     }
   });
 
+  it('is confirmed by email once per consent, after the year of credits is granted', () => {
+    const handler = between(stripe, 'async paymentSucceeded(', 'async paymentFailed(');
+    const grant = handler.indexOf('await this.grantPeriodCredits(');
+    assert.ok(grant > -1 && grant < handler.indexOf('this.confirmYearlyCredits('));
+    assert.match(stripe, /subscription\.metadata\?\.withdrawal_waiver_confirmed === consentAt/);
+    assert.match(stripe, /metadata: \{ withdrawal_waiver_confirmed: consentAt \},/);
+  });
+
   it('goes into Stripe as the time it was given, never as the flag', () => {
     assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'\),/g) || []).length, 3);
     assert.doesNotMatch(stripe, /\.\.\.body,/);

@@ -42,6 +42,9 @@ import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/paym
  */
 const CREDITS_WAIVER_NOTE =
   'You asked for these credits to be available at once and acknowledged that your 14-day right of withdrawal ends once you use them.';
+/** The same for a yearly plan, whose year of credits arrives at once. */
+const YEARLY_WAIVER_NOTE =
+  'You asked for your yearly credits to be available at once and acknowledged that your 14-day right of withdrawal ends once you use them.';
 
 /**
  * Pinned on purpose. This file reads deep, version-sensitive shapes —
@@ -551,6 +554,56 @@ export class StripeService extends PaymentProviderAbstract {
       end: new Date(item.current_period_end * 1000),
       ref,
       prorate,
+    });
+  }
+
+  /**
+   * A yearly plan's year of credits has just arrived, as the customer asked
+   * at checkout. The law wants that consent confirmed on something they keep,
+   * and a subscription's invoices cannot carry our text on this API version,
+   * so this email does: once per consent, whether the year starts with the
+   * checkout, at the end of a trial, or with a switch to yearly. A renewal is
+   * the same contract running on and is not confirmed again.
+   */
+  private async confirmYearlyCredits(
+    organizationId: string,
+    subscription: Stripe.Subscription
+  ) {
+    const consentAt = subscription.metadata?.withdrawal_waiver_at;
+    const { billing, period } = this.tierOfSubscription(subscription);
+    if (
+      period !== 'YEARLY' ||
+      !consentAt ||
+      subscription.metadata?.withdrawal_waiver_confirmed === consentAt
+    ) {
+      return;
+    }
+    const credits = (pricing[billing]?.monthly_credits || 0) * 12;
+    await this._notificationService.inAppNotification(
+      organizationId,
+      'Your yearly credits are ready',
+      `Your plan’s ${credits} credits for the year are in your balance. ${YEARLY_WAIVER_NOTE}`,
+      true,
+      false,
+      'info',
+      '/billing',
+      {
+        stream: 'notifications',
+        category: 'Billing',
+        preheader: `${credits} credits for the year are in your balance.`,
+        tone: 'ok',
+        icon: 'check',
+        title: 'Your yearly credits are ready',
+        lead: `Your plan’s ${credits} credits for the year are in your balance, ready for AI images, videos and more.`,
+        blocks: [
+          { type: 'callout', text: YEARLY_WAIVER_NOTE },
+          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
+        ],
+        footer: 'billing',
+      }
+    );
+    await stripe.subscriptions.update(subscription.id, {
+      metadata: { withdrawal_waiver_confirmed: consentAt },
     });
   }
 
@@ -2474,11 +2527,22 @@ export class StripeService extends PaymentProviderAbstract {
         ? await this._organizationService.getOrgByCustomerId(customer)
         : null;
     if (org && (await this.isEntitled(subscription))) {
-      await this.grantPeriodCredits(
+      const granted = await this.grantPeriodCredits(
         org.id,
         subscription,
         event.data.object.id!
       );
+      // After the grant: the credits are in, so a failure here must not send
+      // the invoice back for a retry.
+      if (granted) {
+        await this.confirmYearlyCredits(org.id, subscription).catch((err) =>
+          Logger.warn(
+            `[stripe] yearly credits on ${subscription.id} granted, confirmation not sent: ${
+              (err as Error)?.message || err
+            }`
+          )
+        );
+      }
     }
 
     const { userId, ud } = subscription.metadata;
