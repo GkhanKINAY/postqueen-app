@@ -87,6 +87,10 @@ import { VideoJobCard } from '@gitroom/frontend/components/media/video.job.card'
 import { VideoJobMedia } from '@gitroom/frontend/components/media/use.generate.video';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
+import {
+  CopilotCreditsContext,
+  useCopilotCreditsWatch,
+} from '@gitroom/frontend/components/agents/agent.credits';
 
 type AgentIntegration = Integrations & {
   refreshNeeded?: boolean;
@@ -593,6 +597,7 @@ const AgentLiveBridge: FC<{
   children: ReactNode;
 }> = ({ threadId, fresh, children }) => {
   const { isLoading, messages } = useCopilotChatInternal();
+  const credits = useCopilotCreditsWatch(isLoading);
   const userTurns = useMemo(
     () => messages.filter((m: any) => m.role === 'user').length,
     [messages]
@@ -635,7 +640,11 @@ const AgentLiveBridge: FC<{
 
   return (
     <LiveMessagesContext.Provider value={value}>
-      <LiveChatContext.Provider value={value}>{children}</LiveChatContext.Provider>
+      <LiveChatContext.Provider value={value}>
+        <CopilotCreditsContext.Provider value={credits}>
+          {children}
+        </CopilotCreditsContext.Provider>
+      </LiveChatContext.Provider>
     </LiveMessagesContext.Provider>
   );
 };

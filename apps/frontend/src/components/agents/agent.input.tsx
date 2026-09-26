@@ -14,6 +14,10 @@ import {
   ChannelPickerButton,
   PropertiesContext,
 } from '@gitroom/frontend/components/agents/agent';
+import {
+  CopilotCreditsNotice,
+  useCopilotCreditsOut,
+} from '@gitroom/frontend/components/agents/agent.credits';
 const MAX_NEWLINES = 6;
 
 export const Input = ({
@@ -35,6 +39,7 @@ export const Input = ({
   const context = useChatContext();
   const copilotContext = useCopilotContext();
   const { composerSeed } = useContext(PropertiesContext);
+  const { empty: outOfCredits } = useCopilotCreditsOut();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setIsComposing] = useState(false);
@@ -70,7 +75,7 @@ export const Input = ({
     textareaRef.current?.focus();
   }, [composerSeed.n, composerSeed.text]);
   const send = () => {
-    if (inProgress) return;
+    if (inProgress || outOfCredits) return;
     onSend(text);
     setText('');
 
@@ -89,8 +94,13 @@ export const Input = ({
       copilotContext.interruptEventQueue ?? {}
     ).some((queued) => queued.length > 0);
 
-    return !isInProgress && text.trim().length > 0 && !interruptInProgress;
-  }, [copilotContext.interruptEventQueue, isInProgress, text]);
+    return (
+      !isInProgress &&
+      !outOfCredits &&
+      text.trim().length > 0 &&
+      !interruptInProgress
+    );
+  }, [copilotContext.interruptEventQueue, isInProgress, outOfCredits, text]);
 
   const canStop = useMemo(() => {
     return isInProgress && !hideStopButton;
@@ -101,6 +111,7 @@ export const Input = ({
   return (
     <div className="copilotKitInputContainer">
       <div className="mx-auto flex w-full max-w-[840px] flex-col gap-[8px] pb-[env(safe-area-inset-bottom)]">
+        <CopilotCreditsNotice />
         <div
           className="copilotKitInput flex cursor-text flex-col gap-[7px]"
           onClick={handleDivClick}
