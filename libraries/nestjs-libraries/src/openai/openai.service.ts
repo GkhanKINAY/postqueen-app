@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { shuffle } from 'lodash';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import { ImageQuality } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
@@ -33,8 +34,166 @@ const ClipsPrompt = z.object({
 /** The three sizes gpt-image renders: square feeds, portrait stories, landscape links. */
 export type ImageOrientation = 'square' | 'portrait' | 'landscape';
 
+export interface OpenAiUsage {
+  id: string;
+  model?: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/**
+ * What a finished OpenAI call used, from its body or from the stream event
+ * that carries it: a Responses API `response.completed` (the usage is on
+ * `response`), or the last chat completions chunk. Anything else, including
+ * the Responses events sent before the end (`usage: null`), is nothing.
+ */
+export const openAiUsage = (payload: any): OpenAiUsage | null => {
+  const body = payload?.response ?? payload;
+  const usage = body?.usage;
+  if (!usage || typeof body?.id !== 'string') {
+    return null;
+  }
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens;
+  if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+    return null;
+  }
+  return { id: body.id, model: body.model, inputTokens, outputTokens };
+};
+
+// A streamed chat completion only reports its usage when asked to, as one
+// last chunk with no choices. The Responses API always does.
+const withStreamUsage = (url: string, init?: RequestInit) => {
+  if (!url.endsWith('/chat/completions') || typeof init?.body !== 'string') {
+    return init;
+  }
+  try {
+    const body = JSON.parse(init.body);
+    if (!body?.stream) {
+      return init;
+    }
+    return {
+      ...init,
+      body: JSON.stringify({
+        ...body,
+        stream_options: { ...body.stream_options, include_usage: true },
+      }),
+    };
+  } catch {
+    return init;
+  }
+};
+
+// Passes the stream through untouched and reads its `data:` lines on the
+// side, across chunk boundaries.
+const usageTap = (report: (usage: OpenAiUsage) => void) => {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const read = (line: string) => {
+    const data = line.startsWith('data:') ? line.slice(5).trim() : '';
+    if (!data || data === '[DONE]') {
+      return;
+    }
+    try {
+      const usage = openAiUsage(JSON.parse(data));
+      if (usage) {
+        report(usage);
+      }
+    } catch {
+      /** not JSON, not ours **/
+    }
+  };
+  return new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      controller.enqueue(chunk);
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      lines.forEach(read);
+    },
+    flush() {
+      read(buffer + decoder.decode());
+    },
+  });
+};
+
+/**
+ * A `fetch` for the OpenAI SDK that hands `report` the usage of every call
+ * that completes, streamed or not. The answer passes through as it came; a
+ * streamed chat completion only gains the usage chunk it now asks for, one
+ * with no choices, which the SDK and CopilotKit's adapter both skip.
+ */
+export const meteredFetch =
+  (
+    report: (usage: OpenAiUsage) => void,
+    base: typeof fetch = fetch
+  ): typeof fetch =>
+  async (input, init) => {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+        ? input.href
+        : input.url;
+    const response = await base(input, withStreamUsage(url, init));
+    if (!response.ok || !response.body) {
+      return response;
+    }
+    const type = response.headers.get('content-type') || '';
+    if (type.includes('text/event-stream')) {
+      return new Response(response.body.pipeThrough(usageTap(report)), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+    if (type.includes('application/json')) {
+      response
+        .clone()
+        .json()
+        .then((payload) => {
+          const usage = openAiUsage(payload);
+          if (usage) {
+            report(usage);
+          }
+        })
+        .catch(() => undefined);
+    }
+    return response;
+  };
+
 @Injectable()
 export class OpenaiService {
+  private readonly logger = new Logger(OpenaiService.name);
+
+  constructor(private _creditsService: CreditsService) {}
+
+  /**
+   * An OpenAI client whose every call is charged to the organization by the
+   * tokens it used, keyed by the response id so a call is charged once. For a
+   * caller that runs the SDK itself: CopilotKit's `/copilot/chat` adapter.
+   */
+  meteredClient(organizationId: string, action: string) {
+    return new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
+      fetch: meteredFetch((usage) => {
+        this._creditsService
+          .chargeLlm(organizationId, {
+            key: `llm:${usage.id}`,
+            model: usage.model,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            action,
+          })
+          .catch((err) =>
+            this.logger.error(
+              `Could not charge ${usage.id} to ${organizationId}: ${err}`
+            )
+          );
+      }),
+    });
+  }
+
   // The model answers with line numbers and not times, so a clip can only
   // start and end where the transcript really has a boundary
   async pickClips(

@@ -63,7 +63,11 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { countLength } from '@gitroom/helpers/utils/count.length';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   AuthorizationActions,
@@ -91,7 +95,8 @@ export class PostsService {
     private _temporalService: TemporalService,
     private _refreshIntegrationService: RefreshIntegrationService,
     private _subscriptionService: SubscriptionService,
-    private _organizationService: OrganizationService
+    private _organizationService: OrganizationService,
+    private _creditsService: CreditsService
   ) {}
 
   /**
@@ -1593,8 +1598,17 @@ export class PostsService {
     };
   }
 
-  async separatePosts(content: string, len: number) {
-    return this._openaiService.separatePosts(content, len);
+  /** Paid for from the credits balance, and handed back if it fails. */
+  separatePosts(orgId: string, content: string, len: number) {
+    return this._creditsService.withCredits(
+      orgId,
+      {
+        key: `separate:${makeId(20)}`,
+        amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.separatePosts,
+        action: 'separate_posts',
+      },
+      () => this._openaiService.separatePosts(content, len)
+    );
   }
 
   async changeState(id: string, state: State, err?: any, body?: any) {

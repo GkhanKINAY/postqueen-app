@@ -84,3 +84,25 @@ describe('Stop repeating a published post', () => {
     assert.match(block, /intervalInDays: null/);
   });
 });
+
+describe('The older AI features and credits', () => {
+  it('refuses the AI post generator before its stream starts', () => {
+    const generator = controller.slice(
+      controller.indexOf("@Post('/generator')"),
+      controller.indexOf("@Delete('/:group')")
+    );
+    const check = generator.indexOf(
+      'await this._agentGraphService.assertCredits(org.id, body);'
+    );
+    assert.ok(check > -1);
+    assert.ok(check < generator.indexOf('res.setHeader('));
+    assert.ok(check < generator.indexOf('res.write('));
+  });
+
+  it('charges separating a post to the organization asking', () => {
+    assert.match(
+      controller,
+      /this\._postsService\.separatePosts\(org\.id, body\.content, body\.len\)/
+    );
+  });
+});
