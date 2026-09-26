@@ -1449,7 +1449,9 @@ could_not_save
 could_not_use_rss_feed
 create
 create_a_new_account
+create_ai_post_sub
 create_announcement
+create_blank_post_sub
 create_new_post
 create_oauth_app
 create_one
@@ -2126,6 +2128,8 @@ plan_save_line
 plan_unlimited_channels
 plan_unlimited_posts
 plan_unlimited_team
+plan_with_copilot
+plan_with_copilot_sub
 plans
 platform_options
 play
