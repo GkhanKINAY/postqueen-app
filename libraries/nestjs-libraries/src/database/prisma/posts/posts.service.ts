@@ -1788,10 +1788,10 @@ export class PostsService {
    * What publishing these posts will cost, in credits, for the composer to
    * confirm before it saves them: per channel and in total, and how much of
    * it the balance still has to cover (an edit reuses what the post has
-   * reserved). Each channel says how many of its posts are billed, how many
-   * of them are priced as a post with a link, and the network's price for a
-   * plain post and for one with a link, the same where a link changes
-   * nothing. Nothing with billing off.
+   * reserved). Each channel says its network, how many of its posts are
+   * priced as a post with a link, and the network's price for a plain post
+   * and for one with a link, the same where a link changes nothing. Nothing
+   * with billing off.
    */
   async quotePublishCredits(
     orgId: string,
@@ -1813,17 +1813,17 @@ export class PostsService {
             link: this.publishCost(
               channel.providerIdentifier!,
               {},
-              'https://postqueen.app',
+              'https://example.com',
               0
             ),
           };
           return {
             integration: channel.integration,
+            identifier: channel.providerIdentifier,
             credits: toCredits(channel.cost),
-            posts: channel.costs.filter(Boolean).length,
             links:
               rates.link > rates.post
-                ? channel.costs.filter((cost) => cost >= rates.link).length
+                ? channel.costs.filter((cost) => cost === rates.link).length
                 : 0,
             rates: { post: toCredits(rates.post), link: toCredits(rates.link) },
           };

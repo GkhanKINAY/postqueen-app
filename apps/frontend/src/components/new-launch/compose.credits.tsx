@@ -1,19 +1,15 @@
 'use client';
 
-import { FC, ReactNode, useCallback } from 'react';
+import { FC, useCallback } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { CrownGlyph } from '@gitroom/frontend/components/ui/logo.component';
+import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import {
-  ChannelAvatar,
-  channelPlatformLabel,
-} from '@gitroom/frontend/components/new-launch/channel.avatar';
-import {
-  CreditsAmount,
   CreditsIcon,
   useCanOpenBilling,
 } from '@gitroom/frontend/components/billing/credits.amount';
@@ -29,9 +25,10 @@ interface PublishCreditsQuote {
   needed: number;
   channels: {
     integration: string;
+    /** The channel's network. */
+    identifier: string;
     credits: number;
-    /** Its posts that are billed, and of them, those priced with a link. */
-    posts: number;
+    /** Its posts priced as a post with a link. */
     links: number;
     /** The network's price for a plain post and for one with a link. */
     rates: { post: number; link: number };
@@ -42,225 +39,6 @@ type PublishCreditsPost = {
   integration: { id: string };
   settings: Record<string, unknown>;
   value: { id?: string; content: string }[];
-};
-
-type PublishCreditsChannel = {
-  id: string;
-  name?: string;
-  picture?: string | null;
-  identifier: string;
-};
-
-const round = (credits: number) => Math.round(credits * 100) / 100;
-
-const LinkIcon: FC = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="13"
-    height="13"
-    fill="none"
-    aria-hidden="true"
-    className="shrink-0"
-  >
-    <path
-      d="M6.7 9.3a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.9.9M9.3 6.7a2.6 2.6 0 0 0-3.7 0L3.4 8.9a2.6 2.6 0 0 0 3.7 3.7l.9-.9"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const InfoIcon: FC = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="14"
-    height="14"
-    fill="none"
-    aria-hidden="true"
-    className="mt-[2px] shrink-0"
-  >
-    <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.4" />
-    <path
-      d="M8 7.2v3.6M8 5.2v.1"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const ArrowIcon: FC = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="12"
-    height="12"
-    fill="none"
-    aria-hidden="true"
-    className="shrink-0 rtl:rotate-180"
-  >
-    <path
-      d="M3 8h9.5M9 4.5 12.5 8 9 11.5"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-/** One line of a channel's breakdown: what kind of post, how many, and their price. */
-const BreakdownRow: FC<{
-  label: string;
-  count: number;
-  amount: number;
-  link?: boolean;
-}> = ({ label, count, amount, link }) => (
-  <div className="flex items-center gap-[6px]">
-    {link && (
-      <span className="text-pqAmber">
-        <LinkIcon />
-      </span>
-    )}
-    <span>{label}</span>
-    <span className="text-pqSoft">×{count}</span>
-    <span className="ms-auto tabular-nums">{formatCredits(round(amount))}</span>
-  </div>
-);
-
-/** A network's price for one kind of post, marked when this post has some. */
-const RateCard: FC<{
-  label: string;
-  amount: number;
-  used: boolean;
-  link?: boolean;
-}> = ({ label, amount, used, link }) => {
-  const t = useT();
-  return (
-    <div
-      className={clsx(
-        'flex min-w-0 flex-col gap-[6px] rounded-[12px] bg-pqInner p-[10px_12px] outline outline-1 -outline-offset-1',
-        used
-          ? link
-            ? 'outline-pqAmberLine'
-            : 'outline-pqBrand'
-          : 'outline-pqBorder'
-      )}
-    >
-      <div
-        className={clsx(
-          'flex items-center gap-[5px] text-[12.5px]',
-          link ? 'text-pqAmber' : 'text-pqMuted'
-        )}
-      >
-        {link && <LinkIcon />}
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-[6px]">
-        <CreditsAmount
-          amount={amount}
-          size={15}
-          className="text-[18px] font-[600] text-pqText"
-        />
-        {used && (
-          <span
-            className={clsx(
-              'rounded-full px-[7px] py-[1px] text-[10.5px] font-[700] uppercase tracking-[0.04em]',
-              link
-                ? 'bg-pqAmberSoft text-pqAmber'
-                : 'bg-pqBrandSoft text-pqBrand'
-            )}
-          >
-            {t('publish_credits_in_post', 'In this post')}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/**
- * Why posting to a network uses credits, drawn: every post PostQueen sends
- * through the network's API is billed, and where a link changes the price,
- * both prices side by side.
- */
-const WhyCredits: FC<{
-  identifier: string;
-  rates: { post: number; link: number };
-  plain: boolean;
-  links: boolean;
-}> = ({ identifier, rates, plain, links }) => {
-  const t = useT();
-  const network = channelPlatformLabel(identifier);
-  const linkPriced = rates.link > rates.post;
-  return (
-    <div className="flex flex-col gap-[12px] rounded-[14px] bg-pqTableHeader p-[14px_16px]">
-      <div className="text-[13.5px] font-[600] text-pqText">
-        {t('publish_credits_why_title', 'Why {{network}} posts use credits', {
-          network,
-        })}
-      </div>
-      <div className="flex flex-col gap-[6px]" aria-hidden="true">
-        <div className="flex items-center gap-[10px]">
-          <span className="grid size-[36px] shrink-0 place-items-center rounded-[8px] bg-pqBrand">
-            <CrownGlyph className="size-[20px] text-pqOnBrand" />
-          </span>
-          <span className="relative flex flex-1 items-center">
-            <span className="h-0 flex-1 border-t-[1.5px] border-dashed border-pqBorder" />
-            <span className="text-pqSoft">
-              <ArrowIcon />
-            </span>
-            <span className="absolute inset-x-0 flex justify-center">
-              <span className="flex items-center gap-[4px] rounded-full bg-pqInner px-[8px] py-[2px] text-[11.5px] font-[600] text-pqAmber outline outline-1 -outline-offset-1 outline-pqAmberLine">
-                <CreditsIcon size={12} />
-                {t('publish_credits_flow_per_post', 'per post')}
-              </span>
-            </span>
-          </span>
-          <ChannelAvatar
-            integration={{ identifier }}
-            size={36}
-            badge={false}
-            className="rounded-[8px] outline outline-1 -outline-offset-1 outline-pqBorder"
-          />
-        </div>
-        <div className="flex justify-between text-[11.5px] text-pqSoft">
-          <span>PostQueen</span>
-          <span>
-            {t('publish_credits_flow_api', '{{network}} API', { network })}
-          </span>
-        </div>
-      </div>
-      <div className="text-[13px] leading-[1.55] text-pqMuted">
-        {linkPriced
-          ? t(
-              'publish_credits_why_link',
-              '{{network}} charges PostQueen for every post published through its API, and far more for a post that carries a link. Credits cover that cost.',
-              { network }
-            )
-          : t(
-              'publish_credits_why',
-              '{{network}} charges PostQueen for every post published through its API. Credits cover that cost.',
-              { network }
-            )}
-      </div>
-      {linkPriced && (
-        <div className="grid grid-cols-2 gap-[8px]">
-          <RateCard
-            label={t('publish_credits_row_post', 'Post')}
-            amount={rates.post}
-            used={plain}
-          />
-          <RateCard
-            label={t('publish_credits_row_link', 'Post with a link')}
-            amount={rates.link}
-            used={links}
-            link
-          />
-        </div>
-      )}
-    </div>
-  );
 };
 
 const PublishCreditsTitle: FC<{ needed: number }> = ({ needed }) => {
@@ -279,66 +57,34 @@ const PublishCreditsTitle: FC<{ needed: number }> = ({ needed }) => {
 
 /**
  * Before a post that a network bills goes out: what it takes from the
- * credits balance, per channel, why, and the balance after. With too few
+ * credits balance, what is left after, and why, in one line. With too few
  * credits it offers Billing instead of the save.
  */
 const PublishCreditsConfirm: FC<{
   quote: PublishCreditsQuote;
-  channels: PublishCreditsChannel[];
   confirmLabel: string;
-  repeats: boolean;
   resolution: (value: boolean) => void;
-}> = ({ quote, channels, confirmLabel, repeats, resolution }) => {
+}> = ({ quote, confirmLabel, resolution }) => {
   const t = useT();
   const canOpenBilling = useCanOpenBilling();
   const { data: balance } = useCreditsBalance();
   const known = !!balance && !balance.unlimited;
   const current = balance?.balance ?? 0;
   const short = known && current < quote.needed;
-  const held = round(quote.credits - quote.needed);
 
-  // One explanation per network, with the prices of its first channel.
-  const identifierOf = (integration: string) =>
-    channels.find((c) => c.id === integration)?.identifier || '';
-  const networks = [
-    ...new Set(
-      quote.channels.map((c) => identifierOf(c.integration)).filter(Boolean)
-    ),
-  ].map((identifier) => {
-    const own = quote.channels.filter(
-      (c) => identifierOf(c.integration) === identifier
-    );
-    return {
-      identifier,
-      rates: own[0].rates,
-      plain: own.some((c) => c.posts > c.links),
-      links: own.some((c) => c.links > 0),
-    };
-  });
-
-  let lead: ReactNode = t(
-    'publish_credits_confirm_lead',
-    'Set aside from your balance for this post now.'
+  // Said with both prices only when a link is what made this post dearer.
+  const linked = quote.channels.find(
+    (channel) => channel.links && channel.rates.link > channel.rates.post
   );
-  if (short) {
-    lead = t(
-      'publish_credits_short_body',
-      'This post needs {{needed}} credits and your balance is {{balance}}.',
-      { needed: formatCredits(quote.needed), balance: formatCredits(current) }
-    );
-  } else if (held > 0) {
-    lead = t(
-      'publish_credits_confirm_lead_more',
-      'More set aside for this change, on top of the {{amount}} this post already holds.',
-      { amount: formatCredits(held) }
-    );
-  }
+  const network = channelPlatformLabel(
+    (linked || quote.channels[0])?.identifier || ''
+  );
 
   return (
     <div className="flex flex-col gap-[16px]" data-pq="publish-credits-confirm">
       <div
         className={clsx(
-          'flex flex-wrap items-center gap-x-[14px] gap-y-[12px] rounded-[16px] p-[16px_18px]',
+          'flex items-center gap-[14px] rounded-[16px] p-[16px_18px]',
           short ? 'bg-pqWarnSoft' : 'bg-pqBrandSoft'
         )}
       >
@@ -350,112 +96,67 @@ const PublishCreditsConfirm: FC<{
         >
           <CreditsIcon size={22} />
         </span>
-        <div className="flex min-w-[160px] flex-1 flex-col gap-[4px]">
-          {/* `!`: a compact modal sizes every font-display inside it for its
-              title. */}
-          <div className="font-display !text-[30px] font-[600] leading-none -tracking-[0.02em] text-pqText">
-            <span aria-hidden="true">{formatCredits(quote.needed)}</span>
-            <span className="sr-only">
-              {t('n_credits_amount', '{{amount}} credits', {
-                amount: formatCredits(quote.needed),
-              })}
-            </span>
+        <div className="flex min-w-0 flex-col gap-[4px]">
+          <div className="text-[20px] font-[600] leading-tight text-pqText">
+            {t('n_credits_amount', '{{amount}} credits', {
+              amount: formatCredits(quote.needed),
+            })}
           </div>
-          <div
-            className={clsx(
-              'text-[13px] leading-[1.45]',
-              short ? 'text-pqWarn' : 'text-pqMuted'
-            )}
-          >
-            {lead}
-          </div>
-        </div>
-        {known && !short && (
-          <div className="flex flex-col gap-[2px] text-[12.5px] text-pqMuted">
-            <span>{t('publish_credits_balance', 'Your balance')}</span>
-            <span className="flex items-center gap-[6px] text-[14px] font-[600] tabular-nums text-pqText">
-              {formatCredits(current)}
-              <span className="text-pqSoft">
-                <ArrowIcon />
-              </span>
-              {formatCredits(round(current - quote.needed))}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col divide-y divide-pqLine rounded-[14px] outline outline-1 -outline-offset-1 outline-pqBorder">
-        {quote.channels.map((channel) => {
-          const integration = channels.find(
-            (c) => c.id === channel.integration
-          );
-          if (!integration) {
-            return null;
-          }
-          const plain = channel.posts - channel.links;
-          return (
+          {known && (
             <div
-              key={channel.integration}
-              className="flex flex-col gap-[6px] p-[12px_14px]"
-            >
-              <div className="flex items-center gap-[10px]">
-                <ChannelAvatar integration={integration} size={28} />
-                <span className="min-w-0 flex-1 truncate text-[14px] font-[600] text-pqText">
-                  {integration.name}
-                </span>
-                <CreditsAmount
-                  amount={channel.credits}
-                  className="text-[14px] font-[600] text-pqText"
-                />
-              </div>
-              <div className="flex flex-col gap-[3px] ps-[38px] text-[12.5px] text-pqMuted">
-                {plain > 0 && (
-                  <BreakdownRow
-                    label={t('publish_credits_row_post', 'Post')}
-                    count={plain}
-                    amount={plain * channel.rates.post}
-                  />
-                )}
-                {channel.links > 0 && (
-                  <BreakdownRow
-                    label={t('publish_credits_row_link', 'Post with a link')}
-                    count={channel.links}
-                    amount={channel.links * channel.rates.link}
-                    link
-                  />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {networks.map((network) => (
-        <WhyCredits key={network.identifier} {...network} />
-      ))}
-
-      <div className="flex gap-[8px] text-[12.5px] leading-[1.5] text-pqMuted">
-        <InfoIcon />
-        <span>
-          {t(
-            'publish_credits_returned',
-            'Used when the post publishes. Delete it or move it to drafts and the credits come back.'
-          )}
-          {repeats &&
-            ' ' +
-              t(
-                'publish_credits_repeats',
-                'It repeats: each run sets aside the same again before it goes out.'
+              className={clsx(
+                'text-[13px] leading-[1.45]',
+                short ? 'text-pqWarn' : 'text-pqMuted'
               )}
-        </span>
+            >
+              {short
+                ? t(
+                    'publish_credits_short_body',
+                    'Your balance is {{balance}}.',
+                    { balance: formatCredits(current) }
+                  )
+                : t(
+                    'publish_credits_balance_after',
+                    'Balance after: {{amount}}',
+                    {
+                      amount: formatCredits(
+                        Math.round((current - quote.needed) * 100) / 100
+                      ),
+                    }
+                  )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Kept in view while the rest scrolls on a short screen. */}
-      <div className="sticky bottom-0 flex flex-col gap-[10px] bg-pqInner pt-[4px] sm:flex-row">
+      {!!network && (
+        <div className="text-[13.5px] leading-[1.55] text-pqMuted">
+          {linked
+            ? t(
+                'publish_credits_why_link',
+                '{{network}} charges PostQueen for every post published through its API, and far more for a post with a link: {{link}} credits instead of {{post}}.',
+                {
+                  network,
+                  link: formatCredits(linked.rates.link),
+                  post: formatCredits(linked.rates.post),
+                }
+              )
+            : t(
+                'publish_credits_why',
+                '{{network}} charges PostQueen for every post published through its API.',
+                { network }
+              )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-[10px] sm:flex-row">
         {!short && (
           <button
             type="button"
             data-pq="publish-credits-approve"
+            // The composer's own button is disabled while this is open, so
+            // the keyboard starts here rather than at the top of the page.
+            autoFocus
             onClick={() => resolution(true)}
             className="h-[46px] min-h-[44px] min-w-[112px] cursor-pointer rounded-[12px] border-0 bg-pqBrand px-[24px] text-[14.5px] font-[600] text-pqOnBrand transition-[filter] hover:brightness-110"
           >
@@ -463,14 +164,15 @@ const PublishCreditsConfirm: FC<{
           </button>
         )}
         {short && canOpenBilling && (
-          <a
+          <Link
             href="/billing"
             target="_blank"
             rel="noopener noreferrer"
+            autoFocus
             className="flex h-[46px] min-h-[44px] min-w-[112px] items-center justify-center rounded-[12px] bg-pqBrand px-[24px] text-[14.5px] font-[600] text-pqOnBrand transition-[filter] hover:brightness-110"
           >
             {t('get_more_credits', 'Get more credits')}
-          </a>
+          </Link>
         )}
         <button
           type="button"
@@ -492,7 +194,6 @@ const PublishCreditsConfirm: FC<{
  * server-side, and a short balance still refuses it there.
  */
 export const usePublishCreditsConfirm = () => {
-  const t = useT();
   const fetch = useFetch();
   const { openModal, closeById } = useModals();
   const { billingEnabled } = useVariables();
@@ -501,8 +202,8 @@ export const usePublishCreditsConfirm = () => {
     async (params: {
       type: 'draft' | 'now' | 'schedule' | 'update';
       posts: PublishCreditsPost[];
-      channels: PublishCreditsChannel[];
-      repeats: boolean;
+      /** The button that saves, which the dialog's own repeats. */
+      confirmLabel: string;
     }) => {
       if (!billingEnabled || params.type === 'draft') {
         return true;
@@ -517,13 +218,6 @@ export const usePublishCreditsConfirm = () => {
       if (!quote?.needed || !Array.isArray(quote.channels)) {
         return true;
       }
-
-      const confirmLabel =
-        params.type === 'now'
-          ? t('post_now', 'Post Now')
-          : params.type === 'update'
-          ? t('update', 'Update')
-          : t('schedule', 'Schedule');
 
       return new Promise<boolean>((resolve) => {
         const id = makeId(20);
@@ -547,15 +241,13 @@ export const usePublishCreditsConfirm = () => {
           children: (
             <PublishCreditsConfirm
               quote={quote}
-              channels={params.channels}
-              confirmLabel={confirmLabel}
-              repeats={params.repeats}
+              confirmLabel={params.confirmLabel}
               resolution={finish}
             />
           ),
         });
       });
     },
-    [billingEnabled, fetch, openModal, closeById, t]
+    [billingEnabled, fetch, openModal, closeById]
   );
 };

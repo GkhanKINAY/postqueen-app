@@ -485,8 +485,8 @@ describe('The price the composer shows', { skip: !canLoadService }, () => {
       channels: [
         {
           integration: 'x-1',
+          identifier: 'x',
           credits: 5,
-          posts: 1,
           links: 1,
           rates: { post: 0.4, link: 5 },
         },
@@ -505,8 +505,8 @@ describe('The price the composer shows', { skip: !canLoadService }, () => {
     assert.deepEqual(quote.channels, [
       {
         integration: 'x-1',
+        identifier: 'x',
         credits: 5.8,
-        posts: 3,
         links: 1,
         rates: { post: 0.4, link: 5 },
       },

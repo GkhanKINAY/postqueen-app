@@ -793,8 +793,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         !(await confirmPublishCredits({
           type,
           posts,
-          channels: selectedIntegrations.map((p) => p.integration),
-          repeats: !!repeater || !!existingData?.posts?.[0]?.intervalInDays,
+          confirmLabel:
+            type === 'now'
+              ? t('post_now', 'Post Now')
+              : type === 'update' ||
+                (existingData?.posts?.[0]?.state &&
+                  existingData.posts[0].state !== 'DRAFT')
+              ? t('update', 'Update')
+              : t('schedule', 'Schedule'),
         }))
       ) {
         setLoading(false);
