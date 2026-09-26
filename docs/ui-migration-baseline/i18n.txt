@@ -2,8 +2,6 @@
 30_days
 7_days
 90_days
-a_thread_with_long_posts
-a_thread_with_short_posts
 accept_50_discount_3_months
 accept_lifetime_retention_body
 access_group
@@ -53,7 +51,6 @@ add_member_copy_hint
 add_member_description
 add_member_email_hint
 add_new_tag
-add_pictures
 add_post
 add_provider_title
 add_selected_media
@@ -81,7 +78,6 @@ agent_placeholder
 agent_posting_to
 agent_posting_to_many
 agent_posting_to_one
-agent_starting
 agent_suggest_analytics
 agent_suggest_analytics_title
 agent_suggest_fit
@@ -100,6 +96,30 @@ ai_lock_perk_chat
 ai_lock_sub
 ai_not_configured_body
 ai_post
+ai_post_about
+ai_post_about_hint
+ai_post_about_placeholder
+ai_post_company
+ai_post_image
+ai_post_length
+ai_post_long
+ai_post_make_image
+ai_post_one
+ai_post_opens_when_done
+ai_post_personal
+ai_post_plan_in_copilot
+ai_post_shape
+ai_post_short
+ai_post_step_hook
+ai_post_step_image
+ai_post_step_popular
+ai_post_step_post
+ai_post_step_time
+ai_post_step_topic
+ai_post_sub
+ai_post_thread
+ai_post_voice
+ai_post_write_draft
 ai_video
 all
 all_channels
@@ -471,7 +491,6 @@ comment_delete_failed
 comments
 comments_cannot_be_published_on
 community
-company_voice_we_are_happy_to_announce
 compose_ai_unconfigured_tip
 composer_ai_placeholder
 composer_ai_sub
@@ -1517,8 +1536,11 @@ delete_chat
 delete_chat_body
 delete_chat_confirm
 delete_chat_title
+delete_from_postqueen
 delete_post
 delete_post_tooltip
+delete_published_body
+delete_published_title
 delete_tag
 deleting_your_account
 deleting_your_account_description
@@ -1653,9 +1675,6 @@ feedback
 feedback_placeholder_better
 feedback_thanks
 fill_in_the_details_for_your_oauth_application
-finding_popular_posts_to_match_with
-finding_the_topic
-finding_time_to_post
 finish
 finishing_trial_charging
 finishing_your_trial
@@ -1687,12 +1706,8 @@ generate
 generate_ai_image
 generate_image
 generate_image_with_ai
-generate_posts
 generate_video
-generating_content
-generating_hook
 generating_image
-generating_pictures
 generating_video
 generation_failed
 get_lifetime_for_amount
@@ -1901,7 +1916,6 @@ loading_voices
 login_failed_try_again
 login_instead
 logout_from
-long_post
 lt_channels
 lt_due_today
 lt_future_updates
@@ -2077,7 +2091,6 @@ orientation_square
 original_date
 original_link
 other_sessions_signed_out
-output_format
 own_version
 paid
 password
@@ -2100,7 +2113,6 @@ payment_required
 per_month
 per_year
 performance_per_post
-personal_voice_i_am_happy_to_announce
 pick_a_date
 pick_a_day
 pick_a_month
@@ -2150,6 +2162,11 @@ portal_row_sub
 portal_row_title
 post
 post_actions
+post_again
+post_again_body
+post_again_done
+post_again_failed
+post_again_pick_future
 post_already_published_drag
 post_already_published_republish_warning
 post_analytics
@@ -2165,6 +2182,7 @@ post_deleted_successfully
 post_id_copied
 post_immediately
 post_is_too_long
+post_it_again
 post_move_failed
 post_needs_content_or_image
 post_no_longer_exists
@@ -2261,7 +2279,6 @@ republish_confirm
 republish_recurring_note
 republish_the_post
 reschedule_post
-researching_your_content
 resend_activation_email
 resend_available_in
 resend_code
@@ -2290,6 +2307,7 @@ save_changes
 save_name
 saved_as_draft
 schedule
+schedule_again
 schedule_all
 schedule_next_free_slot
 scheduled
@@ -2344,7 +2362,6 @@ settings_updated
 share_with_a_client
 short_link
 short_links_statistics
-short_post
 shorten
 shortlink_ask
 shortlink_no
@@ -2485,7 +2502,6 @@ to_manage_all_your_social_media_channels
 to_your_telegram_group_channel_and_click_here
 today
 tomorrow
-tone
 top_5_posts
 top_n_posts
 top_post
@@ -2537,7 +2553,6 @@ two_days
 two_weeks
 type_your_email
 ui_demo_post_readonly
-understanding_the_category
 undo
 unknown_channel
 unlink
@@ -2567,7 +2582,6 @@ upload_media
 upload_progress_keep_open
 upload_size_limit_exceeded
 uploading_media
-uploading_pictures
 use
 use_a_different_email
 use_in_this_post
@@ -2625,8 +2639,8 @@ which_version_editing
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write
+write_a_post_with_ai
 write_a_reply
-write_anything
 write_separate_version
 write_something
 write_version_hint
@@ -2662,7 +2676,6 @@ you_are_being_redirected_back
 you_are_promoting_another_brand
 you_are_promoting_yourself
 you_can_add_signatures_to_your_account_to_be_used_in_your_posts
-you_can_write_anything_you_want_and_also_add_links_we_will_do_the_research_for_you
 your_account
 your_comment
 your_comment_should_have_at_least_one_character_or_one_image
