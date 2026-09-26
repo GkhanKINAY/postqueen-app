@@ -348,6 +348,7 @@ billing_unlimited
 billing_where_you_left_off
 billing_year
 billing_yearly
+billing_yearly_credits_note
 billing_your_7_day_trial_is
 billing_your_first
 billing_zero_due_today_until
@@ -1460,6 +1461,18 @@ create_your_account
 credentials
 credits
 credits_balance_left
+credits_buy
+credits_buy_more
+credits_card_sub
+credits_card_sub_plain
+credits_card_sub_yearly
+credits_checkout_failed
+credits_expiring
+credits_left_short
+credits_pack_validity
+credits_per_credit
+credits_purchased
+credits_save_percent
 current_password
 current_plan
 current_plan_lifetime
@@ -2128,6 +2141,7 @@ plan_meta_trial
 plan_n_channels
 plan_n_clipping_minutes
 plan_n_credits_month
+plan_n_credits_year
 plan_n_posts
 plan_one_channel
 plan_picture_editor
@@ -2631,6 +2645,11 @@ welcome_back
 what_do_you_want_to_do
 whats_new
 which_version_editing
+withdrawal_waiver_checkout_required
+withdrawal_waiver_credits
+withdrawal_waiver_required
+withdrawal_waiver_yearly
+withdrawal_waiver_yearly_required
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write

@@ -33,6 +33,7 @@
 /billing/check-discount
 /billing/coupon-info
 /billing/credits
+/billing/credits/checkout
 /billing/embedded
 /billing/finish-trial
 /billing/is-trial-finished

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CREDIT_GIFT_MONTHLY,
+  CREDIT_PACK_MONTHS,
   CREDIT_PLAN_GRACE_DAYS,
   CREDIT_UNIT,
   effectiveIsTrailing,
@@ -288,6 +289,26 @@ export class SubscriptionService {
       }
     );
     return granted;
+  }
+
+  /** A paid credits pack: its credits, for as long as a pack lasts. */
+  async grantCreditPack(
+    organizationId: string,
+    pack: { credits: number; externalRef: string; paymentRef: string | null }
+  ) {
+    const { granted } = await this._creditsService.grant(organizationId, {
+      source: 'topup',
+      amount: pack.credits * CREDIT_UNIT,
+      expiresAt: dayjs().add(CREDIT_PACK_MONTHS, 'month').toDate(),
+      externalRef: pack.externalRef,
+      paymentRef: pack.paymentRef,
+    });
+    return granted;
+  }
+
+  /** A refunded or disputed pack: what is left of it goes, the plan stays. */
+  revokeCreditPack(organizationId: string, paymentRef: string) {
+    return this._creditsService.revokeByPaymentRef(organizationId, paymentRef);
   }
 
   /** Whether this organization has a plan or trial period's credits in force. */

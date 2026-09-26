@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { HttpException } from '@nestjs/common';
 import { CreditsService } from './credits.service.ts';
 import { insufficientCredits } from './credits.repository.ts';
+import { CREDIT_PACK_MONTHS, CREDIT_PACKS } from '../subscriptions/pricing.ts';
 
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -14,6 +15,10 @@ const repository = read('./credits.repository.ts');
 const schema = read('../schema.prisma');
 const migration = read('../migrations/20260926120000_credit_balance/migration.sql');
 const databaseModule = read('../database.module.ts');
+const stripe = read('../../../services/stripe.service.ts');
+const buyCreditsDto = read('../../../dtos/billing/buy.credits.dto.ts');
+const between = (text: string, from: string, to: string) =>
+  text.slice(text.indexOf(from), text.indexOf(to, text.indexOf(from)));
 
 // The service with its repository faked. The ledger arithmetic itself runs in
 // Postgres under the lock, so it is exercised against a database, not here.
@@ -181,13 +186,13 @@ describe('Ledger', () => {
       repository,
       /pg_advisory_xact_lock\(hashtext\(\$\{`credits:\$\{organizationId\}`\}\)\)/
     );
-    // spend, refund, grant and revokeGrants each take it first thing in their
-    // transaction, and nothing else opens one
+    // spend, refund, grant, revokeGrants and revokeByPaymentRef each take it
+    // first thing in their transaction, and nothing else opens one
     assert.equal(
       (repository.match(/\$transaction\(async \(tx\) => \{\n\s+await this\.lock\(tx, organizationId\);/g) || []).length,
-      4
+      5
     );
-    assert.equal((repository.match(/\$transaction\(/g) || []).length, 4);
+    assert.equal((repository.match(/\$transaction\(/g) || []).length, 5);
   });
 
   it('refuses amounts that are not positive whole hundredths', () => {
@@ -225,5 +230,84 @@ describe('Ledger', () => {
 
   it('registers the service and repository', () => {
     assert.match(databaseModule, /\n\s+CreditsService,\n\s+CreditsRepository,\n/);
+  });
+});
+
+describe('Credits packs', () => {
+  it('cost less a credit the larger they are, in whole dollars', () => {
+    const perCredit = CREDIT_PACKS.map((pack) => pack.price / pack.credits);
+    assert.deepEqual([...perCredit].sort((a, b) => b - a), perCredit);
+    assert.ok(CREDIT_PACKS.every((pack) => Number.isInteger(pack.price)));
+    assert.equal(CREDIT_PACK_MONTHS, 12);
+  });
+
+  it('are told apart from a founding-member payment before it is granted', () => {
+    const checkout = between(
+      stripe,
+      "case 'checkout.session.async_payment_succeeded':",
+      "case 'invoice.payment_succeeded':"
+    );
+    const pack = checkout.indexOf("session?.metadata?.kind === 'credit_pack'");
+    assert.ok(pack > -1 && pack < checkout.indexOf('lifetime_deferred'));
+    assert.ok(pack < checkout.indexOf('grantLifetimeFromPayment'));
+  });
+
+  it('grant once per checkout, only when paid and still paid, for the months a pack lasts', () => {
+    const grant = between(stripe, 'private async grantCreditPack(', 'private async revokeCreditPackOfCharge(');
+    assert.match(grant, /if \(session\.payment_status !== 'paid'\) \{/);
+    assert.match(grant, /if \(charge\?\.refunded \|\| charge\?\.disputed\) \{/);
+    assert.match(grant, /externalRef: session\.id, paymentRef: paymentIntent \|\| null/);
+    // through the subscription service, like every other grant
+    const subscription = read('../subscriptions/subscription.service.ts');
+    assert.match(subscription, /source: 'topup',\n\s+amount: pack\.credits \* CREDIT_UNIT,\n\s+expiresAt: dayjs\(\)\.add\(CREDIT_PACK_MONTHS, 'month'\)\.toDate\(\),/);
+    assert.doesNotMatch(stripe, /CreditsService/);
+  });
+
+  it('are sold without promotion codes, tagged on the payment as well', () => {
+    const sell = between(stripe, 'async createCreditPackCheckout(', 'private async grantCreditPack(');
+    assert.match(sell, /allow_promotion_codes: false,/);
+    assert.match(sell, /payment_intent_data: \{ metadata \},/);
+    assert.match(sell, /withdrawal_waiver_at: new Date\(\)\.toISOString\(\),/);
+  });
+
+  it('go back on a refund or a dispute before anything can end the plan', () => {
+    for (const [from, to] of [
+      ['async disputeCreated(', 'async chargeRefunded('],
+      ['async chargeRefunded(', 'async hasFailedPayment('],
+    ]) {
+      const handler = between(stripe, from, to);
+      const pack = handler.indexOf('await this.revokeCreditPackOfCharge(charge)');
+      assert.ok(pack > -1, from);
+      assert.ok(pack < handler.indexOf('cancelSubscriptionOfCharge'), from);
+      assert.ok(pack < handler.indexOf('revokeLocalSubscription'), from);
+    }
+    // only a payment this app tagged as a pack
+    assert.match(stripe, /intent\.metadata\?\.service !== SUBSCRIPTION_SERVICE_TAG \|\|\n\s+intent\.metadata\?\.kind !== 'credit_pack'/);
+  });
+});
+
+describe('Withdrawal waiver', () => {
+  it('is required for a pack, and for a yearly plan before anything reaches Stripe', () => {
+    assert.match(buyCreditsDto, /@Equals\(true\)\n\s+withdrawalWaiver: true;/);
+    assert.match(stripe, /if \(body\.period === 'YEARLY' && body\.withdrawalWaiver !== true\) \{/);
+    // first thing in both ways a plan is bought
+    for (const from of ['async embedded(', 'async subscribe(']) {
+      const start = stripe.indexOf(from);
+      const opening = stripe.slice(start, stripe.indexOf('{', start) + 200);
+      assert.match(opening, /this\.assertWithdrawalWaiver\(body\);/, from);
+    }
+  });
+
+  it('is confirmed by email once per consent, after the year of credits is granted', () => {
+    const handler = between(stripe, 'async paymentSucceeded(', 'async paymentFailed(');
+    const grant = handler.indexOf('await this.grantPeriodCredits(');
+    assert.ok(grant > -1 && grant < handler.indexOf('this.confirmYearlyCredits('));
+    assert.match(stripe, /subscription\.metadata\?\.withdrawal_waiver_confirmed === consentAt/);
+    assert.match(stripe, /metadata: \{ withdrawal_waiver_confirmed: consentAt \},/);
+  });
+
+  it('goes into Stripe as the time it was given, never as the flag', () => {
+    assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'\),/g) || []).length, 3);
+    assert.doesNotMatch(stripe, /\.\.\.body,/);
   });
 });
