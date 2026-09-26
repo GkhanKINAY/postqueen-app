@@ -75,16 +75,11 @@ const FirstStep: FC = () => {
       shape: 'one',
     },
   });
-  const [research, length, shape, isPicture] = form.watch([
-    'research',
-    'length',
-    'shape',
-    'isPicture',
-  ]);
+  const [research, isPicture] = form.watch(['research', 'isPicture']);
 
-  useEffect(() => {
-    form.setValue('format', `${shape}_${length}` as GeneratorDto['format']);
-  }, [form, shape, length]);
+  // Closing the dialog while it works stops the request, so the composer
+  // does not open later out of nowhere.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const stepLabels = [
     t('ai_post_step_topic', 'Understanding the topic'),
@@ -143,7 +138,11 @@ const FirstStep: FC = () => {
     [t]
   );
   const onSubmit: SubmitHandler<GeneratorForm> = useCallback(
-    async ({ length: _length, shape: _shape, ...value }) => {
+    async ({ length, shape, ...fields }) => {
+      const value = {
+        ...fields,
+        format: `${shape}_${length}` as GeneratorDto['format'],
+      };
       setLoading(true);
       setStep(0);
       const controller = new AbortController();
@@ -251,7 +250,12 @@ const FirstStep: FC = () => {
         <div className="rounded-[12px] bg-pqSettings px-[16px] py-[14px] text-[13px] leading-[1.5] text-pqMuted">
           {research}
         </div>
-        <ol className="mt-[14px] flex flex-col" aria-live="polite">
+        {/* The list only changes its icons, so the running step is also
+            read out here. */}
+        <span className="sr-only" aria-live="polite">
+          {step > -1 ? stepLabels[step] : ''}
+        </span>
+        <ol className="mt-[14px] flex flex-col">
           {GENERATOR_STEPS.map((s, index) => {
             if (s.picture && !isPicture) {
               return null;
