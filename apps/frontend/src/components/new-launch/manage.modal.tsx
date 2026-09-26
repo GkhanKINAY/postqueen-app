@@ -30,7 +30,7 @@ import {
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
 import { useSWRConfig } from 'swr';
-import { ComposeCredits } from '@gitroom/frontend/components/new-launch/compose.credits';
+import { usePublishCreditsConfirm } from '@gitroom/frontend/components/new-launch/compose.credits';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
 import { TagsComponent } from '@gitroom/frontend/components/launches/tags.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -148,6 +148,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const fetch = useFetch();
   // Scheduling sets credits aside, and a draft or a delete hands them back.
   const { mutate: mutateKey } = useSWRConfig();
+  const confirmPublishCredits = usePublishCreditsConfirm();
   const { mobile, touch, splitComposer } = useViewport();
   const compactChrome = !splitComposer;
   const compactFooter = touch;
@@ -784,6 +785,28 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         }
       }
 
+      // Last before the save: what a network that bills each post takes
+      // from the credits balance, and why. Sets never publish.
+      if (
+        !dummy &&
+        !addEditSets &&
+        !(await confirmPublishCredits({
+          type,
+          posts,
+          confirmLabel:
+            type === 'now'
+              ? t('post_now', 'Post Now')
+              : type === 'update' ||
+                (existingData?.posts?.[0]?.state &&
+                  existingData.posts[0].state !== 'DRAFT')
+              ? t('update', 'Update')
+              : t('schedule', 'Schedule'),
+        }))
+      ) {
+        setLoading(false);
+        return;
+      }
+
       const data = {
         type,
         ...(republish ? { republish } : {}),
@@ -925,6 +948,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       notifyOnPublish,
       fetch,
       mutateKey,
+      confirmPublishCredits,
       // Start over gives the rail a new thread id; the post saves that one.
       copilotThread,
     ]
@@ -1382,9 +1406,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 ) : (
                   <ComposeWhen date={date} onChange={setDate} />
                 )}
-                {!addEditSets && !publishedView && !dummy && (
-                  <ComposeCredits variant="row" explain />
-                )}
                 {!dummy && !publishedView && selectedIntegrations.length > 0 && (
                   <ComposeNotify
                     notify={notifyOnPublish}
@@ -1561,11 +1582,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 onChange={setNotifyOnPublish}
               />
             )}
-            {compactFooter && !dummy && !publishedView && !addEditSets && (
-              <div className="col-span-2 empty:hidden">
-                <ComposeCredits variant="row" />
-              </div>
-            )}
           </div>
           )}
           <div
@@ -1621,9 +1637,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 phoneFlow && 'min-w-0 flex-1'
               )}
             >
-            {!addEditSets && !publishedView && !dummy && !compactFooter && (
-              <ComposeCredits />
-            )}
             {!addEditSets && !publishedView && (
               <button
                 disabled={

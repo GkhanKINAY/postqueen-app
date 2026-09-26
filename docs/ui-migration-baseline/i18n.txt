@@ -2266,9 +2266,12 @@ public_to_everyone
 publication_date
 publish_again
 publish_at_least_one_post_today_to_keep_the_streak_alive
-publish_credits_hint
+publish_credits_balance_after
+publish_credits_confirm_title
 publish_credits_short
-publish_credits_to_publish
+publish_credits_short_body
+publish_credits_why
+publish_credits_why_link
 published
 publishing
 publishing_now
