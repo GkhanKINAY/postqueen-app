@@ -424,28 +424,28 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     modal.openModal({
       title: t('post_it_again', 'Post it again'),
       withCloseButton: true,
-      size: 480,
-      classNames: {
-        modal: 'text-pqText',
-      },
-      children: (
+      compact: 460,
+      children: (close) => (
         <PostAgainDialog
           date={dayjs().add(1, 'hour').startOf('hour')}
-          onClose={() => modal.closeCurrent()}
+          onClose={close}
           onConfirm={async (next) => {
             const item = existingData.posts[0];
-            const response = await fetch(
-              `/posts/${item.id}/date`,
-              {
+            let ok = false;
+            try {
+              const response = await fetch(`/posts/${item.id}/date`, {
                 method: 'PUT',
                 body: JSON.stringify({
                   date: next.utc().format('YYYY-MM-DDTHH:mm:ss'),
                   action: 'schedule',
                   republish: true,
                 }),
-              }
-            );
-            if (!response.ok) {
+              });
+              ok = response.ok;
+            } catch {
+              ok = false;
+            }
+            if (!ok) {
               toaster.show(
                 t(
                   'post_again_failed',
@@ -453,7 +453,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 ),
                 'warning'
               );
-              return false;
+              return;
             }
             toaster.show(
               t('post_again_done', 'It will post again at the time you picked'),
@@ -461,7 +461,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             );
             mutate();
             modal.closeAll();
-            return true;
           }}
         />
       ),
@@ -1355,11 +1354,23 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                   >
                     <TrashIcon />
                     <div>
-                  {publishedView
-                    ? t('delete_from_postqueen', 'Delete from PostQueen')
-                    : t('delete_post', 'Delete Post')}
-                </div>
+                      {publishedView
+                        ? t('delete_from_postqueen', 'Delete from PostQueen')
+                        : t('delete_post', 'Delete Post')}
+                    </div>
                   </button>
+                )}
+                {/* The phone footer has room for two buttons; the link to the
+                    live post sits here with Delete. */}
+                {publishedView && !!existingData?.posts?.[0]?.releaseURL && (
+                  <a
+                    href={existingData.posts[0].releaseURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-[44px] items-center text-[15px] font-[600] text-pqText"
+                  >
+                    {t('go_to_post', 'Go to post')}
+                  </a>
                 )}
               </div>
             </div>
@@ -1579,7 +1590,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 Save Set
               </button>
             )}
-            {publishedView && !!existingData?.posts?.[0]?.releaseURL && (
+            {!phoneFlow &&
+              publishedView &&
+              !!existingData?.posts?.[0]?.releaseURL && (
               <a
                 href={existingData.posts[0].releaseURL}
                 target="_blank"
@@ -1610,7 +1623,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 </span>
               </button>
             )}
-            {publishedView && (
+            {publishedView && !repeating && (
               <button
                 type="button"
                 data-pq="composer-post-again"

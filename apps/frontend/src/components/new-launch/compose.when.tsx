@@ -58,27 +58,37 @@ export const ComposePublishedAt: FC<{ date: dayjs.Dayjs }> = ({ date }) => {
 };
 
 /**
- * Post a published post again. The first one stays live on the network; the
- * same text and media go out again at the time picked here. The caller owns
- * the request and says whether it worked.
+ * Post a published post again. What is already out stays live on the
+ * network; in PostQueen the post moves to the time picked here and goes out
+ * again then. The caller owns the request and closes everything once it
+ * has worked.
  */
 export const PostAgainDialog: FC<{
   date: dayjs.Dayjs;
-  onConfirm: (date: dayjs.Dayjs) => Promise<boolean>;
+  onConfirm: (date: dayjs.Dayjs) => Promise<void>;
   onClose: () => void;
 }> = ({ date: initial, onConfirm, onClose }) => {
   const t = useT();
   const [date, setDate] = useState(initial);
   const [saving, setSaving] = useState(false);
+  // A past time would post at once; dragging refuses past slots too.
+  const past = date.isBefore(dayjs());
   return (
     <div className="flex flex-col gap-[16px]">
       <p className="m-0 text-[14px] leading-[1.6] text-pqMuted">
         {t(
           'post_again_body',
-          'The first post stays live. The same text and media go out again at the time you pick.'
+          'What is already out stays live on the network. In PostQueen the post moves to the time you pick and goes out again then, so its link and statistics start over.'
         )}
       </p>
-      <ComposeWhen date={date} onChange={setDate} />
+      <div className="flex flex-col gap-[6px]">
+        <ComposeWhen date={date} onChange={setDate} />
+        {past && (
+          <span className="text-[12.5px] text-pqWarn">
+            {t('post_again_pick_future', 'Pick a time in the future.')}
+          </span>
+        )}
+      </div>
       <div className="flex justify-end gap-[8px]">
         <button
           type="button"
@@ -90,13 +100,11 @@ export const PostAgainDialog: FC<{
         <Button
           type="button"
           loading={saving}
+          disabled={past}
           onClick={async () => {
             setSaving(true);
-            const done = await onConfirm(date);
+            await onConfirm(date);
             setSaving(false);
-            if (done) {
-              onClose();
-            }
           }}
         >
           {t('schedule_again', 'Schedule again')}
