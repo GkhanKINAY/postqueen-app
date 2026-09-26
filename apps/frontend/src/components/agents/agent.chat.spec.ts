@@ -197,7 +197,7 @@ describe('AI Copilot draft preview card', () => {
     const runOptions = readFileSync(
       fileURLToPath(
         new URL(
-          '../../../../../libraries/nestjs-libraries/src/chat/copilot.credits.ts',
+          '../../../../../libraries/nestjs-libraries/src/chat/copilot.credits.service.ts',
           import.meta.url,
         ),
       ),
@@ -205,7 +205,7 @@ describe('AI Copilot draft preview card', () => {
     );
     assert.match(
       service,
-      /defaultOptions: \(\{ requestContext \}\) =>\s*copilotRunOptions\(this\._creditsService, requestContext\)/,
+      /defaultOptions: \(\{ requestContext \}\) =>\s*this\._copilotCreditsService\.runOptions\(requestContext\)/,
     );
     assert.match(runOptions, /maxSteps: 12,/);
     // The card rule opens the prompt, ahead of the style section.

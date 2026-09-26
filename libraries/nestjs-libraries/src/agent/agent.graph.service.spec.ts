@@ -104,8 +104,10 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
     );
   });
 
-  it('charges the text before the run and hands it back if the run fails', async () => {
+  it('charges the text before the run and hands the run back whole if it fails', async () => {
     const generator = service();
+    // Pictures are charged part way through a run, so their key goes back
+    // too; a key never charged hands back nothing.
     generator.run = async function* () {
       yield { name: 'agent' };
       throw new Error('model down');
@@ -120,11 +122,38 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
       }
     }, /model down/);
     assert.deepEqual(events, [{ name: 'agent' }]);
-    const [spend, refund] = calls;
+    const [spend, ...refunds] = calls;
     assert.equal(spend[0], 'spend');
     assert.match(spend[2] as string, /^generator:/);
     assert.equal(spend[3], AI_FIXED_CREDIT_COSTS_PROPOSAL.generator);
-    assert.deepEqual(refund, ['refund', 'org-1', spend[2]]);
+    assert.deepEqual(refunds, [
+      ['refund', 'org-1', spend[2]],
+      ['refund', 'org-1', `${spend[2]}:pictures`],
+    ]);
+  });
+
+  it("answers with the run's own error when a refund cannot be written", async () => {
+    const generator = new AgentGraphService(
+      {},
+      {},
+      {
+        ...credits,
+        async refund() {
+          throw new Error('database down');
+        },
+      }
+    );
+    generator.run = async function* () {
+      throw new Error('model down');
+    };
+    await assert.rejects(async () => {
+      for await (const _ of generator.start(
+        'org-1',
+        body('one_short', false)
+      )) {
+        /** drain **/
+      }
+    }, /model down/);
   });
 
   it('keeps the charge of a run that finishes', async () => {

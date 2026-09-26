@@ -7,8 +7,7 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import dayjs from 'dayjs';
-import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
-import { copilotRunOptions } from '@gitroom/nestjs-libraries/chat/copilot.credits';
+import { CopilotCreditsService } from '@gitroom/nestjs-libraries/chat/copilot.credits.service';
 import {
   COPILOT_READABLE,
   CopilotChannel,
@@ -68,7 +67,7 @@ const channelsBlock = (channels: CopilotChannel[]) =>
 export class LoadToolsService {
   constructor(
     private _moduleRef: ModuleRef,
-    private _creditsService: CreditsService
+    private _copilotCreditsService: CopilotCreditsService
   ) {}
 
   async loadTools(mcpOnly = false) {
@@ -283,7 +282,7 @@ ${renderArray(
       model: openai('gpt-5.2'),
       // Per run: the step cap, and the charge for every model call.
       defaultOptions: ({ requestContext }) =>
-        copilotRunOptions(this._creditsService, requestContext),
+        this._copilotCreditsService.runOptions(requestContext),
       tools: ({ requestContext }) =>
         requestContext.get('surface' as never) === 'composer'
           ? composerTools

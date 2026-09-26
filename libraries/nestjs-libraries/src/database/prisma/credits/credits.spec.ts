@@ -122,6 +122,19 @@ describe('withCredits', () => {
     assert.deepEqual(calls, []);
   });
 
+  it("keeps the work's error when its refund cannot be written", async () => {
+    const credits = service();
+    (credits as any)._creditsRepository.refund = async () => {
+      throw new Error('database down');
+    };
+    await assert.rejects(
+      credits.withCredits('org-1', spend, async () => {
+        throw new Error('provider down');
+      }),
+      /provider down/
+    );
+  });
+
   it('never refunds a charge an earlier attempt made', async () => {
     charged = false;
     await assert.rejects(
@@ -438,6 +451,15 @@ describe('Model tokens', () => {
     balance = LLM_CONTINUATION_FLOOR - 1;
     await assert.rejects(
       service().assertLlmTurn('org-1', true),
+      (err) => err instanceof HttpException && err.getStatus() === 402
+    );
+  });
+
+  it('count a charge owed but not yet written, between the steps of a run', async () => {
+    balance = LLM_CONTINUATION_FLOOR + 10;
+    await service().assertLlmTurn('org-1', true, 10);
+    await assert.rejects(
+      service().assertLlmTurn('org-1', true, 11),
       (err) => err instanceof HttpException && err.getStatus() === 402
     );
   });

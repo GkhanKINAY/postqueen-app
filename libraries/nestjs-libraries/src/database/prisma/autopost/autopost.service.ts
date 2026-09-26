@@ -271,6 +271,21 @@ export class AutopostService {
     return err instanceof HttpException && err.getStatus() === 402;
   }
 
+  // Hands back what one claim of an item paid for its AI. A refund that
+  // cannot be written is logged: the item goes on either way.
+  private async refundClaim(organizationId: string, creditKey: string) {
+    for (const part of ['text', 'picture']) {
+      await this._creditsService
+        .refund(organizationId, `${creditKey}:${part}`)
+        .catch((err) =>
+          console.error(
+            `[autopost] could not refund ${creditKey}:${part}`,
+            err
+          )
+        );
+    }
+  }
+
   /**
    * Whether the balance cannot pay for what the rule asks of the AI for one
    * item, checked before anything is made so a short balance spends nothing.
@@ -423,8 +438,10 @@ export class AutopostService {
     } catch (err) {
       // A picture is a nice-to-have; losing it must not cost the post. Throwing
       // here skips update-url, so lastUrl never advances and the same item is
-      // retried every hour forever.
-      return { ...state, image: undefined, short: this.isShort(err) };
+      // retried every hour forever. A balance that ran short on the way is no
+      // different: the text is written and paid for, so the post goes out
+      // without a picture.
+      return { ...state, image: undefined };
     }
   }
 
@@ -641,13 +658,18 @@ export class AutopostService {
     }
 
     // One key per claim of a feed item: a retried activity re-enters before
-    // the claim with the same key and is not charged again, while an item
-    // that comes back later (A, then B, then A) is a new claim, because
-    // claiming B changed the rule's updatedAt.
+    // the claim with the same key, so the item is paid for once however many
+    // attempts it takes, while an item that comes back later (A, then B,
+    // then A) is a new claim, because claiming B changed the rule's
+    // updatedAt.
     const creditKey = `autopost:${id}:${createHash('sha256')
       .update(`${load.url}:${new Date(getPost.updatedAt).getTime()}`)
       .digest('hex')
       .slice(0, 24)}`;
+    // An attempt that died before claiming the item may have paid for some
+    // of its AI already. It is handed back first, so the balance is judged
+    // as it was before the item, and this attempt pays as it goes.
+    await this.refundClaim(getPost.organizationId, creditKey);
     const short = await this.creditsShort(getPost);
 
     // update-url runs BEFORE schedule-post on purpose. createPost commits and
@@ -701,11 +723,7 @@ export class AutopostService {
       // failed part way through its channels included: rare, and in the
       // customer's favour). Claimed, the item is not retried; unclaimed, a
       // retry pays again under the same keys.
-      for (const part of ['text', 'picture']) {
-        await this._creditsService
-          .refund(getPost.organizationId, `${creditKey}:${part}`)
-          .catch(() => false);
-      }
+      await this.refundClaim(getPost.organizationId, creditKey);
       // lastUrl is already claimed, so this item will not be retried. Say so
       // rather than letting it vanish — the workflow's own catch is silent.
       await this._notificationService.inAppNotification(

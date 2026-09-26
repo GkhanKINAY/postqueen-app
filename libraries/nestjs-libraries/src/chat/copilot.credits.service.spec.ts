@@ -6,12 +6,13 @@ import { Agent } from '@mastra/core/agent';
 import { RequestContext } from '@mastra/core/di';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { copilotRunOptions } from './copilot.credits.ts';
+import { CopilotCreditsService } from './copilot.credits.service.ts';
 import { runWithContext } from './async.storage.ts';
 import { insufficientCredits } from '../database/prisma/credits/credits.repository.ts';
 import {
   LLM_CONTINUATION_FLOOR,
   LLM_TURN_MINIMUM,
+  llmCreditCost,
 } from '../database/prisma/subscriptions/pricing.ts';
 
 const usage = (input: number, output: number) => ({
@@ -114,6 +115,7 @@ let charges: {
   outputTokens: number;
   action: string;
 }[];
+let calls: string[];
 let checks: string[];
 let balance: number;
 let failCharges: boolean;
@@ -121,18 +123,28 @@ let failCharges: boolean;
 // The credits service with its ledger faked: a key is charged once, the way
 // the real one's unique (organizationId, idempotencyKey) makes it.
 const credits = () => ({
-  async assertLlmTurn(org: string, continuation = false) {
-    checks.push(org);
-    if (balance < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
-      throw insufficientCredits(LLM_TURN_MINIMUM, balance);
+  async assertLlmTurn(org: string, continuation = false, pending?: number) {
+    // Before a run; the checks between its steps pass what is owed.
+    if (pending === undefined) {
+      checks.push(org);
+    }
+    const left = balance - (pending || 0);
+    if (left < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
+      throw insufficientCredits(LLM_TURN_MINIMUM, left);
     }
   },
   async chargeLlm(org: string, usage: any) {
     if (failCharges) {
       throw new Error('database down');
     }
+    calls.push(usage.key);
     if (!charges.some((c) => c.org === org && c.key === usage.key)) {
       charges.push({ org, ...usage });
+      balance -= llmCreditCost(
+        usage.model,
+        usage.inputTokens,
+        usage.outputTokens
+      );
     }
     return { id: 'spend', charged: true };
   },
@@ -146,7 +158,7 @@ const agentFor = (steps: unknown[][]) =>
     instructions: 'spec',
     model: fakeModel(steps),
     defaultOptions: ({ requestContext }) =>
-      copilotRunOptions(credits(), requestContext),
+      new CopilotCreditsService(credits() as any).runOptions(requestContext),
     tools: {
       lookup: createTool({
         id: 'lookup',
@@ -168,6 +180,7 @@ const appContext = (organization: object | null) => {
 
 beforeEach(() => {
   charges = [];
+  calls = [];
   checks = [];
   balance = 500;
   failCharges = false;
@@ -255,19 +268,41 @@ describe('Copilot runs are charged by the tokens of each model call', () => {
     assert.equal(result.text, 'Scheduled.');
   });
 
-  it('never charges the same model call twice', async () => {
+  it('keys every model call by its response id, so the ledger charges a repeated one once', async () => {
     // The same response ids again: a callback that fires twice, or a retry
-    // that replays them, finds the key already paid.
+    // that replays them. Each is charged under the key it had the first
+    // time, which the ledger's unique (organization, key) turns away.
     await agentFor(turn()).generate('One', {
       requestContext: appContext({ id: 'org-1' }),
     });
     await agentFor(turn()).generate('Two', {
       requestContext: appContext({ id: 'org-1' }),
     });
+    assert.deepEqual(calls, [
+      'llm:resp_1',
+      'llm:resp_2',
+      'llm:resp_1',
+      'llm:resp_2',
+    ]);
     assert.deepEqual(
       charges.map((c) => c.key),
       ['llm:resp_1', 'llm:resp_2']
     );
+  });
+
+  it('stops a run whose calls took the balance past the floor', async () => {
+    // Started just above the floor, the way a continuation or one of several
+    // runs started together may: the first call crosses it, and the model's
+    // wish to go on is not granted.
+    balance = LLM_CONTINUATION_FLOOR + 1;
+    await agentFor(turn()).generate('Go', {
+      requestContext: appContext({ id: 'org-1' }),
+    });
+    assert.deepEqual(
+      charges.map((c) => c.key),
+      ['llm:resp_1']
+    );
+    assert.ok(balance < LLM_CONTINUATION_FLOOR);
   });
 
   it("leaves the app's refusal to its controller, so a started turn is never stopped here", async () => {

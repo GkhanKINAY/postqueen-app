@@ -88,8 +88,15 @@ const service = (autopost = rule) =>
           ? 'Written by AI'
           : 'https://img/1.png';
       },
+      // Hands back the open charge under the key, the way the ledger does.
       async refund(_org: string, key: string) {
         refunds.push(key);
+        const open = spends.findIndex((spend) => spend.key === key);
+        if (open === -1) {
+          return false;
+        }
+        balance += spends[open].amount;
+        spends.splice(open, 1);
         return true;
       },
     }
@@ -118,8 +125,7 @@ beforeEach(() => {
 describe('Autopost and credits', () => {
   it('pays for its AI text and picture under keys of the feed item, and publishes', async () => {
     await run();
-    await run();
-    const [first, second] = [spends.slice(0, 2), spends.slice(2)];
+    const first = [...spends];
     assert.deepEqual(
       first.map((s) => s.amount),
       [
@@ -130,10 +136,8 @@ describe('Autopost and credits', () => {
     assert.match(first[0].key, /^autopost:rule-1:[0-9a-f]{24}:text$/);
     assert.match(first[1].key, /^autopost:rule-1:[0-9a-f]{24}:picture$/);
     // the same item run again (a retried activity) names the same charges
-    assert.deepEqual(
-      second.map((s) => s.key),
-      first.map((s) => s.key)
-    );
+    await run();
+    assert.deepEqual(spends, first);
     assert.deepEqual(posts, ['now', 'now']);
     assert.deepEqual(notifications, []);
   });
@@ -151,10 +155,12 @@ describe('Autopost and credits', () => {
   it('gives back the AI an item paid for when it cannot be scheduled', async () => {
     failPublish = true;
     await assert.rejects(run(), /X is down/);
-    assert.deepEqual(
-      refunds,
-      spends.map((s) => s.key)
-    );
+    assert.deepEqual(refunds.slice(2), [
+      `${refunds[0]}`,
+      `${refunds[1]}`,
+    ]);
+    assert.deepEqual(spends, []);
+    assert.equal(balance, 1000);
     assert.deepEqual(notifications, ['Autopost could not schedule an item']);
   });
 
@@ -169,9 +175,10 @@ describe('Autopost and credits', () => {
     ]);
   });
 
-  it('saves a draft when the balance runs short on the way', async () => {
+  it('publishes without a picture when the balance runs short on the way', async () => {
     // Enough up front for the text only: the picture is refused when it is
-    // charged, as another spend got there first.
+    // charged, as another spend got there first. The text is written and paid
+    // for, so the post goes out, as it does when a picture fails otherwise.
     const autoposts = service();
     autoposts.creditsShort = async () => false;
     autoposts.loadXML = async () => ({
@@ -185,10 +192,24 @@ describe('Autopost and credits', () => {
       spends.map((s) => s.key.split(':').pop()),
       ['text']
     );
-    assert.deepEqual(posts, ['draft']);
-    assert.deepEqual(notifications, [
-      'Autopost saved a draft: not enough credits',
-    ]);
+    assert.deepEqual(posts, ['now']);
+    assert.deepEqual(notifications, []);
+  });
+
+  it('judges a retried item by the balance before it, and has it paid for once', async () => {
+    // An attempt that paid for its text and picture, then died before it
+    // claimed the item, leaves too little for the retry to pay again. The
+    // retry hands that back first, so it is not taken for a short balance.
+    const price =
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText +
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture;
+    balance = price + 10;
+    await run();
+    assert.equal(balance, 10);
+    await run();
+    assert.equal(balance, 10);
+    assert.deepEqual(posts, ['now', 'now']);
+    assert.deepEqual(notifications, []);
   });
 
   it('asks nothing of the balance for a rule without AI', async () => {

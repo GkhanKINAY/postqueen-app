@@ -35,9 +35,8 @@ import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
-import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
-import { copilotRunKind } from '@gitroom/nestjs-libraries/chat/copilot.credits';
+import { CopilotCreditsService } from '@gitroom/nestjs-libraries/chat/copilot.credits.service';
 
 export type ChannelsContext = {
   organization: string;
@@ -54,26 +53,9 @@ export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService,
-    private _creditsService: CreditsService,
+    private _copilotCreditsService: CopilotCreditsService,
     private _openaiService: OpenaiService
   ) {}
-
-  /**
-   * An empty balance is refused before the runtime starts, so the answer is a
-   * 402 and never an error inside a stream. Only what runs a model is
-   * checked: a thread's history keeps loading at zero. A turn that starts
-   * with a positive balance runs to the end, including the run CopilotKit
-   * makes to finish it after a frontend tool.
-   */
-  private async assertCredits(req: Request, organization: Organization) {
-    const kind = copilotRunKind(req?.body);
-    if (kind !== 'free') {
-      await this._creditsService.assertLlmTurn(
-        organization.id,
-        kind === 'continuation'
-      );
-    }
-  }
 
   /**
    * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
@@ -137,7 +119,9 @@ export class CopilotController {
   // through its own urql client, which does not go through the customFetch
   // wrapper that turns a 402 into the Payment Required dialog, so a 402 here
   // surfaces as an unhandled CombinedError. Nobody who cannot pass this should
-  // be mounting the provider in the first place.
+  // be mounting the provider in the first place. An empty credits balance is
+  // a 402 too, but only on the calls that run a model (see `assertRun`), so
+  // the provider still mounts and the textarea simply gets no answer.
   @Post('/chat')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
   async chatAgent(
@@ -156,7 +140,7 @@ export class CopilotController {
       return;
     }
 
-    await this.assertCredits(req, organization);
+    await this._copilotCreditsService.assertRun(organization.id, req?.body);
 
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
@@ -221,7 +205,7 @@ export class CopilotController {
       });
       return;
     }
-    await this.assertCredits(req, organization);
+    await this._copilotCreditsService.assertRun(organization.id, req?.body);
 
     const properties = this.readProperties(req);
     const surface: CopilotSurface =

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   CreditGrantInput,
   CreditSpend,
@@ -32,6 +32,8 @@ export interface LlmUsage {
  */
 @Injectable()
 export class CreditsService {
+  private readonly logger = new Logger(CreditsService.name);
+
   constructor(private _creditsRepository: CreditsRepository) {}
 
   async balance(organizationId: string) {
@@ -78,16 +80,21 @@ export class CreditsService {
    * Whether a Copilot turn may start: on any positive balance. The rest of a
    * turn, run again after a frontend tool, may start down to
    * `LLM_CONTINUATION_FLOOR`, so a turn that crossed zero on its way still
-   * finishes.
+   * finishes. `pending` is a charge already owed but not yet written.
    */
-  async assertLlmTurn(organizationId: string, continuation = false) {
+  async assertLlmTurn(
+    organizationId: string,
+    continuation = false,
+    pending = 0
+  ) {
     if (!isBillingEnabled()) {
       return;
     }
 
     const { balance } = await this._creditsRepository.balance(organizationId);
-    if (balance < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
-      throw insufficientCredits(LLM_TURN_MINIMUM, balance);
+    const left = balance - pending;
+    if (left < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
+      throw insufficientCredits(LLM_TURN_MINIMUM, left);
     }
   }
 
@@ -132,8 +139,12 @@ export class CreditsService {
     try {
       return await work();
     } catch (err) {
+      // The work's error is the answer; a refund that cannot be written is
+      // logged rather than put in its place.
       if (charged) {
-        await this.refund(organizationId, spend.key);
+        await this.refund(organizationId, spend.key).catch((refundErr) =>
+          this.logger.error(`Could not refund ${spend.key}: ${refundErr}`)
+        );
       }
       throw err;
     }

@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import {
   BaseMessage,
   HumanMessage,
@@ -109,6 +109,7 @@ const contentZod = (
 
 @Injectable()
 export class AgentGraphService {
+  private readonly logger = new Logger(AgentGraphService.name);
   private storage = UploadFactory.createStorage();
   constructor(
     private _postsService: PostsService,
@@ -437,11 +438,11 @@ export class AgentGraphService {
    * The run, paid for from the credits balance: the text first, then the
    * pictures once their number is known. The text streams as it is written,
    * but the app opens only a finished run, so a run that fails is handed
-   * back whole.
+   * back whole, pictures included: a step after them can still fail it.
    */
   async *start(orgId: string, body: GeneratorDto) {
     const creditKey = `generator:${makeId(20)}`;
-    const { charged } = await this._creditsService.spend(orgId, {
+    await this._creditsService.spend(orgId, {
       key: creditKey,
       amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.generator,
       action: 'generator',
@@ -450,8 +451,14 @@ export class AgentGraphService {
     try {
       yield* this.run(orgId, creditKey, body);
     } catch (err) {
-      if (charged) {
-        await this._creditsService.refund(orgId, creditKey);
+      // A key that was never charged hands back nothing. A refund that
+      // cannot be written is logged, and the run's own error is the answer.
+      for (const key of [creditKey, `${creditKey}:pictures`]) {
+        await this._creditsService
+          .refund(orgId, key)
+          .catch((refundErr) =>
+            this.logger.error(`Could not refund ${key}: ${refundErr}`)
+          );
       }
       throw err;
     }

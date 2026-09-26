@@ -568,7 +568,8 @@ export const imageCreditCost = (
  * What a model's tokens cost, in credits per thousand, by the rule every AI
  * price here follows: the provider's price times 25. gpt-5.2 is $1.75 in and
  * $14 out a million tokens, gpt-4.1 $2 and $8. Input includes the cached part
- * of the prompt, output includes reasoning.
+ * of the prompt at the full rate, though OpenAI bills it at a tenth, so a
+ * long thread pays more than 25 times its cost. Output includes reasoning.
  */
 export const LLM_CREDIT_RATES: Record<
   string,
