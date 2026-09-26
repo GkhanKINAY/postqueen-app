@@ -193,7 +193,21 @@ describe('AI Copilot draft preview card', () => {
     // step cap so no loop can run away.
     assert.match(chat, /const MAX_INVALID_DRAFTS = 3/);
     assert.match(chat, /stop: 'Do not call manualPosting again/);
-    assert.match(service, /defaultOptions: \{ maxSteps: 12 \}/);
+    // The cap is part of each run's options, built with its charge.
+    const runOptions = readFileSync(
+      fileURLToPath(
+        new URL(
+          '../../../../../libraries/nestjs-libraries/src/chat/copilot.credits.ts',
+          import.meta.url,
+        ),
+      ),
+      'utf8',
+    );
+    assert.match(
+      service,
+      /defaultOptions: \(\{ requestContext \}\) =>\s*copilotRunOptions\(this\._creditsService, requestContext\)/,
+    );
+    assert.match(runOptions, /maxSteps: 12,/);
     // The card rule opens the prompt, ahead of the style section.
     assert.ok(
       service.indexOf('Post text is never written in chat') <

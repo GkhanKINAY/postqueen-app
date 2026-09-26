@@ -7,6 +7,8 @@ import { ModuleRef } from '@nestjs/core';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import dayjs from 'dayjs';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { copilotRunOptions } from '@gitroom/nestjs-libraries/chat/copilot.credits';
 import {
   COPILOT_READABLE,
   CopilotChannel,
@@ -64,7 +66,10 @@ const channelsBlock = (channels: CopilotChannel[]) =>
 
 @Injectable()
 export class LoadToolsService {
-  constructor(private _moduleRef: ModuleRef) {}
+  constructor(
+    private _moduleRef: ModuleRef,
+    private _creditsService: CreditsService
+  ) {}
 
   async loadTools(mcpOnly = false) {
     return (
@@ -276,10 +281,9 @@ ${renderArray(
       description: 'Agent that helps schedule posts and report social analytics for users',
       instructions: ({ requestContext }) => this.instructions(requestContext),
       model: openai('gpt-5.2'),
-      // Without a cap Mastra's loop runs until the model stops calling
-      // tools, which a model retrying a failing draft never does. A normal
-      // turn is three or four steps; image and analytics flows a few more.
-      defaultOptions: { maxSteps: 12 },
+      // Per run: the step cap, and the charge for every model call.
+      defaultOptions: ({ requestContext }) =>
+        copilotRunOptions(this._creditsService, requestContext),
       tools: ({ requestContext }) =>
         requestContext.get('surface' as never) === 'composer'
           ? composerTools

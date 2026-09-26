@@ -6,8 +6,20 @@ import {
   CurrentGrant,
   insufficientCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.repository';
-import { toCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  llmCreditCost,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+
+export interface LlmUsage {
+  /** Unique per model call, so a callback that fires twice charges once. */
+  key: string;
+  model?: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  action: string;
+}
 
 /**
  * One credits balance per organization. Grants add to it, spends draw on it,
@@ -58,6 +70,25 @@ export class CreditsService {
       return Promise.resolve({ id: null, charged: false });
     }
     return this._creditsRepository.spend(organizationId, spend);
+  }
+
+  /**
+   * Tokens a model call used, charged once the call is done. The work is
+   * already paid for by then, so the balance may go below zero; the next
+   * turn is refused instead (`LLM_TURN_MINIMUM`).
+   */
+  chargeLlm(organizationId: string, usage: LlmUsage) {
+    return this.spend(organizationId, {
+      key: usage.key,
+      amount: llmCreditCost(usage.model, usage.inputTokens, usage.outputTokens),
+      action: usage.action,
+      meta: {
+        model: usage.model || null,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      },
+      allowOverdraft: true,
+    });
   }
 
   refund(organizationId: string, key: string) {

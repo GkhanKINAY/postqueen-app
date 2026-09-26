@@ -15,7 +15,12 @@ import Parser from 'rss-parser';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { createHash } from 'crypto';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
@@ -31,6 +36,10 @@ interface WorkflowChannelsState {
   description: string;
   image: string;
   id: string;
+  /** This item's charges; `:text` and `:picture` are added to it. */
+  creditKey: string;
+  /** The balance could not pay for the rule's AI: a draft with the feed's text. */
+  short: boolean;
   load: {
     date: string;
     url: string;
@@ -70,7 +79,8 @@ export class AutopostService {
     private _temporalService: TemporalService,
     private _integrationService: IntegrationService,
     private _postsService: PostsService,
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _creditsService: CreditsService
   ) {}
 
   async stopAll(org: string) {
@@ -247,8 +257,43 @@ export class AutopostService {
         image: null,
         integrations: null,
         id: null,
+        creditKey: null,
+        short: null,
       },
     });
+
+  private isShort(err: unknown) {
+    return err instanceof HttpException && err.getStatus() === 402;
+  }
+
+  /**
+   * Whether the balance cannot pay for what the rule asks of the AI for one
+   * item, checked before anything is made so a short balance spends nothing.
+   */
+  private async creditsShort(autopost: AutoPost) {
+    const amount =
+      (autopost.generateContent
+        ? AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText
+        : 0) +
+      (autopost.addPicture
+        ? AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture
+        : 0);
+    if (!amount) {
+      return false;
+    }
+    try {
+      await this._creditsService.assertAvailable(
+        autopost.organizationId,
+        amount
+      );
+      return false;
+    } catch (err) {
+      if (this.isShort(err)) {
+        return true;
+      }
+      throw err;
+    }
+  }
 
   async loadUrl(url: string) {
     try {
@@ -281,11 +326,39 @@ export class AutopostService {
         description: '',
       };
     }
+    if (state.short) {
+      return { ...state, description };
+    }
 
     try {
-      const structuredOutput = model.withStructuredOutput(generateContent);
-      const { socialMediaPostContent } = await ChatPromptTemplate.fromTemplate(
-        `
+      const socialMediaPostContent = await this._creditsService.withCredits(
+        state.body.organizationId,
+        {
+          key: `${state.creditKey}:text`,
+          amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText,
+          action: 'autopost',
+        },
+        () => this.writeDescription(description)
+      );
+
+      return {
+        ...state,
+        description: socialMediaPostContent,
+      };
+    } catch (err) {
+      // No API key, rate limit, model error — fall back to the feed's own text
+      // rather than throwing. A throw here skips update-url, so lastUrl never
+      // advances and the same item is retried every hour forever. The charge
+      // went back with the failure; a balance that ran short on the way makes
+      // the post a draft.
+      return { ...state, description, short: this.isShort(err) };
+    }
+  }
+
+  private async writeDescription(description: string) {
+    const structuredOutput = model.withStructuredOutput(generateContent);
+    const { socialMediaPostContent } = await ChatPromptTemplate.fromTemplate(
+      `
         You are an assistant that gets raw 'description' of a content and generate a social media post content.
         Rules:
         - Maximum 100 chars
@@ -297,54 +370,60 @@ export class AutopostService {
         'description':
         {content}
       `
-      )
-        .pipe(structuredOutput)
-        .invoke({
-          content: description,
-        });
-
-      return {
-        ...state,
-        description: socialMediaPostContent,
-      };
-    } catch (err) {
-      // No API key, rate limit, model error — fall back to the feed's own text
-      // rather than throwing. A throw here skips update-url, so lastUrl never
-      // advances and the same item is retried every hour forever.
-      return { ...state, description };
-    }
+    )
+      .pipe(structuredOutput)
+      .invoke({
+        content: description,
+      });
+    return socialMediaPostContent;
   }
 
   async generatePicture(state: WorkflowChannelsState) {
+    if (state.short) {
+      return { ...state, image: undefined };
+    }
     try {
-      const structuredOutput = model.withStructuredOutput(dallePrompt);
-      const { generatedTextToBeSentToDallE } =
-        await ChatPromptTemplate.fromTemplate(
-          `
+      const image = await this._creditsService.withCredits(
+        state.body.organizationId,
+        {
+          key: `${state.creditKey}:picture`,
+          amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture,
+          action: 'autopost_image',
+        },
+        async () => {
+          const structuredOutput = model.withStructuredOutput(dallePrompt);
+          const { generatedTextToBeSentToDallE } =
+            await ChatPromptTemplate.fromTemplate(
+              `
         You are an assistant that gets description and generate a prompt that will be sent to DallE to generate pictures.
 
         content:
         {content}
       `
-        )
-          .pipe(structuredOutput)
-          .invoke({
-            content: state.load.description || state.description,
-          });
+            )
+              .pipe(structuredOutput)
+              .invoke({
+                content: state.load.description || state.description,
+              });
 
-      const image = await dalle.invoke(generatedTextToBeSentToDallE);
+          return dalle.invoke(generatedTextToBeSentToDallE);
+        }
+      );
 
       return { ...state, image };
     } catch (err) {
       // A picture is a nice-to-have; losing it must not cost the post. Throwing
       // here skips update-url, so lastUrl never advances and the same item is
       // retried every hour forever.
-      return { ...state, image: undefined };
+      return { ...state, image: undefined, short: this.isShort(err) };
     }
   }
 
   async schedulePost(state: WorkflowChannelsState) {
     const orgId = state.integrations[0].organizationId;
+    // A post whose AI the balance could not pay for is kept for the person
+    // to finish, never published.
+    const autoPublish = state.body.autoPublish && !state.short;
 
     const content =
       (state.description || '').replace(/\n/g, '\n\n') + '\n\n' + state.load.url;
@@ -386,7 +465,7 @@ export class AutopostService {
     // Draft mode never publishes, so nothing here applies to it — and some
     // providers do media I/O inside checkValidity, so running it for a result
     // that is thrown away costs a request per channel every hour.
-    const verdicts = !state.body.autoPublish
+    const verdicts = !autoPublish
       ? []
       : (
           await Promise.all(
@@ -409,7 +488,7 @@ export class AutopostService {
         .map((v) => v.id)
     );
 
-    const toPublish = state.body.autoPublish
+    const toPublish = autoPublish
       ? posts.filter((p) => publishable.has(p.integration.id))
       : [];
     const toDraft = posts.filter((p) => !toPublish.includes(p));
@@ -444,7 +523,19 @@ export class AutopostService {
       await send('draft', toDraft);
     }
 
-    if (state.body.autoPublish && toDraft.length) {
+    if (state.short) {
+      await this._notificationService.inAppNotification(
+        orgId,
+        'Autopost saved a draft: not enough credits',
+        `"${state.body.title}" found a new item, but the credits balance could not pay for its AI text or picture. It was saved as a draft with the feed's own text.`,
+        false,
+        false,
+        'fail',
+        '/billing'
+      );
+    }
+
+    if (autoPublish && toDraft.length) {
       // Built from the channels that actually dropped, not from `verdicts`: a
       // channel whose validation threw contributes no verdict at all, so a run
       // where that was the only reason left the list empty and the notification
@@ -540,6 +631,13 @@ export class AutopostService {
       return;
     }
 
+    // One key per feed item, so a retried activity is not charged again.
+    const creditKey = `autopost:${id}:${createHash('sha256')
+      .update(load.url)
+      .digest('hex')
+      .slice(0, 24)}`;
+    const short = await this.creditsShort(getPost);
+
     // update-url runs BEFORE schedule-post on purpose. createPost commits and
     // starts publishing per integration inside a loop, so a throw partway
     // through leaves the earlier channels already published. With lastUrl
@@ -583,6 +681,8 @@ export class AutopostService {
         body: getPost,
         load,
         integrations: integrationsToSend,
+        creditKey,
+        short,
       });
     } catch (err) {
       // lastUrl is already claimed, so this item will not be retried. Say so

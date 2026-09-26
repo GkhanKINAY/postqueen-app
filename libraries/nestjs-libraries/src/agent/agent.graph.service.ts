@@ -16,6 +16,9 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { AI_FIXED_CREDIT_COSTS_PROPOSAL } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
@@ -36,6 +39,8 @@ const dalle = new DallEAPIWrapper({
 interface WorkflowChannelsState {
   messages: BaseMessage[];
   orgId: string;
+  /** The run's charge; its pictures are charged under it with `:pictures`. */
+  creditKey: string;
   question: string;
   hook?: string;
   fresearch?: string;
@@ -107,7 +112,8 @@ export class AgentGraphService {
   private storage = UploadFactory.createStorage();
   constructor(
     private _postsService: PostsService,
-    private _mediaService: MediaService
+    private _mediaService: MediaService,
+    private _creditsService: CreditsService
   ) {}
   static state = () =>
     new StateGraph<WorkflowChannelsState>({
@@ -122,6 +128,7 @@ export class AgentGraphService {
         tone: null,
         question: null,
         orgId: null,
+        creditKey: null,
         hook: null,
         content: null,
         date: null,
@@ -314,20 +321,34 @@ export class AgentGraphService {
     return {};
   }
 
+  // One picture per post of the thread, known only now, so they are charged
+  // here and handed back if they cannot be made.
   async generatePictures(state: WorkflowChannelsState) {
     if (!state.isPicture) {
       return {};
     }
 
+    const content = state.content || [];
     try {
-      const newContent = await Promise.all(
-        (state.content || []).map(async (p) => {
-          const image = await dalle.invoke(p.prompt!);
-          return {
-            ...p,
-            image,
-          };
-        })
+      const newContent = await this._creditsService.withCredits(
+        state.orgId,
+        {
+          key: `${state.creditKey}:pictures`,
+          amount:
+            content.length * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
+          action: 'generator_image',
+          meta: { count: content.length },
+        },
+        () =>
+          Promise.all(
+            content.map(async (p) => {
+              const image = await dalle.invoke(p.prompt!);
+              return {
+                ...p,
+                image,
+              };
+            })
+          )
       );
 
       return {
@@ -339,6 +360,19 @@ export class AgentGraphService {
   }
 
   async uploadPictures(state: WorkflowChannelsState) {
+    try {
+      return await this.savePictures(state);
+    } catch (err) {
+      // Made and paid for, but they never reached the library.
+      await this._creditsService.refund(
+        state.orgId,
+        `${state.creditKey}:pictures`
+      );
+      throw err;
+    }
+  }
+
+  private async savePictures(state: WorkflowChannelsState) {
     const all = await Promise.all(
       (state.content || []).map(async (p) => {
         if (p.image) {
@@ -375,7 +409,47 @@ export class AgentGraphService {
     return { date: await this._postsService.findFreeDateTime(state.orgId) };
   }
 
-  start(orgId: string, body: GeneratorDto) {
+  /**
+   * Refused before anything starts: the route has no close handler, so a
+   * request that is cancelled still runs to the end. The text and the fewest
+   * pictures the format can have (a thread has at least two posts).
+   */
+  assertCredits(orgId: string, body: GeneratorDto) {
+    const pictures = !body.isPicture
+      ? 0
+      : body.format === 'one_short' || body.format === 'one_long'
+      ? 1
+      : 2;
+    return this._creditsService.assertAvailable(
+      orgId,
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.generator +
+        pictures * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture
+    );
+  }
+
+  /**
+   * The run, paid for from the credits balance: the text first, handed back
+   * if the run fails, then the pictures once their number is known.
+   */
+  async *start(orgId: string, body: GeneratorDto) {
+    const creditKey = `generator:${makeId(20)}`;
+    const { charged } = await this._creditsService.spend(orgId, {
+      key: creditKey,
+      amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.generator,
+      action: 'generator',
+      meta: { format: body.format, isPicture: body.isPicture },
+    });
+    try {
+      yield* this.run(orgId, creditKey, body);
+    } catch (err) {
+      if (charged) {
+        await this._creditsService.refund(orgId, creditKey);
+      }
+      throw err;
+    }
+  }
+
+  private run(orgId: string, creditKey: string, body: GeneratorDto) {
     const state = AgentGraphService.state();
     const workflow = state
       .addNode('agent', this.startCall.bind(this))
@@ -416,6 +490,7 @@ export class AgentGraphService {
         format: body.format,
         tone: body.tone,
         orgId,
+        creditKey,
       },
       {
         streamMode: 'values',

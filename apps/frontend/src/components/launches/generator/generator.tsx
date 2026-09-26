@@ -141,6 +141,11 @@ const FirstStep: FC = (props) => {
           method: 'POST',
           body: JSON.stringify(value),
         });
+        // Not enough credits: the Payment Required dialog has already said
+        // so (499 when it was dismissed).
+        if (response.status === 402 || response.status === 499) {
+          return;
+        }
         if (!response.body) {
           throw new Error(
             t('generation_failed', 'Failed to generate posts, please try again.')

@@ -565,6 +565,81 @@ export const imageCreditCost = (
   IMAGE_CREDIT_COSTS[quality][orientation === 'square' ? 'square' : 'wide'];
 
 /**
+ * What a model's tokens cost, in credits per thousand, by the rule every AI
+ * price here follows: the provider's price times 25. gpt-5.2 is $1.75 in and
+ * $14 out a million tokens, gpt-4.1 $2 and $8. Input includes the cached part
+ * of the prompt, output includes reasoning.
+ */
+export const LLM_CREDIT_RATES: Record<
+  string,
+  { input: number; output: number }
+> = {
+  'gpt-5.2': { input: 0.044, output: 0.35 },
+  'gpt-4.1': { input: 0.05, output: 0.2 },
+};
+
+// A model not in the table pays the highest of each rate, so a model swapped
+// in without a price is never cheaper than the ones that have one.
+const HIGHEST_LLM_RATE = {
+  input: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.input)),
+  output: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.output)),
+};
+
+/** The model answers with a snapshot of it: gpt-4.1-2025-04-14 is gpt-4.1. */
+export const llmCreditRate = (model?: string | null) =>
+  LLM_CREDIT_RATES[(model || '').replace(/-\d{4}-\d{2}-\d{2}$/, '')] ||
+  HIGHEST_LLM_RATE;
+
+/**
+ * What one model call costs, in hundredths, rounded up. Worked in hundredths
+ * a million tokens so the sum is whole numbers and never drifts.
+ */
+export const llmCreditCost = (
+  model: string | null | undefined,
+  inputTokens: number,
+  outputTokens: number
+) => {
+  const rate = llmCreditRate(model);
+  const perMillion = (credits: number) =>
+    Math.round(credits * CREDIT_UNIT * 1000);
+  return Math.ceil(
+    (Math.max(0, inputTokens || 0) * perMillion(rate.input) +
+      Math.max(0, outputTokens || 0) * perMillion(rate.output)) /
+      1_000_000
+  );
+};
+
+/**
+ * What a Copilot turn needs to start, in hundredths: any credit at all. A
+ * turn costs what its tokens cost, which is only known once it has run, so
+ * one that starts with a positive balance runs to the end and may leave it
+ * below zero. Only an empty balance is refused.
+ */
+export const LLM_TURN_MINIMUM = 1;
+
+/**
+ * PROPOSAL, NOT DECIDED: the owner confirms these. What the older AI features
+ * take per call, in hundredths, estimated by the same rule (provider cost
+ * times 25) because they cannot report their tokens:
+ * - `generator`: POST /posts/generator, about five gpt-4.1 calls over a web
+ *   search's results plus the Tavily search itself, about $0.05.
+ * - `generatorPicture`: each picture it makes, priced as a medium square AI
+ *   image (`imageCreditCost`).
+ * - `autopostText`: one gpt-4.1 call on a feed item, about $0.01.
+ * - `autopostPicture`: a gpt-4.1 call for the prompt, then a standard
+ *   1024x1024 dall-e-3 image ($0.04).
+ * - `separatePosts`: one gpt-4.1 call on the post, a few more when a part has
+ *   to be shortened, about $0.01.
+ */
+export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
+  generator: 150,
+  generatorPicture: imageCreditCost('medium', 'square'),
+  autopostText: 30,
+  autopostPicture: 110,
+  separatePosts: 30,
+};
+
+/**
  * Credits sold on their own, on top of a plan, in whole credits and whole
  * dollars. The larger packs cost less a credit. Bought credits outlive the
  * plan's: they stay spendable for `CREDIT_PACK_MONTHS`.

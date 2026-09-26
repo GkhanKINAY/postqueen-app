@@ -285,6 +285,8 @@ export class PostsController {
     @Body() body: GeneratorDto,
     @Res({ passthrough: false }) res: Response
   ) {
+    // A short balance is a 402 answer, before the stream starts.
+    await this._agentGraphService.assertCredits(org.id, body);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     try {
       for await (const event of this._agentGraphService.start(org.id, body)) {
@@ -349,6 +351,6 @@ export class PostsController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: { content: string; len: number }
   ) {
-    return this._postsService.separatePosts(body.content, body.len);
+    return this._postsService.separatePosts(org.id, body.content, body.len);
   }
 }

@@ -6,7 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { HttpException } from '@nestjs/common';
 import { CreditsService } from './credits.service.ts';
 import { insufficientCredits } from './credits.repository.ts';
-import { CREDIT_PACK_MONTHS, CREDIT_PACKS } from '../subscriptions/pricing.ts';
+import {
+  AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  CREDIT_PACK_MONTHS,
+  CREDIT_PACKS,
+  LLM_CREDIT_RATES,
+  LLM_TURN_MINIMUM,
+  imageCreditCost,
+  llmCreditCost,
+  llmCreditRate,
+} from '../subscriptions/pricing.ts';
 
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -23,6 +32,7 @@ const between = (text: string, from: string, to: string) =>
 // The service with its repository faked. The ledger arithmetic itself runs in
 // Postgres under the lock, so it is exercised against a database, not here.
 let calls: unknown[][];
+let spends: unknown[];
 let charged: boolean;
 let balance: number;
 
@@ -31,6 +41,7 @@ const service = () =>
     balance: async () => ({ balance, expiring: null }),
     spend: async (org: string, spend: { key: string }) => {
       calls.push(['spend', org, spend.key]);
+      spends.push(spend);
       return { id: 'spend-1', charged };
     },
     refund: async (org: string, key: string) => {
@@ -57,6 +68,7 @@ const billing = (on: boolean) => {
 
 beforeEach(() => {
   calls = [];
+  spends = [];
   charged = true;
   balance = 0;
   billing(true);
@@ -309,5 +321,130 @@ describe('Withdrawal waiver', () => {
   it('goes into Stripe as the time it was given, never as the flag', () => {
     assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'\),/g) || []).length, 3);
     assert.doesNotMatch(stripe, /\.\.\.body,/);
+  });
+});
+
+describe('Model tokens', () => {
+  it('are priced at the provider cost times 25, in credits a thousand', () => {
+    assert.deepEqual(LLM_CREDIT_RATES['gpt-5.2'], {
+      input: 0.044,
+      output: 0.35,
+    });
+    assert.deepEqual(LLM_CREDIT_RATES['gpt-4.1'], { input: 0.05, output: 0.2 });
+    // $1.75 / $14 and $2 / $8 a million tokens, times 25
+    const perThousand = (dollarsPerMillion: number) =>
+      (dollarsPerMillion / 1000) * 25;
+    const close = (a: number, b: number) => Math.abs(a - b) < 0.0005;
+    assert.ok(close(perThousand(1.75), 0.044));
+    assert.ok(close(perThousand(14), 0.35));
+    assert.ok(close(perThousand(2), 0.05));
+    assert.ok(close(perThousand(8), 0.2));
+  });
+
+  it('come to whole hundredths, rounded up', () => {
+    // 1000 in and 200 out on gpt-5.2: 4.4 + 7 hundredths
+    assert.equal(llmCreditCost('gpt-5.2', 1000, 200), 12);
+    // a million in and a million out: 44 + 350 credits exactly
+    assert.equal(llmCreditCost('gpt-5.2', 1_000_000, 1_000_000), 39400);
+    assert.equal(llmCreditCost('gpt-4.1', 1_000_000, 1_000_000), 25000);
+    // the smallest call still costs a hundredth
+    assert.equal(llmCreditCost('gpt-4.1', 1, 0), 1);
+    assert.equal(llmCreditCost('gpt-5.2', 0, 0), 0);
+  });
+
+  it('read a dated snapshot as its model, and anything unknown at the highest rates', () => {
+    assert.equal(
+      llmCreditRate('gpt-4.1-2025-04-14'),
+      LLM_CREDIT_RATES['gpt-4.1']
+    );
+    assert.equal(
+      llmCreditRate('gpt-5.2-2025-12-11'),
+      LLM_CREDIT_RATES['gpt-5.2']
+    );
+    assert.deepEqual(llmCreditRate('gpt-9'), { input: 0.05, output: 0.35 });
+    assert.deepEqual(llmCreditRate(undefined), { input: 0.05, output: 0.35 });
+    // not a prefix match: a mini model is not priced as its big sibling
+    assert.deepEqual(llmCreditRate('gpt-4.1-mini'), {
+      input: 0.05,
+      output: 0.35,
+    });
+  });
+
+  it('are charged after the call, below zero if need be, once per call', async () => {
+    await service().chargeLlm('org-1', {
+      key: 'llm:resp_1',
+      model: 'gpt-5.2',
+      inputTokens: 1000,
+      outputTokens: 200,
+      action: 'copilot',
+    });
+    assert.deepEqual(spends, [
+      {
+        key: 'llm:resp_1',
+        amount: 12,
+        action: 'copilot',
+        meta: { model: 'gpt-5.2', inputTokens: 1000, outputTokens: 200 },
+        allowOverdraft: true,
+      },
+    ]);
+  });
+
+  it('charge nothing for a call that used nothing, or with billing off', async () => {
+    const call = {
+      key: 'llm:resp_0',
+      model: 'gpt-5.2',
+      inputTokens: 0,
+      outputTokens: 0,
+      action: 'copilot',
+    };
+    assert.deepEqual(await service().chargeLlm('org-1', call), {
+      id: null,
+      charged: false,
+    });
+    billing(false);
+    assert.deepEqual(
+      await service().chargeLlm('org-1', {
+        ...call,
+        inputTokens: 5000,
+        outputTokens: 5000,
+      }),
+      { id: null, charged: false }
+    );
+    assert.deepEqual(calls, []);
+  });
+
+  it('refuse a turn only on an empty balance', async () => {
+    assert.equal(LLM_TURN_MINIMUM, 1);
+    balance = 1;
+    await service().assertAvailable('org-1', LLM_TURN_MINIMUM);
+    for (const empty of [0, -250]) {
+      balance = empty;
+      await assert.rejects(
+        service().assertAvailable('org-1', LLM_TURN_MINIMUM),
+        (err) => {
+          assert.ok(err instanceof HttpException);
+          assert.equal(err.getStatus(), 402);
+          assert.equal((err.getResponse() as any).code, 'insufficient_credits');
+          return true;
+        }
+      );
+    }
+    billing(false);
+    balance = -250;
+    await service().assertAvailable('org-1', LLM_TURN_MINIMUM);
+  });
+});
+
+describe('Fixed charges for the older AI features', () => {
+  it('are proposals in whole hundredths, a picture priced as a medium square image', () => {
+    assert.ok(
+      Object.values(AI_FIXED_CREDIT_COSTS_PROPOSAL).every(
+        (amount) => Number.isInteger(amount) && amount > 0
+      )
+    );
+    assert.equal(
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
+      imageCreditCost('medium', 'square')
+    );
   });
 });

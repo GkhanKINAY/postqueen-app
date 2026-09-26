@@ -35,6 +35,9 @@ import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { LLM_TURN_MINIMUM } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export type ChannelsContext = {
   organization: string;
@@ -50,8 +53,28 @@ export type ChannelsContext = {
 export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _mastraService: MastraService
+    private _mastraService: MastraService,
+    private _creditsService: CreditsService,
+    private _openaiService: OpenaiService
   ) {}
+
+  /**
+   * An empty balance is refused before the runtime starts, so the answer is a
+   * 402 and never an error inside a stream. Only the methods that run a
+   * model are checked: `info`, and `agent/connect` replaying a thread's
+   * history, cost nothing and keep working at zero. A turn that starts with
+   * a positive balance runs to the end (`LLM_TURN_MINIMUM`).
+   */
+  private async assertCredits(req: Request, organization: Organization) {
+    if (
+      ['agent/run', 'agent/suggest', 'transcribe'].includes(req?.body?.method)
+    ) {
+      await this._creditsService.assertAvailable(
+        organization.id,
+        LLM_TURN_MINIMUM
+      );
+    }
+  }
 
   /**
    * What the app sends as CopilotKit `properties.pq`. It arrives on the AG-UI
@@ -118,7 +141,11 @@ export class CopilotController {
   // be mounting the provider in the first place.
   @Post('/chat')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
-  chatAgent(@Req() req: Request, @Res() res: Response) {
+  async chatAgent(
+    @Req() req: Request,
+    @Res() res: Response,
+    @GetOrgFromRequest() organization: Organization
+  ) {
     if (
       process.env.OPENAI_API_KEY === undefined ||
       process.env.OPENAI_API_KEY === ''
@@ -130,11 +157,18 @@ export class CopilotController {
       return;
     }
 
+    await this.assertCredits(req, organization);
+
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
+      // Its own client, so every call is charged by the tokens it used.
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
+        openai: this._openaiService.meteredClient(
+          organization.id,
+          'copilot_chat'
+        ),
       }),
       cors: this.runtimeCors(),
     });
@@ -188,6 +222,8 @@ export class CopilotController {
       });
       return;
     }
+    await this.assertCredits(req, organization);
+
     const properties = this.readProperties(req);
     const surface: CopilotSurface =
       properties.surface === 'composer' ? 'composer' : 'agent';
