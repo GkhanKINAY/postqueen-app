@@ -215,6 +215,11 @@ export const NewPost = () => {
     HTMLDivElement
   >(menuOpen && !mobile, 'end');
 
+  // A menu opened on one layout must not reappear as the other's sheet.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [mobile]);
+
   // The phone sheet closes itself on Escape; the desktop menu needs its own.
   useEffect(() => {
     if (!menuOpen || mobile) return;
@@ -546,6 +551,7 @@ export const NewPost = () => {
           data-pq="create-post"
           aria-label={t('create_new_post', 'Create Post')}
           aria-haspopup={mobile ? 'dialog' : undefined}
+          aria-expanded={mobile ? menuOpen : undefined}
           onClick={mobile ? () => setMenuOpen(true) : createAPost}
           className={clsx(
             'flex h-full items-center justify-center outline-none transition-colors hover:bg-black/10',
