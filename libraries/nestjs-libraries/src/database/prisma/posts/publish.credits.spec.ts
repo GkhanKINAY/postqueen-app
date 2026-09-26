@@ -482,8 +482,35 @@ describe('The price the composer shows', { skip: !canLoadService }, () => {
     assert.deepEqual(quote, {
       credits: 5,
       needed: 4.6,
-      channels: [{ integration: 'x-1', credits: 5 }],
+      channels: [
+        {
+          integration: 'x-1',
+          credits: 5,
+          posts: 1,
+          links: 1,
+          rates: { post: 0.4, link: 5 },
+        },
+      ],
     });
+  });
+
+  it('says which posts of a thread a link made dearer, next to both prices', async () => {
+    const quote = await service().quotePublishCredits('org-1', 'schedule', [
+      channel('x-1', 'x', [
+        '<p>Launch day</p>',
+        '<p>Read it at https://example.com</p>',
+        '<p>Thanks</p>',
+      ]),
+    ]);
+    assert.deepEqual(quote.channels, [
+      {
+        integration: 'x-1',
+        credits: 5.8,
+        posts: 3,
+        links: 1,
+        rates: { post: 0.4, link: 5 },
+      },
+    ]);
   });
 
   it('is nothing with billing off', async () => {

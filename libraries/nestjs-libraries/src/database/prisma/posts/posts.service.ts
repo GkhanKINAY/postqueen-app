@@ -1748,19 +1748,16 @@ export class PostsService {
           type === 'update'
             ? post.value || []
             : this.withThreadFinisher(post).value;
-        const cost = providerIdentifier
-          ? value.reduce(
-              (sum: number, part: { content?: string }, index: number) =>
-                sum +
-                this.publishCost(
-                  providerIdentifier,
-                  settings,
-                  part?.content || '',
-                  index
-                ),
-              0
+        const costs: number[] = providerIdentifier
+          ? value.map((part: { content?: string }, index: number) =>
+              this.publishCost(
+                providerIdentifier,
+                settings,
+                part?.content || '',
+                index
+              )
             )
-          : 0;
+          : [];
 
         let goesOut = type === 'schedule' || type === 'now';
         if (type === 'update' && rootId) {
@@ -1770,7 +1767,9 @@ export class PostsService {
 
         return {
           integration: post.integration.id,
-          cost: goesOut ? cost : 0,
+          providerIdentifier,
+          costs: goesOut ? costs : [],
+          cost: goesOut ? costs.reduce((sum, cost) => sum + cost, 0) : 0,
           reserved: await this.reservedFor(orgId, rootId),
         };
       })
@@ -1787,9 +1786,12 @@ export class PostsService {
 
   /**
    * What publishing these posts will cost, in credits, for the composer to
-   * show while they are written: per channel and in total, and how much of
+   * confirm before it saves them: per channel and in total, and how much of
    * it the balance still has to cover (an edit reuses what the post has
-   * reserved). Nothing with billing off.
+   * reserved). Each channel says how many of its posts are billed, how many
+   * of them are priced as a post with a link, and the network's price for a
+   * plain post and for one with a link, the same where a link changes
+   * nothing. Nothing with billing off.
    */
   async quotePublishCredits(
     orgId: string,
@@ -1805,10 +1807,27 @@ export class PostsService {
       needed: toCredits(Math.max(0, needed)),
       channels: channels
         .filter((channel) => channel.cost)
-        .map((channel) => ({
-          integration: channel.integration,
-          credits: toCredits(channel.cost),
-        })),
+        .map((channel) => {
+          const rates = {
+            post: this.publishCost(channel.providerIdentifier!, {}, '', 0),
+            link: this.publishCost(
+              channel.providerIdentifier!,
+              {},
+              'https://postqueen.app',
+              0
+            ),
+          };
+          return {
+            integration: channel.integration,
+            credits: toCredits(channel.cost),
+            posts: channel.costs.filter(Boolean).length,
+            links:
+              rates.link > rates.post
+                ? channel.costs.filter((cost) => cost >= rates.link).length
+                : 0,
+            rates: { post: toCredits(rates.post), link: toCredits(rates.link) },
+          };
+        }),
     };
   }
 

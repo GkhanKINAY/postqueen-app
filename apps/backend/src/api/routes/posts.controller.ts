@@ -225,7 +225,7 @@ export class PostsController {
   }
 
   // What the posts being written will cost from the credits balance, for the
-  // composer to show next to Schedule.
+  // composer to confirm before it schedules them.
   @Post('/credits')
   publishCredits(
     @GetOrgFromRequest() org: Organization,
