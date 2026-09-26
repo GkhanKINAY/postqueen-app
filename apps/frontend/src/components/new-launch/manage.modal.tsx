@@ -1020,6 +1020,59 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                       : 'overflow-visible'
                   )}
                 >
+                  {/* A failed post says when it should have gone out and what
+                      the network answered, before anyone edits it. */}
+                  {existingData?.posts?.[0]?.state === 'ERROR' && (
+                    <div
+                      role="alert"
+                      data-pq="composer-failed"
+                      className="flex items-start gap-[10px] rounded-[12px] bg-pqDangerSoft px-[14px] py-[12px] text-[13px] leading-[1.5] text-pqText"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        aria-hidden="true"
+                        className="mt-[2px] shrink-0 text-pqDanger"
+                      >
+                        <path
+                          d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+                          stroke="currentColor"
+                          strokeWidth="1.9"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div className="min-w-0">
+                        <b className="font-[600] text-pqDanger">
+                          {t(
+                            'post_failed_when',
+                            "This post didn't go out on {{date}}.",
+                            {
+                              date: formatShortWeekdayTime(
+                                dayjs
+                                  .utc(existingData.posts[0].publishDate)
+                                  .local()
+                              ),
+                            }
+                          )}
+                        </b>{' '}
+                        {!!existingData.posts[0].error && (
+                          <span className="break-words">
+                            {t('post_failed_reason', 'Reason: {{error}}', {
+                              error: existingData.posts[0].error,
+                              interpolation: { escapeValue: false },
+                            })}{' '}
+                          </span>
+                        )}
+                        {t(
+                          'post_failed_fix',
+                          'Fix it, then schedule it again or post it now.'
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className={clsx(
                     'flex w-full items-start gap-[16px]',
                     compactChrome && 'flex-col'

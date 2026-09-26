@@ -2179,6 +2179,9 @@ post_date_passed
 post_delete_failed
 post_deleted
 post_deleted_successfully
+post_failed_fix
+post_failed_reason
+post_failed_when
 post_id_copied
 post_immediately
 post_is_too_long
