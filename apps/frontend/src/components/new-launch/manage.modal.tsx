@@ -20,6 +20,7 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import {
   ComposePublishedAt,
   ComposeWhen,
+  PostAgainDialog,
 } from '@gitroom/frontend/components/new-launch/compose.when';
 import { ComposeNotify } from '@gitroom/frontend/components/new-launch/compose.notify';
 import {
@@ -316,13 +317,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const deletePost = useCallback(async () => {
     setLoading(true);
     if (
-      !(await deleteDialog(
-        t(
-          'are_you_sure_you_want_to_delete_post',
-          'Are you sure you want to delete this post?'
-        ),
-        t('yes_delete_it', 'Yes, delete it!')
-      ))
+      !(await (publishedView
+        ? // No network lets PostQueen take a post down, so a published one
+          // stays live; say so before anyone counts on it.
+          deleteDialog(
+            t(
+              'delete_published_body',
+              'It stays live on the network. PostQueen removes it from your calendar and stops any repeats.'
+            ),
+            t('delete_from_postqueen', 'Delete from PostQueen'),
+            t('delete_published_title', 'Delete from PostQueen?')
+          )
+        : deleteDialog(
+            t(
+              'are_you_sure_you_want_to_delete_post',
+              'Are you sure you want to delete this post?'
+            ),
+            t('yes_delete_it', 'Yes, delete it!')
+          )))
     ) {
       setLoading(false);
       return;
@@ -347,7 +359,15 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     mutate();
     modal.closeAll();
     return;
-  }, [existingData, mutate, modal, toaster, t, dropPostGroupFromView]);
+  }, [
+    existingData,
+    mutate,
+    modal,
+    toaster,
+    t,
+    dropPostGroupFromView,
+    publishedView,
+  ]);
 
   // Once a repeating post has published, the view offers Duplicate only, so
   // without this the one way to stop the repeats was to delete the post.
@@ -396,6 +416,56 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     );
     mutate();
     modal.closeAll();
+  }, [existingData, fetch, mutate, modal, toaster, t]);
+
+  // Same request as dragging a published post to a new time and choosing
+  // Reschedule: the post goes back in the queue and publishes again.
+  const postAgain = useCallback(() => {
+    modal.openModal({
+      title: t('post_it_again', 'Post it again'),
+      withCloseButton: true,
+      size: 480,
+      classNames: {
+        modal: 'text-pqText',
+      },
+      children: (
+        <PostAgainDialog
+          date={dayjs().add(1, 'hour').startOf('hour')}
+          onClose={() => modal.closeCurrent()}
+          onConfirm={async (next) => {
+            const item = existingData.posts[0];
+            const response = await fetch(
+              `/posts/${item.id}/date`,
+              {
+                method: 'PUT',
+                body: JSON.stringify({
+                  date: next.utc().format('YYYY-MM-DDTHH:mm:ss'),
+                  action: 'schedule',
+                  republish: true,
+                }),
+              }
+            );
+            if (!response.ok) {
+              toaster.show(
+                t(
+                  'post_again_failed',
+                  'Could not schedule this post again, please try again'
+                ),
+                'warning'
+              );
+              return false;
+            }
+            toaster.show(
+              t('post_again_done', 'It will post again at the time you picked'),
+              'success'
+            );
+            mutate();
+            modal.closeAll();
+            return true;
+          }}
+        />
+      ),
+    });
   }, [existingData, fetch, mutate, modal, toaster, t]);
 
   // Carry what is in the editor, so edits made here are not dropped. If the
@@ -1284,7 +1354,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     className="flex cursor-pointer items-center gap-[8px] text-[15px] font-[600] text-pqWarn"
                   >
                     <TrashIcon />
-                    <div>{t('delete_post', 'Delete Post')}</div>
+                    <div>
+                  {publishedView
+                    ? t('delete_from_postqueen', 'Delete from PostQueen')
+                    : t('delete_post', 'Delete Post')}
+                </div>
                   </button>
                 )}
               </div>
@@ -1445,7 +1519,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div>
                   <TrashIcon />
                 </div>
-                <div>{t('delete_post', 'Delete Post')}</div>
+                <div>
+                  {publishedView
+                    ? t('delete_from_postqueen', 'Delete from PostQueen')
+                    : t('delete_post', 'Delete Post')}
+                </div>
               </button>
             )}
             <div
@@ -1501,19 +1579,51 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 Save Set
               </button>
             )}
+            {publishedView && !!existingData?.posts?.[0]?.releaseURL && (
+              <a
+                href={existingData.posts[0].releaseURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={clsx(
+                  'flex h-[44px] items-center justify-center gap-[8px] rounded-[10px] text-[15px] font-[600] text-pqText transition-colors hover:bg-pqHover',
+                  touch ? 'min-w-0 flex-1 px-[12px]' : 'px-[14px]'
+                )}
+              >
+                <span className="min-w-0 truncate whitespace-nowrap">
+                  {t('go_to_post', 'Go to post')}
+                </span>
+              </a>
+            )}
             {publishedView && (
               <button
                 type="button"
                 onClick={openDuplicate}
+                className={clsx(
+                  'flex h-[44px] items-center justify-center gap-[8px] rounded-[10px] bg-btnSimple text-[15px] font-[600] outline-none',
+                  'max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
+                  touch ? 'min-w-0 flex-1 px-[12px]' : 'px-[18px]'
+                )}
+              >
+                <DuplicateIcon size={16} className="shrink-0" />
+                <span className="min-w-0 truncate whitespace-nowrap">
+                  {t('duplicate_post', 'Duplicate Post')}
+                </span>
+              </button>
+            )}
+            {publishedView && (
+              <button
+                type="button"
+                data-pq="composer-post-again"
+                onClick={postAgain}
                 className={clsx(
                   'btnSub flex h-[44px] items-center justify-center gap-[8px] rounded-[10px] bg-pqBrand text-[15px] font-[600] text-white outline-none',
                   'max-[1179px]:flex-1 max-[1179px]:px-[12px] max-[1179px]:min-w-0',
                   touch ? 'min-w-0 flex-1 px-[12px]' : 'min-w-[168px] px-[18px]'
                 )}
               >
-                <DuplicateIcon size={16} className="shrink-0" />
+                <RepeatIcon />
                 <span className="min-w-0 truncate whitespace-nowrap">
-                  {t('duplicate_post', 'Duplicate Post')}
+                  {t('post_again', 'Post again')}
                 </span>
               </button>
             )}

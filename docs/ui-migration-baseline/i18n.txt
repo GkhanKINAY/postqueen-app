@@ -1536,8 +1536,11 @@ delete_chat
 delete_chat_body
 delete_chat_confirm
 delete_chat_title
+delete_from_postqueen
 delete_post
 delete_post_tooltip
+delete_published_body
+delete_published_title
 delete_tag
 deleting_your_account
 deleting_your_account_description
@@ -2159,6 +2162,10 @@ portal_row_sub
 portal_row_title
 post
 post_actions
+post_again
+post_again_body
+post_again_done
+post_again_failed
 post_already_published_drag
 post_already_published_republish_warning
 post_analytics
@@ -2174,6 +2181,7 @@ post_deleted_successfully
 post_id_copied
 post_immediately
 post_is_too_long
+post_it_again
 post_move_failed
 post_needs_content_or_image
 post_no_longer_exists
@@ -2298,6 +2306,7 @@ save_changes
 save_name
 saved_as_draft
 schedule
+schedule_again
 schedule_all
 schedule_next_free_slot
 scheduled

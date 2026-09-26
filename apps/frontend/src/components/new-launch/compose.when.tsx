@@ -1,6 +1,6 @@
 'use client';
 
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { DatePicker } from '@gitroom/frontend/components/launches/helpers/date.picker';
@@ -8,6 +8,7 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { CalendarIcon } from '@gitroom/frontend/components/ui/icons';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { Button } from '@gitroom/react/form/button';
 
 export const ComposeWhen: FC<{
   date: dayjs.Dayjs;
@@ -52,6 +53,55 @@ export const ComposePublishedAt: FC<{ date: dayjs.Dayjs }> = ({ date }) => {
         {t('published', 'Published')}{' '}
         <span className="tabular-nums">{date.format(dateTimePattern())}</span>
       </span>
+    </div>
+  );
+};
+
+/**
+ * Post a published post again. The first one stays live on the network; the
+ * same text and media go out again at the time picked here. The caller owns
+ * the request and says whether it worked.
+ */
+export const PostAgainDialog: FC<{
+  date: dayjs.Dayjs;
+  onConfirm: (date: dayjs.Dayjs) => Promise<boolean>;
+  onClose: () => void;
+}> = ({ date: initial, onConfirm, onClose }) => {
+  const t = useT();
+  const [date, setDate] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  return (
+    <div className="flex flex-col gap-[16px]">
+      <p className="m-0 text-[14px] leading-[1.6] text-pqMuted">
+        {t(
+          'post_again_body',
+          'The first post stays live. The same text and media go out again at the time you pick.'
+        )}
+      </p>
+      <ComposeWhen date={date} onChange={setDate} />
+      <div className="flex justify-end gap-[8px]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-[40px] rounded-[10px] px-[14px] text-[13.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+        >
+          {t('cancel', 'Cancel')}
+        </button>
+        <Button
+          type="button"
+          loading={saving}
+          onClick={async () => {
+            setSaving(true);
+            const done = await onConfirm(date);
+            setSaving(false);
+            if (done) {
+              onClose();
+            }
+          }}
+        >
+          {t('schedule_again', 'Schedule again')}
+        </Button>
+      </div>
     </div>
   );
 };
