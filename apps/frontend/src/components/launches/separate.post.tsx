@@ -22,19 +22,15 @@ export const SeparatePost: FC<{
     ) {
       props.changeLoading(true);
       const merge = props.posts.join('\n');
-      const response = await fetch('/posts/separate-posts', {
-        method: 'POST',
-        body: JSON.stringify({
-          content: merge,
-          len: props.len,
-        }),
-      });
-      // A 402 (credits) has already said why in its own dialog.
-      if (!response.ok) {
-        props.changeLoading(false);
-        return;
-      }
-      const { posts } = await response.json();
+      const { posts } = await (
+        await fetch('/posts/separate-posts', {
+          method: 'POST',
+          body: JSON.stringify({
+            content: merge,
+            len: props.len,
+          }),
+        })
+      ).json();
 
       props.merge(posts);
       props.changeLoading(false);

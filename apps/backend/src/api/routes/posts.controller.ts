@@ -33,6 +33,7 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
+import { SeparatePostsDto } from '@gitroom/nestjs-libraries/dtos/posts/separate.posts.dto';
 import {
   CreatePublicCommentDto,
   ResolveCommentDto,
@@ -349,7 +350,7 @@ export class PostsController {
   @Post('/separate-posts')
   async separatePosts(
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { content: string; len: number }
+    @Body() body: SeparatePostsDto
   ) {
     return this._postsService.separatePosts(org.id, body.content, body.len);
   }

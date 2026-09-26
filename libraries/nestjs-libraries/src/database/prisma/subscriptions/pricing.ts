@@ -618,6 +618,15 @@ export const llmCreditCost = (
 export const LLM_TURN_MINIMUM = 1;
 
 /**
+ * How far below zero the rest of a turn may still start, in hundredths.
+ * CopilotKit runs the agent again after every frontend tool (a Post Preview
+ * card) to finish the turn, and that run must not be refused because the
+ * turn's own first steps crossed zero. Bounded, because what makes a run a
+ * continuation is the message list the client sends.
+ */
+export const LLM_CONTINUATION_FLOOR = -500;
+
+/**
  * PROPOSAL, NOT DECIDED: the owner confirms these. What the older AI features
  * take per call, in hundredths, estimated by the same rule (provider cost
  * times 25) because they cannot report their tokens:
@@ -625,18 +634,20 @@ export const LLM_TURN_MINIMUM = 1;
  *   search's results plus the Tavily search itself, about $0.05.
  * - `generatorPicture`: each picture it makes, priced as a medium square AI
  *   image (`imageCreditCost`).
- * - `autopostText`: one gpt-4.1 call on a feed item, about $0.01.
+ * - `autopostText`: one gpt-4.1 call on a feed item (read up to 8,000
+ *   characters), about $0.01.
  * - `autopostPicture`: a gpt-4.1 call for the prompt, then a standard
  *   1024x1024 dall-e-3 image ($0.04).
- * - `separatePosts`: one gpt-4.1 call on the post, a few more when a part has
- *   to be shortened, about $0.01.
+ * - `separatePosts`: one gpt-4.1 call on the post (up to 20,000 characters),
+ *   a few more when a part has to be shortened, about $0.01 for a usual
+ *   post and several times that at the limit.
  */
 export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
-  generator: 150,
+  generator: 125,
   generatorPicture: imageCreditCost('medium', 'square'),
-  autopostText: 30,
+  autopostText: 25,
   autopostPicture: 110,
-  separatePosts: 30,
+  separatePosts: 25,
 };
 
 /**

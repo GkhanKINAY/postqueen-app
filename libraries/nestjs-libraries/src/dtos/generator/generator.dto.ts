@@ -1,8 +1,16 @@
-import { IsBoolean, IsIn, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class GeneratorDto {
+  // The request reaches several model calls at a fixed price.
   @IsString()
   @MinLength(10)
+  @MaxLength(5000)
   research: string;
 
   @IsBoolean()

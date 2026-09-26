@@ -124,6 +124,53 @@ describe('meteredFetch', () => {
     ]);
   });
 
+  it('reads a stream with CRLF line ends, and keeps the stream options a caller set', async () => {
+    const fetcher = meteredFetch(
+      (usage) => reported.push(usage),
+      fetchReturning(() => eventStream(chatStream.replace(/\n/g, '\r\n'), [99]))
+    );
+    const response = await fetcher(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          model: 'gpt-4.1',
+          stream: true,
+          stream_options: { include_obfuscation: false },
+          messages: [],
+        }),
+      }
+    );
+    await readAll(response);
+    assert.deepEqual(sent[0].body.stream_options, {
+      include_obfuscation: false,
+      include_usage: true,
+    });
+    assert.deepEqual(
+      reported.map((u) => [u.id, u.inputTokens, u.outputTokens]),
+      [['chatcmpl-1', 300, 20]]
+    );
+  });
+
+  it('reports nothing, and throws nothing, for a stream its reader cancels', async () => {
+    const fetcher = meteredFetch(
+      (usage) => reported.push(usage),
+      fetchReturning(() =>
+        eventStream(responsesStream, [
+          responsesStream.indexOf('event: response.completed'),
+        ])
+      )
+    );
+    const response = await fetcher('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      body: JSON.stringify({ model: 'gpt-4.1', stream: true }),
+    });
+    const reader = response.body!.getReader();
+    await reader.read();
+    await reader.cancel();
+    assert.deepEqual(reported, []);
+  });
+
   it("reads a whole answer's usage and leaves its body to the caller", async () => {
     const body = {
       id: 'chatcmpl-2',

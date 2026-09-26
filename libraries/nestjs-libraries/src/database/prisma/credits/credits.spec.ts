@@ -10,6 +10,7 @@ import {
   AI_FIXED_CREDIT_COSTS_PROPOSAL,
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
+  LLM_CONTINUATION_FLOOR,
   LLM_CREDIT_RATES,
   LLM_TURN_MINIMUM,
   imageCreditCost,
@@ -416,22 +417,36 @@ describe('Model tokens', () => {
   it('refuse a turn only on an empty balance', async () => {
     assert.equal(LLM_TURN_MINIMUM, 1);
     balance = 1;
-    await service().assertAvailable('org-1', LLM_TURN_MINIMUM);
+    await service().assertLlmTurn('org-1');
     for (const empty of [0, -250]) {
       balance = empty;
-      await assert.rejects(
-        service().assertAvailable('org-1', LLM_TURN_MINIMUM),
-        (err) => {
-          assert.ok(err instanceof HttpException);
-          assert.equal(err.getStatus(), 402);
-          assert.equal((err.getResponse() as any).code, 'insufficient_credits');
-          return true;
-        }
-      );
+      await assert.rejects(service().assertLlmTurn('org-1'), (err) => {
+        assert.ok(err instanceof HttpException);
+        assert.equal(err.getStatus(), 402);
+        assert.equal((err.getResponse() as any).code, 'insufficient_credits');
+        return true;
+      });
     }
+  });
+
+  it('let the rest of a turn finish below zero, down to a floor', async () => {
+    // after a frontend tool, the run that finishes the turn
+    for (const below of [0, -250, LLM_CONTINUATION_FLOOR]) {
+      balance = below;
+      await service().assertLlmTurn('org-1', true);
+    }
+    balance = LLM_CONTINUATION_FLOOR - 1;
+    await assert.rejects(
+      service().assertLlmTurn('org-1', true),
+      (err) => err instanceof HttpException && err.getStatus() === 402
+    );
+  });
+
+  it('refuse nothing with billing off', async () => {
     billing(false);
-    balance = -250;
-    await service().assertAvailable('org-1', LLM_TURN_MINIMUM);
+    balance = -100000;
+    await service().assertLlmTurn('org-1');
+    await service().assertLlmTurn('org-1', true);
   });
 });
 

@@ -142,7 +142,7 @@ const FirstStep: FC = (props) => {
           body: JSON.stringify(value),
         });
         // Not enough credits: the Payment Required dialog has already said
-        // so (499 when it was dismissed).
+        // so (402 when it was dismissed, 499 when it sent them to Billing).
         if (response.status === 402 || response.status === 499) {
           return;
         }

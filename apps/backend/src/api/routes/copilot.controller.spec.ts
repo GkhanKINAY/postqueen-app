@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { HttpException } from '@nestjs/common';
-import { insufficientCredits } from '../../../../../libraries/nestjs-libraries/src/database/prisma/credits/credits.repository.ts';
+import { CreditsService } from '../../../../../libraries/nestjs-libraries/src/database/prisma/credits/credits.service.ts';
+import { LLM_CONTINUATION_FLOOR } from '../../../../../libraries/nestjs-libraries/src/database/prisma/subscriptions/pricing.ts';
 import { fileURLToPath } from 'node:url';
 
 const controller = readFileSync(
@@ -38,7 +39,12 @@ describe('Copilot chat actions', () => {
 });
 
 describe('Copilot and credits', () => {
-  const key = process.env.OPENAI_API_KEY;
+  const KEYS = [
+    'OPENAI_API_KEY',
+    'STRIPE_PUBLISHABLE_KEY',
+    'STRIPE_SECRET_KEY',
+  ];
+  const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
   let CopilotController: any;
   let checks: string[];
   let balance: number;
@@ -48,30 +54,33 @@ describe('Copilot and credits', () => {
     ({ CopilotController } = await import('./copilot.controller.ts'));
   });
   beforeEach(() => {
-    process.env.OPENAI_API_KEY = 'sk-spec';
+    for (const k of KEYS) {
+      process.env[k] = 'spec';
+    }
     checks = [];
     balance = 0;
   });
   after(() => {
-    if (key === undefined) {
-      delete process.env.OPENAI_API_KEY;
-    } else {
-      process.env.OPENAI_API_KEY = key;
+    for (const k of KEYS) {
+      if (saved[k] === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = saved[k];
+      }
     }
   });
 
+  // The real balance check, over a ledger that only answers the balance.
   const make = () =>
     new CopilotController(
       {},
       {},
-      {
-        async assertAvailable(org: string, amount: number) {
+      new CreditsService({
+        async balance(org: string) {
           checks.push(org);
-          if (amount > balance) {
-            throw insufficientCredits(amount, balance);
-          }
+          return { balance, expiring: null };
         },
-      },
+      }),
       { meteredClient: () => ({}) }
     );
   const response = () => {
@@ -122,6 +131,33 @@ describe('Copilot and credits', () => {
     balance = 1;
     await make().assertCredits(run, org);
     assert.deepEqual(checks, ['org-1']);
+  });
+
+  it('lets a turn finish after a frontend tool, below zero down to the floor', async () => {
+    const continuation = {
+      body: {
+        method: 'agent/run',
+        body: {
+          messages: [{ role: 'user' }, { role: 'assistant' }, { role: 'tool' }],
+        },
+      },
+    };
+    for (balance of [0, -250, LLM_CONTINUATION_FLOOR]) {
+      await make().assertCredits(continuation, org);
+      await assert.rejects(make().assertCredits(run, org));
+    }
+    balance = LLM_CONTINUATION_FLOOR - 1;
+    await assert.rejects(make().assertCredits(continuation, org), (err) => {
+      assert.equal((err as HttpException).getStatus(), 402);
+      return true;
+    });
+  });
+
+  it('refuses nothing with billing off', async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    balance = -100000;
+    await make().assertCredits(run, org);
+    assert.deepEqual(checks, []);
   });
 
   it('charges /copilot/chat through its own metered client', () => {

@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import type { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
-import { LLM_TURN_MINIMUM } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 type RequestContextReader = { get: (key: never) => unknown };
 
@@ -11,10 +11,30 @@ type ModelStep = {
   usage?: { inputTokens?: number; outputTokens?: number };
   response?: { id?: string; modelId?: string };
   model?: { modelId?: string };
-  runId?: string;
 };
 
 const logger = new Logger('CopilotCredits');
+
+// The CopilotKit runtime methods that run a model. `info`, `agent/connect`
+// (a thread's history replayed) and `agent/stop` cost nothing.
+const MODEL_METHODS = ['agent/run', 'agent/suggest', 'transcribe'];
+
+/**
+ * What a CopilotKit runtime request asks of the balance: nothing, a turn the
+ * person started, or the rest of one. CopilotKit runs the agent again after
+ * every frontend tool (a Post Preview card) to finish the turn, and that run
+ * carries the tool's result as its newest message.
+ */
+export const copilotRunKind = (body: any): 'free' | 'turn' | 'continuation' => {
+  if (!MODEL_METHODS.includes(body?.method)) {
+    return 'free';
+  }
+  const messages = body?.body?.messages;
+  const newest = Array.isArray(messages)
+    ? messages[messages.length - 1]
+    : undefined;
+  return newest?.role === 'tool' ? 'continuation' : 'turn';
+};
 
 /**
  * Who a run is for. The app's Copilot puts the organization in the request
@@ -46,31 +66,38 @@ export const copilotOrganizationId = (requestContext: RequestContextReader) => {
  *
  * An empty balance is refused before the run. The app's Copilot is refused
  * by its controller before the stream starts, so this is for MCP, where the
- * refusal is the tool's error.
+ * refusal is the tool's error, and where a run nobody can be charged for is
+ * refused as well.
+ *
+ * A call still in flight when a run is stopped, or when its call fails, has
+ * no usage to charge; only finished calls are charged.
  */
 export const copilotRunOptions = async (
-  credits: Pick<CreditsService, 'assertAvailable' | 'chargeLlm'>,
+  credits: Pick<CreditsService, 'assertLlmTurn' | 'chargeLlm'>,
   requestContext: RequestContextReader
 ) => {
   const organizationId = copilotOrganizationId(requestContext);
   const ui = requestContext.get('ui' as never) === 'true';
-  if (organizationId && !ui) {
-    await credits.assertAvailable(organizationId, LLM_TURN_MINIMUM);
+  if (!ui) {
+    if (organizationId) {
+      await credits.assertLlmTurn(organizationId);
+    } else if (isBillingEnabled()) {
+      throw new Error('This run has no organization to be charged to.');
+    }
   }
 
-  let calls = 0;
   return {
     // Without a cap Mastra's loop runs until the model stops calling
     // tools, which a model retrying a failing draft never does. A normal
     // turn is three or four steps; image and analytics flows a few more.
     maxSteps: 12,
     onStepFinish: async (step: ModelStep) => {
-      calls += 1;
       if (!organizationId) {
         logger.warn('A Copilot run has no organization to charge');
         return;
       }
-      const key = step.response?.id || `${step.runId || makeId(20)}:${calls}`;
+      // Mastra gives every call an id, the provider's or its own.
+      const key = step.response?.id || makeId(20);
       try {
         await credits.chargeLlm(organizationId, {
           key: `llm:${key}`,

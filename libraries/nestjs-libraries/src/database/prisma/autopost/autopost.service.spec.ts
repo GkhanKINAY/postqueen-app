@@ -22,6 +22,7 @@ const rule = {
   onSlot: false,
   content: null,
   integrations: '[]',
+  updatedAt: new Date('2026-09-01T00:00:00Z'),
 };
 
 const channel = {
@@ -39,6 +40,8 @@ let spends: { key: string; amount: number }[];
 let posts: string[];
 let validated: number;
 let notifications: string[];
+let refunds: string[];
+let failPublish: boolean;
 
 // Every collaborator faked. The AI calls themselves never run: the fake
 // credits service stands in for the work it would have paid for.
@@ -57,6 +60,9 @@ const service = (autopost = rule) =>
       },
       findFreeDateTime: async () => '2026-10-01T10:00:00',
       createPost: async (_org: string, body: any) => {
+        if (failPublish) {
+          throw new Error('X is down');
+        }
         posts.push(body.type);
         return [];
       },
@@ -82,6 +88,10 @@ const service = (autopost = rule) =>
           ? 'Written by AI'
           : 'https://img/1.png';
       },
+      async refund(_org: string, key: string) {
+        refunds.push(key);
+        return true;
+      },
     }
   );
 
@@ -101,6 +111,8 @@ beforeEach(() => {
   posts = [];
   validated = 0;
   notifications = [];
+  refunds = [];
+  failPublish = false;
 });
 
 describe('Autopost and credits', () => {
@@ -124,6 +136,26 @@ describe('Autopost and credits', () => {
     );
     assert.deepEqual(posts, ['now', 'now']);
     assert.deepEqual(notifications, []);
+  });
+
+  it('charges an item that comes back after another as a new claim', async () => {
+    // A, then B, then A again: claiming B moved the rule's updatedAt, so the
+    // second A is not mistaken for a retry of the first.
+    await run();
+    await run({ ...rule, updatedAt: new Date('2026-09-02T00:00:00Z') });
+    assert.equal(spends.length, 4);
+    assert.notEqual(spends[2].key, spends[0].key);
+    assert.notEqual(spends[3].key, spends[1].key);
+  });
+
+  it('gives back the AI an item paid for when it cannot be scheduled', async () => {
+    failPublish = true;
+    await assert.rejects(run(), /X is down/);
+    assert.deepEqual(
+      refunds,
+      spends.map((s) => s.key)
+    );
+    assert.deepEqual(notifications, ['Autopost could not schedule an item']);
   });
 
   it("saves a draft with the feed's own text when the balance cannot pay for the AI", async () => {

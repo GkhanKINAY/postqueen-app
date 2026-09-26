@@ -37,7 +37,7 @@ import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permis
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
-import { LLM_TURN_MINIMUM } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { copilotRunKind } from '@gitroom/nestjs-libraries/chat/copilot.credits';
 
 export type ChannelsContext = {
   organization: string;
@@ -60,18 +60,17 @@ export class CopilotController {
 
   /**
    * An empty balance is refused before the runtime starts, so the answer is a
-   * 402 and never an error inside a stream. Only the methods that run a
-   * model are checked: `info`, and `agent/connect` replaying a thread's
-   * history, cost nothing and keep working at zero. A turn that starts with
-   * a positive balance runs to the end (`LLM_TURN_MINIMUM`).
+   * 402 and never an error inside a stream. Only what runs a model is
+   * checked: a thread's history keeps loading at zero. A turn that starts
+   * with a positive balance runs to the end, including the run CopilotKit
+   * makes to finish it after a frontend tool.
    */
   private async assertCredits(req: Request, organization: Organization) {
-    if (
-      ['agent/run', 'agent/suggest', 'transcribe'].includes(req?.body?.method)
-    ) {
-      await this._creditsService.assertAvailable(
+    const kind = copilotRunKind(req?.body);
+    if (kind !== 'free') {
+      await this._creditsService.assertLlmTurn(
         organization.id,
-        LLM_TURN_MINIMUM
+        kind === 'continuation'
       );
     }
   }

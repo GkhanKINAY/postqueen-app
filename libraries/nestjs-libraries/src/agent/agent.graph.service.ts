@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import {
   BaseMessage,
   HumanMessage,
@@ -322,7 +322,9 @@ export class AgentGraphService {
   }
 
   // One picture per post of the thread, known only now, so they are charged
-  // here and handed back if they cannot be made.
+  // here and handed back if they cannot be made. A balance that cannot pay
+  // for them all leaves the posts without pictures rather than failing a run
+  // whose text is already written.
   async generatePictures(state: WorkflowChannelsState) {
     if (!state.isPicture) {
       return {};
@@ -355,6 +357,9 @@ export class AgentGraphService {
         content: newContent,
       };
     } catch (err) {
+      if (err instanceof HttpException && err.getStatus() === 402) {
+        return {};
+      }
       throw generationError(err);
     }
   }
@@ -363,7 +368,8 @@ export class AgentGraphService {
     try {
       return await this.savePictures(state);
     } catch (err) {
-      // Made and paid for, but they never reached the library.
+      // Made and paid for, but they did not all reach the library, and the
+      // run fails with them.
       await this._creditsService.refund(
         state.orgId,
         `${state.creditKey}:pictures`
@@ -428,8 +434,10 @@ export class AgentGraphService {
   }
 
   /**
-   * The run, paid for from the credits balance: the text first, handed back
-   * if the run fails, then the pictures once their number is known.
+   * The run, paid for from the credits balance: the text first, then the
+   * pictures once their number is known. The text streams as it is written,
+   * but the app opens only a finished run, so a run that fails is handed
+   * back whole.
    */
   async *start(orgId: string, body: GeneratorDto) {
     const creditKey = `generator:${makeId(20)}`;

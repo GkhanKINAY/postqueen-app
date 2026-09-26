@@ -61,6 +61,9 @@ const credits = {
     return true;
   },
   async withCredits(org: string, spend: { key: string; amount: number }) {
+    if (spend.amount > balance) {
+      throw insufficientCredits(spend.amount, balance);
+    }
     calls.push(['spend', org, spend.key, spend.amount]);
     return [{ content: 'Post', image: 'data' }];
   },
@@ -166,5 +169,23 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
     };
     await assert.rejects(generator.uploadPictures(state), /storage down/);
     assert.deepEqual(calls, [['refund', 'org-1', 'generator:abc:pictures']]);
+  });
+
+  it('finishes without pictures when the balance cannot pay for them all', async () => {
+    // The text is written and paid for; a balance spent elsewhere meanwhile
+    // costs the run its pictures, not the run.
+    balance = 2 * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture;
+    const state = {
+      orgId: 'org-1',
+      creditKey: 'generator:abc',
+      isPicture: true,
+      content: [
+        { content: 'One', prompt: 'a' },
+        { content: 'Two', prompt: 'b' },
+        { content: 'Three', prompt: 'c' },
+      ],
+    };
+    assert.deepEqual(await service().generatePictures(state), {});
+    assert.deepEqual(calls, []);
   });
 });

@@ -119,7 +119,9 @@ const usageTap = (report: (usage: OpenAiUsage) => void) => {
 
 /**
  * A `fetch` for the OpenAI SDK that hands `report` the usage of every call
- * that completes, streamed or not, and changes nothing the caller reads.
+ * that completes, streamed or not. The answer passes through as it came; a
+ * streamed chat completion only gains the usage chunk it now asks for, one
+ * with no choices, which the SDK and CopilotKit's adapter both skip.
  */
 export const meteredFetch =
   (

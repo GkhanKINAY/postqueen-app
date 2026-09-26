@@ -66,6 +66,11 @@ const generateContent = z.object({
     .describe('Content for social media posts max 120 chars'),
 });
 
+// A feed item, or the page it links to, is read up to here. Plenty for a
+// 100-character post or a picture prompt, and it keeps what the model reads,
+// and the fixed price of the call, within bounds.
+const MAX_SOURCE_TEXT = 8000;
+
 const dallePrompt = z.object({
   generatedTextToBeSentToDallE: z
     .string()
@@ -318,8 +323,9 @@ export class AutopostService {
       return { ...state, description: state.body.content || '' };
     }
 
-    const description =
-      state.load.description || (await this.loadUrl(state.load.url));
+    const description = (
+      state.load.description || (await this.loadUrl(state.load.url))
+    ).slice(0, MAX_SOURCE_TEXT);
     if (!description) {
       return {
         ...state,
@@ -403,7 +409,10 @@ export class AutopostService {
             )
               .pipe(structuredOutput)
               .invoke({
-                content: state.load.description || state.description,
+                content: (state.load.description || state.description).slice(
+                  0,
+                  MAX_SOURCE_TEXT
+                ),
               });
 
           return dalle.invoke(generatedTextToBeSentToDallE);
@@ -527,7 +536,7 @@ export class AutopostService {
       await this._notificationService.inAppNotification(
         orgId,
         'Autopost saved a draft: not enough credits',
-        `"${state.body.title}" found a new item, but the credits balance could not pay for its AI text or picture. It was saved as a draft with the feed's own text.`,
+        `"${state.body.title}" found a new item, but the credits balance could not pay for its AI text or picture. It was saved as a draft without them.`,
         false,
         false,
         'fail',
@@ -631,9 +640,12 @@ export class AutopostService {
       return;
     }
 
-    // One key per feed item, so a retried activity is not charged again.
+    // One key per claim of a feed item: a retried activity re-enters before
+    // the claim with the same key and is not charged again, while an item
+    // that comes back later (A, then B, then A) is a new claim, because
+    // claiming B changed the rule's updatedAt.
     const creditKey = `autopost:${id}:${createHash('sha256')
-      .update(load.url)
+      .update(`${load.url}:${new Date(getPost.updatedAt).getTime()}`)
       .digest('hex')
       .slice(0, 24)}`;
     const short = await this.creditsShort(getPost);
@@ -685,6 +697,15 @@ export class AutopostService {
         short,
       });
     } catch (err) {
+      // The item failed, so the AI it paid for goes back (a publish that
+      // failed part way through its channels included: rare, and in the
+      // customer's favour). Claimed, the item is not retried; unclaimed, a
+      // retry pays again under the same keys.
+      for (const part of ['text', 'picture']) {
+        await this._creditsService
+          .refund(getPost.organizationId, `${creditKey}:${part}`)
+          .catch(() => false);
+      }
       // lastUrl is already claimed, so this item will not be retried. Say so
       // rather than letting it vanish — the workflow's own catch is silent.
       await this._notificationService.inAppNotification(

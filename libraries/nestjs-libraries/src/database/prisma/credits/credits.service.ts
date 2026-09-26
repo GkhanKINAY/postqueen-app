@@ -7,6 +7,8 @@ import {
   insufficientCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.repository';
 import {
+  LLM_CONTINUATION_FLOOR,
+  LLM_TURN_MINIMUM,
   llmCreditCost,
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -70,6 +72,23 @@ export class CreditsService {
       return Promise.resolve({ id: null, charged: false });
     }
     return this._creditsRepository.spend(organizationId, spend);
+  }
+
+  /**
+   * Whether a Copilot turn may start: on any positive balance. The rest of a
+   * turn, run again after a frontend tool, may start down to
+   * `LLM_CONTINUATION_FLOOR`, so a turn that crossed zero on its way still
+   * finishes.
+   */
+  async assertLlmTurn(organizationId: string, continuation = false) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+
+    const { balance } = await this._creditsRepository.balance(organizationId);
+    if (balance < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
+      throw insufficientCredits(LLM_TURN_MINIMUM, balance);
+    }
   }
 
   /**

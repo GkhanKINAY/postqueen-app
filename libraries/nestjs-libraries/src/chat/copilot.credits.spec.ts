@@ -9,6 +9,10 @@ import { z } from 'zod';
 import { copilotRunOptions } from './copilot.credits.ts';
 import { runWithContext } from './async.storage.ts';
 import { insufficientCredits } from '../database/prisma/credits/credits.repository.ts';
+import {
+  LLM_CONTINUATION_FLOOR,
+  LLM_TURN_MINIMUM,
+} from '../database/prisma/subscriptions/pricing.ts';
 
 const usage = (input: number, output: number) => ({
   inputTokens: { total: input, noCache: input, cacheRead: 0, cacheWrite: 0 },
@@ -117,10 +121,10 @@ let failCharges: boolean;
 // The credits service with its ledger faked: a key is charged once, the way
 // the real one's unique (organizationId, idempotencyKey) makes it.
 const credits = () => ({
-  async assertAvailable(org: string, amount: number) {
+  async assertLlmTurn(org: string, continuation = false) {
     checks.push(org);
-    if (amount > balance) {
-      throw insufficientCredits(amount, balance);
+    if (balance < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
+      throw insufficientCredits(LLM_TURN_MINIMUM, balance);
     }
   },
   async chargeLlm(org: string, usage: any) {
@@ -305,5 +309,33 @@ describe('Copilot runs are charged by the tokens of each model call', () => {
       }
     );
     assert.deepEqual(charges, []);
+  });
+
+  it('refuses a run with no organization to charge, unless billing is off', async () => {
+    const KEYS = ['STRIPE_PUBLISHABLE_KEY', 'STRIPE_SECRET_KEY'];
+    const saved = KEYS.map((k) => process.env[k]);
+    try {
+      KEYS.forEach((k) => (process.env[k] = 'spec'));
+      await assert.rejects(
+        agentFor(turn()).generate('Nobody', {
+          requestContext: new RequestContext(),
+        }),
+        /no organization to be charged/
+      );
+
+      delete process.env.STRIPE_SECRET_KEY;
+      const result = await agentFor(turn()).generate('Nobody', {
+        requestContext: new RequestContext(),
+      });
+      assert.equal(result.text, 'Scheduled.');
+      assert.deepEqual(checks, []);
+      assert.deepEqual(charges, []);
+    } finally {
+      KEYS.forEach((k, i) =>
+        saved[i] === undefined
+          ? delete process.env[k]
+          : (process.env[k] = saved[i])
+      );
+    }
   });
 });
