@@ -4,6 +4,7 @@ import { parseFragment } from 'parse5';
 import {
   AnalyticsData,
   AuthTokenDetails,
+  CreditOperation,
   NormalizedPostMetrics,
   PendingCheckResponse,
   PostDetails,
@@ -32,7 +33,11 @@ import { PostPlug } from '@gitroom/helpers/decorators/post.plug';
 import dayjs from 'dayjs';
 import { chunk, uniqBy } from 'lodash';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
-import { stripLinks as removeLinks } from '@gitroom/helpers/utils/strip.links';
+import {
+  hasLinks,
+  stripLinks as removeLinks,
+} from '@gitroom/helpers/utils/strip.links';
+import { X_CREDIT_COSTS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
@@ -83,6 +88,38 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   analyticsIntervals = [7, 30, 90] as const;
   analyticsDisabled = () => !!process.env.DISABLE_X_ANALYTICS;
   stripLinks = () => !!process.env.STRIP_LINKS_FROM_X_POSTS;
+
+  // X bills every call (see X_CREDIT_COSTS). A post is priced by the text
+  // that reaches X, so a link this instance strips is not a link post, and
+  // an article by its body.
+  creditCost(op: CreditOperation) {
+    switch (op.type) {
+      case 'publish': {
+        const article = op.index === 0 && op.settings?.post_type === 'article';
+        const text = article ? op.message : this.toTweetText(op.message);
+        return hasLinks(this.stripLinks() ? removeLinks(text) : text)
+          ? X_CREDIT_COSTS.postWithLink
+          : X_CREDIT_COSTS.post;
+      }
+      case 'function':
+        // Both read one user. The other methods the app calls cost nothing.
+        return ['mention', 'subscriptionInfo'].includes(op.name)
+          ? X_CREDIT_COSTS.userRead
+          : undefined;
+      case 'plug-check':
+        return X_CREDIT_COSTS.postRead;
+      case 'plug-trigger': {
+        // Auto plug replies with a post; the others repost.
+        if (op.plug !== 'autoPlugPost') {
+          return X_CREDIT_COSTS.interaction;
+        }
+        const text = stripHtmlValidation('normal', op.fields.post || '', true);
+        return hasLinks(this.stripLinks() ? removeLinks(text) : text)
+          ? X_CREDIT_COSTS.postWithLink
+          : X_CREDIT_COSTS.post;
+      }
+    }
+  }
   // X rate limits are per user (300 posts / 3 hours), not per app, so the cap
   // only needs to keep bursts polite. With the pending flow the slot is held
   // for actual API work only (processing waits live in workflow timers), so a
@@ -352,6 +389,15 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     return undefined;
   }
 
+  // One post read, where listing the likers read a user per like, and
+  // counted at most a page of them.
+  private async likeCount(client: TwitterApi, id: string) {
+    const { data } = await client.v2.singleTweet(id, {
+      'tweet.fields': ['public_metrics'],
+    });
+    return data?.public_metrics?.like_count || 0;
+  }
+
   @Plug({
     identifier: 'x-autoRepostPost',
     title: 'Auto Repost Posts',
@@ -385,10 +431,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       accessSecret: accessSecretSplit,
     });
 
-    if (
-      (await client.v2.tweetLikedBy(id)).meta.result_count >=
-      +fields.likesAmount
-    ) {
+    if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
       await client.v2.retweet(integration.internalId, id);
       return true;
@@ -418,12 +461,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       accessSecret: accessSecretSplit,
     });
 
-    const {
-      data: { id },
-    } = await client.v2.me();
-
+    // The channel's own X id, kept since it was connected: asking X for it
+    // again was a user read on every repost.
     try {
-      await client.v2.retweet(id, postId);
+      await client.v2.retweet(integration.internalId, postId);
     } catch (err) {
       /** nothing **/
     }
@@ -469,10 +510,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       accessSecret: accessSecretSplit,
     });
 
-    if (
-      (await client.v2.tweetLikedBy(id)).meta.result_count >=
-      +fields.likesAmount
-    ) {
+    if ((await this.likeCount(client, id)) >= +fields.likesAmount) {
       await timer(2000);
 
       const plugText = stripHtmlValidation('normal', fields.post, true);

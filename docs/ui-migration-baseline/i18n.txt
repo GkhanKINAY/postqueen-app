@@ -2181,6 +2181,9 @@ please_fix_your_settings
 please_reconnect_from_channels
 please_type_your_prompt
 please_wait
+plug_credits_act
+plug_credits_check_and_act
+plug_credits_check_and_act_link
 plus_n_channels
 portal_row_sub
 portal_row_title
@@ -2263,6 +2266,9 @@ public_to_everyone
 publication_date
 publish_again
 publish_at_least_one_post_today_to_keep_the_streak_alive
+publish_credits_hint
+publish_credits_short
+publish_credits_to_publish
 published
 publishing
 publishing_now

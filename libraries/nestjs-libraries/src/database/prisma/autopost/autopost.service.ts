@@ -543,7 +543,26 @@ export class AutopostService {
     // `onSlot` is the rule's "When should we post it?" answer: the next free
     // slot, or right away. A draft has no publish time to choose.
     if (toPublish.length) {
-      await send(state.body.onSlot ? 'schedule' : 'now', toPublish);
+      try {
+        await send(state.body.onSlot ? 'schedule' : 'now', toPublish);
+      } catch (err) {
+        // A network that bills per post has its cost set aside when the
+        // post is scheduled. A balance that cannot cover it keeps the post
+        // as a draft, to publish once there are credits.
+        if (!this.isShort(err)) {
+          throw err;
+        }
+        await send('draft', toPublish);
+        await this._notificationService.inAppNotification(
+          orgId,
+          'Autopost saved a draft: not enough credits to publish',
+          `"${state.body.title}" found a new item, but the credits balance could not cover publishing it. It was saved as a draft.`,
+          false,
+          false,
+          'fail',
+          '/billing'
+        );
+      }
     }
     if (toDraft.length) {
       await send('draft', toDraft);

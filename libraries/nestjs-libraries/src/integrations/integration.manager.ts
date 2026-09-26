@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { Injectable } from '@nestjs/common';
 import { XProvider } from '@gitroom/nestjs-libraries/integrations/social/x.provider';
 import { SocialProvider } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { toCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import { RedditProvider } from '@gitroom/nestjs-libraries/integrations/social/reddit.provider';
 import { DevToProvider } from '@gitroom/nestjs-libraries/integrations/social/dev.to.provider';
@@ -213,18 +214,50 @@ export class IntegrationManager {
     );
   }
 
+  // What a plug costs from the credits balance, in credits: each run's look
+  // at the post, and acting on it, and acting with a link in what it writes
+  // when that costs more. Nothing on a network that does not bill.
+  private plugCredits(
+    provider: SocialProvider,
+    plug: string,
+    fields: { name: string }[] = []
+  ) {
+    const check = provider.creditCost?.({ type: 'plug-check', plug }) || 0;
+    const trigger =
+      provider.creditCost?.({ type: 'plug-trigger', plug, fields: {} }) || 0;
+    const withLink =
+      provider.creditCost?.({
+        type: 'plug-trigger',
+        plug,
+        fields: Object.fromEntries(
+          fields.map((field) => [field.name, 'https://example.com'])
+        ),
+      }) || 0;
+    return check || trigger
+      ? {
+          check: toCredits(check),
+          trigger: toCredits(trigger),
+          ...(withLink > trigger ? { withLink: toCredits(withLink) } : {}),
+        }
+      : undefined;
+  }
+
   getAllPlugs() {
     return socialIntegrationList
-      .map((p) => {
+      .map((provider) => {
         return {
-          name: p.name,
-          identifier: p.identifier,
+          name: provider.name,
+          identifier: provider.identifier,
           plugs: (
-            Reflect.getMetadata('custom:plug', p.constructor.prototype) || []
+            Reflect.getMetadata(
+              'custom:plug',
+              provider.constructor.prototype
+            ) || []
           )
             .filter((f: any) => !f.disabled)
             .map((p: any) => ({
               ...p,
+              credits: this.plugCredits(provider, p.methodName, p.fields),
               fields: p.fields.map((c: any) => ({
                 ...c,
                 validation: c?.validation?.toString(),
@@ -233,6 +266,16 @@ export class IntegrationManager {
         };
       })
       .filter((f) => f.plugs.length);
+  }
+
+  /** Every method a provider runs as a plug, switched off or not. */
+  getPlugMethodNames(providerName: string): string[] {
+    const p = this.getSocialIntegration(providerName);
+    return ['custom:plug', 'custom:internal_plug'].flatMap((key) =>
+      (Reflect.getMetadata(key, p?.constructor.prototype || {}) || []).map(
+        (f: { methodName: string }) => f.methodName
+      )
+    );
   }
 
   getInternalPlugs(providerName: string) {
@@ -244,7 +287,12 @@ export class IntegrationManager {
             'custom:internal_plug',
             p.constructor.prototype
           ) || []
-        ).filter((f: any) => !f.disabled) || [],
+        )
+          .filter((f: any) => !f.disabled)
+          .map((f: any) => ({
+            ...f,
+            credits: this.plugCredits(p, f.methodName, f.fields),
+          })) || [],
     };
   }
 

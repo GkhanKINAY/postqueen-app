@@ -29,6 +29,7 @@ import {
 } from '@gitroom/helpers/utils/post.publish.notice';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
+import { ComposeCredits } from '@gitroom/frontend/components/new-launch/compose.credits';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
 import { TagsComponent } from '@gitroom/frontend/components/launches/tags.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -815,6 +816,12 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // post cap, or failing server-side validation — still showed "Added
         // successfully" and closed the editor, losing everything the user wrote.
         if (response && !response.ok) {
+          // 499: the Payment Required dialog already spoke, and its Move to
+          // billing opened Billing in another tab. The post stays open here.
+          if (response.status === 499) {
+            setLoading(false);
+            return;
+          }
           // The body is a Nest error object; showing it raw put
           // {"statusCode":400,...} in front of the user.
           const reason = await response
@@ -1366,6 +1373,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 ) : (
                   <ComposeWhen date={date} onChange={setDate} />
                 )}
+                {!addEditSets && !publishedView && !dummy && (
+                  <ComposeCredits variant="row" explain />
+                )}
                 {!dummy && !publishedView && selectedIntegrations.length > 0 && (
                   <ComposeNotify
                     notify={notifyOnPublish}
@@ -1542,6 +1552,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 onChange={setNotifyOnPublish}
               />
             )}
+            {compactFooter && !dummy && !publishedView && !addEditSets && (
+              <div className="col-span-2 empty:hidden">
+                <ComposeCredits variant="row" />
+              </div>
+            )}
           </div>
           )}
           <div
@@ -1597,6 +1612,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 phoneFlow && 'min-w-0 flex-1'
               )}
             >
+            {!addEditSets && !publishedView && !dummy && !compactFooter && (
+              <ComposeCredits />
+            )}
             {!addEditSets && !publishedView && (
               <button
                 disabled={
