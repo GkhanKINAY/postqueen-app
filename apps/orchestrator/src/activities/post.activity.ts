@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import {
   Activity,
   ActivityMethod,
@@ -63,6 +63,21 @@ export type PublishingNotice =
  * Rendered into the calendar tooltip, so it reads as a sentence fragment.
  */
 const LAPSED_SUBSCRIPTION = 'Subscription required';
+
+// Failures that never reached the network: the credits set aside to publish
+// the item and the rest of its thread go back (all of the post's, when the
+// run failed before reading its thread). A refusal by the network
+// (bad_body) is the other case. An outcome nobody knows (a timeout, an
+// interrupted run, a token that failed while checking a post the network
+// had accepted) keeps them.
+const NEVER_PUBLISHED = [
+  'Refresh channel needed',
+  'Channel disabled',
+  'Channel setup not finished',
+  'No Post',
+  LAPSED_SUBSCRIPTION,
+  'This channel cannot post comments',
+];
 
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
 function slimPost(post: any) {
@@ -232,6 +247,8 @@ export class PostActivity {
   @ActivityMethod()
   async updatePost(id: string, postId: string, releaseURL: string) {
     await this._postService.updatePost(id, postId, releaseURL);
+    // The credits set aside for it are used; never throws.
+    await this._postService.settlePublish(id, postId);
   }
 
   @ActivityMethod()
@@ -308,6 +325,8 @@ export class PostActivity {
         const getIntegration = this._integrationManager.getSocialIntegration(
           integration.providerIdentifier
         );
+
+        await this.payForPublish(integration, posts);
 
         const newPosts = await this._postService.updateTags(
           integration.organizationId,
@@ -393,6 +412,31 @@ export class PostActivity {
     }
   }
 
+  // What the network bills for an item, from the credits set aside when it
+  // was scheduled. A balance that cannot pay fails it the way a refused post
+  // fails: marked failed, with a notice that says why.
+  private async payForPublish(integration: Integration, posts: Post[]) {
+    setHeartbeatDetails('credits');
+    try {
+      for (const post of posts) {
+        await this._postService.payForPublish(
+          integration.providerIdentifier,
+          post
+        );
+      }
+    } catch (err) {
+      if (err instanceof HttpException && err.getStatus() === 402) {
+        throw new BadBody(
+          integration.providerIdentifier,
+          JSON.stringify({}),
+          Buffer.from('{}'),
+          `${err.message} Add credits in Billing, then schedule it again.`
+        );
+      }
+      throw err;
+    }
+  }
+
   private async postSocialInternal(
     integration: Integration,
     posts: Post[],
@@ -435,6 +479,8 @@ export class PostActivity {
     const getIntegration = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
+
+    await this.payForPublish(integration, posts);
 
     setHeartbeatDetails('update tags');
     const newPosts = await this._postService.updateTags(
@@ -959,6 +1005,17 @@ export class PostActivity {
       lapsed ? reason : err,
       body
     );
+
+    if (
+      state === 'ERROR' &&
+      (NEVER_PUBLISHED.includes(reason) || err?.cause?.type === 'bad_body')
+    ) {
+      await this._postService
+        .releasePublish(id, Array.isArray(body) ? body : undefined)
+        .catch((e) =>
+          console.error(`[changeState] could not release credits of ${id}`, e)
+        );
+    }
 
     if (state !== 'ERROR' || before?.state === 'ERROR') {
       return;

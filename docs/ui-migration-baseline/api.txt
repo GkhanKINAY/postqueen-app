@@ -32,6 +32,8 @@
 /billing/check
 /billing/check-discount
 /billing/coupon-info
+/billing/credits
+/billing/credits/checkout
 /billing/embedded
 /billing/finish-trial
 /billing/is-trial-finished
@@ -49,7 +51,6 @@
 /copilot/${id}
 /copilot/${routeId}/state
 /copilot/${threadId}/state
-/copilot/credits
 /copilot/list
 /customers
 /impersonate-${name}
@@ -86,6 +87,7 @@
 /media/generate-image
 /media/generate-image-with-prompt
 /media/generate-video/${type.identifier}/allowed
+/media/generate-video/quote
 /media/generate-video/start
 /media/generate-video/status/${jobId}
 /media/information
@@ -111,6 +113,7 @@
 /posts/comments/${comment.id}
 /posts/comments/${comment.id}/resolve
 /posts/count
+/posts/credits
 /posts/find-slot
 /posts/find-slot/${current.id}
 /posts/find-slot/${integration.id}

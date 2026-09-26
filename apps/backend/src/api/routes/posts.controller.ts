@@ -33,6 +33,8 @@ import {
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { PostValidationException } from '@gitroom/backend/api/routes/posts.validation.exception';
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
+import { SeparatePostsDto } from '@gitroom/nestjs-libraries/dtos/posts/separate.posts.dto';
+import { PublishCreditsDto } from '@gitroom/nestjs-libraries/dtos/posts/publish.credits.dto';
 import {
   CreatePublicCommentDto,
   ResolveCommentDto,
@@ -222,6 +224,20 @@ export class PostsController {
     return this._postsService.validatePosts(org.id, rawBody?.posts || []);
   }
 
+  // What the posts being written will cost from the credits balance, for the
+  // composer to show next to Schedule.
+  @Post('/credits')
+  publishCredits(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: PublishCreditsDto
+  ) {
+    return this._postsService.quotePublishCredits(
+      org.id,
+      body.type,
+      body.posts
+    );
+  }
+
   @Post('/')
   @CheckPolicies([AuthorizationActions.Create, Sections.POSTS_PER_MONTH])
   async createPost(
@@ -285,6 +301,8 @@ export class PostsController {
     @Body() body: GeneratorDto,
     @Res({ passthrough: false }) res: Response
   ) {
+    // A short balance is a 402 answer, before the stream starts.
+    await this._agentGraphService.assertCredits(org.id, body);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     try {
       for await (const event of this._agentGraphService.start(org.id, body)) {
@@ -347,8 +365,8 @@ export class PostsController {
   @Post('/separate-posts')
   async separatePosts(
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { content: string; len: number }
+    @Body() body: SeparatePostsDto
   ) {
-    return this._postsService.separatePosts(body.content, body.len);
+    return this._postsService.separatePosts(org.id, body.content, body.len);
   }
 }

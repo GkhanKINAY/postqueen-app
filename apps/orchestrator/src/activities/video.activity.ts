@@ -1,5 +1,6 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { Activity, ActivityMethod } from 'nestjs-temporal-core';
+import { Context } from '@temporalio/activity';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
@@ -23,11 +24,21 @@ export class VideoActivity {
     }
 
     try {
-      return await this._mediaService.generateVideo(org, body);
+      // The job's id keys the charge, so it is taken once for this video.
+      return await this._mediaService.generateVideo(
+        org,
+        body,
+        Context.current().info.workflowExecution.workflowId
+      );
     } catch (err) {
-      // only the message survives the workflow failure, and a SubscriptionException's is not readable
+      // only the message survives the workflow failure, so the credits
+      // refusal is passed on as its readable message
       if (err instanceof HttpException && err.getStatus() === 402) {
-        throw new Error('No AI video credits are available on this account.');
+        const response = err.getResponse() as { message?: string } | string;
+        throw new Error(
+          (typeof response === 'object' && response?.message) ||
+            'Not enough credits for this video.'
+        );
       }
       throw err;
     }

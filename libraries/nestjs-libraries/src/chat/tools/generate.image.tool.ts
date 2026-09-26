@@ -1,18 +1,14 @@
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
-import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { IMAGE_QUALITIES } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class GenerateImageTool implements AgentToolInterface {
-  constructor(
-    private _mediaService: MediaService,
-    private _subscriptionService: SubscriptionService
-  ) {}
+  constructor(private _mediaService: MediaService) {}
   name = 'generateImageTool';
 
   run() {
@@ -44,6 +40,12 @@ export class GenerateImageTool implements AgentToolInterface {
           .enum(['square', 'portrait', 'landscape'])
           .optional()
           .describe('Square (1:1) when omitted'),
+        quality: z
+          .enum(IMAGE_QUALITIES)
+          .optional()
+          .describe(
+            'low, medium or high. Medium when omitted. It sets what the image costs in credits: high costs several times medium, low a fraction of it.'
+          ),
       }),
       // Mastra validates the return against this schema, so it must also
       // allow the graceful { error } shape (same as uploadFromUrlTool)
@@ -58,15 +60,6 @@ export class GenerateImageTool implements AgentToolInterface {
         checkAuth(inputData, context);
         const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
         try {
-          // Same credit gate as the dashboard's /media/generate-image route -
-          // only enforced when billing is enabled (cloud), self-hosted is free
-          const total = await this._subscriptionService.checkCredits(org);
-          if (isBillingEnabled() && total.credits <= 0) {
-            return {
-              error: 'No AI image credits are available on this account.',
-            };
-          }
-
           // The same envelope and prompt expansion as the dashboard's AI
           // Image (media.controller.ts /generate-image-with-prompt): a short
           // brief becomes a full render prompt before the image is drawn.
@@ -81,13 +74,19 @@ ${inputData.prompt}
 ${inputData.style || 'Realistic'}
 <!-- /style -->
 `,
-            inputData.orientation
+            inputData.orientation,
+            inputData.quality
           );
         } catch (err) {
+          // A short balance is refused before anything is generated, and its
+          // message says what the image costs and what is left.
+          if (err instanceof HttpException && err.getStatus() === 402) {
+            return { error: err.message };
+          }
           return {
             error: `Image generation failed: ${
               err instanceof Error ? err.message : String(err)
-            }. The user's image credit was not used.`,
+            }. No credits were used.`,
           };
         }
       },

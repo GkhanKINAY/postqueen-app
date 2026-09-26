@@ -7,14 +7,12 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import useSWR from 'swr';
 import { VideoWrapper } from '@gitroom/frontend/components/videos/video.render.component';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { VideoContextWrapper } from '@gitroom/frontend/components/videos/video.context.wrapper';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { createPortal } from 'react-dom';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
 import { useOpenGuard } from '@gitroom/frontend/components/layout/use.open.guard';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import {
   isVideoJobStart,
   useStartVideo,
@@ -22,6 +20,13 @@ import {
   useVideoStartFailureCopy,
   VideoJobMedia,
 } from '@gitroom/frontend/components/media/use.generate.video';
+import {
+  CreditsAmount,
+  CreditsLeft,
+  CreditsShortNote,
+} from '@gitroom/frontend/components/billing/credits.amount';
+import { videoPriceFields } from '@gitroom/frontend/components/videos/video.wrapper';
+import { useVideoCost } from '@gitroom/frontend/components/videos/video.cost';
 
 export const Modal: FC<{
   close: () => void;
@@ -39,24 +44,15 @@ export const Modal: FC<{
   const [position, setPosition] = useState('vertical');
   const [submitting, setSubmitting] = useState(false);
   const toaster = useToaster();
-  // Billing off: nothing is metered, so there is no allowance to fetch or show
-  // (the same rule as the image generator's credit counter).
-  const { billingEnabled } = useVariables();
-
-  const loadCredits = useCallback(async () => {
-    if (!billingEnabled) {
-      return { credits: 1000000 };
-    }
-    return (
-      await fetch(`/copilot/credits?type=ai_videos`, {
-        method: 'GET',
-      })
-    ).json();
-  }, []);
-
-  // Its own key: the image generator caches its `ai_images` allowance under
-  // 'copilot-credits', and sharing it showed one number in place of the other.
-  const { data } = useSWR('copilot-credits-ai_videos', loadCredits);
+  // Only the fields the generator prices by, so typing the prompt does not
+  // ask for the price again.
+  const priceFields = videoPriceFields(type.identifier);
+  const priced = useWatch({ control: form.control, name: priceFields });
+  const cost = useVideoCost(
+    type.identifier,
+    position as 'vertical' | 'horizontal',
+    Object.fromEntries(priceFields.map((field, i) => [field, priced?.[i]]))
+  );
 
   const fail = useCallback(
     (body?: any) => {
@@ -169,16 +165,6 @@ export const Modal: FC<{
         onSubmit={form.handleSubmit(generate, onInvalid)}
         className="flex flex-col gap-[10px]"
       >
-        {billingEnabled &&
-          createPortal(
-            <>
-              {t('n_credits_left', '{{count}} credits left', {
-                count: data?.credits || 0,
-              })}
-            </>,
-            document.querySelector('.top-title-content') ||
-              document.createElement('div')
-          )}
         <FormProvider {...form}>
           <div>
             <div className="relative h-[400px]">
@@ -206,7 +192,7 @@ export const Modal: FC<{
                 <VideoWrapper identifier={type.identifier} />
               </div>
             </div>
-            <div className="flex">
+            <div className="mt-[12px] flex flex-col gap-[8px]">
               {/* `loading` alone only sets pointer-events-none — the button
                   stays focusable, keyboard-activatable and announced as
                   enabled, and the click falls through to whatever is beneath
@@ -215,10 +201,29 @@ export const Modal: FC<{
                 type="submit"
                 loading={submitting}
                 disabled={submitting}
-                className="flex-1"
+                className="w-full"
               >
-                {t('generate', 'Generate')}
+                <span className="flex items-center gap-[8px]">
+                  {t('generate', 'Generate')}
+                  {/* Outside the settings' scroll, so the price of the video
+                      as set is always in sight. None with billing off. */}
+                  {cost.credits !== undefined && (
+                    <CreditsAmount
+                      amount={cost.credits}
+                      className="ms-[2px] font-[600] opacity-80"
+                      size={14}
+                    />
+                  )}
+                </span>
               </Button>
+              {cost.short && (
+                <CreditsShortNote
+                  message={t(
+                    'not_enough_credits_for_video',
+                    "You don't have enough credits for this video."
+                  )}
+                />
+              )}
             </div>
           </div>
         </FormProvider>
@@ -361,9 +366,11 @@ export const AiVideo: FC<{
       title: (
         <div className="flex items-baseline gap-[10px]">
           <span>{t('generate_video', 'Generate video')}</span>
-          {/* Credits slot: `Modal` portals "N credits left" in here once a
-              provider is picked, so it is empty (and invisible) until then. */}
-          <span className="top-title-content text-[13px] font-[500] text-pqMuted" />
+          {/* The balance, read here rather than portalled in from the body:
+              a portal aimed before the title was mounted drew nowhere once
+              the balance was already loaded. What the video costs is shown
+              by the generator's own settings. */}
+          <CreditsLeft className="text-[13px] font-[500] text-pqMuted" />
         </div>
       ),
       children: (close) => (

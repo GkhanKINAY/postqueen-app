@@ -78,7 +78,8 @@ export class CreditsRepository {
   constructor(
     private _creditGrant: PrismaRepository<'creditGrant'>,
     private _creditAllocation: PrismaRepository<'creditAllocation'>,
-    private _transaction: PrismaTransaction
+    private _transaction: PrismaTransaction,
+    private _credits: PrismaRepository<'credits'>
   ) {}
 
   // Every write to an organization's balance runs under this one lock, so two
@@ -157,75 +158,79 @@ export class CreditsRepository {
 
     return this._transaction.model.$transaction(async (tx) => {
       await this.lock(tx, organizationId);
-
-      const existing = await tx.credits.findUnique({
-        where: {
-          organizationId_idempotencyKey: {
-            organizationId,
-            idempotencyKey: spend.key,
-          },
-        },
-        select: { id: true },
-      });
-      if (existing) {
-        return { id: existing.id, charged: false };
-      }
-
-      const grants = await tx.creditGrant.findMany({
-        where: this.liveGrants(organizationId),
-        orderBy: this.spendOrder(),
-        select: { id: true, remaining: true },
-      });
-      const debt = await tx.creditAllocation.aggregate({
-        where: this.debt(organizationId),
-        _sum: { amount: true },
-      });
-
-      const available =
-        grants.reduce((sum, grant) => sum + grant.remaining, 0) -
-        (debt._sum.amount || 0);
-
-      if (spend.amount > available && !spend.allowOverdraft) {
-        throw insufficientCredits(spend.amount, available);
-      }
-
-      const created = await tx.credits.create({
-        data: {
-          organizationId,
-          type: 'credits',
-          credits: spend.amount,
-          idempotencyKey: spend.key,
-          action: spend.action,
-          status: 'settled',
-          meta: spend.meta,
-        },
-        select: { id: true },
-      });
-
-      let left = spend.amount;
-      for (const grant of grants) {
-        if (!left) {
-          break;
-        }
-        const take = Math.min(grant.remaining, left);
-        await tx.creditGrant.update({
-          where: { id: grant.id },
-          data: { remaining: { decrement: take } },
-        });
-        await tx.creditAllocation.create({
-          data: { spendId: created.id, grantId: grant.id, amount: take },
-        });
-        left -= take;
-      }
-
-      if (left) {
-        await tx.creditAllocation.create({
-          data: { spendId: created.id, grantId: null, amount: left },
-        });
-      }
-
-      return { id: created.id, charged: true };
+      return this.spendIn(tx, organizationId, spend);
     });
+  }
+
+  // A spend inside a transaction that already holds the lock.
+  private async spendIn(tx: Tx, organizationId: string, spend: CreditSpend) {
+    const existing = await tx.credits.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId,
+          idempotencyKey: spend.key,
+        },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      return { id: existing.id, charged: false };
+    }
+
+    const grants = await tx.creditGrant.findMany({
+      where: this.liveGrants(organizationId),
+      orderBy: this.spendOrder(),
+      select: { id: true, remaining: true },
+    });
+    const debt = await tx.creditAllocation.aggregate({
+      where: this.debt(organizationId),
+      _sum: { amount: true },
+    });
+
+    const available =
+      grants.reduce((sum, grant) => sum + grant.remaining, 0) -
+      (debt._sum.amount || 0);
+
+    if (spend.amount > available && !spend.allowOverdraft) {
+      throw insufficientCredits(spend.amount, available);
+    }
+
+    const created = await tx.credits.create({
+      data: {
+        organizationId,
+        type: 'credits',
+        credits: spend.amount,
+        idempotencyKey: spend.key,
+        action: spend.action,
+        status: 'settled',
+        meta: spend.meta,
+      },
+      select: { id: true },
+    });
+
+    let left = spend.amount;
+    for (const grant of grants) {
+      if (!left) {
+        break;
+      }
+      const take = Math.min(grant.remaining, left);
+      await tx.creditGrant.update({
+        where: { id: grant.id },
+        data: { remaining: { decrement: take } },
+      });
+      await tx.creditAllocation.create({
+        data: { spendId: created.id, grantId: grant.id, amount: take },
+      });
+      left -= take;
+    }
+
+    if (left) {
+      await tx.creditAllocation.create({
+        data: { spendId: created.id, grantId: null, amount: left },
+      });
+    }
+
+    return { id: created.id, charged: true };
   }
 
   /**
@@ -240,75 +245,187 @@ export class CreditsRepository {
   async refund(organizationId: string, key: string) {
     return this._transaction.model.$transaction(async (tx) => {
       await this.lock(tx, organizationId);
+      return this.refundIn(tx, organizationId, key);
+    });
+  }
 
-      const spend = await tx.credits.findUnique({
-        where: {
-          organizationId_idempotencyKey: {
-            organizationId,
-            idempotencyKey: key,
-          },
+  /**
+   * Hands a reservation back: a refund, except that parts whose grant has
+   * expired meanwhile are not given back. A reservation can be held for
+   * weeks, and handing back what expired while it was held would carry a
+   * period's credits into the next one.
+   */
+  async release(organizationId: string, key: string) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+      return this.refundIn(tx, organizationId, key, false);
+    });
+  }
+
+  // A refund inside a transaction that already holds the lock.
+  private async refundIn(
+    tx: Tx,
+    organizationId: string,
+    key: string,
+    keepExpired = true
+  ) {
+    const spend = await tx.credits.findUnique({
+      where: {
+        organizationId_idempotencyKey: {
+          organizationId,
+          idempotencyKey: key,
         },
-        select: {
-          id: true,
-          status: true,
-          allocations: {
-            select: {
-              amount: true,
-              grant: {
-                select: { id: true, expiresAt: true, revokedAt: true },
-              },
+      },
+      select: {
+        id: true,
+        status: true,
+        allocations: {
+          select: {
+            amount: true,
+            grant: {
+              select: { id: true, expiresAt: true, revokedAt: true },
             },
           },
         },
-      });
+      },
+    });
 
-      if (!spend || spend.status === 'refunded') {
+    if (!spend || spend.status === 'refunded') {
+      return false;
+    }
+
+    const now = new Date();
+    let expired = 0;
+    for (const allocation of spend.allocations) {
+      const grant = allocation.grant;
+      // No grant: never paid for, the debt goes with the allocation.
+      if (!grant || grant.revokedAt) {
+        continue;
+      }
+      if (grant.expiresAt && grant.expiresAt <= now) {
+        expired += keepExpired ? allocation.amount : 0;
+        continue;
+      }
+      await tx.creditGrant.update({
+        where: { id: grant.id },
+        data: { remaining: { increment: allocation.amount } },
+      });
+    }
+
+    await tx.creditAllocation.deleteMany({ where: { spendId: spend.id } });
+    await tx.credits.update({
+      where: { id: spend.id },
+      data: {
+        status: 'refunded',
+        idempotencyKey: `${key}#refunded:${spend.id}`,
+      },
+    });
+
+    if (expired) {
+      await tx.creditGrant.create({
+        data: {
+          organizationId,
+          source: 'refund',
+          amount: expired,
+          remaining: expired,
+          expiresAt: dayjs(now).add(CREDIT_REFUND_DAYS, 'day').toDate(),
+          externalRef: `refund:${spend.id}`,
+        },
+      });
+    }
+
+    await this.payDebt(tx, organizationId);
+    return true;
+  }
+
+  /**
+   * Sets aside what a piece of work will cost when it runs, under its key.
+   * The first call charges it, a later one with another amount replaces it
+   * (the old amount is handed back first, so only the difference has to be
+   * free), and an amount of 0 releases it, as `release` does. One
+   * transaction, so a reservation is never left released without being made
+   * again.
+   */
+  async reserve(organizationId: string, spend: CreditSpend) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+
+      const existing = await tx.credits.findUnique({
+        where: {
+          organizationId_idempotencyKey: {
+            organizationId,
+            idempotencyKey: spend.key,
+          },
+        },
+        select: { id: true, credits: true },
+      });
+      if (existing?.credits === spend.amount) {
+        return { id: existing.id, charged: false };
+      }
+      if (existing) {
+        await this.refundIn(tx, organizationId, spend.key, false);
+      }
+      if (!spend.amount) {
+        return { id: null, charged: false };
+      }
+
+      assertAmount(spend.amount);
+      return this.spendIn(tx, organizationId, spend);
+    });
+  }
+
+  /**
+   * Marks a reservation as used by the work it was made for: the key gains
+   * `@<suffix>`, which keeps the charge and frees the key for the next time
+   * the same work is reserved (a repeating post's next run). Settling the
+   * same use twice finds it already done.
+   */
+  async settle(organizationId: string, key: string, suffix: string) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+
+      const used = await tx.credits.findUnique({
+        where: {
+          organizationId_idempotencyKey: {
+            organizationId,
+            idempotencyKey: `${key}@${suffix}`,
+          },
+        },
+        select: { id: true },
+      });
+      if (used) {
         return false;
       }
 
-      const now = new Date();
-      let expired = 0;
-      for (const allocation of spend.allocations) {
-        const grant = allocation.grant;
-        // No grant: never paid for, the debt goes with the allocation.
-        if (!grant || grant.revokedAt) {
-          continue;
-        }
-        if (grant.expiresAt && grant.expiresAt <= now) {
-          expired += allocation.amount;
-          continue;
-        }
-        await tx.creditGrant.update({
-          where: { id: grant.id },
-          data: { remaining: { increment: allocation.amount } },
-        });
-      }
-
-      await tx.creditAllocation.deleteMany({ where: { spendId: spend.id } });
-      await tx.credits.update({
-        where: { id: spend.id },
-        data: {
-          status: 'refunded',
-          idempotencyKey: `${key}#refunded:${spend.id}`,
-        },
+      const { count } = await tx.credits.updateMany({
+        where: { organizationId, idempotencyKey: key, status: 'settled' },
+        data: { idempotencyKey: `${key}@${suffix}` },
       });
-
-      if (expired) {
-        await tx.creditGrant.create({
-          data: {
-            organizationId,
-            source: 'refund',
-            amount: expired,
-            remaining: expired,
-            expiresAt: dayjs(now).add(CREDIT_REFUND_DAYS, 'day').toDate(),
-            externalRef: `refund:${spend.id}`,
-          },
-        });
-      }
-
-      await this.payDebt(tx, organizationId);
-      return true;
+      return count > 0;
     });
+  }
+
+  /** The reservations under a prefix still open: made, not yet used or
+   * released. */
+  reservations(organizationId: string, prefix: string) {
+    return this._credits.model.credits.findMany({
+      where: {
+        organizationId,
+        status: 'settled',
+        idempotencyKey: { startsWith: prefix },
+        NOT: { idempotencyKey: { contains: '@' } },
+      },
+      select: { idempotencyKey: true, credits: true },
+    });
+  }
+
+  /** Whether anything was ever reserved under a prefix, used, released or
+   * still open. */
+  async everReserved(organizationId: string, prefix: string) {
+    return !!(await this._credits.model.credits.findFirst({
+      where: { organizationId, idempotencyKey: { startsWith: prefix } },
+      select: { id: true },
+    }));
   }
 
   /** Adds credits once per `externalRef`, paying off any debt first. */
@@ -407,6 +524,20 @@ export class CreditsRepository {
       await this.lock(tx, organizationId);
       return tx.creditGrant.updateMany({
         where: this.current(organizationId, sources),
+        data: { revokedAt: new Date() },
+      });
+    });
+  }
+
+  /**
+   * Takes back what is left of the grant a payment bought: a pack refunded in
+   * full or disputed. What was already spent stays spent.
+   */
+  async revokeByPaymentRef(organizationId: string, paymentRef: string) {
+    return this._transaction.model.$transaction(async (tx) => {
+      await this.lock(tx, organizationId);
+      return tx.creditGrant.updateMany({
+        where: { organizationId, paymentRef, revokedAt: null },
         data: { revokedAt: new Date() },
       });
     });

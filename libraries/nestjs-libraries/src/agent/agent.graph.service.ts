@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import {
   BaseMessage,
   HumanMessage,
@@ -16,6 +16,9 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { AI_FIXED_CREDIT_COSTS_PROPOSAL } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
 const tools = !process.env.TAVILY_API_KEY
   ? []
@@ -36,6 +39,8 @@ const dalle = new DallEAPIWrapper({
 interface WorkflowChannelsState {
   messages: BaseMessage[];
   orgId: string;
+  /** The run's charge; its pictures are charged under it with `:pictures`. */
+  creditKey: string;
   question: string;
   hook?: string;
   fresearch?: string;
@@ -104,10 +109,12 @@ const contentZod = (
 
 @Injectable()
 export class AgentGraphService {
+  private readonly logger = new Logger(AgentGraphService.name);
   private storage = UploadFactory.createStorage();
   constructor(
     private _postsService: PostsService,
-    private _mediaService: MediaService
+    private _mediaService: MediaService,
+    private _creditsService: CreditsService
   ) {}
   static state = () =>
     new StateGraph<WorkflowChannelsState>({
@@ -122,6 +129,7 @@ export class AgentGraphService {
         tone: null,
         question: null,
         orgId: null,
+        creditKey: null,
         hook: null,
         content: null,
         date: null,
@@ -314,31 +322,64 @@ export class AgentGraphService {
     return {};
   }
 
+  // One picture per post of the thread, known only now, so they are charged
+  // here and handed back if they cannot be made. A balance that cannot pay
+  // for them all leaves the posts without pictures rather than failing a run
+  // whose text is already written.
   async generatePictures(state: WorkflowChannelsState) {
     if (!state.isPicture) {
       return {};
     }
 
+    const content = state.content || [];
     try {
-      const newContent = await Promise.all(
-        (state.content || []).map(async (p) => {
-          const image = await dalle.invoke(p.prompt!);
-          return {
-            ...p,
-            image,
-          };
-        })
+      const newContent = await this._creditsService.withCredits(
+        state.orgId,
+        {
+          key: `${state.creditKey}:pictures`,
+          amount:
+            content.length * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
+          action: 'generator_image',
+          meta: { count: content.length },
+        },
+        () =>
+          Promise.all(
+            content.map(async (p) => {
+              const image = await dalle.invoke(p.prompt!);
+              return {
+                ...p,
+                image,
+              };
+            })
+          )
       );
 
       return {
         content: newContent,
       };
     } catch (err) {
+      if (err instanceof HttpException && err.getStatus() === 402) {
+        return {};
+      }
       throw generationError(err);
     }
   }
 
   async uploadPictures(state: WorkflowChannelsState) {
+    try {
+      return await this.savePictures(state);
+    } catch (err) {
+      // Made and paid for, but they did not all reach the library, and the
+      // run fails with them.
+      await this._creditsService.refund(
+        state.orgId,
+        `${state.creditKey}:pictures`
+      );
+      throw err;
+    }
+  }
+
+  private async savePictures(state: WorkflowChannelsState) {
     const all = await Promise.all(
       (state.content || []).map(async (p) => {
         if (p.image) {
@@ -375,7 +416,55 @@ export class AgentGraphService {
     return { date: await this._postsService.findFreeDateTime(state.orgId) };
   }
 
-  start(orgId: string, body: GeneratorDto) {
+  /**
+   * Refused before anything starts: the route has no close handler, so a
+   * request that is cancelled still runs to the end. The text and the fewest
+   * pictures the format can have (a thread has at least two posts).
+   */
+  assertCredits(orgId: string, body: GeneratorDto) {
+    const pictures = !body.isPicture
+      ? 0
+      : body.format === 'one_short' || body.format === 'one_long'
+      ? 1
+      : 2;
+    return this._creditsService.assertAvailable(
+      orgId,
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.generator +
+        pictures * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture
+    );
+  }
+
+  /**
+   * The run, paid for from the credits balance: the text first, then the
+   * pictures once their number is known. The text streams as it is written,
+   * but the app opens only a finished run, so a run that fails is handed
+   * back whole, pictures included: a step after them can still fail it.
+   */
+  async *start(orgId: string, body: GeneratorDto) {
+    const creditKey = `generator:${makeId(20)}`;
+    await this._creditsService.spend(orgId, {
+      key: creditKey,
+      amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.generator,
+      action: 'generator',
+      meta: { format: body.format, isPicture: body.isPicture },
+    });
+    try {
+      yield* this.run(orgId, creditKey, body);
+    } catch (err) {
+      // A key that was never charged hands back nothing. A refund that
+      // cannot be written is logged, and the run's own error is the answer.
+      for (const key of [creditKey, `${creditKey}:pictures`]) {
+        await this._creditsService
+          .refund(orgId, key)
+          .catch((refundErr) =>
+            this.logger.error(`Could not refund ${key}: ${refundErr}`)
+          );
+      }
+      throw err;
+    }
+  }
+
+  private run(orgId: string, creditKey: string, body: GeneratorDto) {
     const state = AgentGraphService.state();
     const workflow = state
       .addNode('agent', this.startCall.bind(this))
@@ -416,6 +505,7 @@ export class AgentGraphService {
         format: body.format,
         tone: body.tone,
         orgId,
+        creditKey,
       },
       {
         streamMode: 'values',

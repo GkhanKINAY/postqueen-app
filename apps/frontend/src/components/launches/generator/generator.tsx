@@ -153,6 +153,11 @@ const FirstStep: FC = () => {
           body: JSON.stringify(value),
           signal: controller.signal,
         });
+        // Not enough credits: the Payment Required dialog has already said
+        // so (402 when it was dismissed, 499 when it sent them to Billing).
+        if (response.status === 402 || response.status === 499) {
+          return;
+        }
         if (!response.body) {
           throw new Error(
             t(

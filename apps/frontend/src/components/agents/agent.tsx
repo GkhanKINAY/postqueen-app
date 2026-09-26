@@ -36,6 +36,7 @@ import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anch
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useClickOutside } from '@mantine/hooks';
+import { CopilotCreditsChip } from '@gitroom/frontend/components/agents/agent.credits';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -851,17 +852,10 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
                   'ai_lock_perk_chat',
                   'Copilot chat that drafts and schedules for you'
                 ),
-                ...(user?.tier?.image_generator
+                ...(user?.tier?.monthly_credits
                   ? [
-                      t('plan_n_ai_images', '{{count}} AI Images per month', {
-                        count: user.tier.image_generation_count,
-                      }),
-                    ]
-                  : []),
-                ...(user?.tier?.generate_videos
-                  ? [
-                      t('plan_n_ai_videos', '{{count}} AI Videos per month', {
-                        count: user.tier.generate_videos,
+                      t('plan_n_credits_month', '{{count}} credits a month', {
+                        count: user.tier.monthly_credits,
                       }),
                     ]
                   : []),
@@ -1598,6 +1592,7 @@ const ChatBar: FC<{ onOpenChats?: () => void }> = ({ onOpenChats }) => {
           </RowIconButton>
         </span>
       )}
+      <CopilotCreditsChip className="ms-auto" />
       {mobile && (
         <Link
           href="/agents"

@@ -408,6 +408,7 @@ export class PostsRepository {
         id: true,
         state: true,
         intervalInDays: true,
+        releaseId: true,
       },
     });
   }

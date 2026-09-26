@@ -1,11 +1,17 @@
 import { Global, Module } from '@nestjs/common';
 import { LoadToolsService } from '@gitroom/nestjs-libraries/chat/load.tools.service';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { CopilotCreditsService } from '@gitroom/nestjs-libraries/chat/copilot.credits.service';
 import { toolList } from '@gitroom/nestjs-libraries/chat/tools/tool.list';
 
 @Global()
 @Module({
-  providers: [MastraService, LoadToolsService, ...toolList],
+  providers: [
+    MastraService,
+    LoadToolsService,
+    CopilotCreditsService,
+    ...toolList,
+  ],
   get exports() {
     return this.providers;
   },

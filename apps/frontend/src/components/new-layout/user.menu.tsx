@@ -17,6 +17,11 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
+import {
+  formatCredits,
+  useCreditsBalance,
+} from '@gitroom/frontend/components/billing/use.credits.balance';
+import { CreditsIcon } from '@gitroom/frontend/components/billing/credits.amount';
 
 /** First initial for the avatar fallback, from name or email. */
 function initialOf(user: { name?: string; email?: string } | undefined) {
@@ -66,6 +71,8 @@ export const UserMenu = () => {
   const { mode, setMode } = useThemeMode();
   const { secondMenu } = useMenuItem();
   const filter = useMenuFilter();
+  // Not fetched with billing off, where nothing is metered.
+  const { data: credits } = useCreditsBalance();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { referenceRef, floatingRef } = useAnchoredPopover<
@@ -157,6 +164,40 @@ export const UserMenu = () => {
         </div>
       </div>
       <Divider className="mx-[4px] mb-[6px]" />
+
+      {/* Leads to Billing only for whoever the Billing row below is shown
+          to; everyone else reads the balance. */}
+      {!!credits &&
+        !credits.unlimited &&
+        (showBilling ? (
+          <button
+            type="button"
+            role="menuitem"
+            data-pq="menu-credits"
+            onClick={() => {
+              setOpen(false);
+              router.push('/billing');
+            }}
+            className={clsx(item, 'text-pqText')}
+          >
+            <CreditsIcon size={16} />
+            <span className="flex-1">{t('credits', 'Credits')}</span>
+            <span className="font-[600] tabular-nums">
+              {formatCredits(credits.balance ?? 0)}
+            </span>
+          </button>
+        ) : (
+          <div
+            data-pq="menu-credits"
+            className={clsx(item, 'text-pqText hover:bg-transparent')}
+          >
+            <CreditsIcon size={16} />
+            <span className="flex-1">{t('credits', 'Credits')}</span>
+            <span className="font-[600] tabular-nums">
+              {formatCredits(credits.balance ?? 0)}
+            </span>
+          </div>
+        ))}
 
       <button
         type="button"

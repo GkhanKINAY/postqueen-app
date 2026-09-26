@@ -35,6 +35,8 @@ import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
 import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
+import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { CopilotCreditsService } from '@gitroom/nestjs-libraries/chat/copilot.credits.service';
 
 export type ChannelsContext = {
   organization: string;
@@ -50,7 +52,9 @@ export type ChannelsContext = {
 export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _mastraService: MastraService
+    private _mastraService: MastraService,
+    private _copilotCreditsService: CopilotCreditsService,
+    private _openaiService: OpenaiService
   ) {}
 
   /**
@@ -115,10 +119,16 @@ export class CopilotController {
   // through its own urql client, which does not go through the customFetch
   // wrapper that turns a 402 into the Payment Required dialog, so a 402 here
   // surfaces as an unhandled CombinedError. Nobody who cannot pass this should
-  // be mounting the provider in the first place.
+  // be mounting the provider in the first place. An empty credits balance is
+  // a 402 too, but only on the calls that run a model (see `assertRun`), so
+  // the provider still mounts and the textarea simply gets no answer.
   @Post('/chat')
   @CheckPolicies([AuthorizationActions.Create, Sections.AI])
-  chatAgent(@Req() req: Request, @Res() res: Response) {
+  async chatAgent(
+    @Req() req: Request,
+    @Res() res: Response,
+    @GetOrgFromRequest() organization: Organization
+  ) {
     if (
       process.env.OPENAI_API_KEY === undefined ||
       process.env.OPENAI_API_KEY === ''
@@ -130,11 +140,18 @@ export class CopilotController {
       return;
     }
 
+    await this._copilotCreditsService.assertRun(organization.id, req?.body);
+
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
       runtime: new CopilotRuntime(),
+      // Its own client, so every call is charged by the tokens it used.
       serviceAdapter: new OpenAIAdapter({
         model: 'gpt-4.1',
+        openai: this._openaiService.meteredClient(
+          organization.id,
+          'copilot_chat'
+        ),
       }),
       cors: this.runtimeCors(),
     });
@@ -188,6 +205,8 @@ export class CopilotController {
       });
       return;
     }
+    await this._copilotCreditsService.assertRun(organization.id, req?.body);
+
     const properties = this.readProperties(req);
     const surface: CopilotSurface =
       properties.surface === 'composer' ? 'composer' : 'agent';

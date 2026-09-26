@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { InputGroup } from '@blueprintjs/core';
 import { Clean } from '@blueprintjs/icons';
@@ -8,35 +8,36 @@ import { SectionTab } from 'polotno/side-panel';
 import { getImageSize } from 'polotno/utils/image';
 import { ImagesGrid } from 'polotno/side-panel/images-grid';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import useSWR from 'swr';
 import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  imageCreditCost,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  formatCredits,
+  useCreditsBalance,
+} from '@gitroom/frontend/components/billing/use.credits.balance';
+
+// This tab makes a medium, square image, the route's default.
+const COST = toCredits(imageCreditCost('medium', 'square'));
+
 const GenerateTab = observer(({ store }: any) => {
   const inputRef = React.useRef<any>(null);
   const [image, setImage] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const { billingEnabled } = useVariables();
   const fetch = useFetch();
   const toast = useToaster();
-  const loadCredits = useCallback(async () => {
-    if (!billingEnabled) {
-      return {
-        credits: 1000,
-      };
-    }
-    return (
-      await fetch(`/copilot/credits`, {
-        method: 'GET',
-      })
-    ).json();
-  }, []);
-  const { data, mutate } = useSWR('copilot-credits', loadCredits);
+  const { data, mutate } = useCreditsBalance();
+  const short = !!data && !data.unlimited && (data.balance ?? 0) < COST;
   const t = useT();
 
   const handleGenerate = async () => {
-    if (data?.credits <= 0) {
+    // Read at click time, not from the cache: credits bought in the Billing
+    // tab this opened must not still read as short here.
+    const fresh = await mutate();
+    if (fresh && !fresh.unlimited && (fresh.balance ?? 0) < COST) {
       window.open('/billing', '_blank');
       return;
     }
@@ -53,11 +54,15 @@ const GenerateTab = observer(({ store }: any) => {
       }),
     });
     setLoading(false);
+    mutate();
+    // A 402 has already been explained by the Payment Required dialog, and
+    // choosing Move to billing there answers customFetch's own 499.
     if (!req.ok) {
-      alert('Something went wrong, please try again later...');
+      if (req.status !== 402 && req.status !== 499) {
+        alert('Something went wrong, please try again later...');
+      }
       return;
     }
-    mutate();
     const newData = await req.json();
     setImage(newData.output);
   };
@@ -70,7 +75,11 @@ const GenerateTab = observer(({ store }: any) => {
         }}
       >
         {t('generate_image_with_ai', 'Generate image with AI')}
-        {data?.credits ? `(${data?.credits} left)` : ``}
+        {data && !data.unlimited
+          ? ` (${t('credits_balance_left', '{{amount}} credits left', {
+              amount: formatCredits(data.balance ?? 0),
+            })})`
+          : ``}
       </div>
       <InputGroup
         placeholder="Type your image generation prompt here..."
@@ -92,7 +101,9 @@ const GenerateTab = observer(({ store }: any) => {
           marginBottom: '40px',
         }}
       >
-        {data?.credits <= 0 ? 'Click to purchase more credits' : 'Generate'}
+        {short
+          ? t('get_more_credits', 'Get more credits')
+          : t('generate', 'Generate')}
       </Button>
       {image && (
         <ImagesGrid

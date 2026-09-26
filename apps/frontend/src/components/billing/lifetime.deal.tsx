@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -405,7 +405,9 @@ export const FoundingMember: FC<{
  */
 export const FoundingPaidSurface: FC<{
   memberSince?: string | Date | null;
-}> = ({ memberSince }) => {
+  /** Under the membership card, above the payment row (the credits card). */
+  extra?: ReactNode;
+}> = ({ memberSince, extra }) => {
   const t = useT();
   const user = useUser();
   return (
@@ -421,6 +423,7 @@ export const FoundingPaidSurface: FC<{
         trialing={false}
         memberSince={memberSince}
       />
+      {extra}
       <BillingPortalRow lifetime />
       <FAQComponent />
     </div>

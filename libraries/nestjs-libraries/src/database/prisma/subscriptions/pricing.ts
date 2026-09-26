@@ -540,3 +540,156 @@ export const planCredits = (
   (pricing[normalizeTier(tier) || '']?.monthly_credits || 0) *
   (period === 'YEARLY' && !trial ? 12 : 1) *
   CREDIT_UNIT;
+
+export const IMAGE_QUALITIES = ['low', 'medium', 'high'] as const;
+export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
+
+/**
+ * What one AI image costs, in hundredths, by quality and shape: a portrait or
+ * landscape image is larger than a square one and the model charges more for
+ * it. The prompt rewrite that comes first is included.
+ */
+export const IMAGE_CREDIT_COSTS: Record<
+  ImageQuality,
+  { square: number; wide: number }
+> = {
+  low: { square: 30, wide: 40 },
+  medium: { square: 100, wide: 130 },
+  high: { square: 350, wide: 500 },
+};
+
+export const imageCreditCost = (
+  quality: ImageQuality = 'medium',
+  orientation: 'square' | 'portrait' | 'landscape' = 'square'
+) =>
+  IMAGE_CREDIT_COSTS[quality][orientation === 'square' ? 'square' : 'wide'];
+
+/**
+ * What a model's tokens cost, in credits per thousand, by the rule every AI
+ * price here follows: the provider's price times 25. gpt-5.2 is $1.75 in and
+ * $14 out a million tokens, gpt-4.1 $2 and $8. Input includes the cached part
+ * of the prompt at the full rate, though OpenAI bills it at a tenth, so a
+ * long thread pays more than 25 times its cost. Output includes reasoning.
+ */
+export const LLM_CREDIT_RATES: Record<
+  string,
+  { input: number; output: number }
+> = {
+  'gpt-5.2': { input: 0.044, output: 0.35 },
+  'gpt-4.1': { input: 0.05, output: 0.2 },
+};
+
+// A model not in the table pays the highest of each rate, so a model swapped
+// in without a price is never cheaper than the ones that have one.
+const HIGHEST_LLM_RATE = {
+  input: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.input)),
+  output: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.output)),
+};
+
+/** The model answers with a snapshot of it: gpt-4.1-2025-04-14 is gpt-4.1. */
+export const llmCreditRate = (model?: string | null) =>
+  LLM_CREDIT_RATES[(model || '').replace(/-\d{4}-\d{2}-\d{2}$/, '')] ||
+  HIGHEST_LLM_RATE;
+
+/**
+ * What one model call costs, in hundredths, rounded up. Worked in hundredths
+ * a million tokens so the sum is whole numbers and never drifts.
+ */
+export const llmCreditCost = (
+  model: string | null | undefined,
+  inputTokens: number,
+  outputTokens: number
+) => {
+  const rate = llmCreditRate(model);
+  const perMillion = (credits: number) =>
+    Math.round(credits * CREDIT_UNIT * 1000);
+  return Math.ceil(
+    (Math.max(0, inputTokens || 0) * perMillion(rate.input) +
+      Math.max(0, outputTokens || 0) * perMillion(rate.output)) /
+      1_000_000
+  );
+};
+
+/**
+ * What a Copilot turn needs to start, in hundredths: any credit at all. A
+ * turn costs what its tokens cost, which is only known once it has run, so
+ * one that starts with a positive balance runs to the end and may leave it
+ * below zero. Only an empty balance is refused.
+ */
+export const LLM_TURN_MINIMUM = 1;
+
+/**
+ * How far below zero the rest of a turn may still start, in hundredths.
+ * CopilotKit runs the agent again after every frontend tool (a Post Preview
+ * card) to finish the turn, and that run must not be refused because the
+ * turn's own first steps crossed zero. Bounded, because what makes a run a
+ * continuation is the message list the client sends.
+ */
+export const LLM_CONTINUATION_FLOOR = -500;
+
+/**
+ * PROPOSAL, NOT DECIDED: the owner confirms these. What the older AI features
+ * take per call, in hundredths, estimated by the same rule (provider cost
+ * times 25) because they cannot report their tokens:
+ * - `generator`: POST /posts/generator, about five gpt-4.1 calls over a web
+ *   search's results plus the Tavily search itself, about $0.05.
+ * - `generatorPicture`: each picture it makes, priced as a medium square AI
+ *   image (`imageCreditCost`).
+ * - `autopostText`: one gpt-4.1 call on a feed item (read up to 8,000
+ *   characters), about $0.01.
+ * - `autopostPicture`: a gpt-4.1 call for the prompt, then a standard
+ *   1024x1024 dall-e-3 image ($0.04).
+ * - `separatePosts`: one gpt-4.1 call on the post (up to 20,000 characters),
+ *   a few more when a part has to be shortened, about $0.01 for a usual
+ *   post and several times that at the limit.
+ */
+export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
+  generator: 125,
+  generatorPicture: imageCreditCost('medium', 'square'),
+  autopostText: 25,
+  autopostPicture: 110,
+  separatePosts: 25,
+};
+
+/**
+ * What X bills PostQueen for each call, in hundredths, by the same rule:
+ * X's price times 25, rounded up. X bills a read of the same post or user
+ * once per UTC day, and a post whose text carries a link at over ten times
+ * the price of one without.
+ * - `post`: a post, or one item of a thread, $0.015.
+ * - `postWithLink`: a post whose text carries a link, $0.20.
+ * - `postRead`: reading one post (a plug checking its likes), $0.005.
+ * - `userRead`: reading one user (a mention search, the account's
+ *   subscription), $0.010.
+ * - `interaction`: a repost, $0.015.
+ */
+/**
+ * When posts started to cost credits. A post saved before this with nothing
+ * reserved for it was scheduled under the old rules and goes out free; one
+ * saved after it always pays. Set just after the release that brings it, so
+ * a post saved by the version before is never charged at publish.
+ */
+export const PUBLISH_CREDITS_SINCE = new Date('2026-09-28T00:00:00Z');
+
+export const X_CREDIT_COSTS = {
+  post: 40,
+  postWithLink: 500,
+  postRead: 13,
+  userRead: 25,
+  interaction: 40,
+};
+
+/**
+ * Credits sold on their own, on top of a plan, in whole credits and whole
+ * dollars. The larger packs cost less a credit. Bought credits outlive the
+ * plan's: they stay spendable for `CREDIT_PACK_MONTHS`.
+ */
+export const CREDIT_PACKS = [
+  { id: 'credits_100', credits: 100, price: 10 },
+  { id: 'credits_500', credits: 500, price: 45 },
+  { id: 'credits_1000', credits: 1000, price: 80 },
+] as const;
+
+export type CreditPackId = (typeof CREDIT_PACKS)[number]['id'];
+
+export const CREDIT_PACK_MONTHS = 12;

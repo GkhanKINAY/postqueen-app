@@ -23,22 +23,17 @@ import {
   discardTempFile,
   spooledFileInterceptor,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
-import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { GenerateImageDto } from '@gitroom/nestjs-libraries/dtos/media/generate.image.dto';
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.function.dto';
-import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 
 @ApiTags('Media')
 @Controller('/media')
 export class MediaController {
   private storage = UploadFactory.createStorage();
-  constructor(
-    private _mediaService: MediaService,
-    private _subscriptionService: SubscriptionService
-  ) {}
+  constructor(private _mediaService: MediaService) {}
 
   @Delete('/:id')
   deleteMedia(@GetOrgFromRequest() org: Organization, @Param('id') id: string) {
@@ -80,6 +75,14 @@ export class MediaController {
     return this._mediaService.getGenerateVideoStatus(org, jobId);
   }
 
+  // What a video with these settings costs, shown before it is made.
+  @Post('/generate-video/quote')
+  quoteVideo(@Body() body: VideoDto) {
+    return this._mediaService.quoteVideo(body);
+  }
+
+  // A short balance is refused by the charge itself, with a 402 that says
+  // what the image costs and what is left.
   @Post('/generate-image')
   async generateImage(
     @GetOrgFromRequest() org: Organization,
@@ -87,11 +90,6 @@ export class MediaController {
     @Body('prompt') prompt: string,
     isPicturePrompt = false
   ) {
-    const total = await this._subscriptionService.checkCredits(org);
-    if (isBillingEnabled() && total.credits <= 0) {
-      return false;
-    }
-
     return {
       output:
         'data:image/png;base64,' +
@@ -100,19 +98,15 @@ export class MediaController {
   }
 
   @Post('/generate-image-with-prompt')
-  async generateImageFromText(
+  generateImageFromText(
     @GetOrgFromRequest() org: Organization,
     @Body() body: GenerateImageDto
   ) {
-    const total = await this._subscriptionService.checkCredits(org);
-    if (isBillingEnabled() && total.credits <= 0) {
-      return false;
-    }
-
     return this._mediaService.generateImageToLibrary(
       org,
       body.prompt,
-      body.orientation
+      body.orientation,
+      body.quality
     );
   }
 

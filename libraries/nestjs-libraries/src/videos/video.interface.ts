@@ -31,6 +31,13 @@ export abstract class VideoAbstract<T> {
     output: 'vertical' | 'horizontal',
     customParams?: T
   ): Promise<VideoOutput>;
+
+  /**
+   * What generating this video costs, in hundredths of a credit, for these
+   * parameters. Each generator prices itself: what a provider charges for a
+   * second of video, and which options change it, is the generator's to know.
+   */
+  abstract cost(output: 'vertical' | 'horizontal', customParams?: T): number;
 }
 
 export interface VideoParams {

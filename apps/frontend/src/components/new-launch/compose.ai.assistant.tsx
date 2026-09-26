@@ -70,6 +70,13 @@ import AutoResizingTextarea from '@gitroom/frontend/components/agents/agent.text
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { draftContentHtml } from '@gitroom/frontend/components/agents/agent.draft.card';
 import {
+  CopilotCreditsChip,
+  CopilotCreditsContext,
+  CopilotCreditsNotice,
+  useCopilotCreditsOut,
+  useCopilotCreditsWatch,
+} from '@gitroom/frontend/components/agents/agent.credits';
+import {
   CopilotProperties,
   PQ_AI_THREAD_SETTING,
 } from '@gitroom/helpers/utils/copilot.context';
@@ -429,7 +436,7 @@ const ComposeAiStartOver: FC = () => {
       type="button"
       data-pq="composer-ai-start-over"
       onClick={startOver}
-      className="me-[12px] mt-[8px] flex h-[30px] shrink-0 items-center gap-[6px] self-end rounded-[8px] px-[9px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText mobile:h-[44px]"
+      className="flex h-[30px] shrink-0 items-center gap-[6px] rounded-[8px] px-[9px] text-[12.5px] font-[600] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText mobile:h-[44px]"
     >
       <svg
         viewBox="0 0 24 24"
@@ -457,11 +464,14 @@ const ComposeAiStartOver: FC = () => {
  * run on unmount), so every tool call of a turn can be drawn.
  */
 const ComposerLiveBridge: FC<{ children: ReactNode }> = ({ children }) => {
-  const { messages } = useCopilotChatInternal();
+  const { isLoading, messages } = useCopilotChatInternal();
+  const credits = useCopilotCreditsWatch(isLoading);
   const value = useMemo(() => ({ messages }), [messages]);
   return (
     <LiveMessagesContext.Provider value={value}>
-      {children}
+      <CopilotCreditsContext.Provider value={credits}>
+        {children}
+      </CopilotCreditsContext.Provider>
     </LiveMessagesContext.Provider>
   );
 };
@@ -500,6 +510,7 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
 }) => {
   const t = useT();
   const { markUsed } = useComposerThread();
+  const { empty: outOfCredits } = useCopilotCreditsOut();
   if (!suggestions.length) {
     return null;
   }
@@ -522,7 +533,7 @@ const ComposeAiSuggestionList: FC<RenderSuggestionsListProps> = ({
             <button
               key={suggestion.title}
               type="button"
-              disabled={isLoading}
+              disabled={isLoading || outOfCredits}
               onClick={() => {
                 markUsed();
                 onSuggestionClick(suggestion.message);
@@ -564,13 +575,14 @@ const ComposeAiInput: FC<InputProps> = ({
   const t = useT();
   const context = useChatContext();
   const { markUsed } = useComposerThread();
+  const { empty: outOfCredits } = useCopilotCreditsOut();
   const [text, setText] = useState('');
   if (!isVisible) {
     return null;
   }
   const send = () => {
     const next = text.trim();
-    if (inProgress || !next) {
+    if (inProgress || outOfCredits || !next) {
       return;
     }
     markUsed();
@@ -580,6 +592,7 @@ const ComposeAiInput: FC<InputProps> = ({
   const showStop = inProgress && !hideStopButton;
   return (
     <div className="copilotKitInputContainer">
+      <CopilotCreditsNotice className="mb-[8px]" />
       <div className="copilotKitInput flex items-end gap-[8px]">
         <div className="min-h-[36px] flex-1 resize-none">
           <AutoResizingTextarea
@@ -600,7 +613,7 @@ const ComposeAiInput: FC<InputProps> = ({
         </div>
         <button
           type="button"
-          disabled={!showStop && !text.trim()}
+          disabled={!showStop && (!text.trim() || outOfCredits)}
           onClick={showStop ? onStop : send}
           data-pq="composer-ai-send"
           aria-label={showStop ? t('stop', 'Stop') : t('send', 'Send')}
@@ -892,7 +905,7 @@ type GeneratedImageResult =
 /** The model's reading of a failure; the person gets the translated copy. */
 const imageFailureForModel = (failure: GenerateImageFailure) =>
   failure.reason === 'credits'
-    ? 'Out of AI credits for this month.'
+    ? 'The account does not have enough credits for this image.'
     : failure.reason === 'cancelled'
     ? 'The person cancelled the image generation.'
     : failure.message || 'Could not generate an image.';
@@ -1652,17 +1665,10 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
               'ai_lock_perk_chat',
               'Copilot chat that drafts and schedules for you'
             ),
-            ...(user?.tier?.image_generator
+            ...(user?.tier?.monthly_credits
               ? [
-                  t('plan_n_ai_images', '{{count}} AI Images per month', {
-                    count: user.tier.image_generation_count,
-                  }),
-                ]
-              : []),
-            ...(user?.tier?.generate_videos
-              ? [
-                  t('plan_n_ai_videos', '{{count}} AI Videos per month', {
-                    count: user.tier.generate_videos,
+                  t('plan_n_credits_month', '{{count}} credits a month', {
+                    count: user.tier.monthly_credits,
                   }),
                 ]
               : []),
@@ -1673,7 +1679,13 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0 flex flex-col">
             <ComposerLiveBridge>
-              <ComposeAiStartOver />
+              <div
+                data-pq="composer-ai-head"
+                className="flex shrink-0 items-center justify-end gap-[6px] px-[12px] pt-[8px] empty:hidden"
+              >
+                <CopilotCreditsChip />
+                <ComposeAiStartOver />
+              </div>
               <CopilotChat
                 className="min-h-0 w-full flex-1"
                 suggestions={suggestions}

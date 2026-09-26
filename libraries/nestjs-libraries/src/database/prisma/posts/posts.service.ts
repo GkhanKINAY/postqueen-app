@@ -63,7 +63,13 @@ import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validatio
 import { countLength } from '@gitroom/helpers/utils/count.length';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
-import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  PUBLISH_CREDITS_SINCE,
+  pricing,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   AuthorizationActions,
@@ -91,7 +97,8 @@ export class PostsService {
     private _temporalService: TemporalService,
     private _refreshIntegrationService: RefreshIntegrationService,
     private _subscriptionService: SubscriptionService,
-    private _organizationService: OrganizationService
+    private _organizationService: OrganizationService,
+    private _creditsService: CreditsService
   ) {}
 
   /**
@@ -850,6 +857,8 @@ export class PostsService {
 
     if (post?.id) {
       await this.terminatePostWorkflows(post.id);
+      // What was set aside to publish it goes back.
+      await this.syncAfterSave(orgId, post.id);
     }
 
     return { error: true };
@@ -888,6 +897,8 @@ export class PostsService {
 
     await this._postRepository.stopRepeat(orgId, group);
     await this.terminatePostWorkflows(post.id);
+    // The next run's reservation goes back.
+    await this.syncAfterSave(orgId, post.id);
 
     return { id: post.id };
   }
@@ -1131,10 +1142,29 @@ export class PostsService {
           return counted > (maximumCharacters || 1000000);
         });
 
+        // What publishing it costs from the credits balance, set aside when
+        // it is scheduled.
+        const credits = !isBillingEnabled()
+          ? 0
+          : toCredits(
+          value.reduce(
+            (sum, part, index) =>
+              sum +
+              this.publishCost(
+                integration.providerIdentifier,
+                settings,
+                part.content || '',
+                index
+              ),
+            0
+          )
+        );
+
         return {
           id: integration.id,
           identifier: integration.providerIdentifier,
           name: integration.name,
+          credits,
           valid,
           settingsError,
           // The setting the first error is about, so a client that built the
@@ -1383,21 +1413,38 @@ export class PostsService {
       }));
     }
 
+    // What each channel costs to publish is set aside when it is saved to go
+    // out, so the balance is asked about all of them at once, before any is
+    // written.
+    await this.assertPublishCredits(orgId, [body]);
+
     const postList = [];
     for (const post of body.posts) {
-      const { posts } = await this._postRepository.createOrUpdatePost(
-        body.type,
-        orgId,
-        body.type === 'now' ? dayjs().format('YYYY-MM-DDTHH:mm:00') : body.date,
-        post,
-        body.tags,
-        creationMethod,
-        body.inter,
-        keepGroup
-      );
+      const { posts, previousPost } =
+        await this._postRepository.createOrUpdatePost(
+          body.type,
+          orgId,
+          body.type === 'now'
+            ? dayjs().format('YYYY-MM-DDTHH:mm:00')
+            : body.date,
+          post,
+          body.tags,
+          creationMethod,
+          body.inter,
+          keepGroup
+        );
 
       if (!posts?.length) {
         return [] as any[];
+      }
+
+      // Before the workflow can pick it up. An edit that replaced the first
+      // item leaves the old one's reservation to be handed back.
+      for (const rootId of new Set([
+        posts[0].id,
+        previousPost || posts[0].id,
+      ])) {
+        await this.syncAfterSave(orgId, rootId);
       }
 
       if (body.type !== 'update') {
@@ -1593,8 +1640,443 @@ export class PostsService {
     };
   }
 
-  async separatePosts(content: string, len: number) {
-    return this._openaiService.separatePosts(content, len);
+  /** Paid for from the credits balance, and handed back if it fails. */
+  separatePosts(orgId: string, content: string, len: number) {
+    return this._creditsService.withCredits(
+      orgId,
+      {
+        key: `separate:${makeId(20)}`,
+        amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.separatePosts,
+        action: 'separate_posts',
+      },
+      () => this._openaiService.separatePosts(content, len)
+    );
+  }
+
+  // Every item of a post's thread is reserved under the post's id, so all of
+  // a post's reservations share one prefix.
+  private publishKey(rootId: string, partId = '') {
+    return `publish:${rootId}:${partId}`;
+  }
+
+  // What one item of a thread costs to publish, in hundredths: 0 on a
+  // network that does not bill per post. `index` 0 is the post itself. A
+  // "(post:<id>)" placeholder goes out as the link to that post (updateTags),
+  // so it is priced as one.
+  private publishCost(
+    providerIdentifier: string,
+    settings: any,
+    message: string,
+    index: number
+  ) {
+    return (
+      this._integrationManager
+        .getSocialIntegration(providerIdentifier)
+        ?.creditCost?.({
+          type: 'publish',
+          message: (message || '').replace(
+            /\(post:[a-zA-Z0-9-_]+\)/g,
+            'https://postqueen.app/p'
+          ),
+          settings,
+          index,
+        }) || 0
+    );
+  }
+
+  // Whether a network bills each post, and so has reservations to keep.
+  private billsPerPost(providerIdentifier?: string) {
+    return (
+      !!providerIdentifier &&
+      !!this._integrationManager.getSocialIntegration(providerIdentifier)
+        ?.creditCost
+    );
+  }
+
+  private async reservedFor(orgId: string, rootId?: string) {
+    if (!rootId) {
+      return 0;
+    }
+    const open = await this._creditsService.reservations(
+      orgId,
+      this.publishKey(rootId)
+    );
+    return open.reduce((sum, reservation) => sum + reservation.credits, 0);
+  }
+
+  // A post keeps credits set aside while it is going to publish: scheduled,
+  // or published and repeating (for its next run).
+  private reservesPublish(post: {
+    state: State;
+    intervalInDays: number | null;
+    deletedAt?: Date | null;
+  }) {
+    return (
+      !post.deletedAt &&
+      (post.state === 'QUEUE' ||
+        (post.state === 'PUBLISHED' && !!post.intervalInDays))
+    );
+  }
+
+  /**
+   * What saving these posts sets aside for publishing them, in hundredths:
+   * each channel's thread at its network's price, next to what the post
+   * already has reserved (an edit reuses it). `needed` is what the balance
+   * has to cover; below zero, the save hands credits back.
+   */
+  async publishCredits(
+    orgId: string,
+    type: CreatePostDto['type'],
+    posts: CreatePostDto['posts']
+  ) {
+    const priced = (posts || []).filter((post) => post?.integration?.id);
+    const channels = await Promise.all(
+      priced.map(async (post) => {
+        const settings = post.settings as any;
+        const rootId = post.value?.[0]?.id;
+        // Priced by the channel as it is saved, never by what the request
+        // says it is.
+        const providerIdentifier = (
+          await this._integrationService.getIntegrationByIdNotDeleted(
+            orgId,
+            post.integration.id
+          )
+        )?.providerIdentifier;
+        // As it will be saved: every save but an update adds the thread
+        // finisher.
+        const value =
+          type === 'update'
+            ? post.value || []
+            : this.withThreadFinisher(post).value;
+        const cost = providerIdentifier
+          ? value.reduce(
+              (sum: number, part: { content?: string }, index: number) =>
+                sum +
+                this.publishCost(
+                  providerIdentifier,
+                  settings,
+                  part?.content || '',
+                  index
+                ),
+              0
+            )
+          : 0;
+
+        let goesOut = type === 'schedule' || type === 'now';
+        if (type === 'update' && rootId) {
+          const root = await this._postRepository.getPostById(rootId, orgId);
+          goesOut = !!root && this.reservesPublish(root);
+        }
+
+        return {
+          integration: post.integration.id,
+          cost: goesOut ? cost : 0,
+          reserved: await this.reservedFor(orgId, rootId),
+        };
+      })
+    );
+
+    return {
+      channels,
+      needed: channels.reduce(
+        (sum, channel) => sum + channel.cost - channel.reserved,
+        0
+      ),
+    };
+  }
+
+  /**
+   * What publishing these posts will cost, in credits, for the composer to
+   * show while they are written: per channel and in total, and how much of
+   * it the balance still has to cover (an edit reuses what the post has
+   * reserved). Nothing with billing off.
+   */
+  async quotePublishCredits(
+    orgId: string,
+    type: CreatePostDto['type'],
+    posts: CreatePostDto['posts']
+  ) {
+    if (!isBillingEnabled()) {
+      return { credits: 0, needed: 0, channels: [] };
+    }
+    const { channels, needed } = await this.publishCredits(orgId, type, posts);
+    return {
+      credits: toCredits(channels.reduce((sum, c) => sum + c.cost, 0)),
+      needed: toCredits(Math.max(0, needed)),
+      channels: channels
+        .filter((channel) => channel.cost)
+        .map((channel) => ({
+          integration: channel.integration,
+          credits: toCredits(channel.cost),
+        })),
+    };
+  }
+
+  /**
+   * Refused with a 402 before anything is saved, for every channel of every
+   * request at once, so a group is never half scheduled for want of credits.
+   */
+  async assertPublishCredits(
+    orgId: string,
+    requests: Array<Pick<CreatePostDto, 'type' | 'posts'>>
+  ) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+    let needed = 0;
+    for (const request of requests) {
+      needed += (await this.publishCredits(orgId, request.type, request.posts))
+        .needed;
+    }
+    if (needed > 0) {
+      await this._creditsService.assertAvailable(orgId, needed);
+    }
+  }
+
+  // What each item of a saved post's thread costs to publish, by the key
+  // its reservation goes under.
+  private async savedThreadCosts(orgId: string, rootId: string) {
+    const thread = await this.getPostsRecursively(rootId, true, orgId);
+    const [root] = thread;
+    const costs = new Map<string, number>();
+    if (root?.integration) {
+      const settings = JSON.parse(root.settings || '{}');
+      thread.forEach((part, index) => {
+        const cost = this.publishCost(
+          root.integration!.providerIdentifier,
+          settings,
+          part.content,
+          index
+        );
+        if (cost) {
+          costs.set(this.publishKey(rootId, part.id), cost);
+        }
+      });
+    }
+    return { root, costs };
+  }
+
+  /** `assertPublishCredits` for a post already saved, about to be queued. */
+  async assertSavedPublishCredits(orgId: string, rootId: string) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+    const { costs } = await this.savedThreadCosts(orgId, rootId);
+    let needed = -(await this.reservedFor(orgId, rootId));
+    costs.forEach((cost) => (needed += cost));
+    if (needed > 0) {
+      await this._creditsService.assertAvailable(orgId, needed);
+    }
+  }
+
+  /**
+   * Makes what is set aside for a post match what it will publish: each item
+   * of its thread at its price while the post is scheduled or repeats,
+   * nothing otherwise, and nothing for an item no longer in the thread.
+   *
+   * After a save, `allowOverdraft`: the check that may refuse ran before the
+   * post was saved, so what was saved is reserved even if another spend got
+   * in between. A repeating post reserving its next run is refused instead,
+   * item by item, and a run with nothing reserved is charged when it
+   * publishes.
+   */
+  async syncPublishReservation(
+    orgId: string,
+    rootId: string,
+    allowOverdraft = true
+  ) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+
+    const open = await this._creditsService.reservations(
+      orgId,
+      this.publishKey(rootId)
+    );
+    const { root, costs } = await this.savedThreadCosts(orgId, rootId);
+    const wanted =
+      root && this.reservesPublish(root) ? costs : new Map<string, number>();
+
+    for (const [key, amount] of wanted) {
+      try {
+        await this._creditsService.reserve(orgId, {
+          key,
+          amount,
+          action: 'publish',
+          meta: { postId: rootId },
+          allowOverdraft,
+        });
+      } catch (err) {
+        if (allowOverdraft) {
+          throw err;
+        }
+      }
+    }
+
+    for (const { idempotencyKey } of open) {
+      if (idempotencyKey && !wanted.has(idempotencyKey)) {
+        await this._creditsService.release(orgId, idempotencyKey);
+      }
+    }
+  }
+
+  // After a save the post stands whatever happens to its reservation; a sync
+  // that fails is reported rather than failing the save.
+  private async syncAfterSave(orgId: string, rootId: string) {
+    await this.syncPublishReservation(orgId, rootId).catch((err) =>
+      Sentry.captureException(err, {
+        tags: { area: 'publish_credits' },
+        extra: { postId: rootId, orgId },
+      })
+    );
+  }
+
+  // The post a thread item belongs to: itself, or the first item of its group.
+  private async rootOf(
+    part: Pick<
+      Post,
+      'id' | 'organizationId' | 'group' | 'parentPostId' | 'intervalInDays'
+    >
+  ) {
+    return part.parentPostId
+      ? this._postRepository.getRootPostByGroup(part.organizationId, part.group)
+      : part;
+  }
+
+  // Whether an item that never had a reservation was scheduled before posts
+  // cost credits, and so goes out free: saved before the switch, and not a
+  // repeating post that has already published once (each run after that is
+  // a new publish).
+  private scheduledBeforeCredits(
+    part: Pick<Post, 'createdAt'>,
+    root: { intervalInDays: number | null; releaseId?: string | null }
+  ) {
+    return (
+      new Date(part.createdAt) < PUBLISH_CREDITS_SINCE &&
+      !(root.intervalInDays && root.releaseId)
+    );
+  }
+
+  /**
+   * Pays for one item of a thread as it publishes, from the reservation made
+   * when it was scheduled. One whose reservation is gone (a repeat that
+   * could not reserve its next run, a save whose reservation failed) is
+   * charged now, and refused with a 402 when the balance cannot pay. An
+   * item scheduled before posts cost credits goes out free.
+   */
+  async payForPublish(providerIdentifier: string, item: Pick<Post, 'id'>) {
+    if (!isBillingEnabled() || !this.billsPerPost(providerIdentifier)) {
+      return;
+    }
+
+    // The workflow hands over a trimmed copy of the row, without its place
+    // in the thread; the row says which post it belongs to.
+    const part = await this._postRepository.getPostById(item.id);
+    const root = part && (await this.rootOf(part));
+    if (!part || !root) {
+      return;
+    }
+
+    const key = this.publishKey(root.id, part.id);
+    const open = await this._creditsService.reservations(
+      part.organizationId,
+      this.publishKey(root.id)
+    );
+    if (open.some((reservation) => reservation.idempotencyKey === key)) {
+      return;
+    }
+    if (
+      !(await this._creditsService.everReserved(part.organizationId, key)) &&
+      this.scheduledBeforeCredits(part, root)
+    ) {
+      return;
+    }
+
+    const amount = this.publishCost(
+      providerIdentifier,
+      JSON.parse(part.settings || '{}'),
+      part.content,
+      part.parentPostId ? 1 : 0
+    );
+    await this._creditsService.spend(part.organizationId, {
+      key,
+      amount,
+      action: 'publish',
+      meta: { postId: root.id },
+    });
+  }
+
+  /**
+   * An item published: its reservation is used, under the id the network
+   * gave it, and a repeating post reserves its next run. Never throws: the
+   * item is live, and failing here would report it as not.
+   */
+  async settlePublish(partId: string, releaseId: string) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+
+    try {
+      const part = await this._postRepository.getPostById(partId);
+      if (!part || !this.billsPerPost(part.integration?.providerIdentifier)) {
+        return;
+      }
+      const root = await this.rootOf(part);
+      if (!root) {
+        return;
+      }
+
+      await this._creditsService.settle(
+        part.organizationId,
+        this.publishKey(root.id, part.id),
+        releaseId
+      );
+
+      if (root.intervalInDays) {
+        await this.syncPublishReservation(part.organizationId, root.id, false);
+      }
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { area: 'publish_credits' },
+        extra: { partId },
+      });
+    }
+  }
+
+  /**
+   * Hands back what was set aside for items that will not publish: the one
+   * that failed and the items after it in the run's thread. A post that
+   * failed before its thread was read hands back all of it.
+   */
+  async releasePublish(partId: string, thread?: { id: string }[]) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+
+    const part = await this._postRepository.getPostById(partId);
+    if (!part || !this.billsPerPost(part.integration?.providerIdentifier)) {
+      return;
+    }
+    const root = await this.rootOf(part);
+    if (!root) {
+      return;
+    }
+
+    const from = (thread || []).findIndex((item) => item?.id === partId);
+    const keys =
+      from !== -1
+        ? thread!.slice(from).map((p) => this.publishKey(root.id, p.id))
+        : root.id === part.id
+        ? (
+            await this._creditsService.reservations(
+              part.organizationId,
+              this.publishKey(root.id)
+            )
+          ).map((reservation) => reservation.idempotencyKey!)
+        : [this.publishKey(root.id, part.id)];
+    for (const key of keys) {
+      await this._creditsService.release(part.organizationId, key);
+    }
   }
 
   async changeState(id: string, state: State, err?: any, body?: any) {
@@ -1653,11 +2135,17 @@ export class PostsService {
       return { id, state };
     }
 
+    if (status === 'schedule') {
+      await this.assertSavedPublishCredits(orgId, id);
+    }
+
     if (status === 'draft') {
       await this._postRepository.setPostDraft(id);
     } else {
       await this._postRepository.changeState(id, state);
     }
+    // Queued, it sets aside what it costs to publish; a draft hands it back.
+    await this.syncAfterSave(orgId, id);
 
     try {
       await this.startWorkflow(
@@ -1717,6 +2205,10 @@ export class PostsService {
       this.guardAgainstRepublish(getPostById, 'changeDate');
     }
 
+    if (action === 'schedule') {
+      await this.assertSavedPublishCredits(orgId, id);
+    }
+
     // schedule: Set status to QUEUE and change date (reschedule the post)
     // update: Just change the date without changing the status
     const newDate = await this._postRepository.changeDate(
@@ -1727,6 +2219,7 @@ export class PostsService {
     );
 
     if (action === 'schedule') {
+      await this.syncAfterSave(orgId, id);
       try {
         // QUEUE / republish: the repository just set state to QUEUE.
         // Hard-code QUEUE so startWorkflow is not skipped.

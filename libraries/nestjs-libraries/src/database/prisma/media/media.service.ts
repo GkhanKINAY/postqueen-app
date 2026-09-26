@@ -10,7 +10,6 @@ import {
   OpenaiService,
 } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
-import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { SaveMediaInformationDto } from '@gitroom/nestjs-libraries/dtos/media/save.media.information.dto';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
@@ -37,16 +36,18 @@ import {
 import { createWriteStream, promises as fsp } from 'fs';
 import { pipeline } from 'stream/promises';
 import { dirname, extname, join } from 'path';
-import {
-  AuthorizationActions,
-  Sections,
-  SubscriptionException,
-} from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import { TemporalService } from 'nestjs-temporal-core';
 import { TypedSearchAttributes } from '@temporalio/common';
 import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  effectiveIsTrailing,
+  imageCreditCost,
+  ImageQuality,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { randomBytes } from 'crypto';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
@@ -100,10 +101,10 @@ export class MediaService {
   constructor(
     private _mediaRepository: MediaRepository,
     private _openAi: OpenaiService,
-    private _subscriptionService: SubscriptionService,
     private _videoManager: VideoManager,
     private _temporalService: TemporalService,
-    private _ffmpeg: FfmpegService
+    private _ffmpeg: FfmpegService,
+    private _creditsService: CreditsService
   ) {}
 
   async deleteMedia(org: string, id: string) {
@@ -126,25 +127,42 @@ export class MediaService {
     return ids.length ? this._mediaRepository.getMediaByIds(ids) : Promise.resolve([]);
   }
 
+  /**
+   * One AI image, paid for from the credits balance by its quality and shape.
+   * The charge comes first and is handed back if the generation fails.
+   * `key` is the charge's, for a caller with more to do after the image that
+   * could still fail. The model is told the quality whenever it is charged
+   * for, so what it makes is what was paid for; with billing off it chooses,
+   * as it always did.
+   */
   async generateImage(
     prompt: string,
     org: Organization,
     generatePromptFirst?: boolean,
-    orientation?: ImageOrientation
+    orientation?: ImageOrientation,
+    quality?: ImageQuality,
+    key = `image:${makeId(20)}`
   ) {
     try {
-      const generating = await this._subscriptionService.useCredit(
-        org,
-        'ai_images',
+      return await this._creditsService.withCredits(
+        org.id,
+        {
+          key,
+          amount: imageCreditCost(quality, orientation),
+          action: 'image',
+          meta: { quality: quality || 'medium', orientation: orientation || 'square' },
+        },
         async () => {
           if (generatePromptFirst) {
             prompt = await this._openAi.generatePromptForPicture(prompt);
           }
-          return this._openAi.generateImage(prompt, orientation);
+          return this._openAi.generateImage(
+            prompt,
+            orientation,
+            quality || (isBillingEnabled() ? 'medium' : undefined)
+          );
         }
       );
-
-      return generating;
     } catch (err) {
       throw generationError(err);
     }
@@ -158,13 +176,29 @@ export class MediaService {
   async generateImageToLibrary(
     org: Organization,
     brief: string,
-    orientation?: ImageOrientation
+    orientation?: ImageOrientation,
+    quality?: ImageQuality
   ) {
-    const image = await this.generateImage(brief, org, true, orientation);
-    const file = await this.storage.uploadSimple(
-      'data:image/png;base64,' + image
+    const key = `image:${makeId(20)}`;
+    const image = await this.generateImage(
+      brief,
+      org,
+      true,
+      orientation,
+      quality,
+      key
     );
-    return this.saveFile(org.id, file.split('/').pop(), file);
+    try {
+      const file = await this.storage.uploadSimple(
+        'data:image/png;base64,' + image
+      );
+      return await this.saveFile(org.id, file.split('/').pop(), file);
+    } catch (err) {
+      // Made and paid for, but it never reached the library: the charge
+      // goes back.
+      await this._creditsService.refund(org.id, key);
+      throw err;
+    }
   }
 
   /**
@@ -549,18 +583,6 @@ export class MediaService {
   }
 
   private async validateVideoRequest(org: Organization, body: VideoDto) {
-    const totalCredits = await this._subscriptionService.checkCredits(
-      org,
-      'ai_videos'
-    );
-
-    if (totalCredits.credits <= 0) {
-      throw new SubscriptionException({
-        action: AuthorizationActions.Create,
-        section: Sections.VIDEOS_PER_MONTH,
-      });
-    }
-
     const video = this._videoManager.getVideoByName(body.type);
     if (!video) {
       throw new HttpException(`Video generator ${body.type} not found`, 404);
@@ -571,16 +593,48 @@ export class MediaService {
     }
 
     await video.instance.processAndValidate(body.customParams);
+
+    // Refused before a job exists, with what it would cost; the charge itself
+    // is taken when the video is made.
+    await this._creditsService.assertAvailable(
+      org.id,
+      video.instance.cost(body.output, body.customParams)
+    );
     return video;
   }
 
-  async generateVideo(org: Organization, body: VideoDto) {
+  /**
+   * What a video with these settings costs, in credits, shown while the form
+   * is still being filled in, so a prompt not written yet is not an error
+   * here. The charge itself is priced again from the validated request.
+   */
+  quoteVideo(body: VideoDto) {
+    const video = this._videoManager.getVideoByName(body.type);
+    if (!video) {
+      throw new HttpException(`Video generator ${body.type} not found`, 404);
+    }
+    return {
+      credits: toCredits(video.instance.cost(body.output, body.customParams)),
+    };
+  }
+
+  /**
+   * Makes a video, paid for from the credits balance. `key` names the job so
+   * the charge is taken once however often it is asked for: the generate
+   * workflow passes its own id. The charge is handed back if the video fails.
+   */
+  async generateVideo(org: Organization, body: VideoDto, key?: string) {
     try {
       const video = await this.validateVideoRequest(org, body);
 
-      return await this._subscriptionService.useCredit(
-        org,
-        'ai_videos',
+      return await this._creditsService.withCredits(
+        org.id,
+        {
+          key: `video:${key || makeId(20)}`,
+          amount: video.instance.cost(body.output, body.customParams),
+          action: 'video',
+          meta: { type: body.type, output: body.output },
+        },
         async () => {
           const produced = await video.instance.process(
             body.output,

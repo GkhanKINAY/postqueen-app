@@ -31,6 +31,7 @@ import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context
 import { PlugsDetailGhost } from '@gitroom/frontend/components/layout/loading';
 import { channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
+import { PlugCredits } from '@gitroom/frontend/components/plugs/plug.credits';
 export function convertBackRegex(s: string) {
   const matches = s.match(/\/(.*)\/([a-z]*)/);
   const pattern = matches?.[1] || '';
@@ -186,6 +187,7 @@ export const PlugPop: FC<{
           <div className="text-[13px] leading-[1.5] text-pqMuted">
             {plug.description}
           </div>
+          <PlugCredits credits={plug.credits} />
           <div className="flex flex-col gap-[12px]">
             {plug.fields.map((field) => (
               <div key={field.name}>
@@ -306,6 +308,7 @@ export const PlugItem: FC<{
       <div className="text-[13px] leading-[1.6] text-pqMuted">
         {plug.description}
       </div>
+      <PlugCredits credits={plug.credits} />
       <button
         type="button"
         onClick={(e) => {

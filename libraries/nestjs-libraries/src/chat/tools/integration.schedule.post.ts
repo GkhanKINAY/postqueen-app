@@ -259,14 +259,14 @@ If validation fails, the result contains output.errors describing what to fix; t
           throw err;
         }
 
-        for (const post of inputData.socialPost) {
+        const requests = inputData.socialPost.map((post) => {
           const integration = integrations[post.integrationId];
 
           if (!integration) {
             throw new Error('Integration not found');
           }
 
-          const output = await this._postsService.createPost(organizationId, {
+          return {
             date: post.date,
             type: post.type as 'draft' | 'schedule' | 'now',
             shortLink: post.shortLink,
@@ -297,7 +297,35 @@ If validation fails, the result contains output.errors describing what to fix; t
                 })),
               },
             ],
-          }, 'MCP');
+          };
+        });
+
+        // A network that bills per post (X) has its cost set aside when the
+        // post is scheduled. Every channel is asked about at once, before
+        // any is created, and a short balance is put into words with where
+        // to add credits.
+        try {
+          await this._postsService.assertPublishCredits(
+            organizationId,
+            requests
+          );
+        } catch (err) {
+          if (err instanceof HttpException && err.getStatus() === 402) {
+            return {
+              output: {
+                errors: `${err.message} Nothing was created. The user can add credits at ${process.env.FRONTEND_URL}/billing and try again, or save the posts as drafts.`,
+              },
+            };
+          }
+          throw err;
+        }
+
+        for (const request of requests) {
+          const output = await this._postsService.createPost(
+            organizationId,
+            request,
+            'MCP'
+          );
           // Same public preview page the calendar "Preview Post" button opens.
           finalOutput.push(
             ...output.map((p) => ({

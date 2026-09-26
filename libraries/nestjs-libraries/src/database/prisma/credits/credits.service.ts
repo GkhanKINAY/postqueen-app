@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   CreditGrantInput,
   CreditSpend,
@@ -6,8 +6,22 @@ import {
   CurrentGrant,
   insufficientCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.repository';
-import { toCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  LLM_CONTINUATION_FLOOR,
+  LLM_TURN_MINIMUM,
+  llmCreditCost,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+
+export interface LlmUsage {
+  /** Unique per model call, so a callback that fires twice charges once. */
+  key: string;
+  model?: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  action: string;
+}
 
 /**
  * One credits balance per organization. Grants add to it, spends draw on it,
@@ -18,6 +32,8 @@ import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
  */
 @Injectable()
 export class CreditsService {
+  private readonly logger = new Logger(CreditsService.name);
+
   constructor(private _creditsRepository: CreditsRepository) {}
 
   async balance(organizationId: string) {
@@ -53,10 +69,52 @@ export class CreditsService {
   }
 
   spend(organizationId: string, spend: CreditSpend) {
-    if (!isBillingEnabled()) {
+    // Work that costs nothing is not a charge; the ledger only takes amounts.
+    if (!isBillingEnabled() || spend.amount === 0) {
       return Promise.resolve({ id: null, charged: false });
     }
     return this._creditsRepository.spend(organizationId, spend);
+  }
+
+  /**
+   * Whether a Copilot turn may start: on any positive balance. The rest of a
+   * turn, run again after a frontend tool, may start down to
+   * `LLM_CONTINUATION_FLOOR`, so a turn that crossed zero on its way still
+   * finishes. `pending` is a charge already owed but not yet written.
+   */
+  async assertLlmTurn(
+    organizationId: string,
+    continuation = false,
+    pending = 0
+  ) {
+    if (!isBillingEnabled()) {
+      return;
+    }
+
+    const { balance } = await this._creditsRepository.balance(organizationId);
+    const left = balance - pending;
+    if (left < (continuation ? LLM_CONTINUATION_FLOOR : LLM_TURN_MINIMUM)) {
+      throw insufficientCredits(LLM_TURN_MINIMUM, left);
+    }
+  }
+
+  /**
+   * Tokens a model call used, charged once the call is done. The work is
+   * already paid for by then, so the balance may go below zero; the next
+   * turn is refused instead (`LLM_TURN_MINIMUM`).
+   */
+  chargeLlm(organizationId: string, usage: LlmUsage) {
+    return this.spend(organizationId, {
+      key: usage.key,
+      amount: llmCreditCost(usage.model, usage.inputTokens, usage.outputTokens),
+      action: usage.action,
+      meta: {
+        model: usage.model || null,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      },
+      allowOverdraft: true,
+    });
   }
 
   refund(organizationId: string, key: string) {
@@ -81,11 +139,54 @@ export class CreditsService {
     try {
       return await work();
     } catch (err) {
+      // The work's error is the answer; a refund that cannot be written is
+      // logged rather than put in its place.
       if (charged) {
-        await this.refund(organizationId, spend.key);
+        await this.refund(organizationId, spend.key).catch((refundErr) =>
+          this.logger.error(`Could not refund ${spend.key}: ${refundErr}`)
+        );
       }
       throw err;
     }
+  }
+
+  /** See `CreditsRepository.reserve`: sets aside, adjusts or releases what
+   * work costs when it runs. */
+  reserve(organizationId: string, spend: CreditSpend) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve({ id: null, charged: false });
+    }
+    return this._creditsRepository.reserve(organizationId, spend);
+  }
+
+  /** See `CreditsRepository.release`: a reservation handed back. */
+  release(organizationId: string, key: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.release(organizationId, key);
+  }
+
+  /** See `CreditsRepository.settle`: a reservation used by its work. */
+  settle(organizationId: string, key: string, suffix: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.settle(organizationId, key, suffix);
+  }
+
+  async reservations(organizationId: string, prefix: string) {
+    if (!isBillingEnabled()) {
+      return [];
+    }
+    return this._creditsRepository.reservations(organizationId, prefix);
+  }
+
+  everReserved(organizationId: string, prefix: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.everReserved(organizationId, prefix);
   }
 
   grant(organizationId: string, grant: CreditGrantInput, close: string[] = []) {
@@ -112,6 +213,17 @@ export class CreditsService {
       return Promise.resolve({ id: null, granted: false });
     }
     return this._creditsRepository.grantWith(organizationId, sources, decide);
+  }
+
+  /** A refunded or disputed pack: what is left of it goes. */
+  revokeByPaymentRef(organizationId: string, paymentRef: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve({ count: 0 });
+    }
+    return this._creditsRepository.revokeByPaymentRef(
+      organizationId,
+      paymentRef
+    );
   }
 
   revokeGrants(organizationId: string, sources: string[]) {
