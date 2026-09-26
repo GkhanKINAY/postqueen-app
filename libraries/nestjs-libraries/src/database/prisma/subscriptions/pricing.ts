@@ -563,3 +563,18 @@ export const imageCreditCost = (
   orientation: 'square' | 'portrait' | 'landscape' = 'square'
 ) =>
   IMAGE_CREDIT_COSTS[quality][orientation === 'square' ? 'square' : 'wide'];
+
+/**
+ * Credits sold on their own, on top of a plan, in whole credits and whole
+ * dollars. The larger packs cost less a credit. Bought credits outlive the
+ * plan's: they stay spendable for `CREDIT_PACK_MONTHS`.
+ */
+export const CREDIT_PACKS = [
+  { id: 'credits_100', credits: 100, price: 10 },
+  { id: 'credits_500', credits: 500, price: 45 },
+  { id: 'credits_1000', credits: 1000, price: 80 },
+] as const;
+
+export type CreditPackId = (typeof CREDIT_PACKS)[number]['id'];
+
+export const CREDIT_PACK_MONTHS = 12;

@@ -1,4 +1,4 @@
-import { IsIn } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 import {
   normalizeTier,
@@ -38,4 +38,13 @@ export class BillingSubscribeDto {
 
   datafast_session_id: string;
   datafast_visitor_id: string;
+
+  /**
+   * The customer asked for the credits to start now and acknowledged that,
+   * once they are used, the 14-day right of withdrawal ends. Required for a
+   * yearly plan, whose twelve months of credits arrive at once.
+   */
+  @IsOptional()
+  @IsBoolean()
+  withdrawalWaiver?: boolean;
 }
