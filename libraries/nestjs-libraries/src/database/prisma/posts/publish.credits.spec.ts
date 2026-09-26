@@ -90,6 +90,9 @@ const credits = {
     open.delete(key);
     return true;
   },
+  async release(_org: string, key: string) {
+    return credits.refund(_org, key);
+  },
   async settle(_org: string, key: string, suffix: string) {
     if (!open.has(key)) {
       return false;
@@ -123,6 +126,8 @@ const thread = (
       content: `<p>${id}</p>`,
       settings: JSON.stringify({ __type: provider }),
       integration: { providerIdentifier: provider },
+      createdAt: new Date('2026-09-01T00:00:00Z'),
+      releaseId: null,
       ...extra,
     })
   );
@@ -151,7 +156,12 @@ const service = () =>
       getSocialIntegration: (identifier: string) =>
         identifier === 'x' ? billed : {},
     },
-    {},
+    {
+      // The channel as it is saved: ids starting with x are X channels.
+      getIntegrationByIdNotDeleted: async (_org: string, id: string) => ({
+        providerIdentifier: id.startsWith('x') ? 'x' : 'linkedin',
+      }),
+    },
     {},
     {},
     {},
@@ -239,6 +249,26 @@ describe(
       await service().assertPublishCredits('org-1', [request]);
     });
 
+    it('prices a channel by what it is, whatever the request says it is', async () => {
+      const spoofed = [
+        channel('x-9', 'linkedin', ['<p>Read https://example.com</p>']),
+      ];
+      assert.equal(
+        (await service().publishCredits('org-1', 'schedule', spoofed)).needed,
+        500
+      );
+    });
+
+    it('prices a link to another post as the link it becomes', async () => {
+      const quoting = [
+        channel('x-1', 'x', ['<p>As we said (post:abc-123)</p>']),
+      ];
+      assert.equal(
+        (await service().publishCredits('org-1', 'schedule', quoting)).needed,
+        500
+      );
+    });
+
     it('asks nothing for a draft, and counts what an edit already has set aside', async () => {
       thread('p1', []);
       open.set('publish:p1:p1', 40);
@@ -324,34 +354,77 @@ describe(
   'Paying for an X post as it publishes',
   { skip: !canLoadService },
   () => {
+    // The workflow hands the activities a trimmed copy of each row, without
+    // its place in the thread.
+    const trimmed = (id: string) => ({ id, content: posts.get(id).content });
+
     it('uses the reservation, and charges nothing more', async () => {
       thread('p1', ['p2']);
       await service().syncPublishReservation('org-1', 'p1');
-      await service().payForPublish('x', posts.get('p1'));
-      await service().payForPublish('x', posts.get('p2'));
+      await service().payForPublish('x', trimmed('p1'));
+      await service().payForPublish('x', trimmed('p2'));
       assert.equal(balance, 920);
     });
 
     it('lets a post scheduled before posts cost credits go out free', async () => {
-      thread('p1', []);
-      await service().payForPublish('x', posts.get('p1'));
+      thread('p1', ['p2']);
+      await service().payForPublish('x', trimmed('p1'));
+      await service().payForPublish('x', trimmed('p2'));
       assert.equal(balance, 1000);
       assert.deepEqual([...open], []);
+    });
+
+    it('charges a reply whose reservation is gone, found from its row', async () => {
+      thread('p1', ['p2'], { createdAt: new Date('2026-10-01T00:00:00Z') });
+      await service().syncPublishReservation('org-1', 'p1');
+      // the reply's reservation was released by a sync while the thread ran
+      await credits.refund('org-1', 'publish:p1:p2');
+      await service().payForPublish('x', trimmed('p2'));
+      assert.deepEqual([...open.keys()], ['publish:p1:p1', 'publish:p1:p2']);
+      assert.equal(balance, 920);
+    });
+
+    it('charges a post saved after the switch that has nothing reserved', async () => {
+      thread('p1', [], { createdAt: new Date('2026-10-01T00:00:00Z') });
+      await service().payForPublish('x', trimmed('p1'));
+      assert.equal(balance, 960);
+    });
+
+    it('charges each run of an old repeating post after its first', async () => {
+      thread('p1', [], {
+        state: 'PUBLISHED',
+        intervalInDays: 7,
+        releaseId: 'x-earlier',
+      });
+      await service().payForPublish('x', trimmed('p1'));
+      assert.equal(balance, 960);
     });
 
     it('charges an item whose reservation is gone, and refuses it when the balance is short', async () => {
       thread('p1', []);
       ever.add('publish:p1:p1');
-      await service().payForPublish('x', posts.get('p1'));
+      await service().payForPublish('x', trimmed('p1'));
       assert.equal(balance, 960);
 
       thread('p3', []);
       ever.add('publish:p3:p3');
       balance = 10;
       await assert.rejects(
-        service().payForPublish('x', posts.get('p3')),
+        service().payForPublish('x', trimmed('p3')),
         (err) => err instanceof HttpException && err.getStatus() === 402
       );
+    });
+
+    it('asks nothing of a network that does not bill per post', async () => {
+      thread(
+        'p1',
+        [],
+        { createdAt: new Date('2026-10-01T00:00:00Z') },
+        'linkedin'
+      );
+      ever.add('publish:p1:p1');
+      await service().payForPublish('linkedin', trimmed('p1'));
+      assert.equal(balance, 1000);
     });
 
     it("settles what was used under the release, and reserves a repeating post's next run", async () => {
@@ -372,6 +445,14 @@ describe(
       await service().settlePublish('p1', 'x-100');
       assert.deepEqual(settled, ['publish:p1:p1@x-100']);
       assert.deepEqual([...open], []);
+    });
+
+    it('hands back all of a post that failed before its thread was read', async () => {
+      thread('p1', ['p2', 'p3']);
+      await service().syncPublishReservation('org-1', 'p1');
+      await service().releasePublish('p1');
+      assert.deepEqual([...open], []);
+      assert.equal(balance, 1000);
     });
 
     it('hands back the item that failed and the rest of its thread after it', async () => {

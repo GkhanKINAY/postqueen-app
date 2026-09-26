@@ -29,6 +29,7 @@ import {
 } from '@gitroom/helpers/utils/post.publish.notice';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useShallow } from 'zustand/react/shallow';
+import { useSWRConfig } from 'swr';
 import { ComposeCredits } from '@gitroom/frontend/components/new-launch/compose.credits';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
 import { TagsComponent } from '@gitroom/frontend/components/launches/tags.component';
@@ -145,6 +146,8 @@ const ComposerStepTabs: FC<{
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
   const fetch = useFetch();
+  // Scheduling sets credits aside, and a draft or a delete hands them back.
+  const { mutate: mutateKey } = useSWRConfig();
   const { mobile, touch, splitComposer } = useViewport();
   const compactChrome = !splitComposer;
   const compactFooter = touch;
@@ -358,11 +361,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
     dropPostGroupFromView(existingData.group);
     mutate();
+    mutateKey('credits-balance');
     modal.closeAll();
     return;
   }, [
     existingData,
     mutate,
+    mutateKey,
     modal,
     toaster,
     t,
@@ -416,8 +421,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       'success'
     );
     mutate();
+    mutateKey('credits-balance');
     modal.closeAll();
-  }, [existingData, fetch, mutate, modal, toaster, t]);
+  }, [existingData, fetch, mutate, mutateKey, modal, toaster, t]);
 
   // Same request as dragging a published post to a new time and choosing
   // Reschedule: the post goes back in the queue and publishes again.
@@ -816,8 +822,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // post cap, or failing server-side validation — still showed "Added
         // successfully" and closed the editor, losing everything the user wrote.
         if (response && !response.ok) {
-          // 499: the Payment Required dialog already spoke, and its Move to
-          // billing opened Billing in another tab. The post stays open here.
+          // 499: a dialog already spoke (Payment Required, whose Move to
+          // billing opens Billing in another tab), so a toast would say it
+          // twice. The post stays open here.
           if (response.status === 499) {
             setLoading(false);
             return;
@@ -845,6 +852,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
         if (!addEditSets) {
           mutate();
+          mutateKey('credits-balance');
           if (type === 'draft') {
             toaster.show(
               t('saved_as_draft', 'Saved as draft'),
@@ -916,6 +924,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       t,
       notifyOnPublish,
       fetch,
+      mutateKey,
       // Start over gives the rail a new thread id; the post saves that one.
       copilotThread,
     ]

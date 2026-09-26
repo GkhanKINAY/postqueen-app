@@ -212,14 +212,14 @@ describe('Ledger', () => {
       repository,
       /pg_advisory_xact_lock\(hashtext\(\$\{`credits:\$\{organizationId\}`\}\)\)/
     );
-    // spend, refund, reserve, settle, grant, revokeGrants and
+    // spend, refund, release, reserve, settle, grant, revokeGrants and
     // revokeByPaymentRef each take it first thing in their transaction, and
     // nothing else opens one
     assert.equal(
       (repository.match(/\$transaction\(async \(tx\) => \{\n\s+await this\.lock\(tx, organizationId\);/g) || []).length,
-      7
+      8
     );
-    assert.equal((repository.match(/\$transaction\(/g) || []).length, 7);
+    assert.equal((repository.match(/\$transaction\(/g) || []).length, 8);
   });
 
   it('refuses amounts that are not positive whole hundredths', () => {

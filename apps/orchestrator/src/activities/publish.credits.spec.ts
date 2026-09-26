@@ -82,6 +82,22 @@ describe('Publish credits in the post activities', () => {
     }
   });
 
+  it('hands back all of a post that failed before its thread was read', async () => {
+    await activity().changeState('p1', 'ERROR', 'No Post');
+    assert.deepEqual(calls.at(-1), ['release', 'p1', undefined]);
+  });
+
+  it('hands back the parts a channel cannot post as comments', async () => {
+    // the workflow passes only the root it will publish
+    await activity().changeState(
+      'p2',
+      'ERROR',
+      'This channel cannot post comments',
+      [{ id: 'p1' }]
+    );
+    assert.deepEqual(calls.at(-1), ['release', 'p2', ['p1']]);
+  });
+
   it('keeps the credits of an outcome nobody knows', async () => {
     for (const reason of [
       'A previous publish attempt was interrupted',

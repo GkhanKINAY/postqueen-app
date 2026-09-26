@@ -159,6 +159,14 @@ export class CreditsService {
     return this._creditsRepository.reserve(organizationId, spend);
   }
 
+  /** See `CreditsRepository.release`: a reservation handed back. */
+  release(organizationId: string, key: string) {
+    if (!isBillingEnabled()) {
+      return Promise.resolve(false);
+    }
+    return this._creditsRepository.release(organizationId, key);
+  }
+
   /** See `CreditsRepository.settle`: a reservation used by its work. */
   settle(organizationId: string, key: string, suffix: string) {
     if (!isBillingEnabled()) {

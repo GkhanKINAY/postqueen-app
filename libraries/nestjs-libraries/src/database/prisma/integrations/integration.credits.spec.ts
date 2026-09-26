@@ -5,20 +5,22 @@ import { tmpdir } from 'node:os';
 import { afterEach, before, beforeEach, describe, it } from 'node:test';
 import { insufficientCredits } from '../credits/credits.repository.ts';
 
-// As in create.post.spec.ts: tsx follows tsconfig's mapping of `file-type` to
-// its declarations, so the upload code the service imports is pointed at the
-// package's own entry. registerHooks arrived in Node 22.15; on an older 22
-// the spec is skipped rather than failed.
+// As in create.post.spec.ts: tsx follows tsconfig's mapping of `file-type`
+// and `mime` to their declarations, so the code the service and the
+// providers import is pointed at the packages' own entries. registerHooks
+// arrived in Node 22.15; on an older 22 the spec is skipped rather than
+// failed.
+const entries: Record<string, string> = {
+  'file-type': '../../../../../../node_modules/file-type/source/index.js',
+  mime: '../../../../../../node_modules/mime/dist/src/index.js',
+};
 const canLoadService = typeof nodeModule.registerHooks === 'function';
 if (canLoadService) {
   nodeModule.registerHooks({
     resolve: (specifier, context, next) =>
-      specifier === 'file-type'
+      entries[specifier]
         ? {
-            url: new URL(
-              '../../../../../../node_modules/file-type/source/index.js',
-              import.meta.url
-            ).href,
+            url: new URL(entries[specifier], import.meta.url).href,
             shortCircuit: true,
           }
         : next(specifier, context),
@@ -181,7 +183,7 @@ describe(
       assert.equal(spends.length, 1);
       assert.match(
         spends[0].key,
-        /^plug-check:plug-1:x-100:\d{4}-\d{2}-\d{2}$/
+        /^plug-check:ch-1:x-100:\d{4}-\d{2}-\d{2}$/
       );
       assert.equal(spends[0].amount, 13);
       assert.deepEqual(calls, ['plug ran', 'plug ran']);
@@ -307,3 +309,26 @@ describe(
     });
   }
 );
+
+describe('What the plug screens are told', { skip: !canLoadService }, () => {
+  it('prices X plugs by what they do: a watched post daily, a re-poster once', async () => {
+    const { IntegrationManager } = await import(
+      '../../../integrations/integration.manager.ts'
+    );
+    const manager = new IntegrationManager();
+    const x = manager
+      .getAllPlugs()
+      .find((provider: any) => provider.identifier === 'x');
+    const credits = Object.fromEntries(
+      (x?.plugs || []).map((plug: any) => [plug.methodName, plug.credits])
+    );
+    assert.deepEqual(credits.autoRepostPost, { check: 0.13, trigger: 0.4 });
+    assert.deepEqual(credits.autoPlugPost, {
+      check: 0.13,
+      trigger: 0.4,
+      withLink: 5,
+    });
+    const [reposters] = manager.getInternalPlugs('x').internalPlugs;
+    assert.deepEqual(reposters.credits, { check: 0, trigger: 0.4 });
+  });
+});

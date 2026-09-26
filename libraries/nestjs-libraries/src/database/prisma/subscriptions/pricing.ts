@@ -663,6 +663,14 @@ export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
  *   subscription), $0.010.
  * - `interaction`: a repost, $0.015.
  */
+/**
+ * When posts started to cost credits. A post saved before this with nothing
+ * reserved for it was scheduled under the old rules and goes out free; one
+ * saved after it always pays. Set just after the release that brings it, so
+ * a post saved by the version before is never charged at publish.
+ */
+export const PUBLISH_CREDITS_SINCE = new Date('2026-09-28T00:00:00Z');
+
 export const X_CREDIT_COSTS = {
   post: 40,
   postWithLink: 500,

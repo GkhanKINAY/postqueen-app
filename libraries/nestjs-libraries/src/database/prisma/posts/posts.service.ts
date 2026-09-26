@@ -65,6 +65,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import {
   AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  PUBLISH_CREDITS_SINCE,
   pricing,
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -1143,7 +1144,9 @@ export class PostsService {
 
         // What publishing it costs from the credits balance, set aside when
         // it is scheduled.
-        const credits = toCredits(
+        const credits = !isBillingEnabled()
+          ? 0
+          : toCredits(
           value.reduce(
             (sum, part, index) =>
               sum +
@@ -1657,7 +1660,9 @@ export class PostsService {
   }
 
   // What one item of a thread costs to publish, in hundredths: 0 on a
-  // network that does not bill per post. `index` 0 is the post itself.
+  // network that does not bill per post. `index` 0 is the post itself. A
+  // "(post:<id>)" placeholder goes out as the link to that post (updateTags),
+  // so it is priced as one.
   private publishCost(
     providerIdentifier: string,
     settings: any,
@@ -1667,7 +1672,24 @@ export class PostsService {
     return (
       this._integrationManager
         .getSocialIntegration(providerIdentifier)
-        ?.creditCost?.({ type: 'publish', message, settings, index }) || 0
+        ?.creditCost?.({
+          type: 'publish',
+          message: (message || '').replace(
+            /\(post:[a-zA-Z0-9-_]+\)/g,
+            'https://postqueen.app/p'
+          ),
+          settings,
+          index,
+        }) || 0
+    );
+  }
+
+  // Whether a network bills each post, and so has reservations to keep.
+  private billsPerPost(providerIdentifier?: string) {
+    return (
+      !!providerIdentifier &&
+      !!this._integrationManager.getSocialIntegration(providerIdentifier)
+        ?.creditCost
     );
   }
 
@@ -1707,21 +1729,38 @@ export class PostsService {
     type: CreatePostDto['type'],
     posts: CreatePostDto['posts']
   ) {
+    const priced = (posts || []).filter((post) => post?.integration?.id);
     const channels = await Promise.all(
-      posts.map(async (post) => {
+      priced.map(async (post) => {
         const settings = post.settings as any;
         const rootId = post.value?.[0]?.id;
-        // As it will be saved: an update keeps its content as it is.
+        // Priced by the channel as it is saved, never by what the request
+        // says it is.
+        const providerIdentifier = (
+          await this._integrationService.getIntegrationByIdNotDeleted(
+            orgId,
+            post.integration.id
+          )
+        )?.providerIdentifier;
+        // As it will be saved: every save but an update adds the thread
+        // finisher.
         const value =
           type === 'update'
             ? post.value || []
             : this.withThreadFinisher(post).value;
-        const cost = value.reduce(
-          (sum: number, part: { content: string }, index: number) =>
-            sum +
-            this.publishCost(settings?.__type, settings, part.content, index),
-          0
-        );
+        const cost = providerIdentifier
+          ? value.reduce(
+              (sum: number, part: { content?: string }, index: number) =>
+                sum +
+                this.publishCost(
+                  providerIdentifier,
+                  settings,
+                  part?.content || '',
+                  index
+                ),
+              0
+            )
+          : 0;
 
         let goesOut = type === 'schedule' || type === 'now';
         if (type === 'update' && rootId) {
@@ -1876,7 +1915,7 @@ export class PostsService {
 
     for (const { idempotencyKey } of open) {
       if (idempotencyKey && !wanted.has(idempotencyKey)) {
-        await this._creditsService.refund(orgId, idempotencyKey);
+        await this._creditsService.release(orgId, idempotencyKey);
       }
     }
   }
@@ -1904,20 +1943,37 @@ export class PostsService {
       : part;
   }
 
+  // Whether an item that never had a reservation was scheduled before posts
+  // cost credits, and so goes out free: saved before the switch, and not a
+  // repeating post that has already published once (each run after that is
+  // a new publish).
+  private scheduledBeforeCredits(
+    part: Pick<Post, 'createdAt'>,
+    root: { intervalInDays: number | null; releaseId?: string | null }
+  ) {
+    return (
+      new Date(part.createdAt) < PUBLISH_CREDITS_SINCE &&
+      !(root.intervalInDays && root.releaseId)
+    );
+  }
+
   /**
    * Pays for one item of a thread as it publishes, from the reservation made
-   * when it was scheduled. An item scheduled before posts cost credits has
-   * never had one, and goes out free. One whose reservation is gone (a
-   * repeat that could not reserve its next run) is charged now, and refused
-   * with a 402 when the balance cannot pay.
+   * when it was scheduled. One whose reservation is gone (a repeat that
+   * could not reserve its next run, a save whose reservation failed) is
+   * charged now, and refused with a 402 when the balance cannot pay. An
+   * item scheduled before posts cost credits goes out free.
    */
-  async payForPublish(providerIdentifier: string, part: Post) {
-    if (!isBillingEnabled()) {
+  async payForPublish(providerIdentifier: string, item: Pick<Post, 'id'>) {
+    if (!isBillingEnabled() || !this.billsPerPost(providerIdentifier)) {
       return;
     }
 
-    const root = await this.rootOf(part);
-    if (!root) {
+    // The workflow hands over a trimmed copy of the row, without its place
+    // in the thread; the row says which post it belongs to.
+    const part = await this._postRepository.getPostById(item.id);
+    const root = part && (await this.rootOf(part));
+    if (!part || !root) {
       return;
     }
 
@@ -1926,9 +1982,12 @@ export class PostsService {
       part.organizationId,
       this.publishKey(root.id)
     );
+    if (open.some((reservation) => reservation.idempotencyKey === key)) {
+      return;
+    }
     if (
-      open.some((reservation) => reservation.idempotencyKey === key) ||
-      !(await this._creditsService.everReserved(part.organizationId, key))
+      !(await this._creditsService.everReserved(part.organizationId, key)) &&
+      this.scheduledBeforeCredits(part, root)
     ) {
       return;
     }
@@ -1959,8 +2018,11 @@ export class PostsService {
 
     try {
       const part = await this._postRepository.getPostById(partId);
-      const root = part && (await this.rootOf(part));
-      if (!part || !root) {
+      if (!part || !this.billsPerPost(part.integration?.providerIdentifier)) {
+        return;
+      }
+      const root = await this.rootOf(part);
+      if (!root) {
         return;
       }
 
@@ -1983,7 +2045,8 @@ export class PostsService {
 
   /**
    * Hands back what was set aside for items that will not publish: the one
-   * that failed and, when the run's thread is known, the items after it.
+   * that failed and the items after it in the run's thread. A post that
+   * failed before its thread was read hands back all of it.
    */
   async releasePublish(partId: string, thread?: { id: string }[]) {
     if (!isBillingEnabled()) {
@@ -1991,18 +2054,28 @@ export class PostsService {
     }
 
     const part = await this._postRepository.getPostById(partId);
-    const root = part && (await this.rootOf(part));
-    if (!part || !root) {
+    if (!part || !this.billsPerPost(part.integration?.providerIdentifier)) {
+      return;
+    }
+    const root = await this.rootOf(part);
+    if (!root) {
       return;
     }
 
     const from = (thread || []).findIndex((item) => item?.id === partId);
-    const ids = from === -1 ? [partId] : thread!.slice(from).map((p) => p.id);
-    for (const id of ids) {
-      await this._creditsService.refund(
-        part.organizationId,
-        this.publishKey(root.id, id)
-      );
+    const keys =
+      from !== -1
+        ? thread!.slice(from).map((p) => this.publishKey(root.id, p.id))
+        : root.id === part.id
+        ? (
+            await this._creditsService.reservations(
+              part.organizationId,
+              this.publishKey(root.id)
+            )
+          ).map((reservation) => reservation.idempotencyKey!)
+        : [this.publishKey(root.id, part.id)];
+    for (const key of keys) {
+      await this._creditsService.release(part.organizationId, key);
     }
   }
 

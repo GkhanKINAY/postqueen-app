@@ -65,7 +65,8 @@ export type PublishingNotice =
 const LAPSED_SUBSCRIPTION = 'Subscription required';
 
 // Failures that never reached the network: the credits set aside to publish
-// the item, and the rest of its thread, go back. A refusal by the network
+// the item and the rest of its thread go back (all of the post's, when the
+// run failed before reading its thread). A refusal by the network
 // (bad_body) is the other case. An outcome nobody knows (a timeout, an
 // interrupted run, a token that failed while checking a post the network
 // had accepted) keeps them.

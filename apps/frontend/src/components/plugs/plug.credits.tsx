@@ -11,7 +11,7 @@ const price = (credits: number) => String(Math.round(credits * 100) / 100);
 
 /**
  * What a plug takes from the credits balance, on a network that bills each
- * call: every run's look at the post, and acting on it. Nothing with billing
+ * call: its daily look at the post, and acting on it. Nothing with billing
  * off, or for a plug that costs nothing.
  */
 export const PlugCredits: FC<{
@@ -35,7 +35,7 @@ export const PlugCredits: FC<{
         {credits.check && credits.withLink
           ? t(
               'plug_credits_check_and_act_link',
-              'Uses credits: {{check}} each time it checks the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out.',
+              'Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out.',
               {
                 check: price(credits.check),
                 trigger: price(credits.trigger),
@@ -45,7 +45,7 @@ export const PlugCredits: FC<{
           : credits.check
           ? t(
               'plug_credits_check_and_act',
-              'Uses credits: {{check}} each time it checks the post, and {{trigger}} when it acts on it. It stops if the balance runs out.',
+              'Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it. It stops if the balance runs out.',
               {
                 check: price(credits.check),
                 trigger: price(credits.trigger),

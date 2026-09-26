@@ -92,6 +92,9 @@ const prisma: any = {
           .reduce((sum, g) => sum + g.remaining, 0),
       },
     }),
+    create: async ({ data }: Row) => {
+      grants.push({ id: id(), revokedAt: null, ...data });
+    },
     update: async ({ where, data }: Row) => {
       const grant = grants.find((g) => g.id === where.id)!;
       grant.remaining +=
@@ -227,6 +230,31 @@ describe('Reservations', () => {
     assert.equal(await repository().settle(org, 'publish:p1:a', 'x-1'), false);
     assert.equal(await repository().settle(org, 'publish:p1:a', 'x-2'), true);
     assert.equal(await balance(), 920);
+  });
+
+  it('lets credits that expired while they were reserved stay expired', async () => {
+    grants[0].expiresAt = new Date(Date.now() + 60_000);
+    await reserve('publish:p1:a', 40);
+    await reserve('publish:p1:b', 40);
+    // the period ends while the posts wait
+    grants[0].expiresAt = new Date(Date.now() - 1000);
+    await repository().release(org, 'publish:p1:a');
+    await reserve('publish:p1:b', 500).catch(() => undefined);
+    assert.equal(grants.length, 1);
+    assert.equal(await balance(), 0);
+    // a failed generation, refunded at once, still gets its credits back
+    grants[0].expiresAt = new Date(Date.now() + 60_000);
+    await repository().spend(org, {
+      key: 'image:1',
+      amount: 30,
+      action: 'image',
+    });
+    grants[0].expiresAt = new Date(Date.now() - 1000);
+    await repository().refund(org, 'image:1');
+    assert.deepEqual(
+      grants.slice(1).map((g) => [g.source, g.remaining]),
+      [['refund', 30]]
+    );
   });
 
   it('knows whether anything was ever reserved for an item', async () => {
