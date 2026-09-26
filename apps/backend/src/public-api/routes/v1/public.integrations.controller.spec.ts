@@ -43,7 +43,11 @@ describe('the trial lock reads one derived flag', () => {
       media,
       /const isTrialLocked = \([\s\S]*?\) => !video\.trial && effectiveIsTrailing\(org\);/
     );
-    assert.match(videoActivity, /this\._mediaService\.generateVideo\(org, body\)/);
+    // The job's own id rides along, to key the credits it spends.
+    assert.match(
+      videoActivity,
+      /this\._mediaService\.generateVideo\(\s*org,\s*body,\s*Context\.current\(\)\.info\.workflowExecution\.workflowId\s*\)/
+    );
   });
 
   it('uses the same function in the middleware, the connect flow and clipping', () => {

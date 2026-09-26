@@ -1482,18 +1482,12 @@ export const BillingFeatures: FC<{
       key: 'billing_advanced_picture_editor',
       defaultValue: 'Advanced Picture Editor',
     });
-    if (currentPricing?.image_generator) {
+    // One balance pays for AI images, videos and the rest, by what each costs.
+    if (currentPricing?.monthly_credits) {
       list.push({
-        key: 'billing_ai_images_per_month',
-        defaultValue: 'AI Images per month',
-        prefix: currentPricing?.image_generation_count,
-      });
-    }
-    if (currentPricing?.generate_videos) {
-      list.push({
-        key: 'billing_ai_videos_per_month',
-        defaultValue: 'AI Videos per month',
-        prefix: currentPricing?.generate_videos,
+        key: 'billing_credits_per_month',
+        defaultValue: 'credits a month',
+        prefix: currentPricing.monthly_credits,
       });
     }
     // Off until a clipping processor is configured: no plan advertises

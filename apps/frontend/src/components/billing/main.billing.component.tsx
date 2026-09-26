@@ -171,17 +171,11 @@ export const Features: FC<{
       list.push({ label: t('plan_ai_copilots', 'AI copilots') });
     }
     list.push({ label: t('plan_picture_editor', 'Advanced Picture Editor') });
-    if (currentPricing?.image_generator) {
+    // One balance pays for AI images, videos and the rest, by what each costs.
+    if (currentPricing?.monthly_credits) {
       list.push({
-        label: t('plan_n_ai_images', '{{count}} AI Images per month', {
-          count: currentPricing?.image_generation_count,
-        }),
-      });
-    }
-    if (currentPricing?.generate_videos) {
-      list.push({
-        label: t('plan_n_ai_videos', '{{count}} AI Videos per month', {
-          count: currentPricing?.generate_videos,
+        label: t('plan_n_credits_month', '{{count}} credits a month', {
+          count: currentPricing.monthly_credits,
         }),
       });
     }
