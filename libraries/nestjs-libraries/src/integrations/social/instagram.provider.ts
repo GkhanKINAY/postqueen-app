@@ -1441,8 +1441,25 @@ export class InstagramProvider
         }
         rows.push(mapInstagramMediaInsights(postId, data));
       } catch (err) {
+        const json = String((err as any)?.details?.[0]?.json ?? '');
+        // A story is deleted 24 hours after it goes up, and Graph answers its
+        // insights with subcode 33 "does not exist". handleErrors maps every
+        // subcode 33 to refresh-token for publishing, so each expired story
+        // flagged a working channel for reconnect and stopped its queue.
+        // The media is gone, not the token: skip it, as facebook.provider does.
+        if (
+          /"error_subcode":33\b/.test(json) &&
+          json.indexOf('does not exist') > -1
+        ) {
+          continue;
+        }
         if (err instanceof RefreshToken || err instanceof Disconnect) {
           throw err;
+        }
+        // Graph withholds insights from media seen by too few accounts. That
+        // is a quiet post, not an error worth a stack trace on every sync.
+        if (json.indexOf('Not enough viewers') > -1) {
+          continue;
         }
         console.error('Error fetching Instagram posts analytics:', err);
       }
