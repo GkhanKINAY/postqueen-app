@@ -6,6 +6,7 @@ import { validate } from 'class-validator';
 import { InstagramProvider } from './instagram.provider.ts';
 import { InstagramStandaloneProvider } from './instagram.standalone.provider.ts';
 import { InstagramDto } from '../../dtos/posts/providers-settings/instagram.dto.ts';
+import { RefreshToken } from '../social.abstract.ts';
 
 const images = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
@@ -94,6 +95,74 @@ describe('Instagram limits, on both tiles', () => {
         await provider.checkValidity([images(1)], { post_type: 'post' }, []),
         true
       );
+    });
+  }
+});
+
+describe('Instagram post analytics, media by media', () => {
+  // Graph's answers, keyed by media id, as postsAnalytics asks for them.
+  const graph = (answers: Record<string, [number, object]>) => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      const id = String(url).split('/insights')[0].split('/').pop()!;
+      const [status, body] = answers[id];
+      return new Response(JSON.stringify(body), { status });
+    }) as typeof fetch;
+    return () => {
+      globalThis.fetch = original;
+    };
+  };
+  const views = { data: [{ name: 'views', values: [{ value: 42 }] }] };
+  const expiredStory = {
+    error: {
+      message:
+        "Unsupported get request. Object with ID 'story1' does not exist, cannot be loaded due to missing permissions, or does not support this operation.",
+      type: 'GraphMethodException',
+      code: 100,
+      error_subcode: 33,
+    },
+  };
+  const tooFewViewers = {
+    error: {
+      message: '(#10) Not enough viewers for the media to show insights',
+      type: 'OAuthException',
+      code: 10,
+    },
+  };
+
+  for (const [name, provider] of tiles) {
+    it(`${name}: skips a story Instagram already deleted, without flagging the channel`, async () => {
+      const restore = graph({ story1: [400, expiredStory], post1: [200, views] });
+      try {
+        const rows = await provider.postsAnalytics!('ig', 'token', ['story1', 'post1']);
+        assert.deepEqual(rows.map((r) => [r.platformPostId, r.impressions]), [['post1', 42]]);
+      } finally {
+        restore();
+      }
+    });
+
+    it(`${name}: skips media with too few viewers for insights`, async () => {
+      const restore = graph({ quiet1: [400, tooFewViewers], post1: [200, views] });
+      try {
+        const rows = await provider.postsAnalytics!('ig', 'token', ['quiet1', 'post1']);
+        assert.deepEqual(rows.map((r) => r.platformPostId), ['post1']);
+      } finally {
+        restore();
+      }
+    });
+
+    it(`${name}: still asks for a reconnect when the token itself is revoked`, async () => {
+      const restore = graph({
+        post1: [400, { error: { message: 'REVOKED_ACCESS_TOKEN', code: 190 } }],
+      });
+      try {
+        await assert.rejects(
+          provider.postsAnalytics!('ig', 'token', ['post1']),
+          (err: Error) => err instanceof RefreshToken
+        );
+      } finally {
+        restore();
+      }
     });
   }
 });
