@@ -197,6 +197,21 @@ export class NoAuthIntegrationsController {
           });
         }
 
+        // The message and the provider's error code only: the error object of
+        // a failed token exchange can carry the request, code and secrets
+        // included.
+        const failure = err as any;
+        console.error(
+          `Authentication failed for ${integration}:`,
+          [
+            failure?.name,
+            failure?.message,
+            failure?.response?.data?.error,
+            failure?.response?.data?.error_description,
+          ]
+            .filter((p) => typeof p === 'string' && p)
+            .join(' | ') || String(err)
+        );
         return res({
           error: 'Authentication failed',
           accessToken: '',
