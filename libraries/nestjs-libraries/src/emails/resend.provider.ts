@@ -18,22 +18,23 @@ export class ResendProvider implements EmailInterface {
     replyTo?: string,
     extras?: EmailExtras,
   ) {
-    try {
-      const sends = await resend.emails.send({
-        from: `${emailFromName} <${emailFromAddress}>`,
-        to,
-        subject,
-        html,
-        ...(extras?.text && { text: extras.text }),
-        ...(extras?.headers && { headers: extras.headers }),
-        ...(replyTo && { reply_to: replyTo }),
-      });
+    const sends = await resend.emails.send({
+      from: `${emailFromName} <${emailFromAddress}>`,
+      to,
+      subject,
+      html,
+      ...(extras?.text && { text: extras.text }),
+      ...(extras?.headers && { headers: extras.headers }),
+      ...(replyTo && { reply_to: replyTo }),
+    });
 
-      return sends;
-    } catch (err) {
-      console.log(err);
+    // The SDK returns API errors (like a 429 rate limit) instead of throwing.
+    // Throw, so sendEmailSync retries the send and logs it as failed rather
+    // than as sent.
+    if (sends.error) {
+      throw new Error(`${sends.error.name}: ${sends.error.message}`);
     }
 
-    return { sent: false };
+    return sends;
   }
 }
