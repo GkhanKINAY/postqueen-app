@@ -849,5 +849,6 @@
   "email_off_button": "Les désactiver",
   "signup_product_news_notice": "Nous vous enverrons de temps en temps des nouveautés sur le produit. Vous pouvez vous désabonner depuis chacune d’elles en un clic.",
   "product_news": "Nouveautés du produit",
-  "product_news_description": "Recevoir de temps en temps un e-mail sur les nouvelles fonctionnalités et améliorations"
+  "product_news_description": "Recevoir de temps en temps un e-mail sur les nouvelles fonctionnalités et améliorations",
+  "facebook_video_title": "Titre de la vidéo (uniquement pour les publications vidéo)"
 }

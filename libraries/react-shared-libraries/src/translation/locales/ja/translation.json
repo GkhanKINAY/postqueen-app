@@ -849,5 +849,6 @@
   "email_off_button": "オフにする",
   "signup_product_news_notice": "製品ニュースを時々お送りします。各メールからワンクリックで配信を停止できます。",
   "product_news": "製品ニュース",
-  "product_news_description": "新機能や改善についてのメールを時々受け取る"
+  "product_news_description": "新機能や改善についてのメールを時々受け取る",
+  "facebook_video_title": "動画のタイトル（動画投稿のみ）"
 }

@@ -849,5 +849,6 @@
   "email_off_button": "Desativar",
   "signup_product_news_notice": "De vez em quando, enviaremos novidades do produto. Você pode cancelar a inscrição em qualquer uma delas com um clique.",
   "product_news": "Novidades do produto",
-  "product_news_description": "Receba de vez em quando um e-mail sobre novos recursos e melhorias"
+  "product_news_description": "Receba de vez em quando um e-mail sobre novos recursos e melhorias",
+  "facebook_video_title": "Título do vídeo (apenas para publicações de vídeo)"
 }
