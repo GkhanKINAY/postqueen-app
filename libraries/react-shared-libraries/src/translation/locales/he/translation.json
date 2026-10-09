@@ -546,6 +546,8 @@
   "billing_ai_copilots": "קופיילוטים מבוססי בינה מלאכותית",
   "billing_ai_autocomplete": "השלמה אוטומטית בינה מלאכותית",
   "billing_advanced_picture_editor": "עורך תמונות מתקדם",
+  "billing_ai_images_per_month": "תמונות בינה מלאכותית בחודש",
+  "billing_ai_videos_per_month": "סרטוני בינה מלאכותית בחודש",
   "billing_clipping_minutes_per_month": "דקות של חיתוך וידאו בבינה מלאכותית בחודש",
   "plan_n_clipping_minutes": "{{count}} דקות של חיתוך וידאו בבינה מלאכותית בחודש",
   "billing_billing_address": "כתובת לחיוב",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "תזמון כל הערוצים",
   "only_channel_name": "רק {{name}}",
   "delete_all_channels_cancels_scheduled": "מחיקה מכל הערוצים מבטלת גם את הפוסטים שעדיין מתוזמנים בערוצים האחרים.",
-  "credits_card_sub": "Copilot, תמונות וסרטוני בינה מלאכותית, ופוסטים ופלאגים ב-X צורכים קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל חודש.",
-  "credits_card_sub_yearly": "Copilot, תמונות וסרטוני בינה מלאכותית, ופוסטים ופלאגים ב-X צורכים קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל שנה.",
-  "credits_card_sub_plain": "Copilot, תמונות וסרטוני בינה מלאכותית, ופוסטים ופלאגים ב-X צורכים קרדיטים."
+  "credits_card_sub": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל חודש.",
+  "credits_card_sub_yearly": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל שנה.",
+  "credits_card_sub_plain": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים."
 }

@@ -217,17 +217,17 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
               ? period === 'YEARLY'
                 ? t(
                     'credits_card_sub_yearly',
-                    'Copilot, AI images and videos, and posts and plugs on X spend credits. Your plan adds {{amount}} each year.',
+                    'AI features (Copilot, writing, images and videos) and activity on X spend credits. Your plan adds {{amount}} each year.',
                     { amount: planCredits * 12 },
                   )
                 : t(
                     'credits_card_sub',
-                    'Copilot, AI images and videos, and posts and plugs on X spend credits. Your plan adds {{amount}} each month.',
+                    'AI features (Copilot, writing, images and videos) and activity on X spend credits. Your plan adds {{amount}} each month.',
                     { amount: planCredits },
                   )
               : t(
                   'credits_card_sub_plain',
-                  'Copilot, AI images and videos, and posts and plugs on X spend credits.',
+                  'AI features (Copilot, writing, images and videos) and activity on X spend credits.',
                 )}
           </div>
         </div>

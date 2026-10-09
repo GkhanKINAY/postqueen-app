@@ -546,6 +546,8 @@
   "billing_ai_copilots": "AI hỗ trợ",
   "billing_ai_autocomplete": "AI Tự động hoàn thành",
   "billing_advanced_picture_editor": "Trình chỉnh sửa ảnh nâng cao",
+  "billing_ai_images_per_month": "Hình ảnh AI mỗi tháng",
+  "billing_ai_videos_per_month": "Video AI mỗi tháng",
   "billing_clipping_minutes_per_month": "phút cắt video bằng AI mỗi tháng",
   "plan_n_clipping_minutes": "{{count}} phút cắt video bằng AI mỗi tháng",
   "billing_billing_address": "Địa chỉ thanh toán",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "Lên lịch tất cả các kênh",
   "only_channel_name": "Chỉ {{name}}",
   "delete_all_channels_cancels_scheduled": "Xóa khỏi tất cả các kênh cũng sẽ hủy các bài đăng vẫn đang được lên lịch trên các kênh khác.",
-  "credits_card_sub": "Copilot, hình ảnh và video AI, cùng bài đăng và quảng bá trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi tháng.",
-  "credits_card_sub_yearly": "Copilot, hình ảnh và video AI, cùng bài đăng và quảng bá trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi năm.",
-  "credits_card_sub_plain": "Copilot, hình ảnh và video AI, cùng bài đăng và quảng bá trên X đều dùng tín dụng."
+  "credits_card_sub": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi tháng.",
+  "credits_card_sub_yearly": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi năm.",
+  "credits_card_sub_plain": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng."
 }

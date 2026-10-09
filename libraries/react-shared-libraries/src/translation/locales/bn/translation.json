@@ -546,6 +546,8 @@
   "billing_ai_copilots": "এআই কো-পাইলট",
   "billing_ai_autocomplete": "এআই অটো-কমপ্লিট",
   "billing_advanced_picture_editor": "উন্নত ছবি সম্পাদনা",
+  "billing_ai_images_per_month": "প্রতি মাসে এআই ছবি",
+  "billing_ai_videos_per_month": "প্রতি মাসে এআই ভিডিও",
   "billing_clipping_minutes_per_month": "মিনিট এআই ভিডিও ক্লিপিং প্রতি মাসে",
   "billing_billing_address": "বিলিং ঠিকানা",
   "billing_payment": "পেমেন্ট",
@@ -889,7 +891,7 @@
   "schedule_all_channels": "সব চ্যানেলে নির্ধারণ করুন",
   "only_channel_name": "শুধু {{name}}",
   "delete_all_channels_cancels_scheduled": "সব চ্যানেল থেকে মুছলে অন্য চ্যানেলগুলোতে এখনও নির্ধারিত পোস্টগুলোও বাতিল হয়ে যাবে।",
-  "credits_card_sub": "Copilot, এআই ছবি ও ভিডিও, এবং X-এ পোস্ট ও প্লাগে ক্রেডিট খরচ হয়। আপনার প্ল্যান প্রতি মাসে {{amount}} ক্রেডিট যোগ করে।",
-  "credits_card_sub_yearly": "Copilot, এআই ছবি ও ভিডিও, এবং X-এ পোস্ট ও প্লাগে ক্রেডিট খরচ হয়। আপনার প্ল্যান প্রতি বছর {{amount}} ক্রেডিট যোগ করে।",
-  "credits_card_sub_plain": "Copilot, এআই ছবি ও ভিডিও, এবং X-এ পোস্ট ও প্লাগে ক্রেডিট খরচ হয়।"
+  "credits_card_sub": "এআই ফিচার (Copilot, লেখা, ছবি ও ভিডিও) এবং X-এ কার্যকলাপে ক্রেডিট খরচ হয়। আপনার প্ল্যান প্রতি মাসে {{amount}} ক্রেডিট যোগ করে।",
+  "credits_card_sub_yearly": "এআই ফিচার (Copilot, লেখা, ছবি ও ভিডিও) এবং X-এ কার্যকলাপে ক্রেডিট খরচ হয়। আপনার প্ল্যান প্রতি বছর {{amount}} ক্রেডিট যোগ করে।",
+  "credits_card_sub_plain": "এআই ফিচার (Copilot, লেখা, ছবি ও ভিডিও) এবং X-এ কার্যকলাপে ক্রেডিট খরচ হয়।"
 }

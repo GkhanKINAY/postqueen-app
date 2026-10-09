@@ -546,6 +546,8 @@
   "billing_ai_copilots": "Copilotes IA",
   "billing_ai_autocomplete": "Saisie automatique IA",
   "billing_advanced_picture_editor": "Éditeur d'images avancé",
+  "billing_ai_images_per_month": "Images IA par mois",
+  "billing_ai_videos_per_month": "Vidéos IA par mois",
   "billing_clipping_minutes_per_month": "minutes de découpage vidéo IA par mois",
   "plan_n_clipping_minutes": "{{count}} minutes de découpage vidéo IA par mois",
   "billing_billing_address": "Adresse de facturation",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "Programmer tous les canaux",
   "only_channel_name": "Uniquement {{name}}",
   "delete_all_channels_cancels_scheduled": "La supprimer de tous les canaux annule aussi les publications encore programmées sur les autres canaux.",
-  "credits_card_sub": "Copilot, les images et vidéos IA, ainsi que les publications et les plugs sur X consomment des crédits. Votre forfait en ajoute {{amount}} chaque mois.",
-  "credits_card_sub_yearly": "Copilot, les images et vidéos IA, ainsi que les publications et les plugs sur X consomment des crédits. Votre forfait en ajoute {{amount}} chaque année.",
-  "credits_card_sub_plain": "Copilot, les images et vidéos IA, ainsi que les publications et les plugs sur X consomment des crédits."
+  "credits_card_sub": "Les fonctionnalités IA (Copilot, rédaction, images et vidéos) et l'activité sur X consomment des crédits. Votre forfait en ajoute {{amount}} chaque mois.",
+  "credits_card_sub_yearly": "Les fonctionnalités IA (Copilot, rédaction, images et vidéos) et l'activité sur X consomment des crédits. Votre forfait en ajoute {{amount}} chaque année.",
+  "credits_card_sub_plain": "Les fonctionnalités IA (Copilot, rédaction, images et vidéos) et l'activité sur X consomment des crédits."
 }

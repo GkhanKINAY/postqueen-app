@@ -546,6 +546,8 @@
   "billing_ai_copilots": "KI-Copiloten",
   "billing_ai_autocomplete": "KI-Autovervollständigung",
   "billing_advanced_picture_editor": "Erweiterter Bildeditor",
+  "billing_ai_images_per_month": "KI-Bilder pro Monat",
+  "billing_ai_videos_per_month": "KI-Videos pro Monat",
   "billing_clipping_minutes_per_month": "Minuten KI-Videoclipping pro Monat",
   "plan_n_clipping_minutes": "{{count}} Minuten KI-Videoclipping pro Monat",
   "billing_billing_address": "Rechnungsadresse",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "Alle Kanäle planen",
   "only_channel_name": "Nur {{name}}",
   "delete_all_channels_cancels_scheduled": "Wenn du ihn aus allen Kanälen löschst, werden auch die noch geplanten Beiträge in den anderen Kanälen abgebrochen.",
-  "credits_card_sub": "Copilot, KI-Bilder und -Videos sowie Beiträge und Plugs auf X verbrauchen Credits. Dein Plan fügt jeden Monat {{amount}} hinzu.",
-  "credits_card_sub_yearly": "Copilot, KI-Bilder und -Videos sowie Beiträge und Plugs auf X verbrauchen Credits. Dein Plan fügt jedes Jahr {{amount}} hinzu.",
-  "credits_card_sub_plain": "Copilot, KI-Bilder und -Videos sowie Beiträge und Plugs auf X verbrauchen Credits."
+  "credits_card_sub": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jeden Monat {{amount}} hinzu.",
+  "credits_card_sub_yearly": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jedes Jahr {{amount}} hinzu.",
+  "credits_card_sub_plain": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits."
 }

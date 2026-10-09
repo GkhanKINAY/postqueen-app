@@ -546,6 +546,8 @@
   "billing_ai_copilots": "ИИ-ассистенты",
   "billing_ai_autocomplete": "Автозаполнение на базе ИИ",
   "billing_advanced_picture_editor": "Продвинутый редактор изображений",
+  "billing_ai_images_per_month": "ИИ-изображений в месяц",
+  "billing_ai_videos_per_month": "ИИ-видео в месяц",
   "billing_clipping_minutes_per_month": "минут ИИ-нарезки видео в месяц",
   "plan_n_clipping_minutes": "{{count}} минут ИИ-нарезки видео в месяц",
   "billing_billing_address": "Платёжный адрес",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "Запланировать все каналы",
   "only_channel_name": "Только {{name}}",
   "delete_all_channels_cancels_scheduled": "Удаление из всех каналов также отменит посты, которые ещё запланированы в других каналах.",
-  "credits_card_sub": "Кредиты тратятся на Copilot, ИИ-изображения и видео, а также на публикации и плагины в X. Ваш тариф добавляет {{amount}} каждый месяц.",
-  "credits_card_sub_yearly": "Кредиты тратятся на Copilot, ИИ-изображения и видео, а также на публикации и плагины в X. Ваш тариф добавляет {{amount}} каждый год.",
-  "credits_card_sub_plain": "Кредиты тратятся на Copilot, ИИ-изображения и видео, а также на публикации и плагины в X."
+  "credits_card_sub": "Кредиты тратятся на функции ИИ (Copilot, тексты, изображения и видео) и действия в X. Ваш тариф добавляет {{amount}} каждый месяц.",
+  "credits_card_sub_yearly": "Кредиты тратятся на функции ИИ (Copilot, тексты, изображения и видео) и действия в X. Ваш тариф добавляет {{amount}} каждый год.",
+  "credits_card_sub_plain": "Кредиты тратятся на функции ИИ (Copilot, тексты, изображения и видео) и действия в X."
 }

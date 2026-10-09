@@ -546,6 +546,8 @@
   "billing_ai_copilots": "مساعدون بالذكاء الاصطناعي",
   "billing_ai_autocomplete": "إكمال تلقائي بالذكاء الاصطناعي",
   "billing_advanced_picture_editor": "محرر صور متقدم",
+  "billing_ai_images_per_month": "صور بالذكاء الاصطناعي شهريًا",
+  "billing_ai_videos_per_month": "فيديوهات بالذكاء الاصطناعي شهريًا",
   "billing_clipping_minutes_per_month": "دقيقة من تقطيع الفيديو بالذكاء الاصطناعي شهريًا",
   "plan_n_clipping_minutes": "{{count}} دقيقة من تقطيع الفيديو بالذكاء الاصطناعي شهريًا",
   "billing_billing_address": "عنوان الفاتورة",
@@ -890,7 +892,7 @@
   "schedule_all_channels": "جدولة كل القنوات",
   "only_channel_name": "{{name}} فقط",
   "delete_all_channels_cancels_scheduled": "حذفه من كل القنوات يلغي أيضًا المنشورات التي لا تزال مجدولة في القنوات الأخرى.",
-  "credits_card_sub": "يستهلك Copilot والصور والفيديوهات بالذكاء الاصطناعي والمنشورات والإعلانات على X رصيدًا. تضيف خطتك {{amount}} كل شهر.",
-  "credits_card_sub_yearly": "يستهلك Copilot والصور والفيديوهات بالذكاء الاصطناعي والمنشورات والإعلانات على X رصيدًا. تضيف خطتك {{amount}} كل سنة.",
-  "credits_card_sub_plain": "يستهلك Copilot والصور والفيديوهات بالذكاء الاصطناعي والمنشورات والإعلانات على X رصيدًا."
+  "credits_card_sub": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا. تضيف خطتك {{amount}} كل شهر.",
+  "credits_card_sub_yearly": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا. تضيف خطتك {{amount}} كل سنة.",
+  "credits_card_sub_plain": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا."
 }
