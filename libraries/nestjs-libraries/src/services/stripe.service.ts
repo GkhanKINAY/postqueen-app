@@ -1006,13 +1006,28 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
-    const older = (await this.entitlingSubscriptions(customer)).find(
+    let older = (await this.entitlingSubscriptions(customer)).find(
       (other) =>
         other.id !== subscription.id &&
         (other.created < subscription.created ||
           (other.created === subscription.created &&
             other.id < subscription.id))
     );
+
+    // A first checkout creates no customer up front (see `embedded`), so two
+    // of them make two customers. The organization's own customer is the one
+    // it was already linked to; anything entitling it there came first.
+    const organizationId = subscription.metadata?.organizationId;
+    if (!older && organizationId) {
+      const org = await this._organizationService.getOrgById(organizationId);
+      if (
+        org?.paymentId?.startsWith('cus_') &&
+        org.paymentId !== customer
+      ) {
+        [older] = await this.entitlingSubscriptions(org.paymentId);
+      }
+    }
+
     if (!older) {
       return false;
     }
@@ -1035,8 +1050,9 @@ export class StripeService extends PaymentProviderAbstract {
       }
     }
 
-    Logger.warn(
-      `[stripe] subscription ${subscription.id} duplicates ${older.id} on customer ${customer}; cancelled it, nothing granted (event ${event.id}). Its first payment was not refunded.`
+    // An error, not a warning: its first payment is waiting for a refund.
+    Logger.error(
+      `[stripe] subscription ${subscription.id} on customer ${customer} duplicates ${older.id}; cancelled it, nothing granted (event ${event.id}). Its first payment was not refunded.`
     );
     return true;
   }
@@ -1312,9 +1328,11 @@ export class StripeService extends PaymentProviderAbstract {
       `[stripe] subscription ${event.data.object.id} ended, customer ${customer} stays on ${survivor.id} (event ${event.id})`
     );
 
-    // A founding member's plan is not a mirror of any subscription, and a
-    // price that is not one of ours has nothing to write.
-    if (!pricing[billing] || current?.isLifetime) {
+    // A founding member's plan is not a mirror of any subscription, a price
+    // that is not one of ours has nothing to write, and with no organization
+    // on this customer there is nothing to keep (the old revoke found none
+    // either).
+    if (!org || !pricing[billing] || current?.isLifetime) {
       return {
         ok: true,
         revoked: false,
@@ -2122,17 +2140,35 @@ export class StripeService extends PaymentProviderAbstract {
       return [];
     }
 
-    const [invoices, prices] = await Promise.all([
-      stripe.invoices.list({ customer, limit: 100 }),
-      // Recurring only: every founding and credits checkout leaves a one-off
-      // price behind, and those would crowd the plan prices out of the page.
-      stripe.prices.list({
-        type: 'recurring',
-        limit: 100,
-        expand: ['data.product'],
-      }),
-    ]);
-    const priceById = new Map(prices.data.map((price) => [price.id, price]));
+    const invoices = await stripe.invoices.list({ customer, limit: 100 });
+
+    // Each price a plan invoice billed, once, with its product: what names
+    // the tier. Too deep to expand on the invoice list itself.
+    const priceIds = new Set<string>();
+    for (const invoice of invoices.data) {
+      if (!invoice.parent?.subscription_details?.subscription) {
+        continue;
+      }
+      for (const line of invoice.lines.data) {
+        const price = line.pricing?.price_details?.price;
+        if (typeof price === 'string') {
+          priceIds.add(price);
+        }
+      }
+    }
+    const priceById = new Map(
+      await Promise.all(
+        [...priceIds].map(
+          async (id) =>
+            [
+              id,
+              await stripe.prices
+                .retrieve(id, { expand: ['product'] })
+                .catch((): undefined => undefined),
+            ] as const
+        )
+      )
+    );
 
     return invoices.data
       .filter((invoice) => invoice.status !== 'draft' && invoice.total > 0)

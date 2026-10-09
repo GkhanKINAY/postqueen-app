@@ -121,6 +121,7 @@ const HistoryGhost: FC = () => (
         </div>
         <Skeleton className="h-[14px] w-[60px]" />
         <Skeleton className="h-[22px] w-[58px] !rounded-full" />
+        <div className="w-[68px]" />
       </div>
     ))}
   </div>
@@ -180,7 +181,7 @@ export const BillingHistory: FC = () => {
 
       {isLoading && !data ? (
         <HistoryGhost />
-      ) : error ? (
+      ) : error && !data ? (
         <div className="text-[13px] text-pqMuted">
           {t('billing_invoices_failed', 'Could not load your invoices')}
         </div>

@@ -5,12 +5,14 @@ import Stripe from 'stripe';
 import { StripeService } from './stripe.service.ts';
 import { pricing } from '../database/prisma/subscriptions/pricing.ts';
 
-// Every Stripe call below is faked, and one this file forgets must not reach a
-// real account: the service's client takes its key from the environment.
-if (process.env.STRIPE_SECRET_KEY?.startsWith('sk_live')) {
+// Every Stripe call below is faked. The service built its client from the
+// environment when it was imported, so a run with a live key is refused
+// before any test starts, and the resources no test uses throw (below).
+if (/_live_/.test(process.env.STRIPE_SECRET_KEY || '')) {
   throw new Error('Refusing to run the Stripe service tests with a live key');
 }
-// Billing on, for the checks that ask (`isBillingEnabled`).
+// Billing on, for the checks that ask (`isBillingEnabled`). Read at call
+// time, so this does not change the client's key.
 process.env.STRIPE_SECRET_KEY ||= 'sk_test_unit_never_valid';
 process.env.STRIPE_PUBLISHABLE_KEY ||= 'pk_test_unit_never_valid';
 
@@ -93,8 +95,27 @@ fake(probe.invoices, {
   })),
 });
 fake(probe.prices, {
-  list: record('prices.list', () => ({ data: prices })),
+  retrieve: record('prices.retrieve', (id) =>
+    prices.find((price) => price.id === id),
+  ),
 });
+const refuse = () => {
+  throw new Error('This test reached a Stripe call it did not fake');
+};
+for (const resource of [
+  probe.customers,
+  probe.products,
+  probe.checkout.sessions,
+  probe.paymentMethods,
+  probe.charges,
+]) {
+  fake(resource, {
+    create: refuse,
+    list: refuse,
+    retrieve: refuse,
+    update: refuse,
+  });
+}
 
 let localSub: Record<string, unknown> | null;
 let failCancelAt: boolean;
@@ -169,6 +190,27 @@ describe('a second subscription on one customer', () => {
         { cancellation_details: { comment: 'duplicate-subscription' } },
       ],
     ]);
+    assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('is cancelled when a second first checkout made a second customer', async () => {
+    subs = [
+      sub('sub_old', 100),
+      sub('sub_new', 200, {
+        customer: 'cus_2',
+        metadata: { uniqueId: 'u-sub_new', organizationId: 'org1' },
+      }),
+    ];
+    const result = await service().createSubscription({
+      ...created('sub_new'),
+      data: { object: { id: 'sub_new', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    assert.equal(
+      (result as { reason: string }).reason,
+      'duplicate subscription',
+    );
+    assert.equal(called('subscriptions.cancel')[0][0], 'sub_new');
     assert.equal(called('createOrUpdateSubscription').length, 0);
   });
 
