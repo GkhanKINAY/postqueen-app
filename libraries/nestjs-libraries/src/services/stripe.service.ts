@@ -91,6 +91,24 @@ const isOlderSubscription = (a: Stripe.Subscription, b: Stripe.Subscription) =>
   (a.created < b.created || (a.created === b.created && a.id < b.id));
 
 /**
+ * Of two subscriptions on one organization, whether `a` is the one to keep:
+ * paid (active, or past_due, which only entitles once it has paid) over a
+ * trial, a trial over one not entitled yet (`incomplete`), and between two of
+ * a kind the older.
+ */
+const keepsOver = (a: Stripe.Subscription, b: Stripe.Subscription) => {
+  const rank = (s: Stripe.Subscription) =>
+    s.status === 'active' || s.status === 'past_due'
+      ? 2
+      : s.status === 'trialing'
+      ? 1
+      : 0;
+  return rank(a) !== rank(b)
+    ? rank(a) > rank(b)
+    : isOlderSubscription(a, b);
+};
+
+/**
  * How the founding membership's invoice line starts. The hosted checkout
  * leaves no metadata on its invoice, so the billing history knows it by this.
  */
@@ -991,15 +1009,16 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Cancels a new subscription when an older one already entitles the same
-   * organization, and says whether it did.
+   * Cancels a new subscription when another one already entitles the same
+   * organization and is the one to keep (`keepsOver`), and says whether it
+   * did.
    *
    * Checkout refuses a second subscription (see `embedded`), but only from
    * what this app knows: a second checkout opened before the first one's
    * webhook wrote the plan went through, and the customer was billed twice
-   * for one plan. The older subscription (by `created`) is the one kept. The
-   * duplicate's first payment is not refunded here; refunds go by request, so
-   * it is logged as an error for that.
+   * for one plan. A paid subscription is kept over a trial, and between two
+   * of a kind the older. A paid duplicate's first payment is not refunded
+   * here; refunds go by request, so it is logged as an error for that.
    *
    * A failed cancel is logged rather than thrown: the subscription is re-read
    * before this, so a retry would find it the same way. A failed read (the
@@ -1014,27 +1033,27 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
-    const isOlder = (other: Stripe.Subscription) =>
-      isOlderSubscription(other, subscription);
+    const beatsThis = (other: Stripe.Subscription) =>
+      other.id !== subscription.id && keepsOver(other, subscription);
 
-    const older = (await this.entitlingSubscriptions(customer)).find(isOlder);
-    if (older) {
-      await this.cancelAsDuplicate(subscription, older.id, event.id);
+    const kept = (await this.entitlingSubscriptions(customer)).find(beatsThis);
+    if (kept) {
+      await this.cancelAsDuplicate(subscription, kept.id, event.id);
       return true;
     }
 
     // A first checkout creates no customer up front (see `embedded`), so two
     // of them opened together make two customers, and the organization is
-    // linked to whichever webhook landed first. When the older one is on the
-    // organization's customer, this one goes. When this one is older, it is
-    // checked like any other first and only then replaces the newer ones
-    // there (`supersedeNewerSubscriptions`).
+    // linked to whichever webhook landed first. When the one to keep is on
+    // the organization's customer, this one goes. When this one is to be
+    // kept, it is checked like any other first and only then replaces the
+    // others (`supersedeSubscriptions`).
     const elsewhere = await this.subscriptionsOnOrganizationCustomer(
       subscription
     );
-    const olderThere = elsewhere?.entitled.find(isOlder);
-    if (olderThere) {
-      await this.cancelAsDuplicate(subscription, olderThere.id, event.id);
+    const keptThere = elsewhere?.entitled.find(beatsThis);
+    if (keptThere) {
+      await this.cancelAsDuplicate(subscription, keptThere.id, event.id);
       return true;
     }
     return false;
@@ -1065,42 +1084,50 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * The other half of a duplicate across two customers: this subscription is
-   * the older one, and it has passed every check a grant makes (card, trial,
-   * entitlement), so the newer ones on the organization's customer go.
+   * The other half of a duplicate: this subscription is the one to keep
+   * (`keepsOver`), and it has passed every check a grant makes (card, trial,
+   * entitlement), so the others entitling the organization go: a trial a
+   * paid subscription replaces, or a newer one on another customer.
    *
-   * The organization is moved onto this subscription's customer first, so
-   * the newer ones' `deleted` events find no organization on theirs and
-   * cannot drop the plan to FREE in between.
+   * When they are on the organization's customer and this one is not, the
+   * organization is moved onto this one's customer first, so their `deleted`
+   * events find no organization on theirs and cannot drop the plan to FREE
+   * in between. On the same customer, `deleteSubscription` keeps the plan on
+   * this one.
    */
-  private async supersedeNewerSubscriptions(
+  private async supersedeSubscriptions(
     subscription: Stripe.Subscription,
     eventId: string
   ) {
+    const customer = subscription.customer as string;
+    const sameCustomer = customer?.startsWith('cus_')
+      ? (await this.entitlingSubscriptions(customer)).filter(
+          (other) => other.id !== subscription.id
+        )
+      : [];
     const elsewhere = await this.subscriptionsOnOrganizationCustomer(
       subscription
     );
-    if (!elsewhere?.entitled.length) {
-      return;
-    }
+    const others = [...sameCustomer, ...(elsewhere?.entitled || [])];
     if (
-      elsewhere.entitled.some((other) =>
-        isOlderSubscription(other, subscription)
-      )
+      !others.length ||
+      others.some((other) => keepsOver(other, subscription))
     ) {
       return;
     }
-    Logger.warn(
-      `[stripe] organization ${elsewhere.org.id} now uses customer ${subscription.customer} (was ${elsewhere.org.paymentId}): subscription ${subscription.id} there is older than ${elsewhere.entitled
-        .map((other) => other.id)
-        .join(', ')}`
-    );
-    await this._subscriptionService.updateCustomerId(
-      elsewhere.org.id,
-      subscription.customer as string
-    );
-    for (const newer of elsewhere.entitled) {
-      await this.cancelAsDuplicate(newer, subscription.id, eventId);
+    if (elsewhere?.entitled.length) {
+      Logger.warn(
+        `[stripe] organization ${elsewhere.org.id} now uses customer ${customer} (was ${elsewhere.org.paymentId}): subscription ${subscription.id} there is kept over ${elsewhere.entitled
+          .map((other) => other.id)
+          .join(', ')}`
+      );
+      await this._subscriptionService.updateCustomerId(
+        elsewhere.org.id,
+        customer
+      );
+    }
+    for (const other of others) {
+      await this.cancelAsDuplicate(other, subscription.id, eventId);
     }
   }
 
@@ -1125,6 +1152,12 @@ export class StripeService extends PaymentProviderAbstract {
         );
         return;
       }
+    }
+    if (duplicate.status === 'trialing') {
+      Logger.warn(
+        `[stripe] trial ${duplicate.id} on customer ${duplicate.customer} gave way to ${keptId}; cancelled it, nothing was charged (event ${eventId})`
+      );
+      return;
     }
     // An error, not a warning: its first payment is waiting for a refund.
     Logger.error(
@@ -1196,7 +1229,7 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'incomplete' };
     }
 
-    await this.supersedeNewerSubscriptions(event.data.object, event.id);
+    await this.supersedeSubscriptions(event.data.object, event.id);
     await this.adoptSubscriptionCustomer(event.data.object);
 
     const saved = await this._subscriptionService.createOrUpdateSubscription(

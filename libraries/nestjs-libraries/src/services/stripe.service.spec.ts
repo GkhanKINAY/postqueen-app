@@ -277,10 +277,10 @@ describe('a second subscription on one customer', () => {
     assert.equal(orgOn('cus_1'), null);
   });
 
-  it('leaves the paying one alone when the older one is a refused trial', async () => {
+  it('leaves the newer trial alone when the older trial is refused for its card', async () => {
     localSub = null;
     subs = [
-      sub('sub_paying', 200),
+      sub('sub_trial_granted', 200, { status: 'trialing' }),
       sub('sub_trial', 100, {
         customer: 'cus_2',
         status: 'trialing',
@@ -323,8 +323,15 @@ describe('a second subscription on one customer', () => {
       data: { object: { id: 'sub_waiting', customer: 'cus_2' } },
     } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
 
-    assert.equal((result as { reason: string }).reason, 'incomplete');
-    assert.equal(called('subscriptions.cancel').length, 0);
+    // The checkout that never paid is the one that goes.
+    assert.equal(
+      (result as { reason: string }).reason,
+      'duplicate subscription',
+    );
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_waiting'],
+    );
     assert.equal(called('updateCustomerId').length, 0);
   });
 
@@ -375,7 +382,10 @@ describe('a second subscription on one customer', () => {
     subs = [sub('sub_old', 100), sub('sub_new', 200)];
     await service().createSubscription(created('sub_old'));
 
-    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_new'],
+    );
     assert.equal(called('createOrUpdateSubscription')[0][5], 'PRO');
   });
 
@@ -418,6 +428,90 @@ describe('a second subscription on one customer', () => {
       }),
     ];
     assert.equal(await service().checkSubscription('org1', 'u-sub_new'), 2);
+  });
+});
+
+describe('a paid subscription next to a trial', () => {
+  it('replaces an older trial on the same customer', async () => {
+    subs = [
+      sub('sub_trial', 100, { status: 'trialing' }),
+      sub('sub_paid', 200),
+    ];
+    const result = await service().createSubscription(created('sub_paid'));
+
+    assert.notEqual(
+      (result as { reason?: string }).reason,
+      'duplicate subscription',
+    );
+    assert.deepEqual(called('subscriptions.cancel'), [
+      [
+        'sub_trial',
+        { cancellation_details: { comment: 'duplicate-subscription' } },
+      ],
+    ]);
+    assert.equal(called('createOrUpdateSubscription')[0][5], 'PRO');
+  });
+
+  it('replaces an older trial on another customer, moving the organization first', async () => {
+    subs = [
+      sub('sub_trial', 100, { status: 'trialing' }),
+      sub('sub_paid', 200, {
+        customer: 'cus_2',
+        metadata: { uniqueId: 'u-sub_paid', organizationId: 'org1' },
+      }),
+    ];
+    await service().createSubscription({
+      ...created('sub_paid'),
+      data: { object: { id: 'sub_paid', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    const order = calls.map((c) => c.method);
+    assert.ok(
+      order.indexOf('updateCustomerId') < order.indexOf('subscriptions.cancel'),
+    );
+    assert.equal(called('subscriptions.cancel')[0][0], 'sub_trial');
+    assert.equal(orgCustomer, 'cus_2');
+    assert.equal(called('createOrUpdateSubscription').length, 1);
+  });
+
+  it('is kept when a newer trial arrives, and the trial is cancelled', async () => {
+    subs = [
+      sub('sub_paid', 100),
+      sub('sub_trial', 200, { status: 'trialing' }),
+    ];
+    const result = await service().createSubscription(created('sub_trial'));
+
+    assert.equal(
+      (result as { reason: string }).reason,
+      'duplicate subscription',
+    );
+    assert.equal(called('subscriptions.cancel')[0][0], 'sub_trial');
+    assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('is kept when a trial was granted first, even on another customer', async () => {
+    subs = [
+      sub('sub_paid', 100),
+      sub('sub_trial', 50, {
+        customer: 'cus_2',
+        status: 'trialing',
+        metadata: { uniqueId: 'u-sub_trial', organizationId: 'org1' },
+      }),
+    ];
+    const result = await service().createSubscription({
+      ...created('sub_trial'),
+      data: { object: { id: 'sub_trial', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    assert.equal(
+      (result as { reason: string }).reason,
+      'duplicate subscription',
+    );
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_trial'],
+    );
+    assert.equal(orgCustomer, 'cus_1');
   });
 });
 
