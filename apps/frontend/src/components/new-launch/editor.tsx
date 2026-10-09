@@ -1179,7 +1179,11 @@ export const OnlyEditor = forwardRef<
   const editor = useEditor({
     extensions: [
       Document,
-      Paragraph,
+      Paragraph.configure({
+        HTMLAttributes: {
+          dir: 'auto',
+        },
+      }),
       Text,
       Underline,
       Bold,
@@ -1293,6 +1297,9 @@ export const OnlyEditor = forwardRef<
         ? [
             Heading.configure({
               levels: [1, 2, 3],
+              HTMLAttributes: {
+                dir: 'auto',
+              },
             }),
           ]
         : []),

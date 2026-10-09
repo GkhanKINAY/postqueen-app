@@ -94,6 +94,7 @@ export const TiktokPreview: FC<{
             {formatChannelHandle(integration?.display) || integration?.name}
           </div>
           <div
+            dir="auto"
             className="w-full text-[13px] font-[400] whitespace-pre-line line-clamp-6"
             dangerouslySetInnerHTML={{
               __html: sanitizePreviewHtml(renderContent?.[0]?.text),

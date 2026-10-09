@@ -51,7 +51,8 @@ const telegramText = (message: string) =>
     .join('')
     .replace(/<strong>/g, '<b>')
     .replace(/<\/strong>/g, '</b>')
-    .replace(/<p>(.*?)<\/p>/g, '$1\n');
+    // The editor writes <p dir="auto">, so a paragraph may carry attributes.
+    .replace(/<p(?:\s[^>]*)?>(.*?)<\/p>/g, '$1\n');
 
 // The length Telegram counts: tags and entities are markup, "&amp;" is one
 // character.

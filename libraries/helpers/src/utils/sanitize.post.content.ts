@@ -16,6 +16,7 @@ const ALLOWED_TAGS = [
 ];
 
 const ALLOWED_ATTR = [
+  'dir',
   'href',
   'target',
   'rel',
@@ -33,6 +34,10 @@ export const sanitizePostContent = (value: unknown): string => {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
+    // An attribute DOMPurify does not know as URI-safe has its value tested
+    // against ALLOWED_URI_REGEXP, so without this every dir="auto" the
+    // editor writes would be dropped on save.
+    ADD_URI_SAFE_ATTR: ['dir'],
   });
 };
 

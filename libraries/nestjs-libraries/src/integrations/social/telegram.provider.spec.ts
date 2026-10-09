@@ -64,9 +64,13 @@ describe('Telegram HTML text', () => {
       helpers,
       /\.split\(\/\(<\\\/\?\(\?:p\|strong\|u\|a\|ul\|li\|h\[1-3\]\)\(\?:\\s\[\^<>\]\*\)\?>\)\/\)\s*\.map\(\(part, index\) =>\s*index % 2 \? striptags\(part, \['u', 'strong', 'p'\]\) : telegramEscape\(part\)\s*\)/
     );
-    // Still bold as <b> and a line per paragraph.
+    // Still bold as <b> and a line per paragraph, including the
+    // <p dir="auto"> the editor writes.
     assert.match(helpers, /\.replace\(\/<strong>\/g, '<b>'\)/);
-    assert.match(helpers, /\.replace\(\/<p>\(\.\*\?\)<\\\/p>\/g, '\$1\\n'\)/);
+    assert.match(
+      helpers,
+      /\.replace\(\/<p\(\?:\\s\[\^>\]\*\)\?>\(\.\*\?\)<\\\/p>\/g, '\$1\\n'\)/
+    );
   });
 });
 
