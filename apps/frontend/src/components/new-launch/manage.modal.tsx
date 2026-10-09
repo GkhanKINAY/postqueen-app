@@ -847,8 +847,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         if (response && !response.ok) {
           // 499: a dialog already spoke (Payment Required, whose Move to
           // billing opens Billing in another tab), so a toast would say it
-          // twice. The post stays open here.
-          if (response.status === 499) {
+          // twice. 402 is the same dialog, dismissed. The post stays open here.
+          if (response.status === 499 || response.status === 402) {
             setLoading(false);
             return;
           }
