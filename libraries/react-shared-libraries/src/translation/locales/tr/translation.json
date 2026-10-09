@@ -879,5 +879,6 @@
   "group_name": "Ad",
   "group_updated": "Grup güncellendi",
   "could_not_save_group": "Grup kaydedilemedi.",
-  "rename_group_hint": "{{name}} grubunu içindeki tüm kanallar için yeniden adlandırır"
+  "rename_group_hint": "{{name}} grubunu içindeki tüm kanallar için yeniden adlandırır",
+  "bot_name_renamed_hint": "Bu, platformdaki ad. PostQueen kanalı {{name}} olarak gösterir."
 }

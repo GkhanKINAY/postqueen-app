@@ -861,5 +861,6 @@
   "group_name": "Nom",
   "group_updated": "Groupe mis à jour",
   "could_not_save_group": "Impossible d'enregistrer le groupe.",
-  "rename_group_hint": "Renomme {{name}} pour toutes les chaînes du groupe"
+  "rename_group_hint": "Renomme {{name}} pour toutes les chaînes du groupe",
+  "bot_name_renamed_hint": "C'est le nom sur la plateforme. PostQueen affiche la chaîne sous le nom {{name}}."
 }

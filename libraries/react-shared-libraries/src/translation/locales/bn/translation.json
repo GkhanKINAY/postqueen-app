@@ -860,5 +860,6 @@
   "group_name": "নাম",
   "group_updated": "গ্রুপ আপডেট হয়েছে",
   "could_not_save_group": "গ্রুপ সংরক্ষণ করা যায়নি।",
-  "rename_group_hint": "এর সব চ্যানেলের জন্য {{name}}-এর নাম বদলায়"
+  "rename_group_hint": "এর সব চ্যানেলের জন্য {{name}}-এর নাম বদলায়",
+  "bot_name_renamed_hint": "এটি প্ল্যাটফর্মে থাকা নাম। PostQueen চ্যানেলটি {{name}} নামে দেখায়।"
 }

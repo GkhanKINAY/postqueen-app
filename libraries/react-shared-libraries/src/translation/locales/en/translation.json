@@ -1406,5 +1406,6 @@
   "group_name": "Name",
   "group_updated": "Group Updated",
   "could_not_save_group": "Could not save the group.",
-  "rename_group_hint": "Renames {{name}} for every channel in it"
+  "rename_group_hint": "Renames {{name}} for every channel in it",
+  "bot_name_renamed_hint": "This is the name on the platform. PostQueen shows the channel as {{name}}."
 }

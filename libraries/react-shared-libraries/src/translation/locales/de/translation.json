@@ -861,5 +861,6 @@
   "group_name": "Name",
   "group_updated": "Gruppe aktualisiert",
   "could_not_save_group": "Die Gruppe konnte nicht gespeichert werden.",
-  "rename_group_hint": "Benennt {{name}} für alle Kanäle darin um"
+  "rename_group_hint": "Benennt {{name}} für alle Kanäle darin um",
+  "bot_name_renamed_hint": "Das ist der Name auf der Plattform. PostQueen zeigt den Kanal als {{name}}."
 }

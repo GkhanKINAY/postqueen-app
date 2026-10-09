@@ -861,5 +861,6 @@
   "group_name": "الاسم",
   "group_updated": "تم تحديث المجموعة",
   "could_not_save_group": "تعذّر حفظ المجموعة.",
-  "rename_group_hint": "يعيد تسمية {{name}} لكل القنوات التي فيها"
+  "rename_group_hint": "يعيد تسمية {{name}} لكل القنوات التي فيها",
+  "bot_name_renamed_hint": "هذا هو الاسم على المنصة. يعرض PostQueen القناة باسم {{name}}."
 }

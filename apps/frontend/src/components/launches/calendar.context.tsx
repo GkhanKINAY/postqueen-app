@@ -566,11 +566,15 @@ export const CalendarWeekProvider: FC<{
 
     const customer = filters?.customer?.toString() || '';
     const probe = async (state: PanelListStateFilter) => {
+      // Same channels as the list it picks a tab for.
       const params = new URLSearchParams({
         page: '0',
         limit: '1',
         customer,
         state,
+        ...(channelFilter.length
+          ? { integrations: channelFilter.join(',') }
+          : {}),
       });
       // Nobody asked for this — it only picks which tab opens first. A network
       // reject here must not bubble: unhandled, it would surface as a toast
@@ -604,7 +608,14 @@ export const CalendarWeekProvider: FC<{
     return () => {
       cancelled = true;
     };
-  }, [postsPanelOpen, filters.display, panelPinScope, filters.customer, fetch]);
+  }, [
+    postsPanelOpen,
+    filters.display,
+    panelPinScope,
+    filters.customer,
+    channelFilter,
+    fetch,
+  ]);
 
   // SWR for calendar view
   const {

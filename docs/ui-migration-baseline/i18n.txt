@@ -374,6 +374,7 @@ billing_your_first
 billing_zero_due_today_until
 blank_post
 bot_name_avatar
+bot_name_renamed_hint
 branded_content_policy
 browse
 browser_extension

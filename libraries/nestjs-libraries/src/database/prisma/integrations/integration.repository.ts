@@ -1,6 +1,6 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { withChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
 import dayjs from 'dayjs';
 import {
@@ -117,20 +117,24 @@ export class IntegrationRepository {
     });
   }
 
-  updateCustomName(org: string, id: string, name: string) {
-    return this._integration.model.integration.update({
-      // Only the id: the row carries the channel's tokens.
-      select: {
-        id: true,
-      },
+  // `updateMany` so a deleted or unknown channel is a 404 rather than
+  // Prisma's P2025 as a 500, and only the id comes back: the row carries the
+  // channel's tokens.
+  async updateCustomName(org: string, id: string, name: string) {
+    const { count } = await this._integration.model.integration.updateMany({
       where: {
         id,
         organizationId: org,
+        deletedAt: null,
       },
       data: {
         customName: name.trim() || null,
       },
     });
+    if (!count) {
+      throw new NotFoundException('Channel not found');
+    }
+    return { id };
   }
 
   async setTimes(org: string, id: string, times: IntegrationTimeDto) {
@@ -716,16 +720,6 @@ export class IntegrationRepository {
     });
   }
 
-  getCustomerById(orgId: string, id: string) {
-    return this._customers.model.customer.findFirst({
-      where: {
-        id,
-        orgId,
-        deletedAt: null,
-      },
-    });
-  }
-
   getCustomerByName(orgId: string, name: string) {
     return this._customers.model.customer.findFirst({
       where: {
@@ -736,8 +730,9 @@ export class IntegrationRepository {
     });
   }
 
-  updateCustomerName(orgId: string, id: string, name: string) {
-    return this._customers.model.customer.update({
+  // Same shape as `updateCustomName`: a deleted or unknown group is a 404.
+  async updateCustomerName(orgId: string, id: string, name: string) {
+    const { count } = await this._customers.model.customer.updateMany({
       where: {
         id,
         orgId,
@@ -747,6 +742,10 @@ export class IntegrationRepository {
         name,
       },
     });
+    if (!count) {
+      throw new NotFoundException('Group not found');
+    }
+    return { id, name };
   }
 
   customers(orgId: string) {

@@ -861,5 +861,6 @@
   "group_name": "名前",
   "group_updated": "グループが更新されました",
   "could_not_save_group": "グループを保存できませんでした。",
-  "rename_group_hint": "{{name}} の名前を、含まれるすべてのチャンネルで変更します"
+  "rename_group_hint": "{{name}} の名前を、含まれるすべてのチャンネルで変更します",
+  "bot_name_renamed_hint": "これはプラットフォーム上の名前です。PostQueen ではこのチャンネルを {{name}} と表示します。"
 }

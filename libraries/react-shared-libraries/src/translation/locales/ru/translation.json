@@ -861,5 +861,6 @@
   "group_name": "Название",
   "group_updated": "Группа обновлена",
   "could_not_save_group": "Не удалось сохранить группу.",
-  "rename_group_hint": "Переименовывает {{name}} для всех каналов в ней"
+  "rename_group_hint": "Переименовывает {{name}} для всех каналов в ней",
+  "bot_name_renamed_hint": "Это название на платформе. В PostQueen канал отображается как {{name}}."
 }

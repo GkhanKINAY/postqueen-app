@@ -8,6 +8,7 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { withChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/integration.token.encryption.enabled';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -1094,9 +1095,6 @@ export class IntegrationService implements OnModuleInit {
     if (!name) {
       throw new HttpException('Group name is required', HttpStatus.BAD_REQUEST);
     }
-    if (!(await this._integrationRepository.getCustomerById(orgId, id))) {
-      throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
-    }
     const exists = await this._integrationRepository.getCustomerByName(
       orgId,
       name
@@ -1179,7 +1177,10 @@ export class IntegrationService implements OnModuleInit {
         if (!(err instanceof HttpException && err.getStatus() === 402)) {
           throw err;
         }
-        await this.plugShortNotice(data.orgId, getIntegration.name);
+        await this.plugShortNotice(
+          data.orgId,
+          withChannelDisplayName(getIntegration).name
+        );
         return;
       }
     }
@@ -1320,7 +1321,10 @@ export class IntegrationService implements OnModuleInit {
         if (!(err instanceof HttpException && err.getStatus() === 402)) {
           throw err;
         }
-        await this.plugShortNotice(orgId, getPlugById.integration.name);
+        await this.plugShortNotice(
+          orgId,
+          withChannelDisplayName(getPlugById.integration).name
+        );
         return true;
       }
     }

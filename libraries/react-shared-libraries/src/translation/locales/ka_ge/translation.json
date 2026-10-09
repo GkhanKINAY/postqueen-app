@@ -569,5 +569,6 @@
   "group_name": "სახელი",
   "group_updated": "ჯგუფი განახლდა",
   "could_not_save_group": "ჯგუფის შენახვა ვერ მოხერხდა.",
-  "rename_group_hint": "{{name}}-ს სახელს უცვლის მასში შემავალ ყველა არხს"
+  "rename_group_hint": "{{name}}-ს სახელს უცვლის მასში შემავალ ყველა არხს",
+  "bot_name_renamed_hint": "ეს არის სახელი პლატფორმაზე. PostQueen არხს აჩვენებს როგორც {{name}}."
 }

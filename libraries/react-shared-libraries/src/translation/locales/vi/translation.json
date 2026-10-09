@@ -861,5 +861,6 @@
   "group_name": "Tên",
   "group_updated": "Nhóm đã được cập nhật",
   "could_not_save_group": "Không thể lưu nhóm.",
-  "rename_group_hint": "Đổi tên {{name}} cho mọi kênh trong nhóm"
+  "rename_group_hint": "Đổi tên {{name}} cho mọi kênh trong nhóm",
+  "bot_name_renamed_hint": "Đây là tên trên nền tảng. PostQueen hiển thị kênh với tên {{name}}."
 }

@@ -861,5 +861,6 @@
   "group_name": "Nome",
   "group_updated": "Gruppo aggiornato",
   "could_not_save_group": "Impossibile salvare il gruppo.",
-  "rename_group_hint": "Rinomina {{name}} per tutti i canali che contiene"
+  "rename_group_hint": "Rinomina {{name}} per tutti i canali che contiene",
+  "bot_name_renamed_hint": "Questo è il nome sulla piattaforma. PostQueen mostra il canale come {{name}}."
 }

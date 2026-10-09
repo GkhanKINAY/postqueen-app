@@ -530,8 +530,9 @@ export class PostsRepository {
   }
 
   /** The post behind a publish notice: whether it wants one, and what it said. */
-  getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
-    return this._post.model.post.findFirst({
+  // Names the channel in the "published" email, so the name the user sees.
+  async getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
+    const post = await this._post.model.post.findFirst({
       where: {
         organizationId: orgId,
         releaseURL,
@@ -543,11 +544,13 @@ export class PostsRepository {
         integration: {
           select: {
             name: true,
+            customName: true,
             providerIdentifier: true,
           },
         },
       },
     });
+    return post && withPostChannelDisplayName(post);
   }
 
   /**

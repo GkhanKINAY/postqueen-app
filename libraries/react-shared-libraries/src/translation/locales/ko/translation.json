@@ -861,5 +861,6 @@
   "group_name": "이름",
   "group_updated": "그룹이 업데이트되었습니다",
   "could_not_save_group": "그룹을 저장할 수 없습니다.",
-  "rename_group_hint": "그룹에 속한 모든 채널에서 {{name}}의 이름을 바꿉니다"
+  "rename_group_hint": "그룹에 속한 모든 채널에서 {{name}}의 이름을 바꿉니다",
+  "bot_name_renamed_hint": "플랫폼에 표시되는 이름입니다. PostQueen에서는 이 채널을 {{name}}(으)로 표시합니다."
 }

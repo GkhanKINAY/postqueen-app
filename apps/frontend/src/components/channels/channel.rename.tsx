@@ -74,6 +74,7 @@ export const RenameChannelModal: FC<{
         name="name"
         label={t('channel_name', 'Name')}
         placeholder={integration.originalName || ''}
+        maxLength={100}
         disableForm={true}
       />
       <ModalFormActions onCancel={() => modal.closeAll()}>
@@ -146,6 +147,7 @@ export const RenameGroupModal: FC<{
         name="name"
         label={t('group_name', 'Name')}
         placeholder=""
+        maxLength={100}
         disableForm={true}
       />
       <ModalFormActions onCancel={close}>
