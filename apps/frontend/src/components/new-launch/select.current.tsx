@@ -7,8 +7,10 @@ import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.a
 import { useShallow } from 'zustand/react/shallow';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 
 export const SelectCurrent: FC = () => {
+  const existingData = useExistingData();
   const {
     selectedIntegrations,
     current,
@@ -27,6 +29,13 @@ export const SelectCurrent: FC = () => {
         (p) => p.integration.id === state.current
       ),
     }))
+  );
+
+  // A post edited with the other channels it was saved with opens each on
+  // its own version, so the shared one would reach none of them. Only the
+  // siblings in the editor count: one whose channel is gone is not.
+  const withSiblings = !!existingData.siblings?.some((sibling) =>
+    selectedIntegrations.some((p) => p.integration.id === sibling.integration)
   );
 
   const t = useT();
@@ -56,42 +65,44 @@ export const SelectCurrent: FC = () => {
           locked && 'pointer-events-none opacity-50'
         )}
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={isGlobal}
-          disabled={locked}
-          onClick={() => {
-            setHide(true);
-            setCurrent('global');
-          }}
-          className={tabClass(isGlobal)}
-        >
-          <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqBrandSoft text-pqFocused">
-            <svg
-              viewBox="0 0 24 24"
-              width="13"
-              height="13"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              />
-              <path
-                d="M12 3a13.5 13.5 0 0 0 0 18 13.5 13.5 0 0 0 0-18M3 12h18"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          {t('all_channels', 'All channels')}
-        </button>
+        {!withSiblings && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={isGlobal}
+            disabled={locked}
+            onClick={() => {
+              setHide(true);
+              setCurrent('global');
+            }}
+            className={tabClass(isGlobal)}
+          >
+            <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-pqBrandSoft text-pqFocused">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M12 3a13.5 13.5 0 0 0 0 18 13.5 13.5 0 0 0 0-18M3 12h18"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            {t('all_channels', 'All channels')}
+          </button>
+        )}
         {selectedIntegrations.map(({ integration }) => {
           const isActive = current === integration.id;
           return (

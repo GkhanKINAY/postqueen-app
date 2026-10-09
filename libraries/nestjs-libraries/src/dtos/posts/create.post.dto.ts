@@ -69,6 +69,13 @@ export class Post {
   @IsString()
   group: string;
 
+  // A channel that keeps a time of its own; the others use the post's date.
+  // Only the dashboard sends it, for the other channels of a post being
+  // edited (upstream a194e3f4).
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
   @ValidateIf((o) => o.type !== 'draft')
   @ValidateNested()
   @Type(() => EmptySettings, {

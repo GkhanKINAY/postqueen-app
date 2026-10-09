@@ -454,6 +454,7 @@ channel_renamed
 channel_save_missing_session
 channel_save_network_error
 channel_settings
+channel_time_for
 channel_uses_shared_post
 channels
 channels_list_empty_hint
@@ -1559,6 +1560,7 @@ delete_account_confirm
 delete_account_description
 delete_account_password_hint
 delete_account_warning
+delete_all_channels_cancels_scheduled
 delete_announcement
 delete_announcement_confirm
 delete_app
@@ -1568,8 +1570,11 @@ delete_chat
 delete_chat_body
 delete_chat_confirm
 delete_chat_title
+delete_from_all_channels
 delete_from_postqueen
+delete_only_from_channel
 delete_post
+delete_post_from_all_channels_question
 delete_post_tooltip
 delete_published_body
 delete_published_title
@@ -1609,11 +1614,13 @@ downgrade_to_plan
 download
 download_invoice
 draft
+draft_all_channels
 draft_changes_saved
 draft_could_not_be_fixed
 draft_earlier_preview
 draft_legacy_note
 draft_needs_a_fix
+draft_post_in_all_channels_question
 draft_posted_now
 draft_ready_to_schedule
 draft_redone
@@ -2113,6 +2120,7 @@ oldest
 one_publishing_option
 one_selected
 only_channel_gets_version
+only_channel_name
 only_existing_post
 only_images_can_be_added_to_the_content
 only_option_to_connect
@@ -2243,6 +2251,8 @@ post_needs_content_or_image
 post_no_longer_exists
 post_not_found
 post_now
+post_now_all_channels
+post_now_in_all_channels_question
 post_on_next_available_slot
 post_open_failed
 post_preview
@@ -2378,7 +2388,9 @@ saved_as_draft
 schedule
 schedule_again
 schedule_all
+schedule_all_channels
 schedule_next_free_slot
+schedule_post_in_all_channels_question
 scheduled
 scheduled_for_when
 scheduled_times

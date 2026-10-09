@@ -878,5 +878,17 @@
   "could_not_save_group": "গ্রুপ সংরক্ষণ করা যায়নি।",
   "rename_group_hint": "এর সব চ্যানেলের জন্য {{name}}-এর নাম বদলায়",
   "bot_name_renamed_hint": "এটি প্ল্যাটফর্মে থাকা নাম। PostQueen চ্যানেলটি {{name}} নামে দেখায়।",
-  "facebook_video_title": "ভিডিওর শিরোনাম (শুধু ভিডিও পোস্টের জন্য)"
+  "facebook_video_title": "ভিডিওর শিরোনাম (শুধু ভিডিও পোস্টের জন্য)",
+  "channel_time_for": "{{name}}-এর সময়",
+  "delete_post_from_all_channels_question": "এই পোস্টটি একাধিক চ্যানেলের জন্য তৈরি করা হয়েছিল। আপনি কি এটি সবগুলো থেকে মুছতে চান?",
+  "delete_from_all_channels": "সব চ্যানেল থেকে মুছুন",
+  "delete_only_from_channel": "শুধু {{name}} থেকে",
+  "draft_post_in_all_channels_question": "এই পোস্টটি একাধিক চ্যানেলের জন্য তৈরি করা হয়েছিল। আপনি কি সবগুলো খসড়ায় সরাতে চান?",
+  "draft_all_channels": "সব চ্যানেল খসড়ায় সরান",
+  "post_now_in_all_channels_question": "এই পোস্টটি একাধিক চ্যানেলের জন্য তৈরি করা হয়েছিল। আপনি কি এখনই সবগুলোতে পোস্ট করতে চান?",
+  "post_now_all_channels": "এখনই সব চ্যানেলে পোস্ট করুন",
+  "schedule_post_in_all_channels_question": "এই পোস্টটি একাধিক চ্যানেলের জন্য তৈরি করা হয়েছিল। আপনি কি সবগুলোতে নির্ধারণ করতে চান?",
+  "schedule_all_channels": "সব চ্যানেলে নির্ধারণ করুন",
+  "only_channel_name": "শুধু {{name}}",
+  "delete_all_channels_cancels_scheduled": "সব চ্যানেল থেকে মুছলে অন্য চ্যানেলগুলোতে এখনও নির্ধারিত পোস্টগুলোও বাতিল হয়ে যাবে।"
 }

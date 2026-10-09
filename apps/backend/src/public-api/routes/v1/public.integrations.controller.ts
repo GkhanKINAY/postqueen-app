@@ -16,6 +16,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
+import { omit } from 'lodash';
 import { ApiTags } from '@nestjs/swagger';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { GetOAuthUserIdFromRequest } from '@gitroom/nestjs-libraries/user/oauth.user.id.from.request';
@@ -203,7 +204,18 @@ export class PublicIntegrationsController {
     // for drafts as well, which is deliberate and documented: a draft you
     // promote later should already be valid. The left half of the old
     // `rawBody?.type === 'draft' || true` could never change the result.
-    const body = await this._postsService.mapTypeToPost(rawBody, org.id, true);
+    const body = await this._postsService.mapTypeToPost(
+      {
+        ...rawBody,
+        // A time per channel is a dashboard feature (upstream a194e3f4); the
+        // public API keeps one date for the whole request.
+        posts: Array.isArray(rawBody?.posts)
+          ? rawBody.posts.map((post: any) => omit(post, 'date'))
+          : rawBody?.posts,
+      },
+      org.id,
+      true
+    );
 
     // Which means the DTO validated `schedule`, not what the caller sent, so
     // the caller's own value has to be checked here before it is put back. It
@@ -660,7 +672,13 @@ export class PublicIntegrationsController {
     @Body() body: UpdateReleaseIdDto
   ) {
     Sentry.metrics.count('public_api-request', 1);
-    return this._postsService.updateReleaseId(org.id, id, body.releaseId);
+    // The batch only links the channels of a post in the dashboard.
+    const { batchId, ...post } = await this._postsService.updateReleaseId(
+      org.id,
+      id,
+      body.releaseId
+    );
+    return post;
   }
 
   @Get('/analytics/posts')

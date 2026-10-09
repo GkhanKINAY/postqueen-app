@@ -36,7 +36,12 @@ before(async () => {
 
 // The service with every collaborator faked: what it writes and which
 // publishing workflows it starts are recorded instead.
-let writes: { integration: string; value: any[] }[];
+let writes: {
+  integration: string;
+  value: any[];
+  date: string;
+  batchId?: string;
+}[];
 let started: { workflowId: string; args: any[] }[];
 let published: string[];
 let foreignMedia: string[];
@@ -61,13 +66,23 @@ const service = () =>
         type: string,
         org: string,
         date: string,
-        post: any
+        post: any,
+        tags: any,
+        creationMethod: string,
+        inter: number | undefined,
+        keepGroup: boolean,
+        batchId?: string
       ) => {
         // The repository's own refusal, which comes only once it writes.
         if (post.value.some((value: any) => foreignPosts.includes(value.id))) {
           throw new Error('Post not found');
         }
-        writes.push({ integration: post.integration.id, value: post.value });
+        writes.push({
+          integration: post.integration.id,
+          value: post.value,
+          date,
+          batchId,
+        });
         return {
           posts: post.value.map((value: any, index: number) => ({
             id: value.id || `${post.integration.id}-${index}`,
@@ -277,6 +292,36 @@ describe(
 
       assert.deepEqual(writes, []);
       assert.deepEqual(started, []);
+    });
+
+    it('links the channels of one request, each at its own time when it has one', async () => {
+      const body = request();
+      (body.posts[1] as any).date = '2026-10-02T15:30:00';
+
+      await service().createPost('org-1', body, 'API');
+
+      assert.deepEqual(
+        writes.map((w) => w.date),
+        ['2026-10-01T10:00:00', '2026-10-02T15:30:00']
+      );
+      assert.ok(writes[0].batchId);
+      assert.equal(writes[0].batchId, writes[1].batchId);
+
+      // Another request is another post.
+      const first = writes[0].batchId;
+      writes = [];
+      await service().createPost('org-1', request(), 'API');
+      assert.notEqual(writes[0].batchId, first);
+    });
+
+    it('posts every channel now, whatever time a channel has', async () => {
+      const body = request({ type: 'now' });
+      (body.posts[1] as any).date = '2026-10-02T15:30:00';
+
+      await service().createPost('org-1', body, 'API');
+
+      assert.equal(writes[0].date, writes[1].date);
+      assert.notEqual(writes[1].date, '2026-10-02T15:30:00');
     });
 
     it('leaves a single channel as it was: one write, one workflow', async () => {

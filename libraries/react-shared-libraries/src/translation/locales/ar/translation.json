@@ -879,5 +879,17 @@
   "could_not_save_group": "تعذّر حفظ المجموعة.",
   "rename_group_hint": "يعيد تسمية {{name}} لكل القنوات التي فيها",
   "bot_name_renamed_hint": "هذا هو الاسم على المنصة. يعرض PostQueen القناة باسم {{name}}.",
-  "facebook_video_title": "عنوان الفيديو (لمنشورات الفيديو فقط)"
+  "facebook_video_title": "عنوان الفيديو (لمنشورات الفيديو فقط)",
+  "channel_time_for": "الوقت لـ {{name}}",
+  "delete_post_from_all_channels_question": "تم إنشاء هذا المنشور لأكثر من قناة. هل تريد حذفه منها جميعًا؟",
+  "delete_from_all_channels": "حذف من كل القنوات",
+  "delete_only_from_channel": "من {{name}} فقط",
+  "draft_post_in_all_channels_question": "تم إنشاء هذا المنشور لأكثر من قناة. هل تريد نقلها جميعًا إلى المسودات؟",
+  "draft_all_channels": "نقل كل القنوات إلى المسودات",
+  "post_now_in_all_channels_question": "تم إنشاء هذا المنشور لأكثر من قناة. هل تريد نشره الآن فيها جميعًا؟",
+  "post_now_all_channels": "النشر الآن في كل القنوات",
+  "schedule_post_in_all_channels_question": "تم إنشاء هذا المنشور لأكثر من قناة. هل تريد جدولته فيها جميعًا؟",
+  "schedule_all_channels": "جدولة كل القنوات",
+  "only_channel_name": "{{name}} فقط",
+  "delete_all_channels_cancels_scheduled": "حذفه من كل القنوات يلغي أيضًا المنشورات التي لا تزال مجدولة في القنوات الأخرى."
 }

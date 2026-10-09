@@ -879,5 +879,17 @@
   "could_not_save_group": "グループを保存できませんでした。",
   "rename_group_hint": "{{name}} の名前を、含まれるすべてのチャンネルで変更します",
   "bot_name_renamed_hint": "これはプラットフォーム上の名前です。PostQueen ではこのチャンネルを {{name}} と表示します。",
-  "facebook_video_title": "動画のタイトル（動画投稿のみ）"
+  "facebook_video_title": "動画のタイトル（動画投稿のみ）",
+  "channel_time_for": "{{name}} の時刻",
+  "delete_post_from_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべてのチャンネルから削除しますか？",
+  "delete_from_all_channels": "すべてのチャンネルから削除",
+  "delete_only_from_channel": "{{name}} からのみ",
+  "draft_post_in_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべて下書きに移動しますか？",
+  "draft_all_channels": "すべてのチャンネルを下書きに移動",
+  "post_now_in_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべてのチャンネルに今すぐ投稿しますか？",
+  "post_now_all_channels": "すべてのチャンネルに今すぐ投稿",
+  "schedule_post_in_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべてのチャンネルで予約しますか？",
+  "schedule_all_channels": "すべてのチャンネルを予約",
+  "only_channel_name": "{{name}} のみ",
+  "delete_all_channels_cancels_scheduled": "すべてのチャンネルから削除すると、他のチャンネルでまだ予約中の投稿もキャンセルされます。"
 }

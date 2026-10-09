@@ -879,5 +879,17 @@
   "could_not_save_group": "Не удалось сохранить группу.",
   "rename_group_hint": "Переименовывает {{name}} для всех каналов в ней",
   "bot_name_renamed_hint": "Это название на платформе. В PostQueen канал отображается как {{name}}.",
-  "facebook_video_title": "Название видео (только для видеопостов)"
+  "facebook_video_title": "Название видео (только для видеопостов)",
+  "channel_time_for": "Время для {{name}}",
+  "delete_post_from_all_channels_question": "Этот пост создан для нескольких каналов. Удалить его из всех?",
+  "delete_from_all_channels": "Удалить из всех каналов",
+  "delete_only_from_channel": "Только из {{name}}",
+  "draft_post_in_all_channels_question": "Этот пост создан для нескольких каналов. Переместить все в черновики?",
+  "draft_all_channels": "Переместить все каналы в черновики",
+  "post_now_in_all_channels_question": "Этот пост создан для нескольких каналов. Опубликовать его сейчас во всех?",
+  "post_now_all_channels": "Опубликовать сейчас во всех каналах",
+  "schedule_post_in_all_channels_question": "Этот пост создан для нескольких каналов. Запланировать его во всех?",
+  "schedule_all_channels": "Запланировать все каналы",
+  "only_channel_name": "Только {{name}}",
+  "delete_all_channels_cancels_scheduled": "Удаление из всех каналов также отменит посты, которые ещё запланированы в других каналах."
 }

@@ -13,13 +13,24 @@ import { Button } from '@gitroom/react/form/button';
 export const ComposeWhen: FC<{
   date: dayjs.Dayjs;
   onChange: (date: dayjs.Dayjs) => void;
-}> = ({ date, onChange }) => {
+  /** Whose time this is, when the channels of a post each have their own. */
+  label?: string;
+}> = ({ date, onChange, label }) => {
   const { touch } = useViewport();
   return (
     <div
       data-pq="composer-when"
-      className={clsx('flex min-w-0 items-center', touch && 'w-full')}
+      className={clsx(
+        'flex min-w-0 items-center',
+        touch && 'w-full',
+        label && 'gap-[8px]'
+      )}
     >
+      {!!label && (
+        <span className="max-w-[160px] shrink-0 truncate text-[12.5px] text-pqMuted">
+          {label}
+        </span>
+      )}
       <DatePicker
         date={date}
         onChange={onChange}

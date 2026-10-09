@@ -94,7 +94,8 @@ export const withProvider = function <T extends object>(params: {
       setComments,
     } = useLaunchStore(
       useShallow((state) => ({
-        date: state.date,
+        // A channel edited with the others of its post can have its own time.
+        date: state.channelDates[props.id] || state.date,
         tab: state.tab,
         global: state.global,
         dummy: state.dummy,
@@ -258,6 +259,14 @@ export const withProvider = function <T extends object>(params: {
       setCurrent(props.id);
     };
 
+    // A save that failed on this channel's settings brings it into view, and
+    // validates the form so the settings show what is wrong (upstream
+    // 003a77eb).
+    const fixChannel = () => {
+      revealChannel();
+      form.trigger();
+    };
+
     // the post settings can turn inline images on, like an X article
     const values = useWatch({
       control: form.control,
@@ -279,7 +288,7 @@ export const withProvider = function <T extends object>(params: {
         // manage.modal focus(id, 'fix'|'preview') reads these on the handle.
         // They used to live only on isValid()'s return, so validation toasts
         // never actually switched the editor to the failing channel.
-        fix: revealChannel,
+        fix: fixChannel,
         preview: revealChannel,
         isValid: async () => {
           const settings = form.getValues();
@@ -299,7 +308,7 @@ export const withProvider = function <T extends object>(params: {
                       selectedIntegration.integration.additionalSettings || '[]'
                     )
                   ),
-            fix: revealChannel,
+            fix: fixChannel,
             preview: revealChannel,
           };
         },

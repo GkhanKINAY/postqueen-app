@@ -585,5 +585,17 @@
   "billing_invoices_failed": "ინვოისების ჩატვირთვა ვერ მოხერხდა",
   "billing_no_invoices": "ინვოისები ჯერ არ არის. ისინი აქ გამოჩნდება თქვენი პირველი გადახდის შემდეგ.",
   "billing_invoice_credits": "{{count}} კრედიტი",
-  "billing_show_older": "ძველი ინვოისების ჩვენება"
+  "billing_show_older": "ძველი ინვოისების ჩვენება",
+  "channel_time_for": "{{name}}-ის დრო",
+  "delete_post_from_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ მისი წაშლა ყველა არხიდან?",
+  "delete_from_all_channels": "წაშლა ყველა არხიდან",
+  "delete_only_from_channel": "მხოლოდ {{name}}-დან",
+  "draft_post_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ ყველას გადატანა მონახაზებში?",
+  "draft_all_channels": "ყველა არხის გადატანა მონახაზებში",
+  "post_now_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ ახლავე გამოქვეყნება ყველა არხზე?",
+  "post_now_all_channels": "ახლავე გამოქვეყნება ყველა არხზე",
+  "schedule_post_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ დაგეგმვა ყველა არხზე?",
+  "schedule_all_channels": "ყველა არხის დაგეგმვა",
+  "only_channel_name": "მხოლოდ {{name}}",
+  "delete_all_channels_cancels_scheduled": "ყველა არხიდან წაშლა ასევე გააუქმებს სხვა არხებზე ჯერ კიდევ დაგეგმილ პოსტებს."
 }
