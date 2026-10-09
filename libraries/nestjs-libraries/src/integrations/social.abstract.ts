@@ -6,7 +6,11 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { ApplicationFailure } from '@temporalio/activity';
 import { analyticsFetchNeedsReconnect } from '@gitroom/nestjs-libraries/integrations/analytics-fetch.errors';
-import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
+import {
+  isReadTimeout,
+  MEDIA_READ_TIMEOUT,
+  readOrFetch,
+} from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   getSsrfSafeAxios,
@@ -310,9 +314,29 @@ export abstract class SocialAbstract {
         : path;
     setHeartbeatDetails(`read media ${stripQuery(url)}`);
     const { width = 0, height = 0 } = await sharp(
-      await readOrFetch(url)
+      await this.readOrFetch(url)
     ).metadata();
     return { width, height };
+  }
+
+  // Reads the whole media into memory (images the providers hand to sharp).
+  // A read that stalls twice fails the post with BadBody rather than a
+  // retryable error: repeating the publish would re-read the same media and
+  // re-upload what was already sent while holding the provider's queue slot.
+  protected async readOrFetch(path: string): Promise<Buffer> {
+    try {
+      return await readOrFetch(path);
+    } catch (err) {
+      if (!isReadTimeout(err)) {
+        throw err;
+      }
+      throw new BadBody(
+        '',
+        JSON.stringify({ timeoutMs: MEDIA_READ_TIMEOUT, path: stripQuery(path) }),
+        Buffer.from('{}'),
+        'We could not read the media for this post, so it was not published'
+      );
+    }
   }
 
   // Resolves the total byte size of the media without loading it into memory:
@@ -353,31 +377,58 @@ export abstract class SocialAbstract {
     path: string,
     start: number,
     end: number,
-    identifier = ''
+    identifier = '',
+    retried = false
   ): Promise<Buffer> {
     if (path.indexOf('http') === 0) {
       setHeartbeatDetails(
         `media chunk ${start}-${end} ${stripQuery(path)}`
       );
-      const response = await fetch(path, {
-        headers: {
-          Range: `bytes=${start}-${end}`,
-          'accept-encoding': 'identity',
-        },
-        dispatcher: getSsrfSafeDispatcher(),
-      } as any);
-      // Anything but 206 means the server ignored the Range header: buffering
-      // response.body here would silently load the whole file into memory and
-      // upload corrupted chunks.
-      if (response.status !== 206) {
+      try {
+        const response = await fetch(path, {
+          headers: {
+            Range: `bytes=${start}-${end}`,
+            'accept-encoding': 'identity',
+          },
+          dispatcher: getSsrfSafeDispatcher(),
+          // The store can answer the headers and then stop mid-body. Without a
+          // deadline that read never settles and the activity keeps its worker
+          // slot until the process restarts: a startToCloseTimeout fails the
+          // activity on the server but does not stop this function.
+          signal: AbortSignal.timeout(MEDIA_READ_TIMEOUT),
+        } as any);
+        // Anything but 206 means the server ignored the Range header: buffering
+        // response.body here would silently load the whole file into memory and
+        // upload corrupted chunks.
+        if (response.status !== 206) {
+          throw new BadBody(
+            identifier,
+            '{}',
+            Buffer.from('{}'),
+            `Media server did not honor the range request (status ${response.status})`
+          );
+        }
+        return Buffer.from(await response.arrayBuffer());
+      } catch (err) {
+        if (!isReadTimeout(err)) {
+          throw err;
+        }
+
+        // A stall is transient and nothing has been sent to the platform for
+        // this range yet, so read it once more before giving up.
+        if (!retried) {
+          return this.mediaChunk(path, start, end, identifier, true);
+        }
+
+        // BadBody rather than a retryable error, as in readOrFetch above. The
+        // message is what the user is shown.
         throw new BadBody(
           identifier,
-          '{}',
+          JSON.stringify({ timeoutMs: MEDIA_READ_TIMEOUT, start, end }),
           Buffer.from('{}'),
-          `Media server did not honor the range request (status ${response.status})`
+          'We could not read the media for this post, so it was not published'
         );
       }
-      return Buffer.from(await response.arrayBuffer());
     }
 
     return new Promise((resolve, reject) => {
