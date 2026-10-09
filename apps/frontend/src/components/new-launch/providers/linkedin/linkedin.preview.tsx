@@ -337,6 +337,7 @@ export const LinkedinPreview: FC<{
         </div>
       </div>
       <div
+        dir="auto"
         className="text-[14px] font-[400] whitespace-pre-line"
         dangerouslySetInnerHTML={{
           __html: sanitizePreviewHtml(renderContent?.[0]?.text),
@@ -485,6 +486,7 @@ export const LinkedinPreview: FC<{
                     </div>
                   </div>
                   <div
+                    dir="auto"
                     className="whitespace-pre-line text-[14px] font-[400]"
                     dangerouslySetInnerHTML={{
                       __html: sanitizePreviewHtml(value.text),

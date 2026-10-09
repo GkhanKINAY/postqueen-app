@@ -729,6 +729,7 @@
   "repeat_post_every_label": "게시 반복 주기",
   "add_new_tag": "새 태그 추가",
   "tag_name": "이름",
+  "edit_tag": "태그 편집",
   "post_is_too_long": "게시글이 너무 깁니다. 수정해 주세요.",
   "your_post_should_have_at_least_one_character_or_one_image": "게시물에는 최소한 한 글자 또는 한 이미지를 포함해야 합니다.",
   "internal_edit": "내부 편집",
@@ -744,6 +745,7 @@
   "delete_post_tooltip": "게시물 삭제",
   "drop_files_here_to_upload": "여기에 파일을 끌어다 놓아 업로드하세요",
   "insert_emoji": "이모지 삽입",
+  "only_images_can_be_added_to_the_content": "콘텐츠에는 이미지만 추가할 수 있습니다",
   "write_something": "무엇인가를 작성하세요 …",
   "click_channel_to_add": "채널을 추가하려면 클릭하세요",
   "connect_your_channels": "채널 연결하기",
@@ -848,5 +850,6 @@
   "email_off_button": "끄기",
   "signup_product_news_notice": "가끔 제품 소식을 이메일로 보내드립니다. 어떤 이메일에서든 한 번의 클릭으로 수신을 거부할 수 있습니다.",
   "product_news": "제품 소식",
-  "product_news_description": "새로운 기능과 개선 사항에 대한 이메일을 가끔 받기"
+  "product_news_description": "새로운 기능과 개선 사항에 대한 이메일을 가끔 받기",
+  "facebook_video_title": "동영상 제목 (동영상 게시물만 해당)"
 }

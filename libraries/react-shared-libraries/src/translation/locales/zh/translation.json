@@ -729,6 +729,7 @@
   "repeat_post_every_label": "每隔...重复发布",
   "add_new_tag": "添加新标签",
   "tag_name": "名称",
+  "edit_tag": "编辑标签",
   "post_is_too_long": "帖子太长，请修改",
   "your_post_should_have_at_least_one_character_or_one_image": "您的帖子至少应包含一个字符或一张图片。",
   "internal_edit": "内部编辑",
@@ -744,6 +745,7 @@
   "delete_post_tooltip": "删除帖子",
   "drop_files_here_to_upload": "将文件拖到此处以上传",
   "insert_emoji": "插入表情",
+  "only_images_can_be_added_to_the_content": "只能向内容中添加图片",
   "write_something": "写点什么…",
   "click_channel_to_add": "点击频道以添加",
   "connect_your_channels": "连接你的频道",
@@ -848,5 +850,6 @@
   "email_off_button": "关闭",
   "signup_product_news_notice": "我们会不时向您发送产品资讯。每封邮件都可以一键退订。",
   "product_news": "产品资讯",
-  "product_news_description": "不时接收有关新功能和改进的邮件"
+  "product_news_description": "不时接收有关新功能和改进的邮件",
+  "facebook_video_title": "视频标题（仅限视频帖子）"
 }

@@ -64,6 +64,9 @@ export class OAuthController {
   }
 
   @Post('/token')
+  // RFC 6749 §5.1: a successful token response is 200; strict clients
+  // (Canva) reject Nest's default 201 for a POST.
+  @HttpCode(200)
   async token(
     @Body() body: TokenExchangeDto,
     @Headers('authorization') authorization?: string

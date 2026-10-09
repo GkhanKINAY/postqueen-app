@@ -215,6 +215,7 @@ export const ThreadsPreview: FC<{
             </div>
             {!!item.text && (
               <div
+                dir="auto"
                 className="mt-[4px] whitespace-pre-wrap break-words text-[15px] leading-[20px] text-pqText"
                 dangerouslySetInnerHTML={{
                   __html: sanitizePreviewHtml(item.text),

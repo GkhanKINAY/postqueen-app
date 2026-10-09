@@ -25,7 +25,10 @@ export * from './digest.email.workflow.v2';
 // started against it replays its own code until it is terminated by hand on deploy.
 export * from './missing.post.workflow';
 export * from './missing.post.workflow.v2';
+// No longer started (emails go through sendSingleEmailWorkflowV1), but stays
+// exported so the running `send_email` singleton can drain what it holds.
 export * from './send.email.workflow';
+export * from './send.single.email.workflow.v1';
 export * from './refresh.token.workflow';
 export * from './streak.workflow';
 export * from './streak.workflow.v2';

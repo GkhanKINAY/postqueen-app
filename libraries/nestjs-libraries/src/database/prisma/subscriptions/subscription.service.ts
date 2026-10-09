@@ -577,15 +577,25 @@ export class SubscriptionService {
       return;
     }
 
-    const live = await this.liveChannelCount(orgId);
-    if (live >= totalChannels) {
-      return;
-    }
+    // Giving channels back is a courtesy on top of the plan change: a failure
+    // here is logged and the subscription is still written. Taking channels
+    // away (syncChannelsToPlan) still throws, so the webhook is retried.
+    try {
+      const live = await this.liveChannelCount(orgId);
+      if (live >= totalChannels) {
+        return;
+      }
 
-    await this._integrationService.enableAutoDisabledIntegrations(
-      orgId,
-      totalChannels - live
-    );
+      await this._integrationService.enableAutoDisabledIntegrations(
+        orgId,
+        totalChannels - live
+      );
+    } catch (err) {
+      console.error(
+        `Error enabling channels after a subscription change for ${orgId}:`,
+        err
+      );
+    }
   }
 
   private async liveChannelCount(orgId: string) {
@@ -795,6 +805,10 @@ export class SubscriptionService {
         return {};
       }
     } catch (e) {
+      console.error(
+        `Error modifying the subscription of ${organizationId}:`,
+        e
+      );
       return {};
     }
 

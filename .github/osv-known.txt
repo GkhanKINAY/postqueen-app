@@ -31,9 +31,21 @@
 # @mastra/core and with it the whole OpenTelemetry 0.203 SDK set, ai 4 and
 # jsondiffpatch 0.6. Pinning client-js to the release that matches our core
 # dropped all of them.
+# Regenerated 2026-10-09 after the October pass: 80 advisories published since
+# the last regeneration, 71 closed within their majors. axios, next (16.3.8),
+# Nest (11.2.7), multer, sharp, compression, music-metadata and
+# @modelcontextprotocol/sdk moved; nodemailer crossed to 10, whose only break is
+# Node 20. Same-major overrides closed undici, dompurify, handlebars,
+# shell-quote, brace-expansion 1/2/5, @fastify/busboy, @grpc/grpc-js,
+# proxy-addr, fast-copy, fast-uri, ip-address, js-yaml 5, pbkdf2, piscina,
+# probe-image-size and source-map-js. The nine below need a major the holder
+# has not taken, or have no released fix.
 # @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
 # 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
+# micromatch 4 -> braces 3.0.3, the latest; no released fix. Glob patterns come
+# from our own config and tooling, never from a request.
+braces GHSA-vfj7-8cjw-p6xm
 # query-string 7.1.3 pins decode-uri-component 0.2.2; the fix is 0.5, a line
 # query-string 7 does not accept.
 decode-uri-component GHSA-vcc3-ghjq-m6fr
@@ -48,16 +60,36 @@ esbuild GHSA-g7r4-m6w7-qqqr
 # @langchain/community -> ibm-cloud-sdk-core pins file-type 16; nothing imports
 # @langchain/community, and our own upload paths use file-type 22.
 file-type GHSA-5v7r-6r5c-r473
+# @copilotkit/runtime -> graphql-yoga 5 holds utils 10 and 11; the fix is 12,
+# which yoga does not accept. mergeDeep only merges CopilotKit's own schema.
+@graphql-tools/utils GHSA-7mx3-vvmw-hjmv
+# @swc/cli's binary downloader (got -> cacheable-request), dev only; no released
+# fix, and it is a shared-cache issue in a single-user build step.
+http-cache-semantics GHSA-ch52-4w7c-c8xp
 # @mastra/memory 1.26 pins image-size 1.2.1 and no release fixes it; only
 # observational memory and thread summaries call it, and neither is enabled.
 image-size GHSA-5p2g-fcmc-qvqq
 image-size GHSA-w3rx-r6r6-pgpr
+# CopilotKit's markdown (streamdown, rehype-katex, remark-math) takes katex
+# 0.16; the fix is 0.18. Low severity and needs a prototype already polluted.
+katex GHSA-238p-pmpm-9mq7
+# @mastra/mcp pins client 2.0.0 exactly with core/node/server 2.0.0, up to its
+# latest release; we only run MCPServer, never the OAuth client.
+@modelcontextprotocol/client GHSA-6qxp-vccf-f47h
+# @langchain/google-gauth -> google-auth-library 8 -> gtoken -> google-p12-pem
+# only converts a p12 key; no released fix, and nothing verifies signatures.
+node-forge GHSA-86w9-cpqp-85rv
 # polotno's editor holds quill 2.0.3, the latest; the issue is in Quill's HTML
 # export of the user's own design.
 quill GHSA-v3m3-f69x-jf25
-# @solana/web3.js 1.98 -> jayson 4 pins stream-json 1; the fix is 3. Reached
-# only by the wallet sign-in.
+# js-yaml 3 (gray-matter, via @mastra/core) -> argparse 1 -> sprintf-js 1.0.3;
+# argparse is used by js-yaml's CLI only. No released fix.
+sprintf-js GHSA-hp3w-g68c-fv3c
+# @solana/web3.js 1.98 -> jayson 4 pins stream-json 1; the fixes are in 3.
+# Reached only by the wallet sign-in.
 stream-json GHSA-528h-pc64-c93x
+stream-json GHSA-hqr4-qq8f-hg3x
+stream-json GHSA-mjw6-4jj6-33hc
 # Old copies held by wallet adapters, jayson, @copilotkit/runtime and
 # @langchain/classic; the advisory needs a caller-supplied buffer, which none of
 # them pass. Our own code uses uuid 14.
