@@ -894,5 +894,10 @@
   "delete_all_channels_cancels_scheduled": "모든 채널에서 삭제하면 다른 채널에 아직 예약된 게시물도 취소됩니다.",
   "credits_card_sub": "AI 기능(Copilot, 글쓰기, 이미지, 동영상)과 X 활동에 크레딧이 사용됩니다. 플랜에서 매월 {{amount}} 크레딧이 추가됩니다.",
   "credits_card_sub_yearly": "AI 기능(Copilot, 글쓰기, 이미지, 동영상)과 X 활동에 크레딧이 사용됩니다. 플랜에서 매년 {{amount}} 크레딧이 추가됩니다.",
-  "credits_card_sub_plain": "AI 기능(Copilot, 글쓰기, 이미지, 동영상)과 X 활동에 크레딧이 사용됩니다."
+  "credits_card_sub_plain": "AI 기능(Copilot, 글쓰기, 이미지, 동영상)과 X 활동에 크레딧이 사용됩니다.",
+  "delete_selected": "선택 항목 삭제",
+  "media_n_selected": "{{count}}개 선택됨",
+  "are_you_sure_you_want_to_delete_n_media": "선택한 {{count}}개 파일을 삭제하시겠습니까?",
+  "media_n_deleted": "파일 {{count}}개를 삭제했습니다",
+  "media_delete_partial": "{{total}}개 중 {{deleted}}개를 삭제했습니다. 나머지는 선택된 상태이니 다시 시도할 수 있습니다."
 }

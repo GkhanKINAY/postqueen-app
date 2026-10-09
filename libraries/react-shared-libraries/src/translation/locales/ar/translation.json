@@ -894,5 +894,10 @@
   "delete_all_channels_cancels_scheduled": "حذفه من كل القنوات يلغي أيضًا المنشورات التي لا تزال مجدولة في القنوات الأخرى.",
   "credits_card_sub": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا. تضيف خطتك {{amount}} كل شهر.",
   "credits_card_sub_yearly": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا. تضيف خطتك {{amount}} كل سنة.",
-  "credits_card_sub_plain": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا."
+  "credits_card_sub_plain": "تستهلك ميزات الذكاء الاصطناعي (Copilot والكتابة والصور والفيديوهات) والنشاط على X رصيدًا.",
+  "delete_selected": "حذف المحدد",
+  "media_n_selected": "المحدد: {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "هل أنت متأكد من حذف هذه الملفات ({{count}})؟",
+  "media_n_deleted": "تم حذف الملفات: {{count}}",
+  "media_delete_partial": "تم حذف {{deleted}} من {{total}}. الباقي لا يزال محددًا، يمكنك المحاولة مرة أخرى."
 }

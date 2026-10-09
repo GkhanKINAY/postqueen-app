@@ -894,5 +894,10 @@
   "delete_all_channels_cancels_scheduled": "Excluí-la de todos os canais também cancela as publicações ainda agendadas nos outros canais.",
   "credits_card_sub": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos. Seu plano adiciona {{amount}} todo mês.",
   "credits_card_sub_yearly": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos. Seu plano adiciona {{amount}} todo ano.",
-  "credits_card_sub_plain": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos."
+  "credits_card_sub_plain": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos.",
+  "delete_selected": "Excluir selecionados",
+  "media_n_selected": "Selecionados: {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "Tem certeza de que deseja excluir estes {{count}} arquivos?",
+  "media_n_deleted": "{{count}} arquivos excluídos",
+  "media_delete_partial": "{{deleted}} de {{total}} excluídos. Os outros continuam selecionados, você pode tentar novamente."
 }

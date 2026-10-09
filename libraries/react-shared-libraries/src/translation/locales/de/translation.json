@@ -894,5 +894,10 @@
   "delete_all_channels_cancels_scheduled": "Wenn du ihn aus allen Kanälen löschst, werden auch die noch geplanten Beiträge in den anderen Kanälen abgebrochen.",
   "credits_card_sub": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jeden Monat {{amount}} hinzu.",
   "credits_card_sub_yearly": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jedes Jahr {{amount}} hinzu.",
-  "credits_card_sub_plain": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits."
+  "credits_card_sub_plain": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits.",
+  "delete_selected": "Auswahl löschen",
+  "media_n_selected": "{{count}} ausgewählt",
+  "are_you_sure_you_want_to_delete_n_media": "Möchtest du diese {{count}} Dateien wirklich löschen?",
+  "media_n_deleted": "{{count}} Dateien gelöscht",
+  "media_delete_partial": "{{deleted}} von {{total}} gelöscht. Die anderen sind noch ausgewählt, du kannst es erneut versuchen."
 }

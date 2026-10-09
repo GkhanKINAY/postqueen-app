@@ -894,5 +894,10 @@
   "delete_all_channels_cancels_scheduled": "Xóa khỏi tất cả các kênh cũng sẽ hủy các bài đăng vẫn đang được lên lịch trên các kênh khác.",
   "credits_card_sub": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi tháng.",
   "credits_card_sub_yearly": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng. Gói của bạn thêm {{amount}} tín dụng mỗi năm.",
-  "credits_card_sub_plain": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng."
+  "credits_card_sub_plain": "Các tính năng AI (Copilot, viết nội dung, hình ảnh và video) và hoạt động trên X đều dùng tín dụng.",
+  "delete_selected": "Xóa mục đã chọn",
+  "media_n_selected": "Đã chọn {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "Bạn có chắc muốn xóa {{count}} tệp này không?",
+  "media_n_deleted": "Đã xóa {{count}} tệp",
+  "media_delete_partial": "Đã xóa {{deleted}}/{{total}}. Các tệp còn lại vẫn được chọn, bạn có thể thử lại."
 }

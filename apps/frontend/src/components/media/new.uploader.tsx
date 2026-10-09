@@ -290,22 +290,31 @@ export function useUppyUploader(props: {
       // An XHR upload answers with the saved media row itself; the multipart
       // path wraps it in `.saved`. Read the wrong one and the upload succeeds
       // while nothing appears in the library.
+      //
+      // The files leave the store even when a poster or the hand-off throws:
+      // left behind, the same file added again is refused as a duplicate.
       if (uploadStrategy === 'local') {
         setLocked(false);
         fileOrderIndex = 0;
-        onUploadSuccess(
-          await withPosters(sortedSuccessful.map((p) => p.response.body))
-        );
-        uppy2.removeFiles(finished);
+        try {
+          onUploadSuccess(
+            await withPosters(sortedSuccessful.map((p) => p.response.body))
+          );
+        } finally {
+          uppy2.removeFiles(finished);
+        }
         return;
       }
 
       setLocked(false);
       fileOrderIndex = 0;
-      onUploadSuccess(
-        await withPosters(sortedSuccessful.map((p) => p.response.body.saved))
-      );
-      uppy2.removeFiles(finished);
+      try {
+        onUploadSuccess(
+          await withPosters(sortedSuccessful.map((p) => p.response.body.saved))
+        );
+      } finally {
+        uppy2.removeFiles(finished);
+      }
     });
     uppy2.on('upload-success', (file, response) => {
       const current = uppy2.getState().files[file.id];

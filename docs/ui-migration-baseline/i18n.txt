@@ -197,6 +197,7 @@ are_you_sure_you_want_to_close_the_window
 are_you_sure_you_want_to_close_this_modal_all_data_will_be_lost
 are_you_sure_you_want_to_delete
 are_you_sure_you_want_to_delete_integration
+are_you_sure_you_want_to_delete_n_media
 are_you_sure_you_want_to_delete_post
 are_you_sure_you_want_to_delete_the_image
 are_you_sure_you_want_to_delete_this_community
@@ -1578,6 +1579,7 @@ delete_post_from_all_channels_question
 delete_post_tooltip
 delete_published_body
 delete_published_title
+delete_selected
 delete_tag
 deleting_your_account
 deleting_your_account_description
@@ -1998,11 +2000,14 @@ mark_all_read
 maximum_size_allowed_1gb_images_video
 media
 media_already_on_post
+media_delete_partial
 media_deleted
 media_editor
 media_import_failed
 media_imported_successfully
 media_library
+media_n_deleted
+media_n_selected
 media_upload_complete
 media_upload_complete_one
 media_upload_failed
