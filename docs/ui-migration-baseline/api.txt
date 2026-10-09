@@ -55,6 +55,7 @@
 /customers
 /impersonate-${name}
 /integrations
+/integrations/${integration.id}/custom-name
 /integrations/${integration.id}/customer-name
 /integrations/${integration.id}/plugs
 /integrations/${integration.id}/settings
@@ -64,6 +65,7 @@
 /integrations/${selectedIntegration.integration.identifier}/internal-plugs
 /integrations/${settings.providerId}/plugs
 /integrations/customers
+/integrations/customers/${group.id}
 /integrations/disable
 /integrations/enable
 /integrations/function

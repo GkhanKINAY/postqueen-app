@@ -1,4 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { Injectable } from '@nestjs/common';
 import { Post as PostBody } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import {
@@ -64,8 +65,8 @@ export class PostsRepository {
     });
   }
 
-  getOldPosts(orgId: string, date: string) {
-    return this._post.model.post.findMany({
+  async getOldPosts(orgId: string, date: string) {
+    const posts = await this._post.model.post.findMany({
       where: {
         integration: {
           refreshNeeded: false,
@@ -92,6 +93,7 @@ export class PostsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             providerIdentifier: true,
             picture: true,
             type: true,
@@ -99,6 +101,7 @@ export class PostsRepository {
         },
       },
     });
+    return posts.map(withPostChannelDisplayName);
   }
 
   updateImages(id: string, images: string) {
@@ -206,13 +209,14 @@ export class PostsRepository {
             id: true,
             providerIdentifier: true,
             name: true,
+            customName: true,
             picture: true,
           },
         },
       },
     });
 
-    return list.reduce((all, post) => {
+    return list.map(withPostChannelDisplayName).reduce((all, post) => {
       // A non-positive interval would step backwards and never reach endDate,
       // spinning here forever. @Min(1) on the DTO stops new ones; this covers
       // any row written before that validator existed.
@@ -317,6 +321,11 @@ export class PostsRepository {
               customerId: query.customer,
             }
           : {}),
+        ...(query.integrations?.length
+          ? {
+              id: { in: query.integrations },
+            }
+          : {}),
       },
     };
 
@@ -356,6 +365,7 @@ export class PostsRepository {
               id: true,
               providerIdentifier: true,
               name: true,
+              customName: true,
               picture: true,
             },
           },
@@ -365,7 +375,7 @@ export class PostsRepository {
     ]);
 
     return {
-      posts,
+      posts: posts.map(withPostChannelDisplayName),
       total,
       page,
       limit,
@@ -460,11 +470,16 @@ export class PostsRepository {
     });
   }
 
+  // `forBrowser` leaves out what the channel signs in with. GET /posts/:id
+  // answered with the post's whole channel row, decrypted tokens included.
+  // Publishing and the workflows read the same post without it and still need
+  // them, so the default stays as it was.
   getPost(
     id: string,
     includeIntegration = false,
     orgId?: string,
-    isFirst?: boolean
+    isFirst?: boolean,
+    forBrowser = false
   ) {
     return this._post.model.post.findUnique({
       where: {
@@ -475,7 +490,13 @@ export class PostsRepository {
       include: {
         ...(includeIntegration
           ? {
-              integration: true,
+              integration: {
+                omit: {
+                  token: forBrowser,
+                  refreshToken: forBrowser,
+                  customInstanceDetails: forBrowser,
+                },
+              },
               tags: {
                 where: {
                   tag: {
@@ -509,8 +530,9 @@ export class PostsRepository {
   }
 
   /** The post behind a publish notice: whether it wants one, and what it said. */
-  getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
-    return this._post.model.post.findFirst({
+  // Names the channel in the "published" email, so the name the user sees.
+  async getPublishedByReleaseUrl(orgId: string, releaseURL: string) {
+    const post = await this._post.model.post.findFirst({
       where: {
         organizationId: orgId,
         releaseURL,
@@ -522,11 +544,13 @@ export class PostsRepository {
         integration: {
           select: {
             name: true,
+            customName: true,
             providerIdentifier: true,
           },
         },
       },
     });
+    return post && withPostChannelDisplayName(post);
   }
 
   /**
@@ -1024,8 +1048,8 @@ export class PostsRepository {
     } as const;
   }
 
-  getPostTimeline(id: string, org: string) {
-    return this._post.model.post.findFirst({
+  async getPostTimeline(id: string, org: string) {
+    const post = await this._post.model.post.findFirst({
       where: {
         id,
         organizationId: org,
@@ -1036,6 +1060,7 @@ export class PostsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             providerIdentifier: true,
             disabled: true,
             refreshNeeded: true,
@@ -1058,6 +1083,7 @@ export class PostsRepository {
         },
       },
     });
+    return post && withPostChannelDisplayName(post);
   }
 
   findAllExistingCategories() {

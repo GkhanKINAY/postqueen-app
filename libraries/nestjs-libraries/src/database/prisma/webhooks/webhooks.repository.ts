@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { WebhooksDto } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -23,8 +24,8 @@ export class WebhooksRepository {
     });
   }
 
-  getWebhooks(orgId: string) {
-    return this._webhooks.model.webhooks.findMany({
+  async getWebhooks(orgId: string) {
+    const webhooks = await this._webhooks.model.webhooks.findMany({
       where: {
         organizationId: orgId,
         deletedAt: null,
@@ -37,12 +38,17 @@ export class WebhooksRepository {
                 id: true,
                 picture: true,
                 name: true,
+                customName: true,
               },
             },
           },
         },
       },
     });
+    return webhooks.map((webhook) => ({
+      ...webhook,
+      integrations: webhook.integrations.map(withPostChannelDisplayName),
+    }));
   }
 
   // Both of these used to surface as a 500: Prisma raises P2025 for a `where`
