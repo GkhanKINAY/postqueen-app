@@ -42,6 +42,7 @@ export class PostMetricsRepository {
       select: {
         id: true,
         releaseId: true,
+        releaseURL: true,
         organizationId: true,
         integrationId: true,
         settings: true,

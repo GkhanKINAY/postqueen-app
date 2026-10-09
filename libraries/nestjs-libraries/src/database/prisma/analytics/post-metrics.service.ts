@@ -26,6 +26,7 @@ import {
 import { GetAnalyticsPostsDto } from '@gitroom/nestjs-libraries/dtos/analytics/get.analytics.posts.dto';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { hasKnownPostMetric } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 
 dayjs.extend(utc);
 
@@ -44,6 +45,7 @@ export class PostMetricsService {
     private _integrationManager: IntegrationManager,
     private _refreshIntegrationService: RefreshIntegrationService,
     private _temporalService: TemporalService,
+    private _postsService: PostsService,
   ) {}
 
   async listIntegrationsNeedingSync(
@@ -156,6 +158,36 @@ export class PostMetricsService {
     );
     if (posts.length === 0) {
       return { synced: 0 };
+    }
+
+    // The same release resolution the Statistics modal runs, so a post whose
+    // stored id is still an intermediate one (a TikTok publish id) gets its
+    // final id persisted by the sync too, not only when someone opens it.
+    if (provider.resolveReleaseId) {
+      for (const post of posts) {
+        try {
+          const { releaseId } = await this._postsService.resolveRelease(
+            organizationId,
+            {
+              id: post.id,
+              releaseId: post.releaseId as string,
+              releaseURL: post.releaseURL as string,
+              integration: { ...integration, token },
+            },
+          );
+          post.releaseId = releaseId;
+        } catch (err) {
+          // The stored id stays, and postsAnalytics below refreshes an
+          // expired token on its own, so stop asking with this one
+          if (err instanceof RefreshToken || err instanceof Disconnect) {
+            break;
+          }
+          this.logger.warn(
+            `resolveRelease failed for ${integration.providerIdentifier} ${post.id}`,
+            err as Error,
+          );
+        }
+      }
     }
 
     const byReleaseId = new Map(
