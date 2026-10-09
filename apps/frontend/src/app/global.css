@@ -968,6 +968,19 @@ html[dir='rtl'] .lbox {
   color: var(--focused);
 }
 
+/* Pictures placed inside the content, for channels that publish them there
+   (articles, newsletters). */
+.ProseMirror img:not(.ProseMirror-separator) {
+  max-height: 300px;
+  margin: 16px 0;
+  border-radius: var(--r-sm);
+  cursor: grab;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--brand);
+}
+
 .ProseMirror ul,
 .preview ul {
   list-style: disc;

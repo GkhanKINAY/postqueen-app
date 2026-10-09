@@ -556,5 +556,6 @@
   "ai_not_configured_body": "AI features are not configured on this installation.",
   "signup_product_news_notice": "დროდადრო გამოგიგზავნით პროდუქტის სიახლეებს. ნებისმიერი მათგანიდან გამოწერის გაუქმება ერთი დაწკაპუნებით შეგიძლიათ.",
   "product_news": "პროდუქტის სიახლეები",
-  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ"
+  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ",
+  "only_images_can_be_added_to_the_content": "კონტენტს მხოლოდ სურათების დამატება შეიძლება"
 }
