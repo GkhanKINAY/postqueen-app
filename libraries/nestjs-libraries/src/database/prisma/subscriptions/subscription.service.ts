@@ -498,6 +498,13 @@ export class SubscriptionService {
     return deleted;
   }
 
+  updateCancelAt(organizationId: string, cancelAt: number | null) {
+    return this._subscriptionRepository.updateCancelAt(
+      organizationId,
+      cancelAt
+    );
+  }
+
   updateCustomerId(organizationId: string, customerId: string) {
     return this._subscriptionRepository.updateCustomerId(
       organizationId,
