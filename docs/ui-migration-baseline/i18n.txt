@@ -374,6 +374,7 @@ billing_your_first
 billing_zero_due_today_until
 blank_post
 bot_name_avatar
+bot_name_renamed_hint
 branded_content_policy
 browse
 browser_extension
@@ -434,7 +435,10 @@ channel_group
 channel_id_copied
 channel_lost_connection_banner
 channel_menu
+channel_name
+channel_name_reset
 channel_needs_reconnect
+channel_renamed
 channel_save_missing_session
 channel_save_network_error
 channel_settings
@@ -1466,6 +1470,7 @@ could_not_convert_file
 could_not_delete_account
 could_not_optimize_file
 could_not_save
+could_not_save_group
 could_not_use_rss_feed
 create
 create_a_new_account
@@ -1612,6 +1617,7 @@ duplicate_post
 edit
 edit_app
 edit_autopost
+edit_group_name
 edit_in_composer
 edit_plug
 edit_post
@@ -1747,6 +1753,8 @@ go_to_post
 google
 got_it
 grid
+group_name
+group_updated
 guide_bluesky
 guide_bluesky_f_identifier
 guide_bluesky_f_password
@@ -2308,7 +2316,12 @@ remove_delay
 remove_from_customer
 remove_image
 removes_the_channel_and_its_scheduled_posts
+rename
+rename_channel
+rename_channel_hint
 rename_chat
+rename_group_hint
+renamed_from_original
 reopen
 repeat_none
 repeat_password
@@ -2323,6 +2336,7 @@ reschedule_post
 resend_activation_email
 resend_available_in
 resend_code
+reset_channel_name
 resolve
 resolved
 restore

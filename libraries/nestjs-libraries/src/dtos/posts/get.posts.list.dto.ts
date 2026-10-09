@@ -5,6 +5,7 @@ import {
   Min,
   Max,
   IsIn,
+  IsArray,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -27,6 +28,15 @@ export class GetPostsListDto {
   @IsOptional()
   @IsString()
   customer?: string;
+
+  // Comma-separated channel ids from the calendar's channel filter.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) =>
+    value ? String(value).split(',').filter(Boolean) : []
+  )
+  integrations?: string[];
 
   @IsOptional()
   @IsIn(['all', 'scheduled', 'draft', 'published'])

@@ -1,3 +1,4 @@
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import {
   BadRequestException,
   Injectable,
@@ -403,13 +404,15 @@ export class PostsService {
     id: string,
     includeIntegration = false,
     orgId?: string,
-    isFirst?: boolean
+    isFirst?: boolean,
+    forBrowser = false
   ): Promise<PostWithConditionals[]> {
     const post = await this._postRepository.getPost(
       id,
       includeIntegration,
       orgId,
-      isFirst
+      isFirst,
+      forBrowser
     );
 
     if (!post) {
@@ -689,7 +692,7 @@ export class PostsService {
       group: posts?.[0]?.group,
       posts: await Promise.all(
         (posts || []).map(async (post) => ({
-          ...post,
+          ...withPostChannelDisplayName(post),
           image: await this.updateMedia(
             post.id,
             JSON.parse(post.image || '[]'),
@@ -722,7 +725,8 @@ export class PostsService {
   }
 
   async getPost(orgId: string, id: string, convertToJPEG = false) {
-    const posts = await this.getPostsRecursively(id, true, orgId, true);
+    // Answers GET /posts/:id, the public API and the agent: no credentials.
+    const posts = await this.getPostsRecursively(id, true, orgId, true, true);
     // An unknown id, or a comment's id, used to reach `posts[0].integrationId`
     // below and answer with a TypeError as a 500.
     if (!posts.length) {
@@ -732,7 +736,7 @@ export class PostsService {
       group: posts?.[0]?.group,
       posts: await Promise.all(
         (posts || []).map(async (post) => ({
-          ...post,
+          ...withPostChannelDisplayName(post),
           image: await this.updateMedia(
             post.id,
             JSON.parse(post.image || '[]'),

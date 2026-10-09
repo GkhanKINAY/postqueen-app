@@ -13,9 +13,13 @@ export const ThreadFinisher = () => {
   const { register, watch, setValue } = useSettings();
   const t = useT();
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  // This text is posted, so it names the account as the platform does: a
+  // name given to the channel in PostQueen stays in PostQueen.
   const wrap = t('that_a_wrap', {
     username:
-      integration.integration?.display || integration.integration?.name,
+      integration.integration?.display ||
+      integration.integration?.originalName ||
+      integration.integration?.name,
   });
 
   register('active_thread_finisher', {
