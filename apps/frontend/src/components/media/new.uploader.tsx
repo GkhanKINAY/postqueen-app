@@ -217,6 +217,13 @@ export function useUppyUploader(props: {
       });
     });
     uppy2.on('error', (result) => {
+      // Uppy also emits `error` when one file of a batch fails. While the
+      // upload is still running, the rest of the batch carries on: that file
+      // got its own toast from `upload-error`, and `complete` reports the
+      // batch. Cancelling here dropped every other file.
+      if (Object.keys(uppy2.getState().currentUploads).length) {
+        return;
+      }
       uppy2.cancelAll();
       setLocked(false);
       props.onEnd();
