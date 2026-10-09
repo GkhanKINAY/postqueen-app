@@ -34,7 +34,7 @@
     "dev:docker": "docker compose -f ./docker-compose.dev.yaml up -d",
     "commands:build:development": "pnpm --filter ./apps/commands run build",
     "prisma-generate": "prisma generate",
-    "prisma-db-push": "prisma db push",
+    "prisma-db-push": "prisma db push --accept-data-loss",
     "prisma-migrate-deploy": "prisma migrate deploy",
     "prisma-apply": "case \"${PRISMA_MIGRATE:-}\" in '' | false | False | FALSE | 0) pnpm run prisma-db-push ;; *) pnpm run prisma-migrate-deploy ;; esac",
     "prisma-db-pull": "prisma db pull",
