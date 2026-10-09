@@ -89,7 +89,7 @@ export class PublicController {
    */
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
-    return (await this._postsService.getPostsRecursively(id, true)).map(
+    return (await this._postsService.getPublicPreview(id)).map(
       (p) => ({
         id: p.id,
         content: p.content,

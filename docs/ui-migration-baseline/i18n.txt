@@ -2094,6 +2094,7 @@ one_publishing_option
 one_selected
 only_channel_gets_version
 only_existing_post
+only_images_can_be_added_to_the_content
 only_option_to_connect
 open_auto_plugs
 open_billing_portal

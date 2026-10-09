@@ -1,5 +1,6 @@
 import striptags from 'striptags';
 import { parseFragment, serialize } from 'parse5';
+import { isAllowedUploadPath } from '@gitroom/helpers/utils/valid.url.path';
 
 const bold = {
   a: '𝗮',
@@ -137,7 +138,8 @@ export const stripHtmlValidation = (
   replaceBold = false,
   none = false,
   plain = false,
-  convertMentionFunction?: (idOrHandle: string, name: string) => string
+  convertMentionFunction?: (idOrHandle: string, name: string) => string,
+  inlineImages = false
 ): string => {
   if (plain) {
     return val;
@@ -156,40 +158,47 @@ export const stripHtmlValidation = (
   }
 
   if (type === 'html') {
-    return striptags(convertMention(value, convertMentionFunction), [
-      'ul',
-      'li',
-      'h1',
-      'h2',
-      'h3',
-      'p',
-      'strong',
-      'u',
-      'a',
-    ])
-      .replace(/&gt;/gi, '>')
-      .replace(/&lt;/gi, '<')
-      .replace(/&amp;/gi, '&')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&quot;/gi, '"')
-      .replace(/&#39;/gi, "'");
+    // Entities are decoded in the text only. Decoding them inside a tag
+    // turned an attribute value holding `&amp;quot;` into a closing quote and
+    // whatever followed into an attribute of its own (an onerror on a
+    // picture, an onclick on a link) in the HTML a channel publishes.
+    return decodeTextEntities(
+      striptags(
+        convertMention(
+          inlineImages ? convertImages(value) : value,
+          convertMentionFunction
+        ),
+        [
+          'ul',
+          'li',
+          'h1',
+          'h2',
+          'h3',
+          'p',
+          'strong',
+          'u',
+          'a',
+          ...(inlineImages ? ['img'] : []),
+        ]
+      )
+    );
   }
 
   if (type === 'markdown') {
     return striptags(
       convertMention(
         value
-          .replace(/<h1>([.\s\S]*?)<\/h1>/g, (match, p1) => {
+          .replace(/<h1[^>]*>([.\s\S]*?)<\/h1>/g, (match, p1) => {
             return `<h1># ${p1}</h1>\n`;
           })
           .replace(/&amp;/gi, '&')
           .replace(/&nbsp;/gi, ' ')
           .replace(/&quot;/gi, '"')
           .replace(/&#39;/gi, "'")
-          .replace(/<h2>([.\s\S]*?)<\/h2>/g, (match, p1) => {
+          .replace(/<h2[^>]*>([.\s\S]*?)<\/h2>/g, (match, p1) => {
             return `<h2>## ${p1}</h2>\n`;
           })
-          .replace(/<h3>([.\s\S]*?)<\/h3>/g, (match, p1) => {
+          .replace(/<h3[^>]*>([.\s\S]*?)<\/h3>/g, (match, p1) => {
             return `<h3>### ${p1}</h3>\n`;
           })
           .replace(/<u>([.\s\S]*?)<\/u>/g, (match, p1) => {
@@ -201,7 +210,7 @@ export const stripHtmlValidation = (
           .replace(/<li.*?>([.\s\S]*?)<\/li.*?>/gm, (match, p1) => {
             return `<li>- ${p1.replace(/\n/gm, '')}</li>`;
           })
-          .replace(/<p>([.\s\S]*?)<\/p>/g, (match, p1) => {
+          .replace(/<p[^>]*>([.\s\S]*?)<\/p>/g, (match, p1) => {
             return `<p>${p1}</p>\n`;
           })
           .replace(
@@ -217,7 +226,7 @@ export const stripHtmlValidation = (
       .replace(/&lt;/gi, '<');
   }
 
-  if (value.indexOf('<p>') === -1 && !none) {
+  if (!/<p[\s>]/i.test(value) && !none) {
     return value;
   }
 
@@ -266,6 +275,74 @@ export const stripHtmlValidation = (
   return striptags(html, ['ul', 'li', 'h1', 'h2', 'h3'])
     .replace(/&gt;/gi, '>')
     .replace(/&lt;/gi, '<');
+};
+
+// The same decoding the other types apply, on the text between tags only.
+const decodeTextEntities = (html: string) =>
+  html
+    .split(/(<[^>]*>)/)
+    .map((part, index) =>
+      index % 2
+        ? part
+        : part
+            .replace(/&gt;/gi, '>')
+            .replace(/&lt;/gi, '<')
+            .replace(/&amp;/gi, '&')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+    )
+    .join('');
+
+// An attribute value as the text it stands for, however many times it was
+// encoded.
+const decodeAttribute = (value: string) => {
+  let current = value;
+  for (let i = 0; i < 5; i++) {
+    const next = current
+      .replace(/&quot;/gi, '"')
+      .replace(/&#0*39;|&#x0*27;|&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&');
+    if (next === current) {
+      return current;
+    }
+    current = next;
+  }
+  return current;
+};
+
+const encodeAttribute = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+// A picture is rebuilt from its src and alt alone: the src has to be an
+// http(s) URL from where uploads are allowed, so a channel that publishes the
+// src as it is (WordPress, ListMonk) follows the same rule as one that
+// uploads it (an X article), and both values are encoded again from their
+// decoded text, so nothing in them can close the attribute.
+export const convertImages = (value: string) => {
+  return value.replace(/<img\b[^>]*>/gi, (match) => {
+    const rawSrc = /\ssrc="([^"]*)"/i.exec(match)?.[1];
+    const rawAlt = /\salt="([^"]*)"/i.exec(match)?.[1];
+    const src = rawSrc ? decodeAttribute(rawSrc).trim() : '';
+    if (
+      !/^https?:\/\/[^\s"'<>]+$/i.test(src) ||
+      !isAllowedUploadPath(src)
+    ) {
+      return '';
+    }
+
+    const alt = rawAlt ? decodeAttribute(rawAlt) : '';
+    return `<img src="${encodeAttribute(src)}"${
+      alt ? ` alt="${encodeAttribute(alt)}"` : ''
+    }>`;
+  });
 };
 
 export const convertMention = (

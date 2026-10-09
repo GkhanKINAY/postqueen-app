@@ -1719,3 +1719,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## Upstream sync, October 2026 (1 of 7): tag editing and the Facebook video title
 
 **i18n +2 (`edit_tag`, `facebook_video_title`); no api, route, gate or loop change.** Taken from upstream with the October sync. Each row of the tags dropdown in the composer gets an edit button beside delete, styled like it (`text-pqMuted`, `hover:bg-pqHover`), which opens the existing tag modal in edit mode. The composer's Facebook settings show a video title field for posts, not stories, under the embedded URL field. Both keys are in every locale. `scripts/ui-migration-check.sh --update` changed `i18n.txt`.
+
+## Pictures inside the content, for channels that publish them there
+
+**i18n +1 (`only_images_can_be_added_to_the_content`); no api, route, gate or loop change.** Taken from upstream (`2aae02fe0`, October 2026 sync). For a channel that publishes the post body as a page, WordPress, ListMonk and an X article, the first editor holds pictures inline: Insert media, an upload, a drop or a paste puts the picture at the cursor instead of into the attachments, and the picture can be dragged within the text. Anything that is not an image is refused there with this warning. The pictures are styled from the token layer (`--brand` outline and drop cursor, `--r-sm` corners). `scripts/ui-migration-check.sh --update` changed `i18n.txt`.

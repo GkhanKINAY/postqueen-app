@@ -124,6 +124,7 @@ export const GeneralPreviewComponent: FC<{
                 </div>
               </div>
               <div
+                dir="auto"
                 // `whitespace-pre` plus `text-wrap` reads as "keep the
                 // breaks, wrap the lines", but Chrome treats `white-space:
                 // pre` as a shorthand that also sets `text-wrap-mode:
