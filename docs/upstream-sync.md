@@ -473,6 +473,7 @@ Skipped, deliberately:
 | `e5f6fff33` `3205ce10e` | An MCP video-cover attachment and its revert; net zero |
 | `5fb2f5368` `280080793` `f65de34e2` | An unused import, a formatting-only redeploy, an empty commit |
 | `c145f0c3b` (in part) `70911f869` | The post-checkout "channels re-enabled" notice. Its backend half was already here (`enableAutoDisabledIntegrations` with headroom), and its all-or-nothing copy does not fit our partial re-enable |
+| `3f848ccb6` | `db push` without `--accept-data-loss`. Taken in #330 and reverted: our schema since v3.6.89 (the `AGENCY` to `ULTIMATE` enum rename, then the `Credits` idempotency index in v3.6.107) carries changes Prisma flags as data loss even on an empty table, so every self-hosted install on `db push` older than v3.6.107 stopped booting. Those changes cannot actually drop rows (Postgres refuses the cast or the index instead). Self-hosters are pointed at `PRISMA_MIGRATE` with a full baseline in `.env.example` |
 | `80d527b48` | AM/PM in the date picker's time input; ours is Mantine 9's native `TimeInput`, to be redone on our date-format hook |
 
 Already here, or empty once picked (second sync):
