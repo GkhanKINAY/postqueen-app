@@ -563,6 +563,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     }
 
     if (status === 'PUBLISH_COMPLETE') {
+      // the id only shows up once moderation approves the post - fall back to
+      // the profile URL and keep the publish_id (resolveReleaseId fixes it later)
       return {
         status: 'completed',
         releaseURL: !publicPostId
@@ -1211,6 +1213,46 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       console.error('Error fetching TikTok missing content:', err);
       return [];
     }
+  }
+
+  // Posts published before moderation finished keep their publish_id
+  // (v_pub_file~... / p_pub_url~...) as releaseId - resolve it to the post id
+  async resolveReleaseId(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration
+  ) {
+    if (classifyTikTokPostId(releaseId) !== 'publish') {
+      return undefined;
+    }
+
+    const { publicPostId } = this.parsePublishStatus(
+      await (
+        await this.fetch(
+          'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              publish_id: releaseId,
+            }),
+          },
+          this.identifier
+        )
+      ).text()
+    );
+
+    if (!publicPostId) {
+      return undefined;
+    }
+
+    return {
+      postId: publicPostId,
+      releaseURL: `https://www.tiktok.com/@${integration.profile}/video/${publicPostId}`,
+    };
   }
 
   async postAnalytics(

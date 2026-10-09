@@ -35,6 +35,16 @@ export interface IAuthenticator {
     fromDate: number,
   ): Promise<AnalyticsData[]>;
   /**
+   * The final post id and URL to persist when the stored releaseId is still an
+   * intermediate one (a publish id the platform swaps for the public post id
+   * later). Undefined when there is nothing to resolve, or nothing yet.
+   */
+  resolveReleaseId?(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration,
+  ): Promise<{ postId: string; releaseURL: string } | undefined>;
+  /**
    * Lifetime totals for many platform post ids at once. Used by the snapshot
    * sync, never by the per-post Statistics modal (that still calls
    * `postAnalytics`). Omit a field when this provider does not fetch it —

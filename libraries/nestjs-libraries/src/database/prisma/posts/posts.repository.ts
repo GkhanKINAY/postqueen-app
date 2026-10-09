@@ -567,6 +567,24 @@ export class PostsRepository {
     });
   }
 
+  updateResolvedRelease(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL: string
+  ) {
+    return this._post.model.post.update({
+      where: {
+        id,
+        organizationId: orgId,
+      },
+      data: {
+        releaseId,
+        releaseURL,
+      },
+    });
+  }
+
   updateReleaseId(id: string, orgId: string, releaseId: string) {
     return this._post.model.post.update({
       where: {
