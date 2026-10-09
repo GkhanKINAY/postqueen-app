@@ -119,15 +119,16 @@ class StubbedTiktokProvider extends TiktokProvider {
   override async fetch(url: string, options: RequestInit = {}) {
     const body = JSON.parse(String(options.body));
     if (url.includes('/post/publish/status/fetch/')) {
-      const published: Record<string, number> = {
-        'v_pub_file~v2-1.111': 222,
-        'v_pub_url~v2-1.333': 444,
+      // Written as raw JSON numbers, the way TikTok sends them: an int64
+      // past 2^53 only survives when it is read from the text.
+      const published: Record<string, string> = {
+        'v_pub_file~v2-1.111': '222',
+        'v_pub_url~v2-1.333': '444',
+        'v_pub_file~v2-1.big': '7559000000000000123',
       };
       const id = published[body.publish_id];
       return new Response(
-        JSON.stringify({
-          data: id ? { publicaly_available_post_id: [id] } : {},
-        })
+        id ? `{"data":{"publicaly_available_post_id":[${id}]}}` : '{"data":{}}'
       );
     }
     const ids: string[] = body.filters.video_ids;
@@ -155,13 +156,21 @@ describe('TikTok postsAnalytics with mixed releaseIds', () => {
       'v_pub_file~v2-1.111',
       'v_pub_url~v2-1.333',
       'v_pub_file~v2-1.unresolved',
+      'v_pub_file~v2-1.big',
       'missing',
     ]);
 
-    assert.deepEqual(provider.videoIdBatches, [['555', '222', '444']]);
+    assert.deepEqual(provider.videoIdBatches, [
+      ['555', '222', '444', '7559000000000000123'],
+    ]);
     assert.deepEqual(
       rows.map((r) => r.platformPostId).sort(),
-      ['555', 'v_pub_file~v2-1.111', 'v_pub_url~v2-1.333'].sort()
+      [
+        '555',
+        'v_pub_file~v2-1.111',
+        'v_pub_url~v2-1.333',
+        'v_pub_file~v2-1.big',
+      ].sort()
     );
   });
 });
