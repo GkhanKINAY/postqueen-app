@@ -111,6 +111,7 @@
 /posts/${post.group}
 /posts/${postId}/missing
 /posts/${postId}/release-id
+/posts/${postId}/release-url
 /posts/${postId}/statistics
 /posts/${previewId}/comments
 /posts/comments/${comment.id}

@@ -337,6 +337,8 @@
   "predicted_github_trending_change": "পূর্বাভাসিত GitHub ট্রেন্ডিং পরিবর্তন",
   "duplicate_post": "পোস্ট ডুপ্লিকেট করুন",
   "preview_post": "পোস্ট প্রিভিউ",
+  "post_link_not_ready": "পোস্টের লিংকটি এখনও উপলভ্য নয়, অনুগ্রহ করে এক মিনিট পরে আবার চেষ্টা করুন",
+  "post_has_no_public_link": "এই পোস্টটির কোনো পাবলিক লিংক নেই",
   "post_statistics": "পোস্ট পরিসংখ্যান",
   "draft": "খসড়া",
   "week_number": "সপ্তাহ নম্বর",

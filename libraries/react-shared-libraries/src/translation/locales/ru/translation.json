@@ -337,6 +337,8 @@
   "predicted_github_trending_change": "Прогнозируемое изменение трендов GitHub",
   "duplicate_post": "Дублировать пост",
   "preview_post": "Предпросмотр поста",
+  "post_link_not_ready": "Ссылка на пост ещё недоступна, пожалуйста, попробуйте снова через минуту",
+  "post_has_no_public_link": "У этого поста нет публичной ссылки",
   "post_statistics": "Статистика поста",
   "draft": "Черновик",
   "week_number": "Неделя {{number}}",

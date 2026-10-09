@@ -8,7 +8,6 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import sharp from 'sharp';
 import { lookup } from 'mime-types';
-import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
@@ -553,7 +552,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     // Fetch all images and get their dimensions
     const images = await Promise.all(
       firstPost.media.map(async (media) => {
-        const raw = await readOrFetch(media.path);
+        const raw = await this.readOrFetch(media.path);
         const image = sharp(raw, { animated: false }).toFormat('jpeg');
         const { width, height } = await image.metadata();
         const buffer = await image.toBuffer();
@@ -676,7 +675,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     if (isGif) {
       // Buffer.from keeps the return type a real Buffer regardless of what
       // readOrFetch yields - uploadPicture branches on Buffer.isBuffer.
-      return Buffer.from(await readOrFetch(mediaUrl));
+      return Buffer.from(await this.readOrFetch(mediaUrl));
     }
 
     const mime = lookup(mediaUrl);
@@ -691,7 +690,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     // DISABLE_IMAGE_COMPRESSION=true, where the frontend no longer shrinks
     // uploads and full-size images reach LinkedIn directly. Do not remove it on
     // the assumption that the frontend compression already caps dimensions.
-    const pipeline = sharp(await readOrFetch(mediaUrl), { animated: false }).resize({
+    const pipeline = sharp(await this.readOrFetch(mediaUrl), { animated: false }).resize({
       width: 6000,
       height: 6000,
       fit: 'inside',

@@ -337,6 +337,8 @@
   "predicted_github_trending_change": "Dự đoán thay đổi xu hướng GitHub",
   "duplicate_post": "Bài viết trùng lặp",
   "preview_post": "Xem trước bài viết",
+  "post_link_not_ready": "Liên kết bài viết chưa sẵn sàng, vui lòng thử lại sau một phút",
+  "post_has_no_public_link": "Bài viết này không có liên kết công khai",
   "post_statistics": "Thống kê bài viết",
   "draft": "Bản nháp",
   "week_number": "Tuần {{number}}",
