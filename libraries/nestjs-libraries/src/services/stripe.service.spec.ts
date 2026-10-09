@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { before, beforeEach, describe, it } from 'node:test';
+import { after, before, beforeEach, describe, it } from 'node:test';
 import Stripe from 'stripe';
 import type { StripeService as StripeServiceType } from './stripe.service.ts';
 import { pricing } from '../database/prisma/subscriptions/pricing.ts';
@@ -124,6 +124,9 @@ for (const resource of [
 }
 
 let localSub: Record<string, unknown> | null;
+// The organization's own Subscription row, which `subscribe` reads to tell a
+// plan change from a first checkout.
+let localPlan: Record<string, unknown> | null;
 let failCancelAt: boolean;
 // The organization's Stripe customer, moved by `updateCustomerId`.
 let orgCustomer: string;
@@ -139,7 +142,7 @@ const subscriptionService = {
     return { count: 1 };
   }),
   getSubscriptionByOrganizationId: async () => localSub,
-  getSubscription: async () => null,
+  getSubscription: async () => localPlan,
   checkSubscription: async () => null,
   getOrganizationByCustomerId: async (customer: string) => orgOn(customer),
   updateCustomerId: record('updateCustomerId', (_org, customer) => {
@@ -185,6 +188,7 @@ beforeEach(() => {
   invoices = [];
   prices = [];
   localSub = { isLifetime: false };
+  localPlan = null;
   failCancelAt = false;
   orgCustomer = 'cus_1';
 });
@@ -757,5 +761,192 @@ describe('billing history', () => {
     assert.equal(rows[0].periodEnd, 99);
     assert.equal(rows[0].viewUrl, 'https://view');
     assert.equal(rows[0].downloadUrl, 'https://pdf');
+  });
+});
+
+describe('a plan change', () => {
+  // The tier products, and each tier's prices as `subscribe` and `prorate`
+  // look for them: pre-tax, named after the tier and period, at list price.
+  const tiers = ['CREATOR', 'GROWTH', 'PRO'];
+  const listed = (tier: string, period: 'MONTHLY' | 'YEARLY') =>
+    ({
+      id: `price_${tier.toLowerCase()}_${period.toLowerCase()}`,
+      product: `prod_${tier.toLowerCase()}`,
+      nickname: `${tier} ${period}`,
+      tax_behavior: 'exclusive',
+      recurring: { interval: period === 'MONTHLY' ? 'month' : 'year' },
+      unit_amount:
+        (period === 'MONTHLY'
+          ? pricing[tier].month_price
+          : pricing[tier].year_price) * 100,
+    }) as unknown as Stripe.Price;
+  const on = (
+    tier: string,
+    period: 'MONTHLY' | 'YEARLY',
+    extra: Partial<Sub> = {},
+  ) =>
+    sub('sub_1', 100, {
+      items: {
+        data: [
+          {
+            id: 'si_1',
+            price: listed(tier, period),
+            current_period_end: 5_000,
+          },
+        ],
+      } as any,
+      ...extra,
+    });
+
+  // What this block replaces, put back after it. The SDK's own methods are
+  // not enumerable, so each one is saved by name.
+  const faked: [object, string][] = [
+    [probe.products, 'list'],
+    [probe.prices, 'list'],
+    [probe.invoices, 'createPreview'],
+    [probe.subscriptionSchedules, 'create'],
+  ];
+  let saved: unknown[];
+  before(() => {
+    saved = faked.map(
+      ([resource, method]) => Object.getPrototypeOf(resource)[method],
+    );
+    fake(probe.products, {
+      list: record('products.list', () => ({
+        data: tiers.map((tier) => ({
+          id: `prod_${tier.toLowerCase()}`,
+          name: tier,
+        })),
+      })),
+    });
+    fake(probe.prices, {
+      list: record('prices.list', ({ product }) => ({
+        data: tiers
+          .filter((tier) => product === `prod_${tier.toLowerCase()}`)
+          .flatMap((tier) => [
+            listed(tier, 'MONTHLY'),
+            listed(tier, 'YEARLY'),
+          ]),
+      })),
+    });
+    fake(probe.invoices, {
+      createPreview: record('invoices.createPreview', () => ({
+        amount_due: 12_345,
+      })),
+    });
+    fake(probe.subscriptionSchedules, {
+      create: record('subscriptionSchedules.create', refuse),
+    });
+  });
+  after(() => {
+    faked.forEach(([resource, method], i) =>
+      fake(resource, { [method]: saved[i] }),
+    );
+  });
+
+  const preview = (billing: string, period: 'MONTHLY' | 'YEARLY') =>
+    service().prorate('org1', { billing, period } as any);
+
+  it('charges now for the same tier, monthly to yearly', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    assert.deepEqual(await preview('GROWTH', 'YEARLY'), { price: 123.45 });
+    assert.equal(called('invoices.createPreview').length, 1);
+  });
+
+  it('charges now for a higher tier, monthly to yearly', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    assert.deepEqual(await preview('PRO', 'YEARLY'), { price: 123.45 });
+  });
+
+  it('waits for renewal for a lower tier, monthly to yearly', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    assert.deepEqual(await preview('CREATOR', 'YEARLY'), {
+      price: 0,
+      scheduledAt: new Date(5_000_000),
+    });
+    assert.equal(called('invoices.createPreview').length, 0);
+  });
+
+  it('still waits for renewal from yearly to monthly', async () => {
+    subs = [on('GROWTH', 'YEARLY')];
+    assert.deepEqual(await preview('GROWTH', 'MONTHLY'), {
+      price: 0,
+      scheduledAt: new Date(5_000_000),
+    });
+  });
+
+  it('still compares price within one period', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    assert.deepEqual(await preview('CREATOR', 'MONTHLY'), {
+      price: 0,
+      scheduledAt: new Date(5_000_000),
+    });
+    assert.deepEqual(await preview('PRO', 'MONTHLY'), { price: 123.45 });
+  });
+
+  it('still changes at once during a trial', async () => {
+    subs = [on('GROWTH', 'MONTHLY', { status: 'trialing' })];
+    assert.deepEqual(await preview('CREATOR', 'YEARLY'), { price: 123.45 });
+  });
+
+  it('falls back to price for a tier it cannot read', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    (subs[0].items!.data[0].price as any).product = 'prod_unknown';
+    // GROWTH's year costs less a month than its month: by price, a downgrade.
+    assert.deepEqual(await preview('GROWTH', 'YEARLY'), {
+      price: 0,
+      scheduledAt: new Date(5_000_000),
+    });
+  });
+
+  it('switches to yearly on the same tier as an upgrade, once paid', async () => {
+    subs = [on('GROWTH', 'MONTHLY', { schedule: 'sub_sched_1' })];
+    localPlan = { subscriptionTier: 'GROWTH' };
+
+    const result = await service().subscribe(
+      'unique',
+      'org1',
+      'user1',
+      { billing: 'GROWTH', period: 'YEARLY', withdrawalWaiver: true } as any,
+      false,
+    );
+
+    assert.equal((result as any).scheduledAt, undefined);
+    assert.equal(called('subscriptionSchedules.create').length, 0);
+    // A downgrade scheduled earlier gives way to the upgrade.
+    assert.deepEqual(called('subscriptionSchedules.release'), [
+      ['sub_sched_1'],
+    ]);
+    const change = called('subscriptions.update')
+      .map(([, body]) => body as any)
+      .find((body) => body.items);
+    assert.equal(change.payment_behavior, 'pending_if_incomplete');
+    assert.equal(change.proration_behavior, 'always_invoice');
+    assert.equal(change.billing_cycle_anchor, undefined);
+    assert.deepEqual(change.items, [
+      { id: 'si_1', price: 'price_growth_yearly', quantity: 1 },
+    ]);
+    // The consent to the year's credits is written before the charge.
+    const updates = called('subscriptions.update').map(([, b]) => b as any);
+    assert.ok(
+      updates.findIndex((b) => b.metadata?.withdrawal_waiver_at) <
+        updates.indexOf(change),
+    );
+  });
+
+  it('refuses a switch to yearly without the withdrawal consent', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    localPlan = { subscriptionTier: 'GROWTH' };
+    await assert.rejects(
+      service().subscribe(
+        'unique',
+        'org1',
+        'user1',
+        { billing: 'GROWTH', period: 'YEARLY' } as any,
+        false,
+      ),
+      (err: any) => err.getStatus?.() === 400,
+    );
+    assert.equal(called('subscriptions.update').length, 0);
   });
 });
