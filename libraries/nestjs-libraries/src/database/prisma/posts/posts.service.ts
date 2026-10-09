@@ -459,10 +459,12 @@ export class PostsService {
       );
       return loadAnalytics;
     } catch (e) {
-      console.log(e);
-      if (e instanceof RefreshToken) {
+      // Retry once with a refreshed token: a token the platform still rejects
+      // after a refresh used to recurse here until the stack ran out
+      if (e instanceof RefreshToken && !forceRefresh) {
         return this.checkPostAnalytics(orgId, postId, date, true);
       }
+      console.log(e);
     }
 
     return [];
