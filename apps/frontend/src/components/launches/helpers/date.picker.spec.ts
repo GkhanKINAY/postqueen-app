@@ -12,8 +12,6 @@ describe('Post date picker time field', () => {
   it('follows the Date Metrics clock, not the browser', () => {
     // A native time input shows the browser's clock and cannot be told otherwise.
     assert.doesNotMatch(source, /<TimeInput/);
-    assert.match(source, /format=\{use12Hour \? '12h' : '24h'\}/);
-    // Hebrew and Arabic still read hours before minutes.
-    assert.match(source, /<TimePicker\s+dir="ltr"/);
+    assert.match(source, /<TimePicker\s+format=\{use12Hour \? '12h' : '24h'\}/);
   });
 });

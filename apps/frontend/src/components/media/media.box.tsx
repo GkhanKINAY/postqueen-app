@@ -320,6 +320,7 @@ export const MediaBox: FC<{
         );
       }
       if (standalone) {
+        setBulkSelected([]);
         setPage(0);
         return;
       }
@@ -602,10 +603,10 @@ export const MediaBox: FC<{
     const deleted = ids.length - failed.length;
     setBulkSelected(failed);
     if (!failed.length) setSelecting(false);
-    const result = await mutate();
+    const result = await mutate().catch((): undefined => undefined);
     // Emptying the last page leaves nothing to show on it.
     if (result?.pages && page >= result.pages) {
-      setPage(result.pages - 1);
+      setPage(Math.max(0, result.pages - 1));
     }
     if (!deleted) {
       toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
@@ -777,6 +778,13 @@ export const MediaBox: FC<{
     </div>
   );
 
+  // A selection only ever holds files on screen, so Delete selected never
+  // removes one the user cannot see.
+  const changeStandalonePage = useCallback((next: number) => {
+    setBulkSelected([]);
+    setPage(next);
+  }, []);
+
   const standaloneFilterTabs = (
     <div className="flex items-center gap-[3px] rounded-pqSm bg-pqSettings p-[3px]">
       {(
@@ -790,7 +798,11 @@ export const MediaBox: FC<{
           key={value}
           type="button"
           data-media-tab={value}
-          onClick={() => setTab(value)}
+          disabled={bulkDeleting}
+          onClick={() => {
+            setBulkSelected([]);
+            setTab(value);
+          }}
           className={clsx(
             'rounded-[6px] px-[11px] text-[12.5px] transition-colors',
             touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]',
@@ -1010,6 +1022,7 @@ export const MediaBox: FC<{
                   <div
                     className={clsx(
                       'grid items-start gap-x-[14px] gap-y-[14px]',
+                      bulkDeleting && 'pointer-events-none',
                       mobile
                         ? 'grid-cols-[repeat(auto-fill,minmax(140px,1fr))]'
                         : 'grid-cols-[repeat(auto-fill,minmax(168px,1fr))]'
@@ -1036,15 +1049,15 @@ export const MediaBox: FC<{
                             ? toggleBulkSelected(media)
                             : openLightbox(media)
                         }
-                        aria-pressed={selecting ? bulkPicked : undefined}
                         className="group flex cursor-pointer flex-col gap-0.5"
                       >
                         <div
                           className={clsx(
-                            'relative w-full overflow-hidden rounded-[10px] bg-pqSettings outline -outline-offset-1 transition-[outline-color] group-hover:outline-pqBrand',
+                            'relative w-full overflow-hidden rounded-[10px] bg-pqSettings outline transition-[outline-color] group-hover:outline-pqBrand',
+                            // Inside the tile, so the ring is not clipped.
                             bulkPicked
-                              ? 'outline-2 outline-pqBrand'
-                              : 'outline-1 outline-pqBorder',
+                              ? 'outline-2 -outline-offset-2 outline-pqBrand'
+                              : 'outline-1 -outline-offset-1 outline-pqBorder',
                             MEDIA_LIBRARY_THUMB_ASPECT
                           )}
                         >
@@ -1106,7 +1119,13 @@ export const MediaBox: FC<{
                 )}
 
                 {view === 'list' && (
-                  <div className="flex flex-col" data-pq="media-list">
+                  <div
+                    className={clsx(
+                      'flex flex-col',
+                      bulkDeleting && 'pointer-events-none'
+                    )}
+                    data-pq="media-list"
+                  >
                     <div className="flex items-center gap-[12px] border-b border-pqLine px-[8px] pb-[9px] pt-[2px] text-[11px] font-[600] uppercase tracking-[0.05em] text-pqSoft">
                       <span className="w-[36px] shrink-0" />
                       <span className="min-w-0 flex-1">
@@ -1140,7 +1159,6 @@ export const MediaBox: FC<{
                             ? toggleBulkSelected(media)
                             : openLightbox(media)
                         }
-                        aria-pressed={selecting ? bulkPicked : undefined}
                         className={clsx(
                           'group flex min-h-[44px] cursor-pointer items-center gap-[12px] rounded-pqSm border-b border-pqLine p-[8px] hover:bg-pqHover',
                           bulkPicked && 'bg-pqBrandFaint'
@@ -1197,12 +1215,12 @@ export const MediaBox: FC<{
                   </div>
                 )}
 
-                {(data?.pages || 0) > 1 && (
+                {(data?.pages || 0) > 1 && !bulkDeleting && (
                   <div className="px-0 pb-[4px] pt-[16px]">
                     <Pagination
                       current={page}
                       totalPages={data.pages}
-                      setPage={setPage}
+                      setPage={changeStandalonePage}
                     />
                   </div>
                 )}

@@ -115,9 +115,9 @@ export const DatePicker: FC<{
           />
           {/* TimePicker, not the native TimeInput: a native time field shows
               the browser's clock and ignores the Date Metrics preference.
-              Kept left-to-right so Hebrew and Arabic still read 09:30 PM. */}
+              Its fields are left to right in Hebrew and Arabic too (Mantine
+              sets that), so they still read 09:30 PM. */}
           <TimePicker
-            dir="ltr"
             format={use12Hour ? '12h' : '24h'}
             withSeconds={false}
             onChange={changeDate('time')}
