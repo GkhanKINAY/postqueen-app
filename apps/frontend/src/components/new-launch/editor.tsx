@@ -879,7 +879,6 @@ export const Editor: FC<{
       const editor = editorRef?.current?.editor;
       if (inlineImagesRef.current && editor) {
         insertImages(editor, result);
-        uppy.clear();
         return;
       }
 
