@@ -86,6 +86,7 @@
 /integrations/social/${integrationData.identifier}
 /integrations/telegram/updates
 /media
+/media/${id}
 /media/${media.id}
 /media/generate-image
 /media/generate-image-with-prompt

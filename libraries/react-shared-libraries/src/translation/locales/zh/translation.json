@@ -891,5 +891,10 @@
   "schedule_post_in_all_channels_question": "此帖子是为多个频道创建的。要在所有频道排期吗？",
   "schedule_all_channels": "为所有频道排期",
   "only_channel_name": "仅 {{name}}",
-  "delete_all_channels_cancels_scheduled": "从所有频道删除也会取消其他频道中仍在排期的帖子。"
+  "delete_all_channels_cancels_scheduled": "从所有频道删除也会取消其他频道中仍在排期的帖子。",
+  "delete_selected": "删除所选",
+  "media_n_selected": "已选择 {{count}} 个",
+  "are_you_sure_you_want_to_delete_n_media": "确定要删除这 {{count}} 个文件吗？",
+  "media_n_deleted": "已删除 {{count}} 个文件",
+  "media_delete_partial": "已删除 {{total}} 个中的 {{deleted}} 个。其余文件仍处于选中状态，可以重试。"
 }

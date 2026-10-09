@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import dayjs from 'dayjs';
 // Aliased: this module exports its own `DatePicker`, which is the whole popover
 // below, not the month grid inside it.
-import { DatePicker as MantineDatePicker, TimeInput } from '@mantine/dates';
+import { DatePicker as MantineDatePicker, TimePicker } from '@mantine/dates';
 import { useClickOutside } from '@mantine/hooks';
 import { Button } from '@gitroom/react/form/button';
 import { useDateFormat } from './date.format';
@@ -32,7 +32,7 @@ export const DatePicker: FC<{
   const { date, onChange, className } = props;
   const [open, setOpen] = useState(false);
   const t = useT();
-  const { dateTimePattern } = useDateFormat();
+  const { dateTimePattern, use12Hour } = useDateFormat();
   // Fixed positioning escapes Create Post footer's overflow-y-hidden and the
   // shell's overflow-hidden (absolute bottom-[100%] was clipped behind chrome).
   const { referenceRef, floatingRef } = useAnchoredPopover<
@@ -47,7 +47,8 @@ export const DatePicker: FC<{
     setOpen(false);
   });
   // Mantine 9 hands both of these back as strings — `YYYY-MM-DD` from the
-  // picker, `HH:mm` from the time input — where 5 passed a Date. The halves are
+  // picker, `HH:mm` from the time picker (24-hour whatever it shows, and
+  // empty while a field is unfinished) — where 5 passed a Date. The halves are
   // still recombined exactly as before; only the parsing on the way in is gone.
   const changeDate = useCallback(
     (type: 'date' | 'time') => (value: string | null) => {
@@ -112,13 +113,20 @@ export const DatePicker: FC<{
               calendarHeaderLevel: 'text-pqText hover:bg-pqHover',
             }}
           />
-          <TimeInput
-            onChange={(event) => changeDate('time')(event.currentTarget.value)}
+          {/* TimePicker, not the native TimeInput: a native time field shows
+              the browser's clock and ignores the Date Metrics preference.
+              Kept left-to-right so Hebrew and Arabic still read 09:30 PM. */}
+          <TimePicker
+            dir="ltr"
+            format={use12Hour ? '12h' : '24h'}
+            withSeconds={false}
+            onChange={changeDate('time')}
             label="Pick time"
             classNames={{
               label: 'text-pqMuted py-[12px]',
               input:
                 'bg-pqTableHeader h-[40px] border-0 text-pqText rounded-[10px] outline-none shadow-[inset_0_0_0_1px_var(--border)]',
+              field: 'text-pqText',
             }}
             defaultValue={date.format('HH:mm')}
           />

@@ -92,4 +92,27 @@ describe('Media library thumbnails', () => {
       /standalone[\s\S]{0,400}px-\[22px\] pt-\[8px\]/,
     );
   });
+
+  it('deletes several files from /media with the single delete route, three at a time', () => {
+    assert.match(source, /data-pq="media-select"/);
+    assert.match(source, /data-pq="media-delete-selected"/);
+    // The picker's `selected` is what gets added to the post; the bulk
+    // selection is its own list so the two never mix.
+    assert.match(source, /const \[bulkSelected, setBulkSelected\] = useState<string\[\]>\(\[\]\)/);
+    assert.match(source, /i \+= 3/);
+    assert.match(source, /fetch\(`\/media\/\$\{id\}`, \{ method: 'DELETE' \}\)/);
+    // The confirm names the count, and failures stay selected for a retry.
+    assert.match(source, /'are_you_sure_you_want_to_delete_n_media'/);
+    assert.match(source, /setBulkSelected\(failed\)/);
+    assert.match(source, /'media_delete_partial'/);
+  });
+});
+
+describe('Uploader', () => {
+  it('lets go of a finished batch even when its posters or hand-off throw', () => {
+    assert.equal(
+      uploader.match(/\} finally \{\n\s+uppy2\.removeFiles\(finished\);\n\s+\}/g)?.length,
+      2,
+    );
+  });
 });

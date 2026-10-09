@@ -909,5 +909,10 @@
   "schedule_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini zamanlamak istiyor musunuz?",
   "schedule_all_channels": "Tüm kanalları zamanla",
   "only_channel_name": "Yalnızca {{name}}",
-  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder."
+  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder.",
+  "delete_selected": "Seçilenleri sil",
+  "media_n_selected": "{{count}} seçildi",
+  "are_you_sure_you_want_to_delete_n_media": "Bu {{count}} dosyayı silmek istediğinizden emin misiniz?",
+  "media_n_deleted": "{{count}} dosya silindi",
+  "media_delete_partial": "{{total}} dosyadan {{deleted}} tanesi silindi. Diğerleri hâlâ seçili, tekrar deneyebilirsiniz."
 }

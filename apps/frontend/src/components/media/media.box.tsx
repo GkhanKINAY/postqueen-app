@@ -201,6 +201,36 @@ const UploadingTile: FC<{
   );
 };
 
+/** The tick on a file chosen for Delete selected on /media. */
+const BulkCheck: FC<{ picked: boolean; compact?: boolean }> = ({
+  picked,
+  compact,
+}) => (
+  <span
+    data-pq="media-bulk-check"
+    aria-hidden
+    className={clsx(
+      'absolute z-[101] grid place-items-center rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.45)]',
+      compact
+        ? 'inset-0 m-auto size-[18px]'
+        : 'top-[8px] start-[8px] size-[24px]',
+      picked
+        ? 'bg-pqBrand text-pqOnBrand'
+        : 'bg-black/45 text-transparent outline outline-[1.5px] -outline-offset-[1.5px] outline-white/90'
+    )}
+  >
+    <svg viewBox="0 0 24 24" width={compact ? 10 : 12} height={compact ? 10 : 12} fill="none">
+      <path
+        d="M5.5 12.5 10 17l8.5-9"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </span>
+);
+
 export const MediaBox: FC<{
   setMedia: (params: { id: string; path: string; thumbnail?: string }[]) => void;
   /** Already on the post — shown selected; cannot be re-added. */
@@ -233,6 +263,11 @@ export const MediaBox: FC<{
     { id: string; path: string; thumbnail?: string }[]
   >([]);
   const [uploads, setUploads] = useState<UploadTile[]>([]);
+  // /media only: a selection for deleting several files at once. The picker's
+  // `selected` above is what gets added to the post, so the two never mix.
+  const [selecting, setSelecting] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const attachedIds = useMemo(
     () => new Set((attachedMedia || []).map((m) => m.id)),
     [attachedMedia]
@@ -506,6 +541,95 @@ export const MediaBox: FC<{
     [mutate, fetch, toaster, t]
   );
 
+  const toggleBulkSelected = useCallback(
+    (media: MediaRow) => (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setBulkSelected((prev) =>
+        prev.includes(media.id)
+          ? prev.filter((id) => id !== media.id)
+          : [...prev, media.id]
+      );
+    },
+    []
+  );
+
+  const stopSelecting = useCallback(() => {
+    setSelecting(false);
+    setBulkSelected([]);
+  }, []);
+
+  // The same DELETE /media/:id the single delete sends, once per file, three
+  // at a time. Files that fail stay selected so the next try is one click.
+  const deleteSelected = useCallback(async () => {
+    const ids = bulkSelected;
+    if (!ids.length || bulkDeleting) return;
+    if (
+      !(await deleteDialog(
+        ids.length === 1
+          ? t(
+              'are_you_sure_you_want_to_delete_the_image',
+              'Are you sure you want to delete the image?'
+            )
+          : t(
+              'are_you_sure_you_want_to_delete_n_media',
+              'Are you sure you want to delete these {{count}} files?',
+              { count: ids.length }
+            )
+      ))
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    const failed: string[] = [];
+    try {
+      for (let i = 0; i < ids.length; i += 3) {
+        const batch = ids.slice(i, i + 3);
+        const results = await Promise.all(
+          batch.map((id) =>
+            fetch(`/media/${id}`, { method: 'DELETE' }).then(
+              (res) => res.ok,
+              () => false
+            )
+          )
+        );
+        batch.forEach((id, j) => {
+          if (!results[j]) failed.push(id);
+        });
+      }
+    } finally {
+      setBulkDeleting(false);
+    }
+    const deleted = ids.length - failed.length;
+    setBulkSelected(failed);
+    if (!failed.length) setSelecting(false);
+    const result = await mutate();
+    // Emptying the last page leaves nothing to show on it.
+    if (result?.pages && page >= result.pages) {
+      setPage(result.pages - 1);
+    }
+    if (!deleted) {
+      toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+      return;
+    }
+    if (failed.length) {
+      toaster.show(
+        t(
+          'media_delete_partial',
+          'Deleted {{deleted}} of {{total}}. The others are still selected, so you can try again.',
+          { deleted, total: ids.length }
+        ),
+        'warning'
+      );
+      return;
+    }
+    toaster.show(
+      deleted === 1
+        ? t('media_deleted', 'Media deleted')
+        : t('media_n_deleted', '{{count}} files deleted', { count: deleted }),
+      'success'
+    );
+  }, [bulkSelected, bulkDeleting, fetch, mutate, page, toaster, t]);
+
   const downloadMedia = useCallback(
     (media: MediaRow) => () => {
       const url = mediaDirectory.set(media.path);
@@ -764,6 +888,69 @@ export const MediaBox: FC<{
             <div className="flex flex-wrap items-center gap-[10px]">
               {standaloneFilterTabs}
               <div className="min-w-0 flex-1" />
+              {selecting && (
+                <span
+                  data-pq="media-selected-count"
+                  className="text-[12.5px] tabular-nums text-pqMuted"
+                >
+                  {t('media_n_selected', '{{count}} selected', {
+                    count: bulkSelected.length,
+                  })}
+                </span>
+              )}
+              {(selecting || visibleMedia.length > 0) && (
+                <div className="flex items-center gap-[3px] rounded-pqSm bg-pqSettings p-[3px]">
+                  {selecting ? (
+                    <>
+                      <button
+                        type="button"
+                        data-pq="media-delete-selected"
+                        onClick={deleteSelected}
+                        disabled={!bulkSelected.length || bulkDeleting}
+                        className={clsx(
+                          'relative rounded-[6px] px-[11px] text-[12.5px] font-[600] text-pqDanger transition-colors hover:bg-pqInner disabled:cursor-not-allowed disabled:opacity-50',
+                          touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
+                        )}
+                      >
+                        {bulkDeleting && (
+                          <span className="absolute inset-0 grid place-items-center">
+                            <Spinner width={14} height={14} />
+                          </span>
+                        )}
+                        <span className={bulkDeleting ? 'invisible' : undefined}>
+                          {t('delete_selected', 'Delete selected')}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopSelecting}
+                        disabled={bulkDeleting}
+                        className={clsx(
+                          'rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText disabled:opacity-50',
+                          touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
+                        )}
+                      >
+                        {t('cancel', 'Cancel')}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      data-pq="media-select"
+                      onClick={() => {
+                        setMenuMedia(null);
+                        setSelecting(true);
+                      }}
+                      className={clsx(
+                        'rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText',
+                        touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
+                      )}
+                    >
+                      {t('select', 'Select')}
+                    </button>
+                  )}
+                </div>
+              )}
               {viewToggle}
             </div>
 
@@ -838,16 +1025,26 @@ export const MediaBox: FC<{
                     ))}
                     {visibleMedia.map((media) => {
                       const menuOpenForItem = menuMedia?.id === media.id;
+                      const bulkPicked =
+                        selecting && bulkSelected.includes(media.id);
                       return (
                       <div
                         key={media.id}
                         data-ci="1"
-                        onClick={openLightbox(media)}
+                        onClick={
+                          selecting
+                            ? toggleBulkSelected(media)
+                            : openLightbox(media)
+                        }
+                        aria-pressed={selecting ? bulkPicked : undefined}
                         className="group flex cursor-pointer flex-col gap-0.5"
                       >
                         <div
                           className={clsx(
-                            'relative w-full overflow-hidden rounded-[10px] bg-pqSettings outline outline-1 outline-pqBorder -outline-offset-1 transition-[outline-color] group-hover:outline-pqBrand',
+                            'relative w-full overflow-hidden rounded-[10px] bg-pqSettings outline -outline-offset-1 transition-[outline-color] group-hover:outline-pqBrand',
+                            bulkPicked
+                              ? 'outline-2 outline-pqBrand'
+                              : 'outline-1 outline-pqBorder',
                             MEDIA_LIBRARY_THUMB_ASPECT
                           )}
                         >
@@ -860,6 +1057,8 @@ export const MediaBox: FC<{
                               {media.duration || t('video', 'Video')}
                             </span>
                           )}
+                          {selecting && <BulkCheck picked={bulkPicked} />}
+                          {!selecting && (
                           <div
                             data-ci-actions="1"
                             className={clsx(
@@ -890,6 +1089,7 @@ export const MediaBox: FC<{
                               </svg>
                             </button>
                           </div>
+                          )}
                         </div>
                         <div className="flex items-baseline justify-between gap-[8px] px-[2px] text-[11px] leading-[1.35] tabular-nums text-pqMuted">
                           <span className="min-w-0 truncate uppercase">
@@ -927,16 +1127,28 @@ export const MediaBox: FC<{
                       )}
                       <span className="w-[36px] shrink-0" />
                     </div>
-                    {visibleMedia.map((media) => (
+                    {visibleMedia.map((media) => {
+                      const bulkPicked =
+                        selecting && bulkSelected.includes(media.id);
+                      return (
                       <div
                         key={media.id}
                         data-media-row={media.id}
                         data-ci="1"
-                        onClick={openLightbox(media)}
-                        className="group flex min-h-[44px] cursor-pointer items-center gap-[12px] rounded-pqSm border-b border-pqLine p-[8px] hover:bg-pqHover"
+                        onClick={
+                          selecting
+                            ? toggleBulkSelected(media)
+                            : openLightbox(media)
+                        }
+                        aria-pressed={selecting ? bulkPicked : undefined}
+                        className={clsx(
+                          'group flex min-h-[44px] cursor-pointer items-center gap-[12px] rounded-pqSm border-b border-pqLine p-[8px] hover:bg-pqHover',
+                          bulkPicked && 'bg-pqBrandFaint'
+                        )}
                       >
-                        <span className="grid h-[36px] w-[36px] shrink-0 place-items-center overflow-hidden rounded-[8px] bg-pqSettings outline outline-1 outline-pqBorder -outline-offset-1">
+                        <span className="relative grid h-[36px] w-[36px] shrink-0 place-items-center overflow-hidden rounded-[8px] bg-pqSettings outline outline-1 outline-pqBorder -outline-offset-1">
                           <MediaThumb media={media} />
+                          {selecting && <BulkCheck picked={bulkPicked} compact />}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[13px] text-pqText">
                           {media.alt?.trim()
@@ -962,7 +1174,8 @@ export const MediaBox: FC<{
                         <button
                           type="button"
                           onClick={openMenu(media)}
-                          className="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-[8px] bg-transparent text-pqSoft hover:bg-pqSettings hover:text-pqText"
+                          disabled={selecting}
+                          className="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-[8px] bg-transparent text-pqSoft hover:bg-pqSettings hover:text-pqText disabled:invisible"
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -979,7 +1192,8 @@ export const MediaBox: FC<{
                           </svg>
                         </button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

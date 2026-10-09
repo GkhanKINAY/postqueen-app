@@ -891,5 +891,10 @@
   "schedule_post_in_all_channels_question": "Questo post è stato creato per più di un canale. Vuoi programmarlo su tutti?",
   "schedule_all_channels": "Programma tutti i canali",
   "only_channel_name": "Solo {{name}}",
-  "delete_all_channels_cancels_scheduled": "Eliminarlo da tutti i canali annulla anche i post ancora programmati sugli altri canali."
+  "delete_all_channels_cancels_scheduled": "Eliminarlo da tutti i canali annulla anche i post ancora programmati sugli altri canali.",
+  "delete_selected": "Elimina selezionati",
+  "media_n_selected": "Selezionati: {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "Vuoi davvero eliminare questi {{count}} file?",
+  "media_n_deleted": "{{count}} file eliminati",
+  "media_delete_partial": "Eliminati {{deleted}} su {{total}}. Gli altri sono ancora selezionati, puoi riprovare."
 }

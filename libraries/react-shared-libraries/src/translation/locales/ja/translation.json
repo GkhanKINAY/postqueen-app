@@ -891,5 +891,10 @@
   "schedule_post_in_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべてのチャンネルで予約しますか？",
   "schedule_all_channels": "すべてのチャンネルを予約",
   "only_channel_name": "{{name}} のみ",
-  "delete_all_channels_cancels_scheduled": "すべてのチャンネルから削除すると、他のチャンネルでまだ予約中の投稿もキャンセルされます。"
+  "delete_all_channels_cancels_scheduled": "すべてのチャンネルから削除すると、他のチャンネルでまだ予約中の投稿もキャンセルされます。",
+  "delete_selected": "選択項目を削除",
+  "media_n_selected": "{{count}}件選択中",
+  "are_you_sure_you_want_to_delete_n_media": "選択した{{count}}件のファイルを削除してもよろしいですか？",
+  "media_n_deleted": "{{count}}件のファイルを削除しました",
+  "media_delete_partial": "{{total}}件中{{deleted}}件を削除しました。残りは選択されたままなので、もう一度お試しください。"
 }

@@ -891,5 +891,10 @@
   "schedule_post_in_all_channels_question": "تم إنشاء هذا المنشور لأكثر من قناة. هل تريد جدولته فيها جميعًا؟",
   "schedule_all_channels": "جدولة كل القنوات",
   "only_channel_name": "{{name}} فقط",
-  "delete_all_channels_cancels_scheduled": "حذفه من كل القنوات يلغي أيضًا المنشورات التي لا تزال مجدولة في القنوات الأخرى."
+  "delete_all_channels_cancels_scheduled": "حذفه من كل القنوات يلغي أيضًا المنشورات التي لا تزال مجدولة في القنوات الأخرى.",
+  "delete_selected": "حذف المحدد",
+  "media_n_selected": "المحدد: {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "هل أنت متأكد من حذف هذه الملفات ({{count}})؟",
+  "media_n_deleted": "تم حذف الملفات: {{count}}",
+  "media_delete_partial": "تم حذف {{deleted}} من {{total}}. الباقي لا يزال محددًا، يمكنك المحاولة مرة أخرى."
 }

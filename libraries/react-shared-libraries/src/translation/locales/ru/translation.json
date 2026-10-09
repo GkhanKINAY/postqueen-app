@@ -891,5 +891,10 @@
   "schedule_post_in_all_channels_question": "Этот пост создан для нескольких каналов. Запланировать его во всех?",
   "schedule_all_channels": "Запланировать все каналы",
   "only_channel_name": "Только {{name}}",
-  "delete_all_channels_cancels_scheduled": "Удаление из всех каналов также отменит посты, которые ещё запланированы в других каналах."
+  "delete_all_channels_cancels_scheduled": "Удаление из всех каналов также отменит посты, которые ещё запланированы в других каналах.",
+  "delete_selected": "Удалить выбранные",
+  "media_n_selected": "Выбрано: {{count}}",
+  "are_you_sure_you_want_to_delete_n_media": "Удалить выбранные файлы ({{count}})?",
+  "media_n_deleted": "Удалено файлов: {{count}}",
+  "media_delete_partial": "Удалено {{deleted}} из {{total}}. Остальные по-прежнему выбраны, можно попробовать ещё раз."
 }
