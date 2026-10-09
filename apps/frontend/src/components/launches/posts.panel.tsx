@@ -528,6 +528,7 @@ const QueueCard: FC<{
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
         <GoToLivePostButton
+          postId={post.id}
           releaseURL={post.releaseURL}
           className={actionButton}
           demo={demo}

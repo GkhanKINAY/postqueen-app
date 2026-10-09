@@ -35,6 +35,31 @@ export interface IAuthenticator {
     fromDate: number,
   ): Promise<AnalyticsData[]>;
   /**
+   * The final post id and URL to persist when the stored releaseId is still an
+   * intermediate one (a publish id the platform swaps for the public post id
+   * later). `pending` while the platform has no final id yet, `unavailable`
+   * when the post will never get one (not published for public viewing),
+   * undefined when there is nothing to resolve.
+   */
+  resolveReleaseId?(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration,
+    settings: any,
+    releaseURL: string,
+  ): Promise<
+    | { postId: string; releaseURL: string }
+    | { pending: true }
+    | { unavailable: true }
+    | undefined
+  >;
+  /** The URL of a post the user connected by hand (Connect Post). */
+  releaseUrl?(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration,
+  ): Promise<string | undefined>;
+  /**
    * Lifetime totals for many platform post ids at once. Used by the snapshot
    * sync, never by the per-post Statistics modal (that still calls
    * `postAnalytics`). Omit a field when this provider does not fetch it —
@@ -237,6 +262,15 @@ export interface SocialProvider
    */
   creditCost?(op: CreditOperation): number | undefined;
   refreshCron?: boolean;
+  /**
+   * Whether the token a channel of this provider holds never expires, so the
+   * expiry stored with it is not a reason to refresh it. A Facebook Page
+   * token taken from a long-lived user token has no expiration date, and the
+   * provider has nothing to refresh it with: a refresh only fails and asks
+   * the person to reconnect a channel that works. A token the platform
+   * rejects still goes through refresh as before.
+   */
+  tokenNeverExpires?: boolean;
   // A message for the person whose channel could not be refreshed, when the
   // provider recognises why (e.g. a policy on their side they can change).
   refreshErrorMessage?(err: any): string | undefined;

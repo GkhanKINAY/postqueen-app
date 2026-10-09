@@ -50,7 +50,10 @@ import {
 import { AnalyticsData } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  Disconnect,
+  RefreshToken,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import {
@@ -86,6 +89,10 @@ type PostWithConditionals = Post & {
   childrenPost: Post[];
 };
 
+
+// How long a platform may take to release a post's public link before the
+// open-post icon stops saying "try again in a minute".
+const RELEASE_PENDING_WINDOW_HOURS = 24;
 @Injectable()
 export class PostsService {
   private storage = UploadFactory.createStorage();
@@ -188,7 +195,7 @@ export class PostsService {
     const getIntegration = post.integration!;
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(
@@ -245,7 +252,168 @@ export class PostsService {
     if (post.releaseId !== 'missing') {
       throw new BadRequestException('This post is not waiting for a release id');
     }
-    return this._postRepository.updateReleaseId(postId, orgId, releaseId);
+
+    // the URL is a bonus: connecting must not fail when it cannot be fetched
+    let releaseURL: string | undefined;
+    try {
+      releaseURL = await this._integrationManager
+        .getSocialIntegration(post.integration.providerIdentifier)
+        .releaseUrl?.(
+          post.integration.token,
+          String(releaseId),
+          post.integration
+        );
+    } catch (e) {
+      console.log(e);
+    }
+
+    return this._postRepository.updateReleaseId(
+      postId,
+      orgId,
+      releaseId,
+      releaseURL
+    );
+  }
+
+  async resolveRelease(
+    orgId: string,
+    post: {
+      id: string;
+      releaseId: string;
+      releaseURL: string;
+      settings: string;
+      integration: Integration;
+    }
+  ) {
+    const integrationProvider = this._integrationManager.getSocialIntegration(
+      post.integration.providerIdentifier
+    );
+
+    const resolved = await integrationProvider.resolveReleaseId?.(
+      post.integration.token,
+      post.releaseId,
+      post.integration,
+      JSON.parse(post.settings || '{}'),
+      post.releaseURL
+    );
+    if (
+      !resolved ||
+      !('postId' in resolved) ||
+      resolved.postId === post.releaseId
+    ) {
+      return {
+        releaseId: post.releaseId,
+        releaseURL: post.releaseURL,
+        pending: !!resolved && 'pending' in resolved,
+        unavailable: !!resolved && 'unavailable' in resolved,
+      };
+    }
+
+    await this._postRepository.updateResolvedRelease(
+      post.id,
+      orgId,
+      resolved.postId,
+      resolved.releaseURL
+    );
+    return {
+      releaseId: resolved.postId,
+      releaseURL: resolved.releaseURL,
+      pending: false,
+      unavailable: false,
+    };
+  }
+
+  async getReleaseURL(
+    orgId: string,
+    postId: string,
+    forceRefresh = false
+  ): Promise<{
+    releaseURL: string;
+    pending?: boolean;
+    unavailable?: boolean;
+    reconnect?: boolean;
+  }> {
+    const post = await this._postRepository.getPostById(postId, orgId);
+    if (!post || post.deletedAt || !post.releaseURL) {
+      return { releaseURL: '' };
+    }
+
+    const integrationProvider = this._integrationManager.getSocialIntegration(
+      post.integration.providerIdentifier
+    );
+
+    if (!integrationProvider.resolveReleaseId) {
+      return { releaseURL: post.releaseURL };
+    }
+
+    const getIntegration = post.integration!;
+
+    // A channel that is gone or waiting for the user is never asked, and
+    // never refreshed: each click would fail the refresh again and send
+    // another reconnect email. The stored link still opens; reconnect is a
+    // hint the icon shows alongside it.
+    if (
+      getIntegration.deletedAt ||
+      getIntegration.disabled ||
+      getIntegration.refreshNeeded ||
+      getIntegration.inBetweenSteps
+    ) {
+      return { releaseURL: post.releaseURL, reconnect: true };
+    }
+
+    // only refreshed once the platform rejects the token, so a post that is
+    // already resolved never reaches the platform or the channel
+    if (forceRefresh) {
+      const data = await this._refreshIntegrationService.refresh(
+        getIntegration
+      );
+      if (!data) {
+        return { releaseURL: post.releaseURL, reconnect: true };
+      }
+
+      const { accessToken } = data;
+
+      if (accessToken) {
+        getIntegration.token = accessToken;
+
+        if (integrationProvider.refreshWait) {
+          await timer(10000);
+        }
+      } else {
+        await this._integrationService.disconnectChannel(orgId, getIntegration);
+        return { releaseURL: post.releaseURL, reconnect: true };
+      }
+    }
+
+    try {
+      const { releaseURL, pending, unavailable } = await this.resolveRelease(
+        orgId,
+        post
+      );
+      // A link the platform has not released a day after publishing is not
+      // coming (removed by moderation, deleted, not public): open what is
+      // stored rather than asking to try again forever.
+      if (
+        pending &&
+        dayjs().diff(dayjs(post.publishDate), 'hour') >=
+          RELEASE_PENDING_WINDOW_HOURS
+      ) {
+        return { releaseURL };
+      }
+      return { releaseURL, pending, unavailable };
+    } catch (e) {
+      console.log(e);
+      if (e instanceof RefreshToken && !forceRefresh) {
+        return this.getReleaseURL(orgId, postId, true);
+      }
+      // a token still refused after a refresh, or a channel the platform
+      // disconnected, will not work by trying again in a minute
+      if (e instanceof RefreshToken || e instanceof Disconnect) {
+        return { releaseURL: post.releaseURL, reconnect: true };
+      }
+    }
+
+    return { releaseURL: post.releaseURL, pending: true };
   }
 
   async checkPostAnalytics(
@@ -274,7 +442,7 @@ export class PostsService {
     const getIntegration = post.integration!;
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(
@@ -306,10 +474,16 @@ export class PostsService {
     // }
 
     try {
+      const { releaseId, pending } = await this.resolveRelease(orgId, post);
+      // the platform has no final id yet, so it has no metrics either
+      if (pending) {
+        return [];
+      }
+
       const loadAnalytics = await integrationProvider.postAnalytics(
         getIntegration.internalId,
         getIntegration.token,
-        post.releaseId,
+        releaseId,
         date
       );
       await ioRedis.set(
@@ -322,10 +496,12 @@ export class PostsService {
       );
       return loadAnalytics;
     } catch (e) {
-      console.log(e);
-      if (e instanceof RefreshToken) {
+      // Retry once with a refreshed token: a token the platform still rejects
+      // after a refresh used to recurse here until the stack ran out
+      if (e instanceof RefreshToken && !forceRefresh) {
         return this.checkPostAnalytics(orgId, postId, date, true);
       }
+      console.log(e);
     }
 
     return [];

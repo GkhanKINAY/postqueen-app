@@ -17,7 +17,6 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { lookup } from 'mime-types';
 import sharp from 'sharp';
-import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   BadBody,
@@ -186,13 +185,19 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   // articles); everything that becomes a tweet has to be flattened back to the
   // plain text X expects - same output the old 'normal' editor produced.
   private toTweetText(message: string) {
-    return stripHtmlValidation(
-      'normal',
-      message,
-      true,
-      false,
-      !/<\/?[a-z][\s\S]*>/i.test(message),
-    );
+    // Without a tag left it is either plain API text or HTML whose tags were
+    // all stripped (a <br> or <span> only), which is still encoded text. Its
+    // entities are decoded, &amp; last so nothing decodes twice.
+    if (!/<\/?[a-z][\s\S]*>/i.test(message)) {
+      return message
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/&amp;/gi, '&');
+    }
+
+    return stripHtmlValidation('normal', message, true);
   }
 
   override async checkValidity(
@@ -892,7 +897,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
                   mediaId: await this.uploadWithRateLimitRetry(async () =>
                     asArticleImage
                       ? client.v2.uploadMedia(
-                          await sharp(await readOrFetch(m.path))
+                          await sharp(await this.readOrFetch(m.path))
                             .resize({
                               width: 1000,
                             })
@@ -904,7 +909,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
                           },
                         )
                       : client.v2.uploadMedia(
-                          await sharp(await readOrFetch(m.path), {
+                          await sharp(await this.readOrFetch(m.path), {
                             animated: lookup(m.path) === 'image/gif',
                           })
                             .resize({

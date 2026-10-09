@@ -337,6 +337,8 @@
   "predicted_github_trending_change": "Prognostizierte GitHub-Trendänderung",
   "duplicate_post": "Dupliziere Beitrag",
   "preview_post": "Beitragsvorschau",
+  "post_link_not_ready": "Der Beitragslink ist noch nicht verfügbar, bitte versuchen Sie es in einer Minute erneut",
+  "post_has_no_public_link": "Dieser Beitrag hat keinen öffentlichen Link",
   "post_statistics": "Beitragsstatistiken",
   "draft": "Entwurf",
   "week_number": "Woche {{number}}",

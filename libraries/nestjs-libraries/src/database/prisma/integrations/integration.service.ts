@@ -625,6 +625,9 @@ export class IntegrationService implements OnModuleInit {
       const provider = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier
       );
+      if (provider?.tokenNeverExpires) {
+        continue;
+      }
 
       const data = await this.refreshToken(provider, integration.refreshToken!);
 
@@ -990,6 +993,9 @@ export class IntegrationService implements OnModuleInit {
     date: string,
     forceRefresh = false
   ): Promise<AnalyticsData[]> {
+    // Days to load, missing or invalid on some public API calls (same default
+    // as the app)
+    const days = Number(date) > 0 ? Number(date) : 7;
     const getIntegration = await this.getIntegrationById(org.id, integration);
 
     // A removed channel no longer holds working credentials, so treat it as
@@ -1007,7 +1013,7 @@ export class IntegrationService implements OnModuleInit {
     );
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(
@@ -1038,7 +1044,7 @@ export class IntegrationService implements OnModuleInit {
     }
 
     const getIntegrationData = await ioRedis.get(
-      `integration:${org.id}:${integration}:${date}`
+      `integration:${org.id}:${integration}:${days}`
     );
     if (getIntegrationData) {
       return JSON.parse(getIntegrationData);
@@ -1049,10 +1055,10 @@ export class IntegrationService implements OnModuleInit {
         const loadAnalytics = await integrationProvider.analytics(
           getIntegration.internalId,
           getIntegration.token,
-          +date
+          days
         );
         await ioRedis.set(
-          `integration:${org.id}:${integration}:${date}`,
+          `integration:${org.id}:${integration}:${days}`,
           JSON.stringify(loadAnalytics),
           'EX',
           !process.env.NODE_ENV || process.env.NODE_ENV === 'development'

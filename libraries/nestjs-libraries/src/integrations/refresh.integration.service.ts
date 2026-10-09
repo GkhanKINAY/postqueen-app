@@ -7,6 +7,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { TemporalService } from 'nestjs-temporal-core';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class RefreshIntegrationService {
@@ -42,6 +43,20 @@ export class RefreshIntegrationService {
     );
 
     return refresh;
+  }
+
+  // Whether a channel's token is past the expiry stored with it and has to be
+  // refreshed before it is used. A provider whose token never expires is
+  // never due, whatever date its rows carry from before it said so.
+  isExpired(integration: Integration) {
+    const socialProvider = this._integrationManager.getSocialIntegration(
+      integration.providerIdentifier
+    );
+    if (socialProvider?.tokenNeverExpires) {
+      return false;
+    }
+
+    return dayjs(integration.tokenExpiration).isBefore(dayjs());
   }
 
   public async setBetweenSteps(integration: Integration, cause = '') {

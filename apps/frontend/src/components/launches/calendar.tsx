@@ -40,6 +40,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import type { Integration, Post, State, Tags } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { timer } from '@gitroom/helpers/utils/timer';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -2305,6 +2306,7 @@ const CalendarItem: FC<{
             <Duplicate tooltip={demo ? demoTooltip : undefined} />
           </button>
           <GoToLivePostButton
+            postId={post.id}
             releaseURL={post.releaseURL}
             className={dayAction}
             demo={demo}
@@ -2501,6 +2503,7 @@ const CalendarItem: FC<{
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
         <GoToLivePostButton
+          postId={post.id}
           releaseURL={post.releaseURL}
           className={actionButton}
           demo={demo}
@@ -2786,6 +2789,7 @@ const ListItem: FC<{
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
         <GoToLivePostButton
+          postId={post.id}
           releaseURL={post.releaseURL}
           className={actionButton}
           demo={demo}
@@ -3560,21 +3564,90 @@ export const GoToPost = ({ tooltip }: ActionIconProps = {}) => {
 };
 
 export const GoToLivePostButton: FC<{
+  postId: string;
   releaseURL?: string | null;
   className: string;
   demo?: boolean;
   demoTooltip?: string;
   onDemo?: () => void;
-}> = ({ releaseURL, className, demo, demoTooltip, onDemo }) => {
-  const go = useCallback(() => {
+}> = ({ postId, releaseURL, className, demo, demoTooltip, onDemo }) => {
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const t = useT();
+  const go = useCallback(async () => {
     if (demo) {
       onDemo?.();
       return;
     }
-    if (releaseURL) {
-      window.open(releaseURL, '_blank', 'noopener,noreferrer');
+    if (!releaseURL) {
+      return;
     }
-  }, [demo, onDemo, releaseURL]);
+    // Opened before the request so popup blockers still see the click, and
+    // severed from this tab the way noopener would. Closed again when there
+    // is nothing to open.
+    const tab = window.open('', '_blank');
+    if (!tab) {
+      return;
+    }
+    tab.opener = null;
+    // Some platforms only expose the real post link a while after publishing,
+    // so ask the backend for the current one instead of the stored one.
+    let release = {
+      releaseURL: '',
+      pending: true,
+      unavailable: false,
+    };
+    try {
+      release = await Promise.race([
+        // an error status resolves too, and reads as not ready, like a
+        // request that failed outright
+        fetch(`/posts/${postId}/release-url`).then((r) =>
+          r.ok ? r.json() : release
+        ),
+        timer(5000).then(() => release),
+      ]);
+    } catch (e) {}
+    if (release.unavailable) {
+      tab.close();
+      toaster.show(
+        t('post_has_no_public_link', 'This post has no public link'),
+        'warning'
+      );
+      return;
+    }
+    // the platform has not released the post link yet, or the request failed
+    // or took too long
+    if (release.pending) {
+      tab.close();
+      toaster.show(
+        t(
+          'post_link_not_ready',
+          'The post link is not available yet, please try again in a minute'
+        ),
+        'warning'
+      );
+      return;
+    }
+    // multi-target posts (several subreddits / communities / channels) join
+    // their URLs with commas: open the first one
+    const url = (release.releaseURL || releaseURL).split(',')[0];
+    if (!/^https?:\/\//i.test(url)) {
+      tab.close();
+      toaster.show(
+        t('post_has_no_public_link', 'This post has no public link'),
+        'warning'
+      );
+      return;
+    }
+    // Navigated by a noreferrer link inside the new tab, so the platform is
+    // not sent this page's address (window.open's noreferrer would also
+    // return no tab to navigate after the request).
+    const link = tab.document.createElement('a');
+    link.href = url;
+    link.rel = 'noreferrer noopener';
+    tab.document.body.appendChild(link);
+    link.click();
+  }, [demo, onDemo, releaseURL, postId, fetch, toaster, t]);
   if (!releaseURL) return null;
   return (
     <button

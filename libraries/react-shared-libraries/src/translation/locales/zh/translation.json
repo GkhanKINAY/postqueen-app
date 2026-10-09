@@ -337,6 +337,8 @@
   "predicted_github_trending_change": "预测 GitHub 趋势变化",
   "duplicate_post": "重复帖子",
   "preview_post": "预览帖子",
+  "post_link_not_ready": "帖子链接尚未可用，请一分钟后再试",
+  "post_has_no_public_link": "此帖子没有公开链接",
   "post_statistics": "帖子统计",
   "draft": "草稿",
   "week_number": "第 {{number}} 周",

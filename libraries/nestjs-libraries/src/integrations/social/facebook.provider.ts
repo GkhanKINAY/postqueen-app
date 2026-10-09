@@ -42,6 +42,9 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   category = 'social' as const;
   name = 'Facebook Page';
   isBetweenSteps = true;
+  // The channel holds the Page token, which does not expire when it comes
+  // from a long-lived user token (Meta's access token guide).
+  tokenNeverExpires = true;
   scopes = [
     'pages_show_list',
     'business_management',
