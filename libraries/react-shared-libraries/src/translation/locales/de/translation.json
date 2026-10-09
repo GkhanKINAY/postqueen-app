@@ -339,7 +339,6 @@
   "preview_post": "Beitragsvorschau",
   "post_link_not_ready": "Der Beitragslink ist noch nicht verfügbar, bitte versuchen Sie es in einer Minute erneut",
   "post_has_no_public_link": "Dieser Beitrag hat keinen öffentlichen Link",
-  "post_link_reconnect_channel": "Verbinden Sie diesen Kanal erneut, um den Beitragslink zu öffnen",
   "post_statistics": "Beitragsstatistiken",
   "draft": "Entwurf",
   "week_number": "Woche {{number}}",

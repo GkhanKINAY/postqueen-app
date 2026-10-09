@@ -2238,7 +2238,6 @@ post_immediately
 post_is_too_long
 post_it_again
 post_link_not_ready
-post_link_reconnect_channel
 post_move_failed
 post_needs_content_or_image
 post_no_longer_exists
