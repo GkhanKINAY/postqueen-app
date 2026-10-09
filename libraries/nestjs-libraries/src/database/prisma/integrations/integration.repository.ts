@@ -921,7 +921,12 @@ export class IntegrationRepository {
       },
     });
 
+    // Only the id goes back: the delete routes return this row as it is, and
+    // the whole row carried the channel's (hashed) tokens.
     return this._integration.model.integration.update({
+      select: {
+        id: true,
+      },
       where: {
         id,
         organizationId: org,
