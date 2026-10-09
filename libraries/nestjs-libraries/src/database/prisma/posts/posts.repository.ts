@@ -470,6 +470,46 @@ export class PostsRepository {
     });
   }
 
+  // The other channels of the post `exceptGroup` belongs to: the posts saved
+  // together with it, as getPostsByGroup loads one, without the tokens.
+  getPostsByBatch(orgId: string, batchId: string, exceptGroup: string) {
+    return this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        batchId,
+        group: {
+          not: exceptGroup,
+        },
+        deletedAt: null,
+        integration: {
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      include: {
+        integration: {
+          omit: {
+            token: true,
+            refreshToken: true,
+            customInstanceDetails: true,
+          },
+        },
+        tags: {
+          where: {
+            tag: {
+              deletedAt: null,
+            },
+          },
+          select: {
+            tag: true,
+          },
+        },
+      },
+    });
+  }
+
   // `forBrowser` leaves out what the channel signs in with. GET /posts/:id
   // answered with the post's whole channel row, decrypted tokens included.
   // Publishing and the workflows read the same post without it and still need
@@ -766,11 +806,40 @@ export class PostsRepository {
     // Keep the existing group instead of rotating it, so open clients
     // (calendar) holding the group stay valid. Used by out-of-band updates
     // (agent / MCP / public API); the dashboard keeps the rotate-and-sweep.
-    keepGroup = false
+    keepGroup = false,
+    // Shared by the posts saved together for several channels, so opening one
+    // of them in the editor brings the others.
+    batchId?: string
   ) {
     const posts: Post[] = [];
     const uuid = uuidv4();
     const group = keepGroup && body.group ? body.group : uuid;
+
+    // An edited post stays in the batch it was created in, even when it is
+    // saved on its own or with a group that was rotated since. Read before
+    // the rows below are written and the old group is swept.
+    const ids = body.value.map((value) => value.id).filter(Boolean);
+    const existingBatchId =
+      body.group || ids.length
+        ? (
+            await this._post.model.post.findFirst({
+              where: {
+                organizationId: orgId,
+                deletedAt: null,
+                batchId: {
+                  not: null,
+                },
+                OR: [
+                  ...(body.group ? [{ group: body.group }] : []),
+                  ...(ids.length ? [{ id: { in: ids } }] : []),
+                ],
+              },
+              select: {
+                batchId: true,
+              },
+            })
+          )?.batchId
+        : undefined;
 
     for (const value of body.value) {
       // The upsert below is keyed on the id alone, and updateData() reconnects
@@ -815,6 +884,7 @@ export class PostsRepository {
         content: value.content,
         delay: value.delay || 0,
         group,
+        batchId: existingBatchId || batchId,
         intervalInDays: inter ? +inter : null,
         approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
         ...(type === 'create' ? { creationMethod } : {}),

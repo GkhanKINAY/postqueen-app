@@ -865,5 +865,16 @@
   "could_not_save_group": "Impossibile salvare il gruppo.",
   "rename_group_hint": "Rinomina {{name}} per tutti i canali che contiene",
   "bot_name_renamed_hint": "Questo è il nome sulla piattaforma. PostQueen mostra il canale come {{name}}.",
-  "facebook_video_title": "Titolo del video (solo per i post video)"
+  "facebook_video_title": "Titolo del video (solo per i post video)",
+  "channel_time_for": "Orario per {{name}}",
+  "delete_post_from_all_channels_question": "Questo post è stato creato per più di un canale. Vuoi eliminarlo da tutti?",
+  "delete_from_all_channels": "Elimina da tutti i canali",
+  "delete_only_from_channel": "Solo da {{name}}",
+  "draft_post_in_all_channels_question": "Questo post è stato creato per più di un canale. Vuoi spostarli tutti nelle bozze?",
+  "draft_all_channels": "Sposta tutti i canali nelle bozze",
+  "post_now_in_all_channels_question": "Questo post è stato creato per più di un canale. Vuoi pubblicarlo ora su tutti?",
+  "post_now_all_channels": "Pubblica ora su tutti i canali",
+  "schedule_post_in_all_channels_question": "Questo post è stato creato per più di un canale. Vuoi programmarlo su tutti?",
+  "schedule_all_channels": "Programma tutti i canali",
+  "only_channel_name": "Solo {{name}}"
 }

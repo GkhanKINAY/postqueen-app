@@ -127,7 +127,8 @@ describe('phone calendar and composer', () => {
       'utf8',
     );
     assert.match(hop, /postHasPreview\(value\?\.\[0\]\)/);
-    assert.match(hop, /fix: revealChannel/);
+    assert.match(hop, /fix: fixChannel/);
+    assert.match(hop, /const fixChannel = \(\) => \{\s*revealChannel\(\);\s*form\.trigger\(\);/);
     assert.match(hop, /preview: revealChannel/);
     assert.match(hop, /aria-expanded=\{settingsOpen\}/);
     assert.match(hop, /const showSettingsBody = !isGlobal \|\| settingsOpen/);

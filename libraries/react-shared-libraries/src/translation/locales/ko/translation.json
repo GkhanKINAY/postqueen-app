@@ -865,5 +865,16 @@
   "could_not_save_group": "그룹을 저장할 수 없습니다.",
   "rename_group_hint": "그룹에 속한 모든 채널에서 {{name}}의 이름을 바꿉니다",
   "bot_name_renamed_hint": "플랫폼에 표시되는 이름입니다. PostQueen에서는 이 채널을 {{name}}(으)로 표시합니다.",
-  "facebook_video_title": "동영상 제목 (동영상 게시물만 해당)"
+  "facebook_video_title": "동영상 제목 (동영상 게시물만 해당)",
+  "channel_time_for": "{{name}} 게시 시간",
+  "delete_post_from_all_channels_question": "이 게시물은 여러 채널용으로 만들어졌습니다. 모든 채널에서 삭제할까요?",
+  "delete_from_all_channels": "모든 채널에서 삭제",
+  "delete_only_from_channel": "{{name}}에서만",
+  "draft_post_in_all_channels_question": "이 게시물은 여러 채널용으로 만들어졌습니다. 모두 임시 저장으로 옮길까요?",
+  "draft_all_channels": "모든 채널을 임시 저장으로 이동",
+  "post_now_in_all_channels_question": "이 게시물은 여러 채널용으로 만들어졌습니다. 모든 채널에 지금 게시할까요?",
+  "post_now_all_channels": "모든 채널에 지금 게시",
+  "schedule_post_in_all_channels_question": "이 게시물은 여러 채널용으로 만들어졌습니다. 모든 채널에 예약할까요?",
+  "schedule_all_channels": "모든 채널 예약",
+  "only_channel_name": "{{name}}만"
 }

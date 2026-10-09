@@ -35,7 +35,12 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
   // nothing to tick and no explanation. Say what happened instead.
   const pickable = integrations.filter((f) => {
     if (exising.integration) {
-      return f.id === exising.integration;
+      // A post being edited keeps its channels: the one opened and the
+      // others it was saved with.
+      return (
+        f.id === exising.integration ||
+        !!exising.siblings?.some((sibling) => sibling.integration === f.id)
+      );
     }
     // Already selected stays on screen even if it is no longer healthy. Sets
     // and the calendar's preselection seed selectedIntegrations without any

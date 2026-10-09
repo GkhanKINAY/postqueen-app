@@ -883,5 +883,16 @@
   "could_not_save_group": "Grup kaydedilemedi.",
   "rename_group_hint": "{{name}} grubunu içindeki tüm kanallar için yeniden adlandırır",
   "bot_name_renamed_hint": "Bu, platformdaki ad. PostQueen kanalı {{name}} olarak gösterir.",
-  "facebook_video_title": "Video başlığı (yalnızca video gönderileri için)"
+  "facebook_video_title": "Video başlığı (yalnızca video gönderileri için)",
+  "channel_time_for": "{{name}} için saat",
+  "delete_post_from_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsinden silmek istiyor musunuz?",
+  "delete_from_all_channels": "Tüm kanallardan sil",
+  "delete_only_from_channel": "Yalnızca {{name}} kanalından",
+  "draft_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini taslaklara taşımak istiyor musunuz?",
+  "draft_all_channels": "Tüm kanalları taslaklara taşı",
+  "post_now_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini şimdi paylaşmak istiyor musunuz?",
+  "post_now_all_channels": "Tüm kanallarda şimdi paylaş",
+  "schedule_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini zamanlamak istiyor musunuz?",
+  "schedule_all_channels": "Tüm kanalları zamanla",
+  "only_channel_name": "Yalnızca {{name}}"
 }

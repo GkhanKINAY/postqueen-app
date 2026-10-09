@@ -573,5 +573,16 @@
   "bot_name_renamed_hint": "ეს არის სახელი პლატფორმაზე. PostQueen არხს აჩვენებს როგორც {{name}}.",
   "only_images_can_be_added_to_the_content": "კონტენტს მხოლოდ სურათების დამატება შეიძლება",
   "edit_tag": "ტეგის რედაქტირება",
-  "facebook_video_title": "ვიდეოს სათაური (მხოლოდ ვიდეო პოსტებისთვის)"
+  "facebook_video_title": "ვიდეოს სათაური (მხოლოდ ვიდეო პოსტებისთვის)",
+  "channel_time_for": "{{name}}-ის დრო",
+  "delete_post_from_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ მისი წაშლა ყველა არხიდან?",
+  "delete_from_all_channels": "წაშლა ყველა არხიდან",
+  "delete_only_from_channel": "მხოლოდ {{name}}-დან",
+  "draft_post_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ ყველას გადატანა მონახაზებში?",
+  "draft_all_channels": "ყველა არხის გადატანა მონახაზებში",
+  "post_now_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ ახლავე გამოქვეყნება ყველა არხზე?",
+  "post_now_all_channels": "ახლავე გამოქვეყნება ყველა არხზე",
+  "schedule_post_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ დაგეგმვა ყველა არხზე?",
+  "schedule_all_channels": "ყველა არხის დაგეგმვა",
+  "only_channel_name": "მხოლოდ {{name}}"
 }

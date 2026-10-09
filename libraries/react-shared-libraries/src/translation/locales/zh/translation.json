@@ -865,5 +865,16 @@
   "could_not_save_group": "无法保存群组。",
   "rename_group_hint": "为其中所有频道重命名 {{name}}",
   "bot_name_renamed_hint": "这是平台上的名称。PostQueen 中该频道显示为 {{name}}。",
-  "facebook_video_title": "视频标题（仅限视频帖子）"
+  "facebook_video_title": "视频标题（仅限视频帖子）",
+  "channel_time_for": "{{name}} 的时间",
+  "delete_post_from_all_channels_question": "此帖子是为多个频道创建的。要从所有频道中删除吗？",
+  "delete_from_all_channels": "从所有频道删除",
+  "delete_only_from_channel": "仅从 {{name}}",
+  "draft_post_in_all_channels_question": "此帖子是为多个频道创建的。要全部移到草稿吗？",
+  "draft_all_channels": "将所有频道移到草稿",
+  "post_now_in_all_channels_question": "此帖子是为多个频道创建的。要立即在所有频道发布吗？",
+  "post_now_all_channels": "立即在所有频道发布",
+  "schedule_post_in_all_channels_question": "此帖子是为多个频道创建的。要在所有频道排期吗？",
+  "schedule_all_channels": "为所有频道排期",
+  "only_channel_name": "仅 {{name}}"
 }

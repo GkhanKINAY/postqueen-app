@@ -865,5 +865,16 @@
   "could_not_save_group": "לא ניתן היה לשמור את הקבוצה.",
   "rename_group_hint": "משנה את השם של {{name}} לכל הערוצים שבה",
   "bot_name_renamed_hint": "זה השם בפלטפורמה. ב-PostQueen הערוץ מוצג בשם {{name}}.",
-  "facebook_video_title": "כותרת הסרטון (לפוסטים של וידאו בלבד)"
+  "facebook_video_title": "כותרת הסרטון (לפוסטים של וידאו בלבד)",
+  "channel_time_for": "השעה עבור {{name}}",
+  "delete_post_from_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. למחוק אותו מכולם?",
+  "delete_from_all_channels": "מחיקה מכל הערוצים",
+  "delete_only_from_channel": "רק מ-{{name}}",
+  "draft_post_in_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. להעביר את כולם לטיוטות?",
+  "draft_all_channels": "העברת כל הערוצים לטיוטות",
+  "post_now_in_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. לפרסם אותו עכשיו בכולם?",
+  "post_now_all_channels": "פרסום עכשיו בכל הערוצים",
+  "schedule_post_in_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. לתזמן אותו בכולם?",
+  "schedule_all_channels": "תזמון כל הערוצים",
+  "only_channel_name": "רק {{name}}"
 }

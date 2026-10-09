@@ -623,6 +623,7 @@ model Post {
   content                    String
   delay                      Int                       @default(0)
   group                      String
+  batchId                    String?
   title                      String?
   description                String?
   parentPostId               String?
@@ -658,6 +659,7 @@ model Post {
   postMetricSnapshots        PostMetricSnapshot[]
 
   @@index([group])
+  @@index([batchId])
   @@index([deletedAt])
   @@index([publishDate])
   @@index([state])
