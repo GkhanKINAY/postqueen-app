@@ -8,6 +8,7 @@ import {
   previewText,
   overlaySnapshotSeries,
   lifetimeToDailyRange,
+  postsWithMetrics,
   sortAnalyticsPosts,
   sumComplete,
   sumKnown,
@@ -472,5 +473,38 @@ describe('lifetimeToDailyRange', () => {
       daily.map((point) => point.total),
       ['0', '0', '0', '0', '8', '0', '0'],
     );
+  });
+});
+
+describe('postsWithMetrics', () => {
+  const publishDate = new Date('2026-10-01T10:00:00.000Z');
+  const posts = [
+    { id: 'story', settings: '{"post_type":"story"}', publishDate },
+    { id: 'post', settings: '{"post_type":"post"}', publishDate },
+    { id: 'none', settings: null, publishDate },
+    { id: 'damaged', settings: '{not json', publishDate },
+  ];
+
+  it('keeps every post when the provider has no rule', () => {
+    assert.deepEqual(
+      postsWithMetrics(posts).map((p) => p.id),
+      ['story', 'post', 'none', 'damaged'],
+    );
+  });
+
+  it('drops what the provider says cannot be answered, keeps the rest', () => {
+    const seen: Array<{ settings: Record<string, any>; publishDate: Date }> = [];
+    const kept = postsWithMetrics(posts, (post) => {
+      seen.push(post);
+      return post.settings.post_type !== 'story';
+    });
+    assert.deepEqual(kept.map((p) => p.id), ['post', 'none', 'damaged']);
+    assert.deepEqual(seen.map((p) => p.settings), [
+      { post_type: 'story' },
+      { post_type: 'post' },
+      {},
+      {},
+    ]);
+    assert.equal(seen[0].publishDate, publishDate);
   });
 });

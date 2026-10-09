@@ -1417,6 +1417,18 @@ export class InstagramProvider
     }
   }
 
+  // Instagram deletes a story 24 hours after it goes up. From then on Graph
+  // answers its insights with "does not exist", so there is nothing to ask.
+  postMetricsAvailable(post: {
+    settings: Record<string, any>;
+    publishDate: Date;
+  }): boolean {
+    return !(
+      post.settings?.post_type === 'story' &&
+      dayjs(post.publishDate).add(24, 'hour').isBefore(dayjs())
+    );
+  }
+
   async postsAnalytics(
     integrationId: string,
     token: string,

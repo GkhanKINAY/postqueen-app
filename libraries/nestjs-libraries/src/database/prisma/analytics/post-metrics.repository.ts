@@ -44,6 +44,8 @@ export class PostMetricsRepository {
         releaseId: true,
         organizationId: true,
         integrationId: true,
+        settings: true,
+        publishDate: true,
       },
     });
   }

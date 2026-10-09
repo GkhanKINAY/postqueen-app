@@ -11,6 +11,7 @@ import {
   mapSnapshotRow,
   matchesAnalyticsQuery,
   overlaySnapshotSeries,
+  postsWithMetrics,
   sortAnalyticsPosts,
   summarizeAnalyticsPosts,
   topAnalyticsPosts,
@@ -146,9 +147,12 @@ export class PostMetricsService {
       }
     }
 
-    const posts = await this._repository.listPublishedPostsForSync(
-      integrationId,
-      LOOKBACK_DAYS,
+    const posts = postsWithMetrics(
+      await this._repository.listPublishedPostsForSync(
+        integrationId,
+        LOOKBACK_DAYS,
+      ),
+      provider.postMetricsAvailable?.bind(provider),
     );
     if (posts.length === 0) {
       return { synced: 0 };

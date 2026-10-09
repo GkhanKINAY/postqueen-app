@@ -46,6 +46,16 @@ export interface IAuthenticator {
     platformPostIds: string[],
   ): Promise<NormalizedPostMetrics[]>;
   /**
+   * Whether the platform can still report metrics for this published post.
+   * The snapshot sync skips a post this returns false for, so a post the
+   * platform can never answer for (a story deleted after 24 hours) costs no
+   * request on every sync. Omit it to sync every published post.
+   */
+  postMetricsAvailable?(post: {
+    settings: Record<string, any>;
+    publishDate: Date;
+  }): boolean;
+  /**
    * Runtime kill switches belong to the provider so analytics callers stay
    * generic. When true, neither sync targets nor post-metric UI rows are
    * exposed for this provider.
