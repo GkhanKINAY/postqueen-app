@@ -546,8 +546,6 @@
   "billing_ai_copilots": "Copilotos de IA",
   "billing_ai_autocomplete": "Autocompletar com IA",
   "billing_advanced_picture_editor": "Editor de imagens avançado",
-  "billing_ai_images_per_month": "Imagens de IA por mês",
-  "billing_ai_videos_per_month": "Vídeos de IA por mês",
   "billing_clipping_minutes_per_month": "minutos de recorte de vídeo com IA por mês",
   "plan_n_clipping_minutes": "{{count}} minutos de recorte de vídeo com IA por mês",
   "billing_billing_address": "Endereço de cobrança",
@@ -891,5 +889,8 @@
   "schedule_post_in_all_channels_question": "Esta publicação foi criada para mais de um canal. Deseja agendá-la em todos?",
   "schedule_all_channels": "Agendar todos os canais",
   "only_channel_name": "Somente {{name}}",
-  "delete_all_channels_cancels_scheduled": "Excluí-la de todos os canais também cancela as publicações ainda agendadas nos outros canais."
+  "delete_all_channels_cancels_scheduled": "Excluí-la de todos os canais também cancela as publicações ainda agendadas nos outros canais.",
+  "credits_card_sub": "Copilot, imagens e vídeos com IA, e publicações e divulgações no X gastam créditos. Seu plano adiciona {{amount}} todo mês.",
+  "credits_card_sub_yearly": "Copilot, imagens e vídeos com IA, e publicações e divulgações no X gastam créditos. Seu plano adiciona {{amount}} todo ano.",
+  "credits_card_sub_plain": "Copilot, imagens e vídeos com IA, e publicações e divulgações no X gastam créditos."
 }

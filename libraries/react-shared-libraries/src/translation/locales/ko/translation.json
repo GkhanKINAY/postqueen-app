@@ -546,8 +546,6 @@
   "billing_ai_copilots": "AI 코파일럿",
   "billing_ai_autocomplete": "AI 자동완성",
   "billing_advanced_picture_editor": "고급 사진 편집기",
-  "billing_ai_images_per_month": "월별 AI 이미지",
-  "billing_ai_videos_per_month": "월별 AI 비디오",
   "billing_clipping_minutes_per_month": "분의 AI 비디오 클리핑(월별)",
   "plan_n_clipping_minutes": "월 {{count}}분 AI 비디오 클리핑",
   "billing_billing_address": "청구 주소",
@@ -891,5 +889,8 @@
   "schedule_post_in_all_channels_question": "이 게시물은 여러 채널용으로 만들어졌습니다. 모든 채널에 예약할까요?",
   "schedule_all_channels": "모든 채널 예약",
   "only_channel_name": "{{name}}만",
-  "delete_all_channels_cancels_scheduled": "모든 채널에서 삭제하면 다른 채널에 아직 예약된 게시물도 취소됩니다."
+  "delete_all_channels_cancels_scheduled": "모든 채널에서 삭제하면 다른 채널에 아직 예약된 게시물도 취소됩니다.",
+  "credits_card_sub": "Copilot, AI 이미지와 동영상, X 게시물과 홍보에 크레딧이 사용됩니다. 플랜에서 매월 {{amount}} 크레딧이 추가됩니다.",
+  "credits_card_sub_yearly": "Copilot, AI 이미지와 동영상, X 게시물과 홍보에 크레딧이 사용됩니다. 플랜에서 매년 {{amount}} 크레딧이 추가됩니다.",
+  "credits_card_sub_plain": "Copilot, AI 이미지와 동영상, X 게시물과 홍보에 크레딧이 사용됩니다."
 }

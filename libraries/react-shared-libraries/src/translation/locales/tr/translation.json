@@ -563,8 +563,6 @@
   "billing_ai_copilots": "Yapay Zeka yardımcıları",
   "billing_ai_autocomplete": "Yapay Zeka Otomatik Tamamlama",
   "billing_advanced_picture_editor": "Gelişmiş Resim Editörü",
-  "billing_ai_images_per_month": "Aylık Yapay Zeka Görselleri",
-  "billing_ai_videos_per_month": "Aylık Yapay Zeka Videoları",
   "billing_clipping_minutes_per_month": "dakika/ay yapay zeka ile klip çıkarma",
   "plan_n_clipping_minutes": "Ayda {{count}} dakika yapay zeka ile klip çıkarma",
   "billing_billing_address": "Fatura Adresi",
@@ -909,5 +907,8 @@
   "schedule_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini zamanlamak istiyor musunuz?",
   "schedule_all_channels": "Tüm kanalları zamanla",
   "only_channel_name": "Yalnızca {{name}}",
-  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder."
+  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder.",
+  "credits_card_sub": "Copilot, yapay zeka görselleri ve videoları, X'teki gönderiler ve duyurular kredi harcar. Planınız her ay {{amount}} kredi ekler.",
+  "credits_card_sub_yearly": "Copilot, yapay zeka görselleri ve videoları, X'teki gönderiler ve duyurular kredi harcar. Planınız her yıl {{amount}} kredi ekler.",
+  "credits_card_sub_plain": "Copilot, yapay zeka görselleri ve videoları, X'teki gönderiler ve duyurular kredi harcar."
 }
