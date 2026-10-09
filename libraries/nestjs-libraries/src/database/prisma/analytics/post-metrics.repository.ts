@@ -1,5 +1,6 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { State } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -50,13 +51,13 @@ export class PostMetricsRepository {
     });
   }
 
-  listPublishedPostsForAnalytics(params: {
+  async listPublishedPostsForAnalytics(params: {
     organizationId: string;
     from: Date;
     to: Date;
     integrationIds?: string[];
   }) {
-    return this._post.model.post.findMany({
+    const posts = await this._post.model.post.findMany({
       where: {
         organizationId: params.organizationId,
         deletedAt: null,
@@ -89,6 +90,7 @@ export class PostMetricsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             picture: true,
             providerIdentifier: true,
           },
@@ -99,6 +101,7 @@ export class PostMetricsRepository {
         },
       },
     });
+    return posts.map(withPostChannelDisplayName);
   }
 
   listIntegrationsNeedingSync(
@@ -171,8 +174,8 @@ export class PostMetricsRepository {
     });
   }
 
-  getPostForAnalytics(organizationId: string, postId: string) {
-    return this._post.model.post.findFirst({
+  async getPostForAnalytics(organizationId: string, postId: string) {
+    const post = await this._post.model.post.findFirst({
       where: {
         id: postId,
         organizationId,
@@ -192,6 +195,7 @@ export class PostMetricsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             picture: true,
             providerIdentifier: true,
           },
@@ -202,6 +206,7 @@ export class PostMetricsRepository {
         },
       },
     });
+    return post && withPostChannelDisplayName(post);
   }
 
   getIntegration(organizationId: string, integrationId: string) {

@@ -22,7 +22,9 @@ export const BotPicture: FC<{
   const t = useT();
   const modal = useModals();
   const toast = useToaster();
-  const [nick, setNickname] = useState(props.integration.name);
+  const [nick, setNickname] = useState(
+    props.integration.originalName || props.integration.name
+  );
   const [picture, setPicture] = useState(props.integration.picture || '');
   const fetch = useFetch();
   const submitForm: FormEventHandler<HTMLFormElement> = useCallback(
@@ -91,6 +93,20 @@ export const BotPicture: FC<{
           disableForm={true}
         />
       )}
+      {props.canChangeNickName &&
+        !!props.integration.originalName &&
+        props.integration.originalName !== props.integration.name && (
+          <div className="-mt-[8px] text-[12.5px] leading-[1.45] text-pqMuted">
+            {t(
+              'bot_name_renamed_hint',
+              'This is the name on the platform. PostQueen shows the channel as {{name}}.',
+              {
+                name: props.integration.name,
+                interpolation: { escapeValue: false },
+              }
+            )}
+          </div>
+        )}
       <ModalFormActions onCancel={() => modal.closeAll()}>
         <Button
           type="submit"

@@ -8,6 +8,7 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { withChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/integration.token.encryption.enabled';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -350,6 +351,10 @@ export class IntegrationService implements OnModuleInit {
 
   updateOnCustomerName(org: string, id: string, name: string) {
     return this._integrationRepository.updateOnCustomerName(org, id, name);
+  }
+
+  updateCustomName(org: string, id: string, name: string) {
+    return this._integrationRepository.updateCustomName(org, id, name);
   }
 
   getIntegrationsList(org: string) {
@@ -1096,6 +1101,26 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.customers(orgId);
   }
 
+  async updateCustomerName(orgId: string, id: string, rawName: string) {
+    // Groups are found by exact name when a channel is moved into one, so
+    // "Acme " must not slip past the duplicate check as a second "Acme".
+    const name = rawName.trim();
+    if (!name) {
+      throw new HttpException('Group name is required', HttpStatus.BAD_REQUEST);
+    }
+    const exists = await this._integrationRepository.getCustomerByName(
+      orgId,
+      name
+    );
+    if (exists && exists.id !== id) {
+      throw new HttpException(
+        'A group with this name already exists',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    return this._integrationRepository.updateCustomerName(orgId, id, name);
+  }
+
   getPlugsByIntegrationId(org: string, integrationId: string) {
     return this._integrationRepository.getPlugsByIntegrationId(
       org,
@@ -1165,7 +1190,10 @@ export class IntegrationService implements OnModuleInit {
         if (!(err instanceof HttpException && err.getStatus() === 402)) {
           throw err;
         }
-        await this.plugShortNotice(data.orgId, getIntegration.name);
+        await this.plugShortNotice(
+          data.orgId,
+          withChannelDisplayName(getIntegration).name
+        );
         return;
       }
     }
@@ -1306,7 +1334,10 @@ export class IntegrationService implements OnModuleInit {
         if (!(err instanceof HttpException && err.getStatus() === 402)) {
           throw err;
         }
-        await this.plugShortNotice(orgId, getPlugById.integration.name);
+        await this.plugShortNotice(
+          orgId,
+          withChannelDisplayName(getPlugById.integration).name
+        );
         return true;
       }
     }

@@ -308,6 +308,9 @@ export const CalendarContext = createContext({
 
 export interface Integrations {
   name: string;
+  // The provider's own name when the user renamed the channel here; `name`
+  // then carries the custom one.
+  originalName?: string;
   id: string;
   disabled?: boolean;
   // Returned by `/integrations/list` and read by every channel picker; it was
@@ -418,7 +421,11 @@ export const CalendarWeekProvider: FC<{
     }
   }, []);
 
-  const [channelFilter, setChannelFilter] = useState<string[]>([]);
+  const [channelFilter, setChannelFilterRaw] = useState<string[]>([]);
+  const setChannelFilter = useCallback((next: string[]) => {
+    setChannelFilterRaw(next);
+    setListPage(0);
+  }, []);
   const [scrollToNowToken, setScrollToNowToken] = useState(0);
   const requestScrollToNow = useCallback(() => {
     setScrollToNowToken((n) => n + 1);
@@ -505,6 +512,8 @@ export const CalendarWeekProvider: FC<{
     filters.display === 'list' ? listState : panelListState;
 
   // List view data fetcher
+  // The list paginates on the server, so the channel filter has to go there
+  // too: filtering one page on the client left the page count wrong.
   const listParams = useMemo(() => {
     return new URLSearchParams({
       page: listPage.toString(),
@@ -512,8 +521,11 @@ export const CalendarWeekProvider: FC<{
       customer: filters?.customer?.toString() || '',
       state: activeListState,
       order: listSort,
+      ...(channelFilter.length
+        ? { integrations: channelFilter.join(',') }
+        : {}),
     }).toString();
-  }, [listPage, filters.customer, activeListState, listSort]);
+  }, [listPage, filters.customer, activeListState, listSort, channelFilter]);
 
   // One page at a time (Previous / page / Next) — same model as Insert media.
   // Earlier "Show more" stacked every page under one key; edits then had to
@@ -525,6 +537,9 @@ export const CalendarWeekProvider: FC<{
       customer: filters?.customer?.toString() || '',
       state: activeListState,
       order: listSort,
+      ...(channelFilter.length
+        ? { integrations: channelFilter.join(',') }
+        : {}),
     }).toString();
     const response = await fetch(`/posts/list?${pageParams}`);
     const data = expandPostsList(await response.json());
@@ -532,7 +547,7 @@ export const CalendarWeekProvider: FC<{
       posts: data?.posts || [],
       total: data?.total || 0,
     };
-  }, [listPage, filters.customer, activeListState, listSort, fetch]);
+  }, [listPage, filters.customer, activeListState, listSort, channelFilter, fetch]);
 
   // First open of the posts panel (or org/customer change): pick a tab that
   // has rows — scheduled → draft → published. Manual tab clicks stick via
@@ -551,11 +566,15 @@ export const CalendarWeekProvider: FC<{
 
     const customer = filters?.customer?.toString() || '';
     const probe = async (state: PanelListStateFilter) => {
+      // Same channels as the list it picks a tab for.
       const params = new URLSearchParams({
         page: '0',
         limit: '1',
         customer,
         state,
+        ...(channelFilter.length
+          ? { integrations: channelFilter.join(',') }
+          : {}),
       });
       // Nobody asked for this — it only picks which tab opens first. A network
       // reject here must not bubble: unhandled, it would surface as a toast
@@ -589,7 +608,14 @@ export const CalendarWeekProvider: FC<{
     return () => {
       cancelled = true;
     };
-  }, [postsPanelOpen, filters.display, panelPinScope, filters.customer, fetch]);
+  }, [
+    postsPanelOpen,
+    filters.display,
+    panelPinScope,
+    filters.customer,
+    channelFilter,
+    fetch,
+  ]);
 
   // SWR for calendar view
   const {
@@ -860,6 +886,8 @@ export const CalendarWeekProvider: FC<{
 
   const listPosts = useMemo(() => {
     const weekStart = demoWeekStart;
+    // Filtered by channel on the server (see listParams); this only hides the
+    // previous selection's rows that keepPreviousData shows until it answers.
     let rows: any[] = rawListPosts.filter(matchChannel);
     if (!rows.length && !realPosts.length && tourDemo.length) {
       rows = mapTourDemo();
@@ -905,8 +933,8 @@ export const CalendarWeekProvider: FC<{
     listState,
   ]);
 
-  // Always use the server total for pagination. Client channel/range filters
-  // shrink the *current page* only — deriving hasMore from that length stopped
+  // Always use the server total for pagination. The client range filter
+  // shrinks the *current page* only — deriving hasMore from that length stopped
   // "Show more" early while later pages still matched.
   const listTotal = listData?.total || 0;
   const listTotalPages = Math.max(
