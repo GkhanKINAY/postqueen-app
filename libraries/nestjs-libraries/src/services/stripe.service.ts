@@ -469,11 +469,14 @@ export class StripeService extends PaymentProviderAbstract {
 
   /**
    * Every subscription of this customer that can still bill: what a cancel
-   * has to reach. Not `incomplete` or `incomplete_expired`, which never took
-   * a first payment and lapse on their own (and cancelling the expired one is
-   * an error).
+   * has to reach. Not `incomplete_expired` (cancelling it is an error), and
+   * not `incomplete` unless asked: it never took a first payment and lapses
+   * on its own.
    */
-  private async billableSubscriptions(customer: string) {
+  private async billableSubscriptions(
+    customer: string,
+    includeIncomplete = false
+  ) {
     if (!customer?.startsWith('cus_')) {
       return [];
     }
@@ -487,7 +490,7 @@ export class StripeService extends PaymentProviderAbstract {
     ).data.filter(
       (f) =>
         f.status !== 'canceled' &&
-        f.status !== 'incomplete' &&
+        (includeIncomplete || f.status !== 'incomplete') &&
         f.status !== 'incomplete_expired'
     );
   }
@@ -984,18 +987,18 @@ export class StripeService extends PaymentProviderAbstract {
 
   /**
    * Cancels a new subscription when an older one already entitles the same
-   * customer, and says whether it did.
+   * organization, and says whether it did.
    *
    * Checkout refuses a second subscription (see `embedded`), but only from
    * what this app knows: a second checkout opened before the first one's
    * webhook wrote the plan went through, and the customer was billed twice
-   * for one plan. The older subscription is the one kept, so the plan the
-   * customer has does not change. The duplicate's first payment is not
-   * refunded here; refunds go by request, so it is logged for that.
+   * for one plan. The older subscription (by `created`) is the one kept. The
+   * duplicate's first payment is not refunded here; refunds go by request, so
+   * it is logged as an error for that.
    *
-   * Never throws: answering 500 would have Stripe retry an event that has
-   * nothing left to do, and the subscription is re-read before this, so a
-   * retry finds it already cancelled and skips the cancel.
+   * A failed cancel is logged rather than thrown: the subscription is re-read
+   * before this, so a retry would find it the same way. A failed read (the
+   * list, the organization) still throws, and Stripe retries the event.
    */
   private async cancelDuplicateSubscription(
     event: Stripe.CustomerSubscriptionCreatedEvent
@@ -1006,55 +1009,70 @@ export class StripeService extends PaymentProviderAbstract {
       return false;
     }
 
-    let older = (await this.entitlingSubscriptions(customer)).find(
-      (other) =>
-        other.id !== subscription.id &&
-        (other.created < subscription.created ||
-          (other.created === subscription.created &&
-            other.id < subscription.id))
-    );
+    const isOlder = (other: Stripe.Subscription) =>
+      other.id !== subscription.id &&
+      (other.created < subscription.created ||
+        (other.created === subscription.created && other.id < subscription.id));
+
+    const older = (await this.entitlingSubscriptions(customer)).find(isOlder);
+    if (older) {
+      await this.cancelAsDuplicate(subscription, older.id, event.id);
+      return true;
+    }
 
     // A first checkout creates no customer up front (see `embedded`), so two
-    // of them make two customers. The organization's own customer is the one
-    // it was already linked to; anything entitling it there came first.
+    // of them opened together make two customers, and the organization is
+    // linked to whichever webhook landed first. The older subscription is
+    // still the one kept: when it is on the organization's customer, this one
+    // goes; when this one is older, the newer ones there go, and this one is
+    // granted below, which moves the organization onto its customer
+    // (`adoptSubscriptionCustomer`) now that the old one bills nothing.
     const organizationId = subscription.metadata?.organizationId;
-    if (!older && organizationId) {
-      const org = await this._organizationService.getOrgById(organizationId);
-      if (
-        org?.paymentId?.startsWith('cus_') &&
-        org.paymentId !== customer
-      ) {
-        [older] = await this.entitlingSubscriptions(org.paymentId);
-      }
-    }
-
-    if (!older) {
+    if (!organizationId) {
       return false;
     }
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (!org?.paymentId?.startsWith('cus_') || org.paymentId === customer) {
+      return false;
+    }
+    const theirs = await this.entitlingSubscriptions(org.paymentId);
+    const olderThere = theirs.find(isOlder);
+    if (olderThere) {
+      await this.cancelAsDuplicate(subscription, olderThere.id, event.id);
+      return true;
+    }
+    for (const newer of theirs) {
+      await this.cancelAsDuplicate(newer, subscription.id, event.id);
+    }
+    return false;
+  }
 
+  private async cancelAsDuplicate(
+    duplicate: Stripe.Subscription,
+    keptId: string,
+    eventId: string
+  ) {
     if (
-      subscription.status !== 'canceled' &&
-      subscription.status !== 'incomplete_expired'
+      duplicate.status !== 'canceled' &&
+      duplicate.status !== 'incomplete_expired'
     ) {
       try {
-        await stripe.subscriptions.cancel(subscription.id, {
+        await stripe.subscriptions.cancel(duplicate.id, {
           cancellation_details: { comment: DUPLICATE_SUBSCRIPTION },
         });
       } catch (err) {
         Logger.error(
-          `[stripe] subscription ${subscription.id} duplicates ${older.id} on customer ${customer}, and cancelling it failed (event ${event.id}): ${
+          `[stripe] subscription ${duplicate.id} duplicates ${keptId}, and cancelling it failed (event ${eventId}): ${
             (err as Error)?.message || err
           }`
         );
-        return true;
+        return;
       }
     }
-
     // An error, not a warning: its first payment is waiting for a refund.
     Logger.error(
-      `[stripe] subscription ${subscription.id} on customer ${customer} duplicates ${older.id}; cancelled it, nothing granted (event ${event.id}). Its first payment was not refunded.`
+      `[stripe] subscription ${duplicate.id} on customer ${duplicate.customer} duplicates ${keptId}; cancelled it, nothing granted (event ${eventId}). Its first payment was not refunded.`
     );
-    return true;
   }
 
   async createSubscription(event: Stripe.CustomerSubscriptionCreatedEvent) {
@@ -1697,21 +1715,29 @@ export class StripeService extends PaymentProviderAbstract {
       };
     }
 
-    // Check if the latest invoice has a failed payment
-    const latestInvoice = sub.latest_invoice as Stripe.Invoice | null;
-    // Not an open upgrade invoice (`subscription_update`): that is an upgrade
-    // left unpaid, and the period already paid for still stands.
-    const hasFailedPayment =
-      sub.status === 'past_due' ||
-      (latestInvoice?.billing_reason !== 'subscription_update' &&
-        (latestInvoice?.status === 'open' ||
-          latestInvoice?.status === 'uncollectible'));
+    // Decided per subscription: a leftover duplicate whose payment failed
+    // must not take the paid one down with it.
+    const hasFailedPayment = (s: Stripe.Subscription) => {
+      const latestInvoice = s.latest_invoice as Stripe.Invoice | null;
+      // Not an open upgrade invoice (`subscription_update`): that is an
+      // upgrade left unpaid, and the period already paid for still stands.
+      return (
+        s.status === 'past_due' ||
+        (latestInvoice?.billing_reason !== 'subscription_update' &&
+          (latestInvoice?.status === 'open' ||
+            latestInvoice?.status === 'uncollectible'))
+      );
+    };
+    const failed = subscriptions.filter(hasFailedPayment);
+    const paid = subscriptions.filter((s) => !hasFailedPayment(s));
 
-    if (hasFailedPayment) {
-      // Payment already failed — cancel immediately and delete subscription
-      for (const s of subscriptions) {
-        await stripe.subscriptions.cancel(s.id);
-      }
+    // Payment already failed — cancel those immediately
+    for (const s of failed) {
+      await stripe.subscriptions.cancel(s.id);
+    }
+
+    if (!paid.length) {
+      // Nothing paid is left — delete the subscription
       await this._subscriptionService.deleteSubscription(
         customer,
         STRIPE_PROVIDER
@@ -1726,7 +1752,7 @@ export class StripeService extends PaymentProviderAbstract {
     // Payment succeeded — cancel at end of billing period. With two, the plan
     // lasts until the later one ends, so that is the date reported.
     let cancel_at: number | null = null;
-    for (const s of subscriptions) {
+    for (const s of paid) {
       const updated = await stripe.subscriptions.update(s.id, {
         cancel_at_period_end: true,
         metadata: { service: SUBSCRIPTION_SERVICE_TAG, id },
@@ -2443,9 +2469,13 @@ export class StripeService extends PaymentProviderAbstract {
       return 0;
     }
 
-    const subscription = getCustomerSubscriptions.data.find(
-      (p) => p.metadata.uniqueId === subscriptionId
-    );
+    const subscription =
+      getCustomerSubscriptions.data.find(
+        (p) => p.metadata.uniqueId === subscriptionId
+      ) ||
+      // A duplicate made on a second customer (see
+      // `cancelDuplicateSubscription`) is not on this organization's.
+      (await this.subscriptionOfCheckout(organizationId, subscriptionId));
     if (subscription?.canceled_at) {
       // 3 and 4: stopped because the card already had a free trial elsewhere,
       // or because it is prepaid, not because a payment failed.
@@ -2462,6 +2492,23 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     return 0;
+  }
+
+  /** This organization's subscription from a checkout, on any customer. */
+  private async subscriptionOfCheckout(
+    organizationId: string,
+    uniqueId: string
+  ) {
+    // Our own ids are word characters; anything else is not one of ours and
+    // must not reach the search query.
+    if (!/^[\w-]+$/.test(uniqueId)) {
+      return undefined;
+    }
+    const { data } = await stripe.subscriptions.search({
+      query: `metadata['uniqueId']:'${uniqueId}'`,
+      limit: 5,
+    });
+    return data.find((s) => s.metadata?.organizationId === organizationId);
   }
 
   /**
@@ -3496,7 +3543,9 @@ export class StripeService extends PaymentProviderAbstract {
 
     const customer = org.paymentId;
 
-    const subscriptions = await this.billableSubscriptions(customer);
+    // `incomplete` too, as before: an admin stopping everything includes a
+    // checkout still waiting on its first payment.
+    const subscriptions = await this.billableSubscriptions(customer, true);
 
     if (!subscriptions.length) {
       throw new Error('No active subscription found');

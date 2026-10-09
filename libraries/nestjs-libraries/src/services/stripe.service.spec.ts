@@ -1,20 +1,21 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { beforeEach, describe, it } from 'node:test';
+import { before, beforeEach, describe, it } from 'node:test';
 import Stripe from 'stripe';
-import { StripeService } from './stripe.service.ts';
+import type { StripeService as StripeServiceType } from './stripe.service.ts';
 import { pricing } from '../database/prisma/subscriptions/pricing.ts';
 
-// Every Stripe call below is faked. The service built its client from the
-// environment when it was imported, so a run with a live key is refused
-// before any test starts, and the resources no test uses throw (below).
-if (/_live_/.test(process.env.STRIPE_SECRET_KEY || '')) {
-  throw new Error('Refusing to run the Stripe service tests with a live key');
-}
-// Billing on, for the checks that ask (`isBillingEnabled`). Read at call
-// time, so this does not change the client's key.
-process.env.STRIPE_SECRET_KEY ||= 'sk_test_unit_never_valid';
-process.env.STRIPE_PUBLISHABLE_KEY ||= 'pk_test_unit_never_valid';
+// Every Stripe call below is faked, and the resources no test uses throw. The
+// service builds its client from the environment when it is loaded, so the
+// key is replaced first, whatever the environment holds: no real key, live or
+// test, is ever in the client. That is also what turns billing on for the
+// checks that ask (`isBillingEnabled`).
+process.env.STRIPE_SECRET_KEY = 'sk_test_unit_never_valid';
+process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_unit_never_valid';
+let StripeService: typeof StripeServiceType;
+before(async () => {
+  ({ StripeService } = await import('./stripe.service.ts'));
+});
 
 // The SDK keeps its methods on each resource's prototype, shared by every
 // client, so faking them here fakes them for the service's own client too.
@@ -92,6 +93,11 @@ fake(probe.subscriptionSchedules, {
 fake(probe.invoices, {
   list: record('invoices.list', ({ customer, subscription }) => ({
     data: subscription ? [] : invoices.filter((i) => i.customer === customer),
+  })),
+});
+fake(probe.subscriptions, {
+  search: record('subscriptions.search', ({ query }) => ({
+    data: subs.filter((s) => query.includes(`'${s.metadata?.uniqueId}'`)),
   })),
 });
 fake(probe.prices, {
@@ -212,6 +218,41 @@ describe('a second subscription on one customer', () => {
     );
     assert.equal(called('subscriptions.cancel')[0][0], 'sub_new');
     assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('cancels the newer one there when this one, on a second customer, is older', async () => {
+    subs = [
+      sub('sub_first_seen', 200),
+      sub('sub_older', 100, {
+        customer: 'cus_2',
+        metadata: { uniqueId: 'u-sub_older', organizationId: 'org1' },
+      }),
+    ];
+    const result = await service().createSubscription({
+      ...created('sub_older'),
+      data: { object: { id: 'sub_older', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    assert.equal(called('subscriptions.cancel')[0][0], 'sub_first_seen');
+    assert.notEqual(
+      (result as { reason?: string }).reason,
+      'duplicate subscription',
+    );
+    assert.equal(called('createOrUpdateSubscription').length, 1);
+  });
+
+  it('reports a cancelled duplicate on a second customer as done', async () => {
+    subs = [
+      sub('sub_old', 100),
+      sub('sub_new', 200, {
+        customer: 'cus_2',
+        status: 'canceled',
+        canceled_at: 300,
+        cancellation_details: { comment: 'duplicate-subscription' } as any,
+        metadata: { uniqueId: 'u-sub_new', organizationId: 'org1' },
+      }),
+    ];
+    assert.equal(await service().checkSubscription('org1', 'u-sub_new'), 2);
   });
 
   it('is not cancelled twice when the event is retried', async () => {
@@ -344,12 +385,59 @@ describe('cancelling from Billing', () => {
     assert.equal(result.cancel_at, undefined);
   });
 
+  it('does not end a paid subscription because a duplicate failed to pay', async () => {
+    subs = [
+      sub('sub_paid', 100),
+      sub('sub_failed', 200, {
+        status: 'past_due',
+        latest_invoice: { status: 'open' } as any,
+      }),
+    ];
+    const result = await service().setToCancel('org1');
+
+    assert.deepEqual(called('subscriptions.cancel'), [['sub_failed']]);
+    assert.deepEqual(
+      called('subscriptions.update').map(([id, body]) => [
+        id,
+        (body as any).cancel_at_period_end,
+      ]),
+      [['sub_paid', true]],
+    );
+    assert.equal(called('deleteSubscription').length, 0);
+    assert.deepEqual(result.cancel_at, new Date(1_000_100 * 1000));
+  });
+
+  it('ends at once when nothing paid is left', async () => {
+    subs = [
+      sub('sub_failed', 200, {
+        status: 'past_due',
+        latest_invoice: { status: 'open' } as any,
+      }),
+    ];
+    await service().setToCancel('org1');
+
+    assert.deepEqual(called('subscriptions.cancel'), [['sub_failed']]);
+    assert.deepEqual(called('deleteSubscription'), [['cus_1', 'stripe']]);
+  });
+
   it('reports the cancel when only saving its date failed', async () => {
     failCancelAt = true;
     subs = [sub('sub_a', 100)];
     const result = await service().setToCancel('org1');
 
     assert.deepEqual(result.cancel_at, new Date(1_000_100 * 1000));
+  });
+});
+
+describe('an admin cancelling', () => {
+  it('still cancels a checkout waiting on its first payment', async () => {
+    subs = [
+      sub('sub_waiting', 100, { status: 'incomplete' }),
+      sub('sub_gone', 50, { status: 'incomplete_expired' }),
+    ];
+    await service().cancelSubscription('org1');
+
+    assert.deepEqual(called('subscriptions.cancel'), [['sub_waiting']]);
   });
 });
 

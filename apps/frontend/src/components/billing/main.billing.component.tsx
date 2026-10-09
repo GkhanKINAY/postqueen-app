@@ -1550,7 +1550,9 @@ export const MainBillingComponent: FC<{
               }
             />
           )}
-          {!!subscription?.id && <BillingHistory />}
+          {(!!subscription?.id || !!user?.hasBillingCustomer) && (
+            <BillingHistory />
+          )}
           <FAQComponent />
         </>
       )}
