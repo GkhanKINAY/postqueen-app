@@ -62,10 +62,16 @@ export const FacebookSettings = () => {
       />
 
       {postCurrentType !== 'story' && (
-        <Input
-          label={'Embedded URL (only for text Post)'}
-          {...register('url')}
-        />
+        <>
+          <Input
+            label={'Embedded URL (only for text Post)'}
+            {...register('url')}
+          />
+          <Input
+            label={t('facebook_video_title', 'Video title (only for video posts)')}
+            {...register('title')}
+          />
+        </>
       )}
 
       {presetAvailable && (

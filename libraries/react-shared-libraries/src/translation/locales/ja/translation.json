@@ -729,6 +729,7 @@
   "repeat_post_every_label": "投稿を繰り返す間隔",
   "add_new_tag": "新しいタグを追加",
   "tag_name": "名前",
+  "edit_tag": "タグを編集",
   "post_is_too_long": "投稿が長すぎます。修正してください",
   "your_post_should_have_at_least_one_character_or_one_image": "投稿には少なくとも1文字または1枚の画像が必要です。",
   "internal_edit": "内部編集",
@@ -848,5 +849,6 @@
   "email_off_button": "オフにする",
   "signup_product_news_notice": "製品ニュースを時々お送りします。各メールからワンクリックで配信を停止できます。",
   "product_news": "製品ニュース",
-  "product_news_description": "新機能や改善についてのメールを時々受け取る"
+  "product_news_description": "新機能や改善についてのメールを時々受け取る",
+  "facebook_video_title": "動画のタイトル（動画投稿のみ）"
 }

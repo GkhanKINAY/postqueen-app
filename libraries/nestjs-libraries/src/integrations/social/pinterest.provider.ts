@@ -66,7 +66,7 @@ export class PinterestProvider
     'pins:write',
     'user_accounts:read',
   ];
-  override maxConcurrentJob = 3; // Pinterest has more lenient rate limits
+  override maxConcurrentJob = 10; // Pinterest limits are per user
   // Create Pin takes a description of up to 800 characters.
   maxLength() {
     return 800;
@@ -148,6 +148,13 @@ export class PinterestProvider
       return {
         type: 'bad-body' as const,
         value: 'The specified board was not found. Please check the board ID.',
+      };
+    }
+    if (body.indexOf('You are not permitted to access that resource') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'The connected Pinterest account is not permitted to post to this board. Please check the board ID and that the account owns or can write to the board.',
       };
     }
     if (body.indexOf('cover_image_url or cover_image_content_type') > -1) {

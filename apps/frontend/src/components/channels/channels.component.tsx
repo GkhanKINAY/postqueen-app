@@ -1037,11 +1037,18 @@ export const ChannelsComponent: FC = () => {
       refresh: String(current.internalId),
       redirectUrl: '/channels',
     });
-    const { url } = await (
-      await fetch(`/integrations/social/${current.identifier}?${params}`, {
+    const response = await fetch(
+      `/integrations/social/${current.identifier}?${params}`,
+      {
         method: 'GET',
-      })
-    ).json();
+      }
+    );
+    // The payment dialog already answered: a 402 when dismissed, 499 when it
+    // sent the person to Billing. Neither body is a connect url.
+    if (response.status === 402 || response.status === 499) {
+      return;
+    }
+    const { url } = await response.json();
     if (!url) {
       toast.show(
         t(

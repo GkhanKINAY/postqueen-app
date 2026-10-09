@@ -381,6 +381,14 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.getIntegrationByIdNotDeleted(org, id);
   }
 
+  // Not deleted: the repository lookup skips removed channels.
+  getIntegrationByInternalId(org: string, internalId: string) {
+    return this._integrationRepository.getIntegrationByInternalId(
+      org,
+      internalId
+    );
+  }
+
   async refreshToken(provider: SocialProvider, refresh: string) {
     try {
       const { refreshToken, accessToken, expiresIn } =
@@ -527,7 +535,9 @@ export class IntegrationService implements OnModuleInit {
   async informAboutRefreshError(
     orgId: string,
     integration: Integration,
-    err = ''
+    err = '',
+    // Shown to the person, from the provider's refreshErrorMessage.
+    reason?: string
   ) {
     const providerName = this._integrationManager.getSocialIntegrationName(
       integration.providerIdentifier
@@ -537,7 +547,9 @@ export class IntegrationService implements OnModuleInit {
       account && account.toLowerCase() !== providerName.toLowerCase()
         ? ` (${account})`
         : '';
-    const message = `Could not refresh your ${providerName} channel${who}. Reconnect it to keep publishing.`;
+    const message = `Could not refresh your ${providerName} channel${who}. ${
+      reason ? `${reason} ` : ''
+    }Reconnect it to keep publishing.`;
     const params = new URLSearchParams();
     params.set('channel', integration.providerIdentifier);
     params.set('focus', integration.id);
@@ -574,6 +586,7 @@ export class IntegrationService implements OnModuleInit {
               },
             ],
           },
+          ...(reason ? [{ type: 'text' as const, text: reason }] : []),
           {
             type: 'text',
             text: 'Posts to this channel won’t go out until you reconnect it.',
