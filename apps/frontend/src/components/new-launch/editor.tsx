@@ -884,7 +884,6 @@ export const Editor: FC<{
       }
 
       appendImages(result);
-      uppy.clear();
     },
     allowedFileTypes: 'image/*,video/mp4',
     onStart: () => {},

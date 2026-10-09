@@ -1022,6 +1022,7 @@
   "repeat_post_every_label": "Repeat Post Every",
   "add_new_tag": "Add New Tag",
   "tag_name": "Name",
+  "edit_tag": "Edit Tag",
   "post_is_too_long": "post is too long, please fix it",
   "your_post_should_have_at_least_one_character_or_one_image": "Your post should have at least one character or one image.",
   "your_comment_should_have_at_least_one_character_or_one_image": "Your comment should have at least one character or one image.",
@@ -1394,5 +1395,6 @@
   "publish_credits_why_link": "{{network}} charges PostQueen for every post published through its API, and far more for a post with a link: {{link}} credits instead of {{post}}.",
   "plug_credits_check_and_act": "Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it. It stops if the balance runs out.",
   "plug_credits_act": "Uses {{trigger}} credits each time it acts on the post. It is skipped if the balance runs out.",
-  "plug_credits_check_and_act_link": "Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out."
+  "plug_credits_check_and_act_link": "Uses credits: {{check}} a day while it watches the post, and {{trigger}} when it acts on it ({{withLink}} if what it posts has a link). It stops if the balance runs out.",
+  "facebook_video_title": "Video title (only for video posts)"
 }

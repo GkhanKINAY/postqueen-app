@@ -729,6 +729,7 @@
   "repeat_post_every_label": "Lặp lại bài đăng mỗi",
   "add_new_tag": "Thêm thẻ mới",
   "tag_name": "Tên",
+  "edit_tag": "Chỉnh sửa thẻ",
   "post_is_too_long": "bài đăng quá dài, vui lòng chỉnh sửa",
   "your_post_should_have_at_least_one_character_or_one_image": "Bài đăng của bạn phải có ít nhất một ký tự hoặc một hình ảnh.",
   "internal_edit": "Chỉnh sửa nội bộ",
@@ -849,5 +850,6 @@
   "email_off_button": "Tắt",
   "signup_product_news_notice": "Thỉnh thoảng chúng tôi sẽ gửi cho bạn tin tức sản phẩm. Bạn có thể hủy đăng ký từ bất kỳ email nào chỉ bằng một cú nhấp.",
   "product_news": "Tin tức sản phẩm",
-  "product_news_description": "Thỉnh thoảng nhận email về tính năng mới và cải tiến"
+  "product_news_description": "Thỉnh thoảng nhận email về tính năng mới và cải tiến",
+  "facebook_video_title": "Tiêu đề video (chỉ dành cho bài đăng video)"
 }

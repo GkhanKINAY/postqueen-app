@@ -747,6 +747,7 @@
   "repeat_post_every_label": "Gönderiyi Her Tekrarla",
   "add_new_tag": "Yeni Etiket Ekle",
   "tag_name": "Adı",
+  "edit_tag": "Etiketi Düzenle",
   "post_is_too_long": "gönderi çok uzun, lütfen düzeltin",
   "your_post_should_have_at_least_one_character_or_one_image": "Gönderinizde en az bir karakter veya bir görsel olmalıdır.",
   "internal_edit": "Dahili Düzenleme",
@@ -867,5 +868,6 @@
   "email_off_button": "Kapat",
   "signup_product_news_notice": "Zaman zaman size ürün haberleri göndereceğiz. Her birinden tek tıkla abonelikten çıkabilirsiniz.",
   "product_news": "Ürün haberleri",
-  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın"
+  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın",
+  "facebook_video_title": "Video başlığı (yalnızca video gönderileri için)"
 }

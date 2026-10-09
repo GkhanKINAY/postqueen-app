@@ -334,7 +334,6 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
     const mediaFiles = message.media || [];
     const text = telegramText(message.message);
 
-    console.log(text);
     const processedMedia = this.processMedia(mediaFiles);
 
     // if there's no media, bot sends a text message only

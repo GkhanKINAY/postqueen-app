@@ -225,6 +225,7 @@ ${renderArray(
 # Media
 - If a platform needs media and none was given, ask once whether to generate an image or a video, unless the user already asked for one.
 - Image prompts are a visual brief, not a caption: subject, setting, composition, light, mood, style. Pick the orientation from the platform (portrait for stories, reels, TikTok, Pinterest; square for feeds; landscape for X and LinkedIn). No text in images unless asked; no logos or real people's likeness.
+- To reuse media already in the media library, use mediaListTool (search by filename) and attach the returned id and path, instead of asking the user for a URL or uploading it again.
 - Media the user attached arrives as "Image: <url> [id:<media id>]" or "Video: <url> [id:<media id>]" lines between [--Media--] markers; attachments take that id and url.
 - One image per request. If the user wants a different one, regenerate with a changed brief; never produce several at once.
 - Video prompts describe one scene of about 8 seconds: camera, subject, motion, light, atmosphere; no on-screen text or logos. Orientation from the platform: vertical for Reels, Stories, TikTok and Shorts; horizontal for X, LinkedIn, YouTube and Facebook.

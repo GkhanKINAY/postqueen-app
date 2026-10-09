@@ -728,6 +728,7 @@
   "repeat_post_every_label": "প্রতি কতদিন পর পোস্ট পুনরাবৃত্তি হবে",
   "add_new_tag": "নতুন ট্যাগ যোগ করুন",
   "tag_name": "নাম",
+  "edit_tag": "ট্যাগ সম্পাদনা করুন",
   "post_is_too_long": "পোস্টটি খুব বড়, অনুগ্রহ করে ঠিক করুন",
   "your_post_should_have_at_least_one_character_or_one_image": "আপনার পোস্টে অন্তত একটি অক্ষর বা একটি ছবি থাকতে হবে।",
   "internal_edit": "অভ্যন্তরীণ সম্পাদনা",
@@ -848,5 +849,6 @@
   "email_off_button": "বন্ধ করুন",
   "signup_product_news_notice": "মাঝে মাঝে আমরা আপনাকে পণ্যের খবর ইমেল করব। যেকোনো ইমেল থেকে এক ক্লিকে আনসাবস্ক্রাইব করতে পারবেন।",
   "product_news": "পণ্যের খবর",
-  "product_news_description": "নতুন ফিচার ও উন্নতি নিয়ে মাঝে মাঝে ইমেল পান"
+  "product_news_description": "নতুন ফিচার ও উন্নতি নিয়ে মাঝে মাঝে ইমেল পান",
+  "facebook_video_title": "ভিডিওর শিরোনাম (শুধু ভিডিও পোস্টের জন্য)"
 }

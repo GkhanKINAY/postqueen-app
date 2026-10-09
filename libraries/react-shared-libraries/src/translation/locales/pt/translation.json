@@ -729,6 +729,7 @@
   "repeat_post_every_label": "Repetir postagem a cada",
   "add_new_tag": "Adicionar nova tag",
   "tag_name": "Nome",
+  "edit_tag": "Editar etiqueta",
   "post_is_too_long": "a postagem está muito longa, por favor corrija",
   "your_post_should_have_at_least_one_character_or_one_image": "Sua postagem deve ter pelo menos um caractere ou uma imagem.",
   "internal_edit": "Edição interna",
@@ -849,5 +850,6 @@
   "email_off_button": "Desativar",
   "signup_product_news_notice": "De vez em quando, enviaremos novidades do produto. Você pode cancelar a inscrição em qualquer uma delas com um clique.",
   "product_news": "Novidades do produto",
-  "product_news_description": "Receba de vez em quando um e-mail sobre novos recursos e melhorias"
+  "product_news_description": "Receba de vez em quando um e-mail sobre novos recursos e melhorias",
+  "facebook_video_title": "Título do vídeo (apenas para publicações de vídeo)"
 }

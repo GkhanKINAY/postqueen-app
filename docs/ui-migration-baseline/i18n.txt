@@ -1617,6 +1617,7 @@ edit_plug
 edit_post
 edit_post_title
 edit_signature
+edit_tag
 edit_the_connection_details_for_this_channel
 edit_time_slots
 editing_channel_version_hint
@@ -1660,6 +1661,7 @@ extension_not_available_title
 extension_not_installed
 facebook_background_none
 facebook_background_note
+facebook_video_title
 failed_to_resend
 failed_to_revoke
 failed_to_save_channel_configuration
