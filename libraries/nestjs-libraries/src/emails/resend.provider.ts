@@ -29,10 +29,16 @@ export class ResendProvider implements EmailInterface {
     });
 
     // The SDK returns API errors (like a 429 rate limit) instead of throwing.
-    // Throw, so sendEmailSync retries the send and logs it as failed rather
-    // than as sent.
+    // Throw on the ones a retry can fix (429, 5xx, no response), so
+    // sendEmailSync tries again. Any other 4xx (an invalid address or key)
+    // fails the same way every time: log it once and give up.
     if (sends.error) {
-      throw new Error(`${sends.error.name}: ${sends.error.message}`);
+      const { name, message, statusCode } = sends.error;
+      if (statusCode && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+        console.error(`[email] Resend refused the email: ${name}: ${message}`);
+        return sends;
+      }
+      throw new Error(`${name}: ${message}`);
     }
 
     return sends;
