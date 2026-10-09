@@ -3616,17 +3616,6 @@ export const GoToLivePostButton: FC<{
       );
       return;
     }
-    if (release.reconnect) {
-      tab.close();
-      toaster.show(
-        t(
-          'post_link_reconnect_channel',
-          'Reconnect this channel to open the post link'
-        ),
-        'warning'
-      );
-      return;
-    }
     // the platform has not released the post link yet, or the request failed
     // or took too long
     if (release.pending) {
@@ -3659,6 +3648,17 @@ export const GoToLivePostButton: FC<{
     link.rel = 'noreferrer noopener';
     tab.document.body.appendChild(link);
     link.click();
+    // the stored link still opens; the channel just could not be asked for
+    // a newer one
+    if (release.reconnect) {
+      toaster.show(
+        t(
+          'post_link_reconnect_channel',
+          'Reconnect this channel to open the post link'
+        ),
+        'warning'
+      );
+    }
   }, [demo, onDemo, releaseURL, postId, fetch, toaster, t]);
   if (!releaseURL) return null;
   return (

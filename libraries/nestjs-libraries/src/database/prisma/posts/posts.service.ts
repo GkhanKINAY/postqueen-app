@@ -349,7 +349,8 @@ export class PostsService {
 
     // A channel that is gone or waiting for the user is never asked, and
     // never refreshed: each click would fail the refresh again and send
-    // another reconnect email.
+    // another reconnect email. The stored link still opens; reconnect is a
+    // hint the icon shows alongside it.
     if (
       getIntegration.deletedAt ||
       getIntegration.disabled ||
