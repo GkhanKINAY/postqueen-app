@@ -732,6 +732,7 @@
   "repeat_post_every_label": "Répéter la publication tous les",
   "add_new_tag": "Ajouter un nouveau tag",
   "tag_name": "Nom",
+  "edit_tag": "Modifier le tag",
   "post_is_too_long": "le message est trop long, veuillez le corriger",
   "your_post_should_have_at_least_one_character_or_one_image": "Votre publication doit contenir au moins un caractère ou une image.",
   "internal_edit": "Modification interne",
@@ -747,6 +748,7 @@
   "delete_post_tooltip": "Supprimer la publication",
   "drop_files_here_to_upload": "Déposez vos fichiers ici pour les télécharger",
   "insert_emoji": "Insérer un emoji",
+  "only_images_can_be_added_to_the_content": "Seules les images peuvent être ajoutées au contenu",
   "write_something": "Écrivez quelque chose…",
   "click_channel_to_add": "Cliquez sur un canal pour l'ajouter",
   "connect_your_channels": "Connectez vos canaux",
@@ -851,5 +853,6 @@
   "email_off_button": "Les désactiver",
   "signup_product_news_notice": "Nous vous enverrons de temps en temps des nouveautés sur le produit. Vous pouvez vous désabonner depuis chacune d’elles en un clic.",
   "product_news": "Nouveautés du produit",
-  "product_news_description": "Recevoir de temps en temps un e-mail sur les nouvelles fonctionnalités et améliorations"
+  "product_news_description": "Recevoir de temps en temps un e-mail sur les nouvelles fonctionnalités et améliorations",
+  "facebook_video_title": "Titre de la vidéo (uniquement pour les publications vidéo)"
 }

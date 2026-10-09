@@ -732,6 +732,7 @@
   "repeat_post_every_label": "تكرار النشر كل",
   "add_new_tag": "إضافة وسم جديد",
   "tag_name": "الاسم",
+  "edit_tag": "تعديل الوسم",
   "post_is_too_long": "المنشور طويل جدًا، يرجى تعديله",
   "your_post_should_have_at_least_one_character_or_one_image": "يجب أن يحتوي منشورك على حرف واحد على الأقل أو صورة واحدة.",
   "internal_edit": "تعديل داخلي",
@@ -747,6 +748,7 @@
   "delete_post_tooltip": "حذف المنشور",
   "drop_files_here_to_upload": "أسقط ملفاتك هنا للتحميل",
   "insert_emoji": "إدراج رمز تعبيري",
+  "only_images_can_be_added_to_the_content": "يمكن إضافة الصور فقط إلى المحتوى",
   "write_something": "اكتب شيئًا …",
   "click_channel_to_add": "انقر على قناة لإضافتها",
   "connect_your_channels": "قم بتوصيل قنواتك",
@@ -851,5 +853,6 @@
   "email_off_button": "إيقافها",
   "signup_product_news_notice": "سنرسل إليك أخبار المنتج من حين لآخر. يمكنك إلغاء الاشتراك من أي منها بنقرة واحدة.",
   "product_news": "أخبار المنتج",
-  "product_news_description": "تلقَّ بريدًا إلكترونيًا من حين لآخر عن الميزات الجديدة والتحسينات"
+  "product_news_description": "تلقَّ بريدًا إلكترونيًا من حين لآخر عن الميزات الجديدة والتحسينات",
+  "facebook_video_title": "عنوان الفيديو (لمنشورات الفيديو فقط)"
 }

@@ -102,7 +102,9 @@ export class AuthService {
       ip,
     });
 
-    await this._notificationService.sendEmail(
+    // Sent here rather than queued: someone is waiting on the sign-in page
+    // for it, and every request sends, account or not.
+    await this._emailService.sendEmailSync(
       email,
       'Your PostQueen sign-in code',
       emailContent({
@@ -283,11 +285,11 @@ export class AuthService {
         // user to do something that does not exist and spent sender reputation
         // on an address nothing else needs to reach yet.
         if (isEmailActivationRequired()) {
-          await this._emailService.sendEmail(
+          // Sent here rather than queued: the next screen asks for it.
+          await this._emailService.sendEmailSync(
             body.email,
             'Activate your PostQueen account',
             this.activationEmail(create.users[0].user),
-            'top',
           );
         } else {
           // Ready to use now; with activation, the welcome waits for it.
@@ -478,6 +480,9 @@ export class AuthService {
     );
 
     const link = `${process.env.FRONTEND_URL}/auth/forgot/${resetValues}`;
+    // Queued, not sent here: /auth/forgot answers the same whether or not the
+    // address has an account, and waiting on the email provider only when it
+    // does would let the response time say which.
     await this._notificationService.sendEmail(
       user.email,
       'Reset your PostQueen password',
@@ -593,6 +598,7 @@ export class AuthService {
       throw new Error('Account is already activated');
     }
 
+    // Queued for the same reason as the reset email in forgot().
     await this._emailService.sendEmail(
       user.email,
       'Activate your PostQueen account',
@@ -816,8 +822,9 @@ export class AuthService {
 
   /**
    * Sent once, when an account is ready to use: at sign-up, or at activation
-   * where the install requires it. Behind the sign-in and security emails in
-   * the queue, and from the support address, so a reply reaches a person.
+   * where the install requires it. On the bulk email queue, behind the
+   * sign-in and security emails, and from the support address, so a reply
+   * reaches a person.
    */
   private async sendWelcome(email: string) {
     // A welcome that cannot be queued must not fail the sign-up it follows.

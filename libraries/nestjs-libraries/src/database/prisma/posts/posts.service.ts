@@ -604,6 +604,35 @@ export class PostsService {
     ];
   }
 
+  /**
+   * The posts the `/p/:id` share page shows. Pictures inside the content are
+   * published only by a channel that takes them there (an article, a
+   * newsletter), and only in the first post, so for anything else the page
+   * drops them: a post created through the API could otherwise carry a
+   * tracking pixel to whoever opens the link.
+   */
+  async getPublicPreview(id: string) {
+    const posts = await this.getPostsRecursively(id, true);
+    const [first] = posts;
+    let settings = {};
+    try {
+      settings = JSON.parse(first?.settings || '{}');
+    } catch {
+      settings = {};
+    }
+    const keepFirst =
+      !!first?.integration &&
+      !!this._integrationManager
+        .getSocialIntegration(first.integration.providerIdentifier)
+        ?.inlineImages?.(settings);
+
+    return posts.map((p, index) =>
+      index === 0 && keepFirst
+        ? p
+        : { ...p, content: (p.content || '').replace(/<img\b[^>]*>/gi, '') }
+    );
+  }
+
   async getPosts(orgId: string, query: GetPostsDto) {
     return this._postRepository.getPosts(orgId, query);
   }
@@ -1271,7 +1300,8 @@ export class PostsService {
             true,
             false,
             !/<\/?[a-z][\s\S]*>/i.test(p.content || ''),
-            provider.mentionFormat
+            provider.mentionFormat,
+            !!provider.inlineImages?.(settings)
           )
         );
 

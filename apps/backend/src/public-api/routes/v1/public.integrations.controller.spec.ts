@@ -160,7 +160,12 @@ describe('a deleted channel', () => {
     // A removed channel named in ?refresh= is counted like a new one.
     assert.match(
       permissions,
-      /if \(refreshChannelId\) \{\s*const existingIntegration =\s*await this\._integrationService\.getIntegrationByIdNotDeleted\(/
+      /if \(refreshChannelId\) \{\s*const existingIntegration =\s*await this\._integrationService\.getIntegrationByInternalId\(/
+    );
+    // ...whose lookup skips a removed channel too.
+    assert.match(
+      repository,
+      /getIntegrationByInternalId\(org: string, internalId: string\) \{\s*return this\._integration\.model\.integration\.findFirst\(\{\s*where: \{\s*organizationId: org,\s*internalId,\s*deletedAt: null,/
     );
   });
 

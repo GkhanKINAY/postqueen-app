@@ -750,6 +750,7 @@
   "repeat_post_every_label": "Gönderiyi Her Tekrarla",
   "add_new_tag": "Yeni Etiket Ekle",
   "tag_name": "Adı",
+  "edit_tag": "Etiketi Düzenle",
   "post_is_too_long": "gönderi çok uzun, lütfen düzeltin",
   "your_post_should_have_at_least_one_character_or_one_image": "Gönderinizde en az bir karakter veya bir görsel olmalıdır.",
   "internal_edit": "Dahili Düzenleme",
@@ -765,6 +766,7 @@
   "delete_post_tooltip": "Gönderiyi Sil",
   "drop_files_here_to_upload": "Yüklemek için dosyalarınızı buraya bırakın",
   "insert_emoji": "Emoji Ekle",
+  "only_images_can_be_added_to_the_content": "İçeriğe yalnızca görseller eklenebilir",
   "write_something": "Bir şeyler yazın …",
   "click_channel_to_add": "Eklemek için bir kanal seçin",
   "connect_your_channels": "Kanallarınızı Bağlayın",
@@ -869,5 +871,6 @@
   "email_off_button": "Kapat",
   "signup_product_news_notice": "Zaman zaman size ürün haberleri göndereceğiz. Her birinden tek tıkla abonelikten çıkabilirsiniz.",
   "product_news": "Ürün haberleri",
-  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın"
+  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın",
+  "facebook_video_title": "Video başlığı (yalnızca video gönderileri için)"
 }
