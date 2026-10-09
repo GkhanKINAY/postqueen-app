@@ -40,6 +40,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import type { Integration, Post, State, Tags } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/helpers/use.add.provider';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { timer } from '@gitroom/helpers/utils/timer';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -3571,6 +3572,8 @@ export const GoToLivePostButton: FC<{
   onDemo?: () => void;
 }> = ({ postId, releaseURL, className, demo, demoTooltip, onDemo }) => {
   const fetch = useFetch();
+  const toaster = useToaster();
+  const t = useT();
   const go = useCallback(async () => {
     if (demo) {
       onDemo?.();
@@ -3580,7 +3583,8 @@ export const GoToLivePostButton: FC<{
       return;
     }
     // Opened before the request so popup blockers still see the click, and
-    // severed from this tab the way noopener would.
+    // severed from this tab the way noopener would. Closed again when there
+    // is nothing to open.
     const tab = window.open('', '_blank');
     if (!tab) {
       return;
@@ -3588,16 +3592,54 @@ export const GoToLivePostButton: FC<{
     tab.opener = null;
     // Some platforms only expose the real post link a while after publishing,
     // so ask the backend for the current one instead of the stored one.
-    let url = releaseURL;
+    let release = {
+      releaseURL: '',
+      pending: true,
+      unavailable: false,
+      reconnect: false,
+    };
     try {
-      url =
-        (await (await fetch(`/posts/${postId}/release-url`)).json())
-          .releaseURL || url;
+      release = await Promise.race([
+        fetch(`/posts/${postId}/release-url`).then((r) => r.json()),
+        timer(5000).then(() => release),
+      ]);
     } catch (e) {}
+    if (release.unavailable) {
+      tab.close();
+      toaster.show(
+        t('post_has_no_public_link', 'This post has no public link'),
+        'warning'
+      );
+      return;
+    }
+    if (release.reconnect) {
+      tab.close();
+      toaster.show(
+        t(
+          'post_link_reconnect_channel',
+          'Reconnect this channel to open the post link'
+        ),
+        'warning'
+      );
+      return;
+    }
+    // the platform has not released the post link yet, or the request failed
+    // or took too long
+    if (release.pending) {
+      tab.close();
+      toaster.show(
+        t(
+          'post_link_not_ready',
+          'The post link is not available yet, please try again in a minute'
+        ),
+        'warning'
+      );
+      return;
+    }
     // multi-target posts (several subreddits / communities / channels) join
     // their URLs with commas: open the first one
-    tab.location.href = url.split(',')[0];
-  }, [demo, onDemo, releaseURL, postId, fetch]);
+    tab.location.href = (release.releaseURL || releaseURL).split(',')[0];
+  }, [demo, onDemo, releaseURL, postId, fetch, toaster, t]);
   if (!releaseURL) return null;
   return (
     <button

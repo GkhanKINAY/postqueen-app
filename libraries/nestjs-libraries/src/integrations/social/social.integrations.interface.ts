@@ -37,13 +37,21 @@ export interface IAuthenticator {
   /**
    * The final post id and URL to persist when the stored releaseId is still an
    * intermediate one (a publish id the platform swaps for the public post id
-   * later). Undefined when there is nothing to resolve, or nothing yet.
+   * later). `pending` while the platform has no final id yet, `unavailable`
+   * when the post will never get one (not published for public viewing),
+   * undefined when there is nothing to resolve.
    */
   resolveReleaseId?(
     accessToken: string,
     releaseId: string,
     integration: Integration,
-  ): Promise<{ postId: string; releaseURL: string } | undefined>;
+    settings: any,
+  ): Promise<
+    | { postId: string; releaseURL: string }
+    | { pending: true }
+    | { unavailable: true }
+    | undefined
+  >;
   /**
    * Lifetime totals for many platform post ids at once. Used by the snapshot
    * sync, never by the per-post Statistics modal (that still calls

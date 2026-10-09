@@ -252,6 +252,7 @@ export class PostsService {
       id: string;
       releaseId: string;
       releaseURL: string;
+      settings: string;
       integration: Integration;
     }
   ) {
@@ -262,10 +263,20 @@ export class PostsService {
     const resolved = await integrationProvider.resolveReleaseId?.(
       post.integration.token,
       post.releaseId,
-      post.integration
+      post.integration,
+      JSON.parse(post.settings || '{}')
     );
-    if (!resolved || resolved.postId === post.releaseId) {
-      return { releaseId: post.releaseId, releaseURL: post.releaseURL };
+    if (
+      !resolved ||
+      !('postId' in resolved) ||
+      resolved.postId === post.releaseId
+    ) {
+      return {
+        releaseId: post.releaseId,
+        releaseURL: post.releaseURL,
+        pending: !!resolved && 'pending' in resolved,
+        unavailable: !!resolved && 'unavailable' in resolved,
+      };
     }
 
     await this._postRepository.updateResolvedRelease(
@@ -274,14 +285,24 @@ export class PostsService {
       resolved.postId,
       resolved.releaseURL
     );
-    return { releaseId: resolved.postId, releaseURL: resolved.releaseURL };
+    return {
+      releaseId: resolved.postId,
+      releaseURL: resolved.releaseURL,
+      pending: false,
+      unavailable: false,
+    };
   }
 
   async getReleaseURL(
     orgId: string,
     postId: string,
     forceRefresh = false
-  ): Promise<{ releaseURL: string }> {
+  ): Promise<{
+    releaseURL: string;
+    pending?: boolean;
+    unavailable?: boolean;
+    reconnect?: boolean;
+  }> {
     const post = await this._postRepository.getPostById(postId, orgId);
     if (!post || post.deletedAt || !post.releaseURL) {
       return { releaseURL: '' };
@@ -297,15 +318,14 @@ export class PostsService {
 
     const getIntegration = post.integration!;
 
-    if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
-      forceRefresh
-    ) {
+    // only refreshed once the platform rejects the token, so a post that is
+    // already resolved never reaches the platform or the channel
+    if (forceRefresh) {
       const data = await this._refreshIntegrationService.refresh(
         getIntegration
       );
       if (!data) {
-        return { releaseURL: post.releaseURL };
+        return { releaseURL: post.releaseURL, reconnect: true };
       }
 
       const { accessToken } = data;
@@ -318,13 +338,16 @@ export class PostsService {
         }
       } else {
         await this._integrationService.disconnectChannel(orgId, getIntegration);
-        return { releaseURL: post.releaseURL };
+        return { releaseURL: post.releaseURL, reconnect: true };
       }
     }
 
     try {
-      const { releaseURL } = await this.resolveRelease(orgId, post);
-      return { releaseURL };
+      const { releaseURL, pending, unavailable } = await this.resolveRelease(
+        orgId,
+        post
+      );
+      return { releaseURL, pending, unavailable };
     } catch (e) {
       console.log(e);
       if (e instanceof RefreshToken && !forceRefresh) {
@@ -332,7 +355,7 @@ export class PostsService {
       }
     }
 
-    return { releaseURL: post.releaseURL };
+    return { releaseURL: post.releaseURL, pending: true };
   }
 
   async checkPostAnalytics(
@@ -393,7 +416,11 @@ export class PostsService {
     // }
 
     try {
-      const { releaseId } = await this.resolveRelease(orgId, post);
+      const { releaseId, pending } = await this.resolveRelease(orgId, post);
+      // the platform has no final id yet, so it has no metrics either
+      if (pending) {
+        return [];
+      }
 
       const loadAnalytics = await integrationProvider.postAnalytics(
         getIntegration.internalId,

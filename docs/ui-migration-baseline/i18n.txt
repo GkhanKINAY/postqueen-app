@@ -2209,10 +2209,13 @@ post_deleted_successfully
 post_failed_fix
 post_failed_reason
 post_failed_when
+post_has_no_public_link
 post_id_copied
 post_immediately
 post_is_too_long
 post_it_again
+post_link_not_ready
+post_link_reconnect_channel
 post_move_failed
 post_needs_content_or_image
 post_no_longer_exists

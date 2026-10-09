@@ -163,19 +163,26 @@ export class PostMetricsService {
     // The same release resolution the Statistics modal runs, so a post whose
     // stored id is still an intermediate one (a TikTok publish id) gets its
     // final id persisted by the sync too, not only when someone opens it.
+    // A post whose platform has no final id yet has no metrics either, so it
+    // is left out instead of being asked about twice.
+    const pending = new Set<string>();
     if (provider.resolveReleaseId) {
       for (const post of posts) {
         try {
-          const { releaseId } = await this._postsService.resolveRelease(
+          const resolved = await this._postsService.resolveRelease(
             organizationId,
             {
               id: post.id,
               releaseId: post.releaseId as string,
               releaseURL: post.releaseURL as string,
+              settings: post.settings as string,
               integration: { ...integration, token },
             },
           );
-          post.releaseId = releaseId;
+          post.releaseId = resolved.releaseId;
+          if (resolved.pending) {
+            pending.add(post.id);
+          }
         } catch (err) {
           // The stored id stays, and postsAnalytics below refreshes an
           // expired token on its own, so stop asking with this one
@@ -191,7 +198,9 @@ export class PostMetricsService {
     }
 
     const byReleaseId = new Map(
-      posts.filter((p) => p.releaseId).map((p) => [p.releaseId as string, p]),
+      posts
+        .filter((p) => p.releaseId && !pending.has(p.id))
+        .map((p) => [p.releaseId as string, p]),
     );
 
     let rows;
