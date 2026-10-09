@@ -169,22 +169,38 @@ const trialEmailCode = (email?: string | null) => {
  * changes at once. A cheaper plan, or yearly to monthly, waits for the end of
  * the paid period. Everything else (a dearer plan, monthly to yearly) is an
  * upgrade, charged now and applied once paid.
+ *
+ * Monthly to yearly is ranked by tier, not by the price per month: a year
+ * costs less per month than the same tier's month, so comparing prices made
+ * every switch to yearly on the same tier wait for renewal, uncharged and
+ * without the year's credits. It is an upgrade onto the same tier or a higher
+ * one and waits for renewal onto a lower one. The rank is the tier's list
+ * price per month in `pricing`, retired tiers included; a tier that cannot be
+ * read is compared by price as before.
  */
 const planChangeKind = (
-  from: Stripe.Price,
-  to: Stripe.Price,
+  from: { price: Stripe.Price; tier?: string },
+  to: { price: Stripe.Price; tier?: string },
   status: Stripe.Subscription.Status
 ): 'in_trial' | 'at_period_end' | 'upgrade' => {
   if (status === 'trialing') {
     return 'in_trial';
   }
+  const fromInterval = from.price.recurring?.interval;
+  const toInterval = to.price.recurring?.interval;
+  if (fromInterval === 'year' && toInterval === 'month') {
+    return 'at_period_end';
+  }
+  const rank = (tier?: string) =>
+    (tier && pricing[normalizeTier(tier)]?.month_price) || undefined;
+  const fromRank = rank(from.tier);
+  const toRank = rank(to.tier);
+  if (fromInterval === 'month' && toInterval === 'year' && fromRank && toRank) {
+    return toRank < fromRank ? 'at_period_end' : 'upgrade';
+  }
   const perMonth = (price: Stripe.Price) =>
     (price.unit_amount || 0) / (price.recurring?.interval === 'year' ? 12 : 1);
-  const yearlyToMonthly =
-    from.recurring?.interval === 'year' && to.recurring?.interval === 'month';
-  return yearlyToMonthly || perMonth(to) < perMonth(from)
-    ? 'at_period_end'
-    : 'upgrade';
+  return perMonth(to.price) < perMonth(from.price) ? 'at_period_end' : 'upgrade';
 };
 
 @PaymentProvider({ provider: STRIPE_PROVIDER })
@@ -599,6 +615,21 @@ export class StripeService extends PaymentProviderAbstract {
         ? 'MONTHLY'
         : metadata?.period) as 'MONTHLY' | 'YEARLY',
     };
+  }
+
+  /**
+   * The tier of a price whose product is only an id, as on a listed
+   * subscription, looked up among the products already listed. Undefined
+   * when the product is not one of the tiers'.
+   */
+  private tierOfListedPrice(price: Stripe.Price, products: Stripe.Product[]) {
+    const product =
+      typeof price.product === 'string'
+        ? products.find((p) => p.id === price.product)
+        : price.product;
+    return product
+      ? this.tierOfPrice({ ...price, product } as Stripe.Price).billing
+      : undefined;
   }
 
   /**
@@ -1683,8 +1714,14 @@ export class StripeService extends PaymentProviderAbstract {
       if (
         current &&
         item &&
-        planChangeKind(item.price, findPrice!, current.status) ===
-          'at_period_end'
+        planChangeKind(
+          {
+            price: item.price,
+            tier: this.tierOfListedPrice(item.price, allProducts.data),
+          },
+          { price: findPrice!, tier: body.billing },
+          current.status
+        ) === 'at_period_end'
       ) {
         return {
           price: 0,
@@ -2873,7 +2910,14 @@ export class StripeService extends PaymentProviderAbstract {
     try {
       const current = currentUserSubscription.data[0];
       const item = current.items.data[0];
-      const change = planChangeKind(item.price, findPrice!, current.status);
+      const change = planChangeKind(
+        {
+          price: item.price,
+          tier: this.tierOfListedPrice(item.price, allProducts.data),
+        },
+        { price: findPrice!, tier: body.billing },
+        current.status
+      );
 
       // A pending downgrade scheduled earlier is replaced by whatever is asked
       // now; an upgrade or an in-trial change cannot sit under a schedule.
