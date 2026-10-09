@@ -282,6 +282,20 @@ export class SubscriptionRepository {
     });
   }
 
+  /** A founding member's row has no end date to write. */
+  updateCancelAt(organizationId: string, cancelAt: number | null) {
+    return this._subscription.model.subscription.updateMany({
+      where: {
+        organizationId,
+        isLifetime: false,
+        deletedAt: null,
+      },
+      data: {
+        cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
+      },
+    });
+  }
+
   updateCustomerId(organizationId: string, customerId: string) {
     return this._organization.model.organization.update({
       where: {
