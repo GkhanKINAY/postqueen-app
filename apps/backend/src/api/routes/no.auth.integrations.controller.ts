@@ -160,11 +160,15 @@ export class NoAuthIntegrationsController {
               auth.accessToken
             );
             // reConnect answers for the page; the person is still the one
-            // who just logged in.
+            // who just logged in. The refresh token and its expiry come from
+            // this new authentication: body.refresh is empty on the OAuth
+            // callback, and storing it wiped the refresh token, so the
+            // channel broke again as soon as the access token ran out.
             return res({
               ...newAuth,
               platformUserId: auth.platformUserId,
-              refreshToken: body.refresh,
+              refreshToken: auth.refreshToken,
+              expiresIn: auth.expiresIn,
             });
           } catch (err: any) {
             return res({
