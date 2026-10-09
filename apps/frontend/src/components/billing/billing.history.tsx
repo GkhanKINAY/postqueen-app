@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import useSWR from 'swr';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { tierLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -36,8 +37,15 @@ const STATUS_LOOK: Record<Invoice['status'], string> = {
   void: 'bg-pqHover text-pqMuted',
 };
 
+// The route is admin-only, like Billing itself.
+const useIsOrgAdmin = () => {
+  const user = useUser();
+  return ['ADMIN', 'SUPERADMIN'].includes(user?.role!);
+};
+
 const useInvoices = () => {
   const fetch = useFetch();
+  const isOrgAdmin = useIsOrgAdmin();
   const load = useCallback(async (): Promise<Invoice[]> => {
     // customFetch resolves a 4xx/5xx; a failed read must not show as an
     // account that was never billed.
@@ -47,7 +55,9 @@ const useInvoices = () => {
     }
     return response.json();
   }, [fetch]);
-  return useSWR('billing-invoices', load, { revalidateOnFocus: false });
+  return useSWR(isOrgAdmin ? 'billing-invoices' : null, load, {
+    revalidateOnFocus: false,
+  });
 };
 
 /** Minor units to a price, in the invoice's own currency. */
@@ -134,6 +144,7 @@ const HistoryGhost: FC = () => (
  */
 export const BillingHistory: FC = () => {
   const t = useT();
+  const isOrgAdmin = useIsOrgAdmin();
   const { data, error, isLoading } = useInvoices();
   const [visible, setVisible] = useState(PAGE_SIZE);
 
@@ -169,6 +180,10 @@ export const BillingHistory: FC = () => {
     failed: t('billing_status_failed', 'Failed'),
     void: t('billing_status_void', 'Void'),
   };
+
+  if (!isOrgAdmin) {
+    return null;
+  }
 
   return (
     <div

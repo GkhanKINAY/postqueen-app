@@ -85,6 +85,11 @@ const TRIAL_REFUSALS = [TRIAL_CARD_REUSED, TRIAL_CARD_PREPAID];
  */
 const DUPLICATE_SUBSCRIPTION = 'duplicate-subscription';
 
+/** Whether `a` came before `b`; the id breaks a tie in the same second. */
+const isOlderSubscription = (a: Stripe.Subscription, b: Stripe.Subscription) =>
+  a.id !== b.id &&
+  (a.created < b.created || (a.created === b.created && a.id < b.id));
+
 /**
  * How the founding membership's invoice line starts. The hosted checkout
  * leaves no metadata on its invoice, so the billing history knows it by this.
@@ -1010,9 +1015,7 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     const isOlder = (other: Stripe.Subscription) =>
-      other.id !== subscription.id &&
-      (other.created < subscription.created ||
-        (other.created === subscription.created && other.id < subscription.id));
+      isOlderSubscription(other, subscription);
 
     const older = (await this.entitlingSubscriptions(customer)).find(isOlder);
     if (older) {
@@ -1022,29 +1025,83 @@ export class StripeService extends PaymentProviderAbstract {
 
     // A first checkout creates no customer up front (see `embedded`), so two
     // of them opened together make two customers, and the organization is
-    // linked to whichever webhook landed first. The older subscription is
-    // still the one kept: when it is on the organization's customer, this one
-    // goes; when this one is older, the newer ones there go, and this one is
-    // granted below, which moves the organization onto its customer
-    // (`adoptSubscriptionCustomer`) now that the old one bills nothing.
-    const organizationId = subscription.metadata?.organizationId;
-    if (!organizationId) {
-      return false;
-    }
-    const org = await this._organizationService.getOrgById(organizationId);
-    if (!org?.paymentId?.startsWith('cus_') || org.paymentId === customer) {
-      return false;
-    }
-    const theirs = await this.entitlingSubscriptions(org.paymentId);
-    const olderThere = theirs.find(isOlder);
+    // linked to whichever webhook landed first. When the older one is on the
+    // organization's customer, this one goes. When this one is older, it is
+    // checked like any other first and only then replaces the newer ones
+    // there (`supersedeNewerSubscriptions`).
+    const elsewhere = await this.subscriptionsOnOrganizationCustomer(
+      subscription
+    );
+    const olderThere = elsewhere?.entitled.find(isOlder);
     if (olderThere) {
       await this.cancelAsDuplicate(subscription, olderThere.id, event.id);
       return true;
     }
-    for (const newer of theirs) {
-      await this.cancelAsDuplicate(newer, subscription.id, event.id);
-    }
     return false;
+  }
+
+  /**
+   * The organization this subscription was sold to, and what entitles it on
+   * its own customer, when that is not the customer the subscription is on.
+   */
+  private async subscriptionsOnOrganizationCustomer(
+    subscription: Stripe.Subscription
+  ) {
+    const organizationId = subscription.metadata?.organizationId;
+    if (!organizationId) {
+      return null;
+    }
+    const org = await this._organizationService.getOrgById(organizationId);
+    if (
+      !org?.paymentId?.startsWith('cus_') ||
+      org.paymentId === subscription.customer
+    ) {
+      return null;
+    }
+    return {
+      org,
+      entitled: await this.entitlingSubscriptions(org.paymentId),
+    };
+  }
+
+  /**
+   * The other half of a duplicate across two customers: this subscription is
+   * the older one, and it has passed every check a grant makes (card, trial,
+   * entitlement), so the newer ones on the organization's customer go.
+   *
+   * The organization is moved onto this subscription's customer first, so
+   * the newer ones' `deleted` events find no organization on theirs and
+   * cannot drop the plan to FREE in between.
+   */
+  private async supersedeNewerSubscriptions(
+    subscription: Stripe.Subscription,
+    eventId: string
+  ) {
+    const elsewhere = await this.subscriptionsOnOrganizationCustomer(
+      subscription
+    );
+    if (!elsewhere?.entitled.length) {
+      return;
+    }
+    if (
+      elsewhere.entitled.some((other) =>
+        isOlderSubscription(other, subscription)
+      )
+    ) {
+      return;
+    }
+    Logger.warn(
+      `[stripe] organization ${elsewhere.org.id} now uses customer ${subscription.customer} (was ${elsewhere.org.paymentId}): subscription ${subscription.id} there is older than ${elsewhere.entitled
+        .map((other) => other.id)
+        .join(', ')}`
+    );
+    await this._subscriptionService.updateCustomerId(
+      elsewhere.org.id,
+      subscription.customer as string
+    );
+    for (const newer of elsewhere.entitled) {
+      await this.cancelAsDuplicate(newer, subscription.id, eventId);
+    }
   }
 
   private async cancelAsDuplicate(
@@ -1139,6 +1196,7 @@ export class StripeService extends PaymentProviderAbstract {
       return { ok: true, granted: false, reason: 'incomplete' };
     }
 
+    await this.supersedeNewerSubscriptions(event.data.object, event.id);
     await this.adoptSubscriptionCustomer(event.data.object);
 
     const saved = await this._subscriptionService.createOrUpdateSubscription(

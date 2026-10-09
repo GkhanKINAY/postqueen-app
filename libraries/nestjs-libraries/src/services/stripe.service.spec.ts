@@ -125,6 +125,10 @@ for (const resource of [
 
 let localSub: Record<string, unknown> | null;
 let failCancelAt: boolean;
+// The organization's Stripe customer, moved by `updateCustomerId`.
+let orgCustomer: string;
+const orgOn = (customer: string) =>
+  customer === orgCustomer ? { id: 'org1' } : null;
 const subscriptionService = {
   createOrUpdateSubscription: record('createOrUpdateSubscription', () => ({})),
   deleteSubscription: record('deleteSubscription', () => ({ count: 1 })),
@@ -137,15 +141,19 @@ const subscriptionService = {
   getSubscriptionByOrganizationId: async () => localSub,
   getSubscription: async () => null,
   checkSubscription: async () => null,
-  getOrganizationByCustomerId: async () => ({ id: 'org1' }),
+  getOrganizationByCustomerId: async (customer: string) => orgOn(customer),
+  updateCustomerId: record('updateCustomerId', (_org, customer) => {
+    orgCustomer = customer;
+  }),
 };
 const organizationService = {
   getOrgById: async () => ({
     id: 'org1',
-    paymentId: 'cus_1',
+    paymentId: orgCustomer,
     isTrailing: false,
   }),
-  getOrgByCustomerId: async () => ({ id: 'org1' }),
+  getOrgByCustomerId: async (customer: string) => orgOn(customer),
+  withdrawTrial: record('withdrawTrial', () => ({})),
 };
 
 const service = () =>
@@ -154,7 +162,7 @@ const service = () =>
     organizationService as any,
     { getUserById: async () => ({ email: 'a@b.co' }) } as any,
     {} as any,
-    {} as any,
+    { inAppNotification: async () => ({}) } as any,
   );
 
 const created = (id: string) =>
@@ -178,6 +186,7 @@ beforeEach(() => {
   prices = [];
   localSub = { isLifetime: false };
   failCancelAt = false;
+  orgCustomer = 'cus_1';
 });
 
 describe('a second subscription on one customer', () => {
@@ -239,6 +248,102 @@ describe('a second subscription on one customer', () => {
       'duplicate subscription',
     );
     assert.equal(called('createOrUpdateSubscription').length, 1);
+  });
+
+  it('moves the organization before cancelling, so the deleted event cannot drop the plan', async () => {
+    subs = [
+      sub('sub_first_seen', 200),
+      sub('sub_older', 100, {
+        customer: 'cus_2',
+        metadata: { uniqueId: 'u-sub_older', organizationId: 'org1' },
+      }),
+    ];
+    await service().createSubscription({
+      ...created('sub_older'),
+      data: { object: { id: 'sub_older', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    const order = calls.map((c) => c.method);
+    assert.ok(
+      order.indexOf('updateCustomerId') < order.indexOf('subscriptions.cancel'),
+    );
+    assert.equal(orgCustomer, 'cus_2');
+
+    // The cancelled one's `deleted`, keyed by its customer, which no
+    // organization holds any more.
+    calls = [];
+    await service().deleteSubscription(deleted('sub_first_seen'));
+    assert.deepEqual(called('deleteSubscription'), [['cus_1', 'stripe']]);
+    assert.equal(orgOn('cus_1'), null);
+  });
+
+  it('leaves the paying one alone when the older one is a refused trial', async () => {
+    localSub = null;
+    subs = [
+      sub('sub_paying', 200),
+      sub('sub_trial', 100, {
+        customer: 'cus_2',
+        status: 'trialing',
+        default_payment_method: 'pm_prepaid',
+        metadata: { uniqueId: 'u-sub_trial', organizationId: 'org1' },
+      }),
+    ];
+    const methods = Object.getPrototypeOf(probe.paymentMethods);
+    const original = methods.retrieve;
+    methods.retrieve = async () => ({ card: { funding: 'prepaid' } });
+    try {
+      const result = await service().createSubscription({
+        ...created('sub_trial'),
+        data: { object: { id: 'sub_trial', customer: 'cus_2' } },
+      } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+      assert.equal((result as { reason: string }).reason, 'trial card refused');
+    } finally {
+      methods.retrieve = original;
+    }
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_trial'],
+    );
+    assert.equal(called('updateCustomerId').length, 0);
+    assert.equal(orgCustomer, 'cus_1');
+  });
+
+  it('leaves the paying one alone when the older one is still incomplete', async () => {
+    subs = [
+      sub('sub_paying', 200),
+      sub('sub_waiting', 100, {
+        customer: 'cus_2',
+        status: 'incomplete',
+        metadata: { uniqueId: 'u-sub_waiting', organizationId: 'org1' },
+      }),
+    ];
+    const result = await service().createSubscription({
+      ...created('sub_waiting'),
+      data: { object: { id: 'sub_waiting', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    assert.equal((result as { reason: string }).reason, 'incomplete');
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('updateCustomerId').length, 0);
+  });
+
+  it('leaves the paying one alone when a late retry finds the older one cancelled', async () => {
+    subs = [
+      sub('sub_paying', 200),
+      sub('sub_gone', 100, {
+        customer: 'cus_2',
+        status: 'canceled',
+        metadata: { uniqueId: 'u-sub_gone', organizationId: 'org1' },
+      }),
+    ];
+    await service().createSubscription({
+      ...created('sub_gone'),
+      data: { object: { id: 'sub_gone', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('createOrUpdateSubscription').length, 0);
   });
 
   it('reports a cancelled duplicate on a second customer as done', async () => {
