@@ -7,7 +7,7 @@ import {
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { mapInstagramMediaInsights, insightTimeSeries } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
+import { mapInstagramMediaInsights, mapInstagramStoryInsights, insightTimeSeries } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { parseMetaSignedRequest } from '@gitroom/nestjs-libraries/integrations/social/meta.signed.request';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -1440,18 +1440,43 @@ export class InstagramProvider
 
     for (const postId of platformPostIds) {
       try {
-        const response = await this.fetch(
-          `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=views,reach,saved,likes,comments,shares&access_token=${accessToken}`,
-          {},
-          this.identifier
-        );
-        const { data } = await (
-          response
-        ).json();
+        const insights = async (metrics: string) =>
+          (
+            await this.fetch(
+              `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`,
+              {},
+              this.identifier
+            )
+          ).json();
+        let story = false;
+        let data: any[] | undefined;
+        try {
+          ({ data } = await insights('views,reach,saved,likes,comments,shares'));
+        } catch (err) {
+          // A story refuses the post metrics as a whole ("does not support the
+          // saved, likes, comments metric for this media product type") and
+          // has a set of its own, asked only after that refusal so a post or
+          // reel still costs one request.
+          if (
+            String((err as any)?.details?.[0]?.json ?? '').indexOf(
+              'for this media product type'
+            ) === -1
+          ) {
+            throw err;
+          }
+          story = true;
+          ({ data } = await insights(
+            'views,reach,shares,replies,total_interactions'
+          ));
+        }
         if (!data || data.length === 0) {
           continue;
         }
-        rows.push(mapInstagramMediaInsights(postId, data));
+        rows.push(
+          story
+            ? mapInstagramStoryInsights(postId, data)
+            : mapInstagramMediaInsights(postId, data)
+        );
       } catch (err) {
         const json = String((err as any)?.details?.[0]?.json ?? '');
         // A story is deleted 24 hours after it goes up, and Graph answers its

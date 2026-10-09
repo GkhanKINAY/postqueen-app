@@ -8,6 +8,7 @@ import {
   mapFacebookPostInsights,
   mapFacebookVideoInsights,
   mapInstagramMediaInsights,
+  mapInstagramStoryInsights,
   mapLinkedInShareStats,
   mapPinterestSummaryMetrics,
   mapThreadsInsights,
@@ -176,6 +177,21 @@ describe('platform field maps', () => {
     assert.equal(mapped.comments, 4);
     assert.equal(mapped.shares, 1);
     assert.equal(mapped.raw?.reach, 180);
+  });
+
+  it('maps an Instagram story: replies are comments, likes stay unknown', () => {
+    const mapped = mapInstagramStoryInsights('story1', [
+      { name: 'views', values: [{ value: 8 }] },
+      { name: 'reach', values: [{ value: 6 }] },
+      { name: 'shares', values: [{ value: 1 }] },
+      { name: 'replies', values: [{ value: 2 }] },
+      { name: 'total_interactions', values: [{ value: 4 }] },
+    ]);
+    assert.equal(mapped.impressions, 8);
+    assert.equal(mapped.reactions, null);
+    assert.equal(mapped.comments, 2);
+    assert.equal(mapped.shares, 1);
+    assert.deepEqual(mapped.raw, { reach: 6, interactions: 4 });
   });
 
   it('leaves Facebook comments and shares null', () => {

@@ -217,6 +217,28 @@ export function mapInstagramMediaInsights(
   });
 }
 
+// A story has no likes, comments or saves in the Media Insights API. Its
+// replies are its comments, as Threads maps them; likes stay unknown, never
+// zero, so no engagement rate is invented for it.
+export function mapInstagramStoryInsights(
+  platformPostId: string,
+  data: GraphInsight[] | null | undefined
+): NormalizedPostMetrics {
+  const byName = insightsByName(data);
+  const raw: Record<string, number> = {};
+  const reach = asCount(byName.reach);
+  const interactions = asCount(byName.total_interactions);
+  if (reach != null) raw.reach = reach;
+  if (interactions != null) raw.interactions = interactions;
+  return row(platformPostId, {
+    impressions: asCount(byName.views),
+    reactions: null,
+    comments: asCount(byName.replies),
+    shares: asCount(byName.shares),
+    raw: Object.keys(raw).length ? raw : undefined,
+  });
+}
+
 export function mapFacebookPostInsights(
   platformPostId: string,
   data: GraphInsight[] | null | undefined

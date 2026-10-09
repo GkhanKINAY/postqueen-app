@@ -167,6 +167,95 @@ describe('Instagram post analytics, media by media', () => {
   }
 });
 
+describe('Instagram story metrics', () => {
+  // Graph's answer per media id and metric list, with every request counted.
+  const graph = (answer: (id: string, metrics: string) => [number, object]) => {
+    const original = globalThis.fetch;
+    const asked: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      const [path, query] = String(url).split('/insights?');
+      const id = path.split('/').pop()!;
+      const metrics = new URLSearchParams(query).get('metric')!;
+      asked.push(`${id}:${metrics}`);
+      const [status, body] = answer(id, metrics);
+      return new Response(JSON.stringify(body), { status });
+    }) as typeof fetch;
+    return {
+      asked,
+      restore: () => {
+        globalThis.fetch = original;
+      },
+    };
+  };
+  const notForStories = {
+    error: {
+      message:
+        '(#100) The Media Insights API does not support the saved, likes, comments metric for this media product type.',
+      type: 'OAuthException',
+      code: 100,
+    },
+  };
+  const storyData = {
+    data: [
+      { name: 'views', values: [{ value: 8 }] },
+      { name: 'reach', values: [{ value: 6 }] },
+      { name: 'shares', values: [{ value: 0 }] },
+      { name: 'replies', values: [{ value: 0 }] },
+      { name: 'total_interactions', values: [{ value: 4 }] },
+    ],
+  };
+  const postData = {
+    data: [
+      { name: 'views', values: [{ value: 125 }] },
+      { name: 'likes', values: [{ value: 5 }] },
+      { name: 'comments', values: [{ value: 1 }] },
+    ],
+  };
+
+  for (const [name, provider] of tiles) {
+    it(`${name}: asks a story for its own metrics once it refuses the post ones`, async () => {
+      const g = graph((id, metrics) =>
+        metrics.includes('saved') ? [400, notForStories] : [200, storyData]
+      );
+      try {
+        const [row] = await provider.postsAnalytics!('ig', 'token', ['story1']);
+        assert.equal(g.asked.length, 2);
+        assert.equal(g.asked[1], 'story1:views,reach,shares,replies,total_interactions');
+        assert.deepEqual(
+          [row.impressions, row.reactions, row.comments, row.shares],
+          [8, null, 0, 0]
+        );
+      } finally {
+        g.restore();
+      }
+    });
+
+    it(`${name}: still asks a post or reel once, with the post metrics`, async () => {
+      const g = graph(() => [200, postData]);
+      try {
+        const [row] = await provider.postsAnalytics!('ig', 'token', ['reel1']);
+        assert.deepEqual(g.asked, ['reel1:views,reach,saved,likes,comments,shares']);
+        assert.deepEqual([row.impressions, row.reactions, row.comments], [125, 5, 1]);
+      } finally {
+        g.restore();
+      }
+    });
+
+    it(`${name}: does not ask again for a story too few accounts have seen`, async () => {
+      const g = graph(() => [
+        400,
+        { error: { message: '(#10) Not enough viewers for the media to show insights', code: 10 } },
+      ]);
+      try {
+        assert.deepEqual(await provider.postsAnalytics!('ig', 'token', ['story1']), []);
+        assert.equal(g.asked.length, 1);
+      } finally {
+        g.restore();
+      }
+    });
+  }
+});
+
 describe('Instagram post metrics availability', () => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
