@@ -158,11 +158,13 @@ export const stripHtmlValidation = (
   }
 
   if (type === 'html') {
-    // Entities are decoded in the text only. Decoding them inside a tag
-    // turned an attribute value holding `&amp;quot;` into a closing quote and
-    // whatever followed into an attribute of its own (an onerror on a
-    // picture, an onclick on a link) in the HTML a channel publishes.
-    return decodeTextEntities(
+    // The result is HTML a channel publishes as it is (WordPress, ListMonk)
+    // or parses (Telegram, an X article), so the text stays encoded the way
+    // parse5 serialized it: a typed "<script>" is "&lt;script&gt;", text and
+    // not a tag. Only &nbsp; becomes a space, as on the other paths. Attribute
+    // values are left alone too: decoding `&amp;quot;` inside a tag closed the
+    // attribute and made whatever followed an attribute of its own.
+    return decodeTextSpaces(
       striptags(
         convertMention(
           inlineImages ? convertImages(value) : value,
@@ -277,21 +279,12 @@ export const stripHtmlValidation = (
     .replace(/&lt;/gi, '<');
 };
 
-// The same decoding the other types apply, on the text between tags only.
-const decodeTextEntities = (html: string) =>
+// &nbsp; as a space, on the text between tags only. "&amp;nbsp;" (a typed
+// "&nbsp;") does not match, so nothing is decoded twice.
+const decodeTextSpaces = (html: string) =>
   html
     .split(/(<[^>]*>)/)
-    .map((part, index) =>
-      index % 2
-        ? part
-        : part
-            .replace(/&gt;/gi, '>')
-            .replace(/&lt;/gi, '<')
-            .replace(/&amp;/gi, '&')
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/&quot;/gi, '"')
-            .replace(/&#39;/gi, "'")
-    )
+    .map((part, index) => (index % 2 ? part : part.replace(/&nbsp;/gi, ' ')))
     .join('');
 
 // An attribute value as the text it stands for, however many times it was

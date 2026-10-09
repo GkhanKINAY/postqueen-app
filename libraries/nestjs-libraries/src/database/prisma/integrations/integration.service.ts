@@ -625,6 +625,9 @@ export class IntegrationService implements OnModuleInit {
       const provider = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier
       );
+      if (provider?.tokenNeverExpires) {
+        continue;
+      }
 
       const data = await this.refreshToken(provider, integration.refreshToken!);
 
@@ -1007,7 +1010,7 @@ export class IntegrationService implements OnModuleInit {
     );
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(

@@ -237,6 +237,15 @@ export interface SocialProvider
    */
   creditCost?(op: CreditOperation): number | undefined;
   refreshCron?: boolean;
+  /**
+   * Whether the token a channel of this provider holds never expires, so the
+   * expiry stored with it is not a reason to refresh it. A Facebook Page
+   * token taken from a long-lived user token has no expiration date, and the
+   * provider has nothing to refresh it with: a refresh only fails and asks
+   * the person to reconnect a channel that works. A token the platform
+   * rejects still goes through refresh as before.
+   */
+  tokenNeverExpires?: boolean;
   // A message for the person whose channel could not be refreshed, when the
   // provider recognises why (e.g. a policy on their side they can change).
   refreshErrorMessage?(err: any): string | undefined;

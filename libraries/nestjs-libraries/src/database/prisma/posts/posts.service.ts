@@ -187,7 +187,7 @@ export class PostsService {
     const getIntegration = post.integration!;
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(
@@ -273,7 +273,7 @@ export class PostsService {
     const getIntegration = post.integration!;
 
     if (
-      dayjs(getIntegration?.tokenExpiration).isBefore(dayjs()) ||
+      this._refreshIntegrationService.isExpired(getIntegration) ||
       forceRefresh
     ) {
       const data = await this._refreshIntegrationService.refresh(

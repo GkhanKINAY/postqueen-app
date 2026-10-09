@@ -270,8 +270,15 @@ export function useUppyUploader(props: {
       if (!result.successful?.length && !result.failed?.length) {
         return;
       }
-      // Clear after plugins settle — per-file removeFile during complete raced
-      // ThumbnailGenerator (when enabled) and left queue warnings.
+      // Remove this batch's files after plugins settle — per-file removeFile
+      // during complete raced ThumbnailGenerator (when enabled) and left queue
+      // warnings. Only this batch's: clear() also emptied the files of a batch
+      // still uploading, without telling its uploader, so that upload never
+      // finished.
+      const finished = [
+        ...(result.successful || []),
+        ...(result.failed || []),
+      ].map((file) => file.id);
       props.onEnd();
       // Sort results by original add order to maintain file sequence
       const sortedSuccessful = [...result.successful].sort((a, b) => {
@@ -289,7 +296,7 @@ export function useUppyUploader(props: {
         onUploadSuccess(
           await withPosters(sortedSuccessful.map((p) => p.response.body))
         );
-        uppy2.clear();
+        uppy2.removeFiles(finished);
         return;
       }
 
@@ -298,7 +305,7 @@ export function useUppyUploader(props: {
       onUploadSuccess(
         await withPosters(sortedSuccessful.map((p) => p.response.body.saved))
       );
-      uppy2.clear();
+      uppy2.removeFiles(finished);
     });
     uppy2.on('upload-success', (file, response) => {
       const current = uppy2.getState().files[file.id];

@@ -135,7 +135,7 @@ export class PostMetricsService {
     }
 
     let token = integration.token;
-    if (dayjs(integration.tokenExpiration).isBefore(dayjs())) {
+    if (this._refreshIntegrationService.isExpired(integration)) {
       const refreshed =
         await this._refreshIntegrationService.refresh(integration);
       if (!refreshed || !refreshed.accessToken) {
