@@ -381,6 +381,14 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.getIntegrationByIdNotDeleted(org, id);
   }
 
+  // Not deleted: the repository lookup skips removed channels.
+  getIntegrationByInternalId(org: string, internalId: string) {
+    return this._integrationRepository.getIntegrationByInternalId(
+      org,
+      internalId
+    );
+  }
+
   async refreshToken(provider: SocialProvider, refresh: string) {
     try {
       const { refreshToken, accessToken, expiresIn } =
