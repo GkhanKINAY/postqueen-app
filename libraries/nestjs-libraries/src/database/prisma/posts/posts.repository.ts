@@ -1,4 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { Injectable } from '@nestjs/common';
 import { Post as PostBody } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import {
@@ -64,8 +65,8 @@ export class PostsRepository {
     });
   }
 
-  getOldPosts(orgId: string, date: string) {
-    return this._post.model.post.findMany({
+  async getOldPosts(orgId: string, date: string) {
+    const posts = await this._post.model.post.findMany({
       where: {
         integration: {
           refreshNeeded: false,
@@ -92,6 +93,7 @@ export class PostsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             providerIdentifier: true,
             picture: true,
             type: true,
@@ -99,6 +101,7 @@ export class PostsRepository {
         },
       },
     });
+    return posts.map(withPostChannelDisplayName);
   }
 
   updateImages(id: string, images: string) {
@@ -206,13 +209,14 @@ export class PostsRepository {
             id: true,
             providerIdentifier: true,
             name: true,
+            customName: true,
             picture: true,
           },
         },
       },
     });
 
-    return list.reduce((all, post) => {
+    return list.map(withPostChannelDisplayName).reduce((all, post) => {
       // A non-positive interval would step backwards and never reach endDate,
       // spinning here forever. @Min(1) on the DTO stops new ones; this covers
       // any row written before that validator existed.
@@ -361,6 +365,7 @@ export class PostsRepository {
               id: true,
               providerIdentifier: true,
               name: true,
+              customName: true,
               picture: true,
             },
           },
@@ -370,7 +375,7 @@ export class PostsRepository {
     ]);
 
     return {
-      posts,
+      posts: posts.map(withPostChannelDisplayName),
       total,
       page,
       limit,
@@ -1005,8 +1010,8 @@ export class PostsRepository {
     } as const;
   }
 
-  getPostTimeline(id: string, org: string) {
-    return this._post.model.post.findFirst({
+  async getPostTimeline(id: string, org: string) {
+    const post = await this._post.model.post.findFirst({
       where: {
         id,
         organizationId: org,
@@ -1017,6 +1022,7 @@ export class PostsRepository {
           select: {
             id: true,
             name: true,
+            customName: true,
             providerIdentifier: true,
             disabled: true,
             refreshNeeded: true,
@@ -1039,6 +1045,7 @@ export class PostsRepository {
         },
       },
     });
+    return post && withPostChannelDisplayName(post);
   }
 
   findAllExistingCategories() {

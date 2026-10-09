@@ -1,3 +1,4 @@
+import { withPostChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import {
   BadRequestException,
   Injectable,
@@ -660,7 +661,7 @@ export class PostsService {
       group: posts?.[0]?.group,
       posts: await Promise.all(
         (posts || []).map(async (post) => ({
-          ...post,
+          ...withPostChannelDisplayName(post),
           image: await this.updateMedia(
             post.id,
             JSON.parse(post.image || '[]'),
@@ -703,7 +704,7 @@ export class PostsService {
       group: posts?.[0]?.group,
       posts: await Promise.all(
         (posts || []).map(async (post) => ({
-          ...post,
+          ...withPostChannelDisplayName(post),
           image: await this.updateMedia(
             post.id,
             JSON.parse(post.image || '[]'),

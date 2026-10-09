@@ -1,4 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
+import { withChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
 import dayjs from 'dayjs';
@@ -835,6 +836,7 @@ export class IntegrationRepository {
           id: true,
           internalId: true,
           name: true,
+          customName: true,
           providerIdentifier: true,
           type: true,
           disabled: true,
@@ -904,7 +906,7 @@ export class IntegrationRepository {
       const errored = erroredByIntegration.get(integration.id);
 
       return {
-        ...integration,
+        ...withChannelDisplayName(integration),
         lastPublishedAt: published?.publishDate || null,
         lastPublishedPostId: published?.id || null,
         lastPublishedUrl: published?.releaseURL || null,
@@ -1209,6 +1211,7 @@ export class IntegrationRepository {
       select: {
         id: true,
         name: true,
+        customName: true,
         providerIdentifier: true,
       },
     });
@@ -1227,7 +1230,8 @@ export class IntegrationRepository {
       });
     }
 
-    return getChannels;
+    // Named in the notification the user gets about it.
+    return getChannels.map(withChannelDisplayName);
   }
 
   // The other half of `disableIntegrations`. `headroom` is how many channels
@@ -1254,6 +1258,7 @@ export class IntegrationRepository {
       select: {
         id: true,
         name: true,
+        customName: true,
         providerIdentifier: true,
       },
     });
@@ -1270,7 +1275,8 @@ export class IntegrationRepository {
       });
     }
 
-    return getChannels;
+    // Named in the notification the user gets about it.
+    return getChannels.map(withChannelDisplayName);
   }
 
   getPlugsByIntegrationId(org: string, id: string) {
