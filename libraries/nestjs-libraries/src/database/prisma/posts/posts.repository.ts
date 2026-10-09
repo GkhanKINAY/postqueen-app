@@ -470,11 +470,16 @@ export class PostsRepository {
     });
   }
 
+  // `forBrowser` leaves out what the channel signs in with. GET /posts/:id
+  // answered with the post's whole channel row, decrypted tokens included.
+  // Publishing and the workflows read the same post without it and still need
+  // them, so the default stays as it was.
   getPost(
     id: string,
     includeIntegration = false,
     orgId?: string,
-    isFirst?: boolean
+    isFirst?: boolean,
+    forBrowser = false
   ) {
     return this._post.model.post.findUnique({
       where: {
@@ -485,7 +490,13 @@ export class PostsRepository {
       include: {
         ...(includeIntegration
           ? {
-              integration: true,
+              integration: {
+                omit: {
+                  token: forBrowser,
+                  refreshToken: forBrowser,
+                  customInstanceDetails: forBrowser,
+                },
+              },
               tags: {
                 where: {
                   tag: {
