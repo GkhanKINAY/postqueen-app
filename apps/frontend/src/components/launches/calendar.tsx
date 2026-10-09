@@ -2305,6 +2305,7 @@ const CalendarItem: FC<{
             <Duplicate tooltip={demo ? demoTooltip : undefined} />
           </button>
           <GoToLivePostButton
+            postId={post.id}
             releaseURL={post.releaseURL}
             className={dayAction}
             demo={demo}
@@ -2501,6 +2502,7 @@ const CalendarItem: FC<{
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
         <GoToLivePostButton
+          postId={post.id}
           releaseURL={post.releaseURL}
           className={actionButton}
           demo={demo}
@@ -2786,6 +2788,7 @@ const ListItem: FC<{
           <Duplicate tooltip={demo ? demoTooltip : undefined} />
         </button>
         <GoToLivePostButton
+          postId={post.id}
           releaseURL={post.releaseURL}
           className={actionButton}
           demo={demo}
@@ -3560,21 +3563,41 @@ export const GoToPost = ({ tooltip }: ActionIconProps = {}) => {
 };
 
 export const GoToLivePostButton: FC<{
+  postId: string;
   releaseURL?: string | null;
   className: string;
   demo?: boolean;
   demoTooltip?: string;
   onDemo?: () => void;
-}> = ({ releaseURL, className, demo, demoTooltip, onDemo }) => {
-  const go = useCallback(() => {
+}> = ({ postId, releaseURL, className, demo, demoTooltip, onDemo }) => {
+  const fetch = useFetch();
+  const go = useCallback(async () => {
     if (demo) {
       onDemo?.();
       return;
     }
-    if (releaseURL) {
-      window.open(releaseURL, '_blank', 'noopener,noreferrer');
+    if (!releaseURL) {
+      return;
     }
-  }, [demo, onDemo, releaseURL]);
+    // Opened before the request so popup blockers still see the click, and
+    // severed from this tab the way noopener would.
+    const tab = window.open('', '_blank');
+    if (!tab) {
+      return;
+    }
+    tab.opener = null;
+    // Some platforms only expose the real post link a while after publishing,
+    // so ask the backend for the current one instead of the stored one.
+    let url = releaseURL;
+    try {
+      url =
+        (await (await fetch(`/posts/${postId}/release-url`)).json())
+          .releaseURL || url;
+    } catch (e) {}
+    // multi-target posts (several subreddits / communities / channels) join
+    // their URLs with commas: open the first one
+    tab.location.href = url.split(',')[0];
+  }, [demo, onDemo, releaseURL, postId, fetch]);
   if (!releaseURL) return null;
   return (
     <button

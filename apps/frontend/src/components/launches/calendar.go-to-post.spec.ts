@@ -19,12 +19,13 @@ const analytics = readFileSync(
 );
 
 describe('Go to post on published calendar cards', () => {
-  it('opens releaseURL the same way Analytics does', () => {
+  it('opens the current release URL in a tab severed from this one', () => {
     assert.match(calendar, /t\('go_to_post', 'Go to post'\)/);
-    assert.match(
-      calendar,
-      /window\.open\(releaseURL, '_blank', 'noopener,noreferrer'\)/,
-    );
+    // the tab opens in the click, before the request, so popup blockers allow it
+    assert.match(calendar, /const tab = window\.open\('', '_blank'\)/);
+    assert.match(calendar, /tab\.opener = null/);
+    assert.match(calendar, /fetch\(`\/posts\/\$\{postId\}\/release-url`\)/);
+    assert.match(calendar, /\.split\(','\)\[0\]/);
     assert.match(analytics, /window\.open\(post\.releaseURL, '_blank'/);
     assert.match(calendar, /data-pq="go-to-post"/);
     assert.match(calendar, /if \(!releaseURL\) return null/);
