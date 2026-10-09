@@ -122,11 +122,12 @@ a repeat post.
 plus a claim on the post before it is published (`claimPost`, `Post.publishClaim`),
 a failed comment marking the comment instead of the root post, no "Already
 posted" error on a run that finds the post already published, and a single
-failure for a channel whose setup was never finished. So upstream's next post
-workflow becomes our **v1.1.0**, not v1.0.9: take only the newest, adapt the
-three lines above, carry v1.0.9's changes into it (the header comment of
-`post.workflow.v1.0.9.ts` lists them), and move both call sites
-(`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
+failure for a channel whose setup was never finished. We have since written
+v1.0.10 through v1.0.12 ourselves (October 2026: v1.0.12, `postWorkflowV1012`,
+is the one running). So upstream's next post workflow becomes our **v1.0.13**:
+take only the newest, adapt the three lines above, carry our own changes into
+it (the header comments of v1.0.9 to v1.0.12 list them), and move both call
+sites (`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
 
 Lessons, in the order they cost time:
 
@@ -368,12 +369,69 @@ Lessons, in the order they cost time:
   with a mistyped full hash; `git merge-base --is-ancestor <hash> upstream/main`
   over every such line caught them.
 
+## October 2026: what happened
+
+**143 commits past the watermark (`374fb202..91c91f633`, merges not counted):
+about 70 taken or adapted, about 35 already here, about 38 skipped.** The
+largest sync so far, and the first one done as parallel branches: the list
+was split into four consecutive ranges for analysis, then into seven PRs by
+dependency (not by theme, and never pulling a commit past its foundation),
+each one reviewed by a separate read-only agent before it was merged:
+
+- #328 fixes (34 commits; `UserOrganization` index, migration `20261009120000`),
+  with #330 split out because any `package.json` change runs the dependency scan
+- #326 Stripe duplicate-subscription guard, `cancelAt` written at once,
+  billing history (`GET /billing/invoices`)
+- #329 TikTok public post ids, `GET /posts/:id/release-url` behind the
+  open-post icon, bounded media reads
+- #325 rename a channel (`Integration.customName`, migration `20261009130000`)
+  and a channel group, server-side channel filter on the posts list
+- #324 automatic text direction (`dir="auto"`) and pictures inside the
+  editor for X articles, WordPress and ListMonk
+- #327 one rate-limited `sendSingleEmailWorkflowV1` per email on the `email`
+  and `email-bulk` queues
+- #333 a post's channels at their own times (`Post.batchId`, migration
+  `20261009140000`)
+
+Two PRs of our own came out of the reviews: #331 (the OSV known list had gone
+stale, 71 of 80 new advisories closed by upgrades) and #332 (three bugs the
+reviews found that predate the sync).
+
+Lessons, in the order they cost time:
+
+- **Review every sync PR before it merges, with an agent that did not write
+  it.** The reviews found a stored XSS in the inline-picture port
+  (`&amp;quot;` decoded into a quote at publish time), a path where the
+  duplicate-subscription guard cancelled the only paying subscription, and,
+  older than the sync, `GET /posts/:id` sending the channel's decrypted tokens
+  to the browser and html mode publishing typed `<script>` as a tag.
+- **Upstream edits workflow files in place** (`185044d50`, `1f5f24e5f`,
+  `273c7b504` change `autopost`, `missing.post`, `send.email` and `streak`).
+  Here those files never change: the email change became a new
+  `send.single.email.workflow.v1.ts` with the old singleton left to drain, the
+  autopost and missing-post fixes were already in our V2s, and the streak
+  rewrite was skipped (below).
+- **Upstream added a post workflow and deleted it again** (`b6ead58bf` added
+  v1.1.3, `9554e9f60` removed it). Diff the range before porting a workflow;
+  the net change here was activity code only.
+- **`dir="auto"` changes stored HTML for every new post.** Anything that
+  matches a bare `<p>` breaks: Telegram's paragraph regex and the agent draft
+  card did. Grep for `<p>` literals and regexes whenever the editor's output
+  shape changes. DOMPurify also drops unknown attributes it checks as URIs,
+  so `dir` needs `ADD_URI_SAFE_ATTR`, which upstream missed.
+- **Upstream's DOMPurify hook is registered on the shared instance.** Scope a
+  hook to the one call (add, sanitize, remove in `finally`).
+- **A required check can rot without a code change.** The dependency scan
+  compares against `.github/osv-known.txt`; advisories published since it was
+  regenerated blocked every PR touching `package.json`.
+
 ## Where the sync currently stands
 
-**Synced through `374fb202` (2026-09-25), and merged.** Everything upstream had
+**Synced through `91c91f633` (2026-10-09), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
 and `main` has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `60431b08` (the same day, before
+"Next time"). The previous watermarks were `374fb202` (2026-09-25),
+`60431b08` (the same day, before
 three late commits), `5ff9e0b2` (2026-09-22, the first one merged that way),
 `8b84b0dc` (the same day, before three README commits), `6f107801`
 (2026-09-19) and `c9382d98` (2026-09-03).
@@ -398,6 +456,24 @@ Skipped, deliberately:
 | `8b84b0dc` | Reworks the onboarding modal this fork removed, around upstream's Claude, ChatGPT, Cursor and Grok Bot directory listings |
 | `87ac77c6` `c33f2188` `5ff9e0b2` | Upstream's own README and the agent icons it shows. This fork's README is PostQueen's |
 | `305f7c0d` `38cb6a41` `b90fc691` | Upstream's own README: their cloud versus open-source section and compliance line |
+| `2e1b6ebd6` `ac27b0037` `bf89e2ed8` | Upstream's README sponsors (October) |
+| `cc0fdf909` `2407718ec` `256f2b468` | Upstream's CLAUDE.md rules |
+| `f66844f7f` `e25dd934d` | Upstream's security contact address |
+| `876ab9e6d` `4583ac5d6` | The "self hosting connector": Postiz Cloud's MCP relaying to a self-hosted instance, an "Official connector" tab pointing at upstream's directory listings, and a new table storing third-party API keys in plain text |
+| `6b102afb7` (in part) | `chatgpt-app-submission.json`; the `destructiveHint` on the post settings tool was taken |
+| `7b29d401d` `5ac6e10f5` | Move Plugs and Integrations into settings tabs and rename Developers to Agents; this fork's navigation keeps Plugs under Channels and Settings as Workspace / More / Developers |
+| `4c5d42a92` | Superadmin reset of an organization's AI credits; it only reaches another organization through the `x-postiz-org` override refused above, and it deletes ledger rows our credits system relies on |
+| `48aa7e2cc` `e756fa574` | Upstream's mobile composer and mobile calendar filters (visual; ours is responsive through `data-mobile`). Bulk delete in the media library from `48aa7e2cc` could be ported later |
+| `9fedac402` | Upstream's responsive pass over components this fork replaced, plus an AGENTS.md |
+| `b08bad843` `169c66aae` `fffe4faf6` `adf1a8f50` | Calendar card visuals (green frame, red delete, icon order); the calendar cards here are ours |
+| `c9138d355` `f28c25221` | AgentMedia, removed from this fork |
+| `0cf459623` `277d3620a` `fa4722990` `3b36d5ed2` | Tags that only steer Sentry's report dialog, which this fork does not show, and a toast key the adapted uploader fix does not use |
+| `273c7b504` | Streak checks by last publish date. Posts have no published-at column (`publishDate` is the scheduled time), so a late post could end a live streak; needs that column first |
+| `c8bf9d8f4` `e333f75bd` | Curating post errors at read time by parsing stored JSON; this fork stores the extracted text at write time, so parsing would hide every message |
+| `e5f6fff33` `3205ce10e` | An MCP video-cover attachment and its revert; net zero |
+| `5fb2f5368` `280080793` `f65de34e2` | An unused import, a formatting-only redeploy, an empty commit |
+| `c145f0c3b` (in part) `70911f869` | The post-checkout "channels re-enabled" notice. Its backend half was already here (`enableAutoDisabledIntegrations` with headroom), and its all-or-nothing copy does not fit our partial re-enable |
+| `80d527b48` | AM/PM in the date picker's time input; ours is Mantine 9's native `TimeInput`, to be redone on our date-format hook |
 
 Already here, or empty once picked (second sync):
 
