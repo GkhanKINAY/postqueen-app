@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "Esta publicación se creó para más de un canal. ¿Quieres programarla en todos?",
   "schedule_all_channels": "Programar todos los canales",
   "only_channel_name": "Solo {{name}}",
-  "delete_all_channels_cancels_scheduled": "Eliminarla de todos los canales también cancela las publicaciones que siguen programadas en los demás canales."
+  "delete_all_channels_cancels_scheduled": "Eliminarla de todos los canales también cancela las publicaciones que siguen programadas en los demás canales.",
+  "credits_card_sub": "Las funciones de IA (Copilot, redacción, imágenes y videos) y la actividad en X gastan créditos. Tu plan añade {{amount}} cada mes.",
+  "credits_card_sub_yearly": "Las funciones de IA (Copilot, redacción, imágenes y videos) y la actividad en X gastan créditos. Tu plan añade {{amount}} cada año.",
+  "credits_card_sub_plain": "Las funciones de IA (Copilot, redacción, imágenes y videos) y la actividad en X gastan créditos."
 }

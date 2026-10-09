@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. לתזמן אותו בכולם?",
   "schedule_all_channels": "תזמון כל הערוצים",
   "only_channel_name": "רק {{name}}",
-  "delete_all_channels_cancels_scheduled": "מחיקה מכל הערוצים מבטלת גם את הפוסטים שעדיין מתוזמנים בערוצים האחרים."
+  "delete_all_channels_cancels_scheduled": "מחיקה מכל הערוצים מבטלת גם את הפוסטים שעדיין מתוזמנים בערוצים האחרים.",
+  "credits_card_sub": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל חודש.",
+  "credits_card_sub_yearly": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים. התוכנית שלך מוסיפה {{amount}} בכל שנה.",
+  "credits_card_sub_plain": "תכונות בינה מלאכותית (Copilot, כתיבה, תמונות וסרטונים) ופעילות ב-X צורכות קרדיטים."
 }

@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "Dieser Beitrag wurde für mehr als einen Kanal erstellt. Möchtest du ihn für alle planen?",
   "schedule_all_channels": "Alle Kanäle planen",
   "only_channel_name": "Nur {{name}}",
-  "delete_all_channels_cancels_scheduled": "Wenn du ihn aus allen Kanälen löschst, werden auch die noch geplanten Beiträge in den anderen Kanälen abgebrochen."
+  "delete_all_channels_cancels_scheduled": "Wenn du ihn aus allen Kanälen löschst, werden auch die noch geplanten Beiträge in den anderen Kanälen abgebrochen.",
+  "credits_card_sub": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jeden Monat {{amount}} hinzu.",
+  "credits_card_sub_yearly": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits. Dein Plan fügt jedes Jahr {{amount}} hinzu.",
+  "credits_card_sub_plain": "KI-Funktionen (Copilot, Texte, Bilder und Videos) und Aktivitäten auf X verbrauchen Credits."
 }

@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "此帖子是为多个频道创建的。要在所有频道排期吗？",
   "schedule_all_channels": "为所有频道排期",
   "only_channel_name": "仅 {{name}}",
-  "delete_all_channels_cancels_scheduled": "从所有频道删除也会取消其他频道中仍在排期的帖子。"
+  "delete_all_channels_cancels_scheduled": "从所有频道删除也会取消其他频道中仍在排期的帖子。",
+  "credits_card_sub": "AI 功能（Copilot、写作、图片和视频）以及 X 上的操作都会消耗积分。你的套餐每月增加 {{amount}} 积分。",
+  "credits_card_sub_yearly": "AI 功能（Copilot、写作、图片和视频）以及 X 上的操作都会消耗积分。你的套餐每年增加 {{amount}} 积分。",
+  "credits_card_sub_plain": "AI 功能（Copilot、写作、图片和视频）以及 X 上的操作都会消耗积分。"
 }

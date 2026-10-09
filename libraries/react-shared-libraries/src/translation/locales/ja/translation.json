@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "この投稿は複数のチャンネル向けに作成されました。すべてのチャンネルで予約しますか？",
   "schedule_all_channels": "すべてのチャンネルを予約",
   "only_channel_name": "{{name}} のみ",
-  "delete_all_channels_cancels_scheduled": "すべてのチャンネルから削除すると、他のチャンネルでまだ予約中の投稿もキャンセルされます。"
+  "delete_all_channels_cancels_scheduled": "すべてのチャンネルから削除すると、他のチャンネルでまだ予約中の投稿もキャンセルされます。",
+  "credits_card_sub": "AI機能（Copilot、文章作成、画像、動画）とXでのアクティビティにはクレジットを使います。プランで毎月{{amount}}クレジットが追加されます。",
+  "credits_card_sub_yearly": "AI機能（Copilot、文章作成、画像、動画）とXでのアクティビティにはクレジットを使います。プランで毎年{{amount}}クレジットが追加されます。",
+  "credits_card_sub_plain": "AI機能（Copilot、文章作成、画像、動画）とXでのアクティビティにはクレジットを使います。"
 }

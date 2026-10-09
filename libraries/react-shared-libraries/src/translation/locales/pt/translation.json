@@ -891,5 +891,8 @@
   "schedule_post_in_all_channels_question": "Esta publicação foi criada para mais de um canal. Deseja agendá-la em todos?",
   "schedule_all_channels": "Agendar todos os canais",
   "only_channel_name": "Somente {{name}}",
-  "delete_all_channels_cancels_scheduled": "Excluí-la de todos os canais também cancela as publicações ainda agendadas nos outros canais."
+  "delete_all_channels_cancels_scheduled": "Excluí-la de todos os canais também cancela as publicações ainda agendadas nos outros canais.",
+  "credits_card_sub": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos. Seu plano adiciona {{amount}} todo mês.",
+  "credits_card_sub_yearly": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos. Seu plano adiciona {{amount}} todo ano.",
+  "credits_card_sub_plain": "Recursos de IA (Copilot, escrita, imagens e vídeos) e a atividade no X gastam créditos."
 }

@@ -909,5 +909,8 @@
   "schedule_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini zamanlamak istiyor musunuz?",
   "schedule_all_channels": "Tüm kanalları zamanla",
   "only_channel_name": "Yalnızca {{name}}",
-  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder."
+  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder.",
+  "credits_card_sub": "Yapay zeka özellikleri (Copilot, yazma, görseller ve videolar) ve X'teki işlemler kredi harcar. Planınız her ay {{amount}} kredi ekler.",
+  "credits_card_sub_yearly": "Yapay zeka özellikleri (Copilot, yazma, görseller ve videolar) ve X'teki işlemler kredi harcar. Planınız her yıl {{amount}} kredi ekler.",
+  "credits_card_sub_plain": "Yapay zeka özellikleri (Copilot, yazma, görseller ve videolar) ve X'teki işlemler kredi harcar."
 }
