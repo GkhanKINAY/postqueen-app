@@ -29,6 +29,8 @@ export const UserContext = createContext<
       streakSince: string | null;
       /** Stripe cancel / subscription end day when known (lapsed paywall). */
       subscriptionEndedAt?: string | Date | null;
+      /** Stripe holds a customer for this organization (past invoices). */
+      hasBillingCustomer?: boolean;
     })
 >(undefined);
 export const ContextWrapper: FC<{

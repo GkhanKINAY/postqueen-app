@@ -159,6 +159,10 @@ export class UsersController {
           // @ts-ignore
           organization?.subscription?.cancelAt ||
           null,
+      // Whether Stripe holds a customer for this organization, so Billing can
+      // show past invoices after a plan has lapsed.
+      hasBillingCustomer:
+        isBillingEnabled() && !!organization?.paymentId?.startsWith('cus_'),
       publicApi:
         // @ts-ignore
         organization?.users[0]?.role === 'SUPERADMIN' ||
