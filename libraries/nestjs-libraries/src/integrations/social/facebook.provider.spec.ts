@@ -48,3 +48,23 @@ describe('Facebook embedded URL', () => {
     assert.deepEqual(body.attached_media, [{ media_fbid: 'photo' }]);
   });
 });
+
+describe('Facebook post metrics availability', () => {
+  const provider = new FacebookProvider();
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
+
+  it('never asks for a Page story, which has no insights live or expired', () => {
+    for (const age of [1, 25]) {
+      assert.equal(
+        provider.postMetricsAvailable({ settings: { post_type: 'story' }, publishDate: hoursAgo(age) }),
+        false
+      );
+    }
+  });
+
+  it('keeps asking for posts and reels', () => {
+    for (const settings of [{ post_type: 'post' }, { post_type: 'reel' }, {}]) {
+      assert.equal(provider.postMetricsAvailable({ settings, publishDate: hoursAgo(24 * 60) }), true);
+    }
+  });
+});

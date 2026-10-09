@@ -68,6 +68,34 @@ export function firstMediaPath(image: string | null): string | null {
   }
 }
 
+/**
+ * The published posts worth asking the platform about. `available` is the
+ * provider's `postMetricsAvailable`; without one, every post is kept. Settings
+ * that do not parse count as none, so a damaged row is still synced.
+ */
+export function postsWithMetrics<
+  T extends { settings: string | null; publishDate: Date },
+>(
+  posts: T[],
+  available?: (post: {
+    settings: Record<string, any>;
+    publishDate: Date;
+  }) => boolean,
+): T[] {
+  if (!available) {
+    return posts;
+  }
+  return posts.filter((post) => {
+    let settings: Record<string, any> = {};
+    try {
+      settings = JSON.parse(post.settings || '{}') || {};
+    } catch {
+      settings = {};
+    }
+    return available({ settings, publishDate: post.publishDate });
+  });
+}
+
 export function sortValue(
   row: AnalyticsPostRow,
   sort: AnalyticsSort | undefined,

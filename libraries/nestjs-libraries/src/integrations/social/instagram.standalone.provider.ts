@@ -311,6 +311,13 @@ export class InstagramStandaloneProvider
     );
   }
 
+  postMetricsAvailable(post: {
+    settings: Record<string, any>;
+    publishDate: Date;
+  }): boolean {
+    return instagramProvider.postMetricsAvailable(post);
+  }
+
   async postsAnalytics(
     integrationId: string,
     accessToken: string,

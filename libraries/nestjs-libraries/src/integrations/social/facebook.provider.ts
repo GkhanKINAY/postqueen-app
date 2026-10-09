@@ -1197,6 +1197,16 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
   }
 
+  // A Page story has no insights at all: its bare id answers video_insights
+  // with "nonexisting field" while the story is live and after it expires
+  // (measured 2026-10-09), so the sync does not ask for one.
+  postMetricsAvailable(post: {
+    settings: Record<string, any>;
+    publishDate: Date;
+  }): boolean {
+    return post.settings?.post_type !== 'story';
+  }
+
   async postsAnalytics(
     integrationId: string,
     accessToken: string,

@@ -167,6 +167,28 @@ describe('Instagram post analytics, media by media', () => {
   }
 });
 
+describe('Instagram post metrics availability', () => {
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
+
+  for (const [name, provider] of tiles) {
+    it(`${name}: asks for a story only while Instagram still has it`, () => {
+      const story = { post_type: 'story' };
+      assert.equal(provider.postMetricsAvailable({ settings: story, publishDate: hoursAgo(23) }), true);
+      assert.equal(provider.postMetricsAvailable({ settings: story, publishDate: hoursAgo(25) }), false);
+    });
+
+    it(`${name}: keeps asking for posts and reels at any age`, () => {
+      for (const post_type of ['post', 'reel']) {
+        assert.equal(
+          provider.postMetricsAvailable({ settings: { post_type }, publishDate: hoursAgo(24 * 60) }),
+          true
+        );
+      }
+      assert.equal(provider.postMetricsAvailable({ settings: {}, publishDate: hoursAgo(24 * 60) }), true);
+    });
+  }
+});
+
 describe('InstagramDto collaborators', () => {
   const errors = (collaborators: string[]) =>
     validate(
