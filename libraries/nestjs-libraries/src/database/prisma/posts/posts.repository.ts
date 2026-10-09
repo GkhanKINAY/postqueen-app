@@ -585,7 +585,12 @@ export class PostsRepository {
     });
   }
 
-  updateReleaseId(id: string, orgId: string, releaseId: string) {
+  updateReleaseId(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL?: string
+  ) {
     return this._post.model.post.update({
       where: {
         id,
@@ -594,6 +599,7 @@ export class PostsRepository {
       },
       data: {
         releaseId: String(releaseId),
+        ...(releaseURL ? { releaseURL } : {}),
       },
     });
   }

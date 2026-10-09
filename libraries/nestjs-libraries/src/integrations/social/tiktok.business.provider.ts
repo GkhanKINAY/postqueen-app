@@ -487,9 +487,11 @@ export class TiktokBusinessProvider
     const { status, reason } = post?.data || {};
 
     if (status === 'SEND_TO_USER_INBOX') {
+      // the id stays 'missing' until the user publishes the draft - the
+      // share id rides in the URL fragment so resolveReleaseId can ask later
       return {
         status: 'completed',
-        releaseURL: 'https://www.tiktok.com/messages?lang=en',
+        releaseURL: `https://www.tiktok.com/messages?lang=en#${pendingData.publishId}`,
         postId: 'missing',
       };
     }
@@ -944,10 +946,11 @@ export class TiktokBusinessProvider
     return videoListData?.data?.videos;
   }
 
-  // photo posts (p_pub_...) live under /photo/, TikTok rejects /video/ for them
+  // photo posts (p_pub_... / p_inbox_...) live under /photo/, TikTok rejects
+  // /video/ for them
   private postUrl(integration: Integration, publishId: string, postId: string) {
     return `https://www.tiktok.com/@${integration.profile}/${
-      publishId.indexOf('p_pub_') === 0 ? 'photo' : 'video'
+      publishId.indexOf('p_') === 0 ? 'photo' : 'video'
     }/${postId}`;
   }
 
@@ -1134,16 +1137,26 @@ export class TiktokBusinessProvider
     accessToken: string,
     releaseId: string,
     integration: Integration,
-    settings: any
+    settings: any,
+    releaseURL: string
   ) {
-    if (classifyTikTokPostId(releaseId) !== 'publish') {
+    // a draft sent to the inbox (UPLOAD) is stored as 'missing' with its
+    // share id in the URL fragment
+    const draft = releaseId === 'missing';
+    const publishId = draft ? releaseURL?.split('#')[1] || '' : releaseId;
+    if (
+      classifyTikTokPostId(publishId) !== 'publish' &&
+      publishId.indexOf('_inbox_') === -1
+    ) {
       return undefined;
     }
 
-    // privacy_level only applies to photo posts here, and TikTok only gives a
-    // post id to posts published for public viewership
+    // privacy_level only applies to photo posts here (and not to a draft, the
+    // user picks it in the app), and TikTok only gives a post id to posts
+    // published for public viewership
     if (
-      releaseId.indexOf('p_pub_') === 0 &&
+      !draft &&
+      publishId.indexOf('p_pub_') === 0 &&
       ['SELF_ONLY', 'MUTUAL_FOLLOW_FRIENDS'].includes(settings?.privacy_level)
     ) {
       return { unavailable: true as const };
@@ -1153,7 +1166,7 @@ export class TiktokBusinessProvider
       await this.fetch(
         `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
           integration.internalId
-        )}&publish_id=${encodeURIComponent(releaseId)}`,
+        )}&publish_id=${encodeURIComponent(publishId)}`,
         {
           method: 'GET',
           headers: {
@@ -1167,13 +1180,25 @@ export class TiktokBusinessProvider
 
     const publicPostId = this.publicPostId(body);
     if (!publicPostId) {
-      return { pending: true as const };
+      // a draft with no public post (not published yet, or published as
+      // non-public) keeps opening the inbox instead of asking to retry
+      return draft ? undefined : { pending: true as const };
     }
 
     return {
       postId: publicPostId,
-      releaseURL: this.postUrl(integration, releaseId, publicPostId),
+      releaseURL: this.postUrl(integration, publishId, publicPostId),
     };
+  }
+
+  // a post connected by hand: /video/<id> also reaches photo posts, TikTok
+  // redirects it to /photo/<id>
+  async releaseUrl(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration
+  ) {
+    return `https://www.tiktok.com/@${integration.profile}/video/${releaseId}`;
   }
 
   async postAnalytics(

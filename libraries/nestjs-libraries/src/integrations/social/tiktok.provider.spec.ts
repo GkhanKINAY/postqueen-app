@@ -125,6 +125,8 @@ class StubbedTiktokProvider extends TiktokProvider {
         'v_pub_file~v2-1.111': '222',
         'v_pub_url~v2-1.333': '444',
         'v_pub_file~v2-1.big': '7559000000000000123',
+        'p_pub_url~v2-1.photo': '666',
+        'v_inbox_file~v2-1.draft': '777',
       };
       const id = published[body.publish_id];
       return new Response(
@@ -171,6 +173,60 @@ describe('TikTok postsAnalytics with mixed releaseIds', () => {
         'v_pub_url~v2-1.333',
         'v_pub_file~v2-1.big',
       ].sort()
+    );
+  });
+});
+
+describe('TikTok resolveReleaseId', () => {
+  const integration = { profile: 'creator' } as any;
+
+  it('resolves a publish id to the full post id, under /photo/ for photos', async () => {
+    const provider = new StubbedTiktokProvider();
+    assert.deepEqual(
+      await provider.resolveReleaseId('token', 'v_pub_file~v2-1.big', integration, {}, ''),
+      {
+        postId: '7559000000000000123',
+        releaseURL: 'https://www.tiktok.com/@creator/video/7559000000000000123',
+      }
+    );
+    assert.deepEqual(
+      await provider.resolveReleaseId('token', 'p_pub_url~v2-1.photo', integration, {}, ''),
+      { postId: '666', releaseURL: 'https://www.tiktok.com/@creator/photo/666' }
+    );
+  });
+
+  it('reports pending, unavailable, or nothing to resolve', async () => {
+    const provider = new StubbedTiktokProvider();
+    assert.deepEqual(
+      await provider.resolveReleaseId('token', 'v_pub_file~v2-1.unresolved', integration, {}, ''),
+      { pending: true }
+    );
+    assert.deepEqual(
+      await provider.resolveReleaseId('token', 'v_pub_file~v2-1.111', integration, { privacy_level: 'SELF_ONLY' }, ''),
+      { unavailable: true }
+    );
+    assert.equal(
+      await provider.resolveReleaseId('token', '555', integration, {}, ''),
+      undefined
+    );
+  });
+
+  it('connects an inbox draft through the publish id in its URL fragment', async () => {
+    const provider = new StubbedTiktokProvider();
+    const inbox = 'https://www.tiktok.com/messages?lang=en';
+    assert.deepEqual(
+      await provider.resolveReleaseId('token', 'missing', integration, { privacy_level: 'SELF_ONLY' }, `${inbox}#v_inbox_file~v2-1.draft`),
+      { postId: '777', releaseURL: 'https://www.tiktok.com/@creator/video/777' }
+    );
+    // not published yet: keep opening the inbox
+    assert.equal(
+      await provider.resolveReleaseId('token', 'missing', integration, {}, `${inbox}#v_inbox_file~v2-1.unresolved`),
+      undefined
+    );
+    // stored before the fragment existed: no request at all
+    assert.equal(
+      await provider.resolveReleaseId('token', 'missing', integration, {}, inbox),
+      undefined
     );
   });
 });

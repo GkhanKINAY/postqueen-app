@@ -243,7 +243,27 @@ export class PostsService {
     if (post.releaseId !== 'missing') {
       throw new BadRequestException('This post is not waiting for a release id');
     }
-    return this._postRepository.updateReleaseId(postId, orgId, releaseId);
+
+    // the URL is a bonus: connecting must not fail when it cannot be fetched
+    let releaseURL: string | undefined;
+    try {
+      releaseURL = await this._integrationManager
+        .getSocialIntegration(post.integration.providerIdentifier)
+        .releaseUrl?.(
+          post.integration.token,
+          String(releaseId),
+          post.integration
+        );
+    } catch (e) {
+      console.log(e);
+    }
+
+    return this._postRepository.updateReleaseId(
+      postId,
+      orgId,
+      releaseId,
+      releaseURL
+    );
   }
 
   async resolveRelease(
@@ -264,7 +284,8 @@ export class PostsService {
       post.integration.token,
       post.releaseId,
       post.integration,
-      JSON.parse(post.settings || '{}')
+      JSON.parse(post.settings || '{}'),
+      post.releaseURL
     );
     if (
       !resolved ||

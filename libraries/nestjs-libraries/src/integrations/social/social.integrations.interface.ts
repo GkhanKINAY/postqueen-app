@@ -46,12 +46,19 @@ export interface IAuthenticator {
     releaseId: string,
     integration: Integration,
     settings: any,
+    releaseURL: string,
   ): Promise<
     | { postId: string; releaseURL: string }
     | { pending: true }
     | { unavailable: true }
     | undefined
   >;
+  /** The URL of a post the user connected by hand (Connect Post). */
+  releaseUrl?(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration,
+  ): Promise<string | undefined>;
   /**
    * Lifetime totals for many platform post ids at once. Used by the snapshot
    * sync, never by the per-post Statistics modal (that still calls
