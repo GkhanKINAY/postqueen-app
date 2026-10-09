@@ -333,6 +333,18 @@ export class BillingController {
     return (await this._stripeService.pendingPayment(org)) || {};
   }
 
+  // Billing history. Straight to Stripe, like `/portal`: a founding member is
+  // a local `manual` row the provider lookup throws for, and their invoices
+  // are in Stripe all the same.
+  @Get('/invoices')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async getInvoices(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return [];
+    }
+    return this._stripeService.getInvoices(org.id);
+  }
+
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {

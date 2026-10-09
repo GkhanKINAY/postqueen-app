@@ -29,6 +29,7 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
   CreditGrantTarget,
+  PaymentInvoice,
   PaymentPlatform,
   PaymentProvider,
   PaymentProviderAbstract,
@@ -83,6 +84,12 @@ const TRIAL_REFUSALS = [TRIAL_CARD_REUSED, TRIAL_CARD_PREPAID];
  * checkout as done: the plan the customer has is the older subscription's.
  */
 const DUPLICATE_SUBSCRIPTION = 'duplicate-subscription';
+
+/**
+ * How the founding membership's invoice line starts. The hosted checkout
+ * leaves no metadata on its invoice, so the billing history knows it by this.
+ */
+const FOUNDING_MEMBER_PRODUCT = 'PostQueen — founding member';
 
 /**
  * Stripe subscription statuses that mean "this customer is entitled right now".
@@ -532,7 +539,21 @@ export class StripeService extends PaymentProviderAbstract {
    * The metadata is the fallback for a price whose product is not one of ours.
    */
   private tierOfSubscription(subscription: Stripe.Subscription) {
-    const price = subscription.items?.data?.[0]?.price;
+    return this.tierOfPrice(
+      subscription.items?.data?.[0]?.price,
+      subscription.metadata
+    );
+  }
+
+  /**
+   * A price's tier and period, from its product's name and its interval
+   * (`product` expanded); `metadata` is the fallback for a price that is not
+   * one of ours.
+   */
+  private tierOfPrice(
+    price: Stripe.Price | undefined,
+    metadata?: Stripe.Metadata | null
+  ) {
     const product = price?.product;
     const name =
       product && typeof product === 'object' && 'name' in product
@@ -545,13 +566,12 @@ export class StripeService extends PaymentProviderAbstract {
       : undefined;
     const interval = price?.recurring?.interval;
     return {
-      billing: (fromPrice ||
-        normalizeTier(subscription.metadata?.billing)) as PaidTier,
+      billing: (fromPrice || normalizeTier(metadata?.billing)) as PaidTier,
       period: (interval === 'year'
         ? 'YEARLY'
         : interval === 'month'
         ? 'MONTHLY'
-        : subscription.metadata?.period) as 'MONTHLY' | 'YEARLY',
+        : metadata?.period) as 'MONTHLY' | 'YEARLY',
     };
   }
 
@@ -2082,6 +2102,105 @@ export class StripeService extends PaymentProviderAbstract {
     // invoice history — empty is fine; a 400 is not.
     const customer = await this.createOrGetCustomer(org);
     return this.createBillingPortalLink(customer);
+  }
+
+  /**
+   * The organization's invoices, newest first, for the billing history on
+   * Billing. Only this organization's own customer is read, and none is
+   * created for it: no customer means nothing was ever bought.
+   *
+   * What each one was for is read from what it billed, the same way the plan
+   * is (`tierOfPrice`), not from metadata copied at checkout, which a plan
+   * change leaves behind. Drafts and $0 invoices (a trial's start) are left
+   * out: neither is anything the customer paid or owes.
+   */
+  override async getInvoices(
+    organizationId: string
+  ): Promise<PaymentInvoice[]> {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    if (!customer?.startsWith('cus_')) {
+      return [];
+    }
+
+    const [invoices, prices] = await Promise.all([
+      stripe.invoices.list({ customer, limit: 100 }),
+      // Recurring only: every founding and credits checkout leaves a one-off
+      // price behind, and those would crowd the plan prices out of the page.
+      stripe.prices.list({
+        type: 'recurring',
+        limit: 100,
+        expand: ['data.product'],
+      }),
+    ]);
+    const priceById = new Map(prices.data.map((price) => [price.id, price]));
+
+    return invoices.data
+      .filter((invoice) => invoice.status !== 'draft' && invoice.total > 0)
+      .map((invoice) => {
+        // The line that was bought: on a plan change, the new plan's line
+        // rather than the credit for the unused time on the old one.
+        const line = invoice.lines.data.reduce<
+          Stripe.InvoiceLineItem | undefined
+        >(
+          (top, current) =>
+            !top || current.amount > top.amount ? current : top,
+          undefined
+        );
+        const subscriptionDetails = invoice.parent?.subscription_details;
+        const lineDescription = line?.description || null;
+
+        let kind: PaymentInvoice['kind'] = 'other';
+        let tier: string | null = null;
+        let period: PaymentInvoice['period'] = null;
+        let credits: number | null = null;
+        if (invoice.metadata?.kind === 'credit_pack') {
+          kind = 'credits';
+          credits = Number(invoice.metadata.credits) || null;
+        } else if (
+          invoice.metadata?.lifetime_charge === '1' ||
+          lineDescription?.startsWith(FOUNDING_MEMBER_PRODUCT)
+        ) {
+          kind = 'lifetime';
+        } else if (subscriptionDetails?.subscription) {
+          kind = 'plan';
+          const priceId = line?.pricing?.price_details?.price;
+          const plan = this.tierOfPrice(
+            typeof priceId === 'string' ? priceById.get(priceId) : priceId,
+            subscriptionDetails.metadata
+          );
+          tier = pricing[plan.billing] ? plan.billing : null;
+          period =
+            plan.period === 'MONTHLY' || plan.period === 'YEARLY'
+              ? plan.period
+              : null;
+        }
+
+        return {
+          id: invoice.id!,
+          number: invoice.number,
+          kind,
+          tier,
+          period,
+          credits,
+          description: lineDescription,
+          amount: invoice.total,
+          currency: invoice.currency,
+          created: invoice.created,
+          periodEnd: kind === 'plan' ? line?.period?.end || null : null,
+          // An open invoice already attempted is a failed charge Stripe is
+          // still retrying.
+          status:
+            invoice.status === 'paid'
+              ? 'paid'
+              : invoice.status === 'void'
+              ? 'void'
+              : invoice.status === 'uncollectible' || invoice.attempted
+              ? 'failed'
+              : 'pending',
+          downloadUrl: invoice.invoice_pdf || null,
+          viewUrl: invoice.hosted_invoice_url || null,
+        };
+      });
   }
 
   /**

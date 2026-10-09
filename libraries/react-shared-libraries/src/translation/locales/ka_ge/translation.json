@@ -556,5 +556,17 @@
   "ai_not_configured_body": "AI features are not configured on this installation.",
   "signup_product_news_notice": "დროდადრო გამოგიგზავნით პროდუქტის სიახლეებს. ნებისმიერი მათგანიდან გამოწერის გაუქმება ერთი დაწკაპუნებით შეგიძლიათ.",
   "product_news": "პროდუქტის სიახლეები",
-  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ"
+  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ",
+  "billing_history": "ბილინგის ისტორია",
+  "billing_status_paid": "გადახდილი",
+  "billing_status_open": "მოლოდინში",
+  "billing_status_failed": "წარუმატებელი",
+  "billing_status_void": "გაუქმებული",
+  "billing_download_invoice": "ინვოისის ჩამოტვირთვა",
+  "billing_view_invoice": "ინვოისის ნახვა",
+  "billing_invoice": "ინვოისი",
+  "billing_invoices_failed": "ინვოისების ჩატვირთვა ვერ მოხერხდა",
+  "billing_no_invoices": "ინვოისები ჯერ არ არის. ისინი აქ გამოჩნდება თქვენი პირველი გადახდის შემდეგ.",
+  "billing_invoice_credits": "{{count}} კრედიტი",
+  "billing_show_older": "ძველი ინვოისების ჩვენება"
 }

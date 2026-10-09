@@ -44,6 +44,7 @@ import {
   FoundingPaidSurface,
 } from '@gitroom/frontend/components/billing/lifetime.deal';
 import { BillingPortalRow } from '@gitroom/frontend/components/billing/billing.portal.row';
+import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history';
 import {
   CreditsPacksCard,
   WithdrawalWaiver,
@@ -1511,10 +1512,13 @@ export const MainBillingComponent: FC<{
       )}
 
       {lifetimePaid ? (
-        <FoundingPaidSurface
-          memberSince={subscription?.createdAt}
-          extra={<CreditsPacksCard tier={subscription?.subscriptionTier} />}
-        />
+        <>
+          <FoundingPaidSurface
+            memberSince={subscription?.createdAt}
+            extra={<CreditsPacksCard tier={subscription?.subscriptionTier} />}
+          />
+          <BillingHistory />
+        </>
       ) : (
         <>
           {/* Packs top up a plan, so they are offered with one. */}
@@ -1546,6 +1550,7 @@ export const MainBillingComponent: FC<{
               }
             />
           )}
+          {!!subscription?.id && <BillingHistory />}
           <FAQComponent />
         </>
       )}

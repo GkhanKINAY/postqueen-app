@@ -326,3 +326,107 @@ describe('a first checkout', () => {
     );
   });
 });
+
+describe('billing history', () => {
+  it('names each invoice from what it billed', async () => {
+    prices = [proPrice, growthYear];
+    invoices = [
+      {
+        id: 'in_plan',
+        customer: 'cus_1',
+        number: 'A-1',
+        status: 'paid',
+        total: 4900,
+        currency: 'usd',
+        created: 10,
+        attempted: true,
+        metadata: {},
+        invoice_pdf: 'https://pdf',
+        hosted_invoice_url: 'https://view',
+        // Metadata written at checkout still says PRO; the price says GROWTH.
+        parent: {
+          subscription_details: {
+            subscription: 'sub_1',
+            metadata: { billing: 'PRO', period: 'MONTHLY' },
+          },
+        } as any,
+        lines: {
+          data: [
+            {
+              amount: -1000,
+              description: 'Unused time on PRO',
+              period: { end: 1 },
+              pricing: { price_details: { price: 'price_pro_month' } },
+            },
+            {
+              amount: 5900,
+              description: 'GROWTH',
+              period: { end: 99 },
+              pricing: { price_details: { price: 'price_growth_year' } },
+            },
+          ],
+        } as any,
+      },
+      {
+        id: 'in_pack',
+        customer: 'cus_1',
+        number: 'A-2',
+        status: 'open',
+        attempted: false,
+        total: 1000,
+        currency: 'usd',
+        created: 20,
+        metadata: { kind: 'credit_pack', credits: '100' },
+        lines: {
+          data: [{ amount: 1000, description: 'PostQueen credits (100)' }],
+        } as any,
+      },
+      {
+        id: 'in_founding',
+        customer: 'cus_1',
+        number: 'A-3',
+        status: 'open',
+        attempted: true,
+        total: 29900,
+        currency: 'usd',
+        created: 30,
+        metadata: {},
+        lines: {
+          data: [{ amount: 29900, description: 'PostQueen — founding member' }],
+        } as any,
+      },
+      {
+        id: 'in_trial',
+        customer: 'cus_1',
+        status: 'paid',
+        total: 0,
+        created: 5,
+        metadata: {},
+        lines: { data: [] } as any,
+      },
+      {
+        id: 'in_draft',
+        customer: 'cus_1',
+        status: 'draft',
+        total: 4900,
+        created: 40,
+        metadata: {},
+        lines: { data: [] } as any,
+      },
+    ];
+
+    const rows = await service().getInvoices('org1');
+
+    assert.deepEqual(
+      rows.map((r) => [r.id, r.kind, r.tier, r.period, r.credits, r.status]),
+      [
+        ['in_plan', 'plan', 'GROWTH', 'YEARLY', null, 'paid'],
+        ['in_pack', 'credits', null, null, 100, 'pending'],
+        ['in_founding', 'lifetime', null, null, null, 'failed'],
+      ],
+    );
+    assert.equal(rows[0].periodEnd, 99);
+    assert.equal(rows[0].viewUrl, 'https://view');
+    assert.equal(rows[0].downloadUrl, 'https://pdf');
+  });
+});

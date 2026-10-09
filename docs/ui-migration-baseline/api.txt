@@ -36,6 +36,7 @@
 /billing/credits/checkout
 /billing/embedded
 /billing/finish-trial
+/billing/invoices
 /billing/is-trial-finished
 /billing/lifetime-checkout
 /billing/pending-payment

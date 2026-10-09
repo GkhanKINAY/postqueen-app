@@ -6,6 +6,30 @@ import type { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/
 
 export type PaymentPlatform = 'web' | 'mobile';
 
+// One row of the billing history, in a provider neutral shape
+export interface PaymentInvoice {
+  id: string;
+  number: string | null;
+  // What was bought: a plan period, a credits pack, the founding membership,
+  // or something the provider cannot place (then `description` says it)
+  kind: 'plan' | 'credits' | 'lifetime' | 'other';
+  // pricing key and MONTHLY / YEARLY of a plan invoice, when known
+  tier: string | null;
+  period: 'MONTHLY' | 'YEARLY' | null;
+  // the size of a credits pack
+  credits: number | null;
+  description: string | null;
+  // minor units (cents)
+  amount: number;
+  currency: string;
+  // unix seconds
+  created: number;
+  periodEnd: number | null;
+  status: 'paid' | 'pending' | 'failed' | 'void';
+  downloadUrl: string | null;
+  viewUrl: string | null;
+}
+
 // Every billing use-case goes through this contract. Webhooks and `platform`
 // are mandatory; everything else has a default that says "not supported on
 // this platform" so a provider only implements what its platform offers
@@ -82,6 +106,11 @@ export abstract class PaymentProviderAbstract {
 
   // Self-service portal (payment method / invoices)
   async portalLink(organizationId: string): Promise<{ url: string }> {
+    return this.notSupported();
+  }
+
+  // Billing history (invoices) of the organization
+  async getInvoices(organizationId: string): Promise<PaymentInvoice[]> {
     return this.notSupported();
   }
 
