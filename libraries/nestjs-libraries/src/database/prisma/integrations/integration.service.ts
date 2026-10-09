@@ -352,6 +352,10 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.updateOnCustomerName(org, id, name);
   }
 
+  updateCustomName(org: string, id: string, name: string) {
+    return this._integrationRepository.updateCustomName(org, id, name);
+  }
+
   getIntegrationsList(org: string) {
     return this._integrationRepository.getIntegrationsList(org);
   }
@@ -1081,6 +1085,29 @@ export class IntegrationService implements OnModuleInit {
 
   customers(orgId: string) {
     return this._integrationRepository.customers(orgId);
+  }
+
+  async updateCustomerName(orgId: string, id: string, rawName: string) {
+    // Groups are found by exact name when a channel is moved into one, so
+    // "Acme " must not slip past the duplicate check as a second "Acme".
+    const name = rawName.trim();
+    if (!name) {
+      throw new HttpException('Group name is required', HttpStatus.BAD_REQUEST);
+    }
+    if (!(await this._integrationRepository.getCustomerById(orgId, id))) {
+      throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
+    }
+    const exists = await this._integrationRepository.getCustomerByName(
+      orgId,
+      name
+    );
+    if (exists && exists.id !== id) {
+      throw new HttpException(
+        'A group with this name already exists',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    return this._integrationRepository.updateCustomerName(orgId, id, name);
   }
 
   getPlugsByIntegrationId(org: string, integrationId: string) {

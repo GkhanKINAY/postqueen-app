@@ -22,7 +22,9 @@ export const BotPicture: FC<{
   const t = useT();
   const modal = useModals();
   const toast = useToaster();
-  const [nick, setNickname] = useState(props.integration.name);
+  const [nick, setNickname] = useState(
+    props.integration.originalName || props.integration.name
+  );
   const [picture, setPicture] = useState(props.integration.picture || '');
   const fetch = useFetch();
   const submitForm: FormEventHandler<HTMLFormElement> = useCallback(

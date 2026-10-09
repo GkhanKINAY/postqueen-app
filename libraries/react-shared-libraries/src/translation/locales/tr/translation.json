@@ -866,5 +866,18 @@
   "email_off_button": "Kapat",
   "signup_product_news_notice": "Zaman zaman size ürün haberleri göndereceğiz. Her birinden tek tıkla abonelikten çıkabilirsiniz.",
   "product_news": "Ürün haberleri",
-  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın"
+  "product_news_description": "Yeni özellikler ve iyileştirmeler hakkında zaman zaman e-posta alın",
+  "rename_channel": "Kanalı yeniden adlandır",
+  "channel_name": "Ad",
+  "channel_renamed": "Kanal yeniden adlandırıldı",
+  "channel_name_reset": "Kanal adı sıfırlandı",
+  "reset_channel_name": "Orijinal adına dön",
+  "rename_channel_hint": "Adı yalnızca PostQueen içinde değiştirir, platformda değiştirmez",
+  "renamed_from_original": "Orijinal ad: {{name}}",
+  "rename": "Yeniden adlandır",
+  "edit_group_name": "Grup adını düzenle",
+  "group_name": "Ad",
+  "group_updated": "Grup güncellendi",
+  "could_not_save_group": "Grup kaydedilemedi.",
+  "rename_group_hint": "{{name}} grubunu içindeki tüm kanallar için yeniden adlandırır"
 }

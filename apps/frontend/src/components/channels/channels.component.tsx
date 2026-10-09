@@ -27,6 +27,10 @@ import { CalendarWeekProvider } from '@gitroom/frontend/components/launches/cale
 import { ChannelAutomations } from '@gitroom/frontend/components/channels/channel.automations';
 import { CustomerModal } from '@gitroom/frontend/components/launches/customer.modal';
 import { BotPicture } from '@gitroom/frontend/components/launches/bot.picture';
+import {
+  RenameChannelModal,
+  RenameGroupModal,
+} from '@gitroom/frontend/components/channels/channel.rename';
 import { useTourNeeds } from '@gitroom/frontend/components/onboarding/tour';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
@@ -334,6 +338,41 @@ const ChannelSettingsGroups: FC<{
     });
   }, [integration, modal, mutate, t, toast]);
 
+  const renameChannel = useCallback(() => {
+    modal.openModal({
+      compact: 420,
+      title: t('rename_channel', 'Rename channel'),
+      withCloseButton: true,
+      closeOnEscape: true,
+      closeOnClickOutside: true,
+      children: (
+        <RenameChannelModal integration={integration} onSaved={() => mutate()} />
+      ),
+    });
+  }, [integration, modal, mutate, t]);
+
+  const renameGroup = useCallback(async () => {
+    const group = integration.customer;
+    if (!group?.id) return;
+    // Settles on dismiss too, or a closed modal leaves this awaiting forever.
+    const name: string | undefined = await new Promise((resolve) => {
+      modal.openModal({
+        compact: 420,
+        title: t('edit_group_name', 'Edit group name'),
+        withCloseButton: true,
+        closeOnEscape: true,
+        closeOnClickOutside: true,
+        onClose: () => resolve(undefined),
+        children: (close) => (
+          <RenameGroupModal group={group} close={close} resolve={resolve} />
+        ),
+      });
+    });
+    if (!name) return;
+    await mutate();
+    toast.show(t('group_updated', 'Group Updated'), 'success');
+  }, [integration.customer, modal, mutate, t, toast]);
+
   const openCustom = useCallback(() => {
     modal.openModal({
       title: t('custom_url', 'Custom URL'),
@@ -441,6 +480,24 @@ const ChannelSettingsGroups: FC<{
 
   const channelRows: SettingsRow[] = [
     {
+      key: 'rename',
+      label: t('rename_channel', 'Rename channel'),
+      hint:
+        integration.originalName && integration.originalName !== integration.name
+          ? t('renamed_from_original', 'Original name: {{name}}', {
+              name: integration.originalName,
+              // React escapes the text; i18next escaping on top shows `&amp;`.
+              interpolation: { escapeValue: false },
+            })
+          : t(
+              'rename_channel_hint',
+              'Changes the name in PostQueen only, not on the platform'
+            ),
+      cta: t('rename', 'Rename'),
+      onClick: renameChannel,
+      icon: 'M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3Z',
+    },
+    {
       key: 'slots',
       label: t('edit_time_slots', 'Edit time slots'),
       hint: t(
@@ -462,6 +519,25 @@ const ChannelSettingsGroups: FC<{
       onClick: moveGroup,
       icon: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9',
     },
+    ...(integration.customer?.id
+      ? [
+          {
+            key: 'group-name',
+            label: t('edit_group_name', 'Edit group name'),
+            hint: t(
+              'rename_group_hint',
+              'Renames {{name}} for every channel in it',
+              {
+                name: integration.customer.name,
+                interpolation: { escapeValue: false },
+              }
+            ),
+            cta: t('rename', 'Rename'),
+            onClick: renameGroup,
+            icon: 'M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3Z',
+          } as SettingsRow,
+        ]
+      : []),
     ...(hasCustomFields
       ? [
           {

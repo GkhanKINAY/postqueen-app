@@ -308,6 +308,9 @@ export const CalendarContext = createContext({
 
 export interface Integrations {
   name: string;
+  // The provider's own name when the user renamed the channel here; `name`
+  // then carries the custom one.
+  originalName?: string;
   id: string;
   disabled?: boolean;
   // Returned by `/integrations/list` and read by every channel picker; it was

@@ -556,5 +556,18 @@
   "ai_not_configured_body": "AI features are not configured on this installation.",
   "signup_product_news_notice": "დროდადრო გამოგიგზავნით პროდუქტის სიახლეებს. ნებისმიერი მათგანიდან გამოწერის გაუქმება ერთი დაწკაპუნებით შეგიძლიათ.",
   "product_news": "პროდუქტის სიახლეები",
-  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ"
+  "product_news_description": "დროდადრო მიიღეთ ელფოსტა ახალი ფუნქციებისა და გაუმჯობესებების შესახებ",
+  "rename_channel": "არხის სახელის შეცვლა",
+  "channel_name": "სახელი",
+  "channel_renamed": "არხს სახელი შეეცვალა",
+  "channel_name_reset": "არხის სახელი აღდგა",
+  "reset_channel_name": "თავდაპირველი სახელის დაბრუნება",
+  "rename_channel_hint": "სახელს ცვლის მხოლოდ PostQueen-ში და არა პლატფორმაზე",
+  "renamed_from_original": "თავდაპირველი სახელი: {{name}}",
+  "rename": "სახელის შეცვლა",
+  "edit_group_name": "ჯგუფის სახელის რედაქტირება",
+  "group_name": "სახელი",
+  "group_updated": "ჯგუფი განახლდა",
+  "could_not_save_group": "ჯგუფის შენახვა ვერ მოხერხდა.",
+  "rename_group_hint": "{{name}}-ს სახელს უცვლის მასში შემავალ ყველა არხს"
 }
