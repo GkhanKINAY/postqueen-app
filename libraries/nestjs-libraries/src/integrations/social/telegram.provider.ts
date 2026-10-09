@@ -27,11 +27,11 @@ const mediaStorage = process.env.STORAGE_PROVIDER || 'local';
 // and any numeric one.
 const TELEGRAM_ENTITY = '(?:amp|lt|gt|quot|#\\d+|#x[\\da-f]+);';
 
-// The composer's HTML reaches the provider with its entities already decoded
-// (stripHtmlValidation's html path), so a typed "<", ">" or "&" arrives bare,
-// and Telegram refuses the message ("can't parse entities") or loses the text
-// after it. They are escaped again here; an entity is left alone, as plain
-// API text arrives still escaped.
+// The composer's HTML reaches the provider with its text still encoded
+// (stripHtmlValidation's html path), and Telegram's HTML parse mode reads
+// those entities, so they are left alone. Plain text from the API arrives
+// as typed, with a bare "<", ">" or "&" that Telegram would refuse ("can't
+// parse entities") or lose the text after; those are escaped here.
 const telegramEscape = (text: string) =>
   text
     .replace(new RegExp(`&(?!${TELEGRAM_ENTITY})`, 'gi'), '&amp;')

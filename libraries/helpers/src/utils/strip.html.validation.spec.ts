@@ -158,10 +158,60 @@ describe('stripHtmlValidation html links', () => {
     }
   });
 
-  it('still decodes entities in the text', () => {
+});
+
+// What the composer stores for text someone typed is encoded, and the html
+// path is published as HTML, so it has to stay encoded: text stays text.
+describe('stripHtmlValidation html text', () => {
+  const html = (value: string) => stripHtmlValidation('html', value);
+
+  it('publishes a typed <script> as text, not a tag', () => {
+    const out = html('<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>');
+    assert.equal(out, '<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>');
+    assert.deepEqual(
+      elements(out).map((e) => e.tag),
+      ['p']
+    );
+  });
+
+  it('keeps an ampersand encoded, once', () => {
     assert.equal(
-      stripHtmlValidation('html', '<p>Tom &amp; Jerry &quot;live&quot;</p>'),
-      '<p>Tom & Jerry "live"</p>'
+      html('<p>Tom &amp; Jerry &quot;live&quot;</p>'),
+      '<p>Tom &amp; Jerry "live"</p>'
+    );
+  });
+
+  it('keeps typed angle brackets encoded', () => {
+    assert.equal(html('<p>a &lt; b &gt; c</p>'), '<p>a &lt; b &gt; c</p>');
+  });
+
+  it('does not decode or encode a typed entity twice', () => {
+    assert.equal(
+      html('<p>&amp;lt; &amp;amp; &amp;nbsp; &amp;quot;</p>'),
+      '<p>&amp;lt; &amp;amp; &amp;nbsp; &amp;quot;</p>'
+    );
+    assert.doesNotMatch(html('<p>Tom &amp; Jerry</p>'), /&amp;amp;/);
+  });
+
+  it('turns &nbsp; into a space', () => {
+    assert.equal(html('<p>a&nbsp;b</p>'), '<p>a b</p>');
+  });
+
+  it('keeps links and formatting', () => {
+    assert.equal(
+      html(
+        '<p dir="auto">Read <a href="https://example.com/?a=1&amp;b=2">this &amp; that</a> <strong>now</strong></p>'
+      ),
+      '<p dir="auto">Read <a href="https://example.com/?a=1&amp;b=2">this &amp; that</a> <strong>now</strong></p>'
+    );
+  });
+
+  it('keeps pictures', () => {
+    assert.equal(
+      inlineHtml(
+        '<p>a &amp; b</p><img src="https://cdn.example.com/a.png" alt="Tom &amp; Jerry">'
+      ),
+      '<p>a &amp; b</p><img src="https://cdn.example.com/a.png" alt="Tom &amp; Jerry">'
     );
   });
 });

@@ -332,3 +332,28 @@ describe('X plugs read the like count from the post', () => {
     assert.deepEqual(calls, ['repost 7 as 42']);
   });
 });
+
+// The html editor keeps text encoded; a tweet is plain text.
+describe('X tweet text from the html editor', () => {
+  const tweet = (message: string) =>
+    (new XProvider() as any).toTweetText(message);
+
+  it('decodes the text of a post with paragraphs', () => {
+    assert.equal(
+      tweet('<p>Tom &amp; Jerry &lt;3</p><p>a &lt; b</p>'),
+      'Tom & Jerry <3\na < b',
+    );
+  });
+
+  it('decodes text whose tags were all stripped, once', () => {
+    assert.equal(
+      tweet('Tom &amp; Jerry &lt;script&gt;'),
+      'Tom & Jerry <script>',
+    );
+    assert.equal(tweet('&amp;lt;'), '&lt;');
+  });
+
+  it('keeps plain text as it is', () => {
+    assert.equal(tweet('a < b > c'), 'a < b > c');
+  });
+});
