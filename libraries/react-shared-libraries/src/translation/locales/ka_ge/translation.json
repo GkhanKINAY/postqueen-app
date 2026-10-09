@@ -571,6 +571,7 @@
   "could_not_save_group": "ჯგუფის შენახვა ვერ მოხერხდა.",
   "rename_group_hint": "{{name}}-ს სახელს უცვლის მასში შემავალ ყველა არხს",
   "bot_name_renamed_hint": "ეს არის სახელი პლატფორმაზე. PostQueen არხს აჩვენებს როგორც {{name}}.",
+  "only_images_can_be_added_to_the_content": "კონტენტს მხოლოდ სურათების დამატება შეიძლება",
   "edit_tag": "ტეგის რედაქტირება",
   "facebook_video_title": "ვიდეოს სათაური (მხოლოდ ვიდეო პოსტებისთვის)"
 }

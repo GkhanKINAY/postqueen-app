@@ -178,6 +178,7 @@ export const FacebookPreview: FC<{
       </div>
       {background ? (
         <div
+          dir="auto"
           className="-mx-[15px] flex min-h-[180px] max-h-[240px] items-center justify-center px-[32px] py-[24px] text-center text-[22px] font-[700] leading-[28px] whitespace-pre-line break-words"
           style={{ background: background.background, color: background.text }}
           dangerouslySetInnerHTML={{
@@ -186,6 +187,7 @@ export const FacebookPreview: FC<{
         />
       ) : (
         <div
+          dir="auto"
           className="text-[14px] font-[400] whitespace-pre-line"
           dangerouslySetInnerHTML={{
             __html: sanitizePreviewHtml(renderContent?.[0]?.text),
@@ -334,6 +336,7 @@ export const FacebookPreview: FC<{
                       </div>
                     </div>
                     <div
+                      dir="auto"
                       className="whitespace-pre-line text-[14px] font-[400]"
                       dangerouslySetInnerHTML={{
                         __html: sanitizePreviewHtml(value.text),

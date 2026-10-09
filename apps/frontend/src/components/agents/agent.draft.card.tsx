@@ -128,7 +128,7 @@ export const draftSettings = (
 /** Same normalisation as add.edit.modal.tsx: a line per paragraph. */
 export const draftContentHtml = (content: string | undefined) => {
   const text = content || '';
-  return text.indexOf('<p>') > -1
+  return /<p[\s>]/i.test(text)
     ? text
     : text
         .split('\n')
