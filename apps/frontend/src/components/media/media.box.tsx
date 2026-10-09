@@ -268,6 +268,8 @@ export const MediaBox: FC<{
   const [selecting, setSelecting] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  // Escape answers the confirm dialog; it must not also leave selection mode.
+  const confirmingRef = useRef(false);
   const attachedIds = useMemo(
     () => new Set((attachedMedia || []).map((m) => m.id)),
     [attachedMedia]
@@ -412,7 +414,9 @@ export const MediaBox: FC<{
 
   const enqueueFiles = useCallback(
     (files: File[]) => {
-      if (!files.length) return;
+      // An upload landing mid-delete would reset the page and the selection
+      // under it, so uploads wait for Delete selected to finish.
+      if (!files.length || bulkDeleting) return;
       const totalSize = files.reduce((acc, file) => acc + file.size, 0);
       if (totalSize > MAX_UPLOAD_SIZE) {
         toaster.show(
@@ -429,7 +433,7 @@ export const MediaBox: FC<{
         uppy.addFile(file);
       }
     },
-    [toaster, t, uppy]
+    [toaster, t, uppy, bulkDeleting]
   );
 
   const dragAndDrop = useCallback(
@@ -564,8 +568,8 @@ export const MediaBox: FC<{
   const deleteSelected = useCallback(async () => {
     const ids = bulkSelected;
     if (!ids.length || bulkDeleting) return;
-    if (
-      !(await deleteDialog(
+    confirmingRef.current = true;
+    const confirmed = await deleteDialog(
         ids.length === 1
           ? t(
               'are_you_sure_you_want_to_delete_the_image',
@@ -576,8 +580,10 @@ export const MediaBox: FC<{
               'Are you sure you want to delete these {{count}} files?',
               { count: ids.length }
             )
-      ))
-    ) {
+    ).finally(() => {
+      confirmingRef.current = false;
+    });
+    if (!confirmed) {
       return;
     }
     setBulkDeleting(true);
@@ -601,9 +607,17 @@ export const MediaBox: FC<{
       setBulkDeleting(false);
     }
     const deleted = ids.length - failed.length;
-    setBulkSelected(failed);
-    if (!failed.length) setSelecting(false);
     const result = await mutate().catch((): undefined => undefined);
+    // A failed file someone else has deleted meanwhile is gone from the list;
+    // kept selected it would be counted, and deleted, out of sight.
+    const listed = result
+      ? new Set(((result.results || []) as MediaRow[]).map((m) => m.id))
+      : undefined;
+    const stillSelected = listed
+      ? failed.filter((id) => listed.has(id))
+      : failed;
+    setBulkSelected(stillSelected);
+    if (!stillSelected.length) setSelecting(false);
     // Emptying the last page leaves nothing to show on it.
     if (result?.pages && page >= result.pages) {
       setPage(Math.max(0, result.pages - 1));
@@ -630,6 +644,33 @@ export const MediaBox: FC<{
       'success'
     );
   }, [bulkSelected, bulkDeleting, fetch, mutate, page, toaster, t]);
+
+  useEffect(() => {
+    if (!selecting) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || confirmingRef.current || bulkDeleting) return;
+      stopSelecting();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selecting, bulkDeleting, stopSelecting]);
+
+  // In selection mode a tile is a checkbox: focusable, and Space or Enter
+  // toggles it like a click.
+  const bulkTileProps = (media: MediaRow, picked: boolean) =>
+    selecting
+      ? {
+          role: 'checkbox' as const,
+          'aria-checked': picked,
+          'aria-label': media.originalName || media.name || undefined,
+          tabIndex: 0,
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key !== ' ' && e.key !== 'Enter') return;
+            e.preventDefault();
+            toggleBulkSelected(media)();
+          },
+        }
+      : {};
 
   const downloadMedia = useCallback(
     (media: MediaRow) => () => {
@@ -677,7 +718,7 @@ export const MediaBox: FC<{
   const brandUploadBtn = (size: 'page' | 'picker' = 'page') => (
     <button
       type="button"
-      disabled={loading}
+      disabled={loading || bulkDeleting}
       onClick={() => uploaderRef.current?.click()}
       className={clsx(
         'relative flex shrink-0 cursor-pointer items-center gap-[7px] bg-pqBrand font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover disabled:opacity-70',
@@ -824,7 +865,7 @@ export const MediaBox: FC<{
   if (standalone) {
     return (
       <DropFiles
-        disabled={loading}
+        disabled={loading || bulkDeleting}
         noClick
         brandOverlay
         className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-pqInner px-[22px] pt-[22px] pb-[28px] mobile:px-[14px]"
@@ -845,7 +886,7 @@ export const MediaBox: FC<{
             {!mobile && (
             <button
               type="button"
-              disabled={loading}
+              disabled={loading || bulkDeleting}
               onClick={() => uploaderRef.current?.click()}
               className={clsx(
                 'flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-[10px] rounded-[16px] border-[1.5px] border-dashed bg-pqBrandFaint px-[20px] py-[26px] font-inherit transition-colors hover:border-pqBrand hover:bg-pqBrandSoft disabled:cursor-wait',
@@ -897,19 +938,23 @@ export const MediaBox: FC<{
             )}
 
             {/* Filters + view — under drop zone, above gallery (owner) */}
+            {/* The trailing group wraps as one and keeps to the end edge, so a
+                phone (or a long German or Russian label) breaks the row
+                cleanly instead of stranding a spacer. */}
             <div className="flex flex-wrap items-center gap-[10px]">
               {standaloneFilterTabs}
-              <div className="min-w-0 flex-1" />
-              {selecting && (
-                <span
-                  data-pq="media-selected-count"
-                  className="text-[12.5px] tabular-nums text-pqMuted"
-                >
-                  {t('media_n_selected', '{{count}} selected', {
-                    count: bulkSelected.length,
-                  })}
-                </span>
-              )}
+              <div className="ms-auto flex flex-wrap items-center justify-end gap-[10px]">
+              <span
+                data-pq="media-selected-count"
+                aria-live="polite"
+                className="whitespace-nowrap text-[12.5px] tabular-nums text-pqMuted empty:hidden"
+              >
+                {selecting
+                  ? t('media_n_selected', '{{count}} selected', {
+                      count: bulkSelected.length,
+                    })
+                  : ''}
+              </span>
               {(selecting || visibleMedia.length > 0) && (
                 <div className="flex items-center gap-[3px] rounded-pqSm bg-pqSettings p-[3px]">
                   {selecting ? (
@@ -920,7 +965,7 @@ export const MediaBox: FC<{
                         onClick={deleteSelected}
                         disabled={!bulkSelected.length || bulkDeleting}
                         className={clsx(
-                          'relative rounded-[6px] px-[11px] text-[12.5px] font-[600] text-pqDanger transition-colors hover:bg-pqInner disabled:cursor-not-allowed disabled:opacity-50',
+                          'relative whitespace-nowrap rounded-[6px] px-[11px] text-[12.5px] font-[600] text-pqDanger transition-colors hover:bg-pqInner disabled:cursor-not-allowed disabled:opacity-50',
                           touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
                         )}
                       >
@@ -938,7 +983,7 @@ export const MediaBox: FC<{
                         onClick={stopSelecting}
                         disabled={bulkDeleting}
                         className={clsx(
-                          'rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText disabled:opacity-50',
+                          'whitespace-nowrap rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText disabled:opacity-50',
                           touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
                         )}
                       >
@@ -954,7 +999,7 @@ export const MediaBox: FC<{
                         setSelecting(true);
                       }}
                       className={clsx(
-                        'rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText',
+                        'whitespace-nowrap rounded-[6px] px-[11px] text-[12.5px] font-[500] text-pqMuted transition-colors hover:text-pqText',
                         touch ? 'h-[44px] min-h-[44px] px-[14px]' : 'h-[26px]'
                       )}
                     >
@@ -964,6 +1009,7 @@ export const MediaBox: FC<{
                 </div>
               )}
               {viewToggle}
+              </div>
             </div>
 
               {showEmptyState ? (
@@ -1049,7 +1095,8 @@ export const MediaBox: FC<{
                             ? toggleBulkSelected(media)
                             : openLightbox(media)
                         }
-                        className="group flex cursor-pointer flex-col gap-0.5"
+                        {...bulkTileProps(media, bulkPicked)}
+                        className="group flex cursor-pointer flex-col gap-0.5 rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-pqBrand"
                       >
                         <div
                           className={clsx(
@@ -1159,8 +1206,9 @@ export const MediaBox: FC<{
                             ? toggleBulkSelected(media)
                             : openLightbox(media)
                         }
+                        {...bulkTileProps(media, bulkPicked)}
                         className={clsx(
-                          'group flex min-h-[44px] cursor-pointer items-center gap-[12px] rounded-pqSm border-b border-pqLine p-[8px] hover:bg-pqHover',
+                          'group flex min-h-[44px] cursor-pointer items-center gap-[12px] rounded-pqSm border-b border-pqLine p-[8px] outline-none hover:bg-pqHover focus-visible:ring-2 focus-visible:ring-pqBrand',
                           bulkPicked && 'bg-pqBrandFaint'
                         )}
                       >
@@ -1215,8 +1263,14 @@ export const MediaBox: FC<{
                   </div>
                 )}
 
-                {(data?.pages || 0) > 1 && !bulkDeleting && (
-                  <div className="px-0 pb-[4px] pt-[16px]">
+                {(data?.pages || 0) > 1 && (
+                  <div
+                    aria-disabled={bulkDeleting || undefined}
+                    className={clsx(
+                      'px-0 pb-[4px] pt-[16px]',
+                      bulkDeleting && 'pointer-events-none opacity-50'
+                    )}
+                  >
                     <Pagination
                       current={page}
                       totalPages={data.pages}

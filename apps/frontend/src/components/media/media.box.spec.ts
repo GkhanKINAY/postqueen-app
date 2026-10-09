@@ -103,8 +103,23 @@ describe('Media library thumbnails', () => {
     assert.match(source, /fetch\(`\/media\/\$\{id\}`, \{ method: 'DELETE' \}\)/);
     // The confirm names the count, and failures stay selected for a retry.
     assert.match(source, /'are_you_sure_you_want_to_delete_n_media'/);
-    assert.match(source, /setBulkSelected\(failed\)/);
+    assert.match(source, /setBulkSelected\(stillSelected\)/);
     assert.match(source, /'media_delete_partial'/);
+    // A failed file already gone from the refreshed list is not kept selected.
+    assert.match(source, /failed\.filter\(\(id\) => listed\.has\(id\)\)/);
+    // Uploads wait for the delete, and the pager keeps its place disabled.
+    assert.match(source, /disabled=\{loading \|\| bulkDeleting\}/);
+    assert.match(source, /bulkDeleting && 'pointer-events-none opacity-50'/);
+  });
+
+  it('makes the bulk selection usable from the keyboard and a screen reader', () => {
+    assert.match(source, /role: 'checkbox' as const/);
+    assert.match(source, /'aria-checked': picked/);
+    assert.match(source, /e\.key !== ' ' && e\.key !== 'Enter'/);
+    assert.equal(source.split('{...bulkTileProps(media, bulkPicked)}').length - 1, 2);
+    assert.match(source, /data-pq="media-selected-count"\s+aria-live="polite"/);
+    // Escape leaves selection mode, but not while it answers the confirm.
+    assert.match(source, /e\.key !== 'Escape' \|\| confirmingRef\.current/);
   });
 });
 
