@@ -87,6 +87,10 @@ type PostWithConditionals = Post & {
   childrenPost: Post[];
 };
 
+
+// How long a platform may take to release a post's public link before the
+// open-post icon stops saying "try again in a minute".
+const RELEASE_PENDING_WINDOW_HOURS = 24;
 @Injectable()
 export class PostsService {
   private storage = UploadFactory.createStorage();
@@ -342,6 +346,18 @@ export class PostsService {
 
     const getIntegration = post.integration!;
 
+    // A channel that is gone or waiting for the user is never asked, and
+    // never refreshed: each click would fail the refresh again and send
+    // another reconnect email.
+    if (
+      getIntegration.deletedAt ||
+      getIntegration.disabled ||
+      getIntegration.refreshNeeded ||
+      getIntegration.inBetweenSteps
+    ) {
+      return { releaseURL: post.releaseURL, reconnect: true };
+    }
+
     // only refreshed once the platform rejects the token, so a post that is
     // already resolved never reaches the platform or the channel
     if (forceRefresh) {
@@ -371,6 +387,16 @@ export class PostsService {
         orgId,
         post
       );
+      // A link the platform has not released a day after publishing is not
+      // coming (removed by moderation, deleted, not public): open what is
+      // stored rather than asking to try again forever.
+      if (
+        pending &&
+        dayjs().diff(dayjs(post.publishDate), 'hour') >=
+          RELEASE_PENDING_WINDOW_HOURS
+      ) {
+        return { releaseURL };
+      }
       return { releaseURL, pending, unavailable };
     } catch (e) {
       console.log(e);

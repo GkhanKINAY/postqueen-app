@@ -26,6 +26,9 @@ describe('Go to post on published calendar cards', () => {
     assert.match(calendar, /tab\.opener = null/);
     assert.match(calendar, /fetch\(`\/posts\/\$\{postId\}\/release-url`\)/);
     assert.match(calendar, /\.split\(','\)\[0\]/);
+    // only web links, and no referrer sent to the platform
+    assert.match(calendar, /\/\^https\?:\\\/\\\/\/i\.test\(url\)/);
+    assert.match(calendar, /link\.rel = 'noreferrer noopener'/);
     assert.match(analytics, /window\.open\(post\.releaseURL, '_blank'/);
     assert.match(calendar, /data-pq="go-to-post"/);
     assert.match(calendar, /if \(!releaseURL\) return null/);

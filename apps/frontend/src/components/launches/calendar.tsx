@@ -3642,7 +3642,23 @@ export const GoToLivePostButton: FC<{
     }
     // multi-target posts (several subreddits / communities / channels) join
     // their URLs with commas: open the first one
-    tab.location.href = (release.releaseURL || releaseURL).split(',')[0];
+    const url = (release.releaseURL || releaseURL).split(',')[0];
+    if (!/^https?:\/\//i.test(url)) {
+      tab.close();
+      toaster.show(
+        t('post_has_no_public_link', 'This post has no public link'),
+        'warning'
+      );
+      return;
+    }
+    // Navigated by a noreferrer link inside the new tab, so the platform is
+    // not sent this page's address (window.open's noreferrer would also
+    // return no tab to navigate after the request).
+    const link = tab.document.createElement('a');
+    link.href = url;
+    link.rel = 'noreferrer noopener';
+    tab.document.body.appendChild(link);
+    link.click();
   }, [demo, onDemo, releaseURL, postId, fetch, toaster, t]);
   if (!releaseURL) return null;
   return (
