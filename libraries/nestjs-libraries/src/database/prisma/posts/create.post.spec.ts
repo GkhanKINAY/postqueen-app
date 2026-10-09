@@ -307,7 +307,6 @@ describe(
       assert.ok(writes[0].batchId);
       assert.equal(writes[0].batchId, writes[1].batchId);
 
-
       // Another request is another post.
       const first = writes[0].batchId;
       writes = [];

@@ -238,7 +238,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
 
   // The channels the post already has, each its own post (upstream
   // a194e3f4), and the one in view, or the one that was opened.
-  const existingPosts = [existingData, ...(existingData.siblings || [])];
+  // A sibling whose channel is gone is not in the editor, so it is left out
+  // of what the editor saves, asks about and deletes.
+  const existingPosts = [
+    existingData,
+    ...(existingData.siblings || []).filter((sibling) =>
+      integrations.some((p) => p.id === sibling.integration)
+    ),
+  ];
   const channel =
     existingPosts.find((p) => p.integration === current) || existingData;
   const channelName = (integrationId: string) =>
@@ -1098,20 +1105,34 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           ),
         }))
         .filter((request) => request.posts.length);
-      // What the save is, for the credits dialog and the toast: the one type
-      // every channel saves as, or the one picked.
-      const savedType = requests.length === 1 ? requests[0].type : type;
+      // What the save is, for the toast: the one type every channel saves as,
+      // or the one picked when some channel saves as it.
+      const savedType =
+        requests.length === 1 ||
+        !requests.some((request) => request.type === type)
+          ? requests[0].type
+          : type;
+      // What goes out, for the credits dialog. Schedule and Post Now are
+      // priced alike; with one type of save, it is that save, as before.
+      const quoted =
+        requests.length === 1
+          ? requests[0]
+          : {
+              type: type === 'now' ? ('now' as const) : ('schedule' as const),
+              posts: posts.filter((p: any) =>
+                ['schedule', 'now'].includes(saveTypeOf(p.integration.id))
+              ),
+            };
 
       // Last before the save: what a network that bills each post takes
       // from the credits balance, and why. Sets never publish.
       if (
         !dummy &&
         !addEditSets &&
+        quoted.posts.length &&
         !(await confirmPublishCredits({
-          type: savedType,
-          posts: posts.filter(
-            (p: any) => saveTypeOf(p.integration.id) === savedType
-          ),
+          type: quoted.type,
+          posts: quoted.posts,
           confirmLabel:
             savedType === 'now'
               ? t('post_now', 'Post Now')
@@ -1174,17 +1195,25 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // post cap, or failing server-side validation — still showed "Added
         // successfully" and closed the editor, losing everything the user wrote.
         if (response && !response.ok) {
-          // The channels of an earlier request are saved, so the calendar
-          // shows them even though a later one was refused.
-          if (savedSome) {
-            mutate();
-            mutateKey('credits-balance');
-          }
           // 499: a dialog already spoke (Payment Required, whose Move to
           // billing opens Billing in another tab), so a toast would say it
           // twice. 402 is the same dialog, dismissed. The post stays open here.
-          if (response.status === 499 || response.status === 402) {
+          const dialogSpoke =
+            response.status === 499 || response.status === 402;
+          // The channels of an earlier request are saved, and saving gave
+          // them new groups, so the editor would act on groups that are gone.
+          // The calendar shows what was saved; reopening the post shows the
+          // rest as it still is.
+          const closeAfter = () => {
+            if (savedSome) {
+              mutate();
+              mutateKey('credits-balance');
+              modal.closeAll();
+            }
+          };
+          if (dialogSpoke) {
             setLoading(false);
+            closeAfter();
             return;
           }
           // The body is a Nest error object; showing it raw put
@@ -1201,6 +1230,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               : t('post_save_failed', 'Could not save the post, please try again'),
             'warning'
           );
+          closeAfter();
           return;
         }
 
