@@ -18,6 +18,7 @@ import {
 import { CustomFileValidationPipe } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 import { ApiTags } from '@nestjs/swagger';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
+import { GetOAuthUserIdFromRequest } from '@gitroom/nestjs-libraries/user/oauth.user.id.from.request';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -41,6 +42,7 @@ import {
 import { VideoDto } from '@gitroom/nestjs-libraries/dtos/videos/video.dto';
 import { VideoFunctionDto } from '@gitroom/nestjs-libraries/dtos/videos/video.function.dto';
 import { UploadDto } from '@gitroom/nestjs-libraries/dtos/media/upload.dto';
+import { GetMediaDto } from '@gitroom/nestjs-libraries/dtos/media/get.media.dto';
 import { ClippingDto } from '@gitroom/nestjs-libraries/dtos/clipping/clipping.dto';
 import { ClippingService } from '@gitroom/nestjs-libraries/database/prisma/clipping/clipping.service';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -58,6 +60,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
+import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { SuperAdminGuard } from '@gitroom/backend/services/auth/super.admin.guard';
 import { GetOrgActivityDto } from '@gitroom/nestjs-libraries/dtos/analytics/get.org.activity.dto';
 import {
@@ -82,7 +85,8 @@ export class PublicIntegrationsController {
     private _refreshIntegrationService: RefreshIntegrationService,
     private _adminStatsService: AdminStatsService,
     private _organizationService: OrganizationService,
-    private _clippingService: ClippingService
+    private _clippingService: ClippingService,
+    private _usersService: UsersService
   ) {}
 
   @Post('/upload')
@@ -107,6 +111,32 @@ export class PublicIntegrationsController {
     } finally {
       await discardTempFile(file);
     }
+  }
+
+  // The media library, newest first, 18 per page. Only the fields a caller
+  // needs to attach an item to a post.
+  @Get('/media')
+  async getMedia(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: GetMediaDto
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    const { pages, results } = await this._mediaService.getMedia(
+      org.id,
+      query.page ?? 1,
+      query.search
+    );
+
+    return {
+      pages,
+      results: results.map((p) => ({
+        id: p.id,
+        name: p.name,
+        originalName: p.originalName,
+        path: p.path,
+        createdAt: p.createdAt,
+      })),
+    };
   }
 
   // A video answers the two upload routes with `status: "processing"`; it is
@@ -281,6 +311,25 @@ export class PublicIntegrationsController {
   async getActiveIntegrations(@GetOrgFromRequest() org: Organization) {
     Sentry.metrics.count('public_api-request', 1);
     return { connected: true };
+  }
+
+  // Who the caller is: its organization, and for an OAuth app token the user
+  // who approved it. An API key belongs to the whole organization, so user
+  // is null for one.
+  @Get('/me')
+  async getMe(
+    @GetOrgFromRequest() org: Organization,
+    @GetOAuthUserIdFromRequest() userId?: string
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    const user = userId ? await this._usersService.getPersonal(userId) : null;
+
+    return {
+      organization: { id: org.id, name: org.name },
+      user: user
+        ? { id: user.id, name: user.name, picture: user.picture?.path || null }
+        : null,
+    };
   }
 
   @Get('/groups')

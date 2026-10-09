@@ -52,7 +52,7 @@ export const slackSectionBlocks = (text: string) => {
 };
 
 export class SlackProvider extends SocialAbstract implements SocialProvider {
-  override maxConcurrentJob = 3; // Slack has moderate API limits
+  override maxConcurrentJob = 10; // Slack limits are per workspace
   identifier = 'slack';
   category = 'chat' as const;
   name = 'Slack';

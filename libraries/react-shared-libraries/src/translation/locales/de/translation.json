@@ -729,6 +729,7 @@
   "repeat_post_every_label": "Beitrag wiederholen alle",
   "add_new_tag": "Neues Schlagwort hinzufügen",
   "tag_name": "Name",
+  "edit_tag": "Tag bearbeiten",
   "post_is_too_long": "Beitrag ist zu lang, bitte korrigieren",
   "your_post_should_have_at_least_one_character_or_one_image": "Dein Beitrag sollte mindestens ein Zeichen oder ein Bild enthalten.",
   "internal_edit": "Interne Bearbeitung",
@@ -862,5 +863,6 @@
   "group_updated": "Gruppe aktualisiert",
   "could_not_save_group": "Die Gruppe konnte nicht gespeichert werden.",
   "rename_group_hint": "Benennt {{name}} für alle Kanäle darin um",
-  "bot_name_renamed_hint": "Das ist der Name auf der Plattform. PostQueen zeigt den Kanal als {{name}}."
+  "bot_name_renamed_hint": "Das ist der Name auf der Plattform. PostQueen zeigt den Kanal als {{name}}.",
+  "facebook_video_title": "Videotitel (nur für Videobeiträge)"
 }

@@ -729,6 +729,7 @@
   "repeat_post_every_label": "Lặp lại bài đăng mỗi",
   "add_new_tag": "Thêm thẻ mới",
   "tag_name": "Tên",
+  "edit_tag": "Chỉnh sửa thẻ",
   "post_is_too_long": "bài đăng quá dài, vui lòng chỉnh sửa",
   "your_post_should_have_at_least_one_character_or_one_image": "Bài đăng của bạn phải có ít nhất một ký tự hoặc một hình ảnh.",
   "internal_edit": "Chỉnh sửa nội bộ",
@@ -862,5 +863,6 @@
   "group_updated": "Nhóm đã được cập nhật",
   "could_not_save_group": "Không thể lưu nhóm.",
   "rename_group_hint": "Đổi tên {{name}} cho mọi kênh trong nhóm",
-  "bot_name_renamed_hint": "Đây là tên trên nền tảng. PostQueen hiển thị kênh với tên {{name}}."
+  "bot_name_renamed_hint": "Đây là tên trên nền tảng. PostQueen hiển thị kênh với tên {{name}}.",
+  "facebook_video_title": "Tiêu đề video (chỉ dành cho bài đăng video)"
 }

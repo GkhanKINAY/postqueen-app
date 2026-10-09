@@ -729,6 +729,7 @@
   "repeat_post_every_label": "تكرار النشر كل",
   "add_new_tag": "إضافة وسم جديد",
   "tag_name": "الاسم",
+  "edit_tag": "تعديل الوسم",
   "post_is_too_long": "المنشور طويل جدًا، يرجى تعديله",
   "your_post_should_have_at_least_one_character_or_one_image": "يجب أن يحتوي منشورك على حرف واحد على الأقل أو صورة واحدة.",
   "internal_edit": "تعديل داخلي",
@@ -862,5 +863,6 @@
   "group_updated": "تم تحديث المجموعة",
   "could_not_save_group": "تعذّر حفظ المجموعة.",
   "rename_group_hint": "يعيد تسمية {{name}} لكل القنوات التي فيها",
-  "bot_name_renamed_hint": "هذا هو الاسم على المنصة. يعرض PostQueen القناة باسم {{name}}."
+  "bot_name_renamed_hint": "هذا هو الاسم على المنصة. يعرض PostQueen القناة باسم {{name}}.",
+  "facebook_video_title": "عنوان الفيديو (لمنشورات الفيديو فقط)"
 }

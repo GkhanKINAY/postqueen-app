@@ -570,5 +570,7 @@
   "group_updated": "ჯგუფი განახლდა",
   "could_not_save_group": "ჯგუფის შენახვა ვერ მოხერხდა.",
   "rename_group_hint": "{{name}}-ს სახელს უცვლის მასში შემავალ ყველა არხს",
-  "bot_name_renamed_hint": "ეს არის სახელი პლატფორმაზე. PostQueen არხს აჩვენებს როგორც {{name}}."
+  "bot_name_renamed_hint": "ეს არის სახელი პლატფორმაზე. PostQueen არხს აჩვენებს როგორც {{name}}.",
+  "edit_tag": "ტეგის რედაქტირება",
+  "facebook_video_title": "ვიდეოს სათაური (მხოლოდ ვიდეო პოსტებისთვის)"
 }
