@@ -1,7 +1,6 @@
 'use client';
 import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
-import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 // The last line of defence: it replaces the root layout, so nothing from the
 // app's providers or stylesheet can be assumed here. It used to render
@@ -13,12 +12,11 @@ export default function GlobalError({
 }: {
   error: Error & { digest?: string };
 }) {
-  const { sentryDsn } = useVariables();
-
   useEffect(() => {
-    if (!sentryDsn) {
-      return;
-    }
+    // Not gated on the DSN from the variables context: this replaces the root
+    // layout, so that provider is never mounted here and the DSN always read
+    // empty, and no render crash was reported. Without an initialised client
+    // captureException does nothing, so an install without Sentry is as before.
     // Reported without Sentry's crash dialog: it is English-only and not RTL,
     // and this page already says what happened and offers a reload.
     Sentry.captureException(error);
