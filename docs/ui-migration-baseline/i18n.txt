@@ -282,6 +282,7 @@ billing_coupon_when_checkout_ready
 billing_days_are_free
 billing_discount_applied
 billing_discount_coupon
+billing_download_invoice
 billing_due_today
 billing_due_today_lower
 billing_ending
@@ -293,8 +294,12 @@ billing_founding_member
 billing_founding_price
 billing_get_lifetime_access
 billing_have_discount_coupon
+billing_history
 billing_included_in
 billing_invalid_coupon
+billing_invoice
+billing_invoice_credits
+billing_invoices_failed
 billing_lapsed_hero_sub
 billing_left_at_this_price
 billing_lifetime_access
@@ -308,6 +313,7 @@ billing_month
 billing_monthly
 billing_months_free
 billing_n_day_free_trial
+billing_no_invoices
 billing_no_risk_trial
 billing_not_configured
 billing_not_configured_title
@@ -346,6 +352,11 @@ billing_remove
 billing_renews_period
 billing_resubscribe_to_plan
 billing_see_the_power
+billing_show_older
+billing_status_failed
+billing_status_open
+billing_status_paid
+billing_status_void
 billing_still_processing
 billing_still_processing_title
 billing_stripe_load_failed
@@ -365,6 +376,7 @@ billing_trial_end
 billing_trial_ended_on
 billing_trial_hero_sub
 billing_unlimited
+billing_view_invoice
 billing_where_you_left_off
 billing_year
 billing_yearly
