@@ -888,5 +888,6 @@
   "post_now_all_channels": "פרסום עכשיו בכל הערוצים",
   "schedule_post_in_all_channels_question": "הפוסט הזה נוצר עבור יותר מערוץ אחד. לתזמן אותו בכולם?",
   "schedule_all_channels": "תזמון כל הערוצים",
-  "only_channel_name": "רק {{name}}"
+  "only_channel_name": "רק {{name}}",
+  "delete_all_channels_cancels_scheduled": "מחיקה מכל הערוצים מבטלת גם את הפוסטים שעדיין מתוזמנים בערוצים האחרים."
 }

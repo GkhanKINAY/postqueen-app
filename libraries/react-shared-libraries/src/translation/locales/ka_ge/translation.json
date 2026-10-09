@@ -596,5 +596,6 @@
   "post_now_all_channels": "ახლავე გამოქვეყნება ყველა არხზე",
   "schedule_post_in_all_channels_question": "ეს პოსტი შეიქმნა ერთზე მეტი არხისთვის. გსურთ დაგეგმვა ყველა არხზე?",
   "schedule_all_channels": "ყველა არხის დაგეგმვა",
-  "only_channel_name": "მხოლოდ {{name}}"
+  "only_channel_name": "მხოლოდ {{name}}",
+  "delete_all_channels_cancels_scheduled": "ყველა არხიდან წაშლა ასევე გააუქმებს სხვა არხებზე ჯერ კიდევ დაგეგმილ პოსტებს."
 }

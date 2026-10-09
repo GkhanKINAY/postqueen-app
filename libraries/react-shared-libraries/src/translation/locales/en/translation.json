@@ -1433,5 +1433,6 @@
   "post_now_all_channels": "Post all channels now",
   "schedule_post_in_all_channels_question": "This post was created for more than one channel. Do you want to schedule all of them?",
   "schedule_all_channels": "Schedule all channels",
-  "only_channel_name": "Only {{name}}"
+  "only_channel_name": "Only {{name}}",
+  "delete_all_channels_cancels_scheduled": "Deleting it from all channels also cancels the posts still scheduled on the other channels."
 }

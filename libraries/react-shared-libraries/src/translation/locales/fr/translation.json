@@ -888,5 +888,6 @@
   "post_now_all_channels": "Publier maintenant sur tous les canaux",
   "schedule_post_in_all_channels_question": "Cette publication a été créée pour plusieurs canaux. Voulez-vous la programmer sur tous ?",
   "schedule_all_channels": "Programmer tous les canaux",
-  "only_channel_name": "Uniquement {{name}}"
+  "only_channel_name": "Uniquement {{name}}",
+  "delete_all_channels_cancels_scheduled": "La supprimer de tous les canaux annule aussi les publications encore programmées sur les autres canaux."
 }

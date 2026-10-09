@@ -11,9 +11,6 @@ import { useExistingData } from '@gitroom/frontend/components/launches/helpers/u
 
 export const SelectCurrent: FC = () => {
   const existingData = useExistingData();
-  // A post edited with the other channels it was saved with opens each on
-  // its own version, so the shared one would reach none of them.
-  const withSiblings = !!existingData.siblings?.length;
   const {
     selectedIntegrations,
     current,
@@ -32,6 +29,13 @@ export const SelectCurrent: FC = () => {
         (p) => p.integration.id === state.current
       ),
     }))
+  );
+
+  // A post edited with the other channels it was saved with opens each on
+  // its own version, so the shared one would reach none of them. Only the
+  // siblings in the editor count: one whose channel is gone is not.
+  const withSiblings = !!existingData.siblings?.some((sibling) =>
+    selectedIntegrations.some((p) => p.integration.id === sibling.integration)
   );
 
   const t = useT();

@@ -887,5 +887,6 @@
   "post_now_all_channels": "এখনই সব চ্যানেলে পোস্ট করুন",
   "schedule_post_in_all_channels_question": "এই পোস্টটি একাধিক চ্যানেলের জন্য তৈরি করা হয়েছিল। আপনি কি সবগুলোতে নির্ধারণ করতে চান?",
   "schedule_all_channels": "সব চ্যানেলে নির্ধারণ করুন",
-  "only_channel_name": "শুধু {{name}}"
+  "only_channel_name": "শুধু {{name}}",
+  "delete_all_channels_cancels_scheduled": "সব চ্যানেল থেকে মুছলে অন্য চ্যানেলগুলোতে এখনও নির্ধারিত পোস্টগুলোও বাতিল হয়ে যাবে।"
 }

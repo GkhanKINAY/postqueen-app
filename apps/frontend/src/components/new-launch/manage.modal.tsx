@@ -246,6 +246,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       integrations.some((p) => p.id === sibling.integration)
     ),
   ];
+  const hasSiblings = existingPosts.length > 1;
   const channel =
     existingPosts.find((p) => p.integration === current) || existingData;
   const channelName = (integrationId: string) =>
@@ -266,7 +267,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     [channelDate, current, setChannelDate, setDate]
   );
   const pickerLabel =
-    existingData.siblings?.length && current !== 'global'
+    hasSiblings && current !== 'global'
       ? t('channel_time_for', 'Time for {{name}}', {
           name: channelName(current),
           interpolation: { escapeValue: false },
@@ -363,8 +364,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const deletePost = useCallback(async () => {
     setLoading(true);
 
-    // Saved with other channels: from all of them, or from the one in view.
-    if (existingData.siblings?.length) {
+    // Saved with other channels: from the one in view, or from all of them.
+    if (hasSiblings) {
+      const cancelsScheduled = existingPosts.some(
+        (p) => p !== channel && p.posts?.[0]?.state === 'QUEUE'
+      );
       const groups = await new Promise<string[]>((resolve) => {
         modal.openModal({
           id: 'delete-post-channels',
@@ -378,6 +382,14 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 {t(
                   'delete_post_from_all_channels_question',
                   'This post was created for more than one channel. Do you want to delete it from all of them?'
+                )}
+                {cancelsScheduled && (
+                  <div className="mt-[10px] text-[14px] text-pqMuted">
+                    {t(
+                      'delete_all_channels_cancels_scheduled',
+                      'Deleting it from all channels also cancels the posts still scheduled on the other channels.'
+                    )}
+                  </div>
                 )}
                 {publishedView && (
                   <div className="mt-[10px] text-[14px] text-pqMuted">
@@ -395,10 +407,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     className="flex-1"
                     onClick={() => {
                       modal.closeById('delete-post-channels');
-                      resolve(existingPosts.map((p) => p.group!));
+                      resolve([channel.group!]);
                     }}
                   >
-                    {t('delete_from_all_channels', 'Delete from all channels')}
+                    {t('delete_only_from_channel', 'Only from {{name}}', {
+                      name: channelName(channel.integration),
+                      interpolation: { escapeValue: false },
+                    })}
                   </Button>
                 </div>
                 <div className="flex-1 flex">
@@ -408,13 +423,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     className="flex-1"
                     onClick={() => {
                       modal.closeById('delete-post-channels');
-                      resolve([channel.group!]);
+                      resolve(existingPosts.map((p) => p.group!));
                     }}
                   >
-                    {t('delete_only_from_channel', 'Only from {{name}}', {
-                      name: channelName(channel.integration),
-                      interpolation: { escapeValue: false },
-                    })}
+                    {t('delete_from_all_channels', 'Delete from all channels')}
                   </Button>
                 </div>
               </div>
@@ -650,6 +662,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             dayjs().isAfter(dateOf(p.integration).utc()))
       );
       const others = existingPosts.filter((p) => p !== channel);
+      // "Only {name}": the other channels are not saved at all, so they keep
+      // their groups, workflows, settings and tags as they are.
+      let onlyChannel = false;
 
       // Another channel whose time already passed would go out at once, so it
       // only gets its details saved.
@@ -664,9 +679,21 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         }
       }
 
+      // Another channel that already went out is never published again from
+      // here: it only gets its details saved, so retrying the channel in view
+      // cannot post a sibling twice. Only the channel in view is asked about
+      // republishing.
+      if (type === 'now' || type === 'schedule') {
+        for (const p of others) {
+          if (published.includes(p)) {
+            saveAs[p.integration] = 'update';
+          }
+        }
+      }
+
       // A draft of a post with other channels leaves the published ones as
       // they are.
-      if (type === 'draft' && existingData.siblings?.length) {
+      if (type === 'draft' && hasSiblings) {
         for (const p of published) {
           if (p.posts[0].state === 'PUBLISHED') {
             saveAs[p.integration] = 'update';
@@ -769,9 +796,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         }
 
         if (whichChannels === 'only') {
-          for (const p of others) {
-            saveAs[p.integration] = asItIs(p);
-          }
+          onlyChannel = true;
         }
       }
 
@@ -877,8 +902,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       // Pull the local values to build the payload, but rely on the server
       // (`/posts/valid`) for the actual validation — checkValidity now lives
       // server-side so it can't be bypassed.
-      const allValues = await ref.current?.getAllValues?.();
-      if (!allValues) {
+      const editorValues = await ref.current?.getAllValues?.();
+      if (!editorValues) {
         setLoading(false);
         toaster.show(
           t('something_went_wrong', 'Something went wrong'),
@@ -886,6 +911,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         );
         return;
       }
+      const allValues = onlyChannel
+        ? editorValues.filter((post: any) => post.id === channel.integration)
+        : editorValues;
 
       const integrationById = (id: string) =>
         selectedIntegrations.find((p) => p.integration.id === id);

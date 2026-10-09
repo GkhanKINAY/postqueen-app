@@ -888,5 +888,6 @@
   "post_now_all_channels": "Опубликовать сейчас во всех каналах",
   "schedule_post_in_all_channels_question": "Этот пост создан для нескольких каналов. Запланировать его во всех?",
   "schedule_all_channels": "Запланировать все каналы",
-  "only_channel_name": "Только {{name}}"
+  "only_channel_name": "Только {{name}}",
+  "delete_all_channels_cancels_scheduled": "Удаление из всех каналов также отменит посты, которые ещё запланированы в других каналах."
 }

@@ -906,5 +906,6 @@
   "post_now_all_channels": "Tüm kanallarda şimdi paylaş",
   "schedule_post_in_all_channels_question": "Bu gönderi birden fazla kanal için oluşturuldu. Hepsini zamanlamak istiyor musunuz?",
   "schedule_all_channels": "Tüm kanalları zamanla",
-  "only_channel_name": "Yalnızca {{name}}"
+  "only_channel_name": "Yalnızca {{name}}",
+  "delete_all_channels_cancels_scheduled": "Tüm kanallardan silmek, diğer kanallarda hâlâ zamanlanmış gönderileri de iptal eder."
 }
