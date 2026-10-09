@@ -115,6 +115,9 @@ export const MultiMediaComponent: FC<{
   toolBar?: React.ReactNode;
   information?: React.ReactNode;
   trailing?: React.ReactNode;
+  // Set when the channel takes pictures inside the post body: what is picked
+  // goes there instead of the attachments.
+  insertInContent?: (media: Array<{ id: string; path: string }>) => void;
   onChange: (event: {
     target: {
       name: string;
@@ -144,6 +147,7 @@ export const MultiMediaComponent: FC<{
     information,
     trailing,
     mediaNotAvailable,
+    insertInContent,
   } = props;
   const showThumbs = !ghost || ghostPart === 'all' || ghostPart === 'thumbs';
   const showToolbar = !ghost || ghostPart === 'all' || ghostPart === 'toolbar';
@@ -244,6 +248,11 @@ export const MultiMediaComponent: FC<{
           }[]
     ) => {
       const mediaArray = Array.isArray(m) ? m : [m];
+      if (insertInContent) {
+        insertInContent(mediaArray);
+        return;
+      }
+
       const existing = currentMediaRef.current || [];
       const seen = new Set(existing.map((x) => x.id));
       const additions = mediaArray.filter((x) => x?.id && !seen.has(x.id));
@@ -259,7 +268,7 @@ export const MultiMediaComponent: FC<{
         },
       });
     },
-    [name, onChange]
+    [name, onChange, insertInContent]
   );
   const showModal = useCallback(() => {
     modals.openModal({
@@ -273,11 +282,12 @@ export const MultiMediaComponent: FC<{
         <MediaBox
           setMedia={changeMedia}
           closeModal={close}
-          attachedMedia={currentMedia || []}
+          type={insertInContent ? 'image' : undefined}
+          attachedMedia={insertInContent ? [] : currentMedia || []}
         />
       ),
     });
-  }, [changeMedia, currentMedia, modals, t, touch]);
+  }, [changeMedia, currentMedia, insertInContent, modals, t, touch]);
 
   const clearMedia = useCallback(
     (topIndex: number) => () => {
@@ -726,12 +736,14 @@ export const MultiMediaComponent: FC<{
 
                 {!attachmentsOnly && (
                   <>
-                    <ThirdPartyMedia
-                      ghost={ghost}
-                      compact={compact}
-                      allData={allData}
-                      onChange={changeMedia}
-                    />
+                    {!insertInContent && (
+                      <ThirdPartyMedia
+                        ghost={ghost}
+                        compact={compact}
+                        allData={allData}
+                        onChange={changeMedia}
+                      />
+                    )}
 
                     {!!user?.tier?.ai && (
                       <>
@@ -741,12 +753,14 @@ export const MultiMediaComponent: FC<{
                           value={text}
                           onChange={changeMedia}
                         />
-                        <AiVideo
-                          ghost={ghost}
-                          compact={compact}
-                          value={text}
-                          onChange={changeMedia}
-                        />
+                        {!insertInContent && (
+                          <AiVideo
+                            ghost={ghost}
+                            compact={compact}
+                            value={text}
+                            onChange={changeMedia}
+                          />
+                        )}
                       </>
                     )}
                   </>

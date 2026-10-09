@@ -13,27 +13,53 @@ const ALLOWED_TAGS = [
   'h2',
   'h3',
   'span',
+  'img',
 ];
 
 const ALLOWED_ATTR = [
+  'dir',
   'href',
   'target',
   'rel',
   'class',
   'data-mention-id',
   'data-mention-label',
+  'src',
+  'alt',
 ];
+
+// <img> keeps data: URIs whatever ALLOWED_URI_REGEXP says, and a relative src
+// passes it, so a picture that doesn't point to a real file is dropped.
+// DOMPurify is one shared instance, so the hook is added for this call only:
+// sanitizePreviewHtml and every other caller must not inherit it.
+const dropImageWithoutUrl = (node: Node, data: { tagName: string }) => {
+  if (
+    data.tagName === 'img' &&
+    !/^https?:\/\//i.test((node as Element).getAttribute('src') || '')
+  ) {
+    node.parentNode?.removeChild(node);
+  }
+};
 
 export const sanitizePostContent = (value: unknown): string => {
   if (typeof value !== 'string' || !value) {
     return '';
   }
 
-  return DOMPurify.sanitize(value, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
-  });
+  DOMPurify.addHook('uponSanitizeElement', dropImageWithoutUrl);
+  try {
+    return DOMPurify.sanitize(value, {
+      ALLOWED_TAGS,
+      ALLOWED_ATTR,
+      ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
+      // An attribute DOMPurify does not know as URI-safe has its value tested
+      // against ALLOWED_URI_REGEXP, so without this every dir="auto" the
+      // editor writes would be dropped on save.
+      ADD_URI_SAFE_ATTR: ['dir'],
+    });
+  } finally {
+    DOMPurify.removeHook('uponSanitizeElement', dropImageWithoutUrl);
+  }
 };
 
 /**

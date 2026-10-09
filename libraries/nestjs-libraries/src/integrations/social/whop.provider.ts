@@ -18,6 +18,7 @@ import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
 export class WhopProvider extends SocialAbstract implements SocialProvider {
+  override maxConcurrentJob = 3; // Whop limits are per token
   identifier = 'whop';
   category = 'chat' as const;
   name = 'Whop';

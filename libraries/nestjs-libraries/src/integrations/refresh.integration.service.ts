@@ -73,11 +73,29 @@ export class RefreshIntegrationService {
     socialProvider: SocialProvider,
     cause = ''
   ): Promise<AuthTokenDetails | false> {
+    let refreshError: any = undefined;
     const refresh: false | AuthTokenDetails = await socialProvider
       .refreshToken(integration.refreshToken)
-      .catch((err) => false);
+      .catch((err) => {
+        refreshError = err;
+        return false as const;
+      });
 
     if (!refresh || !refresh.accessToken) {
+      if (refreshError) {
+        console.error(
+          `Could not refresh ${integration.providerIdentifier} integration ${integration.id}`,
+          [
+            refreshError?.response?.data?.error,
+            refreshError?.response?.data?.error_description,
+          ]
+            .filter((p) => typeof p === 'string')
+            .join(' ') ||
+            refreshError?.message ||
+            String(refreshError)
+        );
+      }
+
       await this._integrationService.refreshNeeded(
         integration.organizationId,
         integration.id
@@ -89,7 +107,8 @@ export class RefreshIntegrationService {
       await this._integrationService.informAboutRefreshError(
         integration.organizationId,
         integration,
-        cause
+        cause,
+        socialProvider.refreshErrorMessage?.(refreshError)
       );
 
       return false;
@@ -102,11 +121,20 @@ export class RefreshIntegrationService {
       return refresh;
     }
 
-    const reConnect = await socialProvider.reConnect(
-      integration.rootInternalId,
-      integration.internalId,
-      refresh.accessToken
-    );
+    let reConnect;
+    try {
+      reConnect = await socialProvider.reConnect(
+        integration.rootInternalId,
+        integration.internalId,
+        refresh.accessToken
+      );
+    } catch (err: any) {
+      console.error(
+        `Could not reconnect ${integration.providerIdentifier} integration ${integration.id} after a successful token refresh`,
+        err?.message || String(err)
+      );
+      throw err;
+    }
 
     return {
       ...refresh,

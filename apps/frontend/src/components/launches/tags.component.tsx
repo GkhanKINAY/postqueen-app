@@ -123,51 +123,98 @@ export const TagsComponentInner: FC<{
     }
   }, [tagValue, name, onChange, mutate, t, modals]);
 
+  const editTag = useCallback(
+    async (tag: any, e: React.MouseEvent) => {
+      setAllowClose(false);
+      e.stopPropagation();
+      try {
+        const val: string | undefined = await new Promise((resolve) => {
+          modals.openModal({
+            title: t('edit_tag', 'Edit Tag'),
+            onClose: () => resolve(undefined),
+            children: (close) => (
+              <ShowModal
+                tag={tag.name}
+                color={tag.color}
+                id={tag.id}
+                close={close}
+                resolve={resolve}
+              />
+            ),
+          });
+        });
+
+        const newValues = await mutate();
+
+        if (val) {
+          const updated = newValues.tags.find((p: any) => p.id === tag.id);
+          if (updated && tagValue.find((a) => a.id === tag.id)) {
+            const modify = tagValue.map((a) =>
+              a.id === tag.id ? updated : a
+            );
+            setTagValue(modify);
+            onChange({
+              target: {
+                value: tagsToPostPayload(modify),
+                name,
+              },
+            });
+          }
+        }
+      } finally {
+        setTimeout(() => {
+          setAllowClose(true);
+        }, 500);
+      }
+    },
+    [tagValue, name, onChange, mutate, modals, t]
+  );
+
   const deleteTag = useCallback(
     async (tag: any, e: React.MouseEvent) => {
       setAllowClose(false);
       e.stopPropagation();
-      const confirmed: boolean = await new Promise((resolve) => {
-        modals.openModal({
-          title: t('delete_tag', 'Delete Tag'),
-          children: (close) => (
-            <ConfirmDeleteModal
-              tagName={tag.name}
-              close={close}
-              resolve={resolve}
-            />
-          ),
+      try {
+        const confirmed: boolean = await new Promise((resolve) => {
+          modals.openModal({
+            title: t('delete_tag', 'Delete Tag'),
+            onClose: () => resolve(false),
+            children: (close) => (
+              <ConfirmDeleteModal
+                tagName={tag.name}
+                close={close}
+                resolve={resolve}
+              />
+            ),
+          });
         });
-      });
 
-      if (!confirmed) {
+        if (!confirmed) {
+          return;
+        }
+
+        await fetch(`/posts/tags/${tag.id}`, {
+          method: 'DELETE',
+        });
+
+        // Remove the tag from current selection if it was selected
+        const modify = tagValue.filter((a) => a.id !== tag.id);
+        if (modify.length !== tagValue.length) {
+          setTagValue(modify);
+          onChange({
+            target: {
+              value: tagsToPostPayload(modify),
+              name,
+            },
+          });
+        }
+
+        await mutate();
+      } finally {
         setTimeout(() => {
           setAllowClose(true);
         }, 500);
-        return;
       }
-
-      await fetch(`/posts/tags/${tag.id}`, {
-        method: 'DELETE',
-      });
-
-      // Remove the tag from current selection if it was selected
-      const modify = tagValue.filter((a) => a.id !== tag.id);
-      if (modify.length !== tagValue.length) {
-        setTagValue(modify);
-        onChange({
-          target: {
-            value: tagsToPostPayload(modify),
-            name,
-          },
-        });
-      }
-
-      await mutate();
-
-      setTimeout(() => {
-        setAllowClose(true);
-      }, 500);
     },
     [tagValue, name, onChange, mutate, fetch, modals, t]
   );
@@ -271,12 +318,33 @@ export const TagsComponentInner: FC<{
                   {p.name}
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={(e) => editTag(p, e)}
+                aria-label={t('edit_tag', 'Edit Tag')}
+                className="grid size-[28px] shrink-0 place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText"
+              >
+                <svg
+                  viewBox="0 0 12 12"
+                  width="12"
+                  height="12"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8.2 1.8l2 2L4 10H2v-2l6.2-6.2z"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
               {!tagValue.find((a) => a.id === p.id) && (
                 <button
                   type="button"
                   onClick={(e) => deleteTag(p, e)}
                   aria-label={t('delete_tag', 'Delete Tag')}
-                  className="ms-auto grid size-[28px] shrink-0 place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqDanger hover:text-white"
+                  className="grid size-[28px] shrink-0 place-items-center rounded-[8px] text-pqMuted transition-colors hover:bg-pqDanger hover:text-white"
                 >
                   <svg
                     viewBox="0 0 12 12"

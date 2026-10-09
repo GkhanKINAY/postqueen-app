@@ -77,9 +77,11 @@ export class PermissionsService {
         // but only if the channel actually belongs to this org and is still
         // connected. A removed channel comes back through Add Channel, which
         // counts against the limit; naming it here must not skip that count.
+        // ?refresh= carries the provider-side internalId (Reconnect on the
+        // Channels page), not the row id, so the lookup is by internalId.
         if (refreshChannelId) {
           const existingIntegration =
-            await this._integrationService.getIntegrationByIdNotDeleted(
+            await this._integrationService.getIntegrationByInternalId(
               orgId,
               refreshChannelId
             );

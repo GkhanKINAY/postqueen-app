@@ -237,6 +237,9 @@ export interface SocialProvider
    */
   creditCost?(op: CreditOperation): number | undefined;
   refreshCron?: boolean;
+  // A message for the person whose channel could not be refreshed, when the
+  // provider recognises why (e.g. a policy on their side they can change).
+  refreshErrorMessage?(err: any): string | undefined;
   dto?: any;
   maxLength: (additionalSettings?: any, settings?: any) => number;
   /**
@@ -269,6 +272,7 @@ export interface SocialProvider
   isChromeExtension?: boolean;
   extensionCookies?: { name: string; domain: string }[];
   editor: 'none' | 'normal' | 'markdown' | 'html';
+  inlineImages?: (settings?: any) => boolean;
   customFields?: () => Promise<
     {
       key: string;

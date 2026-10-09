@@ -5,6 +5,7 @@ import { EmptyProvider } from '@gitroom/nestjs-libraries/emails/empty.provider';
 import { NodeMailerProvider } from '@gitroom/nestjs-libraries/emails/node.mailer.provider';
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { randomUUID } from 'crypto';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   EmailContent,
@@ -128,15 +129,19 @@ export class EmailService {
     addTo: 'top' | 'bottom',
     replyTo?: string
   ) {
+    // The old singleton dropped these when they reached its queue.
+    if (!to || !subject) {
+      return;
+    }
+
+    // One execution per email: the rate limit lives on the email task
+    // queues, so nothing waits behind one shared workflow.
     return this._temporalService.client
       .getRawClient()
-      ?.workflow.signalWithStart('sendEmailWorkflow', {
+      ?.workflow.start('sendSingleEmailWorkflowV1', {
         taskQueue: 'main',
-        workflowId: 'send_email',
-        signal: 'sendEmail',
-        args: [{ queue: [] }],
-        signalArgs: [{ to, subject, html, replyTo, addTo }],
-        workflowIdConflictPolicy: 'USE_EXISTING',
+        workflowId: `send_email_${randomUUID()}`,
+        args: [{ to, subject, html, replyTo, addTo }],
       });
   }
 

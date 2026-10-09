@@ -741,6 +741,7 @@
   "repeat_post_every_label": "חזור על הפוסט כל",
   "add_new_tag": "הוסף תגית חדשה",
   "tag_name": "שם",
+  "edit_tag": "ערוך תגית",
   "post_is_too_long": "הפוסט ארוך מדי, אנא תקן אותו",
   "your_post_should_have_at_least_one_character_or_one_image": "הפוסט שלך צריך לכלול לפחות תו אחד או תמונה אחת.",
   "internal_edit": "עריכה פנימית",
@@ -756,6 +757,7 @@
   "delete_post_tooltip": "מחק פוסט",
   "drop_files_here_to_upload": "גרור קבצים לכאן להעלאה",
   "insert_emoji": "הוסף אימוג'י",
+  "only_images_can_be_added_to_the_content": "ניתן להוסיף לתוכן רק תמונות",
   "write_something": "כתוב משהו…",
   "click_channel_to_add": "לחץ על ערוץ כדי להוסיף אותו",
   "connect_your_channels": "חבר את הערוצים שלך",
@@ -860,5 +862,6 @@
   "email_off_button": "לכבות",
   "signup_product_news_notice": "מדי פעם נשלח אליך עדכוני מוצר. אפשר לבטל את המינוי מכל אחד מהם בלחיצה אחת.",
   "product_news": "עדכוני מוצר",
-  "product_news_description": "קבלת אימייל מדי פעם על תכונות חדשות ושיפורים"
+  "product_news_description": "קבלת אימייל מדי פעם על תכונות חדשות ושיפורים",
+  "facebook_video_title": "כותרת הסרטון (לפוסטים של וידאו בלבד)"
 }

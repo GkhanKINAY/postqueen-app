@@ -142,8 +142,12 @@ function LayoutContextInner(params: { children: ReactNode }) {
           return true;
         }
         // Read from a clone: returning `true` below hands the original response
-        // back to the caller, which reads the body again.
-        const { message } = await response.clone().json();
+        // back to the caller, which reads the body again. A proxy can answer
+        // 402 with a body that is not JSON; the dialog still opens.
+        const { message } = await response
+          .clone()
+          .json()
+          .catch(() => ({} as { message?: string }));
         if (
           await deleteDialog(message, 'Move to billing', 'Payment Required')
         ) {
