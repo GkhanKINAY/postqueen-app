@@ -3600,7 +3600,11 @@ export const GoToLivePostButton: FC<{
     };
     try {
       release = await Promise.race([
-        fetch(`/posts/${postId}/release-url`).then((r) => r.json()),
+        // an error status resolves too, and reads as not ready, like a
+        // request that failed outright
+        fetch(`/posts/${postId}/release-url`).then((r) =>
+          r.ok ? r.json() : release
+        ),
         timer(5000).then(() => release),
       ]);
     } catch (e) {}

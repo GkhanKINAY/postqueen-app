@@ -48,7 +48,10 @@ import {
 import { AnalyticsData } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
-import { RefreshToken } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  Disconnect,
+  RefreshToken,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import {
@@ -373,6 +376,11 @@ export class PostsService {
       console.log(e);
       if (e instanceof RefreshToken && !forceRefresh) {
         return this.getReleaseURL(orgId, postId, true);
+      }
+      // a token still refused after a refresh, or a channel the platform
+      // disconnected, will not work by trying again in a minute
+      if (e instanceof RefreshToken || e instanceof Disconnect) {
+        return { releaseURL: post.releaseURL, reconnect: true };
       }
     }
 
