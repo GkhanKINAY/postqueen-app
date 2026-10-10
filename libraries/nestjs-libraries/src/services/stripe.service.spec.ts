@@ -992,6 +992,7 @@ describe('a plan change', () => {
     try {
       const result = await upgrade();
       assert.equal((result as any).portal, undefined);
+      assert.ok(updates().some((b) => b.automatic_tax && !b.metadata));
       assert.ok(updates().some((b) => b.items));
     } finally {
       fake(probe.subscriptions, { update: saved });
