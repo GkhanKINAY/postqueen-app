@@ -1075,6 +1075,14 @@ export class IntegrationService implements OnModuleInit {
           days
         );
         if (readManualOnly) {
+          // A provider answers [] for a rate limit or an outage too, so an
+          // empty read never replaces numbers the last Refresh stored.
+          const stored = loadAnalytics?.length
+            ? null
+            : await ioRedis.get(manualKey);
+          if (stored) {
+            return JSON.parse(stored);
+          }
           await ioRedis.set(
             manualKey,
             JSON.stringify(loadAnalytics),

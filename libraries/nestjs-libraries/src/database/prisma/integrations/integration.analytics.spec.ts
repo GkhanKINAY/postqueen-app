@@ -139,6 +139,32 @@ describe(
       );
     });
 
+    it('keeps the stored numbers when a Refresh reads nothing', async () => {
+      await ioRedis.set('integration:org-d:x-1:manual', JSON.stringify(series));
+      const analytics = providers.x.analytics;
+      providers.x.analytics = async (_: string, __: string, days: number) => {
+        reads.push(days);
+        return [];
+      };
+      try {
+        const result = await service().checkAnalytics(
+          { id: 'org-d' },
+          'x-1',
+          '7',
+          false,
+          true
+        );
+        assert.deepEqual(result, series);
+        assert.deepEqual(reads, [7]);
+        assert.equal(
+          await ioRedis.get('integration:org-d:x-1:manual'),
+          JSON.stringify(series)
+        );
+      } finally {
+        providers.x.analytics = analytics;
+      }
+    });
+
     it('reads every other provider for the period asked, as before', async () => {
       await service().checkAnalytics({ id: 'org-c' }, 'li-1', '30');
       assert.deepEqual(reads, [30]);
