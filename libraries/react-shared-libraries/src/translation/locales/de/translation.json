@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "Noch nicht aktualisiert",
   "analytics_refresh_done": "Zahlen aktualisiert",
   "analytics_refresh_cooldown": "Schon aktuell. Versuche es in ein paar Minuten noch einmal.",
-  "analytics_refresh_hint": "Manche Kanäle aktualisieren ihre Beitragszahlen nur, wenn du aktualisierst."
+  "analytics_refresh_hint": "Manche Kanäle aktualisieren ihre Beitragszahlen nur, wenn du aktualisierst.",
+  "analytics_refresh_nothing": "Keine neuen Zahlen zum Abrufen"
 }

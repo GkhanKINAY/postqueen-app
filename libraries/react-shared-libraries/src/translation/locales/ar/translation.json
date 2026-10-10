@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "لم يتم التحديث بعد",
   "analytics_refresh_done": "تم تحديث الأرقام",
   "analytics_refresh_cooldown": "البيانات محدّثة بالفعل. حاول مرة أخرى بعد بضع دقائق.",
-  "analytics_refresh_hint": "بعض القنوات لا تحدّث أرقام منشوراتها إلا عندما تضغط على تحديث."
+  "analytics_refresh_hint": "بعض القنوات لا تحدّث أرقام منشوراتها إلا عندما تضغط على تحديث.",
+  "analytics_refresh_nothing": "لا توجد أرقام جديدة لقراءتها"
 }

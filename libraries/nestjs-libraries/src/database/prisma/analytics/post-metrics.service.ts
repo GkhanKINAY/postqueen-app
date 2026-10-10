@@ -27,13 +27,14 @@ import { GetAnalyticsPostsDto } from '@gitroom/nestjs-libraries/dtos/analytics/g
 import { timer } from '@gitroom/helpers/utils/timer';
 import { hasKnownPostMetric } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 
 dayjs.extend(utc);
 
 const LOOKBACK_DAYS = 90;
 const STALE_AFTER_MS = 60 * 60 * 1000;
-// A manual-only channel synced this recently is skipped by Refresh, so a
-// pressed-again button never reads the same posts twice in a row.
+// A manual-only channel synced or tried this recently is skipped by Refresh,
+// so a pressed-again button never reads the same posts twice in a row.
 const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
 
 // The oldest of the channels' last syncs, so "updated" never claims they are
@@ -126,9 +127,19 @@ export class PostMetricsService {
     let synced = 0;
     let skipped = 0;
     for (const integration of integrations) {
+      // The snapshot time covers a read that wrote rows; the key covers a
+      // read that wrote none (an error, no known metric) and two presses at
+      // once, since only one of them can claim it.
       if (
-        integration.lastSyncedAt &&
-        integration.lastSyncedAt.getTime() > freshAfter
+        (integration.lastSyncedAt &&
+          integration.lastSyncedAt.getTime() > freshAfter) ||
+        (await ioRedis.set(
+          `post-metrics-refresh:${integration.id}`,
+          '1',
+          'PX',
+          MANUAL_REFRESH_COOLDOWN_MS,
+          'NX',
+        )) !== 'OK'
       ) {
         skipped += 1;
         continue;

@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "아직 새로 고치지 않음",
   "analytics_refresh_done": "수치를 새로 고쳤습니다",
   "analytics_refresh_cooldown": "이미 최신 상태입니다. 몇 분 후에 다시 시도하세요.",
-  "analytics_refresh_hint": "일부 채널은 새로 고칠 때만 게시물 수치가 업데이트됩니다."
+  "analytics_refresh_hint": "일부 채널은 새로 고칠 때만 게시물 수치가 업데이트됩니다.",
+  "analytics_refresh_nothing": "읽어올 새 수치가 없습니다"
 }

@@ -1445,5 +1445,6 @@
   "analytics_never_refreshed": "Not refreshed yet",
   "analytics_refresh_done": "Numbers refreshed",
   "analytics_refresh_cooldown": "Already up to date. Try again in a few minutes.",
-  "analytics_refresh_hint": "Some channels update their post numbers only when you refresh."
+  "analytics_refresh_hint": "Some channels update their post numbers only when you refresh.",
+  "analytics_refresh_nothing": "No new numbers to read"
 }

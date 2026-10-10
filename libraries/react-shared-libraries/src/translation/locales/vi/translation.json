@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "Chưa làm mới",
   "analytics_refresh_done": "Đã làm mới số liệu",
   "analytics_refresh_cooldown": "Đã là mới nhất. Hãy thử lại sau vài phút.",
-  "analytics_refresh_hint": "Một số kênh chỉ cập nhật số liệu bài đăng khi bạn làm mới."
+  "analytics_refresh_hint": "Một số kênh chỉ cập nhật số liệu bài đăng khi bạn làm mới.",
+  "analytics_refresh_nothing": "Không có số liệu mới để đọc"
 }

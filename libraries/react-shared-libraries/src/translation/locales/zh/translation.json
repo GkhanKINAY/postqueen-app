@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "尚未刷新",
   "analytics_refresh_done": "数据已刷新",
   "analytics_refresh_cooldown": "已是最新。请几分钟后再试。",
-  "analytics_refresh_hint": "部分频道仅在你刷新时才更新帖子数据。"
+  "analytics_refresh_hint": "部分频道仅在你刷新时才更新帖子数据。",
+  "analytics_refresh_nothing": "没有可读取的新数据"
 }

@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "Aún sin actualizar",
   "analytics_refresh_done": "Cifras actualizadas",
   "analytics_refresh_cooldown": "Ya está al día. Vuelve a intentarlo en unos minutos.",
-  "analytics_refresh_hint": "Algunos canales solo actualizan las cifras de sus publicaciones cuando las actualizas tú."
+  "analytics_refresh_hint": "Algunos canales solo actualizan las cifras de sus publicaciones cuando las actualizas tú.",
+  "analytics_refresh_nothing": "No hay cifras nuevas que leer"
 }

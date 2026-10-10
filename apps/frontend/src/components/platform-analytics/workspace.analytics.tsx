@@ -2,7 +2,6 @@
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { useSWRConfig } from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { Spinner } from '@gitroom/react/ui/spinner';
@@ -439,25 +438,20 @@ const PostThumb: FC<{
   </span>
 );
 
-const isPostMetricsKey = (key: unknown) =>
-  typeof key === 'string' &&
-  (key.startsWith('/analytics/posts') ||
-    key.startsWith('/analytics/summary') ||
-    key.startsWith('/analytics/refresh'));
-
 // Some providers bill every post read, so their post numbers are never read
 // on a timer, only when someone presses this.
-const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
-  integrationId,
-}) => {
+const PostMetricsRefresh: FC<{
+  integrationId?: string;
+  onRefreshed: () => Promise<unknown>;
+}> = ({ integrationId, onRefreshed }) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const { mutate } = useSWRConfig();
   const { mobile } = useViewport();
   const { formatDateTime } = useDateFormat();
   const [busy, setBusy] = useState(false);
   const status = useAnalyticsRefreshStatus({ integrationId, enabled: true });
+  const { mutate: mutateStatus } = status;
 
   const refresh = useCallback(async () => {
     setBusy(true);
@@ -475,19 +469,21 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
         skipped: number;
       };
       toaster.show(
-        result.skipped && !result.synced
-          ? t(
-              'analytics_refresh_cooldown',
-              'Already up to date. Try again in a few minutes.',
-            )
-          : t('analytics_refresh_done', 'Numbers refreshed'),
-        'success',
+        result.synced
+          ? t('analytics_refresh_done', 'Numbers refreshed')
+          : result.skipped
+            ? t(
+                'analytics_refresh_cooldown',
+                'Already up to date. Try again in a few minutes.',
+              )
+            : t('analytics_refresh_nothing', 'No new numbers to read'),
+        result.synced || result.skipped ? 'success' : 'warning',
       );
-      await mutate(isPostMetricsKey);
+      await Promise.all([mutateStatus(), onRefreshed()]);
     } finally {
       setBusy(false);
     }
-  }, [fetch, integrationId, mutate, t, toaster]);
+  }, [fetch, integrationId, mutateStatus, onRefreshed, t, toaster]);
 
   if (status.error || (status.data && !status.data.integrations)) {
     return null;
@@ -563,6 +559,13 @@ export const WorkspaceAnalytics: FC<{
 
   const isLoading =
     (summary.isLoading && !summary.data) || (posts.isLoading && !posts.data);
+
+  const { mutate: mutateSummary } = summary;
+  const { mutate: mutatePosts } = posts;
+  const refreshPostMetrics = useCallback(
+    () => Promise.all([mutateSummary(), mutatePosts()]),
+    [mutateSummary, mutatePosts],
+  );
 
   const toggleSort = (next: typeof sort) => {
     setPage(0);
@@ -781,7 +784,12 @@ export const WorkspaceAnalytics: FC<{
               )}
             </div>
           </div>
-          {manualRefresh && <PostMetricsRefresh integrationId={integrationIds} />}
+          {manualRefresh && (
+            <PostMetricsRefresh
+              integrationId={integrationIds}
+              onRefreshed={refreshPostMetrics}
+            />
+          )}
         </div>
         {mobile ? (
           <div className="flex flex-col gap-[10px]">

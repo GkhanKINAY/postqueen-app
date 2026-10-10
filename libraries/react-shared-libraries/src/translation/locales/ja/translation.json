@@ -905,5 +905,6 @@
   "analytics_never_refreshed": "まだ更新されていません",
   "analytics_refresh_done": "数値を更新しました",
   "analytics_refresh_cooldown": "すでに最新です。数分後にもう一度お試しください。",
-  "analytics_refresh_hint": "一部のチャンネルは、更新したときだけ投稿の数値が更新されます。"
+  "analytics_refresh_hint": "一部のチャンネルは、更新したときだけ投稿の数値が更新されます。",
+  "analytics_refresh_nothing": "読み込める新しい数値はありません"
 }

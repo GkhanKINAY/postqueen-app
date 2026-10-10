@@ -146,6 +146,7 @@ analytics_refresh
 analytics_refresh_cooldown
 analytics_refresh_done
 analytics_refresh_hint
+analytics_refresh_nothing
 analytics_refreshed_at
 analytics_summary_range
 and
