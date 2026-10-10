@@ -206,7 +206,7 @@ export const PlatformAnalytics = () => {
         analytics?: boolean;
         analyticsIntervals?: readonly number[];
         postAnalytics?: boolean;
-        postMetricsManualOnly?: boolean;
+        analyticsManualOnly?: boolean;
       }
     >;
   }, [data]);
@@ -214,7 +214,7 @@ export const PlatformAnalytics = () => {
   // Channels whose post numbers are read only on request get a Refresh
   // button over the post table.
   const manualRefreshAll = useMemo(
-    () => sortedIntegrations.some((i) => i.postMetricsManualOnly),
+    () => sortedIntegrations.some((i) => i.analyticsManualOnly),
     [sortedIntegrations]
   );
 
@@ -425,7 +425,7 @@ export const PlatformAnalytics = () => {
             <WorkspaceAnalytics
               date={keys}
               integrationIds={currentIntegration.id}
-              manualRefresh={!!currentIntegration.postMetricsManualOnly}
+              manualRefresh={!!currentIntegration.analyticsManualOnly}
             />
           )}
         </>
@@ -930,7 +930,7 @@ export const PlatformAnalytics = () => {
                   <WorkspaceAnalytics
                     date={keys}
                     integrationIds={currentIntegration.id}
-                    manualRefresh={!!currentIntegration.postMetricsManualOnly}
+                    manualRefresh={!!currentIntegration.analyticsManualOnly}
                   />
                 )}
               </>

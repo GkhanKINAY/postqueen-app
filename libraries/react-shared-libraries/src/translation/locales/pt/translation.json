@@ -906,5 +906,7 @@
   "analytics_refresh_done": "Números atualizados",
   "analytics_refresh_cooldown": "Já está atualizado. Tente novamente em alguns minutos.",
   "analytics_refresh_hint": "Alguns canais só atualizam os números das publicações quando você atualiza.",
-  "analytics_refresh_nothing": "Não há números novos para ler"
+  "analytics_refresh_nothing": "Não há números novos para ler",
+  "analytics_refresh_failed": "Não foi possível atualizar os números. Tente novamente mais tarde.",
+  "analytics_manual_refresh_empty": "Ainda não há números para este canal. Escolha Atualizar abaixo para ler os mais recentes."
 }

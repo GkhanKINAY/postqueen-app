@@ -88,16 +88,18 @@ export interface IAuthenticator {
   analyticsDisabled?: () => boolean;
   analyticsIntervals?: readonly number[];
   /**
-   * How many days back the snapshot sync reads published posts. Omit it for
-   * the default (90). A platform that bills every post read keeps it short.
+   * How many days back analytics reads this provider: the posts the snapshot
+   * sync reads, and the channel overview of a manual-only provider. Omit it
+   * for the default (90). A platform that bills every read keeps it short.
    */
-  postMetricsLookbackDays?: number;
+  analyticsLookbackDays?: number;
   /**
-   * When true, the snapshot sync never reads this provider on its own: no
-   * hourly sync, no stale sync when the analytics page opens. Its numbers
-   * move only when someone presses Refresh in analytics.
+   * When true, nothing reads this provider's analytics on its own: no hourly
+   * or stale post sync, and a page view or the public API gets the channel
+   * overview last stored instead of asking the platform. Its numbers move
+   * only when someone presses Refresh in analytics.
    */
-  postMetricsManualOnly?: boolean;
+  analyticsManualOnly?: boolean;
   changeNickname?(
     id: string,
     accessToken: string,

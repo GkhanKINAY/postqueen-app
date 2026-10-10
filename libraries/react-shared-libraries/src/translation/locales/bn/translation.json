@@ -905,5 +905,7 @@
   "analytics_refresh_done": "সংখ্যাগুলো রিফ্রেশ হয়েছে",
   "analytics_refresh_cooldown": "ইতিমধ্যে হালনাগাদ। কয়েক মিনিট পরে আবার চেষ্টা করুন।",
   "analytics_refresh_hint": "কিছু চ্যানেল শুধু আপনি রিফ্রেশ করলেই পোস্টের সংখ্যা আপডেট করে।",
-  "analytics_refresh_nothing": "পড়ার মতো নতুন কোনো সংখ্যা নেই"
+  "analytics_refresh_nothing": "পড়ার মতো নতুন কোনো সংখ্যা নেই",
+  "analytics_refresh_failed": "সংখ্যাগুলো রিফ্রেশ করা যায়নি। পরে আবার চেষ্টা করুন।",
+  "analytics_manual_refresh_empty": "এই চ্যানেলের জন্য এখনও কোনো সংখ্যা নেই। সর্বশেষ সংখ্যা পড়তে নিচের রিফ্রেশ বেছে নিন।"
 }

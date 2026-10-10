@@ -906,5 +906,7 @@
   "analytics_refresh_done": "Numeri aggiornati",
   "analytics_refresh_cooldown": "Già aggiornato. Riprova tra qualche minuto.",
   "analytics_refresh_hint": "Alcuni canali aggiornano i numeri dei post solo quando aggiorni tu.",
-  "analytics_refresh_nothing": "Nessun nuovo numero da leggere"
+  "analytics_refresh_nothing": "Nessun nuovo numero da leggere",
+  "analytics_refresh_failed": "Impossibile aggiornare i numeri. Riprova più tardi.",
+  "analytics_manual_refresh_empty": "Ancora nessun numero per questo canale. Scegli Aggiorna qui sotto per leggere i più recenti."
 }

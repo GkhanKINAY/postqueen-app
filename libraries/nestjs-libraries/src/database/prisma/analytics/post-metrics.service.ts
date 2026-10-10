@@ -28,6 +28,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { hasKnownPostMetric } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 
 dayjs.extend(utc);
 
@@ -60,6 +61,7 @@ export class PostMetricsService {
     private _refreshIntegrationService: RefreshIntegrationService,
     private _temporalService: TemporalService,
     private _postsService: PostsService,
+    private _integrationService: IntegrationService,
   ) {}
 
   async listIntegrationsNeedingSync(
@@ -125,7 +127,9 @@ export class PostMetricsService {
     );
     const freshAfter = Date.now() - MANUAL_REFRESH_COOLDOWN_MS;
     let synced = 0;
+    let refreshed = 0;
     let skipped = 0;
+    let failed = 0;
     for (const integration of integrations) {
       // The snapshot time covers a read that wrote rows; the key covers a
       // read that wrote none (an error, no known metric) and two presses at
@@ -147,7 +151,17 @@ export class PostMetricsService {
       try {
         synced += (await this.syncIntegration(organizationId, integration.id))
           .synced;
+        // The channel overview too, which page views only read from storage
+        await this._integrationService.checkAnalytics(
+          { id: organizationId },
+          integration.id,
+          '',
+          false,
+          true,
+        );
+        refreshed += 1;
       } catch (err) {
+        failed += 1;
         this.logger.warn(
           `Manual post metrics refresh failed for ${integration.id}`,
           err as Error,
@@ -157,7 +171,9 @@ export class PostMetricsService {
 
     return {
       synced,
+      refreshed,
       skipped,
+      failed,
       ...(await this.manualRefreshStatus(organizationId, integrationId)),
     };
   }
@@ -250,7 +266,7 @@ export class PostMetricsService {
     const posts = postsWithMetrics(
       await this._repository.listPublishedPostsForSync(
         integrationId,
-        provider.postMetricsLookbackDays || LOOKBACK_DAYS,
+        provider.analyticsLookbackDays || LOOKBACK_DAYS,
       ),
       provider.postMetricsAvailable?.bind(provider),
     );
@@ -362,7 +378,7 @@ export class PostMetricsService {
 
   private manualOnly(providerIdentifier: string) {
     return !!this._integrationManager.getSocialIntegration(providerIdentifier)
-      ?.postMetricsManualOnly;
+      ?.analyticsManualOnly;
   }
 
   private async loadMappedPosts(

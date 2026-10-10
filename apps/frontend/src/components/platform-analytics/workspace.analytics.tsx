@@ -14,7 +14,11 @@ import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
-import { AnalyticsPostMenu } from '@gitroom/frontend/components/platform-analytics/analytics-post-menu';
+import { useSWRConfig } from 'swr';
+import {
+  AnalyticsPostMenu,
+  isAnalyticsKey,
+} from '@gitroom/frontend/components/platform-analytics/analytics-post-menu';
 import { capChannelMix } from '@gitroom/frontend/components/platform-analytics/channel-mix';
 import {
   AnalyticsPostRow,
@@ -440,18 +444,17 @@ const PostThumb: FC<{
 
 // Some providers bill every post read, so their post numbers are never read
 // on a timer, only when someone presses this.
-const PostMetricsRefresh: FC<{
-  integrationId?: string;
-  onRefreshed: () => Promise<unknown>;
-}> = ({ integrationId, onRefreshed }) => {
+const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
+  integrationId,
+}) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
   const { mobile } = useViewport();
   const { formatDateTime } = useDateFormat();
   const [busy, setBusy] = useState(false);
-  const status = useAnalyticsRefreshStatus({ integrationId, enabled: true });
-  const { mutate: mutateStatus } = status;
+  const { mutate } = useSWRConfig();
+  const status = useAnalyticsRefreshStatus(integrationId);
 
   const refresh = useCallback(async () => {
     setBusy(true);
@@ -465,25 +468,32 @@ const PostMetricsRefresh: FC<{
         return;
       }
       const result = (await response.json()) as {
-        synced: number;
+        refreshed: number;
         skipped: number;
+        failed: number;
       };
       toaster.show(
-        result.synced
+        result.refreshed
           ? t('analytics_refresh_done', 'Numbers refreshed')
-          : result.skipped
+          : result.failed
             ? t(
-                'analytics_refresh_cooldown',
-                'Already up to date. Try again in a few minutes.',
+                'analytics_refresh_failed',
+                'Could not refresh the numbers. Try again later.',
               )
-            : t('analytics_refresh_nothing', 'No new numbers to read'),
-        result.synced || result.skipped ? 'success' : 'warning',
+            : result.skipped
+              ? t(
+                  'analytics_refresh_cooldown',
+                  'Already up to date. Try again in a few minutes.',
+                )
+              : t('analytics_refresh_nothing', 'No new numbers to read'),
+        result.refreshed || result.skipped ? 'success' : 'warning',
       );
-      await Promise.all([mutateStatus(), onRefreshed()]);
+      // Revalidates in place, without clearing what is on screen
+      await mutate(isAnalyticsKey);
     } finally {
       setBusy(false);
     }
-  }, [fetch, integrationId, mutateStatus, onRefreshed, t, toaster]);
+  }, [fetch, integrationId, mutate, t, toaster]);
 
   if (status.error || (status.data && !status.data.integrations)) {
     return null;
@@ -560,12 +570,6 @@ export const WorkspaceAnalytics: FC<{
   const isLoading =
     (summary.isLoading && !summary.data) || (posts.isLoading && !posts.data);
 
-  const { mutate: mutateSummary } = summary;
-  const { mutate: mutatePosts } = posts;
-  const refreshPostMetrics = useCallback(
-    () => Promise.all([mutateSummary(), mutatePosts()]),
-    [mutateSummary, mutatePosts],
-  );
 
   const toggleSort = (next: typeof sort) => {
     setPage(0);
@@ -785,10 +789,7 @@ export const WorkspaceAnalytics: FC<{
             </div>
           </div>
           {manualRefresh && (
-            <PostMetricsRefresh
-              integrationId={integrationIds}
-              onRefreshed={refreshPostMetrics}
-            />
+            <PostMetricsRefresh integrationId={integrationIds} />
           )}
         </div>
         {mobile ? (

@@ -87,12 +87,12 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   trialLocked = true;
   isBetweenSteps = false;
   scopes = [] as string[];
-  analyticsIntervals = [7, 30, 90] as const;
+  // X bills every post read (once per post per UTC day), so analytics
+  // covers the last week and is read only when someone presses Refresh.
+  analyticsIntervals = [7] as const;
   analyticsDisabled = () => !!process.env.DISABLE_X_ANALYTICS;
-  // X bills every post read (once per post per UTC day), so post metrics
-  // cover the last week and are read only when someone presses Refresh.
-  postMetricsLookbackDays = 7;
-  postMetricsManualOnly = true;
+  analyticsLookbackDays = 7;
+  analyticsManualOnly = true;
   stripLinks = () => !!process.env.STRIP_LINKS_FROM_X_POSTS;
 
   // X bills every call (see X_CREDIT_COSTS). A post is priced by the text

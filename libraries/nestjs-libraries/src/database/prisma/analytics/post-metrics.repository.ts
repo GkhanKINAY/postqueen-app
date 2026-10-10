@@ -217,6 +217,8 @@ export class PostMetricsRepository {
         ...(integrationId ? { id: integrationId } : {}),
         deletedAt: null,
         disabled: false,
+        refreshNeeded: false,
+        inBetweenSteps: false,
       },
       select: {
         id: true,

@@ -11,17 +11,14 @@ export type AnalyticsRefreshStatus = {
 
 // Channels whose post metrics are only read on request: how many there are
 // in view and when they were last read.
-export const useAnalyticsRefreshStatus = (params: {
-  integrationId?: string;
-  enabled: boolean;
-}) => {
+export const useAnalyticsRefreshStatus = (integrationId?: string) => {
   const fetch = useFetch();
   const search = new URLSearchParams();
-  if (params.integrationId) {
-    search.set('integrationId', params.integrationId);
+  if (integrationId) {
+    search.set('integrationId', integrationId);
   }
   const query = search.toString();
-  const key = params.enabled ? `/analytics/refresh?${query}` : null;
+  const key = `/analytics/refresh?${query}`;
 
   const load = useCallback(async () => {
     const response = await fetch(`/analytics/refresh?${query}`);

@@ -906,5 +906,7 @@
   "analytics_refresh_done": "המספרים רועננו",
   "analytics_refresh_cooldown": "כבר מעודכן. נסו שוב בעוד כמה דקות.",
   "analytics_refresh_hint": "חלק מהערוצים מעדכנים את מספרי הפוסטים רק כשמרעננים.",
-  "analytics_refresh_nothing": "אין מספרים חדשים לקריאה"
+  "analytics_refresh_nothing": "אין מספרים חדשים לקריאה",
+  "analytics_refresh_failed": "לא ניתן היה לרענן את המספרים. נסו שוב מאוחר יותר.",
+  "analytics_manual_refresh_empty": "עדיין אין מספרים לערוץ הזה. בחרו רענון למטה כדי לקרוא את העדכניים."
 }

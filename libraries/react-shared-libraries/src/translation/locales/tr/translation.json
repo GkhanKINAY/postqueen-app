@@ -924,5 +924,7 @@
   "analytics_refresh_done": "Sayılar yenilendi",
   "analytics_refresh_cooldown": "Zaten güncel. Birkaç dakika sonra tekrar deneyin.",
   "analytics_refresh_hint": "Bazı kanallar gönderi sayılarını yalnızca siz yenilediğinizde günceller.",
-  "analytics_refresh_nothing": "Okunacak yeni sayı yok"
+  "analytics_refresh_nothing": "Okunacak yeni sayı yok",
+  "analytics_refresh_failed": "Sayılar yenilenemedi. Daha sonra tekrar deneyin.",
+  "analytics_manual_refresh_empty": "Bu kanal için henüz sayı yok. En güncel sayıları okumak için aşağıdaki Yenile'yi seçin."
 }

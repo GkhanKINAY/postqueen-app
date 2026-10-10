@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
 
 let PostMetricsService: any;
+let redis: { set: (...args: unknown[]) => Promise<string | null> };
 before(async () => {
   ({ PostMetricsService } = await import('./post-metrics.service.ts'));
+  ({ ioRedis: redis } = (await import(
+    '../../../redis/redis.service.ts'
+  )) as any);
+  // Every test decides whether the cooldown key is free, so none depends on
+  // a key another test or a real Redis left behind
+  redis.set = async () => (claimFree ? 'OK' : null);
 });
 
 // `x` stands for any provider that bills post reads: short lookback, read
@@ -21,8 +28,8 @@ const providers: Record<string, any> = {
         shares: 0,
       }));
     },
-    postMetricsLookbackDays: 7,
-    postMetricsManualOnly: true,
+    analyticsLookbackDays: 7,
+    analyticsManualOnly: true,
   },
   linkedin: {
     postsAnalytics: async () => [],
@@ -38,6 +45,8 @@ let reads: string[];
 let lookbacks: Record<string, number>;
 let lastSnapshot: Record<string, Date | undefined>;
 let enqueued: number;
+let overviews: string[];
+let claimFree: boolean;
 
 const service = () =>
   new PostMetricsService(
@@ -97,6 +106,19 @@ const service = () =>
       },
     },
     {},
+    {
+      checkAnalytics: async (
+        _: unknown,
+        id: string,
+        __: string,
+        ___: boolean,
+        readManualOnly: boolean,
+      ) => {
+        assert.equal(readManualOnly, true);
+        overviews.push(id);
+        return [];
+      },
+    },
   );
 
 beforeEach(() => {
@@ -104,6 +126,8 @@ beforeEach(() => {
   lookbacks = {};
   lastSnapshot = {};
   enqueued = 0;
+  overviews = [];
+  claimFree = true;
 });
 
 describe('post metrics lookback', () => {
@@ -140,6 +164,9 @@ describe('manual post metrics refresh', () => {
   it('syncs only the manual-only channels and reports when', async () => {
     const result = await service().manualRefresh('org-1');
     assert.equal(result.synced, 1);
+    assert.equal(result.refreshed, 1);
+    assert.equal(result.failed, 0);
+    assert.deepEqual(overviews, ['int-x']);
     assert.equal(result.skipped, 0);
     assert.equal(result.integrations, 1);
     assert.ok(result.lastSyncedAt instanceof Date);
@@ -153,6 +180,15 @@ describe('manual post metrics refresh', () => {
     assert.equal(result.synced, 0);
     assert.equal(result.skipped, 1);
     assert.deepEqual(reads, []);
+  });
+
+  it('skips a channel whose cooldown key another press holds', async () => {
+    claimFree = false;
+    const result = await service().manualRefresh('org-1');
+    assert.equal(result.synced, 0);
+    assert.equal(result.skipped, 1);
+    assert.deepEqual(reads, []);
+    assert.deepEqual(overviews, []);
   });
 
   it('reads again once the cooldown has passed', async () => {
