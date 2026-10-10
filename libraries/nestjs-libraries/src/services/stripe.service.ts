@@ -2988,6 +2988,24 @@ export class StripeService extends PaymentProviderAbstract {
         await stripe.subscriptionSchedules.release(scheduleId);
       }
 
+      // A subscription started before tax was switched on bills its upgrade
+      // invoice without it, and a pending update cannot carry automatic_tax,
+      // so it is turned on first and on its own. A customer with no usable
+      // tax location makes Stripe refuse it; the upgrade still goes ahead.
+      if (change === 'upgrade' && !current.automatic_tax?.enabled) {
+        try {
+          await stripe.subscriptions.update(current.id, {
+            automatic_tax: { enabled: true },
+          });
+        } catch (err) {
+          Logger.warn(
+            `[stripe] automatic tax not enabled on ${current.id} before upgrade: ${
+              (err as Error)?.message || err
+            }`
+          );
+        }
+      }
+
       // An upgrade is applied only once it is paid. With the default
       // `allow_incomplete` Stripe switched the price even when the upgrade
       // invoice was declined, and the higher tier was granted for the whole
