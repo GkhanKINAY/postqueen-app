@@ -158,6 +158,7 @@ export class IntegrationsController {
             postAnalytics:
               !!findIntegration?.postsAnalytics &&
               !findIntegration.analyticsDisabled?.(),
+            postMetricsManualOnly: !!findIntegration?.postMetricsManualOnly,
             customer: p.customer,
             additionalSettings: p.additionalSettings || '[]',
           };

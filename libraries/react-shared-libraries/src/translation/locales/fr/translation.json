@@ -899,5 +899,11 @@
   "media_n_selected": "Sélectionnés : {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "Voulez-vous vraiment supprimer ces {{count}} fichiers ?",
   "media_n_deleted": "{{count}} fichiers supprimés",
-  "media_delete_partial": "{{deleted}} sur {{total}} supprimés. Les autres sont toujours sélectionnés, vous pouvez réessayer."
+  "media_delete_partial": "{{deleted}} sur {{total}} supprimés. Les autres sont toujours sélectionnés, vous pouvez réessayer.",
+  "analytics_refresh": "Actualiser",
+  "analytics_refreshed_at": "Mis à jour : {{time}}",
+  "analytics_never_refreshed": "Pas encore actualisé",
+  "analytics_refresh_done": "Chiffres actualisés",
+  "analytics_refresh_cooldown": "Déjà à jour. Réessayez dans quelques minutes.",
+  "analytics_refresh_hint": "Certains canaux ne mettent à jour les chiffres de leurs publications que lorsque vous actualisez."
 }

@@ -899,5 +899,11 @@
   "media_n_selected": "Đã chọn {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "Bạn có chắc muốn xóa {{count}} tệp này không?",
   "media_n_deleted": "Đã xóa {{count}} tệp",
-  "media_delete_partial": "Đã xóa {{deleted}}/{{total}}. Các tệp còn lại vẫn được chọn, bạn có thể thử lại."
+  "media_delete_partial": "Đã xóa {{deleted}}/{{total}}. Các tệp còn lại vẫn được chọn, bạn có thể thử lại.",
+  "analytics_refresh": "Làm mới",
+  "analytics_refreshed_at": "Đã cập nhật: {{time}}",
+  "analytics_never_refreshed": "Chưa làm mới",
+  "analytics_refresh_done": "Đã làm mới số liệu",
+  "analytics_refresh_cooldown": "Đã là mới nhất. Hãy thử lại sau vài phút.",
+  "analytics_refresh_hint": "Một số kênh chỉ cập nhật số liệu bài đăng khi bạn làm mới."
 }

@@ -210,6 +210,29 @@ export class PostMetricsRepository {
     return post && withPostChannelDisplayName(post);
   }
 
+  listIntegrations(organizationId: string, integrationId?: string) {
+    return this._integration.model.integration.findMany({
+      where: {
+        organizationId,
+        ...(integrationId ? { id: integrationId } : {}),
+        deletedAt: null,
+        disabled: false,
+      },
+      select: {
+        id: true,
+        providerIdentifier: true,
+      },
+    });
+  }
+
+  lastSnapshotAt(integrationIds: string[]) {
+    return this._snapshot.model.postMetricSnapshot.groupBy({
+      by: ['integrationId'],
+      where: { integrationId: { in: integrationIds } },
+      _max: { capturedAt: true },
+    });
+  }
+
   getIntegration(organizationId: string, integrationId: string) {
     return this._integration.model.integration.findFirst({
       where: {

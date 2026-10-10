@@ -898,5 +898,11 @@
   "media_n_selected": "{{count}}টি নির্বাচিত",
   "are_you_sure_you_want_to_delete_n_media": "আপনি কি নিশ্চিত যে এই {{count}}টি ফাইল মুছতে চান?",
   "media_n_deleted": "{{count}}টি ফাইল মুছে ফেলা হয়েছে",
-  "media_delete_partial": "{{total}}টির মধ্যে {{deleted}}টি মুছে ফেলা হয়েছে। বাকিগুলো এখনও নির্বাচিত, আবার চেষ্টা করতে পারেন।"
+  "media_delete_partial": "{{total}}টির মধ্যে {{deleted}}টি মুছে ফেলা হয়েছে। বাকিগুলো এখনও নির্বাচিত, আবার চেষ্টা করতে পারেন।",
+  "analytics_refresh": "রিফ্রেশ",
+  "analytics_refreshed_at": "আপডেট হয়েছে: {{time}}",
+  "analytics_never_refreshed": "এখনও রিফ্রেশ হয়নি",
+  "analytics_refresh_done": "সংখ্যাগুলো রিফ্রেশ হয়েছে",
+  "analytics_refresh_cooldown": "ইতিমধ্যে হালনাগাদ। কয়েক মিনিট পরে আবার চেষ্টা করুন।",
+  "analytics_refresh_hint": "কিছু চ্যানেল শুধু আপনি রিফ্রেশ করলেই পোস্টের সংখ্যা আপডেট করে।"
 }

@@ -899,5 +899,11 @@
   "media_n_selected": "المحدد: {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "هل أنت متأكد من حذف هذه الملفات ({{count}})؟",
   "media_n_deleted": "تم حذف الملفات: {{count}}",
-  "media_delete_partial": "تم حذف {{deleted}} من {{total}}. الباقي لا يزال محددًا، يمكنك المحاولة مرة أخرى."
+  "media_delete_partial": "تم حذف {{deleted}} من {{total}}. الباقي لا يزال محددًا، يمكنك المحاولة مرة أخرى.",
+  "analytics_refresh": "تحديث",
+  "analytics_refreshed_at": "آخر تحديث: {{time}}",
+  "analytics_never_refreshed": "لم يتم التحديث بعد",
+  "analytics_refresh_done": "تم تحديث الأرقام",
+  "analytics_refresh_cooldown": "البيانات محدّثة بالفعل. حاول مرة أخرى بعد بضع دقائق.",
+  "analytics_refresh_hint": "بعض القنوات لا تحدّث أرقام منشوراتها إلا عندما تضغط على تحديث."
 }

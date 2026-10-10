@@ -899,5 +899,11 @@
   "media_n_selected": "已选择 {{count}} 个",
   "are_you_sure_you_want_to_delete_n_media": "确定要删除这 {{count}} 个文件吗？",
   "media_n_deleted": "已删除 {{count}} 个文件",
-  "media_delete_partial": "已删除 {{total}} 个中的 {{deleted}} 个。其余文件仍处于选中状态，可以重试。"
+  "media_delete_partial": "已删除 {{total}} 个中的 {{deleted}} 个。其余文件仍处于选中状态，可以重试。",
+  "analytics_refresh": "刷新",
+  "analytics_refreshed_at": "更新于 {{time}}",
+  "analytics_never_refreshed": "尚未刷新",
+  "analytics_refresh_done": "数据已刷新",
+  "analytics_refresh_cooldown": "已是最新。请几分钟后再试。",
+  "analytics_refresh_hint": "部分频道仅在你刷新时才更新帖子数据。"
 }

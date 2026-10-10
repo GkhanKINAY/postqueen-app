@@ -87,6 +87,17 @@ export interface IAuthenticator {
    */
   analyticsDisabled?: () => boolean;
   analyticsIntervals?: readonly number[];
+  /**
+   * How many days back the snapshot sync reads published posts. Omit it for
+   * the default (90). A platform that bills every post read keeps it short.
+   */
+  postMetricsLookbackDays?: number;
+  /**
+   * When true, the snapshot sync never reads this provider on its own: no
+   * hourly sync, no stale sync when the analytics page opens. Its numbers
+   * move only when someone presses Refresh in analytics.
+   */
+  postMetricsManualOnly?: boolean;
   changeNickname?(
     id: string,
     accessToken: string,

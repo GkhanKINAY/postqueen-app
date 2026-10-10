@@ -2,6 +2,7 @@
 /analytics/${integration.id}
 /analytics/post/${postId}
 /analytics/posts
+/analytics/refresh
 /analytics/summary
 /announcements
 /announcements/${id}
