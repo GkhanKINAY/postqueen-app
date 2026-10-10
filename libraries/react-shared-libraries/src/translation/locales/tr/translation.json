@@ -917,5 +917,14 @@
   "media_n_selected": "{{count}} seçildi",
   "are_you_sure_you_want_to_delete_n_media": "Bu {{count}} dosyayı silmek istediğinizden emin misiniz?",
   "media_n_deleted": "{{count}} dosya silindi",
-  "media_delete_partial": "{{total}} dosyadan {{deleted}} tanesi silindi. Diğerleri hâlâ seçili, tekrar deneyebilirsiniz."
+  "media_delete_partial": "{{total}} dosyadan {{deleted}} tanesi silindi. Diğerleri hâlâ seçili, tekrar deneyebilirsiniz.",
+  "analytics_refresh": "Yenile",
+  "analytics_refreshed_at": "Güncellendi: {{time}}",
+  "analytics_never_refreshed": "Henüz yenilenmedi",
+  "analytics_refresh_done": "Sayılar yenilendi",
+  "analytics_refresh_cooldown": "Zaten güncel. Birkaç dakika sonra tekrar deneyin.",
+  "analytics_refresh_hint": "Bazı kanallar gönderi sayılarını yalnızca siz yenilediğinizde günceller.",
+  "analytics_refresh_nothing": "Okunacak yeni sayı yok",
+  "analytics_refresh_failed": "Sayılar yenilenemedi. Daha sonra tekrar deneyin.",
+  "analytics_manual_refresh_empty": "Bu kanal için henüz sayı yok. En güncel sayıları okumak için aşağıdaki Yenile'yi seçin."
 }

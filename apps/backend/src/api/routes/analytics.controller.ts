@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { ApiTags } from '@nestjs/swagger';
@@ -6,6 +6,7 @@ import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/in
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { PostMetricsService } from '@gitroom/nestjs-libraries/database/prisma/analytics/post-metrics.service';
 import { GetAnalyticsPostsDto } from '@gitroom/nestjs-libraries/dtos/analytics/get.analytics.posts.dto';
+import { RefreshPostMetricsDto } from '@gitroom/nestjs-libraries/dtos/analytics/refresh.post.metrics.dto';
 
 @ApiTags('Analytics')
 @Controller('/analytics')
@@ -30,6 +31,27 @@ export class AnalyticsController {
     @Query() query: GetAnalyticsPostsDto
   ) {
     return this._postMetricsService.summary(org.id, query);
+  }
+
+  // Channels whose provider is manual-only (it bills every post read) are
+  // never synced on their own; these two read and refresh them on request.
+  @Get('/refresh')
+  getRefreshStatus(
+    @GetOrgFromRequest() org: Organization,
+    @Query() query: RefreshPostMetricsDto
+  ) {
+    return this._postMetricsService.manualRefreshStatus(
+      org.id,
+      query.integrationId
+    );
+  }
+
+  @Post('/refresh')
+  refresh(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: RefreshPostMetricsDto
+  ) {
+    return this._postMetricsService.manualRefresh(org.id, body.integrationId);
   }
 
   @Get('/snapshot/:postId')

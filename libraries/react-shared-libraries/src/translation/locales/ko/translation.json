@@ -899,5 +899,14 @@
   "media_n_selected": "{{count}}개 선택됨",
   "are_you_sure_you_want_to_delete_n_media": "선택한 {{count}}개 파일을 삭제하시겠습니까?",
   "media_n_deleted": "파일 {{count}}개를 삭제했습니다",
-  "media_delete_partial": "{{total}}개 중 {{deleted}}개를 삭제했습니다. 나머지는 선택된 상태이니 다시 시도할 수 있습니다."
+  "media_delete_partial": "{{total}}개 중 {{deleted}}개를 삭제했습니다. 나머지는 선택된 상태이니 다시 시도할 수 있습니다.",
+  "analytics_refresh": "새로 고침",
+  "analytics_refreshed_at": "업데이트: {{time}}",
+  "analytics_never_refreshed": "아직 새로 고치지 않음",
+  "analytics_refresh_done": "수치를 새로 고쳤습니다",
+  "analytics_refresh_cooldown": "이미 최신 상태입니다. 몇 분 후에 다시 시도하세요.",
+  "analytics_refresh_hint": "일부 채널은 새로 고칠 때만 게시물 수치가 업데이트됩니다.",
+  "analytics_refresh_nothing": "읽어올 새 수치가 없습니다",
+  "analytics_refresh_failed": "수치를 새로 고치지 못했습니다. 나중에 다시 시도하세요.",
+  "analytics_manual_refresh_empty": "이 채널에는 아직 수치가 없습니다. 아래의 새로 고침을 선택하면 최신 수치를 불러옵니다."
 }

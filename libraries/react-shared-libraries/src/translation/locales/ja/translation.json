@@ -899,5 +899,14 @@
   "media_n_selected": "{{count}}件選択中",
   "are_you_sure_you_want_to_delete_n_media": "選択した{{count}}件のファイルを削除してもよろしいですか？",
   "media_n_deleted": "{{count}}件のファイルを削除しました",
-  "media_delete_partial": "{{total}}件中{{deleted}}件を削除しました。残りは選択されたままなので、もう一度お試しください。"
+  "media_delete_partial": "{{total}}件中{{deleted}}件を削除しました。残りは選択されたままなので、もう一度お試しください。",
+  "analytics_refresh": "更新",
+  "analytics_refreshed_at": "更新日時: {{time}}",
+  "analytics_never_refreshed": "まだ更新されていません",
+  "analytics_refresh_done": "数値を更新しました",
+  "analytics_refresh_cooldown": "すでに最新です。数分後にもう一度お試しください。",
+  "analytics_refresh_hint": "一部のチャンネルは、更新したときだけ投稿の数値が更新されます。",
+  "analytics_refresh_nothing": "読み込める新しい数値はありません",
+  "analytics_refresh_failed": "数値を更新できませんでした。しばらくしてからもう一度お試しください。",
+  "analytics_manual_refresh_empty": "このチャンネルにはまだ数値がありません。下の「更新」を選ぶと最新の数値を読み込みます。"
 }

@@ -206,9 +206,17 @@ export const PlatformAnalytics = () => {
         analytics?: boolean;
         analyticsIntervals?: readonly number[];
         postAnalytics?: boolean;
+        analyticsManualOnly?: boolean;
       }
     >;
   }, [data]);
+
+  // Channels whose post numbers are read only on request get a Refresh
+  // button over the post table.
+  const manualRefreshAll = useMemo(
+    () => sortedIntegrations.some((i) => i.analyticsManualOnly),
+    [sortedIntegrations]
+  );
 
   // Auto-select All channels when there is more than one reporting channel.
   useEffect(() => {
@@ -408,7 +416,7 @@ export const PlatformAnalytics = () => {
   const analyticsBody = (
     <>
       {selected === ALL_CHANNELS && !!keys && (
-        <WorkspaceAnalytics date={keys} />
+        <WorkspaceAnalytics date={keys} manualRefresh={manualRefreshAll} />
       )}
       {selected !== ALL_CHANNELS && !!currentIntegration && !!keys && (
         <>
@@ -417,6 +425,7 @@ export const PlatformAnalytics = () => {
             <WorkspaceAnalytics
               date={keys}
               integrationIds={currentIntegration.id}
+              manualRefresh={!!currentIntegration.analyticsManualOnly}
             />
           )}
         </>
@@ -846,7 +855,7 @@ export const PlatformAnalytics = () => {
               </div>
             </div>
             {!!keys && (
-              <WorkspaceAnalytics date={keys} />
+              <WorkspaceAnalytics date={keys} manualRefresh={manualRefreshAll} />
             )}
           </div>
         )}
@@ -921,6 +930,7 @@ export const PlatformAnalytics = () => {
                   <WorkspaceAnalytics
                     date={keys}
                     integrationIds={currentIntegration.id}
+                    manualRefresh={!!currentIntegration.analyticsManualOnly}
                   />
                 )}
               </>

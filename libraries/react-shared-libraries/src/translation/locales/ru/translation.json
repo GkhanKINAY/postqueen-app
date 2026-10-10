@@ -899,5 +899,14 @@
   "media_n_selected": "Выбрано: {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "Удалить выбранные файлы ({{count}})?",
   "media_n_deleted": "Удалено файлов: {{count}}",
-  "media_delete_partial": "Удалено {{deleted}} из {{total}}. Остальные по-прежнему выбраны, можно попробовать ещё раз."
+  "media_delete_partial": "Удалено {{deleted}} из {{total}}. Остальные по-прежнему выбраны, можно попробовать ещё раз.",
+  "analytics_refresh": "Обновить",
+  "analytics_refreshed_at": "Обновлено: {{time}}",
+  "analytics_never_refreshed": "Ещё не обновлялось",
+  "analytics_refresh_done": "Цифры обновлены",
+  "analytics_refresh_cooldown": "Данные уже свежие. Попробуйте снова через несколько минут.",
+  "analytics_refresh_hint": "Некоторые каналы обновляют цифры публикаций только когда вы нажимаете «Обновить».",
+  "analytics_refresh_nothing": "Новых цифр пока нет",
+  "analytics_refresh_failed": "Не удалось обновить цифры. Попробуйте позже.",
+  "analytics_manual_refresh_empty": "Для этого канала пока нет цифр. Нажмите «Обновить» ниже, чтобы получить свежие данные."
 }

@@ -899,5 +899,14 @@
   "media_n_selected": "Selezionati: {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "Vuoi davvero eliminare questi {{count}} file?",
   "media_n_deleted": "{{count}} file eliminati",
-  "media_delete_partial": "Eliminati {{deleted}} su {{total}}. Gli altri sono ancora selezionati, puoi riprovare."
+  "media_delete_partial": "Eliminati {{deleted}} su {{total}}. Gli altri sono ancora selezionati, puoi riprovare.",
+  "analytics_refresh": "Aggiorna",
+  "analytics_refreshed_at": "Aggiornato: {{time}}",
+  "analytics_never_refreshed": "Non ancora aggiornato",
+  "analytics_refresh_done": "Numeri aggiornati",
+  "analytics_refresh_cooldown": "Già aggiornato. Riprova tra qualche minuto.",
+  "analytics_refresh_hint": "Alcuni canali aggiornano i numeri dei post solo quando aggiorni tu.",
+  "analytics_refresh_nothing": "Nessun nuovo numero da leggere",
+  "analytics_refresh_failed": "Impossibile aggiornare i numeri. Riprova più tardi.",
+  "analytics_manual_refresh_empty": "Ancora nessun numero per questo canale. Scegli Aggiorna qui sotto per leggere i più recenti."
 }

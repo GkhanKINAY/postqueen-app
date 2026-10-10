@@ -27,11 +27,26 @@ import { GetAnalyticsPostsDto } from '@gitroom/nestjs-libraries/dtos/analytics/g
 import { timer } from '@gitroom/helpers/utils/timer';
 import { hasKnownPostMetric } from '@gitroom/nestjs-libraries/integrations/social/post-metrics.map';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 
 dayjs.extend(utc);
 
 const LOOKBACK_DAYS = 90;
 const STALE_AFTER_MS = 60 * 60 * 1000;
+// A manual-only channel synced or tried this recently is skipped by Refresh,
+// so a pressed-again button never reads the same posts twice in a row.
+const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
+
+// The oldest of the channels' last syncs, so "updated" never claims they are
+// fresher than they are. A channel with no snapshot at all (nothing published
+// in its lookback) is left out, or it would read as never updated forever.
+const oldestSync = (rows: Array<{ lastSyncedAt: Date | null }>) => {
+  const times = rows
+    .map((row) => row.lastSyncedAt?.getTime())
+    .filter((time): time is number => time != null);
+  return times.length ? new Date(Math.min(...times)) : null;
+};
 
 export { ANALYTICS_AGENT_NOTES, toAgentPost };
 export type { AnalyticsPostRow };
@@ -46,6 +61,7 @@ export class PostMetricsService {
     private _refreshIntegrationService: RefreshIntegrationService,
     private _temporalService: TemporalService,
     private _postsService: PostsService,
+    private _integrationService: IntegrationService,
   ) {}
 
   async listIntegrationsNeedingSync(
@@ -58,10 +74,108 @@ export class PostMetricsService {
       freshAfter
     );
     return targets
-      .filter((target) =>
-        this.reportsPostMetrics(target.integration.providerIdentifier),
+      .filter(
+        (target) =>
+          this.reportsPostMetrics(target.integration.providerIdentifier) &&
+          !this.manualOnly(target.integration.providerIdentifier),
       )
       .map(({ integration: _, ...target }) => target);
+  }
+
+  private async listManualRefreshIntegrations(
+    organizationId: string,
+    integrationId?: string,
+  ) {
+    const integrations = await this._repository.listIntegrations(
+      organizationId,
+      integrationId,
+    );
+    const manual = integrations.filter(
+      (integration) =>
+        this.reportsPostMetrics(integration.providerIdentifier) &&
+        this.manualOnly(integration.providerIdentifier),
+    );
+    if (manual.length === 0) {
+      return [];
+    }
+    const last = new Map(
+      (
+        await this._repository.lastSnapshotAt(manual.map((i) => i.id))
+      ).map((row) => [row.integrationId, row._max.capturedAt]),
+    );
+    return manual.map((integration) => ({
+      id: integration.id,
+      lastSyncedAt: last.get(integration.id) || null,
+    }));
+  }
+
+  async manualRefreshStatus(organizationId: string, integrationId?: string) {
+    const integrations = await this.listManualRefreshIntegrations(
+      organizationId,
+      integrationId,
+    );
+    return {
+      integrations: integrations.length,
+      lastSyncedAt: oldestSync(integrations),
+    };
+  }
+
+  async manualRefresh(organizationId: string, integrationId?: string) {
+    const integrations = await this.listManualRefreshIntegrations(
+      organizationId,
+      integrationId,
+    );
+    const freshAfter = Date.now() - MANUAL_REFRESH_COOLDOWN_MS;
+    let synced = 0;
+    let refreshed = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const integration of integrations) {
+      // The snapshot time covers a read that wrote rows; the key covers a
+      // read that wrote none (an error, no known metric) and two presses at
+      // once, since only one of them can claim it.
+      if (
+        (integration.lastSyncedAt &&
+          integration.lastSyncedAt.getTime() > freshAfter) ||
+        (await ioRedis.set(
+          `post-metrics-refresh:${integration.id}`,
+          '1',
+          'PX',
+          MANUAL_REFRESH_COOLDOWN_MS,
+          'NX',
+        )) !== 'OK'
+      ) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        synced += (await this.syncIntegration(organizationId, integration.id))
+          .synced;
+        // The channel overview too, which page views only read from storage
+        await this._integrationService.checkAnalytics(
+          { id: organizationId },
+          integration.id,
+          '',
+          false,
+          true,
+        );
+        refreshed += 1;
+      } catch (err) {
+        failed += 1;
+        this.logger.warn(
+          `Manual post metrics refresh failed for ${integration.id}`,
+          err as Error,
+        );
+      }
+    }
+
+    return {
+      synced,
+      refreshed,
+      skipped,
+      failed,
+      ...(await this.manualRefreshStatus(organizationId, integrationId)),
+    };
   }
 
   async enqueueOrgSync(organizationId: string) {
@@ -152,7 +266,7 @@ export class PostMetricsService {
     const posts = postsWithMetrics(
       await this._repository.listPublishedPostsForSync(
         integrationId,
-        LOOKBACK_DAYS,
+        provider.analyticsLookbackDays || LOOKBACK_DAYS,
       ),
       provider.postMetricsAvailable?.bind(provider),
     );
@@ -260,6 +374,11 @@ export class PostMetricsService {
     const provider =
       this._integrationManager.getSocialIntegration(providerIdentifier);
     return !!provider?.postsAnalytics && !provider.analyticsDisabled?.();
+  }
+
+  private manualOnly(providerIdentifier: string) {
+    return !!this._integrationManager.getSocialIntegration(providerIdentifier)
+      ?.analyticsManualOnly;
   }
 
   private async loadMappedPosts(

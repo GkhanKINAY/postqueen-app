@@ -1439,5 +1439,14 @@
   "media_n_selected": "{{count}} selected",
   "are_you_sure_you_want_to_delete_n_media": "Are you sure you want to delete these {{count}} files?",
   "media_n_deleted": "{{count}} files deleted",
-  "media_delete_partial": "Deleted {{deleted}} of {{total}}. The others are still selected, so you can try again."
+  "media_delete_partial": "Deleted {{deleted}} of {{total}}. The others are still selected, so you can try again.",
+  "analytics_refresh": "Refresh",
+  "analytics_refreshed_at": "Updated {{time}}",
+  "analytics_never_refreshed": "Not refreshed yet",
+  "analytics_refresh_done": "Numbers refreshed",
+  "analytics_refresh_cooldown": "Already up to date. Try again in a few minutes.",
+  "analytics_refresh_hint": "Some channels update their post numbers only when you refresh.",
+  "analytics_refresh_nothing": "No new numbers to read",
+  "analytics_refresh_failed": "Could not refresh the numbers. Try again later.",
+  "analytics_manual_refresh_empty": "No numbers for this channel yet. Choose Refresh below to read the latest."
 }

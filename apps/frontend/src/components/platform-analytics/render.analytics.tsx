@@ -247,6 +247,37 @@ const NoPeriodDataState: FC = () => {
   );
 };
 
+// A manual-only channel shows only what its last Refresh stored, so an empty
+// pane says where to get numbers rather than that the period was quiet.
+const ManualRefreshState: FC = () => {
+  const t = useT();
+  return (
+    <AnalyticsPaneMessage
+      iconClassName="bg-pqSettings"
+      icon={
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-pqMuted"
+        >
+          <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+        </svg>
+      }
+    >
+      <p className="text-center text-[15px] text-pqText">
+        {t(
+          'analytics_manual_refresh_empty',
+          'No numbers for this channel yet. Choose Refresh below to read the latest.',
+        )}
+      </p>
+    </AnalyticsPaneMessage>
+  );
+};
+
 const AnalyticsLoadFailedState: FC<{ onRetry: () => void }> = ({
   onRetry,
 }) => {
@@ -288,6 +319,7 @@ type AnalyticsIntegration = {
   identifier: string;
   internalId?: string;
   refreshNeeded?: boolean;
+  analyticsManualOnly?: boolean;
 };
 
 export const RenderAnalytics: FC<{
@@ -419,7 +451,11 @@ export const RenderAnalytics: FC<{
   }
 
   if (noPeriodData) {
-    return <NoPeriodDataState />;
+    return integration.analyticsManualOnly ? (
+      <ManualRefreshState />
+    ) : (
+      <NoPeriodDataState />
+    );
   }
 
   return <AnalyticsChartBoard rows={rows} totals={totals} />;

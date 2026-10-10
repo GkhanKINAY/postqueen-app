@@ -49,6 +49,10 @@ import {
 
 dayjs.extend(utc);
 
+// How long the channel overview of a manual-only provider stays after its
+// last Refresh. Long, because nothing else ever writes it.
+const MANUAL_ANALYTICS_TTL_SECONDS = 90 * 24 * 60 * 60;
+
 // Provider methods that publish, read analytics, handle tokens or price
 // work. The workflows and the app's own routes run them, with their checks
 // and charges; `/integrations/function` never does. Plugs are added per
@@ -988,14 +992,15 @@ export class IntegrationService implements OnModuleInit {
   }
 
   async checkAnalytics(
-    org: Organization,
+    org: Pick<Organization, 'id'>,
     integration: string,
     date: string,
-    forceRefresh = false
+    forceRefresh = false,
+    readManualOnly = false
   ): Promise<AnalyticsData[]> {
     // Days to load, missing or invalid on some public API calls (same default
     // as the app)
-    const days = Number(date) > 0 ? Number(date) : 7;
+    let days = Number(date) > 0 ? Number(date) : 7;
     const getIntegration = await this.getIntegrationById(org.id, integration);
 
     // A removed channel no longer holds working credentials, so treat it as
@@ -1011,6 +1016,18 @@ export class IntegrationService implements OnModuleInit {
     const integrationProvider = this._integrationManager.getSocialIntegration(
       getIntegration.providerIdentifier
     );
+
+    // A provider that bills every read is asked only when someone presses
+    // Refresh (`readManualOnly`), for its lookback window. A page view or the
+    // public API gets what that last stored, or nothing yet.
+    const manualKey = `integration:${org.id}:${integration}:manual`;
+    if (integrationProvider?.analyticsManualOnly) {
+      if (!readManualOnly) {
+        const stored = await ioRedis.get(manualKey);
+        return stored ? JSON.parse(stored) : [];
+      }
+      days = integrationProvider.analyticsLookbackDays || days;
+    }
 
     if (
       this._refreshIntegrationService.isExpired(getIntegration) ||
@@ -1043,9 +1060,9 @@ export class IntegrationService implements OnModuleInit {
       }
     }
 
-    const getIntegrationData = await ioRedis.get(
-      `integration:${org.id}:${integration}:${days}`
-    );
+    const getIntegrationData = readManualOnly
+      ? null
+      : await ioRedis.get(`integration:${org.id}:${integration}:${days}`);
     if (getIntegrationData) {
       return JSON.parse(getIntegrationData);
     }
@@ -1057,6 +1074,23 @@ export class IntegrationService implements OnModuleInit {
           getIntegration.token,
           days
         );
+        if (readManualOnly) {
+          // A provider answers [] for a rate limit or an outage too, so an
+          // empty read never replaces numbers the last Refresh stored.
+          const stored = loadAnalytics?.length
+            ? null
+            : await ioRedis.get(manualKey);
+          if (stored) {
+            return JSON.parse(stored);
+          }
+          await ioRedis.set(
+            manualKey,
+            JSON.stringify(loadAnalytics),
+            'EX',
+            MANUAL_ANALYTICS_TTL_SECONDS
+          );
+          return loadAnalytics;
+        }
         await ioRedis.set(
           `integration:${org.id}:${integration}:${days}`,
           JSON.stringify(loadAnalytics),
@@ -1074,7 +1108,13 @@ export class IntegrationService implements OnModuleInit {
               HttpStatus.BAD_REQUEST
             );
           }
-          return this.checkAnalytics(org, integration, date, true);
+          return this.checkAnalytics(
+            org,
+            integration,
+            date,
+            true,
+            readManualOnly
+          );
         }
         if (e instanceof NotEnoughScopes || e instanceof Disconnect) {
           throw new HttpException(

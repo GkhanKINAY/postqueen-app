@@ -1,7 +1,10 @@
 'use client';
 
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
+import { useToaster } from '@gitroom/react/toaster/toaster';
+import { Spinner } from '@gitroom/react/ui/spinner';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
@@ -10,13 +13,19 @@ import { Pagination } from '@gitroom/frontend/components/media/media.pagination'
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
-import { AnalyticsPostMenu } from '@gitroom/frontend/components/platform-analytics/analytics-post-menu';
+import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
+import { useSWRConfig } from 'swr';
+import {
+  AnalyticsPostMenu,
+  isAnalyticsKey,
+} from '@gitroom/frontend/components/platform-analytics/analytics-post-menu';
 import { capChannelMix } from '@gitroom/frontend/components/platform-analytics/channel-mix';
 import {
   AnalyticsPostRow,
   useAnalyticsPosts,
 } from '@gitroom/frontend/components/platform-analytics/use.analytics.posts';
 import { useAnalyticsSummary } from '@gitroom/frontend/components/platform-analytics/use.analytics.summary';
+import { useAnalyticsRefreshStatus } from '@gitroom/frontend/components/platform-analytics/use.analytics.refresh';
 
 const formatCount = (value: number | null) => {
   if (value == null) {
@@ -433,10 +442,101 @@ const PostThumb: FC<{
   </span>
 );
 
+// Some providers bill every post read, so their post numbers are never read
+// on a timer, only when someone presses this.
+const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
+  integrationId,
+}) => {
+  const t = useT();
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const { mobile } = useViewport();
+  const { formatDateTime } = useDateFormat();
+  const [busy, setBusy] = useState(false);
+  const { mutate } = useSWRConfig();
+  const status = useAnalyticsRefreshStatus(integrationId);
+
+  const refresh = useCallback(async () => {
+    setBusy(true);
+    try {
+      const response = await fetch('/analytics/refresh', {
+        method: 'POST',
+        body: JSON.stringify(integrationId ? { integrationId } : {}),
+      });
+      if (!response.ok) {
+        toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+        return;
+      }
+      const result = (await response.json()) as {
+        refreshed: number;
+        skipped: number;
+        failed: number;
+      };
+      toaster.show(
+        result.refreshed
+          ? t('analytics_refresh_done', 'Numbers refreshed')
+          : result.failed
+            ? t(
+                'analytics_refresh_failed',
+                'Could not refresh the numbers. Try again later.',
+              )
+            : result.skipped
+              ? t(
+                  'analytics_refresh_cooldown',
+                  'Already up to date. Try again in a few minutes.',
+                )
+              : t('analytics_refresh_nothing', 'No new numbers to read'),
+        result.refreshed || result.skipped ? 'success' : 'warning',
+      );
+      // Revalidates in place, without clearing what is on screen
+      await mutate(isAnalyticsKey);
+    } finally {
+      setBusy(false);
+    }
+  }, [fetch, integrationId, mutate, t, toaster]);
+
+  if (status.error || (status.data && !status.data.integrations)) {
+    return null;
+  }
+
+  const lastSyncedAt = status.data?.lastSyncedAt;
+
+  return (
+    <div className="flex shrink-0 items-center gap-[10px]">
+      {!!status.data && (
+        <span className="text-[12.5px] text-pqMuted">
+          {lastSyncedAt
+            ? t('analytics_refreshed_at', 'Updated {{time}}', {
+                time: formatDateTime(lastSyncedAt),
+              })
+            : t('analytics_never_refreshed', 'Not refreshed yet')}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={refresh}
+        disabled={busy || !status.data}
+        title={t(
+          'analytics_refresh_hint',
+          'Some channels update their post numbers only when you refresh.',
+        )}
+        className={clsx(
+          'inline-flex h-[32px] items-center gap-[6px] rounded-pqSm px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50',
+          mobile && 'h-[44px] min-h-[44px]',
+        )}
+      >
+        {busy && <Spinner width={14} height={14} />}
+        {t('analytics_refresh', 'Refresh')}
+      </button>
+    </div>
+  );
+};
+
 export const WorkspaceAnalytics: FC<{
   date: number;
   integrationIds?: string;
-}> = ({ date, integrationIds }) => {
+  manualRefresh?: boolean;
+}> = ({ date, integrationIds, manualRefresh }) => {
   const t = useT();
   const modal = useModals();
   const { mobile } = useViewport();
@@ -469,6 +569,7 @@ export const WorkspaceAnalytics: FC<{
 
   const isLoading =
     (summary.isLoading && !summary.data) || (posts.isLoading && !posts.data);
+
 
   const toggleSort = (next: typeof sort) => {
     setPage(0);
@@ -687,6 +788,9 @@ export const WorkspaceAnalytics: FC<{
               )}
             </div>
           </div>
+          {manualRefresh && (
+            <PostMetricsRefresh integrationId={integrationIds} />
+          )}
         </div>
         {mobile ? (
           <div className="flex flex-col gap-[10px]">

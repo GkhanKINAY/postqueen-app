@@ -899,5 +899,14 @@
   "media_n_selected": "נבחרו: {{count}}",
   "are_you_sure_you_want_to_delete_n_media": "למחוק את הקבצים שנבחרו ({{count}})?",
   "media_n_deleted": "נמחקו קבצים: {{count}}",
-  "media_delete_partial": "נמחקו {{deleted}} מתוך {{total}}. השאר עדיין מסומנים, אפשר לנסות שוב."
+  "media_delete_partial": "נמחקו {{deleted}} מתוך {{total}}. השאר עדיין מסומנים, אפשר לנסות שוב.",
+  "analytics_refresh": "רענון",
+  "analytics_refreshed_at": "עודכן: {{time}}",
+  "analytics_never_refreshed": "עדיין לא רוענן",
+  "analytics_refresh_done": "המספרים רועננו",
+  "analytics_refresh_cooldown": "כבר מעודכן. נסו שוב בעוד כמה דקות.",
+  "analytics_refresh_hint": "חלק מהערוצים מעדכנים את מספרי הפוסטים רק כשמרעננים.",
+  "analytics_refresh_nothing": "אין מספרים חדשים לקריאה",
+  "analytics_refresh_failed": "לא ניתן היה לרענן את המספרים. נסו שוב מאוחר יותר.",
+  "analytics_manual_refresh_empty": "עדיין אין מספרים לערוץ הזה. בחרו רענון למטה כדי לקרוא את העדכניים."
 }

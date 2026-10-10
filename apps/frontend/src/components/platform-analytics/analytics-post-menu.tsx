@@ -20,10 +20,11 @@ import { AnalyticsPostRow } from '@gitroom/frontend/components/platform-analytic
 const ROW =
   'flex w-full items-center gap-[9px] rounded-pqSm px-[9px] py-[7px] text-start text-[13px] text-pqText hover:bg-pqHover';
 
-const isAnalyticsKey = (key: unknown) =>
+export const isAnalyticsKey = (key: unknown) =>
   typeof key === 'string' &&
   (key.startsWith('/analytics/posts') ||
     key.startsWith('/analytics/summary') ||
+    key.startsWith('/analytics/refresh') ||
     key.startsWith('/analytics-'));
 
 export const AnalyticsPostMenu: FC<{
