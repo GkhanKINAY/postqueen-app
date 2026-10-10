@@ -934,6 +934,71 @@ describe('a plan change', () => {
     );
   });
 
+  const upgrade = () =>
+    service().subscribe(
+      'unique',
+      'org1',
+      'user1',
+      { billing: 'PRO', period: 'MONTHLY' } as any,
+      false,
+    );
+  const updates = () =>
+    called('subscriptions.update').map(([, body]) => body as any);
+
+  it('turns tax on before an upgrade on a subscription without it', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    localPlan = { subscriptionTier: 'GROWTH' };
+
+    await upgrade();
+
+    const tax = updates().findIndex(
+      (b) => b.automatic_tax?.enabled && !b.items && !b.metadata,
+    );
+    const change = updates().findIndex((b) => b.items);
+    assert.ok(tax >= 0 && tax < change);
+  });
+
+  it('leaves tax alone when the subscription already has it', async () => {
+    subs = [
+      on('GROWTH', 'MONTHLY', { automatic_tax: { enabled: true } as any }),
+    ];
+    localPlan = { subscriptionTier: 'GROWTH' };
+
+    await upgrade();
+
+    const change = updates().findIndex((b) => b.items);
+    assert.ok(change >= 0);
+    assert.equal(
+      updates()
+        .slice(0, change)
+        .filter((b) => b.automatic_tax).length,
+      0,
+    );
+  });
+
+  it('still upgrades when Stripe refuses to turn tax on', async () => {
+    subs = [on('GROWTH', 'MONTHLY')];
+    localPlan = { subscriptionTier: 'GROWTH' };
+    const saved = Object.getPrototypeOf(probe.subscriptions).update;
+    fake(probe.subscriptions, {
+      update: async (id: string, body: any) => {
+        if (body.automatic_tax && !body.metadata) {
+          calls.push({ method: 'subscriptions.update', args: [id, body] });
+          throw new Error('customer_tax_location_invalid');
+        }
+        return saved(id, body);
+      },
+    });
+    try {
+      const result = await upgrade();
+      assert.equal((result as any).portal, undefined);
+      assert.ok(updates().some((b) => b.automatic_tax && !b.metadata));
+      assert.ok(updates().some((b) => b.items));
+    } finally {
+      fake(probe.subscriptions, { update: saved });
+    }
+  });
+
   it('refuses a switch to yearly without the withdrawal consent', async () => {
     subs = [on('GROWTH', 'MONTHLY')];
     localPlan = { subscriptionTier: 'GROWTH' };
