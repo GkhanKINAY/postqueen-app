@@ -298,7 +298,8 @@ export class InstagramProvider
     if (/\b2207053\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Unknown upload error, please try again',
+        value:
+          "Instagram failed to upload the video. If it exceeds Instagram's limits (300MB, 1920px width, 25Mbps bitrate), export a smaller version and try again",
       };
     }
 
