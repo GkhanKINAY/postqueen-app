@@ -39,6 +39,7 @@ import {
   useUser,
 } from '@gitroom/frontend/components/layout/user.context';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
+import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
@@ -841,6 +842,7 @@ export const FirstBillingComponent = () => {
       body: JSON.stringify({
         billing: tier,
         period: period,
+        ...readAttribution(),
         ...(datafast_visitor_id && datafast_session_id
           ? { datafast_visitor_id, datafast_session_id }
           : {}),

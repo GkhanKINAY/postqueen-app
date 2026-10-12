@@ -31,7 +31,7 @@ import { useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
-import { useUtmUrl } from '@gitroom/helpers/utils/utm.saver';
+import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -560,7 +560,6 @@ export const MainBillingComponent: FC<{
   const user = useUser();
   const dub = useDubClickId();
   const modal = useModals();
-  const utm = useUtmUrl();
   const track = useTrack();
   const t = useT();
   const queryParams = useSearchParams();
@@ -904,7 +903,7 @@ export const MainBillingComponent: FC<{
           method: 'POST',
           body: JSON.stringify({
             period: monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY',
-            utm,
+            ...readAttribution(),
             billing,
             ...(dub ? { dub } : {}),
             ...(monthlyOrYearly === 'on' ? { withdrawalWaiver: waiver } : {}),
@@ -1010,7 +1009,7 @@ export const MainBillingComponent: FC<{
         }
         setLoading(false);
       },
-    [monthlyOrYearly, waiver, subscription, user, utm, modal, mutate, fetch, toast, t, dub, track]
+    [monthlyOrYearly, waiver, subscription, user, modal, mutate, fetch, toast, t, dub, track]
   );
   // An organization subscribed through the mobile app's store is managed
   // there: nothing on this page can change it, so say where to go instead.

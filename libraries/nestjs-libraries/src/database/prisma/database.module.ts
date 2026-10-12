@@ -32,6 +32,7 @@ import { ClippingRepository } from '@gitroom/nestjs-libraries/database/prisma/cl
 import { AgenciesService } from '@gitroom/nestjs-libraries/database/prisma/agencies/agencies.service';
 import { AgenciesRepository } from '@gitroom/nestjs-libraries/database/prisma/agencies/agencies.repository';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
+import { SalesNotificationService } from '@gitroom/nestjs-libraries/track/sales.notification.service';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { WebhooksRepository } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.repository';
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
@@ -110,6 +111,7 @@ import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/pri
     FalService,
     EmailService,
     TrackService,
+    SalesNotificationService,
     ShortLinkService,
     SetsService,
     SetsRepository,
