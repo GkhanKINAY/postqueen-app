@@ -166,6 +166,7 @@ const service = () =>
     { getUserById: async () => ({ email: 'a@b.co' }) } as any,
     {} as any,
     { inAppNotification: async () => ({}) } as any,
+    { announce: async () => false } as any,
   );
 
 const created = (id: string) =>
@@ -1013,5 +1014,109 @@ describe('a plan change', () => {
       (err: any) => err.getStatus?.() === 400,
     );
     assert.equal(called('subscriptions.update').length, 0);
+  });
+});
+
+describe('the sales card for a paid invoice', () => {
+  let posted: any[];
+  const withSales = () =>
+    new StripeService(
+      subscriptionService as any,
+      organizationService as any,
+      { getUserById: async () => ({ email: 'a@b.co' }) } as any,
+      {} as any,
+      { inAppNotification: async () => ({}) } as any,
+      { announce: async (sale: any) => posted.push(sale) } as any,
+    );
+  const paid = (
+    id: string,
+    created: number,
+    extra: Partial<Stripe.Invoice> = {},
+  ): Partial<Stripe.Invoice> => ({
+    id,
+    created,
+    customer: 'cus_1',
+    amount_paid: 4900,
+    currency: 'usd',
+    billing_reason: 'subscription_cycle',
+    parent: { subscription_details: { subscription: 'sub_1' } } as any,
+    lines: { data: [] } as any,
+    metadata: {},
+    ...extra,
+  });
+  const announce = (invoice: Partial<Stripe.Invoice>) =>
+    (withSales() as any).announceInvoice(invoice, true);
+
+  let savedRetrieve: unknown;
+  let savedCustomer: unknown;
+  before(() => {
+    savedRetrieve = Object.getPrototypeOf(probe.invoices).retrieve;
+    savedCustomer = Object.getPrototypeOf(probe.customers).retrieve;
+    fake(probe.invoices, {
+      retrieve: async (id: string) => invoices.find((i) => i.id === id),
+    });
+    fake(probe.customers, { retrieve: async () => ({ metadata: {} }) });
+  });
+  after(() => {
+    fake(probe.invoices, { retrieve: savedRetrieve });
+    fake(probe.customers, { retrieve: savedCustomer });
+  });
+  beforeEach(() => {
+    posted = [];
+    subs = [
+      sub('sub_1', 100, {
+        metadata: {
+          service: 'postqueen',
+          utm: 'postqueen.ai',
+          utm_medium: 'landing',
+        },
+      }),
+    ];
+  });
+
+  it('calls the first money a subscription takes its sale', async () => {
+    invoices = [paid('in_1', 200, { billing_reason: 'subscription_create' })];
+    await announce(invoices[0]);
+    assert.equal(posted[0].kind, 'subscription');
+    assert.equal(posted[0].paymentNumber, 1);
+    assert.equal(posted[0].attribution.source, 'postqueen.ai');
+    assert.equal(posted[0].attribution.medium, 'landing');
+  });
+
+  it('a trial ended early from Billing is a conversion, not an upgrade', async () => {
+    subs[0].trial_end = 150;
+    invoices = [
+      paid('in_trial', 100, { amount_paid: 0 }),
+      paid('in_1', 200, { billing_reason: 'subscription_update' }),
+    ];
+    await announce(invoices[1]);
+    assert.equal(posted[0].kind, 'trial_converted');
+  });
+
+  it('tells a renewal from an upgrade once the subscription has paid', async () => {
+    invoices = [
+      paid('in_1', 100, { billing_reason: 'subscription_create' }),
+      paid('in_2', 200),
+      paid('in_3', 300, { billing_reason: 'subscription_update' }),
+    ];
+    await announce(invoices[1]);
+    await announce(invoices[2]);
+    assert.deepEqual(
+      posted.map((p) => [p.kind, p.paymentNumber]),
+      [
+        ['renewal', 2],
+        ['upgrade', 3],
+      ],
+    );
+  });
+
+  it('leaves a checkout payment and a $0 invoice to the paths that own them', async () => {
+    invoices = [
+      paid('in_pack', 100, { parent: null, metadata: { kind: 'credit_pack' } }),
+      paid('in_trial', 200, { amount_paid: 0 }),
+    ];
+    await announce(invoices[0]);
+    await announce(invoices[1]);
+    assert.equal(posted.length, 0);
   });
 });

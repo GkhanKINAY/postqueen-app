@@ -28,6 +28,11 @@ import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
+  SaleAttribution,
+  SaleNotification,
+  SalesNotificationService,
+} from '@gitroom/nestjs-libraries/track/sales.notification.service';
+import {
   CreditGrantTarget,
   PaymentInvoice,
   PaymentPlatform,
@@ -214,7 +219,8 @@ export class StripeService extends PaymentProviderAbstract {
     private _trackService: TrackService,
     // For `paymentFailed` — a failed renewal has to reach the customer, and
     // this is the same service the cancellation email already goes through.
-    private _notificationService: NotificationService
+    private _notificationService: NotificationService,
+    private _salesNotificationService: SalesNotificationService
   ) {
     super();
   }
@@ -317,7 +323,11 @@ export class StripeService extends PaymentProviderAbstract {
           // here is read as a founding-member purchase, and a pack must never
           // grant lifetime Pro.
           if (session?.metadata?.kind === 'credit_pack') {
-            return await this.grantCreditPack(organizationId, session);
+            const pack = await this.grantCreditPack(organizationId, session);
+            if (pack.granted) {
+              await this.announceCheckout(session, 'credits', event.livemode);
+            }
+            return pack;
           }
 
           // Deferred founding checkout: card on file, charge later.
@@ -366,10 +376,22 @@ export class StripeService extends PaymentProviderAbstract {
               `[stripe] granting lifetime to org ${organizationId} on a fully discounted session (${session.id})`
             );
           }
-          return this.grantLifetimeFromPayment(organizationId, session.id);
+          const lifetime = await this.grantLifetimeFromPayment(
+            organizationId,
+            session.id
+          );
+          if (!('duplicate' in lifetime)) {
+            await this.announceCheckout(session, 'lifetime', event.livemode);
+          }
+          return lifetime;
         }
-        case 'invoice.payment_succeeded':
-          return await this.paymentSucceeded(event);
+        // The sales channel hears about each of these after the handler has
+        // done its work, so a delivery Stripe has to retry posts once.
+        case 'invoice.payment_succeeded': {
+          const paid = await this.paymentSucceeded(event);
+          await this.announceInvoice(event.data.object, event.livemode);
+          return paid;
+        }
         // A renewal that could not be charged. Unhandled until now, so the only
         // thing a customer with a dead card saw was nothing at all — until
         // Stripe gave up weeks later and cancelled the subscription, at which
@@ -384,10 +406,23 @@ export class StripeService extends PaymentProviderAbstract {
           return await this.deleteSubscription(event);
         // Money leaving again. Neither of these used to be handled, so a
         // chargeback cost the payment, the bank's fee, and the plan stayed on.
-        case 'charge.dispute.created':
-          return await this.disputeCreated(event);
-        case 'charge.refunded':
-          return await this.chargeRefunded(event);
+        case 'charge.dispute.created': {
+          const disputed = await this.disputeCreated(event);
+          await this.announceDispute(event.data.object, event.livemode);
+          return disputed;
+        }
+        case 'charge.refunded': {
+          const refunded = await this.chargeRefunded(event);
+          await this.announceRefund(
+            event.data.object,
+            // `amount_refunded` is a running total, and a second partial
+            // refund fires this again: the card shows only what this one gave.
+            (event.data.previous_attributes as Partial<Stripe.Charge> | undefined)
+              ?.amount_refunded || 0,
+            event.livemode
+          );
+          return refunded;
+        }
         default:
           return { ok: true };
       }
@@ -3445,6 +3480,377 @@ export class StripeService extends PaymentProviderAbstract {
       }
     );
     return { ok: true, revoked: true };
+  }
+
+  /**
+   * The sales channel's card for a paid invoice: a plan's first payment, its
+   * renewals, a trial converting, an upgrade's proration, and a founding fee
+   * charged when its trial ended. A checkout paid at once (a credits pack, a
+   * founding fee) is announced from its session instead, so its invoice is
+   * skipped here and nothing posts twice. A $0 trial invoice is not a sale.
+   *
+   * Never throws: the card is a side effect of a payment that already
+   * happened, and a failure here must not send the event back for a retry.
+   */
+  private async announceInvoice(invoice: Stripe.Invoice, livemode: boolean) {
+    try {
+      const subscriptionRef = invoice.parent?.subscription_details?.subscription;
+      const subscriptionId =
+        typeof subscriptionRef === 'string' ? subscriptionRef : subscriptionRef?.id;
+      const lifetime = invoice.metadata?.lifetime_charge === '1';
+      const customer = invoice.customer as string | null;
+      if (!invoice.amount_paid || !customer || (!subscriptionId && !lifetime)) {
+        return;
+      }
+      const subscription = subscriptionId
+        ? await this.retrieveSubscription(subscriptionId)
+        : null;
+      if (
+        subscription &&
+        subscription.metadata?.service !== SUBSCRIPTION_SERVICE_TAG
+      ) {
+        return;
+      }
+
+      const earlier = await this.paidInvoicesBefore(
+        customer,
+        invoice.id!,
+        invoice.created
+      );
+      let kind: SaleNotification['kind'] = 'lifetime';
+      let product =
+        invoice.metadata?.lifetime_retention === '1'
+          ? 'Founding member (retention offer)'
+          : 'Founding member';
+      if (subscription) {
+        // The price this invoice charged, not the subscription's price now: a
+        // plan changed since would rename every earlier payment. On an
+        // upgrade's proration that is the new plan's line, the larger one.
+        const line = [...(invoice.lines?.data || [])].sort(
+          (x, y) => y.amount - x.amount
+        )[0];
+        const linePrice = line?.pricing?.price_details?.price;
+        const price = linePrice
+          ? await stripe.prices
+              .retrieve(typeof linePrice === 'string' ? linePrice : linePrice.id, {
+                expand: ['product'],
+              })
+              .catch((): undefined => undefined)
+          : undefined;
+        const { billing, period } = price
+          ? this.tierOfPrice(price, subscription.metadata)
+          : this.tierOfSubscription(subscription);
+        product = `${pricing[billing]?.label || billing} · ${
+          period === 'YEARLY' ? 'Yearly' : 'Monthly'
+        }`;
+        const firstOfSubscription = !earlier.some(
+          (i) =>
+            this.subscriptionIdOfInvoice(i) === subscription.id
+        );
+        // The first money a subscription takes is its sale, whatever Stripe
+        // calls the invoice: ending a trial early from Billing bills it as
+        // `subscription_update`, the same reason an upgrade's proration has.
+        kind = firstOfSubscription
+          ? subscription.trial_end
+            ? 'trial_converted'
+            : 'subscription'
+          : invoice.billing_reason === 'subscription_update'
+          ? 'upgrade'
+          : 'renewal';
+      }
+
+      const full = await stripe.invoices.retrieve(invoice.id!, {
+        expand: ['discounts.source.coupon', 'payments'],
+      });
+      // An invoice keeps every attempt; the one that paid it is the one with a fee.
+      const payment = full.payments?.data?.find((p) => p.status === 'paid')
+        ?.payment?.payment_intent;
+      const coupon = (full.discounts || [])
+        .map((d) => (typeof d === 'string' ? null : d.source?.coupon))
+        .find((c): c is Stripe.Coupon => !!c && typeof c !== 'string');
+
+      await this.announceSale(customer, {
+        kind,
+        product,
+        amount: invoice.amount_paid,
+        currency: invoice.currency,
+        tax: (invoice.total_taxes || []).reduce((sum, t) => sum + t.amount, 0),
+        discount: (invoice.total_discount_amounts || []).reduce(
+          (sum, d) => sum + d.amount,
+          0
+        ),
+        discountName: coupon?.name || null,
+        fee: await this.feeOfPayment(
+          typeof payment === 'string' ? payment : payment?.id,
+          invoice.currency
+        ),
+        customerName: invoice.customer_name,
+        customerEmail: invoice.customer_email,
+        business: !!invoice.customer_tax_ids?.length,
+        country: invoice.customer_address?.country,
+        paymentNumber: earlier.length + 1,
+        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}invoices/${invoice.id}`,
+        test: !livemode,
+      }, subscription);
+    } catch (err) {
+      Logger.warn(
+        `[sales] no card for invoice ${invoice.id}: ${(err as Error)?.message || err}`
+      );
+    }
+  }
+
+  /** The same for a checkout paid at once: a credits pack or a founding fee. */
+  private async announceCheckout(
+    session: Stripe.Checkout.Session,
+    kind: 'credits' | 'lifetime',
+    livemode: boolean
+  ) {
+    try {
+      const customer =
+        typeof session.customer === 'string'
+          ? session.customer
+          : session.customer?.id;
+      if (!customer || !session.amount_total) {
+        return;
+      }
+      const invoiceId =
+        typeof session.invoice === 'string' ? session.invoice : session.invoice?.id;
+      const paymentIntent =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id;
+      const earlier = await this.paidInvoicesBefore(
+        customer,
+        invoiceId || '',
+        session.created
+      );
+      await this.announceSale(customer, {
+        kind,
+        product:
+          kind === 'credits'
+            ? `${Number(session.metadata?.credits || 0).toLocaleString('en-US')} credits`
+            : 'Founding member',
+        amount: session.amount_total,
+        currency: session.currency || 'usd',
+        tax: session.total_details?.amount_tax || 0,
+        discount: session.total_details?.amount_discount || 0,
+        fee: await this.feeOfPayment(paymentIntent, session.currency || 'usd'),
+        customerName: session.customer_details?.name,
+        customerEmail: session.customer_details?.email,
+        business: !!session.customer_details?.tax_ids?.length,
+        country: session.customer_details?.address?.country,
+        paymentNumber: earlier.length + 1,
+        link: paymentIntent
+          ? `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${paymentIntent}`
+          : null,
+        test: !livemode,
+      });
+    } catch (err) {
+      Logger.warn(
+        `[sales] no card for checkout ${session.id}: ${(err as Error)?.message || err}`
+      );
+    }
+  }
+
+  /** Money going back: any refund, partial ones included. */
+  private async announceRefund(
+    charge: Stripe.Charge,
+    refundedBefore: number,
+    livemode: boolean
+  ) {
+    try {
+      const customer = charge.customer as string | null;
+      const amount = charge.amount_refunded - refundedBefore;
+      if (!customer || amount <= 0) {
+        return;
+      }
+      await this.announceSale(customer, {
+        kind: 'refund',
+        product: await this.productOfCharge(charge),
+        amount,
+        currency: charge.currency,
+        reason: charge.refunded
+          ? refundedBefore
+            ? 'Rest of the payment refunded'
+            : 'Fully refunded'
+          : 'Partly refunded',
+        customerName: charge.billing_details?.name,
+        customerEmail: charge.billing_details?.email || charge.receipt_email,
+        country: charge.billing_details?.address?.country,
+        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${
+          typeof charge.payment_intent === 'string'
+            ? charge.payment_intent
+            : charge.payment_intent?.id || charge.id
+        }`,
+        test: !livemode,
+      });
+    } catch (err) {
+      Logger.warn(
+        `[sales] no card for refund on ${charge.id}: ${(err as Error)?.message || err}`
+      );
+    }
+  }
+
+  /** A chargeback. Early fraud warnings move no money and are left out. */
+  private async announceDispute(dispute: Stripe.Dispute, livemode: boolean) {
+    try {
+      if (dispute.status?.startsWith('warning_')) {
+        return;
+      }
+      const chargeId =
+        typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+      if (!chargeId) {
+        return;
+      }
+      const charge = await stripe.charges.retrieve(chargeId);
+      const customer = charge.customer as string | null;
+      if (!customer) {
+        return;
+      }
+      await this.announceSale(customer, {
+        kind: 'dispute',
+        product: await this.productOfCharge(charge),
+        amount: dispute.amount,
+        currency: dispute.currency,
+        reason: dispute.reason?.replace(/_/g, ' '),
+        customerName: charge.billing_details?.name,
+        customerEmail: charge.billing_details?.email || charge.receipt_email,
+        country: charge.billing_details?.address?.country,
+        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}disputes/${dispute.id}`,
+        test: !livemode,
+      });
+    } catch (err) {
+      Logger.warn(
+        `[sales] no card for dispute ${dispute.id}: ${(err as Error)?.message || err}`
+      );
+    }
+  }
+
+  /** What a refunded or disputed charge had paid for, in the card's words. */
+  private async productOfCharge(charge: Stripe.Charge) {
+    try {
+      const paymentIntent =
+        typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id;
+      if (paymentIntent) {
+        const intent = await stripe.paymentIntents.retrieve(paymentIntent);
+        if (intent.metadata?.kind === 'credit_pack') {
+          return `${Number(intent.metadata.credits || 0).toLocaleString('en-US')} credits`;
+        }
+      }
+      const found = await this.subscriptionOfCharge(charge);
+      if (found) {
+        const { billing, period } = this.tierOfSubscription(
+          await this.retrieveSubscription(found.subscription.id)
+        );
+        return `${pricing[billing]?.label || billing} · ${
+          period === 'YEARLY' ? 'Yearly' : 'Monthly'
+        }`;
+      }
+    } catch (err) {}
+    return charge.description || 'a payment';
+  }
+
+  /**
+   * Adds what every card shares and posts it: the organization (which also
+   * scopes the card to this app, since the webhook takes untagged events), when
+   * it signed up, the affiliate click on the customer, and the attribution the
+   * checkout stored on the subscription. A sale with no subscription of its
+   * own reads the customer's latest one.
+   */
+  private async announceSale(
+    customer: string,
+    sale: SaleNotification,
+    subscription?: Stripe.Subscription | null
+  ) {
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org) {
+      return;
+    }
+    const metadata =
+      subscription?.metadata ||
+      (
+        await stripe.subscriptions
+          .list({ customer, status: 'all', limit: 1 })
+          .catch((): null => null)
+      )?.data?.[0]?.metadata ||
+      {};
+    const stripeCustomer = await stripe.customers
+      .retrieve(customer)
+      .catch((): null => null);
+    await this._salesNotificationService.announce({
+      ...sale,
+      organizationName: org.name,
+      signedUpAt: org.createdAt,
+      attribution: this.attributionOf(metadata),
+      affiliate:
+        !!stripeCustomer &&
+        !('deleted' in stripeCustomer && stripeCustomer.deleted) &&
+        !!(stripeCustomer as Stripe.Customer).metadata?.dubClickId,
+    });
+  }
+
+  /** Written at checkout from the buyer's first visit; see `BillingSubscribeDto`. */
+  private attributionOf(metadata: Stripe.Metadata): SaleAttribution | null {
+    const attribution = {
+      source: metadata.utm || null,
+      medium: metadata.utm_medium || null,
+      campaign: metadata.utm_campaign || null,
+      content: metadata.utm_content || null,
+      term: metadata.utm_term || null,
+      referrer: metadata.referrer || null,
+      landing: metadata.landing || null,
+    };
+    return Object.values(attribution).some(Boolean) ? attribution : null;
+  }
+
+  private subscriptionIdOfInvoice(invoice: Stripe.Invoice) {
+    const ref = invoice.parent?.subscription_details?.subscription;
+    return typeof ref === 'string' ? ref : ref?.id;
+  }
+
+  /** The customer's paid invoices that moved money before this one. */
+  private async paidInvoicesBefore(
+    customer: string,
+    invoiceId: string,
+    before: number
+  ) {
+    const { data } = await stripe.invoices.list({
+      customer,
+      status: 'paid',
+      limit: 100,
+    });
+    return data.filter(
+      (i) => i.id !== invoiceId && i.amount_paid > 0 && i.created <= before
+    );
+  }
+
+  /**
+   * Stripe's fee on a payment, in the payment's currency. The balance
+   * transaction is in the account's currency (EUR) while every price here is
+   * USD, so it is converted back with the rate Stripe used. null when it
+   * cannot be read yet, and the card then says the fee is still to come.
+   */
+  private async feeOfPayment(paymentIntent: string | undefined, currency: string) {
+    if (!paymentIntent) {
+      return null;
+    }
+    try {
+      const intent = await stripe.paymentIntents.retrieve(paymentIntent, {
+        expand: ['latest_charge.balance_transaction'],
+      });
+      const transaction = (intent.latest_charge as Stripe.Charge | null)
+        ?.balance_transaction;
+      if (!transaction || typeof transaction === 'string') {
+        return null;
+      }
+      return transaction.currency === currency.toLowerCase()
+        ? transaction.fee
+        : Math.round(transaction.fee / (transaction.exchange_rate || 1));
+    } catch (err) {
+      return null;
+    }
   }
 
   /**

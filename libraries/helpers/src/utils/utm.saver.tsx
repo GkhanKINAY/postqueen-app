@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useCallback, useEffect } from 'react';
+import { FC, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '@mantine/hooks';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
@@ -24,6 +24,13 @@ const SELECTABLE_PLANS = Object.keys(pricing).filter(
   (plan) => plan !== 'FREE' && !pricing[plan].retired
 );
 const SELECTABLE_PERIODS = ['MONTHLY', 'YEARLY'];
+const UTM_PARAMS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+] as const;
 
 const UtmSaver: FC = () => {
   const query = useSearchParams();
@@ -51,8 +58,18 @@ const UtmSaver: FC = () => {
 
   useEffect(() => {
     const utm = query.get('utm_source') || query.get('utm') || query.get('ref');
-    if (utm && !value) {
+    // Read from storage as well: `value` is still empty on the first render,
+    // so a later visit with its own link would replace the first one.
+    if (utm && !value && !localStorage.getItem('utm')) {
       setValue(utm);
+      // The rest of the same link, kept whole: a medium from one visit next to
+      // a campaign from another would describe a link nobody clicked.
+      const params = Object.fromEntries(
+        UTM_PARAMS.map((key) => [key, query.get(key)]).filter(([, v]) => v)
+      );
+      try {
+        localStorage.setItem('utmParams', JSON.stringify(params));
+      } catch (e) {}
     }
   }, [query, value]);
 
@@ -78,5 +95,57 @@ const UtmSaver: FC = () => {
 export const useUtmUrl = () => {
   const [value] = useLocalStorage({ key: 'utm', defaultValue: '' });
   return value || '';
+};
+
+const clip = (value?: string | null) => (value || '').slice(0, 200) || undefined;
+
+/**
+ * The buyer's first visit, for the checkout to send with a plan: the UTM link
+ * that brought them, the site that referred them, and the page they landed
+ * on. The server keeps it on the subscription, and the sales channel's card
+ * shows it. Only the referrer's host and the landing page's first path segment
+ * go out: a first page can be an activation, reset or invite link, and those
+ * carry their token in the path (`/auth/activate/<code>`) or the query.
+ *
+ * Read when the request is made rather than through `useLocalStorage`, which
+ * fills in after mount: the checkout can load before it does.
+ */
+export const readAttribution = () => {
+  const read = (key: string) => {
+    const raw = localStorage.getItem(key) || '';
+    try {
+      // `useLocalStorage` writes its values as JSON.
+      return JSON.parse(raw);
+    } catch (e) {
+      return raw;
+    }
+  };
+  try {
+    const utm = String(read('utm') || '');
+    const landingUrl = localStorage.getItem('landingUrl') || '';
+    const landing = landingUrl ? new URL(landingUrl) : null;
+    // Visitors from before `utmParams` was kept still have their landing URL.
+    const params: Record<string, string | null> =
+      read('utmParams') ||
+      Object.fromEntries(
+        UTM_PARAMS.map((key) => [key, landing?.searchParams.get(key) || null])
+      );
+    const referrerUrl = localStorage.getItem('referrer') || '';
+    const referrer = referrerUrl ? new URL(referrerUrl).hostname : '';
+    return {
+      utm: clip(utm),
+      utm_medium: clip(params.utm_medium),
+      utm_campaign: clip(params.utm_campaign),
+      utm_content: clip(params.utm_content),
+      utm_term: clip(params.utm_term),
+      referrer:
+        referrer && referrer !== window.location.hostname
+          ? clip(referrer)
+          : undefined,
+      landing: clip(landing ? `/${landing.pathname.split('/')[1] || ''}` : ''),
+    };
+  } catch (e) {
+    return {};
+  }
 };
 export default UtmSaver;

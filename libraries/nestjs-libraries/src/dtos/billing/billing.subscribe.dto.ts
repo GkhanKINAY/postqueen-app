@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import {
   normalizeTier,
@@ -23,6 +23,9 @@ export const SELLABLE_TIERS = Object.keys(pricing).filter(
   (plan) => plan !== 'FREE' && !pricing[plan].retired
 );
 
+const clip = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.slice(0, 200) : value;
+
 export class BillingSubscribeDto {
   @IsIn(['MONTHLY', 'YEARLY'])
   period: 'MONTHLY' | 'YEARLY';
@@ -32,7 +35,48 @@ export class BillingSubscribeDto {
   @IsIn(SELLABLE_TIERS)
   billing: PaidTier;
 
+  // The buyer's first visit, from UtmSaver. Everything in the body lands in
+  // the subscription's metadata, where the sales channel's card reads it.
+  // `utm` is utm_source (or `?utm=` / `?ref=`). Capped well under Stripe's 500
+  // character limit for a metadata value, which would refuse the checkout.
+  // Cut rather than refused: a longer `utm` was accepted before.
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
   utm: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  utm_medium?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  utm_campaign?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  utm_content?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  utm_term?: string;
+
+  // Host only, e.g. "www.google.com".
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  referrer?: string;
+
+  // First path segment only, e.g. "/pricing": a first page can be an
+  // activation or reset link with its token in the path.
+  @IsOptional()
+  @IsString()
+  @Transform(clip)
+  landing?: string;
 
   dub: string;
 
