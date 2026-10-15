@@ -174,6 +174,20 @@ export class PostsService {
     return this._postRepository.getPublishClaim(id);
   }
 
+  updateResolvedRelease(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL: string
+  ) {
+    return this._postRepository.updateResolvedRelease(
+      id,
+      orgId,
+      releaseId,
+      releaseURL
+    );
+  }
+
   async getMissingContent(
     orgId: string,
     postId: string,
