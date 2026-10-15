@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PostQueen",
   "version": "2.0.0",
-  "description": "PostQueen browser extension for social media scheduling",
+  "description": "Connects your Skool account to PostQueen, so you can schedule posts to your Skool groups.",
   "icons": {
     "32": "icon-32.png",
     "128": "icon-128.png"
@@ -12,18 +12,8 @@
     "alarms",
     "storage"
   ],
-  "host_permissions": [
-    "*://*.skool.com/*"
-  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
-  },
-  "externally_connectable": {
-    "matches": [
-      "http://localhost/*",
-      "https://localhost/*",
-      "https://*.postqueen.ai/*"
-    ]
   }
 }

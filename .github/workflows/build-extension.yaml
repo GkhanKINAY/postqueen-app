@@ -21,14 +21,13 @@ jobs:
         run: pnpm install
 
       - name: Zip extensions
-        run: FRONTEND_URL=https://app.postqueen.ai pnpm run build:extension
+        run: FRONTEND_URL=https://app.postqueen.ai NEXT_PUBLIC_BACKEND_URL=https://app.postqueen.ai/api pnpm run build:extension
 
-      - name: Upload to Nextcloud
-        env:
-          NEXTCLOUD_URL: ${{ secrets.NEXTCLOUD_URL }}
-          NEXTCLOUD_USERNAME: ${{ secrets.NEXTCLOUD_USERNAME }}
-          NEXTCLOUD_PASSWORD: ${{ secrets.NEXTCLOUD_PASSWORD }}
-        run: |
-          curl -T apps/extension/extension.zip \
-            -u "$NEXTCLOUD_USERNAME:$NEXTCLOUD_PASSWORD" \
-            "$NEXTCLOUD_URL/extension.zip"
+      # The artifact downloads as a zip of dist, which is the file the Chrome
+      # Web Store dashboard takes.
+      - name: Upload the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: postqueen-extension
+          path: apps/extension/dist
+          if-no-files-found: error
