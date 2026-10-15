@@ -124,11 +124,12 @@ export async function proxy(request: NextRequest) {
         request: { headers: requestHeaders },
       });
     }
-    // The OAuth consent page (MCP connectors, the CLI) has to come back once
-    // the person has signed in, and the login page keeps only the query. Hand
-    // it over as returnUrl, which ReturnUrlComponent stores and the login opens.
+    // The OAuth consent page (MCP connectors, the postqueen CLI) has to come
+    // back once the person has signed in, and the login page keeps only the
+    // query. Hand it over as returnUrl, which ReturnUrlComponent stores and the
+    // login opens.
     if (nextUrl.pathname === '/oauth/authorize') {
-      const returnUrl = `${process.env.FRONTEND_URL}${nextUrl.pathname}${nextUrl.search}`;
+      const returnUrl = `${process.env.FRONTEND_URL}/oauth/authorize${url}`;
       return NextResponse.redirect(
         new URL(
           `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`,
