@@ -143,6 +143,7 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
                 <Input
                   label=""
                   value={`/connect ${word.current}`}
+                  readOnly
                   name=""
                   disableForm={true}
                 />
