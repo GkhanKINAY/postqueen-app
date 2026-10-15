@@ -20,12 +20,13 @@ jobs:
         run: pnpm install
 
       - name: Zip extensions
-        run: FRONTEND_URL=https://app.postqueen.ai pnpm run build:extension
+        run: FRONTEND_URL=https://app.postqueen.ai NEXT_PUBLIC_BACKEND_URL=https://app.postqueen.ai/api pnpm run build:extension
 
       - name: Publish to Chrome Web Store
-        uses: mnao305/chrome-extension-upload@v5.0.0
+        uses: mnao305/chrome-extension-upload@v7.0.0
         with:
           extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          publisher-id: ${{ secrets.CHROME_PUBLISHER_ID }}
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
           refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}

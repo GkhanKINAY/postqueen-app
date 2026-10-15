@@ -13,18 +13,26 @@ const STORAGE_KEY = 'refreshEntries';
  * setting to fix it.
  */
 function buildAllowedOriginPatterns(): RegExp[] {
-  const patterns = [/^https?:\/\/localhost(:\d+)?$/];
+  const patterns: RegExp[] = [];
   const frontendUrl = import.meta.env?.FRONTEND_URL || '';
 
+  let hostname = '';
   try {
-    const { hostname } = new URL(frontendUrl);
-    if (hostname && hostname !== 'localhost') {
-      const escaped = hostname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      patterns.push(new RegExp(`^https?://([a-z0-9-]+\\.)*${escaped}$`));
-    }
+    hostname = new URL(frontendUrl).hostname;
   } catch {
     // Unset or malformed: trust only localhost. Better to refuse than to
     // accept an origin nobody configured.
+  }
+
+  // localhost only in a build made for it: a published build that trusted it
+  // would hand the session cookies to any page a local server happens to serve.
+  if (import.meta.env.DEV || !hostname || hostname === 'localhost') {
+    patterns.push(/^https?:\/\/localhost(:\d+)?$/);
+  }
+
+  if (hostname && hostname !== 'localhost') {
+    const escaped = hostname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    patterns.push(new RegExp(`^https?://([a-z0-9-]+\\.)*${escaped}$`));
   }
 
   return patterns;
@@ -72,7 +80,7 @@ async function extractCookies(provider: CookieProvider): Promise<GetCookiesRespo
 
 async function getStoredEntries(): Promise<Record<string, StoredRefreshEntry>> {
   const result = await chrome.storage.local.get(STORAGE_KEY);
-  return result[STORAGE_KEY] || {};
+  return (result[STORAGE_KEY] as Record<string, StoredRefreshEntry>) || {};
 }
 
 async function setStoredEntries(entries: Record<string, StoredRefreshEntry>): Promise<void> {

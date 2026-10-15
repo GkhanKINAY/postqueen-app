@@ -17,6 +17,26 @@ const merge = isDev ? devManifest : ({} as ManifestV3Export);
 
 const frontendUrl =
   import.meta.env?.FRONTEND_URL || process?.env?.FRONTEND_URL || '';
+const backendUrl =
+  import.meta.env?.NEXT_PUBLIC_BACKEND_URL ||
+  process?.env?.NEXT_PUBLIC_BACKEND_URL ||
+  '';
+
+// Without its two addresses a release build still packs and uploads, and then
+// answers no page but localhost and never reaches the backend.
+if (!isDev && (!frontendUrl || !backendUrl)) {
+  throw new Error(
+    'Set FRONTEND_URL and NEXT_PUBLIC_BACKEND_URL to build the extension. The build writes both into it.'
+  );
+}
+
+function parseUrl(url: string): URL | undefined {
+  try {
+    return new URL(url);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * The page origins allowed to talk to this extension. Derived from FRONTEND_URL
@@ -24,26 +44,36 @@ const frontendUrl =
  * fixed list, the extension only ever worked against the vendor's deployment.
  */
 function externallyConnectableMatches(): string[] {
-  const matches = ['http://localhost/*', 'https://localhost/*'];
-  try {
-    const { hostname } = new URL(frontendUrl);
-    if (hostname && hostname !== 'localhost') {
-      matches.push(`https://${hostname}/*`, `https://*.${hostname}/*`);
-    }
-  } catch {
-    // FRONTEND_URL unset or malformed: localhost-only, which fails loudly in
-    // development rather than silently trusting somebody else's domain.
+  const hostname = parseUrl(frontendUrl)?.hostname || '';
+  // localhost only in a build made for it: a published build that trusted it
+  // would hand the session cookies to any page a local server happens to serve.
+  const matches =
+    isDev || !hostname || hostname === 'localhost'
+      ? ['http://localhost/*', 'https://localhost/*']
+      : [];
+  if (hostname && hostname !== 'localhost') {
+    matches.push(`https://${hostname}/*`, `https://*.${hostname}/*`);
   }
   return matches;
+}
+
+/**
+ * The backend, for the daily cookie refresh: the service worker's POST is
+ * cross-origin, and the API's CORS list does not include the extension. The
+ * frontend needs no access, since its pages reach the extension and not the
+ * other way round.
+ */
+function backendHostPermissions(): string[] {
+  const origin = parseUrl(backendUrl)?.origin;
+  return origin ? [`${origin}/*`] : [];
 }
 
 export const baseManifest = {
   ...manifest,
   externally_connectable: { matches: externallyConnectableMatches() },
   host_permissions: [
-    import.meta.env?.FRONTEND_URL || process?.env?.FRONTEND_URL + '/*',
-    (import.meta.env?.NEXT_PUBLIC_BACKEND_URL || process?.env?.NEXT_PUBLIC_BACKEND_URL || '') + '/*',
-    ...providers.map(p => p.hostPermission)
+    ...backendHostPermissions(),
+    ...providers.map((p) => p.hostPermission),
   ],
   permissions: [...(manifest.permissions || [])],
   version: pkg.version,
@@ -60,6 +90,8 @@ export const baseManifest = {
 export const baseBuildOptions: BuildOptions = {
   sourcemap: isDev,
   emptyOutDir: !isDev,
+  // The Chrome Web Store reviews the code by reading it.
+  minify: false,
 };
 
 export default defineConfig({
