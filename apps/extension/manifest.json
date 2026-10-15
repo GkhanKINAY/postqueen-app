@@ -12,18 +12,8 @@
     "alarms",
     "storage"
   ],
-  "host_permissions": [
-    "*://*.skool.com/*"
-  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
-  },
-  "externally_connectable": {
-    "matches": [
-      "http://localhost/*",
-      "https://localhost/*",
-      "https://*.postqueen.ai/*"
-    ]
   }
 }

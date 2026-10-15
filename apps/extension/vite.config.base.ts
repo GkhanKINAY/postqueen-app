@@ -22,20 +22,22 @@ const backendUrl =
   process?.env?.NEXT_PUBLIC_BACKEND_URL ||
   '';
 
-// Without its two addresses a release build still packs and uploads, and then
-// answers no page but localhost and never reaches the backend.
-if (!isDev && (!frontendUrl || !backendUrl)) {
-  throw new Error(
-    'Set FRONTEND_URL and NEXT_PUBLIC_BACKEND_URL to build the extension. The build writes both into it.'
-  );
-}
-
 function parseUrl(url: string): URL | undefined {
   try {
     return new URL(url);
   } catch {
     return undefined;
   }
+}
+
+// Without its two addresses a release build still packs and uploads, and then
+// answers no page but localhost and never reaches the backend. A relative
+// backend such as "/api" is just as broken: the service worker has no origin
+// to resolve it against.
+if (!isDev && (!parseUrl(frontendUrl) || !parseUrl(backendUrl))) {
+  throw new Error(
+    'Set FRONTEND_URL and NEXT_PUBLIC_BACKEND_URL to absolute URLs to build the extension. The build writes both into it.'
+  );
 }
 
 /**
@@ -45,8 +47,7 @@ function parseUrl(url: string): URL | undefined {
  */
 function externallyConnectableMatches(): string[] {
   const hostname = parseUrl(frontendUrl)?.hostname || '';
-  // localhost only in a build made for it: a published build that trusted it
-  // would hand the session cookies to any page a local server happens to serve.
+  // Same rule as the origin check in src/background.ts.
   const matches =
     isDev || !hostname || hostname === 'localhost'
       ? ['http://localhost/*', 'https://localhost/*']

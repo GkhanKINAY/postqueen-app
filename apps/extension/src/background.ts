@@ -2,7 +2,7 @@ import { ExtensionRequest, GetCookiesResponse, ProviderInfo, StoredRefreshEntry 
 import { getAllProviders, getProvider } from './providers/provider.registry';
 import { CookieProvider } from './providers/cookie-provider.interface';
 
-const EXTENSION_VERSION = '2.0.0';
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 const REFRESH_ALARM_NAME = 'cookie-refresh';
 const STORAGE_KEY = 'refreshEntries';
 
