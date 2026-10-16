@@ -55,6 +55,7 @@ import {
   PurchaseTerms,
 } from '@gitroom/frontend/components/billing/credits.packs';
 import { BillingFeatures } from '@gitroom/frontend/components/billing/first.billing.component';
+import useCookie from 'react-use-cookie';
 
 type SubscriptionWithPlatform = Subscription & {
   platform?: 'web' | 'mobile';
@@ -604,6 +605,8 @@ export const MainBillingComponent: FC<{
   const toast = useToaster();
   const user = useUser();
   const dub = useDubClickId();
+  const [fbc] = useCookie('_fbc', '');
+  const [fbp] = useCookie('_fbp', '');
   const modal = useModals();
   const track = useTrack();
   const t = useT();
@@ -1030,6 +1033,8 @@ export const MainBillingComponent: FC<{
             ...readAttribution(),
             billing,
             ...(dub ? { dub } : {}),
+            ...(fbc ? { fbc } : {}),
+            ...(fbp ? { fbp } : {}),
           }),
         });
 
@@ -1085,6 +1090,7 @@ export const MainBillingComponent: FC<{
               pricing[billing][
                 monthlyOrYearly === 'on' ? 'year_price' : 'month_price'
               ],
+            currency: 'USD',
           });
           window.location.href = url;
           return;

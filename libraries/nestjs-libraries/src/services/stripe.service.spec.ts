@@ -53,6 +53,8 @@ type Sub = Partial<Stripe.Subscription> & { id: string; created: number };
 let subs: Sub[];
 let calls: { method: string; args: unknown[] }[];
 let invoices: Partial<Stripe.Invoice>[];
+// The paid invoices a subscription lists, for the Meta pixel's first-charge check.
+let subscriptionInvoices: Partial<Stripe.Invoice>[];
 let prices: Partial<Stripe.Price>[];
 
 const record =
@@ -117,7 +119,9 @@ fake(probe.subscriptionSchedules, {
 });
 fake(probe.invoices, {
   list: record('invoices.list', ({ customer, subscription }) => ({
-    data: subscription ? [] : invoices.filter((i) => i.customer === customer),
+    data: subscription
+      ? subscriptionInvoices
+      : invoices.filter((i) => i.customer === customer),
   })),
 });
 fake(probe.subscriptions, {
@@ -213,6 +217,7 @@ beforeEach(() => {
   subs = [];
   calls = [];
   invoices = [];
+  subscriptionInvoices = [];
   prices = [];
   localSub = { isLifetime: false };
   localPlan = null;
@@ -2268,5 +2273,92 @@ describe('the next charge', () => {
       trialing: false,
     });
     assert.equal(called('subscriptions.list').length, 0);
+  });
+});
+
+describe('the Meta pixel conversion', () => {
+  let tracked: unknown[][];
+  const tracking = (track?: () => Promise<void>) =>
+    new StripeService(
+      subscriptionService as any,
+      organizationService as any,
+      {
+        getUserById: async () => ({
+          id: 'user1',
+          email: 'a@b.co',
+          ip: '203.0.113.1',
+          agent: 'Mozilla/5.0',
+        }),
+      } as any,
+      {
+        track:
+          track ||
+          (async (...args: unknown[]) => {
+            tracked.push(args);
+          }),
+      } as any,
+      { inAppNotification: async () => ({}) } as any,
+      { announce: async () => false } as any,
+    ) as any;
+  const subscription = (metadata: Record<string, string>) =>
+    sub('sub_px', 100, { metadata: { userId: 'user1', ...metadata } });
+  const invoice = (id: string, amount_paid: number, created = 500) =>
+    ({ id, amount_paid, created, currency: 'usd' }) as Stripe.Invoice;
+
+  beforeEach(() => {
+    tracked = [];
+  });
+
+  it('is sent for the first paid invoice, with the checkout cookies', async () => {
+    subscriptionInvoices = [invoice('in_first', 4900)];
+    await tracking().trackConversion(
+      invoice('in_first', 4900),
+      subscription({ service: 'postqueen', fbc: 'fb.1.1.abc', fbp: 'fb.1.2.def' }),
+    );
+
+    assert.equal(tracked.length, 1);
+    const [eventId, ip, agent, , additional, fbc, , fbp] = tracked[0];
+    assert.deepEqual(
+      [eventId, ip, agent, additional, fbc, fbp],
+      [
+        'in_first',
+        '203.0.113.1',
+        'Mozilla/5.0',
+        { value: 49, currency: 'usd' },
+        'fb.1.1.abc',
+        'fb.1.2.def',
+      ],
+    );
+  });
+
+  it('is not sent for a renewal, a $0 invoice or another service', async () => {
+    subscriptionInvoices = [invoice('in_first', 4900, 100), invoice('in_renewal', 4900)];
+    await tracking().trackConversion(
+      invoice('in_renewal', 4900),
+      subscription({ service: 'postqueen' }),
+    );
+    await tracking().trackConversion(
+      invoice('in_trial', 0),
+      subscription({ service: 'postqueen' }),
+    );
+    subscriptionInvoices = [];
+    await tracking().trackConversion(
+      invoice('in_other', 4900),
+      subscription({ service: 'redsim' }),
+    );
+
+    assert.equal(tracked.length, 0);
+  });
+
+  it('never fails the webhook when tracking does', async () => {
+    subscriptionInvoices = [invoice('in_first', 4900)];
+    await assert.doesNotReject(
+      tracking(async () => {
+        throw new Error('Meta is down');
+      }).trackConversion(
+        invoice('in_first', 4900),
+        subscription({ service: 'postqueen' }),
+      ),
+    );
   });
 });

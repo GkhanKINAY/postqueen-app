@@ -3,8 +3,6 @@
 import { FC, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '@mantine/hooks';
-import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
-import { useTrack } from '@gitroom/react/helpers/use.track';
 import {
   normalizeTier,
   pricing,
@@ -34,14 +32,6 @@ const UTM_PARAMS = [
 const UtmSaver: FC = () => {
   const query = useSearchParams();
   const [value, setValue] = useLocalStorage({ key: 'utm', defaultValue: '' });
-  const searchParams = useSearchParams();
-  const track = useTrack();
-
-  useEffect(() => {
-    if (searchParams.get('check')) {
-      track(TrackEnum.StartTrial);
-    }
-  }, []);
 
   useEffect(() => {
     const landingUrl = localStorage.getItem('landingUrl');
