@@ -48,8 +48,8 @@ export function classifyTikTokPostId(
 @Rules(
   [
     'TikTok can have one video or one picture or multiple pictures, it cannot be without an attachment.',
-    'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only sends the media to the user inbox of the TikTok app, where the user must manually complete and publish it within 24 hours or it is discarded. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
-    'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
+    'content_posting_method must be DIRECT_POST: it publishes the post to the account. This channel does not send posts to the TikTok inbox (UPLOAD); if the user asks to finish a post in the TikTok app, tell them that is not available on this channel.',
+    'Ask the user who can see the post (privacy_level, from the creatorInfo function) instead of choosing it for them. comment, duet and stitch stay false unless the user asks to allow them. When the post promotes something, set disclose to true with brand_organic_toggle (their own brand) or brand_content_toggle (a third party); branded content cannot be SELF_ONLY.',
     'video_made_with_ai, duet and stitch apply to video posts only. TikTok has no equivalent field for photo posts, so those settings are discarded when the attachment is a picture.',
   ].join(' ')
 )
@@ -64,7 +64,6 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     'video.list',
     'user.info.basic',
     'video.publish',
-    'video.upload',
     'user.info.profile',
     'user.info.stats',
   ];
@@ -76,8 +75,14 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   }
 
   override async checkValidity(
-    items: Array<ValidityMedia[]>
+    items: Array<ValidityMedia[]>,
+    settings?: Partial<TikTokDto>
   ): Promise<string | true> {
+    // Without the video.upload scope a post sent to the inbox would fail at
+    // TikTok; TikTokDto still accepts UPLOAD for TikTok Business.
+    if (settings?.content_posting_method === 'UPLOAD') {
+      return 'This TikTok channel posts directly: sending to the TikTok inbox is not available. Choose Post directly (content_posting_method DIRECT_POST).';
+    }
     const [firstItems] = items ?? [];
     if ((firstItems?.length ?? 0) === 0) {
       return 'No video / images selected';

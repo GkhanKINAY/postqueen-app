@@ -2593,6 +2593,7 @@ tiktok_restriction_direct_video
 tiktok_restriction_upload_video
 tiktok_search_location
 tiktok_search_music
+tiktok_upload_inbox_notice
 tiktok_video_features
 tiktok_video_too_long
 tiktok_video_volume

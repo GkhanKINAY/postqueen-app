@@ -130,7 +130,7 @@ const useVideoDuration = (src?: string) => {
 const TikTokSettings: FC<{
   values?: any;
 }> = (props) => {
-  const { watch, register, setValue, trigger } = useSettings();
+  const { watch, register, setValue, trigger, getValues } = useSettings();
   const { value, integration } = useIntegration();
   const t = useT();
 
@@ -151,7 +151,10 @@ const TikTokSettings: FC<{
   const brand_content_toggle = watch('brand_content_toggle');
   const hasBrand = !!(brand_organic_toggle || brand_content_toggle);
   const content_posting_method = watch('content_posting_method');
-  const isUploadMode = content_posting_method === 'UPLOAD';
+  // Sending to the TikTok inbox is offered on TikTok Business only. TikTok
+  // reviews every scope a posting app asks for, and the inbox draft can only be
+  // shown in TikTok's phone app, so the TikTok channel posts directly.
+  const isUploadMode = isBusiness && content_posting_method === 'UPLOAD';
 
   // TikTok ignores every setting except the title / content when the posting
   // method is UPLOAD, so we hide them rather than pretend they apply. The fields
@@ -268,6 +271,21 @@ const TikTokSettings: FC<{
       setValue('privacy_level', '');
     }
   }, [isUploadMode, privacy_level, setValue]);
+
+  // The TikTok channel has no posting-method control, so it registers the
+  // direct post itself. A post stored in Upload mode before Upload left this
+  // channel becomes a direct post, and the Self only it carried only to satisfy
+  // TikTokDto is cleared, so the creator chooses who can see it.
+  if (!isBusiness && !getValues('content_posting_method')) {
+    register('content_posting_method', { value: 'DIRECT_POST' });
+  }
+  useEffect(() => {
+    if (isBusiness || content_posting_method !== 'UPLOAD') {
+      return;
+    }
+    setValue('content_posting_method', 'DIRECT_POST');
+    setValue('privacy_level', '');
+  }, [isBusiness, content_posting_method, setValue]);
 
   // TikTok reports the creator's own account-level switches. A creator who
   // turned comments off must not be offered a control that turns them back on,
@@ -525,6 +543,7 @@ const TikTokSettings: FC<{
           )}
         </FormSection>
       </div>
+      {isBusiness && (
       <FormSection
         hint={t(
           'choose_upload_without_posting_description',
@@ -549,11 +568,14 @@ const TikTokSettings: FC<{
         </Select>
         {isUploadMode && (
           <div className="text-[12px] leading-[1.45] text-pqDanger">
-            After posting you fill find a notification inside your Inbox about
-            your post (not content studio)
+            {t(
+              'tiktok_upload_inbox_notice',
+              'After posting you will find a notification about it in your TikTok inbox, not in TikTok Studio.'
+            )}
           </div>
         )}
       </FormSection>
+      )}
       <div className={clsx('flex flex-col gap-[12px]', directPostOnly)}>
         <FormSection>
           <FormChoice

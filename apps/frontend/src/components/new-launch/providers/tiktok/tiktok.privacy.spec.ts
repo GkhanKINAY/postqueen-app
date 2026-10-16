@@ -84,6 +84,22 @@ describe('TikTok privacy comes from creator_info', () => {
     assert.match(component, /wasUploadMode\.current && !isUploadMode/);
   });
 
+  it('posts directly on the TikTok channel, and converts posts stored in Upload mode', () => {
+    // Upload to the inbox stays a TikTok Business feature.
+    assert.match(
+      component,
+      /const isUploadMode = isBusiness && content_posting_method === 'UPLOAD'/
+    );
+    assert.match(component, /\{isBusiness && \(\s*<FormSection\s*hint=\{t\(\s*'choose_upload_without_posting_description'/);
+    assert.match(component, /register\('content_posting_method', \{ value: 'DIRECT_POST' \}\)/);
+    const start = component.indexOf("if (isBusiness || content_posting_method !== 'UPLOAD')");
+    assert.ok(start > -1, 'conversion effect not found');
+    const block = component.slice(start, component.indexOf('}, [', start));
+    assert.match(block, /setValue\('content_posting_method', 'DIRECT_POST'\)/);
+    assert.match(block, /setValue\('privacy_level', ''\)/);
+    assert.match(component, /tiktok_upload_inbox_notice/);
+  });
+
   it('respects the account-level interaction switches', () => {
     assert.match(component, /creatorInfo\?\.duetDisabled/);
     assert.match(component, /creatorInfo\?\.stitchDisabled/);

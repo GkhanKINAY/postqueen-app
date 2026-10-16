@@ -464,6 +464,7 @@
   "post_content_directly_to_tiktok": "টিকটকে কন্টেন্ট পোস্ট করা",
   "upload_content_to_tiktok_without_posting": "পোস্ট করার প্রয়োজন ছাড়া টিকটকে কন্টেন্ট আপলোড করা",
   "choose_upload_without_posting_description": "আপনি যদি প্রকাশের আগে TikTok অ্যাপে আপনার কনটেন্ট পর্যালোচনা ও সম্পাদনা করতে চান, তাহলে 'পোস্ট না করে আপলোড করুন' অপশনটি বেছে নিন। এতে আপনি TikTok-এর অন্তর্নির্মিত সম্পাদনা সরঞ্জাম ব্যবহার করতে পারবেন এবং পোস্ট করার আগে চূড়ান্ত সংশোধন করতে পারবেন। এই অতিরিক্ত সেটিংসগুলো শুধুমাত্র সরাসরি TikTok-এ পোস্ট করার সময়ই উপলব্ধ।",
+  "tiktok_upload_inbox_notice": "পোস্ট করার পর এর একটি নোটিফিকেশন আপনার TikTok ইনবক্সে পাবেন, TikTok Studio-তে নয়।",
   "faq_am_i_going_to_be_charged_by_postqueen": "PostQueen দ্বারা চার্জ করা হবে কি?",
   "faq_to_confirm_credit_card_information_postqueen_will_hold": "ক্রেডিট কার্ডের তথ্য নিশ্চিত করার জন্য PostQueen $1 ধরে রাখবে এবং তা সঙ্গে সঙ্গে মুক্তি দেবে, আপনি সেটিংস থেকে যেকোনো সময় কাউকে না বলেই আপনার সাবস্ক্রিপশন বাতিল করতে পারেন",
   "faq_can_i_trust_postqueen_gitroom": "আমি কি PostQueen-এ বিশ্বাস করতে পারি?",

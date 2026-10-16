@@ -324,3 +324,34 @@ describe('TikTok direct post body', () => {
     assert.equal(api.brand_content_toggle, true);
   });
 });
+
+describe('Upload to the TikTok inbox is a TikTok Business feature', () => {
+  it('leaves video.upload out of the TikTok scopes only', () => {
+    assert.equal(new TiktokProvider().scopes.includes('video.upload'), false);
+    assert.equal(new TiktokBusinessProvider().scopes.includes('video.upload'), true);
+  });
+
+  it('refuses UPLOAD on the TikTok tile and keeps it on TikTok Business', async () => {
+    const video = [[{ path: 'https://cdn.test/a.mp4' }]];
+    assert.match(
+      String(
+        await new MeasuredTiktokProvider().checkValidity(video, {
+          content_posting_method: 'UPLOAD',
+        })
+      ),
+      /sending to the TikTok inbox is not available/
+    );
+    assert.equal(
+      await new MeasuredTiktokProvider().checkValidity(video, {
+        content_posting_method: 'DIRECT_POST',
+      }),
+      true
+    );
+    assert.equal(
+      await new TiktokBusinessProvider().checkValidity(video, {
+        content_posting_method: 'UPLOAD',
+      } as any, [], []),
+      true
+    );
+  });
+});
