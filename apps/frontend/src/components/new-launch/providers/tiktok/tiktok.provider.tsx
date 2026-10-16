@@ -280,11 +280,15 @@ const TikTokSettings: FC<{
     register('content_posting_method', { value: 'DIRECT_POST' });
   }
   useEffect(() => {
-    if (isBusiness || content_posting_method !== 'UPLOAD') {
+    if (isBusiness || content_posting_method === 'DIRECT_POST') {
       return;
     }
+    // Also when the form's values were replaced without the field: no control
+    // could set it back, and the post could not be saved.
     setValue('content_posting_method', 'DIRECT_POST');
-    setValue('privacy_level', '');
+    if (content_posting_method === 'UPLOAD') {
+      setValue('privacy_level', '');
+    }
   }, [isBusiness, content_posting_method, setValue]);
 
   // TikTok reports the creator's own account-level switches. A creator who
@@ -329,10 +333,11 @@ const TikTokSettings: FC<{
 
   // Named, because a control that is simply greyed out tells the creator
   // nothing about why.
+  // Duet and Stitch only exist for videos, so a photo post names comments only.
   const accountDisabledNotice = useMemo(() => {
     const off = [
-      duetOff ? t('label_duet', 'Allow Duet') : '',
-      stitchOff ? t('label_stitch', 'Allow Stitch') : '',
+      duetOff && !isTitle ? t('label_duet', 'Allow Duet') : '',
+      stitchOff && !isTitle ? t('label_stitch', 'Allow Stitch') : '',
       commentOff ? t('label_comments', 'Allow Comments') : '',
     ].filter((p) => p);
 
@@ -344,7 +349,7 @@ const TikTokSettings: FC<{
       'tiktok_disabled_on_account',
       'Turned off on your TikTok account, so it cannot be set here'
     ) + `: ${off.join(', ')}`;
-  }, [duetOff, stitchOff, commentOff, t]);
+  }, [duetOff, stitchOff, commentOff, isTitle, t]);
 
   // A choice that TikTok has since withdrawn, or that branded content has made
   // unavailable, must not stay selected and be submitted.
@@ -529,7 +534,7 @@ const TikTokSettings: FC<{
                 {t('label_who_can_see_this_video', 'Who can see this video?')}
               </div>
               <div className="text-[12px] leading-[1.45] text-pqDanger text-balance">
-                {brand_content_toggle
+                {brandedNotPrivate
                   ? t(
                       'tiktok_privacy_none_with_branded',
                       'TikTok does not allow branded content to be private, and this account has no other privacy level available. Turn Branded content off to post this.'
@@ -544,37 +549,37 @@ const TikTokSettings: FC<{
         </FormSection>
       </div>
       {isBusiness && (
-      <FormSection
-        hint={t(
-          'choose_upload_without_posting_description',
-          `Choose upload without posting if you want to review and edit your content within TikTok's app before publishing.
+        <FormSection
+          hint={t(
+            'choose_upload_without_posting_description',
+            `Choose upload without posting if you want to review and edit your content within TikTok's app before publishing.
         This gives you access to TikTok's built-in editing tools and lets you make final adjustments before posting. The additional settings are only available when posting directly to TikTok.`
-        )}
-      >
-        <Select
-          icon="upload"
-          defaultValue="DIRECT_POST"
-          label={t('label_content_posting_method', 'Content posting method')}
-          {...register('content_posting_method', {
-            value: 'DIRECT_POST',
-          })}
+          )}
         >
-          <option value="">{t('select', 'Select')}</option>
-          {contentPostingMethod.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
-        {isUploadMode && (
-          <div className="text-[12px] leading-[1.45] text-pqDanger">
-            {t(
-              'tiktok_upload_inbox_notice',
-              'After posting you will find a notification about it in your TikTok inbox, not in TikTok Studio.'
-            )}
-          </div>
-        )}
-      </FormSection>
+          <Select
+            icon="upload"
+            defaultValue="DIRECT_POST"
+            label={t('label_content_posting_method', 'Content posting method')}
+            {...register('content_posting_method', {
+              value: 'DIRECT_POST',
+            })}
+          >
+            <option value="">{t('select', 'Select')}</option>
+            {contentPostingMethod.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+          {isUploadMode && (
+            <div className="text-[12px] leading-[1.45] text-pqDanger">
+              {t(
+                'tiktok_upload_inbox_notice',
+                'After posting you will find a notification about it in your TikTok inbox, not in TikTok Studio.'
+              )}
+            </div>
+          )}
+        </FormSection>
       )}
       <div className={clsx('flex flex-col gap-[12px]', directPostOnly)}>
         <FormSection>
@@ -627,51 +632,48 @@ const TikTokSettings: FC<{
           )}
         </FormSection>
         {/* Duet, Stitch and the AI label do not exist for photo posts, so a
-            photo post shows only Allow Comments (guideline 2c). */}
-        {!isTitle && (
-        <FormSection
-          icon="post"
-          title={t('tiktok_video_features', 'Video features')}
-        >
-          <div className="flex flex-wrap gap-x-[20px] gap-y-[12px]">
-            <Checkbox
-              variant="hollow"
-              icon="duet"
-              label={t('label_duet', 'Allow Duet')}
-              disabled={isUploadMode || duetOff}
-              defaultValue={false}
-              {...register('duet', {
-                value: false,
-              })}
-            />
-            <Checkbox
-              icon="stitch"
-              label={t('label_stitch', 'Allow Stitch')}
-              variant="hollow"
-              disabled={isUploadMode || stitchOff}
-              defaultValue={false}
-              {...register('stitch', {
-                value: false,
-              })}
-            />
-            <Checkbox
-              icon="ai"
-              label={t('video_made_with_ai', 'Video made with AI')}
-              variant="hollow"
-              disabled={isUploadMode}
-              defaultValue={false}
-              {...register('video_made_with_ai', {
-                value: false,
-              })}
-            />
-          </div>
-          {accountDisabledNotice && (
-            <div className="text-[12px] leading-[1.45] text-pqMuted text-balance">
-              {accountDisabledNotice}
+            photo post shows only Allow Comments (guideline 2c). Hidden, not
+            unmounted: TikTokDto requires duet and stitch, and these boxes are
+            what registers them. */}
+        <div className={clsx(isTitle && 'invisible h-0 overflow-hidden')}>
+          <FormSection
+            icon="post"
+            title={t('tiktok_video_features', 'Video features')}
+          >
+            <div className="flex flex-wrap gap-x-[20px] gap-y-[12px]">
+              <Checkbox
+                variant="hollow"
+                icon="duet"
+                label={t('label_duet', 'Allow Duet')}
+                disabled={isUploadMode || duetOff}
+                defaultValue={false}
+                {...register('duet', {
+                  value: false,
+                })}
+              />
+              <Checkbox
+                icon="stitch"
+                label={t('label_stitch', 'Allow Stitch')}
+                variant="hollow"
+                disabled={isUploadMode || stitchOff}
+                defaultValue={false}
+                {...register('stitch', {
+                  value: false,
+                })}
+              />
+              <Checkbox
+                icon="ai"
+                label={t('video_made_with_ai', 'Video made with AI')}
+                variant="hollow"
+                disabled={isUploadMode}
+                defaultValue={false}
+                {...register('video_made_with_ai', {
+                  value: false,
+                })}
+              />
             </div>
-          )}
-        </FormSection>
-        )}
+          </FormSection>
+        </div>
         <FormSection>
           <div className="flex flex-col gap-[14px]">
             <Checkbox
@@ -684,6 +686,11 @@ const TikTokSettings: FC<{
                 value: false,
               })}
             />
+            {accountDisabledNotice && (
+              <div className="text-[12px] leading-[1.45] text-pqMuted text-balance">
+                {accountDisabledNotice}
+              </div>
+            )}
             <Checkbox
               variant="hollow"
               label={t('label_disclose_video_content', 'Disclose Video Content')}

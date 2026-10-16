@@ -92,11 +92,11 @@ describe('TikTok privacy comes from creator_info', () => {
     );
     assert.match(component, /\{isBusiness && \(\s*<FormSection\s*hint=\{t\(\s*'choose_upload_without_posting_description'/);
     assert.match(component, /register\('content_posting_method', \{ value: 'DIRECT_POST' \}\)/);
-    const start = component.indexOf("if (isBusiness || content_posting_method !== 'UPLOAD')");
+    const start = component.indexOf("if (isBusiness || content_posting_method === 'DIRECT_POST')");
     assert.ok(start > -1, 'conversion effect not found');
     const block = component.slice(start, component.indexOf('}, [', start));
     assert.match(block, /setValue\('content_posting_method', 'DIRECT_POST'\)/);
-    assert.match(block, /setValue\('privacy_level', ''\)/);
+    assert.match(block, /if \(content_posting_method === 'UPLOAD'\) \{\s*setValue\('privacy_level', ''\);/);
     assert.match(component, /tiktok_upload_inbox_notice/);
   });
 
@@ -138,8 +138,18 @@ describe('TikTok interactions and disclosure follow the guidelines', () => {
     assert.match(block, /register\('comment', \{\s*value: false,\s*\}\)/);
   });
 
-  it('shows Duet, Stitch and the AI label only for videos', () => {
-    assert.match(component, /\{!isTitle && \(\s*<FormSection\s*icon="post"/);
+  it('hides Duet, Stitch and the AI label on photo posts without unregistering them', () => {
+    // TikTokDto requires duet and stitch, and only these boxes register them:
+    // unmounted, a photo-first post could not be saved.
+    assert.match(
+      component,
+      /<div className=\{clsx\(isTitle && 'invisible h-0 overflow-hidden'\)\}>\s*<FormSection\s*icon="post"/
+    );
+    assert.doesNotMatch(component, /\{!isTitle && \(\s*<FormSection/);
+    // the account notice still explains a comments switch on a photo post
+    assert.match(component, /duetOff && !isTitle/);
+    const comments = component.indexOf("label={t('label_comments', 'Allow Comments')}");
+    assert.ok(component.indexOf('{accountDisabledNotice && (', comments) > comments);
   });
 
   it('labels the post by what was chosen, and refuses a disclosure without one', () => {

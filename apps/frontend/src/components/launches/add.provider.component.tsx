@@ -1,5 +1,6 @@
 'use client';
 
+import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel-picture';
 import {
   ModalFormActions,
   useModals,
@@ -25,7 +26,6 @@ import {
 } from '@gitroom/frontend/components/launches/provider.guides';
 import clsx from 'clsx';
 import copy from 'copy-to-clipboard';
-import { capitalize } from 'lodash';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
 // Lives in helpers/ so the chrome can open this dialog without pulling this
@@ -865,7 +865,7 @@ export const AddProviderComponent: FC<{
           }
           const { url } = await response.json();
           modal.openModal({
-            title: `Add ${capitalize(identifier)}`,
+            title: `Add ${channelPlatformLabel(identifier)}`,
             withCloseButton: true,
             ...(touch ? { removeLayout: true, fullScreen: true } : {}),
             classNames: {
@@ -1144,7 +1144,7 @@ export const AddProviderComponent: FC<{
   }, [social, inviteMode, t]);
 
   if (step) {
-    const guide = guides[step.identifier] || fallback(capitalize(step.name));
+    const guide = guides[step.identifier] || fallback(step.name);
     return (
       <ProviderSetupStep
         item={step}

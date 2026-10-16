@@ -164,10 +164,13 @@ export class TikTokDto {
     message:
       'Choose Your brand, Branded content or both, or turn off Disclose Video Content',
   })
-  @JSONSchema({
+  // The function form replaces the generated schema: merged, the Equals rule
+  // would tell API and MCP callers that disclose can only be false.
+  @JSONSchema(() => ({
+    type: 'boolean',
     description:
       'Optional. true when the post discloses commercial content; then brand_organic_toggle (your own brand) or brand_content_toggle (a third party), or both, must be true. false withdraws the disclosure and sends both brand toggles as false.',
-  })
+  }))
   disclose?: boolean;
 
   @Type(() => TikTokMusic)

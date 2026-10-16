@@ -67,3 +67,16 @@ describe('TikTok privacy level', () => {
     }
   });
 });
+
+describe('TikTok settings schema shown to API and MCP callers', () => {
+  it('offers disclose as a plain boolean, not as "false only"', async () => {
+    const { getValidationSchemas } = await import(
+      '../../../chat/validation.schemas.helper.ts'
+    );
+    const schema = (getValidationSchemas() as any).TikTokDto;
+    assert.equal(schema.properties.disclose.type, 'boolean');
+    assert.equal(schema.properties.disclose.enum, undefined);
+    assert.equal(schema.properties.disclose.const, undefined);
+    assert.ok(!(schema.required || []).includes('disclose'));
+  });
+});
