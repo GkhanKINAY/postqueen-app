@@ -476,14 +476,23 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
    *
    * A tool too, so an API or MCP caller can build the same choices the
    * composer does instead of guessing a privacy level.
+   *
+   * When the creator cannot post right now TikTok still answers HTTP 200, with
+   * the reason in `error.code` (`spam_risk_too_many_posts`,
+   * `spam_risk_user_banned_from_posting`, `reached_active_user_cap`). The
+   * guidelines want that attempt stopped and the user told to try again later,
+   * so the code is passed on as `cannotPost` instead of reading as an account
+   * with no privacy levels. The nickname is the one TikTok shows, so the
+   * composer can name the account the post goes to even after the channel was
+   * renamed in PostQueen.
    */
   @Tool({
     description:
-      'What this TikTok account may post right now: the privacy levels to choose from, the longest video in seconds, and whether comments, duets and stitches are turned off',
+      'What this TikTok account may post right now: whether it can post at all (cannotPost holds TikTok\'s reason when it cannot), the creator nickname, the privacy levels to choose from, the longest video in seconds, and whether comments, duets and stitches are turned off',
     dataSchema: [],
   })
   async creatorInfo(accessToken: string) {
-    const { data } = await (
+    const { data, error } = await (
       await this.fetch(
         'https://open.tiktokapis.com/v2/post/publish/creator_info/query/',
         {
@@ -497,6 +506,11 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     ).json();
 
     return {
+      cannotPost:
+        error?.code && error.code !== 'ok' ? (error.code as string) : undefined,
+      creatorNickname: data?.creator_nickname as string | undefined,
+      creatorUsername: data?.creator_username as string | undefined,
+      creatorAvatarUrl: data?.creator_avatar_url as string | undefined,
       // No fallback list on purpose: an empty array is the honest answer when
       // TikTok did not say, and the composer shows that as a failure rather
       // than guessing an option the platform would then reject.
@@ -645,8 +659,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
             ? { title: firstPost.message }
             : {}),
           ...(isPhoto ? { description: firstPost.message } : {}),
-          privacy_level:
-            firstPost.settings.privacy_level || 'PUBLIC_TO_EVERYONE',
+          // TikTokDto requires a privacy level, so this only covers settings
+          // stored before it did - and never by publishing them publicly.
+          privacy_level: firstPost.settings.privacy_level || 'SELF_ONLY',
           ...(isPhoto
             ? {}
             : { disable_duet: !this.assetBoolean(firstPost.settings.duet) }),
@@ -663,12 +678,15 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
                   firstPost.settings.video_made_with_ai
                 ),
               }),
-          brand_content_toggle: this.assetBoolean(
-            firstPost.settings.brand_content_toggle
-          ),
-          brand_organic_toggle: this.assetBoolean(
-            firstPost.settings.brand_organic_toggle
-          ),
+          // A creator who turned Disclose off has withdrawn the disclosure,
+          // whatever the brand boxes still hold. API and MCP posts carry no
+          // `disclose` at all, and keep their brand labels.
+          brand_content_toggle:
+            firstPost.settings.disclose !== false &&
+            this.assetBoolean(firstPost.settings.brand_content_toggle),
+          brand_organic_toggle:
+            firstPost.settings.disclose !== false &&
+            this.assetBoolean(firstPost.settings.brand_organic_toggle),
           ...(isPhoto
             ? {
                 auto_add_music: firstPost.settings.autoAddMusic === 'yes',

@@ -230,3 +230,97 @@ describe('TikTok resolveReleaseId', () => {
     );
   });
 });
+
+// creator_info answers HTTP 200 whether or not the creator may post; the
+// reason a creator cannot post rides in error.code.
+class CreatorInfoTiktokProvider extends TiktokProvider {
+  constructor(private readonly reply: unknown) {
+    super();
+  }
+
+  override async fetch() {
+    return new Response(JSON.stringify(this.reply));
+  }
+}
+
+describe('TikTok creatorInfo', () => {
+  const data = {
+    creator_nickname: 'RedSim',
+    creator_username: 'redsim.app',
+    creator_avatar_url: 'https://cdn.test/avatar.jpg',
+    privacy_level_options: ['FOLLOWER_OF_CREATOR', 'SELF_ONLY'],
+    max_video_post_duration_sec: 600,
+    comment_disabled: false,
+    duet_disabled: true,
+    stitch_disabled: true,
+  };
+
+  it('names the creator and lists what they may use', async () => {
+    const info = await new CreatorInfoTiktokProvider({
+      data,
+      error: { code: 'ok' },
+    }).creatorInfo('token');
+    assert.equal(info.cannotPost, undefined);
+    assert.equal(info.creatorNickname, 'RedSim');
+    assert.equal(info.creatorUsername, 'redsim.app');
+    assert.equal(info.creatorAvatarUrl, 'https://cdn.test/avatar.jpg');
+    assert.deepEqual(info.privacyLevelOptions, ['FOLLOWER_OF_CREATOR', 'SELF_ONLY']);
+    assert.equal(info.maxDurationSeconds, 600);
+    assert.equal(info.duetDisabled, true);
+  });
+
+  it('passes on why the creator cannot post right now', async () => {
+    for (const code of [
+      'spam_risk_too_many_posts',
+      'spam_risk_user_banned_from_posting',
+      'reached_active_user_cap',
+    ]) {
+      const info = await new CreatorInfoTiktokProvider({
+        data: {},
+        error: { code, message: '' },
+      }).creatorInfo('token');
+      assert.equal(info.cannotPost, code);
+      assert.deepEqual(info.privacyLevelOptions, []);
+    }
+  });
+});
+
+describe('TikTok direct post body', () => {
+  const body = (settings: Record<string, unknown>) =>
+    (new TiktokProvider() as any).buildTikokPostInfoBody({
+      message: 'Caption',
+      media: [{ path: 'https://cdn.test/a.mp4' }],
+      settings: {
+        content_posting_method: 'DIRECT_POST',
+        privacy_level: 'SELF_ONLY',
+        duet: false,
+        stitch: false,
+        comment: false,
+        brand_content_toggle: false,
+        brand_organic_toggle: false,
+        ...settings,
+      },
+    }).post_info;
+
+  it('never falls back to a public post', () => {
+    assert.equal(body({ privacy_level: undefined }).privacy_level, 'SELF_ONLY');
+    assert.equal(body({ privacy_level: '' }).privacy_level, 'SELF_ONLY');
+    assert.equal(
+      body({ privacy_level: 'FOLLOWER_OF_CREATOR' }).privacy_level,
+      'FOLLOWER_OF_CREATOR'
+    );
+  });
+
+  it('sends no brand labels once Disclose was turned off', () => {
+    const off = body({ disclose: false, brand_organic_toggle: true, brand_content_toggle: true });
+    assert.equal(off.brand_organic_toggle, false);
+    assert.equal(off.brand_content_toggle, false);
+  });
+
+  it('keeps the brand labels of a disclosure, and of posts that never sent disclose', () => {
+    const on = body({ disclose: true, brand_organic_toggle: true });
+    assert.equal(on.brand_organic_toggle, true);
+    const api = body({ brand_content_toggle: true, privacy_level: 'FOLLOWER_OF_CREATOR' });
+    assert.equal(api.brand_content_toggle, true);
+  });
+});
