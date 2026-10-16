@@ -93,10 +93,6 @@ export const useProviderGuides = (): {
           'guide_tiktok',
           'Connects your TikTok account for scheduled posting.'
         ),
-        requirement: t(
-          'guide_tiktok_req',
-          'TikTok reviews new posting apps per account; the first post may need to be made public from the app before scheduling works.'
-        ),
       },
       'tiktok-business': {
         summary: t(
