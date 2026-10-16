@@ -29,9 +29,12 @@ export const Checkbox = forwardRef<
     }) => void;
     /** Kept for callers; both variants share the same face treatment. */
     variant?: 'default' | 'hollow';
+    /** Greyed out and not clickable; the value it holds is left as it is. */
+    disabled?: boolean;
   }
 >((props, ref: any) => {
-  const { checked, className, label, disableForm, icon, defaultValue } = props;
+  const { checked, className, label, disableForm, icon, defaultValue, disabled } =
+    props;
   const form = useFormContext();
   if (!disableForm && props.name && defaultValue !== undefined) {
     const existing = form.getValues(props.name);
@@ -60,6 +63,9 @@ export const Checkbox = forwardRef<
   }, [disableForm, props.name, defaultValue, form]);
 
   const changeStatus = useCallback(() => {
+    if (disabled) {
+      return;
+    }
     const next = !val;
     props?.onChange?.({
       target: {
@@ -70,7 +76,7 @@ export const Checkbox = forwardRef<
     if (!disableForm && props.name) {
       form.setValue(props.name, next, { shouldDirty: true, shouldTouch: true });
     }
-  }, [val, disableForm, props, form]);
+  }, [val, disabled, disableForm, props, form]);
 
   return (
     <div className="flex items-center gap-[10px]">
@@ -78,9 +84,11 @@ export const Checkbox = forwardRef<
         ref={ref}
         role="checkbox"
         aria-checked={val}
+        aria-disabled={disabled || undefined}
         onClick={changeStatus}
         className={clsx(
-          'flex h-[18px] w-[18px] shrink-0 cursor-pointer select-none items-center justify-center rounded-[5px] bg-pqOnBrand text-pqBrand shadow-[inset_0_0_0_1px_var(--border)] transition-colors',
+          'flex h-[18px] w-[18px] shrink-0 select-none items-center justify-center rounded-[5px] bg-pqOnBrand text-pqBrand shadow-[inset_0_0_0_1px_var(--border)] transition-colors',
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
           className
         )}
       >
@@ -103,7 +111,10 @@ export const Checkbox = forwardRef<
       </div>
       {!!label && (
         <div
-          className="flex cursor-pointer items-center gap-[6px] text-[14px] text-pqText"
+          className={clsx(
+            'flex items-center gap-[6px] text-[14px] text-pqText',
+            disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          )}
           onClick={changeStatus}
         >
           {icon && <FormIcon name={icon} size={14} className="text-pqSoft" />}
