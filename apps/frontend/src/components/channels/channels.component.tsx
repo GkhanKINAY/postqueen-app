@@ -2,6 +2,7 @@
 
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel-picture';
 import dayjs from 'dayjs';
 import copy from 'copy-to-clipboard';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -146,12 +147,14 @@ const PublishingOptions: FC<{ integration: any; mutate: () => void }> = ({
     }
   }, [integration.additionalSettings]);
 
-  const platformLabel = useMemo(() => {
-    const id = String(integration.identifier || '');
-    if (!id) return t('channel', 'Channel');
-    if (id === 'x' || id === 'twitter') return 'X';
-    return id.charAt(0).toUpperCase() + id.slice(1);
-  }, [integration.identifier, t]);
+  // The product's own spelling (TikTok, LinkedIn, YouTube), not the identifier
+  // with its first letter raised.
+  const platformLabel = useMemo(
+    () =>
+      channelPlatformLabel(String(integration.identifier || '')) ||
+      t('channel', 'Channel'),
+    [integration.identifier, t]
+  );
 
   const openEditor = useCallback(() => {
     modal.openModal({

@@ -1,5 +1,6 @@
 'use client';
 
+import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel-picture';
 import {
   ModalFormActions,
   useModals,
@@ -25,7 +26,6 @@ import {
 } from '@gitroom/frontend/components/launches/provider.guides';
 import clsx from 'clsx';
 import copy from 'copy-to-clipboard';
-import { capitalize } from 'lodash';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { TrialLockCard } from '@gitroom/frontend/components/billing/trial-lock-card';
 // Lives in helpers/ so the chrome can open this dialog without pulling this
@@ -518,7 +518,7 @@ const InviteLinkStep: FC<{
             className="h-[32px] w-[32px] shrink-0 rounded-full"
           />
           <span className="text-[16px] font-[600] -tracking-[0.01em]">
-            {capitalize(item.name)}
+            {item.name}
           </span>
         </div>
       </div>
@@ -640,7 +640,7 @@ const ProviderSetupStep: FC<{
         />
         <div className="min-w-0 flex-1">
           <div className="text-[19px] font-[600] -tracking-[0.01em]">
-            {capitalize(item.name)}
+            {item.name}
           </div>
           <div className="mt-[2px] text-[13px] leading-[1.5] text-pqMuted">
             {guide.summary}
@@ -716,7 +716,7 @@ const ProviderSetupStep: FC<{
       )}
 
       {locked ? (
-        <TrialLock name={capitalize(item.name)} />
+        <TrialLock name={item.name} />
       ) : (
         <button
           type="button"
@@ -727,7 +727,7 @@ const ProviderSetupStep: FC<{
           {needsFields
             ? t('enter_details', 'Enter details')
             : t('continue_to', 'Continue to {{name}}', {
-                name: capitalize(item.name),
+                name: item.name,
               })}
         </button>
       )}
@@ -865,7 +865,7 @@ export const AddProviderComponent: FC<{
           }
           const { url } = await response.json();
           modal.openModal({
-            title: `Add ${capitalize(identifier)}`,
+            title: `Add ${channelPlatformLabel(identifier)}`,
             withCloseButton: true,
             ...(touch ? { removeLayout: true, fullScreen: true } : {}),
             classNames: {
@@ -1144,7 +1144,7 @@ export const AddProviderComponent: FC<{
   }, [social, inviteMode, t]);
 
   if (step) {
-    const guide = guides[step.identifier] || fallback(capitalize(step.name));
+    const guide = guides[step.identifier] || fallback(step.name);
     return (
       <ProviderSetupStep
         item={step}

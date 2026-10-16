@@ -1,5 +1,5 @@
 import {
-  IsBoolean, ValidateIf, IsIn, IsString, MaxLength, IsOptional, IsDefined, IsNumber, Min, Max, ValidateNested
+  IsBoolean, ValidateIf, IsIn, IsString, MaxLength, IsOptional, IsDefined, IsNumber, Min, Max, ValidateNested, Equals
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { JSONSchema } from 'class-validator-jsonschema';
@@ -77,13 +77,16 @@ export class TikTokDto {
   })
   title: string;
 
-  @IsIn([
-    'PUBLIC_TO_EVERYONE',
-    'MUTUAL_FOLLOW_FRIENDS',
-    'FOLLOWER_OF_CREATOR',
-    'SELF_ONLY',
-  ])
-  @IsString()
+  @IsIn(
+    [
+      'PUBLIC_TO_EVERYONE',
+      'MUTUAL_FOLLOW_FRIENDS',
+      'FOLLOWER_OF_CREATOR',
+      'SELF_ONLY',
+    ],
+    { message: 'Choose who can see this video' }
+  )
+  @IsString({ message: 'Choose who can see this video' })
   @JSONSchema({
     description:
       'Applied only when content_posting_method=DIRECT_POST. Ignored by TikTok on UPLOAD.',
@@ -146,6 +149,30 @@ export class TikTokDto {
   })
   brand_organic_toggle: boolean;
 
+  // TikTok's Content Sharing Guidelines: once commercial content is disclosed,
+  // at least one of Your brand / Branded content must be chosen before the post
+  // can go out. The composer sends `disclose`; API and MCP posts usually do not,
+  // and are judged by the two brand toggles alone.
+  @ValidateIf(
+    (o) =>
+      o.disclose === true &&
+      o.content_posting_method !== 'UPLOAD' &&
+      !o.brand_organic_toggle &&
+      !o.brand_content_toggle
+  )
+  @Equals(false, {
+    message:
+      'Choose Your brand, Branded content or both, or turn off Disclose Video Content',
+  })
+  // The function form replaces the generated schema: merged, the Equals rule
+  // would tell API and MCP callers that disclose can only be false.
+  @JSONSchema(() => ({
+    type: 'boolean',
+    description:
+      'Optional. true when the post discloses commercial content; then brand_organic_toggle (your own brand) or brand_content_toggle (a third party), or both, must be true. false withdraws the disclosure and sends both brand toggles as false.',
+  }))
+  disclose?: boolean;
+
   @Type(() => TikTokMusic)
   @ValidateNested()
   @IsOptional()
@@ -168,8 +195,8 @@ export class TikTokDto {
   @IsString()
   @JSONSchema({
     description:
-      'Required. Use "DIRECT_POST" to actually publish the post to TikTok. ' +
-      '"UPLOAD" does NOT publish: it only sends the media to the user\'s TikTok app inbox, ' +
+      'Required. Use "DIRECT_POST" to actually publish the post to TikTok; the TikTok channel accepts nothing else. ' +
+      '"UPLOAD" is for TikTok Business channels only. It does NOT publish: it only sends the media to the user\'s TikTok app inbox, ' +
       'where they must manually finish and publish it within 24 hours or it is discarded, ' +
       'and it makes TikTok ignore every other setting here. ' +
       'Only use "UPLOAD" when the user explicitly asks to review or edit the post inside the TikTok app before publishing.',

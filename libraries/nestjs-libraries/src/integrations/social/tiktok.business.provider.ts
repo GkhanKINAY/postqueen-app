@@ -555,12 +555,13 @@ export class TiktokBusinessProvider
         ...(firstPost.message ? { caption: firstPost.message } : {}),
         // The video endpoint has no privacy_level field - unlike photos,
         // videos publish with the account default.
-        is_brand_organic: this.assetBoolean(
-          firstPost.settings.brand_organic_toggle
-        ),
-        is_branded_content: this.assetBoolean(
-          firstPost.settings.brand_content_toggle
-        ),
+        // Disclose turned off withdraws the disclosure (see tiktok.provider.ts).
+        is_brand_organic:
+          firstPost.settings.disclose !== false &&
+          this.assetBoolean(firstPost.settings.brand_organic_toggle),
+        is_branded_content:
+          firstPost.settings.disclose !== false &&
+          this.assetBoolean(firstPost.settings.brand_content_toggle),
         ...(isDraft
           ? { upload_to_draft: true }
           : {
@@ -642,12 +643,13 @@ export class TiktokBusinessProvider
           ? { title: firstPost.settings.title.slice(0, 90) }
           : {}),
         ...(firstPost.message ? { caption: firstPost.message } : {}),
-        is_brand_organic: this.assetBoolean(
-          firstPost.settings.brand_organic_toggle
-        ),
-        is_branded_content: this.assetBoolean(
-          firstPost.settings.brand_content_toggle
-        ),
+        // Disclose turned off withdraws the disclosure (see tiktok.provider.ts).
+        is_brand_organic:
+          firstPost.settings.disclose !== false &&
+          this.assetBoolean(firstPost.settings.brand_organic_toggle),
+        is_branded_content:
+          firstPost.settings.disclose !== false &&
+          this.assetBoolean(firstPost.settings.brand_content_toggle),
         ...(isDraft
           ? { is_draft: true }
           : {

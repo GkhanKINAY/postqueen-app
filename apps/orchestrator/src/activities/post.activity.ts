@@ -782,9 +782,12 @@ export class PostActivity {
         };
         break;
       case 'processing':
+        // Nothing parses this text, unlike the published one, so it can use
+        // the network's own name. TikTok's guidelines want the creator told it
+        // can take a few minutes to show on their profile.
         n = {
-          subject: `Publishing your post on ${provider}`,
-          message: `${provider} accepted your post and is still processing it. It will be confirmed here once it is live.`,
+          subject: `Publishing your post on ${network}`,
+          message: `${network} accepted your post and is still processing it. It can take a few minutes to appear on your profile; it will be confirmed here once it is live.`,
           type: 'info',
           sendEmail: false,
         };
