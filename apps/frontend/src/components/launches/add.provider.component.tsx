@@ -518,7 +518,7 @@ const InviteLinkStep: FC<{
             className="h-[32px] w-[32px] shrink-0 rounded-full"
           />
           <span className="text-[16px] font-[600] -tracking-[0.01em]">
-            {capitalize(item.name)}
+            {item.name}
           </span>
         </div>
       </div>
@@ -640,7 +640,7 @@ const ProviderSetupStep: FC<{
         />
         <div className="min-w-0 flex-1">
           <div className="text-[19px] font-[600] -tracking-[0.01em]">
-            {capitalize(item.name)}
+            {item.name}
           </div>
           <div className="mt-[2px] text-[13px] leading-[1.5] text-pqMuted">
             {guide.summary}
@@ -716,7 +716,7 @@ const ProviderSetupStep: FC<{
       )}
 
       {locked ? (
-        <TrialLock name={capitalize(item.name)} />
+        <TrialLock name={item.name} />
       ) : (
         <button
           type="button"
@@ -727,7 +727,7 @@ const ProviderSetupStep: FC<{
           {needsFields
             ? t('enter_details', 'Enter details')
             : t('continue_to', 'Continue to {{name}}', {
-                name: capitalize(item.name),
+                name: item.name,
               })}
         </button>
       )}

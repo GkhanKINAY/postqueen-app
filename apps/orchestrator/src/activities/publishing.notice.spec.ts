@@ -66,4 +66,11 @@ describe('publishingNotice', () => {
     const [, , , sendEmail] = await run('processing');
     assert.equal(sendEmail, false);
   });
+
+  it('says a processing post can take a few minutes, under the network\'s own name', async () => {
+    const [, subject, message] = await run('processing');
+    assert.equal(subject, 'Publishing your post on LinkedIn Page');
+    assert.match(message, /^LinkedIn Page accepted your post/);
+    assert.match(message, /can take a few minutes to appear on your profile/);
+  });
 });
