@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 /**
  * What to tell somebody before they connect a channel.
@@ -24,7 +25,7 @@ export interface ProviderGuide {
   requirement?: string;
   /** Only where getting the credential is the hard part. */
   steps?: string[];
-  /** Where the credential comes from. */
+  /** Where the credential, or the browser extension a channel needs, comes from. */
   link?: { label: string; href: string };
   /** Help for a single custom field, keyed as the field is keyed. */
   fields?: Record<string, string>;
@@ -35,6 +36,7 @@ export const useProviderGuides = (): {
   fallback: (name: string) => ProviderGuide;
 } => {
   const t = useT();
+  const { extensionStoreUrl } = useVariables();
 
   return useMemo(() => {
     const guides: Record<string, ProviderGuide> = {
@@ -366,6 +368,15 @@ export const useProviderGuides = (): {
           'guide_skool_req',
           'The extension has to be installed and you have to be signed in to Skool in the same browser.'
         ),
+        // Only a deployment that published the extension has somewhere to send people.
+        ...(extensionStoreUrl
+          ? {
+              link: {
+                label: t('install_extension', 'Install Extension'),
+                href: extensionStoreUrl,
+              },
+            }
+          : {}),
       },
       whop: {
         summary: t('guide_whop', 'Posts into Whop forums.'),
@@ -381,5 +392,5 @@ export const useProviderGuides = (): {
     });
 
     return { guides, fallback };
-  }, [t]);
+  }, [t, extensionStoreUrl]);
 };
