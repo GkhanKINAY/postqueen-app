@@ -558,55 +558,66 @@ const TikTokSettings: FC<{
         )}
       </FormSection>
       <div className={clsx('flex flex-col gap-[12px]', directPostOnly)}>
-        <FormSection>
-          <FormChoice
-            name="autoAddMusic"
-            icon="music"
-            label={
-              isBusiness
-                ? t('label_add_random_music', 'Add random music')
-                : t('label_auto_add_music', 'Auto add music')
-            }
-            layout="segment"
-            disabled={isUploadMode}
-            defaultValue="no"
-            options={yesNo}
-            hint={
-              isBusiness
-                ? t(
-                    'tiktok_random_music_only_for_photos',
-                    "This feature is available only for photos, it adds a random trending track from TikTok's commercial music library."
-                  )
-                : t(
-                    'this_feature_available_only_for_photos',
-                    'This feature available only for photos, it will add a default music that\n        you can change later.'
-                  )
-            }
-          />
-          {isBusiness && (
-            <div className="flex flex-col gap-[12px]">
-              {/* Random music replaces a manual choice for photos, so the
-                  selector is hidden (but stays registered) while it's on. */}
-              <div
-                className={clsx(
-                  !isVideo &&
-                    autoAddMusic === 'yes' &&
-                    'invisible h-0 overflow-hidden'
-                )}
-              >
-                <TikTokMusicSelector
-                  label={t('tiktok_music_label', 'Music')}
-                  showVolumes={isVideo}
-                  {...register('music')}
-                />
-              </div>
-              <TikTokLocationSelector
-                label={t('tiktok_location_label', 'Location')}
-                {...register('location')}
+        {/* Auto add music exists for photo posts only. On a video it is hidden,
+            not unmounted, so the value TikTokDto requires stays registered; on
+            the TikTok tile nothing else is in this section, so it goes too. */}
+        <div
+          className={clsx(
+            isVideo && !isBusiness && 'invisible h-0 overflow-hidden'
+          )}
+        >
+          <FormSection>
+            <div className={clsx(isVideo && 'invisible h-0 overflow-hidden')}>
+              <FormChoice
+                name="autoAddMusic"
+                icon="music"
+                label={
+                  isBusiness
+                    ? t('label_add_random_music', 'Add random music')
+                    : t('label_auto_add_music', 'Auto add music')
+                }
+                layout="segment"
+                disabled={isUploadMode}
+                defaultValue="no"
+                options={yesNo}
+                hint={
+                  isBusiness
+                    ? t(
+                        'tiktok_random_music_only_for_photos',
+                        "This feature is available only for photos, it adds a random trending track from TikTok's commercial music library."
+                      )
+                    : t(
+                        'this_feature_available_only_for_photos',
+                        'This feature available only for photos, it will add a default music that\n        you can change later.'
+                      )
+                }
               />
             </div>
-          )}
-        </FormSection>
+            {isBusiness && (
+              <div className="flex flex-col gap-[12px]">
+                {/* Random music replaces a manual choice for photos, so the
+                    selector is hidden (but stays registered) while it's on. */}
+                <div
+                  className={clsx(
+                    !isVideo &&
+                      autoAddMusic === 'yes' &&
+                      'invisible h-0 overflow-hidden'
+                  )}
+                >
+                  <TikTokMusicSelector
+                    label={t('tiktok_music_label', 'Music')}
+                    showVolumes={isVideo}
+                    {...register('music')}
+                  />
+                </div>
+                <TikTokLocationSelector
+                  label={t('tiktok_location_label', 'Location')}
+                  {...register('location')}
+                />
+              </div>
+            )}
+          </FormSection>
+        </div>
         {/* Duet, Stitch and the AI label do not exist for photo posts, so a
             photo post shows only Allow Comments (guideline 2c). Hidden, not
             unmounted: TikTokDto requires duet and stitch, and these boxes are

@@ -142,6 +142,16 @@ describe('TikTok interactions and disclosure follow the guidelines', () => {
     assert.ok(component.indexOf('{accountDisabledNotice && (', comments) > comments);
   });
 
+  it('hides Auto add music on video posts without unregistering it', () => {
+    // TikTokDto requires autoAddMusic; on TikTok Business the music and
+    // location pickers stay, so only the choice itself is hidden there.
+    assert.match(
+      component,
+      /className=\{clsx\(\s*isVideo && !isBusiness && 'invisible h-0 overflow-hidden'\s*\)\}\s*>\s*<FormSection>\s*<div className=\{clsx\(isVideo && 'invisible h-0 overflow-hidden'\)\}>\s*<FormChoice\s*name="autoAddMusic"/
+    );
+    assert.doesNotMatch(component, /\{!isVideo && \(\s*<FormChoice/);
+  });
+
   it('labels the post by what was chosen, and refuses a disclosure without one', () => {
     assert.match(component, /your_video_will_be_labeled_paid_partnership/);
     assert.match(component, /your_video_will_be_labeled_promotional/);

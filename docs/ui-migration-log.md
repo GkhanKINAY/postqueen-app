@@ -1771,3 +1771,7 @@ All leftover order is now Agents, Bots, Chat, Editors, Automation. Coding agents
 ## The TikTok connect guide drops a requirement that is not one
 
 **i18n −1 (`guide_tiktok_req`); no api, route, gate or loop change.** Add Channel showed, before the TikTok button, "TikTok reviews new posting apps per account; the first post may need to be made public from the app before scheduling works." Neither half holds. TikTok reviews an app once, not per account, and nothing has to be done in the TikTok app before scheduling works. An app that has not passed TikTok's audit can post only as Self only, and the publish error already says so. The line also sat in TikTok's own review video for this app, where it reads as an unfinished integration. The guide keeps its summary, like TikTok Business. `scripts/ui-migration-check.sh --update` changed `i18n.txt`.
+
+## TikTok's Auto add music shows on photo posts only
+
+**No api, route, gate, loop or i18n change.** Auto add music is a photo-post setting, and its own hint says so, yet a video post showed it with a Yes/No choice that does nothing. On a video the choice is now hidden, not unmounted, so the `autoAddMusic` value TikTokDto requires stays registered. On the TikTok tile the section holds nothing else, so the whole section is hidden. On TikTok Business the music and location pickers stay, because they apply to videos too.
