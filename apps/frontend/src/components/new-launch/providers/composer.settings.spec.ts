@@ -68,9 +68,9 @@ describe('composer channel settings controls', () => {
     assert.match(tiktok, /icon="music"/);
     // No preselected privacy any more: the options come from TikTok's
     // creator_info and their Content Sharing Guidelines require the creator to
-    // choose. `FormChoice` would register a default during render, before the
-    // options could arrive, so there is deliberately none.
-    assert.doesNotMatch(tiktok, /name="privacy_level"[\s\S]{0,200}defaultValue=/);
+    // choose it from a dropdown with no default value.
+    assert.match(tiktok, /\{\.\.\.register\('privacy_level'\)\}/);
+    assert.doesNotMatch(tiktok, /register\('privacy_level', \{/);
     assert.match(tiktok, /privacyLevelOptions/);
     assert.match(tiktok, /defaultValue="DIRECT_POST"/);
     assert.match(x, /placeholder="https:\/\/x.com\/i\/communities\/…"/);

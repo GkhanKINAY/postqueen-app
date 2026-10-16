@@ -21,14 +21,14 @@ describe('TikTok privacy comes from creator_info', () => {
     assert.doesNotMatch(component, /value: 'PUBLIC_TO_EVERYONE',/);
   });
 
-  it('preselects nothing, so the creator chooses', () => {
-    // Just the FormChoice, not the section after it: the posting-method Select
-    // legitimately carries defaultValue="DIRECT_POST".
-    const start = component.indexOf('name="privacy_level"');
-    const block = component.slice(
-      start,
-      component.indexOf('options={privacyLevel}', start)
-    );
+  it('asks for it in a dropdown with nothing preselected', () => {
+    // Guideline 2b: a dropdown, no default value. Just this Select, not the
+    // posting-method one after it, which carries defaultValue="DIRECT_POST".
+    const start = component.indexOf("label_who_can_see_this_video',\n                  'Who can see this video?'");
+    const block = component.slice(start, component.indexOf('</Select>', start));
+    assert.ok(start > -1, 'privacy Select not found');
+    assert.match(block, /\{\.\.\.register\('privacy_level'\)\}/);
+    assert.match(block, /<option value="">\{t\('select', 'Select'\)\}<\/option>/);
     assert.doesNotMatch(block, /defaultValue=/);
     assert.match(component, /tiktok_privacy_required/);
   });
@@ -44,18 +44,37 @@ describe('TikTok privacy comes from creator_info', () => {
     );
   });
 
-  it('drops SELF_ONLY while branded content is on', () => {
+  it('keeps Self only listed but not selectable with branded content, and says why', () => {
+    // Guideline 3b: branded content cannot be private, in either order.
     assert.match(
       component,
-      /!\(brand_content_toggle && option === 'SELF_ONLY'\)/
+      /disabled: !!\(disclose && brand_content_toggle && option === 'SELF_ONLY'\)/
+    );
+    assert.match(component, /disabled=\{item\.disabled\}/);
+    assert.match(
+      component,
+      /disabled=\{isUploadMode \|\| privacy_level === 'SELF_ONLY'\}/
+    );
+    assert.match(component, /tiktok_branded_cannot_be_private/);
+  });
+
+  it('clears a level TikTok has withdrawn or branded content has made unavailable', () => {
+    assert.match(
+      component,
+      /option\.value === privacy_level && !option\.disabled/
     );
   });
 
-  it('clears a level TikTok has withdrawn', () => {
-    assert.match(
-      component,
-      /!privacyLevel\.some\(\(option\) => option\.value === privacy_level\)/
-    );
+  it('stops when TikTok says the creator cannot post right now', () => {
+    // Guideline 1b: stop the attempt and ask the user to try again later.
+    assert.match(component, /creatorInfo\?\.cannotPost \?/);
+    assert.match(component, /tiktok_cannot_post_now/);
+  });
+
+  it("names the creator's TikTok nickname when the channel was renamed", () => {
+    // Guideline 1a; the header above already shows the channel's own name.
+    assert.match(component, /creatorInfo\.creatorNickname !== integration\?\.name/);
+    assert.match(component, /tiktok_posting_to/);
   });
 
   it('clears the inert UPLOAD value on the transition, not by value', () => {
@@ -83,10 +102,58 @@ describe('TikTok privacy comes from creator_info', () => {
     const icon = read(
       '../../../../../../../libraries/react-shared-libraries/src/form/form.icon.tsx'
     );
+    const select = read(
+      '../../../../../../../libraries/react-shared-libraries/src/form/select.tsx'
+    );
     assert.doesNotMatch(choice, /privacy_level|PUBLIC_TO_EVERYONE/);
     assert.doesNotMatch(icon, /privacy_level|PUBLIC_TO_EVERYONE/);
-    // The value → glyph mapping belongs to TikTok's own component.
-    assert.match(component, /const PRIVACY_ICONS/);
+    assert.doesNotMatch(select, /privacy_level|PUBLIC_TO_EVERYONE/);
+    // The value → label mapping belongs to TikTok's own component.
+    assert.match(component, /const privacyLabels/);
+  });
+});
+
+describe('TikTok interactions and disclosure follow the guidelines', () => {
+  it('leaves Allow Comments off until the creator turns it on', () => {
+    // Guideline 2c: none of the interactions is checked by default.
+    const start = component.indexOf("label={t('label_comments', 'Allow Comments')}");
+    const block = component.slice(start, component.indexOf('/>', start));
+    assert.match(block, /defaultValue=\{false\}/);
+    assert.match(block, /register\('comment', \{\s*value: false,\s*\}\)/);
+  });
+
+  it('shows Duet, Stitch and the AI label only for videos', () => {
+    assert.match(component, /\{!isTitle && \(\s*<FormSection\s*icon="post"/);
+  });
+
+  it('labels the post by what was chosen, and refuses a disclosure without one', () => {
+    assert.match(component, /your_video_will_be_labeled_paid_partnership/);
+    assert.match(component, /your_video_will_be_labeled_promotional/);
+    assert.match(component, /tiktok_disclose_choose_brand/);
+    assert.match(component, /trigger\('disclose'\)/);
+  });
+
+  it('clears the brand boxes when Disclose is turned off, not on mount', () => {
+    assert.match(component, /const wasDisclosed = useRef\(disclose\)/);
+    assert.match(component, /wasDisclosed\.current && !disclose/);
+    assert.match(component, /defaultValue=\{hasBrand\}/);
+  });
+
+  it('asks for the music consent on every direct post', () => {
+    // Guidelines 2 and 4: not only when a brand option is ticked.
+    assert.doesNotMatch(
+      component,
+      /\(brand_organic_toggle \|\| brand_content_toggle\) && \(\s*<div[^>]*>\s*\{t\(\s*'by_posting_you_agree_to_tiktoks'/
+    );
+    const consent = component.indexOf("'by_posting_you_agree_to_tiktoks'");
+    const brandBlock = component.indexOf("label={t('label_branded_content', 'Branded content')}");
+    assert.ok(consent > brandBlock, 'consent line comes after the disclosure section');
+    assert.match(component, /music-usage-confirmation/);
+    // TikTok's order: "Branded Content Policy and Music Usage Confirmation".
+    assert.ok(
+      component.indexOf("'branded_content_policy'", consent) <
+        component.indexOf("'music_usage_confirmation'", consent)
+    );
   });
 });
 
