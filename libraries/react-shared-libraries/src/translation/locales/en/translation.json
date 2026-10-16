@@ -736,7 +736,6 @@
   "guide_gmb": "Connects a Google Business Profile location.",
   "guide_gmb_req": "The location has to be verified. Unverified locations do not accept posts.",
   "guide_tiktok": "Connects your TikTok account for scheduled posting.",
-  "guide_tiktok_req": "TikTok reviews new posting apps per account; the first post may need to be made public from the app before scheduling works.",
   "guide_tiktok_business": "Connects a TikTok account through TikTok's Business API. It is a separate connection from the TikTok tile.",
   "guide_linkedin": "Connects your personal LinkedIn profile. For a company page, use LinkedIn Page instead.",
   "guide_threads": "Connects your Threads profile so PostQueen can publish posts and replies and read their insights.",
