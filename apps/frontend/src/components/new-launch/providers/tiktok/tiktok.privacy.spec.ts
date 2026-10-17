@@ -84,6 +84,21 @@ describe('TikTok privacy comes from creator_info', () => {
     assert.match(component, /wasUploadMode\.current && !isUploadMode/);
   });
 
+  it('names a TikTok Business video public instead of asking, and still saves', () => {
+    // The Business video endpoint has no privacy field and posts publicly;
+    // TikTokDto still requires privacy_level, so the true value is carried.
+    assert.match(component, /const isPublicVideo = isBusiness && isVideo && !isUploadMode/);
+    assert.match(component, /\{isPublicVideo \? \(/);
+    assert.match(component, /tiktok_business_video_public/);
+    assert.match(component, /setValue\('privacy_level', 'PUBLIC_TO_EVERYONE'\)/);
+    // Cleared on the way back to a photo, which offers the dropdown again.
+    assert.match(component, /const wasPublicVideo = useRef\(isPublicVideo\)/);
+    assert.match(component, /wasPublicVideo\.current && !isPublicVideo/);
+    // A private Business account has no PUBLIC_TO_EVERYONE in its list, and
+    // the withdrawn-level effect must not clear the carried value for that.
+    assert.match(component, /isUploadMode \|\| isPublicVideo \|\| !privacy_level/);
+  });
+
   it('offers Upload to the TikTok inbox on both TikTok tiles', () => {
     assert.match(component, /const isUploadMode = content_posting_method === 'UPLOAD'/);
     assert.doesNotMatch(component, /isBusiness && \(\s*<FormSection\s*hint=\{t\(\s*'choose_upload_without_posting_description'/);

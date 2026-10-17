@@ -6,6 +6,7 @@ import {
   classifyTikTokPostId,
 } from './tiktok.provider.ts';
 import { TiktokBusinessProvider } from './tiktok.business.provider.ts';
+import { BadBody, RefreshToken } from '../social.abstract.ts';
 
 const pictures = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
@@ -282,6 +283,77 @@ describe('TikTok creatorInfo', () => {
       assert.equal(info.cannotPost, code);
       assert.deepEqual(info.privacyLevelOptions, []);
     }
+  });
+});
+
+// Answers each Business endpoint by its path, and keeps the URLs it was asked.
+class CreatorInfoTiktokBusinessProvider extends TiktokBusinessProvider {
+  readonly asked: string[] = [];
+
+  constructor(private readonly replies: Record<string, unknown>) {
+    super();
+  }
+
+  override async fetch(url: string) {
+    this.asked.push(url);
+    const path = Object.keys(this.replies).find((p) => url.includes(p));
+    return new Response(JSON.stringify(path ? this.replies[path] : {}));
+  }
+}
+
+describe('TikTok Business creatorInfo', () => {
+  const account = {
+    code: 0,
+    data: {
+      display_name: 'RedSim',
+      username: 'redsim.app',
+      profile_image: 'https://cdn.test/avatar.jpg',
+    },
+  };
+
+  it('reads the account settings in the TikTok tile shape', async () => {
+    const provider = new CreatorInfoTiktokBusinessProvider({
+      '/business/video/settings/': {
+        code: 0,
+        data: {
+          privacy_level_options: ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'],
+          max_video_post_duration_sec: 600,
+          comment_disabled: true,
+          duet_disabled: false,
+          stitch_disabled: true,
+        },
+      },
+      '/business/get/': account,
+    });
+    const info = await provider.creatorInfo('token', {}, 'business-1');
+    assert.equal(info.creatorNickname, 'RedSim');
+    assert.equal(info.creatorUsername, 'redsim.app');
+    assert.equal(info.creatorAvatarUrl, 'https://cdn.test/avatar.jpg');
+    assert.deepEqual(info.privacyLevelOptions, ['PUBLIC_TO_EVERYONE', 'SELF_ONLY']);
+    assert.equal(info.maxDurationSeconds, 600);
+    assert.equal(info.commentDisabled, true);
+    assert.equal(info.duetDisabled, false);
+    assert.equal(info.stitchDisabled, true);
+    assert.match(provider.asked[0], /\/business\/video\/settings\/\?business_id=business-1/);
+  });
+
+  it('asks for a new token when TikTok refuses the one it has', async () => {
+    const provider = new CreatorInfoTiktokBusinessProvider({
+      '/business/video/settings/': {
+        code: 40105,
+        message: 'Access token is incorrect or has been revoked.',
+      },
+      '/business/get/': account,
+    });
+    await assert.rejects(provider.creatorInfo('token', {}, 'business-1'), RefreshToken);
+  });
+
+  it('fails rather than answering with no privacy level', async () => {
+    const provider = new CreatorInfoTiktokBusinessProvider({
+      '/business/video/settings/': { code: 40001, message: 'No permission' },
+      '/business/get/': account,
+    });
+    await assert.rejects(provider.creatorInfo('token', {}, 'business-1'), BadBody);
   });
 });
 

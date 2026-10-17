@@ -2574,6 +2574,7 @@ three_days
 tiktok_add_location
 tiktok_add_music
 tiktok_branded_cannot_be_private
+tiktok_business_video_public
 tiktok_cannot_post_now
 tiktok_disabled_on_account
 tiktok_disclose_choose_brand

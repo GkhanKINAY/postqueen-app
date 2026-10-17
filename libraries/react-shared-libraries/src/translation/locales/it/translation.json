@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "Indica se i tuoi contenuti promuovono te stesso, una terza parte o entrambi.",
   "tiktok_branded_cannot_be_private": "La visibilità dei contenuti brandizzati non può essere privata.",
   "tiktok_cannot_post_now": "Secondo TikTok, questo account non può pubblicare in questo momento. Riprova più tardi.",
+  "tiktok_business_video_public": "Pubblico per tutti. TikTok Business non permette di scegliere la privacy dei video.",
   "tiktok_posting_to": "Pubblicazione su {{nickname}}",
   "this_cannot_be_changed_once_posted": "Questo non può essere modificato una volta che il video è stato pubblicato.",
   "turn_on_to_disclose_video_promotes": "Attiva per dichiarare che questo video promuove beni o servizi in cambio di qualcosa di valore. Il tuo video potrebbe promuovere te stesso, una terza parte o entrambi.",
