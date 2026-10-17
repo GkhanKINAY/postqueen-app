@@ -225,6 +225,7 @@
   "tiktok_disclose_choose_brand": "You need to indicate if your content promotes yourself, a third party, or both.",
   "tiktok_branded_cannot_be_private": "Branded content visibility cannot be set to private.",
   "tiktok_cannot_post_now": "TikTok says this account cannot post right now. Try again later.",
+  "tiktok_business_video_public": "Public to everyone. TikTok Business has no privacy choice for videos.",
   "tiktok_posting_to": "Posting to {{nickname}}",
   "this_cannot_be_changed_once_posted": "This cannot be changed once your video is posted.",
   "turn_on_to_disclose_video_promotes": "Turn on to disclose that this video promotes goods or services in exchange for something of value. Your video could promote yourself, a third party, or both.",

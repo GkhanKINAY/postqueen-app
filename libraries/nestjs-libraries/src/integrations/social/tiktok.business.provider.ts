@@ -31,7 +31,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
     'TikTok Business can have one video or one picture or multiple pictures (up to 35), it cannot be without an attachment.',
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only saves the media as a draft in the user inbox of the TikTok app, where the user must manually complete and publish it. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
     'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
-    'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API has no privacy field for video posts, so those settings are discarded when the attachment is a video.',
+    'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API posts videos publicly and has no privacy field for them, so send privacy_level=PUBLIC_TO_EVERYONE with a video (the field is still required) and never tell the user a video will be private. For a photo post, ask the user who can see it (privacy_level, from the creatorInfo function) instead of choosing it for them.',
     'The music setting attaches a commercial music library track (found via the musicSearch function) to a video or photo post, and the location setting tags the post with a location (found via the locationSearch function). Both apply only with content_posting_method=DIRECT_POST. music.audio_volume / music.video_volume (0-100, default 50) apply to video posts only. For photos, autoAddMusic=yes attaches a RANDOM commercial music library track and overrides any music selection - use autoAddMusic=no when the user wants a specific track.',
     'Media is pulled by TikTok from its URL, so the media must be uploaded to PostQueen and the media domain must be a verified URL property of the TikTok Business app.',
   ].join(' ')
@@ -554,7 +554,8 @@ export class TiktokBusinessProvider
       post_info: {
         ...(firstPost.message ? { caption: firstPost.message } : {}),
         // The video endpoint has no privacy_level field - unlike photos,
-        // videos publish with the account default.
+        // videos publish publicly (TikTok documents it as "Publish a public
+        // video post to an owned account").
         // Disclose turned off withdraws the disclosure (see tiktok.provider.ts).
         is_brand_organic:
           firstPost.settings.disclose !== false &&
@@ -804,6 +805,72 @@ export class TiktokBusinessProvider
       Buffer.from(JSON.stringify({})),
       'TikTok refused to publish your post'
     );
+  }
+
+  /**
+   * The Business counterpart of the TikTok tile's `creatorInfo`, in the same
+   * shape, because both tiles share one composer. The account's own switches
+   * come from `/business/video/settings/` and the name from `/business/get/`.
+   *
+   * `privacyLevelOptions` only matters for photos: the Business video endpoint
+   * publishes publicly and has no privacy field. There is no `cannotPost`, the
+   * Business API has no such answer.
+   */
+  @Tool({
+    description:
+      'What this TikTok Business account may post: the account nickname, the privacy levels a photo post can use (videos always post publicly), the longest video in seconds, and whether comments, duets and stitches are turned off',
+    dataSchema: [],
+  })
+  async creatorInfo(accessToken: string, _data: unknown, id: string) {
+    const settings = await (
+      await this.fetch(
+        `${this.baseUrl}/business/video/settings/?business_id=${encodeURIComponent(
+          id
+        )}`,
+        {
+          method: 'GET',
+          headers: {
+            'Access-Token': accessToken,
+          },
+        }
+      )
+    ).json();
+
+    // Same HTTP 200 + non-zero code envelope as musicSearch, but no empty
+    // answer here: an empty privacy list would read as an account that may not
+    // post photos at all, so a failure has to reach the composer as one.
+    if (settings?.code !== 0) {
+      const asString = JSON.stringify(settings);
+      const handleError = this.handleErrors(asString);
+      if (handleError?.type === 'refresh-token') {
+        throw new RefreshToken('tiktok-business', asString, '{}', handleError.value);
+      }
+      throw new BadBody(
+        'tiktok-business',
+        asString,
+        Buffer.from('{}'),
+        handleError?.value ||
+          settings?.message ||
+          'Could not load the TikTok business account settings'
+      );
+    }
+
+    const { display_name, username, profile_image } =
+      await this.fetchUserInformation(accessToken, id);
+    const data = settings.data;
+
+    return {
+      creatorNickname: display_name as string | undefined,
+      creatorUsername: username as string | undefined,
+      creatorAvatarUrl: profile_image as string | undefined,
+      privacyLevelOptions: (data?.privacy_level_options ?? []) as string[],
+      maxDurationSeconds: data?.max_video_post_duration_sec as
+        | number
+        | undefined,
+      commentDisabled: !!data?.comment_disabled,
+      duetDisabled: !!data?.duet_disabled,
+      stitchDisabled: !!data?.stitch_disabled,
+    };
   }
 
   // The trending list has no text search parameter - genre / country / date

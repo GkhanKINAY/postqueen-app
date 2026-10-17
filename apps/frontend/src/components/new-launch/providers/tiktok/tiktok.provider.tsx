@@ -269,6 +269,28 @@ const TikTokSettings: FC<{
     }
   }, [isUploadMode, privacy_level, setValue]);
 
+  // TikTok Business has no privacy field for videos: its video endpoint posts
+  // publicly, and only photos take a level from `privacy_level_options`. The
+  // DTO still requires one, so a Business video carries the value that is
+  // true, and only the change away from it clears it, as with Upload above.
+  const isPublicVideo = isBusiness && isVideo && !isUploadMode;
+  const wasPublicVideo = useRef(isPublicVideo);
+  useEffect(() => {
+    const leftPublicVideo = wasPublicVideo.current && !isPublicVideo;
+    wasPublicVideo.current = isPublicVideo;
+
+    if (isPublicVideo) {
+      if (privacy_level !== 'PUBLIC_TO_EVERYONE') {
+        setValue('privacy_level', 'PUBLIC_TO_EVERYONE');
+      }
+      return;
+    }
+
+    if (leftPublicVideo) {
+      setValue('privacy_level', '');
+    }
+  }, [isPublicVideo, privacy_level, setValue]);
+
   // TikTok reports the creator's own account-level switches. A creator who
   // turned comments off must not be offered a control that turns them back on,
   // and sending `disable_comment: false` for such an account is a publish TikTok
@@ -332,7 +354,7 @@ const TikTokSettings: FC<{
   // A choice that TikTok has since withdrawn, or that branded content has made
   // unavailable, must not stay selected and be submitted.
   useEffect(() => {
-    if (isUploadMode || !privacy_level || !creatorInfo) {
+    if (isUploadMode || isPublicVideo || !privacy_level || !creatorInfo) {
       return;
     }
 
@@ -343,7 +365,14 @@ const TikTokSettings: FC<{
     ) {
       setValue('privacy_level', '');
     }
-  }, [isUploadMode, privacy_level, creatorInfo, privacyLevel, setValue]);
+  }, [
+    isUploadMode,
+    isPublicVideo,
+    privacy_level,
+    creatorInfo,
+    privacyLevel,
+    setValue,
+  ]);
   const contentPostingMethod = [
     {
       value: 'DIRECT_POST',
@@ -401,7 +430,28 @@ const TikTokSettings: FC<{
       )}
       <div className={directPostOnly}>
         <FormSection>
-          {creatorInfoLoading && !creatorInfo ? (
+          {isPublicVideo ? (
+            // Nothing to choose, so no dropdown: a Business video is public.
+            <div className="flex flex-col gap-[6px]">
+              <div className="flex items-center gap-[8px] text-[13px] font-[500] text-pqMuted">
+                <FormIcon name="visibility" size={15} className="text-pqSoft" />
+                {t('label_who_can_see_this_video', 'Who can see this video?')}
+              </div>
+              <div className="text-[12px] leading-[1.45] text-pqMuted text-balance">
+                {t(
+                  'tiktok_business_video_public',
+                  'Public to everyone. TikTok Business has no privacy choice for videos.'
+                )}
+              </div>
+              {!!creatorNickname && (
+                <div className="text-[12px] leading-[1.45] text-pqMuted">
+                  {t('tiktok_posting_to', 'Posting to {{nickname}}', {
+                    nickname: creatorNickname,
+                  })}
+                </div>
+              )}
+            </div>
+          ) : creatorInfoLoading && !creatorInfo ? (
             // A bone per row of the control it replaces: the label line, then
             // the pill track. A spinner here would promise nothing about the
             // shape that is coming.

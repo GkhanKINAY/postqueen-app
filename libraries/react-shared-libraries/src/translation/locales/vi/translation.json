@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "Bạn cần cho biết nội dung quảng bá chính bạn, bên thứ ba hay cả hai.",
   "tiktok_branded_cannot_be_private": "Không thể đặt chế độ hiển thị của nội dung có thương hiệu thành riêng tư.",
   "tiktok_cannot_post_now": "TikTok cho biết tài khoản này hiện không thể đăng. Hãy thử lại sau.",
+  "tiktok_business_video_public": "Công khai với mọi người. TikTok Business không có lựa chọn quyền riêng tư cho video.",
   "tiktok_posting_to": "Đăng lên {{nickname}}",
   "this_cannot_be_changed_once_posted": "Điều này không thể thay đổi sau khi video đã được đăng.",
   "turn_on_to_disclose_video_promotes": "Bật để tiết lộ rằng video này quảng bá hàng hóa hoặc dịch vụ để đổi lấy một giá trị nào đó. Video của bạn có thể quảng bá cho chính bạn, bên thứ ba hoặc cả hai.",

@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "コンテンツが自分自身、第三者、またはその両方を宣伝しているかを指定してください。",
   "tiktok_branded_cannot_be_private": "ブランドコンテンツの公開範囲を非公開にすることはできません。",
   "tiktok_cannot_post_now": "TikTokによると、このアカウントは現在投稿できません。しばらくしてからもう一度お試しください。",
+  "tiktok_business_video_public": "全員に公開。TikTok Business では動画の公開範囲を選べません。",
   "tiktok_posting_to": "{{nickname}} に投稿します",
   "this_cannot_be_changed_once_posted": "一度投稿すると、これは変更できません。",
   "turn_on_to_disclose_video_promotes": "この動画が何らかの価値と引き換えに商品やサービスを宣伝していることを開示するにはオンにしてください。動画は自分自身、第三者、またはその両方を宣伝している場合があります。",
