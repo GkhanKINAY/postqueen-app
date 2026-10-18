@@ -570,6 +570,117 @@ export class IntegrationRepository {
     });
   }
 
+  // The connected channels of a provider whose name and picture are read
+  // again on a schedule, with their credentials, for the read itself. A
+  // disabled channel's token still works, so it is read too; one that needs
+  // reconnecting or is still being set up cannot be.
+  listProfileRefreshCandidates(providerIdentifier: string) {
+    return this._integration.model.integration.findMany({
+      where: {
+        providerIdentifier,
+        deletedAt: null,
+        refreshNeeded: false,
+        inBetweenSteps: false,
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+  }
+
+  // The name, picture and public name a channel's network reports today. The
+  // picture is copied to our storage, as when the channel was connected, and
+  // the copy it replaces is deleted. Without a fresh copy (the network sent
+  // none, or copying it failed) the channel shows no picture, so an old one
+  // is never kept past the network's limit. Says whether a picture the
+  // network sent could not be copied, so the caller tries again soon.
+  async refreshProfile(
+    id: string,
+    profile: { name: string; picture?: string; profile?: string }
+  ) {
+    const current = await this._integration.model.integration.findUnique({
+      where: { id },
+      select: { picture: true },
+    });
+
+    let picture: string | null = null;
+    let copyFailed = false;
+    if (profile.picture) {
+      try {
+        picture = await this.storage.uploadSimple(profile.picture);
+      } catch (err) {
+        copyFailed = true;
+        console.log('Failed to upload profile picture:', profile.picture, err);
+      }
+    }
+
+    await this._integration.model.integration.update({
+      omit: CREDENTIALS,
+      where: { id },
+      data: {
+        name: profile.name,
+        picture,
+        profile: profile.profile || null,
+      },
+    });
+
+    if (current?.picture && current.picture !== picture) {
+      await this.removeOwnPicture(current.picture);
+    }
+
+    return { copyFailed };
+  }
+
+  // Removed channels of a provider, removed before the cutoff, lose the name,
+  // picture and public name their network gave them, and show the network's
+  // own name instead; their pictures are deleted from our storage. Rows
+  // already cleared are left alone.
+  async clearRemovedProfiles(
+    providerIdentifier: string,
+    label: string,
+    before: Date
+  ) {
+    const rows = await this._integration.model.integration.findMany({
+      where: {
+        providerIdentifier,
+        deletedAt: { lt: before },
+        OR: [
+          { name: { not: label } },
+          { picture: { not: null } },
+          { profile: { not: null } },
+        ],
+      },
+      select: { id: true, picture: true },
+      take: 500,
+    });
+    if (!rows.length) {
+      return { count: 0 };
+    }
+
+    await this._integration.model.integration.updateMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+      data: { name: label, picture: null, profile: null },
+    });
+    for (const row of rows) {
+      if (row.picture) {
+        await this.removeOwnPicture(row.picture);
+      }
+    }
+
+    return { count: rows.length };
+  }
+
+  // Only a copy in our own storage is deleted; a failed delete leaves the
+  // file, never the row.
+  private async removeOwnPicture(url: string) {
+    if (!this.storage.isOwnFile(url)) {
+      return;
+    }
+    try {
+      await this.storage.removeFile(url);
+    } catch (err) {
+      console.log('Failed to remove profile picture:', url, err);
+    }
+  }
+
   updateNameAndUrl(id: string, name: string, url: string) {
     return this._integration.model.integration.update({
       omit: CREDENTIALS,

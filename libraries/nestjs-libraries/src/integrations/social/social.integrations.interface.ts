@@ -106,6 +106,15 @@ export interface IAuthenticator {
    * removed channels included. Omit it to keep them.
    */
   analyticsRetentionDays?: number;
+  /**
+   * How many days a connected channel's name and picture may be kept before
+   * they are read again, and kept after the channel is removed, for a platform
+   * whose terms limit it. The hourly run reads them again through
+   * fetchPageInformation(token, { page: internalId }) when due, and replaces
+   * a removed channel's with the network's name once it has been removed this
+   * long. Omit it to keep them as they are.
+   */
+  profileRetentionDays?: number;
   changeNickname?(
     id: string,
     accessToken: string,

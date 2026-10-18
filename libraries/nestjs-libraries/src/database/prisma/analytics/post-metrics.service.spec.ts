@@ -51,6 +51,7 @@ let claimFree: boolean;
 let prunes: Array<{ identifiers: string[]; before: Date; limit: number }>;
 let pruneCounts: number[];
 let pruneFails: boolean;
+let profileRuns: string[];
 
 const service = () =>
   new PostMetricsService(
@@ -111,7 +112,12 @@ const service = () =>
       getSocialIntegration: (identifier: string) => providers[identifier],
       getAllowedSocialsIntegrations: () => Object.keys(providers),
     },
-    { isExpired: () => false },
+    {
+      isExpired: () => false,
+      refreshDueProfiles: async () => {
+        profileRuns.push('refresh');
+      },
+    },
     {
       client: {
         getRawClient: () => ({
@@ -125,6 +131,9 @@ const service = () =>
     },
     {},
     {
+      clearExpiredProfiles: async () => {
+        profileRuns.push('clear');
+      },
       checkAnalytics: async (
         _: unknown,
         id: string,
@@ -149,6 +158,7 @@ beforeEach(() => {
   prunes = [];
   pruneCounts = [];
   pruneFails = false;
+  profileRuns = [];
 });
 
 describe('post metrics lookback', () => {
@@ -259,6 +269,13 @@ describe('post metrics retention', () => {
     assert.equal(prunes.length, 1);
     await service().maybeEnqueueStaleSync('org-1');
     assert.equal(prunes.length, 1);
+  });
+
+  it('reads due channel profiles and clears expired ones on the hourly run only', async () => {
+    await service().listIntegrationsNeedingSync();
+    assert.deepEqual(profileRuns, ['refresh', 'clear']);
+    await service().maybeEnqueueStaleSync('org-1');
+    assert.deepEqual(profileRuns, ['refresh', 'clear']);
   });
 
   it('still lists the hourly targets when the prune fails', async () => {

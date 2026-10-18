@@ -72,16 +72,19 @@ export class PostMetricsService {
     organizationId?: string,
     freshAfter?: Date
   ) {
-    // Without an organization this is the hourly run, which also drops the
-    // snapshots a platform does not let us keep. A failed prune never stops
-    // the sync.
+    // Without an organization this is the hourly run, which also applies the
+    // platforms' storage limits: it drops the snapshots a platform does not
+    // let us keep, reads due channel profiles again, and clears removed
+    // channels' expired ones. None of them failing ever stops the sync.
     if (!organizationId) {
-      await this.pruneExpiredSnapshots().catch((err) =>
-        this.logger.warn(
-          `Could not prune expired post metric snapshots: ${
-            (err as Error).message
-          }`
-        )
+      await this.quietly('prune expired post metric snapshots', () =>
+        this.pruneExpiredSnapshots()
+      );
+      await this.quietly('refresh due channel profiles', () =>
+        this._refreshIntegrationService.refreshDueProfiles()
+      );
+      await this.quietly('clear expired channel profiles', () =>
+        this._integrationService.clearExpiredProfiles()
       );
     }
 
@@ -97,6 +100,14 @@ export class PostMetricsService {
           !this.manualOnly(target.integration.providerIdentifier),
       )
       .map(({ integration: _, ...target }) => target);
+  }
+
+  private async quietly(what: string, run: () => Promise<unknown>) {
+    try {
+      await run();
+    } catch (err) {
+      this.logger.warn(`Could not ${what}: ${(err as Error).message}`);
+    }
   }
 
   // Deletes the snapshots older than each provider's analyticsRetentionDays,

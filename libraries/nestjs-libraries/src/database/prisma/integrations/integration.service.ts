@@ -382,6 +382,38 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.updateNameAndUrl(id, name, url);
   }
 
+  listProfileRefreshCandidates(providerIdentifier: string) {
+    return this._integrationRepository.listProfileRefreshCandidates(
+      providerIdentifier
+    );
+  }
+
+  refreshProfile(
+    id: string,
+    profile: { name: string; picture?: string; profile?: string }
+  ): Promise<{ copyFailed: boolean }> {
+    return this._integrationRepository.refreshProfile(id, profile);
+  }
+
+  // A provider with profileRetentionDays may keep a removed channel's name
+  // and picture only that long. After that the channel shows the network's
+  // name, so its posts stay in the history without the Page's own details.
+  async clearExpiredProfiles() {
+    for (const identifier of this._integrationManager.getAllowedSocialsIntegrations()) {
+      const days =
+        this._integrationManager.getSocialIntegration(identifier)
+          ?.profileRetentionDays;
+      if (!days) {
+        continue;
+      }
+      await this._integrationRepository.clearRemovedProfiles(
+        identifier,
+        this._integrationManager.getSocialIntegrationName(identifier),
+        dayjs().subtract(days, 'day').toDate()
+      );
+    }
+  }
+
   getIntegrationById(org: string, id: string) {
     return this._integrationRepository.getIntegrationById(org, id);
   }
