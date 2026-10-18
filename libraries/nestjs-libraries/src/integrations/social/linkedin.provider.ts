@@ -72,6 +72,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     'r_organization_social',
   ];
   override maxConcurrentJob = 8; // LinkedIn limits are daily budgets
+  // LinkedIn's data storage requirements keep Page and post statistics for at
+  // most a year. The Page provider inherits it.
+  analyticsRetentionDays = 365;
   refreshWait = true;
   editor = 'normal' as const;
   dto = LinkedinDto;
@@ -284,7 +287,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           headers: {
             'Content-Type': 'application/json',
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             Authorization: `Bearer ${token}`,
           },
         }
@@ -340,7 +343,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           headers: {
             'Content-Type': 'application/json',
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
@@ -388,7 +391,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
             method: 'PUT',
             headers: {
               'X-Restli-Protocol-Version': '2.0.0',
-              'LinkedIn-Version': '202601',
+              'LinkedIn-Version': '202610',
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/octet-stream',
             },
@@ -416,7 +419,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           method: 'PUT',
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             Authorization: `Bearer ${accessToken}`,
             ...(isPdf ? { 'Content-Type': 'application/pdf' } : {}),
           },
@@ -445,7 +448,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           }),
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
@@ -498,7 +501,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           method: 'GET',
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
@@ -773,7 +776,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     const response = await this.fetch(`https://api.linkedin.com/rest/posts`, {
       method: 'POST',
       headers: {
-        'LinkedIn-Version': '202601',
+        'LinkedIn-Version': '202610',
         'X-Restli-Protocol-Version': '2.0.0',
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
@@ -810,9 +813,9 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       {
         method: 'POST',
         headers: {
-        'LinkedIn-Version': '202306',
-        'X-Restli-Protocol-Version': '2.0.0',
-        'Content-Type': 'application/json',
+          'LinkedIn-Version': '202610',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
@@ -1213,7 +1216,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       headers: {
         'X-Restli-Protocol-Version': '2.0.0',
         'Content-Type': 'application/json',
-        'LinkedIn-Version': '202601',
+        'LinkedIn-Version': '202610',
         Authorization: `Bearer ${integration.token}`,
       },
     });
@@ -1236,19 +1239,23 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
           headers: {
             'X-Restli-Protocol-Version': '2.0.0',
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202601',
+            'LinkedIn-Version': '202610',
             Authorization: `Bearer ${token}`,
           },
         }
       )
     ).json();
 
+    // LinkedIn lets an app keep a company Page's name and logo for at most 30
+    // days when that company has not connected to it, and the mention cache
+    // never expires, so these are looked up fresh each time instead.
     return elements.map((p: any) => ({
       id: String(p.id),
       label: p.localizedName,
       image:
         p.logoV2?.['original~']?.elements?.[0]?.identifiers?.[0]?.identifier ||
         '',
+      doNotCache: true,
     }));
   }
 

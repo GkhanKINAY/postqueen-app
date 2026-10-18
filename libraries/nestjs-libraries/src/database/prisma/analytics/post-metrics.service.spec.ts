@@ -33,6 +33,7 @@ const providers: Record<string, any> = {
   },
   linkedin: {
     postsAnalytics: async () => [],
+    analyticsRetentionDays: 365,
   },
 };
 
@@ -47,6 +48,9 @@ let lastSnapshot: Record<string, Date | undefined>;
 let enqueued: number;
 let overviews: string[];
 let claimFree: boolean;
+let prunes: Array<{ identifiers: string[]; before: Date; limit: number }>;
+let pruneCounts: number[];
+let pruneFails: boolean;
 
 const service = () =>
   new PostMetricsService(
@@ -91,8 +95,22 @@ const service = () =>
       upsertSnapshot: async (row: { integrationId: string }) => {
         lastSnapshot[row.integrationId] = new Date();
       },
+      deleteSnapshotsBefore: async (
+        identifiers: string[],
+        before: Date,
+        limit: number,
+      ) => {
+        if (pruneFails) {
+          throw new Error('database down');
+        }
+        prunes.push({ identifiers, before, limit });
+        return { count: pruneCounts.shift() ?? 0 };
+      },
     },
-    { getSocialIntegration: (identifier: string) => providers[identifier] },
+    {
+      getSocialIntegration: (identifier: string) => providers[identifier],
+      getAllowedSocialsIntegrations: () => Object.keys(providers),
+    },
     { isExpired: () => false },
     {
       client: {
@@ -128,6 +146,9 @@ beforeEach(() => {
   enqueued = 0;
   overviews = [];
   claimFree = true;
+  prunes = [];
+  pruneCounts = [];
+  pruneFails = false;
 });
 
 describe('post metrics lookback', () => {
@@ -208,5 +229,44 @@ describe('manual post metrics refresh', () => {
   it('reports no manual-only channels for an organization without one', async () => {
     const status = await service().manualRefreshStatus('org-1', 'int-li');
     assert.deepEqual(status, { integrations: 0, lastSyncedAt: null });
+  });
+});
+
+describe('post metrics retention', () => {
+  it('deletes snapshots past a provider retention, and none for providers without it', async () => {
+    await service().pruneExpiredSnapshots();
+    assert.equal(prunes.length, 1);
+    assert.deepEqual(prunes[0].identifiers, ['linkedin']);
+    const expected = new Date();
+    expected.setUTCHours(0, 0, 0, 0);
+    expected.setUTCDate(expected.getUTCDate() - 365);
+    assert.equal(prunes[0].before.toISOString(), expected.toISOString());
+  });
+
+  it('deletes in batches until one comes back short, and stops at the per-run cap', async () => {
+    pruneCounts = [500, 500, 12];
+    await service().pruneExpiredSnapshots();
+    assert.equal(prunes.length, 3);
+
+    prunes = [];
+    pruneCounts = Array(50).fill(500);
+    await service().pruneExpiredSnapshots();
+    assert.equal(prunes.length, 20);
+  });
+
+  it('prunes on the hourly run only, not on an organization sync', async () => {
+    await service().listIntegrationsNeedingSync();
+    assert.equal(prunes.length, 1);
+    await service().maybeEnqueueStaleSync('org-1');
+    assert.equal(prunes.length, 1);
+  });
+
+  it('still lists the hourly targets when the prune fails', async () => {
+    pruneFails = true;
+    const targets = await service().listIntegrationsNeedingSync();
+    assert.deepEqual(
+      targets.map((target: { integrationId: string }) => target.integrationId),
+      ['int-li'],
+    );
   });
 });

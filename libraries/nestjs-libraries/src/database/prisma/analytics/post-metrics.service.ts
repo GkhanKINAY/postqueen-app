@@ -37,6 +37,10 @@ const STALE_AFTER_MS = 60 * 60 * 1000;
 // A manual-only channel synced or tried this recently is skipped by Refresh,
 // so a pressed-again button never reads the same posts twice in a row.
 const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
+// Snapshots past a provider's analyticsRetentionDays are deleted in batches,
+// a bounded number per hourly run so one run never outlasts its activity.
+const PRUNE_BATCH = 500;
+const PRUNE_BATCHES_PER_RUN = 20;
 
 // The oldest of the channels' last syncs, so "updated" never claims they are
 // fresher than they are. A channel with no snapshot at all (nothing published
@@ -68,6 +72,19 @@ export class PostMetricsService {
     organizationId?: string,
     freshAfter?: Date
   ) {
+    // Without an organization this is the hourly run, which also drops the
+    // snapshots a platform does not let us keep. A failed prune never stops
+    // the sync.
+    if (!organizationId) {
+      await this.pruneExpiredSnapshots().catch((err) =>
+        this.logger.warn(
+          `Could not prune expired post metric snapshots: ${
+            (err as Error).message
+          }`
+        )
+      );
+    }
+
     const targets = await this._repository.listIntegrationsNeedingSync(
       LOOKBACK_DAYS,
       organizationId,
@@ -80,6 +97,34 @@ export class PostMetricsService {
           !this.manualOnly(target.integration.providerIdentifier),
       )
       .map(({ integration: _, ...target }) => target);
+  }
+
+  // Deletes the snapshots older than each provider's analyticsRetentionDays,
+  // grouped by that value. A provider without it keeps its snapshots.
+  async pruneExpiredSnapshots() {
+    const byDays = new Map<number, string[]>();
+    for (const identifier of this._integrationManager.getAllowedSocialsIntegrations()) {
+      const days =
+        this._integrationManager.getSocialIntegration(identifier)
+          ?.analyticsRetentionDays;
+      if (days) {
+        byDays.set(days, [...(byDays.get(days) || []), identifier]);
+      }
+    }
+
+    for (const [days, identifiers] of byDays) {
+      const before = dayjs.utc().startOf('day').subtract(days, 'day').toDate();
+      for (let batch = 0; batch < PRUNE_BATCHES_PER_RUN; batch++) {
+        const { count } = await this._repository.deleteSnapshotsBefore(
+          identifiers,
+          before,
+          PRUNE_BATCH
+        );
+        if (count < PRUNE_BATCH) {
+          break;
+        }
+      }
+    }
   }
 
   private async listManualRefreshIntegrations(
