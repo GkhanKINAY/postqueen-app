@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
 import { YoutubeSettingsDto } from '../../dtos/posts/providers-settings/youtube.settings.dto.ts';
 
@@ -65,5 +66,107 @@ describe('YoutubeSettingsDto title', () => {
 
   it('accepts any other text, accents and emoji included', async () => {
     assert.equal((await errors('Ça marche 🎬 — part 2')).length, 0);
+  });
+});
+
+describe('YouTube scopes', () => {
+  const g = (s: string) => `https://www.googleapis.com/auth/${s}`;
+
+  it('asks for what PostQueen uses, plus force-ssl for editing and comments', () => {
+    assert.deepEqual(provider.scopes, [
+      g('userinfo.profile'),
+      g('userinfo.email'),
+      g('youtube.force-ssl'),
+      g('youtube.readonly'),
+      g('youtube.upload'),
+      g('yt-analytics.readonly'),
+    ]);
+  });
+
+  it('still accepts channels connected with the older, broader scopes', () => {
+    const before = [...provider.scopes, g('youtube'), g('youtubepartner')];
+    assert.equal(provider.checkScopes(provider.scopes, before), true);
+    assert.equal(provider.checkScopes(provider.scopes, before.join(' ')), true);
+  });
+
+  it('refuses a grant without the upload scope', () => {
+    const missing = provider.scopes.filter((s) => s !== g('youtube.upload'));
+    assert.throws(() => provider.checkScopes(provider.scopes, missing));
+  });
+});
+
+describe('YouTube comments', () => {
+  const withComments = (settings: object, ...comments: object[][]) =>
+    provider.checkValidity(
+      [[{ path: 'https://cdn.test/clip.mp4' }], ...comments] as any,
+      settings,
+      [],
+      ['Video description', ...comments.map(() => 'A comment')]
+    );
+
+  it('takes a text comment on a normal video', async () => {
+    assert.equal(await withComments({ selfDeclaredMadeForKids: 'no' }, []), true);
+  });
+
+  it('refuses one on a video made for kids, where YouTube turns comments off', async () => {
+    assert.match(
+      String(await withComments({ selfDeclaredMadeForKids: 'yes' }, [])),
+      /turns comments off on videos made for kids/
+    );
+    assert.equal(await withComments({ selfDeclaredMadeForKids: 'yes' }), true);
+  });
+
+  it('refuses media in a comment', async () => {
+    assert.equal(
+      await withComments({}, [{ path: 'https://cdn.test/a.jpg' }]),
+      'YouTube comments cannot contain media'
+    );
+  });
+
+  it('posts each comment as a top-level comment on the video', async () => {
+    const calls: any[] = [];
+    const real = google.youtube;
+    (google as any).youtube = () => ({
+      commentThreads: {
+        insert: async (args: any) => {
+          calls.push(args);
+          return { data: { id: 'Ugx-thread' } };
+        },
+      },
+    });
+    try {
+      const [result] = await provider.comment(
+        'internal-id',
+        'VIDEO123',
+        'previous-comment',
+        'token',
+        [{ id: 'comment-row', message: 'First!', settings: {} } as any],
+        {} as any
+      );
+      assert.deepEqual(calls[0], {
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            videoId: 'VIDEO123',
+            topLevelComment: { snippet: { textOriginal: 'First!' } },
+          },
+        },
+      });
+      assert.deepEqual(result, {
+        id: 'comment-row',
+        postId: 'Ugx-thread',
+        releaseURL: 'https://www.youtube.com/watch?v=VIDEO123&lc=Ugx-thread',
+        status: 'success',
+      });
+    } finally {
+      (google as any).youtube = real;
+    }
+  });
+
+  it('explains a comment refused because comments are off', () => {
+    assert.match(
+      String(provider.handleErrors('{"reason":"commentsDisabled"}')?.value),
+      /comments are turned off/
+    );
   });
 });
