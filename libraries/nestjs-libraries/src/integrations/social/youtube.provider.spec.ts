@@ -116,6 +116,14 @@ describe('YouTube comments', () => {
     assert.equal(await withComments({ selfDeclaredMadeForKids: 'yes' }), true);
   });
 
+  it('refuses one on a private video, where YouTube allows no comments', async () => {
+    assert.match(
+      String(await withComments({ type: 'private' }, [])),
+      /does not allow comments on private videos/
+    );
+    assert.equal(await withComments({ type: 'unlisted' }, []), true);
+  });
+
   it('refuses media in a comment', async () => {
     assert.equal(
       await withComments({}, [{ path: 'https://cdn.test/a.jpg' }]),
@@ -164,9 +172,31 @@ describe('YouTube comments', () => {
   });
 
   it('explains a comment refused because comments are off', () => {
-    assert.match(
-      String(provider.handleErrors('{"reason":"commentsDisabled"}')?.value),
-      /comments are turned off/
+    assert.equal(
+      provider.handleErrors('{"reason":"commentsDisabled"}')?.value,
+      'Comments are turned off for this video on YouTube.'
     );
+  });
+
+  it('reads only Google\'s answer, not the comment text, when a comment fails', async () => {
+    const real = google.youtube;
+    (google as any).youtube = () => ({
+      commentThreads: {
+        insert: async () => {
+          throw Object.assign(new Error('Request failed'), {
+            config: { data: 'Unauthorized words in my comment' },
+            response: { status: 403, data: { error: { errors: [{ reason: 'commentsDisabled' }] } } },
+          });
+        },
+      },
+    });
+    try {
+      await assert.rejects(
+        provider.comment('i', 'VIDEO123', undefined, 'token', [{ id: 'c', message: 'Unauthorized words in my comment', settings: {} } as any], {} as any),
+        (err: any) => err.type === 'bad_body' && /Comments are turned off/.test(err.message)
+      );
+    } finally {
+      (google as any).youtube = real;
+    }
   });
 });

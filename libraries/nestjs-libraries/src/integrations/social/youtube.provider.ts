@@ -108,9 +108,12 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     if (Buffer.byteLength(description, 'utf8') > 5000) {
       return 'YouTube descriptions can be at most 5,000 bytes, and accented letters, emoji and non-Latin scripts take 2 to 4 bytes each';
     }
-    const comments = items.slice(1);
+    const [, ...comments] = items;
     if (comments.length && settings?.selfDeclaredMadeForKids === 'yes') {
       return 'YouTube turns comments off on videos made for kids. Remove the comment or set Made for kids to No';
+    }
+    if (comments.length && settings?.type === 'private') {
+      return 'YouTube does not allow comments on private videos. Remove the comment or make the video public or unlisted';
     }
     if (comments.some((media) => media?.length)) {
       return 'YouTube comments cannot contain media';
@@ -257,8 +260,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('commentsDisabled')) {
       return {
         type: 'bad-body',
-        value:
-          'The video was published, but comments are turned off for it on YouTube, so the comment was not posted.',
+        value: 'Comments are turned off for this video on YouTube.',
       };
     }
 
@@ -893,8 +895,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     const { client, youtube } = clientAndYoutube();
     client.setCredentials({ access_token: accessToken });
 
-    const { data } = await this.runInConcurrent(async () =>
-      youtube(client).commentThreads.insert({
+    setHeartbeatDetails('youtube: insert comment');
+    let data;
+    try {
+      ({ data } = await youtube(client).commentThreads.insert({
         part: ['snippet'],
         requestBody: {
           snippet: {
@@ -904,8 +908,22 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
             },
           },
         },
-      })
-    );
+      }));
+    } catch (err: any) {
+      // Match on Google's answer only: the serialized error also carries the
+      // request body, i.e. the user's comment text.
+      const text = JSON.stringify(err?.response?.data || {});
+      const handleError = this.handleErrors(text);
+      if (err?.response?.status === 401 || handleError?.type === 'refresh-token') {
+        throw new RefreshToken(this.identifier, text, '{}');
+      }
+      throw new BadBody(
+        this.identifier,
+        text,
+        '{}',
+        handleError?.value || 'Failed to post the comment on YouTube'
+      );
+    }
 
     return [
       {
