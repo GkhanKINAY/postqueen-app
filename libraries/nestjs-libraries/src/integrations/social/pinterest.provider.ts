@@ -577,7 +577,9 @@ export class PinterestProvider
       .format('YYYY-MM-DD');
 
     const response = await fetch(
-      this.apiUrl(`/user_account/analytics?start_date=${since}&end_date=${until}`),
+      this.apiUrl(
+        `/user_account/analytics?start_date=${since}&end_date=${until}`
+      ),
       {
         method: 'GET',
         headers: {
@@ -654,7 +656,9 @@ export class PinterestProvider
     try {
       // Fetch pin analytics from Pinterest API
       const response = await fetch(
-        this.apiUrl(`/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`),
+        this.apiUrl(
+          `/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`
+        ),
         {
           method: 'GET',
           headers: {
@@ -733,7 +737,9 @@ export class PinterestProvider
     for (const postId of platformPostIds) {
       try {
         const response = await this.fetch(
-          this.apiUrl(`/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`),
+          this.apiUrl(
+            `/pins/${postId}/analytics?start_date=${since}&end_date=${today}&metric_types=IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE`
+          ),
           {
             method: 'GET',
             headers: {

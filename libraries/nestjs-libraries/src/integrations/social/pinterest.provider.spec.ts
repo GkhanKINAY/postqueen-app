@@ -61,10 +61,22 @@ describe('Pinterest API host', () => {
     ]);
   });
 
+  it('calls production when compose passes it empty', async () => {
+    process.env.PINTEREST_API_URL = '';
+    await new PinterestProvider().boards('token');
+    assert.deepEqual(calls, [
+      'https://api.pinterest.com/v5/boards?page_size=250',
+    ]);
+  });
+
   it('sends the token exchange and every later call to the sandbox when it is set', async () => {
     process.env.PINTEREST_API_URL = 'https://api-sandbox.pinterest.com/';
     const provider = new PinterestProvider();
-    await provider.authenticate({ code: 'code', codeVerifier: '', refresh: '' });
+    await provider.authenticate({
+      code: 'code',
+      codeVerifier: '',
+      refresh: '',
+    });
     await provider.boards('token');
     assert.deepEqual(calls, [
       'https://api-sandbox.pinterest.com/v5/oauth/token',
