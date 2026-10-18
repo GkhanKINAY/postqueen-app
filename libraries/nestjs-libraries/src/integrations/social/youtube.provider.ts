@@ -69,14 +69,15 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   name = 'YouTube';
   isBetweenSteps = true;
   dto = YoutubeSettingsDto;
+  // youtube.force-ssl allows everything youtube does (editing, deleting,
+  // playlists) plus comments, so youtube itself is not requested;
+  // youtubepartner is only for YouTube content-owner partners.
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/youtube',
     'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.upload',
-    'https://www.googleapis.com/auth/youtubepartner',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
   ];
 
@@ -106,6 +107,16 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     }
     if (Buffer.byteLength(description, 'utf8') > 5000) {
       return 'YouTube descriptions can be at most 5,000 bytes, and accented letters, emoji and non-Latin scripts take 2 to 4 bytes each';
+    }
+    const [, ...comments] = items;
+    if (comments.length && settings?.selfDeclaredMadeForKids === 'yes') {
+      return 'YouTube turns comments off on videos made for kids. Remove the comment or set Made for kids to No';
+    }
+    if (comments.length && settings?.type === 'private') {
+      return 'YouTube does not allow comments on private videos. Remove the comment or make the video public or unlisted';
+    }
+    if (comments.some((media) => media?.length)) {
+      return 'YouTube comments cannot contain media';
     }
     return true;
   }
@@ -243,6 +254,13 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           'You have reached your daily upload limit, please try again tomorrow.',
+      };
+    }
+
+    if (body.includes('commentsDisabled')) {
+      return {
+        type: 'bad-body',
+        value: 'Comments are turned off for this video on YouTube.',
       };
     }
 
@@ -861,6 +879,60 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       postId: videoId,
       releaseURL: `https://www.youtube.com/watch?v=${videoId}`,
     };
+  }
+
+  // YouTube replies are one level deep, and only to the first comment of a
+  // thread, so every comment goes on the video as its own top-level comment.
+  async comment(
+    id: string,
+    postId: string,
+    lastCommentId: string | undefined,
+    accessToken: string,
+    postDetails: PostDetails[],
+    integration: Integration
+  ): Promise<PostResponse[]> {
+    const [commentPost] = postDetails;
+    const { client, youtube } = clientAndYoutube();
+    client.setCredentials({ access_token: accessToken });
+
+    setHeartbeatDetails('youtube: insert comment');
+    let data;
+    try {
+      ({ data } = await youtube(client).commentThreads.insert({
+        part: ['snippet'],
+        requestBody: {
+          snippet: {
+            videoId: postId,
+            topLevelComment: {
+              snippet: { textOriginal: commentPost.message },
+            },
+          },
+        },
+      }));
+    } catch (err: any) {
+      // Match on Google's answer only: the serialized error also carries the
+      // request body, i.e. the user's comment text.
+      const text = JSON.stringify(err?.response?.data || {});
+      const handleError = this.handleErrors(text);
+      if (err?.response?.status === 401 || handleError?.type === 'refresh-token') {
+        throw new RefreshToken(this.identifier, text, '{}');
+      }
+      throw new BadBody(
+        this.identifier,
+        text,
+        '{}',
+        handleError?.value || 'Failed to post the comment on YouTube'
+      );
+    }
+
+    return [
+      {
+        id: commentPost.id,
+        postId: data.id!,
+        releaseURL: `https://www.youtube.com/watch?v=${postId}&lc=${data.id}`,
+        status: 'success',
+      },
+    ];
   }
 
   // Old blocking behavior, kept for workflow versions before v1.0.6 that still
