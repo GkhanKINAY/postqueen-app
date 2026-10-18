@@ -245,6 +245,22 @@ export class PostMetricsRepository {
     });
   }
 
+  // One batch of the snapshots these providers' channels captured before the
+  // cutoff, removed channels included.
+  deleteSnapshotsBefore(
+    providerIdentifiers: string[],
+    before: Date,
+    limit: number
+  ) {
+    return this._snapshot.model.postMetricSnapshot.deleteMany({
+      where: {
+        capturedDay: { lt: before },
+        integration: { providerIdentifier: { in: providerIdentifiers } },
+      },
+      limit,
+    });
+  }
+
   upsertSnapshot(row: PostMetricUpsert) {
     return this._snapshot.model.postMetricSnapshot.upsert({
       where: {

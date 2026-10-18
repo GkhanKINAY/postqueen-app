@@ -100,6 +100,12 @@ export interface IAuthenticator {
    * only when someone presses Refresh in analytics.
    */
   analyticsManualOnly?: boolean;
+  /**
+   * How many days this provider's post statistics may be kept, for a
+   * platform whose terms limit it. The hourly sync deletes older snapshots,
+   * removed channels included. Omit it to keep them.
+   */
+  analyticsRetentionDays?: number;
   changeNickname?(
     id: string,
     accessToken: string,
