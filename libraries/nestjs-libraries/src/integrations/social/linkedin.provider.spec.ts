@@ -89,4 +89,9 @@ describe('LinkedIn storage rules', () => {
     assert.equal(new LinkedinProvider().analyticsRetentionDays, 365);
     assert.equal(new LinkedinPageProvider().analyticsRetentionDays, 365);
   });
+
+  it("reads a Page's name and logo again every eight weeks, and sets no limit for a member's own profile", () => {
+    assert.equal(new LinkedinPageProvider().profileRetentionDays, 56);
+    assert.equal(new LinkedinProvider().profileRetentionDays, undefined);
+  });
 });

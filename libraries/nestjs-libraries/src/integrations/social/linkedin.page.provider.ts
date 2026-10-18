@@ -36,6 +36,10 @@ export class LinkedinPageProvider
   override isBetweenSteps = true;
   override refreshWait = true;
   override maxConcurrentJob = 2; // LinkedIn Page has professional posting limits
+  // LinkedIn's data storage requirements keep a connected Page's name and
+  // logo for eight weeks before they are read again. A member's own profile
+  // has no such limit, so the personal tile does not set it.
+  profileRetentionDays = 56;
   override scopes = [
     'openid',
     'profile',

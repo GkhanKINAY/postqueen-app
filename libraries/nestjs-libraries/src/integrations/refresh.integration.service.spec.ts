@@ -78,3 +78,131 @@ describe('RefreshIntegrationService.isExpired', { skip: !canLoad }, () => {
     assert.equal(expired('linkedin-page', null), false);
   });
 });
+
+// A provider whose terms limit how long a Page's name and logo may be kept,
+// and one that sets no limit.
+const pageProvider = {
+  profileRetentionDays: 56,
+  fetchPageInformation: async (token: string, { page }: { page: string }) => {
+    reads.push(`${token}:${page}`);
+    return answer(page);
+  },
+};
+let reads: string[];
+let answer: (page: string) => any;
+let saved: Array<{ id: string; profile: any }>;
+let marks: Record<string, number>;
+let channels: any[];
+let copyFails: boolean;
+
+const profileService = async (redis: any) => {
+  const { RefreshIntegrationService } =
+    await import('./refresh.integration.service.ts');
+  const { ioRedis } = (await import('../redis/redis.service.ts')) as any;
+  ioRedis.get = async (key: string) => redis.get(key);
+  ioRedis.set = async (key: string, _: string, __: string, ttl: number) => {
+    marks[key] = ttl;
+    return 'OK';
+  };
+  const service = new RefreshIntegrationService(
+    {
+      getAllowedSocialsIntegrations: () => ['linkedin-page', 'x'],
+      getSocialIntegration: (id: string) =>
+        id === 'linkedin-page' ? pageProvider : { fetchPageInformation: async () => ({}) },
+    } as any,
+    {
+      listProfileRefreshCandidates: async (id: string) =>
+        id === 'linkedin-page' ? channels : [{ id: 'x-1', internalId: 'x' }],
+      refreshProfile: async (id: string, profile: any) => {
+        saved.push({ id, profile });
+        return { copyFailed: copyFails };
+      },
+    } as any,
+    {} as any,
+  );
+  return service;
+};
+
+const page = (id: string, extra: Record<string, unknown> = {}) => ({
+  id: `ch-${id}`,
+  internalId: id,
+  providerIdentifier: 'linkedin-page',
+  token: 'token',
+  tokenExpiration: future,
+  ...extra,
+});
+
+describe('RefreshIntegrationService.refreshDueProfiles', { skip: !canLoad }, () => {
+  const reset = () => {
+    reads = [];
+    saved = [];
+    marks = {};
+    channels = [page('100')];
+    copyFails = false;
+    answer = (id) => ({
+      id,
+      name: 'PostQueen',
+      picture: 'https://media.licdn.com/logo.png',
+      username: 'postqueen',
+    });
+  };
+
+  it("stores the Page's current name, logo and public name, and reads it again a day before the limit", async () => {
+    reset();
+    await (await profileService({ get: async () => null })).refreshDueProfiles();
+    assert.deepEqual(reads, ['token:100']);
+    assert.deepEqual(saved, [
+      {
+        id: 'ch-100',
+        profile: {
+          name: 'PostQueen',
+          picture: 'https://media.licdn.com/logo.png',
+          profile: 'postqueen',
+        },
+      },
+    ]);
+    assert.equal(marks['integration:profile-read:ch-100'], 55 * 24 * 60 * 60);
+  });
+
+  it('leaves a channel read within the limit alone', async () => {
+    reset();
+    await (await profileService({ get: async () => '1' })).refreshDueProfiles();
+    assert.deepEqual(reads, []);
+    assert.deepEqual(saved, []);
+  });
+
+  it('keeps the stored profile when LinkedIn answers without a name or for another Page, and tries a day later', async () => {
+    for (const reply of [{ id: '100' }, { id: '999', name: 'Someone else' }]) {
+      reset();
+      answer = () => reply;
+      await (await profileService({ get: async () => null })).refreshDueProfiles();
+      assert.deepEqual(saved, []);
+      assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+    }
+  });
+
+  it('saves the new name but tries again a day later when the logo could not be copied', async () => {
+    reset();
+    copyFails = true;
+    await (await profileService({ get: async () => null })).refreshDueProfiles();
+    assert.equal(saved.length, 1);
+    assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+  });
+
+  it('refreshes an expired token before reading the Page', async () => {
+    reset();
+    channels = [page('100', { tokenExpiration: past })];
+    const service = await profileService({ get: async () => null });
+    service.refresh = async () => ({ accessToken: 'fresh' });
+    await service.refreshDueProfiles();
+    assert.deepEqual(reads, ['fresh:100']);
+  });
+
+  it('reads at most 25 channels in one run, and none of a provider without the limit', async () => {
+    reset();
+    channels = Array.from({ length: 30 }, (_, i) => page(String(i)));
+    await (await profileService({ get: async () => null })).refreshDueProfiles();
+    assert.equal(reads.length, 25);
+    assert.ok(!saved.some((s) => s.id === 'x-1'));
+  });
+});
