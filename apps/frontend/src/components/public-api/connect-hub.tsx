@@ -335,7 +335,7 @@ const HeroBand: FC<{ groups: Group[]; layout: Layout }> = ({
           <p className="m-0 max-w-[500px] text-[14px] leading-[1.5] text-pqConnHeroMuted">
             {t(
               'conn_hero_text',
-              'Ask Grok Bot, Muse, Claude, ChatGPT or any AI agent to write and schedule your posts. What they schedule shows up on your calendar, where you can edit it.'
+              'Ask Grok Bot, Muse, Claude, ChatGPT or any AI agent to write your posts. PostQueen schedules them on your calendar, where you can edit any of them.'
             )}
           </p>
           <div className="mt-[2px] flex flex-wrap items-center gap-[8px]">
@@ -427,7 +427,7 @@ const Section: FC<{
       title: t('connect_nav_assistants', 'Assistants and bots'),
       sub: t(
         'conn_bots_sub',
-        'Ask in chat. They write, schedule and check your posts.'
+        'Ask in chat. They write and check your posts, and PostQueen schedules them.'
       ),
       right: (
         <OutLink href={`${SITE}/api/ai-agents#compare`}>

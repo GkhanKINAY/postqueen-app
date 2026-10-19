@@ -8,7 +8,7 @@
   <!-- header -->
   <g transform="translate(24,20) scale(0.046875)">
     <rect width="512" height="512" rx="112" fill="url(#pqtile)"/>
-    <path d="M120 258L128 172L192 218L256 134L320 218L384 172L392 258ZM162 354L146 406L226 360Z" fill="#ffffff" stroke="#ffffff" stroke-width="20" stroke-linejoin="round"/>
+    <path d="M118 268L128 172L192 218L256 134L320 218L384 172L394 268L360 240L152 240ZM162 354L146 406L226 360Z" fill="#ffffff" stroke="#ffffff" stroke-width="20" stroke-linejoin="round"/>
     <path d="M106 164A22 22 0 1 0 150 164A22 22 0 1 0 106 164ZM232 122A24 24 0 1 0 280 122A24 24 0 1 0 232 122ZM362 164A22 22 0 1 0 406 164A22 22 0 1 0 362 164ZM154 222H358A46 46 0 0 1 404 268V324A46 46 0 0 1 358 370H154A46 46 0 0 1 108 324V268A46 46 0 0 1 154 222ZM173 296A19 19 0 1 0 211 296A19 19 0 1 0 173 296ZM237 296A19 19 0 1 0 275 296A19 19 0 1 0 237 296ZM301 296A19 19 0 1 0 339 296A19 19 0 1 0 301 296Z" fill="#ffffff" fill-rule="evenodd"/>
   </g>
   <text x="58" y="38" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#ffffff">This week</text>

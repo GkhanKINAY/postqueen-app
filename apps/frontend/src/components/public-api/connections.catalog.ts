@@ -2287,7 +2287,7 @@ openclaw pairing approve discord <CODE>`,
           ),
           short: t(
             'conn_grok_bot_line',
-            'Routines write and schedule posts while your laptop is closed'
+            'Routines write posts while your laptop is closed'
           ),
           setupAccent: t('conn_grok_bot_setup_accent', 'with one message.'),
           soonNote: t('conn_grok_bot_soon_note', 'Marketplace plugin soon'),
@@ -2621,7 +2621,7 @@ openclaw pairing approve discord <CODE>`,
           site: `${SITE}/cursor`,
           short: t(
             'conn_cursor_line',
-            'Ask the agent to draft and schedule posts while you code'
+            'Ask the agent to draft posts while you code'
           ),
           docs: [
             {

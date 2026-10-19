@@ -33,7 +33,7 @@ export const appVersionLabel = (() => {
 export const BrandMark = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 512 512" fill="none" aria-hidden="true" className={className}>
     <path
-      d="M120 258L128 172L192 218L256 134L320 218L384 172L392 258ZM162 354L146 406L226 360Z"
+      d="M118 268L128 172L192 218L256 134L320 218L384 172L394 268L360 240L152 240ZM162 354L146 406L226 360Z"
       fill="currentColor"
       stroke="currentColor"
       strokeWidth="20"
