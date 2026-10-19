@@ -626,7 +626,7 @@
   "conn_openclaw_link": "OpenClaw documentation",
   "conn_openclaw_verify": "A JSON list of your channels means the CLI half is ready. Then link a chat app: Telegram needs a BotFather token; WhatsApp, Slack and Discord are plugins. Pairing steps live on each Chat card.",
   "conn_hermes_short": "Hand it a brief. It plans the week.",
-  "conn_hermes_intro": "Hermes is Nous Research's open-source agent. It runs on your machine (Python, not Node), keeps memory across sessions, and drives the postqueen CLI. Hand it one brief and it can plan, write and schedule a week. It can also front the same chat apps as OpenClaw, and it has a built-in MCP client if you would rather connect over MCP.",
+  "conn_hermes_intro": "Hermes is Nous Research's open-source agent. It runs on your machine (Python, not Node), keeps memory across sessions, and drives the postqueen CLI. Hand it one brief and it can plan and write a week of posts for PostQueen to schedule. It can also front the same chat apps as OpenClaw, and it has a built-in MCP client if you would rather connect over MCP.",
   "conn_codex_short": "Schedule from the Codex coding agent",
   "conn_codex_intro": "Codex is OpenAI's coding agent, not ChatGPT. Same pairing as Claude Code vs Claude. Register PostQueen over MCP with one codex mcp add command. The Agent Skill and the postqueen CLI are optional. Adding a plugin in ChatGPT does not install this product.",
   "conn_group_chat": "Chat with your agent",
