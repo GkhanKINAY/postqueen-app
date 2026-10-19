@@ -3639,7 +3639,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_muse_step_4', 'Start asking.'),
               detail: t(
                 'conn_muse_step_4_detail',
-                'Muse lists your channels. Ask it to write, schedule or check your posts.'
+                'Muse lists your channels. Ask it to write or check your posts, and PostQueen schedules them.'
               ),
               inline: 'ask',
               ask: t(
