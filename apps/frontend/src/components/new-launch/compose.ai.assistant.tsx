@@ -395,7 +395,7 @@ const ComposeAiEmptyHero: FC<{ unconfigured?: string }> = ({
   const t = useT();
   return (
     <>
-      <PostQueenLogo tileClassName="size-[40px]" glyphClassName="size-[22px]" />
+      <PostQueenLogo tileClassName="size-[40px]" />
       <div>
         <div className="font-display text-[19px] font-[700] tracking-[-0.02em] text-pqText">
           {t('composer_ai_title_lead', 'Ask Copilot about')}{' '}

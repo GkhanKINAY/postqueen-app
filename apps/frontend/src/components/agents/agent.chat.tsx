@@ -274,7 +274,7 @@ const EmptyStateHero: FC = () => {
   ];
   return (
     <>
-      <PostQueenLogo tileClassName="size-[48px]" glyphClassName="size-[26px]" />
+      <PostQueenLogo tileClassName="size-[48px]" />
       <div>
         <h1 className="m-0 font-display text-[32px] font-[700] leading-[1.15] tracking-[-0.02em] text-pqText mobile:text-[27px]">
           {t('agent_empty_title_lead', 'What are we')}{' '}
@@ -562,7 +562,6 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
         <PostQueenLogo
           className="mt-[2px] shrink-0"
           tileClassName="size-[28px] rounded-[8px] shadow-none"
-          glyphClassName="size-[15px]"
         />
       ) : (
         <span aria-hidden="true" className="w-[28px] shrink-0" />

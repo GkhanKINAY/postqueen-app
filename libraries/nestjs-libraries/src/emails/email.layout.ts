@@ -445,7 +445,7 @@ const page = (
   body: string,
   unsubscribeUrl?: string,
 ) => {
-  const logo = asset(env, '/email/logo.png');
+  const logo = asset(env, '/email/logo-v2.png');
   return `<!doctype html>
 <html lang="en">
 <head>

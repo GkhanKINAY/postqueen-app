@@ -43,7 +43,7 @@ import { PreConditionComponent } from '@gitroom/frontend/components/layout/pre-c
 import { FirstBillingComponent } from '@gitroom/frontend/components/billing/first.billing.component';
 import { BillingAdminRequiredComponent } from '@gitroom/frontend/components/billing/billing.admin.required.component';
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
-import { CrownGlyph } from '@gitroom/frontend/components/ui/logo.component';
+import { BrandMark } from '@gitroom/frontend/components/ui/logo.component';
 import { setSentryUser } from '@gitroom/react/sentry/initialize.sentry.client';
 import { UserMenu } from '@gitroom/frontend/components/new-layout/user.menu';
 import { HelpMenu } from '@gitroom/frontend/components/new-layout/help.menu';
@@ -82,8 +82,8 @@ const LayoutSkeleton = () => (
   >
     <div className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-pqRailLine bg-pqRail pe-[16px]">
       <div className="flex h-[56px] w-[236px] shrink-0 items-center gap-[9px] border-e border-pqRailLine px-[12px]">
-        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
-          <CrownGlyph className="size-[18px] text-white" />
+        <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-gradient-to-br from-pqBrandGradFrom to-pqBrandGradTo">
+          <BrandMark className="size-full text-white" />
         </span>
         <Skeleton className="h-[14px] w-[88px]" />
       </div>

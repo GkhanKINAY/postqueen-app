@@ -18,7 +18,7 @@ import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { postsListHasRows } from '@gitroom/frontend/components/launches/posts-panel-tab';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { CrownGlyph } from '@gitroom/frontend/components/ui/logo.component';
+import { BrandMark } from '@gitroom/frontend/components/ui/logo.component';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import {
@@ -733,8 +733,8 @@ const TourDragGhost: FC<{ ghost: Ghost }> = ({ ghost }) => {
         }}
       >
         <div className="flex items-center gap-[6px]">
-          <span className="grid h-[16px] w-[16px] place-items-center rounded-[5px] bg-pqBrand">
-            <CrownGlyph className="h-[11px] w-[11px] text-pqOnBrand" />
+          <span className="grid h-[16px] w-[16px] place-items-center rounded-[5px] bg-gradient-to-br from-pqBrandGradFrom to-pqBrandGradTo">
+            <BrandMark className="size-full text-pqOnBrand" />
           </span>
           <span className="text-[10.5px] font-[600] text-pqSoft">
             {landsAt}

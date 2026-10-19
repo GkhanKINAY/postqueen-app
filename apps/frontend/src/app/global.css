@@ -201,13 +201,6 @@ body *::-webkit-scrollbar-corner {
   scrollbar-width: none;
 }
 
-/* Brand gradient for the logo tile. Mirrors the landing site's .crown-gradient
-   (postqueen.ai globals.css): brand-600 -> brand-500 -> pop-600. These are brand
-   values, not theme surfaces, so they are the same in light and dark. */
-.crown-gradient {
-  background-image: linear-gradient(145deg, #6d28d9, #7c3aed 45%, #e0189e);
-}
-
 /* The redesign's responsive shell keys off the attributes `use.viewport.tsx`
    stamps on <html>, not off media queries — most of what changes between the
    three sizes is structural and lives in the components. What is left here is

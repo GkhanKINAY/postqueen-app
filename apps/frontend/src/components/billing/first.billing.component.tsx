@@ -1131,7 +1131,6 @@ export const FirstBillingComponent = () => {
           <PostQueenLogo
             wordmark
             tileClassName="size-[34px]"
-            glyphClassName="size-[19px]"
             wordClassName="text-[19px]"
           />
           <span className="shrink-0 text-[12.5px] tabular-nums text-pqSoft">

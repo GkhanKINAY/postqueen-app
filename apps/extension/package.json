@@ -1,6 +1,6 @@
 {
   "name": "postqueen-extension",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "PostQueen browser extension for cookie-based platform authentication",
   "scripts": {
     "build": "rm -rf dist extension.zip && vite build --config vite.config.chrome.ts && cd dist && zip -r ../extension.zip .",

@@ -1261,7 +1261,6 @@ export const ListView = () => {
         <span className="grid size-[88px] place-items-center rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.22)_0%,transparent_70%)]">
           <PostQueenLogo
             tileClassName="size-[56px] rounded-[16px] shadow-[0_14px_30px_-14px_rgba(124,58,237,.95)]"
-            glyphClassName="size-[30px]"
           />
         </span>
         <div className="flex max-w-[360px] flex-col gap-[6px]">

@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <html>
       <head>
-        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <link rel="icon" href="/logo.svg?v=2" type="image/svg+xml" />
       </head>
       <body
         className={clsx(fontClassName, mode, 'text-primary !bg-primary')}

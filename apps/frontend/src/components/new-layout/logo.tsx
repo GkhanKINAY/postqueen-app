@@ -6,7 +6,7 @@ import { MouseEvent, useCallback } from 'react';
 import clsx from 'clsx';
 import {
   appVersionLabel,
-  CrownGlyph,
+  BrandMark,
   PostQueenLogo,
 } from '@gitroom/frontend/components/ui/logo.component';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
@@ -39,7 +39,7 @@ export function calendarHomeHref() {
  * column that was a cramped URL rather than a tagline, and the host is already
  * in the address bar.
  *
- * Links to Calendar week + today (homepage), so the crown doubles as "home".
+ * Links to Calendar week + today (homepage), so the mark doubles as "home".
  */
 export const Logo = ({
   variant = 'tile',
@@ -72,8 +72,8 @@ export const Logo = ({
     >
       {variant === 'header' ? (
         <>
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-pqBrand">
-            <CrownGlyph className="size-[18px] text-white" />
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-gradient-to-br from-pqBrandGradFrom to-pqBrandGradTo">
+            <BrandMark className="size-full text-white" />
           </span>
           {!collapsed && (
             <span className="flex min-w-0 items-baseline gap-[6px]">

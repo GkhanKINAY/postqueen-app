@@ -30,7 +30,6 @@ export const BillingAdminRequiredComponent = () => {
         <PostQueenLogo
           wordmark
           tileClassName="size-[34px]"
-          glyphClassName="size-[19px]"
           wordClassName="text-[19px]"
         />
         <div className="flex-1" />

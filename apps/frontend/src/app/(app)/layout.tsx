@@ -67,13 +67,17 @@ export const metadata: Metadata = {
   },
   description:
     'Schedule and generate posts with AI across 30+ social and chat channels.',
+  // `?v=2` since the crown-bubble mark (2026-10-19): these paths are fixed and
+  // unhashed, so browsers that cached the old crown would keep showing it.
   icons: {
     icon: [
-      { url: '/logo.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.png', type: 'image/png', sizes: '48x48' },
+      { url: '/logo.svg?v=2', type: 'image/svg+xml' },
+      { url: '/favicon.ico?v=2', sizes: 'any' },
+      { url: '/favicon.png?v=2', type: 'image/png', sizes: '48x48' },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [
+      { url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
     siteName: 'PostQueen',
