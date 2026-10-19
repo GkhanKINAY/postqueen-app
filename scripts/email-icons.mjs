@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Draws the PNGs the emails show (libraries/nestjs-libraries/src/emails/email.layout.ts)
-// into apps/frontend/public/email: the crown tile, and every status icon in every
+// into apps/frontend/public/email: the logo tile, and every status icon in every
 // tone. PNG, because Gmail does not show SVG. Icon geometry is Lucide's (ISC).
 //
 //   node scripts/email-icons.mjs
@@ -50,22 +50,29 @@ const ICONS = {
     '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
 };
 
-const png = (svg, size, file) =>
+const png = (svg, size, file, palette = true) =>
   sharp(Buffer.from(svg), { density: 600 })
     .resize(size, size)
-    .png({ compressionLevel: 9, palette: true })
+    .png({ compressionLevel: 9, palette })
     .toFile(join(out, file));
 
+// The brand mark (crown speech bubble) on its gradient tile, the same drawing as
+// the app icon and the logo on the Google consent screen. Not palette-reduced:
+// a 256-colour palette bands the gradient.
+const LOGO =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">' +
+  '<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512">' +
+  '<stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#6D28D9"/></linearGradient></defs>' +
+  '<rect width="512" height="512" rx="112" fill="url(#g)"/>' +
+  '<path d="M120 258L128 172L192 218L256 134L320 218L384 172L392 258ZM162 354L146 406L226 360Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round"/>' +
+  '<path d="M106 164A22 22 0 1 0 150 164A22 22 0 1 0 106 164ZM232 122A24 24 0 1 0 280 122A24 24 0 1 0 232 122ZM362 164A22 22 0 1 0 406 164A22 22 0 1 0 362 164ZM154 222H358A46 46 0 0 1 404 268V324A46 46 0 0 1 358 370H154A46 46 0 0 1 108 324V268A46 46 0 0 1 154 222ZM173 296A19 19 0 1 0 211 296A19 19 0 1 0 173 296ZM237 296A19 19 0 1 0 275 296A19 19 0 1 0 237 296ZM301 296A19 19 0 1 0 339 296A19 19 0 1 0 301 296Z" fill="#FFFFFF" fill-rule="evenodd"/></svg>';
+
 const jobs = [
-  // The crown tile from the site's logo, drawn at 3x for a 30px slot.
-  png(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
-      '<rect width="32" height="32" rx="8" fill="#7C3AED"/>' +
-      '<path d="M6.6 20.4 L8.2 10.6 L12.4 14.4 L16 8 L19.6 14.4 L23.8 10.6 L25.4 20.4 Z" fill="#FFFFFF"/>' +
-      '<rect x="7" y="21.8" width="18" height="2.6" rx="1.3" fill="#FFFFFF"/></svg>',
-    90,
-    'logo.png',
-  ),
+  // Drawn at 3x for a 30px slot. The emails load logo-v2.png: Gmail's image
+  // proxy keeps a URL's first image, so the new mark needs a new name.
+  // logo.png gets the same image for mail sent before the rename.
+  png(LOGO, 90, 'logo-v2.png', false),
+  png(LOGO, 90, 'logo.png', false),
 ];
 for (const [name, paths] of Object.entries(ICONS)) {
   for (const [tone, color] of Object.entries(TONES)) {

@@ -77,7 +77,7 @@ describe('renderEmail', () => {
   it('puts the app address in front of app paths and leaves full URLs as they are', () => {
     const { html } = renderEmail(env, 'Invite', invite('Sunrise Studio'));
     assert.ok(html.includes('href="https://app.example.com/?org=token"'));
-    assert.ok(html.includes('https://app.example.com/email/logo.png'));
+    assert.ok(html.includes('https://app.example.com/email/logo-v2.png'));
   });
 
   it('carries its own dark colours for Apple Mail and Outlook.com', () => {

@@ -49,6 +49,10 @@
     --upgradeHover: rgba(139, 92, 246, 0.16);
     --brand: #7c3aed;
     --brandHover: #8b5cf6;
+    /* The logo tile's gradient: the brand mark itself (the icon approved on the
+       Google consent screen), so it is the same in both themes. */
+    --brandGradFrom: #8b5cf6;
+    --brandGradTo: #6d28d9;
     --chartBrandFill: rgba(97, 43, 211, 0.8);
     --chartBrandFade: rgba(97, 43, 211, 0.08);
     --chartOkFill: rgba(50, 213, 131, 0.8);
@@ -230,6 +234,9 @@
     --upgradeHover: rgba(124, 58, 237, 0.1);
     --brand: #7c3aed;
     --brandHover: #6d28d9;
+    /* Same as the dark block: the logo tile is the brand mark, not a surface. */
+    --brandGradFrom: #8b5cf6;
+    --brandGradTo: #6d28d9;
     --chartBrandFill: rgba(97, 43, 211, 0.8);
     --chartBrandFade: rgba(97, 43, 211, 0.08);
     --chartOkFill: rgba(50, 213, 131, 0.8);

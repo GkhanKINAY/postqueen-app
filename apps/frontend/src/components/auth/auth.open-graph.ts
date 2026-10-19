@@ -9,7 +9,8 @@ export const AUTH_OG_DESCRIPTION =
   'Schedule and generate posts with AI across 30+ social and chat channels.';
 
 /** Public PNG in apps/frontend/public — the SVG favicon is not an og:image. */
-export const AUTH_OG_IMAGE_PATH = '/og-image.png';
+// `?v=2` since the crown-bubble mark: share previews are cached by URL.
+export const AUTH_OG_IMAGE_PATH = '/og-image.png?v=2';
 
 export const AUTH_OG_IMAGE = {
   url: AUTH_OG_IMAGE_PATH,

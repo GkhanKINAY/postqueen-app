@@ -35,6 +35,8 @@ module.exports = {
         pqSoft: 'var(--soft)',
         pqBrand: 'var(--brand)',
         pqBrandHover: 'var(--brandHover)',
+        pqBrandGradFrom: 'var(--brandGradFrom)',
+        pqBrandGradTo: 'var(--brandGradTo)',
         pqBrandSoft: 'var(--brandSoft)',
         pqOnBrand: 'var(--onBrand)',
         pqBrandFaint: 'var(--brandFaint)',
