@@ -11,10 +11,23 @@ import { BadBody, RefreshToken } from '../social.abstract.ts';
 const pictures = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
 
-// The TikTok tile also measures every photo with sharp, which reads the file
-// over the network. These tests are about counts and formats, so each photo
-// measures as TikTok allows; the size rule has its own test below.
+// Both tiles also measure every photo with sharp, which reads the file over
+// the network. These tests are about counts and formats, so each photo
+// measures as TikTok allows; the size rules have their own tests below.
 class MeasuredTiktokProvider extends TiktokProvider {
+  constructor(private readonly size = { width: 1080, height: 1920 }) {
+    super();
+  }
+
+  protected override async getImageDimensions() {
+    if (!this.size) {
+      throw new Error('measured');
+    }
+    return this.size;
+  }
+}
+
+class MeasuredTiktokBusinessProvider extends TiktokBusinessProvider {
   constructor(private readonly size = { width: 1080, height: 1920 }) {
     super();
   }
@@ -29,7 +42,7 @@ class MeasuredTiktokProvider extends TiktokProvider {
 
 const tiles = [
   ['TikTok', new MeasuredTiktokProvider()],
-  ['TikTok Business', new TiktokBusinessProvider()],
+  ['TikTok Business', new MeasuredTiktokBusinessProvider()],
 ] as const;
 
 describe('TikTok photo limits, on both tiles', () => {
@@ -86,6 +99,53 @@ describe('TikTok photo size, on the TikTok tile', () => {
     assert.equal(
       await provider.checkValidity([pictures(2)]),
       'Image 1 is 1086x1448, TikTok allows a maximum of 1080px on the shorter side'
+    );
+  });
+});
+
+describe('TikTok photo size, on the TikTok Business tile', () => {
+  it('refuses a 36th picture or a BMP before measuring any of them', async () => {
+    const provider = new MeasuredTiktokBusinessProvider(null as any);
+    assert.equal(
+      await provider.checkValidity([pictures(36)]),
+      'You can select up to 35 pictures'
+    );
+    assert.match(
+      String(await provider.checkValidity([pictures(1, 'bmp')])),
+      /BMP files cannot be converted/
+    );
+  });
+
+  it('takes up to 1080x1920 either way round', async () => {
+    for (const size of [
+      { width: 1080, height: 1920 },
+      { width: 1920, height: 1080 },
+      { width: 1024, height: 1536 },
+    ]) {
+      assert.equal(
+        await new MeasuredTiktokBusinessProvider(size).checkValidity([pictures(2)]),
+        true,
+        `${size.width}x${size.height}`
+      );
+    }
+  });
+
+  it('names a picture over 1080 on its shorter side or 1920 on its longer one', async () => {
+    assert.equal(
+      await new MeasuredTiktokBusinessProvider({ width: 1080, height: 2400 }).checkValidity([pictures(2)]),
+      'Image 1 is 1080x2400, TikTok Business allows a maximum of 1080x1920 (or 1920x1080)'
+    );
+    assert.equal(
+      await new MeasuredTiktokBusinessProvider({ width: 1440, height: 1440 }).checkValidity([pictures(1)]),
+      'Image 1 is 1440x1440, TikTok Business allows a maximum of 1080x1920 (or 1920x1080)'
+    );
+  });
+
+  it('measures no video', async () => {
+    const provider = new MeasuredTiktokBusinessProvider(null as any);
+    assert.equal(
+      await provider.checkValidity([[{ path: 'https://cdn.test/a.mp4' }]]),
+      true
     );
   });
 });
