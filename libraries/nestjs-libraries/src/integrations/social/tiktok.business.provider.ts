@@ -104,6 +104,25 @@ export class TiktokBusinessProvider
     if (firstItems?.some((p) => hasExtension(p?.path, 'bmp'))) {
       return 'TikTok only accepts JPEG or WebP pictures and BMP files cannot be converted, please use a JPEG or PNG';
     }
+
+    // The Business photo endpoint takes at most 1080x1920 (or 1920x1080) and
+    // fails the whole post when a single image is bigger, at publish time.
+    // Conversion to JPEG keeps the size, so it is checked here.
+    if (firstItems?.every((p) => (p?.path?.indexOf?.('mp4') ?? -1) === -1)) {
+      const dimensions = await Promise.all(
+        firstItems?.map((p) => this.getImageDimensions(p?.path)) ?? []
+      );
+      const tooBig = dimensions.findIndex(
+        (p) =>
+          Math.min(p?.width ?? 0, p?.height ?? 0) > 1080 ||
+          Math.max(p?.width ?? 0, p?.height ?? 0) > 1920
+      );
+      if (tooBig > -1) {
+        return `Image ${tooBig + 1} is ${dimensions[tooBig]?.width}x${
+          dimensions[tooBig]?.height
+        }, TikTok Business allows a maximum of 1080x1920 (or 1920x1080)`;
+      }
+    }
     return true;
   }
 
