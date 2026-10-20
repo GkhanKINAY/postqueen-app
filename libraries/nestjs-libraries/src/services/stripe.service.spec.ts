@@ -135,6 +135,7 @@ const orgOn = (customer: string) =>
 const subscriptionService = {
   createOrUpdateSubscription: record('createOrUpdateSubscription', () => ({})),
   deleteSubscription: record('deleteSubscription', () => ({ count: 1 })),
+  revokeLocalSubscription: record('revokeLocalSubscription', () => ({})),
   updateCancelAt: record('updateCancelAt', () => {
     if (failCancelAt) {
       throw new Error('database is down');
@@ -1118,5 +1119,159 @@ describe('the sales card for a paid invoice', () => {
     await announce(invoices[0]);
     await announce(invoices[1]);
     assert.equal(posted.length, 0);
+  });
+});
+
+describe('a full refund', () => {
+  // The invoice each PaymentIntent paid, as Stripe's invoice payments link them.
+  let paidBy: Record<string, string>;
+  let saved: Record<string, unknown>;
+  const resources = () => ({
+    invoices: Object.getPrototypeOf(probe.invoices),
+    invoicePayments: Object.getPrototypeOf(probe.invoicePayments),
+    paymentIntents: Object.getPrototypeOf(probe.paymentIntents),
+  });
+  before(() => {
+    const r = resources();
+    saved = {
+      invoices: r.invoices.retrieve,
+      invoicePayments: r.invoicePayments.list,
+      paymentIntents: r.paymentIntents.retrieve,
+    };
+    fake(probe.invoices, {
+      retrieve: async (id: string) => invoices.find((i) => i.id === id),
+    });
+    fake(probe.invoicePayments, {
+      list: async ({ payment }: any) => ({
+        data: [{ invoice: paidBy[payment.payment_intent] }],
+      }),
+    });
+    // Not a credits pack: the plan's own payment.
+    fake(probe.paymentIntents, { retrieve: async () => ({ metadata: {} }) });
+  });
+  after(() => {
+    fake(probe.invoices, { retrieve: saved.invoices });
+    fake(probe.invoicePayments, { list: saved.invoicePayments });
+    fake(probe.paymentIntents, { retrieve: saved.paymentIntents });
+  });
+
+  // A line of the subscription's price for the period [start, end]: its own
+  // charge for that period, or a proration (a change in the middle of one).
+  const line = (start: number, end: number, proration = false, amount = 4900) => ({
+    amount,
+    period: { start, end },
+    parent: {
+      type: 'subscription_item_details',
+      subscription_item_details: { proration },
+    },
+  });
+  const invoice = (
+    id: string,
+    billing_reason: Stripe.Invoice.BillingReason,
+    lines: ReturnType<typeof line>[],
+  ): Partial<Stripe.Invoice> => ({
+    id,
+    customer: 'cus_1',
+    total: 4900,
+    billing_reason,
+    parent: { subscription_details: { subscription: 'sub_1' } } as any,
+    lines: { data: lines } as any,
+  });
+  // The subscription, in the period [start, end].
+  const running = (start: number, end: number) =>
+    sub('sub_1', 100, {
+      items: {
+        data: [
+          {
+            price: proPrice,
+            current_period_start: start,
+            current_period_end: end,
+          },
+        ],
+      } as any,
+    });
+  // An upgrade in the middle of [200, 300]: the old price credited and the
+  // new one charged for what is left of the period, both prorations.
+  const upgrade = (id: string) =>
+    invoice(id, 'subscription_update', [
+      line(250, 300, true, -4900),
+      line(250, 300, true, 9900),
+    ]);
+  const refund = (invoiceId: string) => {
+    paidBy = { pi_1: invoiceId };
+    return service().chargeRefunded({
+      data: {
+        object: {
+          id: 'ch_1',
+          customer: 'cus_1',
+          refunded: true,
+          payment_intent: 'pi_1',
+        },
+      },
+    } as unknown as Stripe.ChargeRefundedEvent);
+  };
+
+  it('ends a plan whose trial was ended early from Billing', async () => {
+    // Stripe bills that first period as `subscription_update`.
+    subs = [running(200, 300)];
+    invoices = [invoice('in_1', 'subscription_update', [line(200, 300)])];
+    const result = await refund('in_1');
+    assert.deepEqual(called('subscriptions.cancel')[0], [
+      'sub_1',
+      { invoice_now: false, prorate: false },
+    ]);
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('ends a plan when its period is refunded after an upgrade was paid', async () => {
+    subs = [running(200, 300)];
+    invoices = [
+      invoice('in_1', 'subscription_create', [line(200, 300)]),
+      upgrade('in_2'),
+    ];
+    const result = await refund('in_1');
+    assert.equal(called('subscriptions.cancel').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('keeps the plan when only an upgrade’s difference is refunded', async () => {
+    subs = [running(200, 300)];
+    invoices = [
+      invoice('in_1', 'subscription_create', [line(200, 300)]),
+      upgrade('in_2'),
+    ];
+    const result = await refund('in_2');
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(result.reason, 'still subscribed');
+  });
+
+  it('keeps a yearly plan when the month before the switch is refunded', async () => {
+    // Stripe keeps the period's start and moves its end a year on; the
+    // switch itself is billed as prorations.
+    subs = [running(200, 1200)];
+    invoices = [
+      invoice('in_1', 'subscription_update', [line(200, 300)]),
+      invoice('in_2', 'subscription_update', [
+        line(250, 300, true, -4900),
+        line(250, 1200, true, 99000),
+      ]),
+    ];
+    const result = await refund('in_1');
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(result.reason, 'still subscribed');
+  });
+
+  it('keeps the plan when a past period is refunded', async () => {
+    subs = [running(300, 400)];
+    invoices = [
+      invoice('in_1', 'subscription_create', [line(200, 300)]),
+      invoice('in_2', 'subscription_cycle', [line(300, 400)]),
+    ];
+    const result = await refund('in_1');
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(result.reason, 'still subscribed');
   });
 });

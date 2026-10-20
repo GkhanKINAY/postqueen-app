@@ -3262,9 +3262,9 @@ export class StripeService extends PaymentProviderAbstract {
 
   /**
    * The subscription a charge paid for, found through the invoice it settled,
-   * and whether that invoice is the subscription's latest. A Charge no longer
-   * carries its invoice on this API version, so the link is the invoice payment
-   * behind the charge's PaymentIntent.
+   * and whether that invoice paid for the period now running. A Charge no
+   * longer carries its invoice on this API version, so the link is the invoice
+   * payment behind the charge's PaymentIntent.
    */
   private async subscriptionOfCharge(charge: Stripe.Charge) {
     const paymentIntent =
@@ -3291,16 +3291,23 @@ export class StripeService extends PaymentProviderAbstract {
       return null;
     }
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const latest =
-      typeof subscription.latest_invoice === 'string'
-        ? subscription.latest_invoice
-        : subscription.latest_invoice?.id;
-    // A period's own invoice, not a proration for a mid-period upgrade:
-    // refunding that difference is goodwill, not the end of the plan.
-    const period = ['subscription_create', 'subscription_cycle'].includes(
-      invoice.billing_reason || ''
-    );
-    return { subscription, current: latest === invoiceId && period };
+    // The current period's own charge, read from the lines: its price for the
+    // whole period now running. `billing_reason` cannot tell it: ending a trial
+    // early from Billing bills the first period as `subscription_update`, the
+    // reason an upgrade's proration has, so that period kept running after a
+    // full refund. A proration refunded is goodwill, and a month paid before a
+    // switch to yearly (its line ends where the month did) or a past period is
+    // not a reason to end the period running now.
+    const item = subscription.items?.data?.[0];
+    const current =
+      !!item?.current_period_start &&
+      invoice.lines.data.some(
+        (line) =>
+          line.parent?.subscription_item_details?.proration === false &&
+          line.period?.start === item.current_period_start &&
+          line.period?.end === item.current_period_end
+      );
+    return { subscription, current };
   }
 
   /**
@@ -3446,7 +3453,7 @@ export class StripeService extends PaymentProviderAbstract {
 
     // A full refund of the current period's charge ends that subscription: the
     // period is no longer paid for. Refunding one past invoice is not a reason
-    // to end a running subscription, so only the latest invoice counts.
+    // to end a running subscription, so only that period's own invoice counts.
     await this.cancelSubscriptionOfCharge(charge, true);
 
     if (await this.hasEntitlingSubscription(customer)) {
