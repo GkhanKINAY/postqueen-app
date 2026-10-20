@@ -14,3 +14,18 @@ describe('Media lightbox frame', () => {
     assert.match(source, /object-contain/);
   });
 });
+
+describe('Media lightbox navigation', () => {
+  it('steps to the neighbouring files with buttons and the arrow keys', () => {
+    assert.match(source, /onPrev\?: \(\) => void;/);
+    assert.match(source, /onNext\?: \(\) => void;/);
+    assert.match(source, /data-pq="media-lightbox-prev"/);
+    assert.match(source, /data-pq="media-lightbox-next"/);
+    // RTL swaps which arrow walks forward, and a focused video keeps its own
+    // arrow-key seeking.
+    assert.match(source, /e\.key === \(rtl \? 'ArrowLeft' : 'ArrowRight'\) \? onNext : onPrev/);
+    // Alt/Cmd + arrow stays the browser's Back.
+    assert.match(source, /if \(e\.altKey \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey\) return;/);
+    assert.match(source, /closest\('video, input, textarea/);
+  });
+});

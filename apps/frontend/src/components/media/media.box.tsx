@@ -282,9 +282,13 @@ export const MediaBox: FC<{
 
   // The key carries the page, so without `keepPreviousData` every page click
   // emptied the grid and unmounted the pager the click had just landed on.
-  const { data, mutate, isLoading } = useSWR(`get-media-${page}`, loadMedia, {
-    keepPreviousData: true,
-  });
+  const { data, mutate, isLoading, error } = useSWR(
+    `get-media-${page}`,
+    loadMedia,
+    {
+      keepPreviousData: true,
+    }
+  );
 
   const sourceRows: MediaRow[] = useMemo(() => {
     return (data?.results || []) as MediaRow[];
@@ -826,6 +830,83 @@ export const MediaBox: FC<{
     setPage(next);
   }, []);
 
+  // The lightbox walks the files on screen, then turns the page: going
+  // forward from a page's last file opens the next page's first file once it
+  // has arrived (its last one, going back).
+  const [lightboxTurn, setLightboxTurn] = useState<{
+    dir: 1 | -1;
+    from: number;
+  } | null>(null);
+  const lightboxIndex = lightbox
+    ? visibleMedia.findIndex((m) => m.id === lightbox.id)
+    : -1;
+  const lastPage = (data?.pages || 1) - 1;
+
+  const stepLightbox = useCallback(
+    (dir: 1 | -1) => () => {
+      if (lightboxTurn || lightboxIndex === -1) return;
+      const row = visibleMedia[lightboxIndex + dir];
+      if (row) {
+        setLightbox(row);
+        return;
+      }
+      if (page + dir < 0 || page + dir > lastPage) return;
+      setLightboxTurn({ dir, from: page });
+      changeStandalonePage(page + dir);
+    },
+    [
+      lightboxTurn,
+      lightboxIndex,
+      visibleMedia,
+      page,
+      lastPage,
+      changeStandalonePage,
+    ]
+  );
+
+  useEffect(() => {
+    if (!lightboxTurn) return;
+    // Closed while the page was on its way.
+    if (!lightbox) {
+      setLightboxTurn(null);
+      return;
+    }
+    if (isLoading) return;
+    // A failed fetch leaves the previous page's rows in `visibleMedia`.
+    const row =
+      !error &&
+      visibleMedia[lightboxTurn.dir === 1 ? 0 : visibleMedia.length - 1];
+    if (row) {
+      setLightboxTurn(null);
+      setLightbox(row);
+      return;
+    }
+    // Under Images or Video a page can hold none of that kind, so keep going;
+    // with nothing further, go back to the page the open file is on.
+    const next = page + lightboxTurn.dir;
+    if (error || next < 0 || next > lastPage) {
+      setLightboxTurn(null);
+      changeStandalonePage(lightboxTurn.from);
+      return;
+    }
+    changeStandalonePage(next);
+  }, [
+    lightboxTurn,
+    lightbox,
+    isLoading,
+    error,
+    visibleMedia,
+    page,
+    lastPage,
+    changeStandalonePage,
+  ]);
+
+  const hasPrevMedia =
+    lightboxIndex !== -1 && (lightboxIndex > 0 || page > 0);
+  const hasNextMedia =
+    lightboxIndex !== -1 &&
+    (lightboxIndex < visibleMedia.length - 1 || page < lastPage);
+
   const standaloneFilterTabs = (
     <div className="flex items-center gap-[3px] rounded-pqSm bg-pqSettings p-[3px]">
       {(
@@ -1336,6 +1417,8 @@ export const MediaBox: FC<{
             onClose={() => setLightbox(null)}
             onDownload={downloadMedia(lightbox)}
             onDelete={() => deleteImage(lightbox)()}
+            onPrev={hasPrevMedia ? stepLightbox(-1) : undefined}
+            onNext={hasNextMedia ? stepLightbox(1) : undefined}
           />
         )}
       </DropFiles>
@@ -1664,7 +1747,9 @@ export const MediaBox: FC<{
           media={lightbox}
           onClose={() => setLightbox(null)}
           onDownload={downloadMedia(lightbox)}
-            onDelete={() => deleteImage(lightbox)()}
+          onDelete={() => deleteImage(lightbox)()}
+          onPrev={hasPrevMedia ? stepLightbox(-1) : undefined}
+          onNext={hasNextMedia ? stepLightbox(1) : undefined}
         />
       )}
     </div>

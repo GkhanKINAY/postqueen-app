@@ -123,6 +123,19 @@ describe('Media library thumbnails', () => {
   });
 });
 
+describe('Media lightbox stepping', () => {
+  it('walks the files on screen, then turns the page, in both grids', () => {
+    assert.equal(
+      source.split('onNext={hasNextMedia ? stepLightbox(1) : undefined}').length - 1,
+      2
+    );
+    assert.match(source, /setLightboxTurn\(\{ dir, from: page \}\)/);
+    // A filter with nothing further, or a failed fetch, goes back to the
+    // open file's page instead of leaving the grid somewhere else.
+    assert.match(source, /if \(error \|\| next < 0 \|\| next > lastPage\) \{\n\s+setLightboxTurn\(null\);\n\s+changeStandalonePage\(lightboxTurn\.from\);/);
+  });
+});
+
 describe('Uploader', () => {
   it('lets go of a finished batch even when its posters or hand-off throw', () => {
     assert.equal(
