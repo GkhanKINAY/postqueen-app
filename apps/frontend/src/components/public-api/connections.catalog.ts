@@ -577,9 +577,9 @@ export function buildConnectionsCatalog(
     message: { kind: 'message', label: t('conn_way_message', 'One message') },
     signIn: { kind: 'signin', label: t('conn_way_sign_in', 'Sign in, no key') },
     oneCommand: { kind: 'command', label: t('conn_way_one_command', 'One command') },
-    fourCommands: {
+    threeCommands: {
       kind: 'command',
-      label: t('conn_way_four_commands', 'Four commands'),
+      label: t('conn_way_three_commands', 'Three commands'),
     },
     cliSkill: { kind: 'command', label: t('conn_way_cli_skill', 'CLI and skill') },
     config: { kind: 'config', label: t('conn_way_config', 'Add to config') },
@@ -588,7 +588,6 @@ export function buildConnectionsCatalog(
       kind: 'connector',
       label: t('conn_way_connector', 'Custom connector'),
     },
-    appsPanel: { kind: 'panel', label: t('conn_way_apps_panel', 'Apps panel') },
     address: { kind: 'address', label: t('conn_way_address', 'One address') },
   } satisfies Record<string, Way>;
   // WhatsApp, Telegram, Slack and Discord reach the bots you host, not PostQueen.
@@ -612,13 +611,25 @@ export function buildConnectionsCatalog(
   // Claude and Claude Cowork share one custom connector, and its team rules.
   const claudeTeamNote = t(
     'conn_claude_apps_team_note',
-    'On Team and Enterprise, only an Owner can add a custom connector (on Enterprise, also a role that manages the library), so ask one. They add it under Organization settings > Connectors > Add > Custom > Web. An organization connector with the key address gives everyone who uses it your workspace key’s access. With the sign-in address, each person signs in on their own.'
+    'On Team and Enterprise, only an Owner can add a custom connector (on Enterprise, also a role that manages the library), so ask one. They add it under Organization settings > Connectors > Add > Custom > Web. Members then find it under Customize > Connectors and click Connect. An organization connector with the key address gives everyone who uses it your workspace key’s access. With the sign-in address, each person signs in on their own.'
   );
   const signInStep = (detail: string): Step => ({
     title: t('conn_step_sign_in', 'Or sign in instead of a key'),
     detail,
     code: mcpSignInUrl,
   });
+
+  // The key for the skill, where a gateway run as a service reads it: it does
+  // not see an export in your shell.
+  const openclawKeyConfig = `{
+  skills: {
+    entries: {
+      postqueen: {
+        env: { POSTQUEEN_API_KEY: "${apiKey}" },
+      },
+    },
+  },
+}`;
 
   const skillInstall: Step[] = [
     {
@@ -650,9 +661,10 @@ export function buildConnectionsCatalog(
       title: t('conn_step_skill_key', 'Or give it your API key'),
       detail: t(
             'conn_step_skill_key_body',
-            'For a machine without a browser. Put the key in the environment the gateway actually runs in: a gateway installed as a service does not see an export in your shell.'
+            'For a machine without a browser. Add this to `~/.openclaw/openclaw.json`, then run `openclaw gateway restart`. A gateway installed as a service does not see an export in your shell.'
           ),
-      code: `export POSTQUEEN_API_KEY="${apiKey}"`,
+      code: openclawKeyConfig,
+      codeLabel: '~/.openclaw/openclaw.json',
     },
   ];
 
@@ -707,7 +719,7 @@ openclaw channels login --channel whatsapp`,
       title: t('conn_whatsapp_step_gateway', 'Start the gateway and approve you'),
       detail: t(
         'conn_whatsapp_step_gateway_detail',
-        'Leave the gateway running. The first sender to message you needs a pairing code. Access requests expire after an hour.'
+        'Leave the gateway running. Every new sender needs a pairing code. Access requests expire after an hour.'
       ),
       code: `openclaw gateway
 openclaw pairing list whatsapp
@@ -745,18 +757,20 @@ openclaw pairing approve telegram <CODE>`,
       title: t('conn_slack_chat_step_app', 'Create a Slack app in your workspace'),
       detail: t(
         'conn_slack_chat_step_app_detail',
-        'Socket Mode needs a Bot User OAuth Token and an App-Level Token with connections:write. Both tokens must come from the same Slack app. This is a front door to your agent, not connecting Slack as a publishing channel under Channels.'
+        'At api.slack.com/apps, choose Create New App > From a manifest, pick your workspace and paste the manifest from OpenClaw’s Slack setup page. Then generate an App-Level Token with connections:write, and install the app to get the Bot User OAuth Token. This is a front door to your agent, not connecting Slack as a publishing channel under Channels.'
       ),
     },
     {
-      title: t('conn_slack_chat_step_plugin', 'Install the Slack plugin'),
+      title: t('conn_slack_chat_step_plugin', 'Install the Slack plugin and pick a channel'),
       detail: t(
         'conn_slack_chat_step_plugin_detail',
-        'The tokens do nothing until channels.slack is in the OpenClaw config. This patch adds it in Socket Mode and reads both tokens from the environment. A gateway installed as a service does not see an export in your shell, so add them to its own environment too. Typical bot scopes include app_mentions:read, channels:history, chat:write, im:history and files:write.'
+        'The tokens do nothing until channels.slack is in the OpenClaw config. Put both tokens in ~/.openclaw/.env, where a gateway installed as a service finds them. The patch turns on Socket Mode and lets the bot answer in one channel. Replace <CHANNEL_ID> with that channel’s ID and invite the app to it. The patch needs the gateway stopped, so the commands stop it first and start it again. For DMs, approve your pairing code. OpenClaw’s Slack setup page has more allowlist options.'
       ),
       code: `openclaw plugins install @openclaw/slack
-export SLACK_APP_TOKEN=your-app-token
-export SLACK_BOT_TOKEN=your-bot-token
+cat >> ~/.openclaw/.env <<'ENV'
+SLACK_APP_TOKEN=your-app-token
+SLACK_BOT_TOKEN=your-bot-token
+ENV
 cat > slack.socket.patch.json5 <<'JSON5'
 {
   channels: {
@@ -765,12 +779,19 @@ cat > slack.socket.patch.json5 <<'JSON5'
       mode: "socket",
       appToken: { source: "env", provider: "default", id: "SLACK_APP_TOKEN" },
       botToken: { source: "env", provider: "default", id: "SLACK_BOT_TOKEN" },
+      groupPolicy: "allowlist",
+      channels: {
+        "<CHANNEL_ID>": { enabled: true, requireMention: true },
+      },
     },
   },
 }
 JSON5
+openclaw gateway stop
 openclaw config patch --file ./slack.socket.patch.json5
-openclaw gateway`,
+openclaw gateway start
+openclaw pairing list slack
+openclaw pairing approve slack <CODE>`,
     },
     chatTryStep(),
   ];
@@ -781,29 +802,36 @@ openclaw gateway`,
       title: t('conn_discord_chat_step_bot', 'Create a Discord bot'),
       detail: t(
         'conn_discord_chat_step_bot_detail',
-        'In the Discord Developer Portal, create an application with a bot user. Turn Message Content Intent on or the bot receives nothing readable. Invite it with the bot and applications.commands scopes. Publishing into Discord is a separate Channels setup.'
+        'In the Discord Developer Portal, create an application with a bot user. Turn on Message Content Intent so the bot can read ordinary channel messages. DMs and mentions work without it. Invite it with the bot and applications.commands scopes. Publishing into Discord is a separate Channels setup.'
       ),
     },
     {
-      title: t('conn_discord_chat_step_plugin', 'Install the Discord plugin'),
+      title: t('conn_discord_chat_step_plugin', 'Install the Discord plugin and allow your server'),
       detail: t(
         'conn_discord_chat_step_plugin_detail',
-        'The token does nothing until channels.discord is in the OpenClaw config. This patch adds it and reads the token from the environment. A gateway installed as a service does not see an export in your shell: put the token in ~/.openclaw/.env instead. Then start the gateway, DM the bot and approve the pairing code.'
+        'The token does nothing until channels.discord is in the OpenClaw config. Put it in ~/.openclaw/.env, where a gateway installed as a service finds it. Without the guild allowlist the bot answers DMs only. To copy your server ID and user ID, turn on Developer Mode in Discord under User Settings > Developer. The patch needs the gateway stopped, so the commands stop it first and start it again. Then DM the bot and approve the pairing code.'
       ),
       code: `openclaw plugins install @openclaw/discord
-export DISCORD_BOT_TOKEN="YOUR_BOT_TOKEN"
+cat >> ~/.openclaw/.env <<'ENV'
+DISCORD_BOT_TOKEN=YOUR_BOT_TOKEN
+ENV
 cat > discord.patch.json5 <<'JSON5'
 {
   channels: {
     discord: {
       enabled: true,
       token: { source: "env", provider: "default", id: "DISCORD_BOT_TOKEN" },
+      groupPolicy: "allowlist",
+      guilds: {
+        "<SERVER_ID>": { requireMention: true, users: ["<YOUR_USER_ID>"] },
+      },
     },
   },
 }
 JSON5
+openclaw gateway stop
 openclaw config patch --file ./discord.patch.json5
-openclaw gateway
+openclaw gateway start
 openclaw pairing list discord
 openclaw pairing approve discord <CODE>`,
     },
@@ -875,16 +903,16 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_openclaw_step_3', 'No browser there? Give OpenClaw your key.'),
               detail: t(
                 'conn_openclaw_step_3_detail',
-                'Set it in the environment the gateway starts with, or under `skills.entries.postqueen.env` in `openclaw.json`.'
+                'Add this to `~/.openclaw/openclaw.json`, then run `openclaw gateway restart`.'
               ),
-              code: `export POSTQUEEN_API_KEY=${apiKey}`,
-              codeLabel: 'terminal',
+              code: openclawKeyConfig,
+              codeLabel: '~/.openclaw/openclaw.json',
             },
             {
               title: t('conn_openclaw_step_4', 'Check that it is listed.'),
               detail: t(
                 'conn_openclaw_step_4_detail',
-                'Look for `postqueen` in the list, then ask OpenClaw to list your channels.'
+                'Look for `postqueen` in the list. Skills load when a session starts, so start a new session, then ask OpenClaw to list your channels.'
               ),
               code: `openclaw skills list --eligible`,
               codeLabel: 'terminal',
@@ -942,10 +970,10 @@ openclaw pairing approve discord <CODE>`,
               ),
             },
             {
-              symptom: t('conn_openclaw_fix_3', 'MCP connects but no tools appear'),
+              symptom: t('conn_openclaw_fix_3', '`openclaw mcp add` fails for PostQueen'),
               fix: t(
                 'conn_openclaw_fix_3_detail',
-                'Add `--transport streamable-http`. Without it OpenClaw assumes SSE.'
+                'Add `--transport streamable-http`. Without it OpenClaw assumes SSE, and the check it runs before saving fails. Stop the gateway first: `openclaw mcp add` refuses to run while it is up.'
               ),
             },
             {
@@ -974,7 +1002,8 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_openclaw_route_2_best', 'Using PostQueen’s MCP tools'),
               how: t(
                 'conn_openclaw_route_2_how',
-                '`openclaw mcp add` with `--transport streamable-http` and an Authorization header.'
+                '`openclaw gateway stop`, then `openclaw mcp add postqueen --url {{mcp}} --transport streamable-http --header "Authorization=Bearer YOUR_API_KEY"`, then `openclaw gateway start`.',
+                urlVars
               ),
             },
             {
@@ -984,7 +1013,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
               how: t(
                 'conn_openclaw_route_3_how',
-                '`openclaw mcp add postqueen --url {{signin}} --transport streamable-http --auth oauth`, then `openclaw mcp login postqueen`.',
+                '`openclaw gateway stop`, then `openclaw mcp add postqueen --url {{signin}} --transport streamable-http --auth oauth` and `openclaw mcp login postqueen`, then `openclaw gateway start`.',
                 urlVars
               ),
             },
@@ -1073,12 +1102,12 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_hermes_tip_3',
-              'Hermes can also sign in instead of using a key: set `auth: oauth` with the URL `{{signin}}`.',
+              'Hermes can also sign in instead of using a key: set `auth: oauth` with the URL `{{signin}}`, then run `hermes mcp login postqueen`.',
               urlVars
             ),
             t(
               'conn_hermes_tip_4',
-              'Recurring jobs use `hermes cron create`; there is no `tasks` section in the config file.'
+              'Recurring jobs use `hermes cron create`. Scheduled jobs live in `~/.hermes/cron/jobs.json`.'
             ),
           ],
           fixes: [
@@ -1139,7 +1168,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
               how: t(
                 'conn_hermes_route_3_how',
-                '`auth: oauth`, then you sign in to PostQueen in the browser.'
+                '`auth: oauth`, then `hermes mcp login postqueen` opens the PostQueen sign-in in your browser.'
               ),
             },
           ],
@@ -1216,7 +1245,7 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_cc_tip_app_1',
-              'Claude Code is not Claude on the web or desktop. Connectors you add in claude.ai show up in Claude Code when you log in with your claude.ai account, not with an API key.'
+              'Claude Code is separate from the Claude chat app (it also runs in Claude Desktop’s Code tab and on the web). Connectors you add in claude.ai show up in Claude Code when you log in with your claude.ai account, not with an API key.'
             ),
           ],
           fixes: [
@@ -1482,7 +1511,7 @@ openclaw pairing approve discord <CODE>`,
               ),
               detail: t(
                 'conn_codex_step_4_detail',
-                'In the extension: gear menu > MCP servers > Add server > Streamable HTTP, paste the URL, save and choose Restart extension. In the ChatGPT desktop app: Settings > MCP servers > Add server, then Restart.'
+                'In the extension: gear menu > MCP servers > Add server > Streamable HTTP, paste the URL, save and choose Restart extension. In the ChatGPT desktop app: Settings > MCP servers > Add server. Enter a name, choose Streamable HTTP, paste the URL, then select Restart.'
               ),
             },
           ],
@@ -1513,7 +1542,7 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_codex_tip_3',
-              'Prefer to sign in? Use `{{signin}}` as the URL. Codex opens the PostQueen sign-in, which a workspace admin approves.',
+              'Prefer to sign in? Use `{{signin}}` as the URL. Codex opens the PostQueen sign-in, which a workspace admin approves. If the browser does not open, run `codex mcp login postqueen`.',
               urlVars
             ),
           ],
@@ -1575,7 +1604,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
               how: t(
                 'conn_codex_route_3_how',
-                'Codex opens the PostQueen sign-in, which a workspace admin approves.'
+                'Codex opens the PostQueen sign-in, which a workspace admin approves. If the browser does not open, run `codex mcp login postqueen`.'
               ),
             },
           ],
@@ -1981,7 +2010,7 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_claude_apps_tip_app_2',
-              'PostQueen on a private network, such as a LAN or VPN? Claude connects from Anthropic’s servers, so use mcp-remote in Claude Desktop’s config instead.'
+              'PostQueen on a private network, such as a LAN or VPN? Claude connects from Anthropic’s servers, so allow Anthropic’s IP ranges in your firewall or use an MCP tunnel. A local server in Claude Desktop’s config file, such as mcp-remote, works in Claude Desktop only, not in Cowork or on claude.ai.'
             ),
           ],
           fixes: [
@@ -1999,7 +2028,7 @@ openclaw pairing approve discord <CODE>`,
               symptom: t('conn_claude_apps_fix_2', 'Claude refuses the address'),
               fix: t(
                 'conn_claude_apps_fix_2_detail',
-                'Paste it with no slash at the end. Claude checks that it matches exactly.'
+                'Paste it exactly as shown, with no slash at the end.'
               ),
             },
             {
@@ -2058,7 +2087,7 @@ openclaw pairing approve discord <CODE>`,
           short: t('conn_chatgpt_line', 'Upload photos in the chat and schedule them'),
           teamNote: t(
             'conn_chatgpt_team_note',
-            'On Business, only admins and owners can add a custom MCP server. On Enterprise and Edu, an admin first grants Create plugins with MCPs.'
+            'On Business, only admins and owners can add a custom MCP server. On Enterprise and Edu, admins and owners can add it, and other members need an admin to grant them Create plugins with MCPs.'
           ),
           docs: [
             {
@@ -2088,7 +2117,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_chatgpt_step_4', 'Pick it in a chat.'),
               detail: t(
                 'conn_chatgpt_step_4_detail',
-                'In a new chat, type @ and pick PostQueen. ChatGPT asks you to confirm each action that changes something.'
+                'In a new chat, type @ and pick PostQueen. By default, ChatGPT asks you to confirm each action that changes something.'
               ),
               inline: 'ask',
               ask: chip.channels,
@@ -2115,7 +2144,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_chatgpt_signin_step_4', 'Pick it in a chat.'),
               detail: t(
                 'conn_chatgpt_signin_step_4_detail',
-                'In a new chat, type @ and pick PostQueen. ChatGPT asks you to confirm each action that changes something.'
+                'In a new chat, type @ and pick PostQueen. By default, ChatGPT asks you to confirm each action that changes something.'
               ),
               inline: 'ask',
               ask: chip.channels,
@@ -2173,7 +2202,7 @@ openclaw pairing approve discord <CODE>`,
             {
               symptom: t(
                 'conn_chatgpt_fix_3',
-                'The desktop app’s MCP servers setting does nothing in chat'
+                'The desktop app’s MCP servers setting does not show in ChatGPT on the web'
               ),
               fix: t(
                 'conn_chatgpt_fix_3_detail',
@@ -2223,7 +2252,7 @@ openclaw pairing approve discord <CODE>`,
           section: 'bots',
           way: way.connector,
           site: `${SITE}/grok`,
-          short: t('conn_grok_line', 'Works on grok.com and in the Grok apps'),
+          short: t('conn_grok_line', 'Works on grok.com'),
           teamNote: t(
             'conn_grok_team_note',
             'On Business and Enterprise, an admin first adds it at console.x.ai under Grok Business > Connectors > + Add Connector > Other. Members then connect at grok.com/connectors.'
@@ -2324,7 +2353,7 @@ openclaw pairing approve discord <CODE>`,
               name: t('conn_route_name_key_url', 'Key in the address'),
               address: `${mcpUrl}/YOUR_API_KEY`,
               need: 'key',
-              bestFor: t('conn_grok_route_1_best', 'grok.com and the Grok apps'),
+              bestFor: t('conn_grok_route_1_best', 'Grok on grok.com'),
               how: t(
                 'conn_grok_route_1_how',
                 'Paste it as the MCP server URL of a custom connector at grok.com/connectors.'
@@ -2427,7 +2456,7 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_grok_bot_tip_3',
-              'On Teams and Enterprise, Grok Bot follows your team’s connector policy, and a blocked plugin shows as Disabled by team admin. On Enterprise, PostQueen’s address must also be on the MCP allowlist.'
+              'On Teams and Enterprise, Grok Bot follows your team’s connector policy, and a blocked plugin shows as Disabled by team admin. On Enterprise, add PostQueen’s server URL to your MCP allowlist if you use one.'
             ),
             t(
               'conn_grok_bot_tip_4',
@@ -2464,14 +2493,14 @@ openclaw pairing approve discord <CODE>`,
               ),
               fix: t(
                 'conn_grok_bot_fix_3_detail',
-                'Your team’s connector policy blocks it. Ask your admin to allow it, and on Enterprise to add PostQueen’s address to the MCP allowlist.'
+                'Your team’s connector policy blocks it. Ask your admin to allow it. On Enterprise, also ask them to add PostQueen’s server URL to your MCP allowlist if you use one.'
               ),
             },
             {
-              symptom: t('conn_grok_bot_fix_4', 'The sign-in address fails'),
+              symptom: t('conn_grok_bot_fix_4', 'You tried the sign-in address'),
               fix: t(
                 'conn_grok_bot_fix_4_detail',
-                'Use `{{mcp}}` with the key in the secure prompt instead.',
+                'This guide uses `{{mcp}}` with the key in the secure prompt.',
                 urlVars
               ),
             },
@@ -2645,7 +2674,7 @@ openclaw pairing approve discord <CODE>`,
               ),
               fix: t(
                 'conn_claude_cowork_fix_4_detail',
-                'On Enterprise, an admin turns on Cowork for the web and mobile.'
+                'Update the Claude app first. Where Claude has no Cowork switch, ask in a normal chat with PostQueen on. On Enterprise, an admin turns on Cowork for the web and mobile.'
               ),
             },
           ],
@@ -2937,7 +2966,7 @@ openclaw pairing approve discord <CODE>`,
           ],
           info: t(
             'conn_devin_desktop_note',
-            'Devin Local asks before each tool call by default. Older Devin versions keep MCP servers in ~/.config/devin/config.json and move them to mcp_config.json on startup.'
+            'By default, Devin Local asks before each MCP tool call. Versions before v3000.3 kept MCP servers in config.json. Devin moves them to mcp_config.json on startup.'
           ),
           docs: [
             {
@@ -3063,7 +3092,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_step_verify', 'Check it worked'),
               detail: t(
                 'conn_zed_verify',
-                'In the Agent Panel, ask Zed to list your connected channels. A green indicator on the postqueen server means it is active.'
+                'In the Agent Panel, ask Zed to list your connected channels. Under Settings → AI → MCP Servers, a green dot next to postqueen with the tooltip Server is active means it connected.'
               ),
             },
           ],
@@ -3080,7 +3109,7 @@ openclaw pairing approve discord <CODE>`,
           section: 'agents',
           way: way.oneCommand,
           site: `${SITE}/gemini-cli`,
-          short: t('conn_gemini_line', 'Works with a paid Gemini API key or Code Assist license'),
+          short: t('conn_gemini_line', 'Works with a paid Gemini API key or Code Assist Standard or Enterprise license'),
           docs: [
             {
               label: t('conn_docs_full_guide', 'Full guide in the docs'),
@@ -3220,7 +3249,7 @@ openclaw pairing approve discord <CODE>`,
           ),
           teamNote: t(
             'conn_perplexity_team_note',
-            'On Enterprise, members can add their own custom connector only after an admin turns on Allow members to add custom connectors. To add PostQueen for the whole organization, an admin opens Enterprise settings > Permissions > Connectors permissions and clicks + Custom connector.'
+            'On Enterprise, members can add their own custom connector only after an admin turns on Allow members to add custom connectors. To add PostQueen for the whole organization, an admin opens Enterprise settings > Permissions > Connectors permissions and clicks + Custom connector, then shares it with the organization from the Permissions screen in Enterprise settings.'
           ),
           docs: [
             {
@@ -3352,7 +3381,7 @@ openclaw pairing approve discord <CODE>`,
           cred: 'mcp',
           exampleKind: 'bot',
           section: 'bots',
-          way: way.fourCommands,
+          way: way.threeCommands,
           keywords: chatAppWords,
           chatApps: true,
           site: `${SITE}/nanoclaw`,
@@ -3382,12 +3411,12 @@ openclaw pairing approve discord <CODE>`,
               codeLabel: 'terminal',
             },
             {
-              title: t('conn_nanoclaw_step_grant', 'Grant the key to your agent group.'),
+              title: t('conn_nanoclaw_step_grant', 'Check that the group’s agent can use the key.'),
               detail: t(
                 'conn_nanoclaw_step_grant_detail',
-                'A new agent starts with only its Anthropic secret, so without this PostQueen calls go out with no key. `onecli agents list` shows the agent whose identifier is your group’s id, and `onecli secrets list` shows the PostQueen secret’s id. This needs OneCLI 2.9 or later. On older OneCLI, merge the secret into the list with `onecli agents set-secrets`, which replaces the whole list.'
+                'Each agent group has a OneCLI agent whose identifier is the group’s id. It appears once the group has run. On the OneCLI version NanoClaw installs, agents use secret mode `all` and pick up the PostQueen secret by its host, so there is nothing to grant. If the agent shows secret mode `selective`, add the secret (its id is in `onecli secrets list`) as NanoClaw’s Credentials page shows. On OneCLI with agent grants (server 1.44 or later, CLI 2.9 or later), run `onecli agents grants attach-secret --id YOUR_AGENT_ID --secret-id YOUR_SECRET_ID`.'
               ),
-              code: `onecli agents grants attach-secret --id YOUR_AGENT_ID \\\n  --secret-id YOUR_SECRET_ID`,
+              code: 'onecli agents list',
               codeLabel: 'terminal',
             },
             {
@@ -3424,20 +3453,20 @@ openclaw pairing approve discord <CODE>`,
           goodToKnow: [
             t(
               'conn_nanoclaw_tip_1',
-              'If the PostQueen tools do not load, add the server with the key as a header instead: `ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url {{mcp}} --headers \'{"Authorization":"Bearer YOUR_API_KEY"}\'`, then restart the group. The key then sits in the group’s config, where the agent can read it.',
+              'Last resort only, against NanoClaw’s advice to keep real credentials in the vault: if the PostQueen tools still do not load, add the server with the key as a header with `ncl groups config add-mcp-server --id YOUR_GROUP_ID --name postqueen --url {{mcp}} --headers \'{"Authorization":"Bearer YOUR_API_KEY"}\'`, then restart the group. The key then sits in the group’s config.',
               urlVars
             ),
             t(
               'conn_nanoclaw_tip_2',
-              'Do not use the address with the key in it: NanoClaw rejects URLs that embed credentials and expects keys in the OneCLI vault.'
+              'Do not use the address with the key in it: the key would sit in the group’s config. Keep it in the OneCLI vault.'
             ),
             t(
               'conn_nanoclaw_tip_3',
-              'NanoClaw has no sign-in flow for MCP servers, so use the API key rather than PostQueen’s sign-in address.'
+              'This setup uses the API key in the OneCLI vault, not PostQueen’s sign-in address.'
             ),
             t(
               'conn_nanoclaw_tip_4',
-              'The PostQueen CLI and skill do not work inside NanoClaw’s containers; use the MCP server.'
+              'NanoClaw rejects credential values in a container’s environment, so do not hand `POSTQUEEN_API_KEY` to the agent. Use the vault and the MCP server.'
             ),
             t(
               'conn_nanoclaw_tip_5',
@@ -3449,25 +3478,26 @@ openclaw pairing approve discord <CODE>`,
               symptom: t('conn_nanoclaw_fix_1', 'PostQueen tools do not load'),
               fix: t(
                 'conn_nanoclaw_fix_1_detail',
-                'Check that the PostQueen secret is granted to the group’s OneCLI agent, then restart the group with `ncl groups restart`. If they still do not load, add the server with the key as a header, as Good to know shows.'
+                'Usually the calls go out without an Authorization header. Check that the secret’s host pattern is `{{host}}`, and check the agent’s secret mode with `onecli agents list`. Then restart the group with `ncl groups restart`.',
+                { host: apiHost(mcpUrl), interpolation: { escapeValue: false } }
               ),
             },
             {
               symptom: t('conn_nanoclaw_fix_2', 'You put the key in the address'),
               fix: t(
                 'conn_nanoclaw_fix_2_detail',
-                'NanoClaw rejects URLs that embed credentials. Save the key in the OneCLI vault and use `{{mcp}}`.',
+                'The key would sit in the group’s config. Save it in the OneCLI vault and use `{{mcp}}`.',
                 urlVars
               ),
             },
             {
               symptom: t(
                 'conn_nanoclaw_fix_3',
-                'The PostQueen CLI does nothing inside NanoClaw'
+                'NanoClaw refuses `POSTQUEEN_API_KEY` in a container'
               ),
               fix: t(
                 'conn_nanoclaw_fix_3_detail',
-                'Its containers never get your environment. Use the MCP server.'
+                'It rejects credential values in a container’s environment. Keep the key in the OneCLI vault and use the MCP server.'
               ),
             },
             {
@@ -3498,11 +3528,11 @@ openclaw pairing approve discord <CODE>`,
               need: 'key',
               bestFor: t(
                 'conn_nanoclaw_route_2_best',
-                'When the tools do not load through the vault'
+                'A last resort when the vault route fails'
               ),
               how: t(
                 'conn_nanoclaw_route_2_how',
-                '`--headers` keeps the key in the group’s config, where the agent can read it.'
+                '`--headers` keeps the key in the group’s config, against NanoClaw’s advice to keep credentials in the vault.'
               ),
             },
           ],
@@ -3517,7 +3547,7 @@ openclaw pairing approve discord <CODE>`,
           cred: 'mcp',
           exampleKind: 'agent',
           section: 'agents',
-          way: way.appsPanel,
+          way: way.connector,
           site: `${SITE}/paperclip`,
           short: t(
             'conn_paperclip_line',
@@ -3535,7 +3565,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_paperclip_step_2', 'Connect your own MCP server.'),
               detail: t(
                 'conn_paperclip_step_2_detail',
-                'In Paperclip, open Apps > Connect an app > Connect your own MCP server, enter this address and press Check link.'
+                'In Paperclip, open Connectors, choose Connect on Connect your own tool, then Connect your own MCP server. Enter this address and press Check link.'
               ),
               code: `${mcpUrl}`,
               codeLabel: 'value',
@@ -3544,21 +3574,21 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_paperclip_step_3', 'Paste the key.'),
               detail: t(
                 'conn_paperclip_step_3_detail',
-                'Under Advanced authentication choose Key or token and paste the key on its own, without the word Bearer.'
+                'Under Advanced authentication, choose Key or token. Paste the key into App key on its own, without the word Bearer.'
               ),
             },
             {
-              title: t('conn_paperclip_step_4', 'Turn on the tools you want.'),
+              title: t('conn_paperclip_step_4', 'Choose what needs your approval.'),
               detail: t(
                 'conn_paperclip_step_4_detail',
-                'Reading tools start on. Tools that change something, such as scheduling a post, start off until you turn them on, and then ask for approval.'
+                'Paperclip turns on every PostQueen tool as Allowed, including scheduling. To approve each post first, open PostQueen’s Permissions and choose Set all: Ask first on the Write group.'
               ),
             },
             {
               title: t('conn_paperclip_step_5', 'Give it to your agents.'),
               detail: t(
                 'conn_paperclip_step_5_detail',
-                'Give an agent, a project or the whole company access to PostQueen, then assign a task such as:'
+                'On the connection’s Permissions tab, under Which agents can use this connection, choose Any agent or Just agents I pick. Then assign a task such as:'
               ),
               inline: 'ask',
               ask: chip.channels,
@@ -3572,11 +3602,11 @@ openclaw pairing approve discord <CODE>`,
             rows: [
               { tool: 'integrationList', result: t('conn_paperclip_demo_row_1', 'LinkedIn, X') },
               { tool: 'integrationSchema', result: t('conn_paperclip_demo_row_2', 'LinkedIn and X rules') },
-              { tool: 'integrationSchedulePostTool', result: t('conn_paperclip_demo_row_3', 'Approved by you, 4 drafts') },
+              { tool: 'integrationSchedulePostTool', result: t('conn_paperclip_demo_row_3', '4 drafts') },
             ],
             answer: t(
               'conn_paperclip_demo_answer',
-              'Four drafts are on your PostQueen calendar, two for each network. Your Claude Code agent wrote them and you approved the save.'
+              'Four drafts are on your PostQueen calendar, two for each network. Your Claude Code agent wrote them, and none goes out until you schedule it.'
             ),
           },
           tryChips: [chip.channels, chip.thisWeek, chip.lastMonth],
@@ -3595,11 +3625,11 @@ openclaw pairing approve discord <CODE>`,
             ),
             t(
               'conn_paperclip_tip_4',
-              'Agents that run commands can use the PostQueen CLI instead: install it with `npm install -g postqueen` where they run, bind a company secret to `POSTQUEEN_API_KEY` and import the skill in the Skills Store.'
+              'Agents that run commands can use the PostQueen CLI instead: install it with `npm install -g postqueen` where they run, bind a company secret to `POSTQUEEN_API_KEY` and import the skill on the Skills page.'
             ),
             t(
               'conn_paperclip_tip_5',
-              'There is no `paperclipai` command for MCP connections yet; use the Apps page.'
+              'There is no `paperclipai` command for MCP connections yet. Use the Connectors page.'
             ),
           ],
           fixes: [
@@ -3610,14 +3640,14 @@ openclaw pairing approve discord <CODE>`,
               ),
               fix: t(
                 'conn_paperclip_fix_1_detail',
-                'Give that agent, its project or the company access in Apps. Servers added with `claude mcp add` are ignored while Paperclip manages MCP.'
+                'On the connection’s Permissions tab, choose Any agent, or add that agent under Just agents I pick. Servers added with `claude mcp add` are ignored while Paperclip manages MCP.'
               ),
             },
             {
               symptom: t('conn_paperclip_fix_2', 'Scheduling a post does nothing'),
               fix: t(
                 'conn_paperclip_fix_2_detail',
-                'Tools that change something start off. Turn them on in Apps, then approve each call when Paperclip asks.'
+                'Open PostQueen’s Permissions in Connectors. The scheduling tool must be Allowed or Ask first, not Off. With Ask first, approve each call when Paperclip asks.'
               ),
             },
             {
@@ -3634,13 +3664,13 @@ openclaw pairing approve discord <CODE>`,
               ),
               fix: t(
                 'conn_paperclip_fix_4_detail',
-                'Only Claude Code and Codex agents, and agents on Paperclip’s ACP engine, get the Apps connection. Give other agents the PostQueen CLI instead.'
+                'Only Claude Code and Codex agents, and agents on Paperclip’s ACP engine, use a Connectors connection. Give other agents the PostQueen CLI instead.'
               ),
             },
           ],
           routes: [
             {
-              name: t('conn_paperclip_route_1', 'Key or token in Apps'),
+              name: t('conn_paperclip_route_1', 'Key or token in Connectors'),
               address: `${mcpUrl}`,
               need: 'key',
               bestFor: t('conn_route_best_quickest', 'The quickest setup'),
@@ -3656,7 +3686,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
               how: t(
                 'conn_paperclip_route_2_how',
-                'Choose Sign in to continue and approve as a PostQueen admin.'
+                'Enter this address and press Check link, which starts the browser sign-in. Approve as a PostQueen admin.'
               ),
             },
             {
@@ -3666,7 +3696,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_paperclip_route_3_best', 'Agent types that run commands'),
               how: t(
                 'conn_paperclip_route_3_how',
-                '`POSTQUEEN_API_KEY` from a company secret, with the skill from the Skills Store.'
+                '`POSTQUEEN_API_KEY` from a company secret, with the skill from the Skills page.'
               ),
             },
           ],
@@ -3705,7 +3735,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_muse_step_2', 'Send this message to Muse.'),
               detail: t(
                 'conn_muse_step_2_detail',
-                'Start a new chat in the Muse app, on muse.ai or in WhatsApp.'
+                'In a chat in the Muse app, on muse.ai or in WhatsApp.'
               ),
               code: `Create a custom connector for PostQueen, my social media scheduler.\nIts MCP server is ${mcpUrl} and it takes my PostQueen API key as a Bearer token.\nAsk me for the key in a secure prompt, not in this chat.\nSave a skill so every request to post, schedule or check my social media goes through PostQueen.\nWhen you are connected, list my PostQueen channels.`,
               codeLabel: t('conn_muse_step_2_code_label', 'new message to Muse'),
@@ -3715,7 +3745,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_muse_step_3', 'Use the secure prompt.'),
               detail: t(
                 'conn_muse_step_3_detail',
-                'When Muse asks for the key, paste it there, never into the chat. Muse then asks before it acts: Allow once, Allow for this task or Always allow.'
+                'When Muse asks for the key, paste it there, never into the chat. Muse keeps it in its Secure Credentials Store, then asks before it acts: Allow once, Allow for this task or Always allow.'
               ),
             },
             {
@@ -3790,7 +3820,7 @@ openclaw pairing approve discord <CODE>`,
               symptom: t('conn_muse_fix_4', 'Muse is not available to you'),
               fix: t(
                 'conn_muse_fix_4_detail',
-                'Muse is rolling out in the US and is not in every location yet.'
+                'Muse is available in the US and Canada.'
               ),
             },
           ],
@@ -3802,7 +3832,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_muse_route_1_best', 'The Muse app, muse.ai and WhatsApp'),
               how: t(
                 'conn_muse_route_1_how',
-                'Muse builds the connector from your message and asks for the key in its secure prompt.'
+                'Muse builds the connector from your message and keeps the key in its Secure Credentials Store.'
               ),
             },
           ],
@@ -3855,7 +3885,7 @@ openclaw pairing approve discord <CODE>`,
           ],
           note: t(
             'conn_other_mcp_note',
-            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. Cline also needs `"type": "streamableHttp"` in its entry; without it Cline falls back to legacy SSE. VS Code, Devin Desktop and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json, and do not look for PostQueen in Anthropic\'s directory; use Add custom connector with the MCP URL, or mcp-remote for LAN.'
+            'Use this generic shape for Cline, Continue, Goose, Warp, JetBrains AI Assistant, Raycast and GitHub Copilot CLI. Cline also needs `"type": "streamableHttp"` in its entry; without it Cline falls back to legacy SSE. VS Code, Devin Desktop and Zed have their own cards. Claude Desktop is the exception: do not paste a plain url into claude_desktop_config.json, and do not look for PostQueen in Anthropic\'s directory. Use Add custom connector with the MCP URL. For PostQueen on a private network, allow Anthropic\'s IP ranges or use an MCP tunnel. The mcp-remote bridge in claude_desktop_config.json works in Claude Desktop only, not in Cowork or on claude.ai.'
           ),
           docs: [
             {
@@ -4005,7 +4035,7 @@ openclaw pairing approve discord <CODE>`,
           ),
           info: t(
             'conn_zapier_note',
-            'Use Custom Request, not the plain POST event: the create-post body is nested JSON. Authorization is the raw API key, no Bearer prefix.'
+            'Use Custom Request, not the plain POST event: POST cannot send the arrays of objects a post needs. Authorization is the raw API key, no Bearer prefix.'
           ),
           examples: [
             {
@@ -4041,7 +4071,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_zapier_step_in', 'Zapier → PostQueen'),
               detail: t(
                 'conn_zapier_step_in_detail',
-                'Use the Webhooks by Zapier Custom Request action (not the plain POST event) with this URL. The create-post body is nested JSON.'
+                'Use the Webhooks by Zapier Custom Request action (not the plain POST event) with this URL. The plain POST event cannot send the arrays of objects a post needs.'
               ),
               code: `${backendUrl}/public/v1/posts`,
             },

@@ -1364,15 +1364,14 @@ conn_vscode_step_ui
 conn_vscode_step_ui_detail
 conn_vscode_verify
 conn_way_address
-conn_way_apps_panel
 conn_way_cli_skill
 conn_way_config
 conn_way_connector
-conn_way_four_commands
 conn_way_message
 conn_way_one_command
 conn_way_settings
 conn_way_sign_in
+conn_way_three_commands
 conn_ways_intro
 conn_webhooks_ex_body
 conn_webhooks_ex_title

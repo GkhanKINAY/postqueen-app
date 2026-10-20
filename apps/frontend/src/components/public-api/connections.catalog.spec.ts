@@ -299,11 +299,20 @@ describe('Connect marketplace catalog', () => {
     for (const id of ['openclaw', 'cli', 'whatsapp', 'telegram', 'slack-chat', 'discord-chat']) {
       const steps = byId(id).steps;
       const signIn = steps.findIndex((s) => s.code === 'postqueen auth:login');
-      const key = steps.findIndex((s) => /^export POSTQUEEN_API_KEY=/.test(s.code || ''));
+      const key = steps.findIndex((s) => /POSTQUEEN_API_KEY[=:]/.test(s.code || ''));
       assert.ok(signIn >= 0, `${id} signs the CLI in`);
       assert.ok(key > signIn, `${id} offers the key after the sign-in`);
       // The key is in the command, so the page adds the key row only for members.
       assert.ok(!steps.some((s) => s.inline === 'key'), `${id} repeats the key in a row`);
+    }
+    // A gateway run as a service never sees a shell export, so OpenClaw gets
+    // the key from openclaw.json; only the bare CLI card exports it.
+    for (const id of ['openclaw', 'whatsapp', 'telegram', 'slack-chat', 'discord-chat']) {
+      const key = byId(id).steps.find((s) => /POSTQUEEN_API_KEY/.test(s.code || ''));
+      assert.equal(key?.codeLabel, '~/.openclaw/openclaw.json', id);
+      assert.match(key?.code || '', /skills: \{\n    entries: \{\n      postqueen: \{\n        env: \{ POSTQUEEN_API_KEY: "test-key" \},/, id);
+      assert.match(key?.detail || '', /`openclaw gateway restart`/, id);
+      assert.doesNotMatch(codes(byId(id).steps), /export POSTQUEEN_API_KEY/, id);
     }
     for (const id of ['claude-apps', 'chatgpt', 'claude-cowork']) {
       const c = byId(id);
@@ -400,29 +409,51 @@ describe('Connect marketplace catalog', () => {
     // Without -g the skill goes into the current project only.
     assert.match(codes(openclaw.steps), /npx skills add GkhanKINAY\/postqueen-agent -g -a openclaw/);
     assert.match(codes(openclaw.steps), /openclaw skills list --eligible/);
-    assert.match(stepText(openclaw.steps), /skills\.entries\.postqueen\.env/);
+    assert.match(codes(openclaw.steps), /entries: \{\n      postqueen: \{\n        env: \{ POSTQUEEN_API_KEY:/);
+    assert.match((openclaw.goodToKnow || []).join('\n'), /skills\.entries\.postqueen\.env/);
     assert.doesNotMatch((openclaw.goodToKnow || []).join('\n'), /eligible[^.]*POSTQUEEN_API_KEY/);
+    // Skills load when a session starts.
+    assert.match(stepText(openclaw.steps), /start a new session, then ask OpenClaw to list your channels/);
     assert.match((openclaw.fixes || []).map((f) => f.fix).join('\n'), /--transport streamable-http/);
     assert.ok(openclaw.routes?.some((r) => /openclaw mcp add/.test(r.how)));
-    // OpenClaw assumes SSE, so every remote PostQueen address needs the transport.
+    // OpenClaw assumes SSE, so every remote PostQueen address needs the
+    // transport, and `openclaw mcp` refuses to save while the gateway runs.
     for (const route of (openclaw.routes || []).filter((r) => /openclaw mcp add/.test(r.how))) {
       assert.match(route.how, /--transport streamable-http/, route.name);
+      assert.match(route.how, /^`openclaw gateway stop`, then `openclaw mcp add postqueen /, route.name);
+      assert.match(route.how, /, then `openclaw gateway start`\.$/, route.name);
     }
+    // OpenClaw's --header takes KEY=VALUE.
+    assert.match(
+      openclaw.routes?.find((r) => r.need === 'key' && /--header/.test(r.how))?.how || '',
+      /--url https:\/\/api\.postqueen\.ai\/mcp --transport streamable-http --header "Authorization=Bearer YOUR_API_KEY"/
+    );
     assert.match(
       openclaw.routes?.find((r) => r.need === 'none')?.how || '',
-      /^`openclaw mcp add postqueen --url https:\/\/api\.postqueen\.ai\/mcp-oauth-dynamic --transport streamable-http --auth oauth`, then `openclaw mcp login postqueen`/
+      /^`openclaw gateway stop`, then `openclaw mcp add postqueen --url https:\/\/api\.postqueen\.ai\/mcp-oauth-dynamic --transport streamable-http --auth oauth` and `openclaw mcp login postqueen`/
     );
     const nanoclaw = byId('nanoclaw');
     const nano = codes(nanoclaw.steps);
     assert.match(nano, /onecli secrets create .*\\\n  --value test-key --host-pattern api\.postqueen\.ai /);
     assert.match(nano, /ncl groups config add-mcp-server --id YOUR_GROUP_ID \\\n  --name postqueen --url https:\/\/api\.postqueen\.ai\/mcp\n/);
     assert.doesNotMatch(nano, /\/mcp\/test-key/);
-    // A new OneCLI agent has only its Anthropic secret: grant PostQueen's after creating it.
+    // The OneCLI NanoClaw installs gives agents secret mode all, which picks the
+    // secret up by its host: check the agent after creating the secret. A grant
+    // is only for selective agents, and set-secrets, which would switch an agent
+    // to selective and cut it off from its other secrets, is never offered.
     const created = nanoclaw.steps.findIndex((s) => /onecli secrets create/.test(s.code || ''));
-    const granted = nanoclaw.steps.findIndex((s) => /onecli agents grants attach-secret --id /.test(s.code || ''));
-    assert.equal(granted, created + 1, 'the grant follows the secret');
-    assert.match(nanoclaw.steps[granted].detail || '', /OneCLI 2\.9 or later.*`onecli agents set-secrets`, which replaces the whole list/);
-    assert.match((nanoclaw.goodToKnow || []).join('\n'), /rejects URLs that embed credentials/);
+    const checked = nanoclaw.steps.findIndex((s) => s.code === 'onecli agents list');
+    assert.equal(checked, created + 1, 'the check follows the secret');
+    assert.match(nanoclaw.steps[checked].detail || '', /secret mode `all`.*nothing to grant/);
+    assert.match(nanoclaw.steps[checked].detail || '', /CLI 2\.9 or later\), run `onecli agents grants attach-secret --id YOUR_AGENT_ID --secret-id YOUR_SECRET_ID`/);
+    assert.doesNotMatch(pageText('nanoclaw'), /set-secrets/);
+    assert.equal(nanoclaw.way?.label, 'Three commands');
+    // NanoClaw keeps credentials in the vault; a key in the path is not refused,
+    // it would just sit in the group's config.
+    assert.doesNotMatch(pageText('nanoclaw'), /rejects URLs that embed credentials|no sign-in flow|do not work inside/);
+    assert.match((nanoclaw.goodToKnow || []).join('\n'), /the key would sit in the group’s config/);
+    assert.match((nanoclaw.goodToKnow || []).join('\n'), /^Last resort only, against NanoClaw’s advice to keep real credentials in the vault/m);
+    assert.match((nanoclaw.fixes || [])[0]?.fix || '', /host pattern is `api\.postqueen\.ai`/);
     for (const id of ['openclaw', 'hermes', 'nanoclaw']) {
       assert.equal(byId(id).chatApps, true);
     }
@@ -450,6 +481,13 @@ describe('Connect marketplace catalog', () => {
     assert.equal(paperclip.steps[1].code, 'https://api.postqueen.ai/mcp');
     assert.match(stepText(paperclip.steps), /without the word Bearer/);
     assert.ok(paperclip.routes?.some((r) => r.address === 'https://api.postqueen.ai/mcp-oauth-dynamic'));
+    // Paperclip's menu is Connectors, not Apps.
+    assert.match(stepText(paperclip.steps), /open Connectors, choose Connect on Connect your own tool, then Connect your own MCP server/);
+    assert.doesNotMatch(pageText('paperclip'), /Apps >|Connect an app|in Apps|Apps (page|connection)|Skills Store/);
+    // A new connection starts every action as Allowed, writes included.
+    assert.match(stepText(paperclip.steps), /every PostQueen tool as Allowed, including scheduling/);
+    assert.match(stepText(paperclip.steps), /Set all: Ask first on the Write group/);
+    assert.doesNotMatch(pageText('paperclip'), /start off|then ask for approval|Approved by you|you approved/);
     assert.equal(resolveConnectorId('perplexity'), 'perplexity-computer');
   });
 
@@ -515,9 +553,21 @@ describe('Connect marketplace catalog', () => {
     assert.match(text('discord-chat'), /@openclaw\/discord/);
     // The tokens do nothing until the channel is in OpenClaw's config.
     assert.match(text('slack-chat'), /slack: \{\n      enabled: true,\n      mode: "socket",/);
-    assert.match(text('slack-chat'), /openclaw config patch --file \.\/slack\.socket\.patch\.json5\nopenclaw gateway/);
     assert.match(text('discord-chat'), /discord: \{\n      enabled: true,\n      token: /);
-    assert.match(text('discord-chat'), /openclaw config patch --file \.\/discord\.patch\.json5\nopenclaw gateway/);
+    // `openclaw config patch` needs the gateway stopped.
+    assert.match(text('slack-chat'), /openclaw gateway stop\nopenclaw config patch --file \.\/slack\.socket\.patch\.json5\nopenclaw gateway start/);
+    assert.match(text('discord-chat'), /openclaw gateway stop\nopenclaw config patch --file \.\/discord\.patch\.json5\nopenclaw gateway start/);
+    // The bot answers in a Slack channel or a Discord server only once it is on the allowlist.
+    assert.match(text('slack-chat'), /groupPolicy: "allowlist",\n      channels: \{\n        "<CHANNEL_ID>": \{ enabled: true, requireMention: true \},/);
+    assert.match(text('discord-chat'), /groupPolicy: "allowlist",\n      guilds: \{\n        "<SERVER_ID>": \{ requireMention: true, users: \["<YOUR_USER_ID>"\] \},/);
+    assert.match(text('slack-chat'), /Create New App > From a manifest/);
+    // A gateway run as a service reads its tokens from ~/.openclaw/.env, not a shell export.
+    for (const id of ['slack-chat', 'discord-chat']) {
+      assert.match(text(id), /cat >> ~\/\.openclaw\/\.env <<'ENV'/, id);
+      assert.doesNotMatch(text(id), /^export /m, id);
+      assert.match(text(id), new RegExp(`openclaw pairing approve ${id.replace('-chat', '')} <CODE>`), id);
+    }
+    assert.doesNotMatch(text('discord-chat'), /receives nothing readable/);
   });
 
   it('states CLI, API and OAuth capabilities without mixing surfaces', () => {
