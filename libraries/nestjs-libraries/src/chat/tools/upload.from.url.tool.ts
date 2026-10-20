@@ -17,7 +17,7 @@ export class UploadFromUrlTool implements AgentToolInterface {
     return createTool({
       id: 'uploadFromUrlTool',
       description: `Upload a remote image or video into the media library from a public http(s) URL.
-Local or private files cannot be fetched by this tool: upload them with the PostQueen CLI (postqueen upload, https://docs.postqueen.ai/cli/introduction) or the public API (POST /public/v1/upload with an API key, https://docs.postqueen.ai/public-api/introduction).
+Local or private files cannot be fetched by this tool: use uploadWidgetTool where it is available (MCP), which also says how to upload them in an app that shows no widget.
 Use this before scheduling a post when the user provides an external media URL (not already hosted on our domain),
 so the attachment passes the upload-domain validation. Returns the hosted media { id, path, status } to use as an attachment (or as the src of an <img> in the content, when the channel rules say pictures go inside the content), or { error } on failure.
 A video is converted for the platforms in the background: an mp4 comes back with status "processing" and can be attached by its path right away (the converted file is used when the post publishes); a .mov is waited on until it is an mp4 (status "ready"), because a post takes no .mov.`,
@@ -35,7 +35,7 @@ A video is converted for the platforms in the background: an mp4 comes back with
           .string()
           .url()
           .describe(
-            'The public http(s) URL of the image or video to upload. Local files and private hosts are not supported: use the PostQueen CLI (postqueen upload) or POST /public/v1/upload instead'
+            'The public http(s) URL of the image or video to upload. Local files and private hosts are not supported: use uploadWidgetTool instead where it is available (MCP)'
           ),
       }),
       // Mastra validates a tool's return against this schema, so it must also
@@ -99,7 +99,7 @@ A video is converted for the platforms in the background: an mp4 comes back with
           const causeText = causes.length ? ` (${causes.join(': ')})` : '';
 
           return {
-            error: `Failed to upload media from URL: ${message}${causeText}. Only public http(s) URLs work: upload local or private files with the PostQueen CLI (postqueen upload, https://docs.postqueen.ai/cli/introduction) or the public API (POST /public/v1/upload with an API key, https://docs.postqueen.ai/public-api/introduction)`,
+            error: `Failed to upload media from URL: ${message}${causeText}. Only public http(s) URLs work: for local or private files use uploadWidgetTool where it is available (MCP), which also says how to upload them in an app that shows no widget`,
           };
         }
       },
