@@ -5,7 +5,7 @@
  * assistants and bots, coding agents, editors and other MCP apps, automations
  * and developer tools the Connect panel shows, plus the chat front doors and
  * third-party media that only deep links open. Code samples interpolate
- * backendUrl / mcpUrl / apiKey at build time.
+ * backendUrl / mcpUrl / mcpSignInUrl / apiKey at build time.
  *
  * The agent pages follow the landing site's agent pages (postqueen.ai/<slug>),
  * so the app, the site and the docs give the same steps.
@@ -289,6 +289,11 @@ export type ConnectionsCatalogContext = {
   t: CatalogTranslate;
   backendUrl: string;
   mcpUrl: string;
+  /**
+   * The sign-in address: a workspace admin approves, and it serves every tool
+   * but ask_postqueen.
+   */
+  mcpSignInUrl: string;
   apiKey?: string;
   apiKeyMasked?: string;
   apiUrl?: string;
@@ -302,6 +307,32 @@ export const absoluteApiUrl = (backendUrl: string) => {
   } catch {
     return backendUrl;
   }
+};
+
+/**
+ * The addresses agents and tools are given. They hang off the address the MCP
+ * server advertises in its OAuth discovery (mcpOAuthBaseUrl in
+ * libraries/nestjs-libraries/src/chat/oauth-types.ts): the override when it is
+ * set, else the backend URL the app itself calls. A sign-in address on any
+ * other host fails in clients that check the advertised resource (Codex), so
+ * MCP_URL moves the /mcp addresses (key in the path or in a header) and never
+ * the sign-in address.
+ */
+export const connectionAddresses = ({
+  backendUrl,
+  overrideBackendUrl,
+  mcpBaseUrl,
+}: {
+  backendUrl: string;
+  overrideBackendUrl?: string;
+  mcpBaseUrl?: string;
+}) => {
+  const apiUrl = absoluteApiUrl(overrideBackendUrl || backendUrl);
+  return {
+    apiUrl,
+    mcpUrl: `${mcpBaseUrl ? absoluteApiUrl(mcpBaseUrl) : apiUrl}/mcp`,
+    mcpSignInUrl: `${apiUrl}/mcp-oauth-dynamic`,
+  };
 };
 
 export const needsApiUrl = (apiUrl: string) => {
@@ -526,7 +557,7 @@ export function defaultNavForConnection(item: Connection): ConnectNavId {
 export function buildConnectionsCatalog(
   ctx: ConnectionsCatalogContext
 ): Group[] {
-  const { t, backendUrl, mcpUrl, apiUrl } = ctx;
+  const { t, backendUrl, mcpUrl, mcpSignInUrl, apiUrl } = ctx;
   const apiKey = ctx.apiKeyMasked ?? ctx.apiKey ?? '';
   const apiUrlStep: Step[] = apiUrl
     ? [
@@ -563,15 +594,11 @@ export function buildConnectionsCatalog(
   } satisfies Record<string, Way>;
   // WhatsApp, Telegram, Slack and Discord reach the bots you host, not PostQueen.
   const chatAppWords = ['WhatsApp', 'Telegram', 'Slack', 'Discord'];
-  // The sign-in address: a workspace admin approves, and it serves every tool
-  // but ask_postqueen
-  const mcpSignInUrl = `${backendUrl}/mcp-oauth-dynamic`;
   // Addresses inside tips and fixes. Unescaped: these are URLs, and React
   // escapes the text anyway.
   const urlVars = {
     mcp: mcpUrl,
     signin: mcpSignInUrl,
-    host: apiHost(backendUrl),
     interpolation: { escapeValue: false },
   };
   // The key sits in the step that needs it, with a Copy button.
@@ -3304,7 +3331,7 @@ openclaw pairing approve discord <CODE>`,
                 'conn_nanoclaw_step_2_detail',
                 'On the machine that runs NanoClaw. NanoClaw then adds it to the agent’s requests, so the agent never sees it.'
               ),
-              code: `onecli secrets create --name PostQueen --type generic \\\n  --value ${apiKey} --host-pattern ${apiHost(backendUrl)} \\\n  --header-name Authorization --value-format "Bearer {value}"`,
+              code: `onecli secrets create --name PostQueen --type generic \\\n  --value ${apiKey} --host-pattern ${apiHost(mcpUrl)} \\\n  --header-name Authorization --value-format "Bearer {value}"`,
               codeLabel: 'terminal',
             },
             {
@@ -4404,7 +4431,8 @@ await pq.post({
               title: t('conn_oauth_step_token', 'Use the token'),
               detail: t(
                 'conn_oauth_step_token_detail',
-                'Tokens are prefixed pos_ and go in the same Authorization header as an API key (raw, no Bearer) on the Public API. On MCP, send them as Authorization: Bearer pos_… on https://api.postqueen.ai/mcp. Do not put a pos_ token in the /mcp/KEY URL; that form only looks up API keys.'
+                'Tokens are prefixed pos_ and go in the same Authorization header as an API key (raw, no Bearer) on the Public API. On MCP, send them as Authorization: Bearer pos_… on {{mcp}}. Do not put a pos_ token in the /mcp/KEY URL; that form only looks up API keys.',
+                urlVars
               ),
             },
           ],

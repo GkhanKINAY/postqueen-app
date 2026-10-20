@@ -41,7 +41,7 @@ import {
   resolveConnectNavId,
   resolveConnectorId,
   type ConnectNavId,
-  absoluteApiUrl,
+  connectionAddresses,
   needsApiUrl,
 } from '@gitroom/frontend/components/public-api/connections.catalog';
 import { ConnectHub } from '@gitroom/frontend/components/public-api/connect-hub';
@@ -104,21 +104,22 @@ const useOrganizations = () => {
  * The three things most agents and tools ask for, next to the key they carry.
  * Masked on screen; Copy puts the real value on the clipboard.
  */
-const AddressesCard: FC<{ apiKey: string; apiUrl: string }> = ({
-  apiKey,
-  apiUrl,
-}) => {
+const AddressesCard: FC<{
+  apiKey: string;
+  mcpUrl: string;
+  mcpSignInUrl: string;
+}> = ({ apiKey, mcpUrl, mcpSignInUrl }) => {
   const t = useT();
   const copyValue = useCopy();
   const member = apiKey === KEY_PLACEHOLDER;
   const rows = [
     {
       label: t('conn_address_mcp', 'MCP address'),
-      value: `${apiUrl}/mcp/${apiKey}`,
+      value: `${mcpUrl}/${apiKey}`,
     },
     {
       label: t('conn_address_sign_in', 'Sign-in address'),
-      value: `${apiUrl}/mcp-oauth-dynamic`,
+      value: mcpSignInUrl,
     },
     {
       label: t('conn_address_header', 'Public API header'),
@@ -195,7 +196,8 @@ export const ConnectPanel: FC<{
         ?.name,
     [organizations, user?.orgId]
   );
-  const { backendUrl, supportEmail } = useVariables();
+  const { backendUrl, overrideBackendUrl, mcpUrl: mcpBaseUrl, supportEmail } =
+    useVariables();
   const { mobile, tablet, desktop, touch } = useViewport();
   const layout = useMemo(
     () => ({ mobile, tablet, desktop }),
@@ -227,9 +229,18 @@ export const ConnectPanel: FC<{
   // A member gets no key from the server; the snippets read YOUR_API_KEY
   // instead of an address that stops at the slash.
   const apiKey = user?.publicApi || KEY_PLACEHOLDER;
-  const apiUrl = useMemo(() => absoluteApiUrl(backendUrl), [backendUrl]);
+  // Addresses for agents and tools, on the host the MCP server advertises
+  // rather than the one this app calls
+  const { apiUrl, mcpUrl, mcpSignInUrl } = useMemo(
+    () =>
+      connectionAddresses({
+        backendUrl,
+        overrideBackendUrl,
+        mcpBaseUrl,
+      }),
+    [backendUrl, overrideBackendUrl, mcpBaseUrl]
+  );
   const customApiUrl = needsApiUrl(apiUrl) ? apiUrl : undefined;
-  const mcpUrl = `${apiUrl}/mcp`;
 
   const groups = useMemo(
     () =>
@@ -237,10 +248,11 @@ export const ConnectPanel: FC<{
         t,
         backendUrl: apiUrl,
         mcpUrl,
+        mcpSignInUrl,
         apiKey,
         apiUrl: customApiUrl,
       }),
-    [t, apiUrl, mcpUrl, apiKey, customApiUrl]
+    [t, apiUrl, mcpUrl, mcpSignInUrl, apiKey, customApiUrl]
   );
 
   useEffect(() => {
@@ -512,7 +524,11 @@ export const ConnectPanel: FC<{
             )}
           </div>
           <PublicApiKeysSection embeddedInConnect />
-          <AddressesCard apiKey={apiKey} apiUrl={apiUrl} />
+          <AddressesCard
+            apiKey={apiKey}
+            mcpUrl={mcpUrl}
+            mcpSignInUrl={mcpSignInUrl}
+          />
         </div>
       );
     }
