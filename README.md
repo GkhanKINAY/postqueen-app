@@ -204,12 +204,12 @@ PostQueen posts to 30+ networks. Each one has its own page in the docs: what you
 
 ## For developers
 
-Every route uses your workspace API key: open Connections > API key in PostQueen to copy it. Only workspace admins can see the key, and each workspace has one.
+The API, the SDK and n8n use your workspace API key: open Connections > API key in PostQueen to copy it. Only workspace admins can see the key, and each workspace has one. The CLI can sign in through the browser instead.
 
 ```bash
 # The CLI (Node.js 20.19+ or 22.12+)
 npm install -g postqueen
-export POSTQUEEN_API_KEY=YOUR_API_KEY
+postqueen auth:login   # or, on a machine with no browser: export POSTQUEEN_API_KEY=YOUR_API_KEY
 postqueen integrations:list
 
 # The REST API: the raw key goes in the Authorization header, with no Bearer prefix

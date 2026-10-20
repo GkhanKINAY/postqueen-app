@@ -642,7 +642,7 @@ export function buildConnectionsCatalog(
       title: t('conn_step_cli_sign_in', 'Sign the CLI in'),
       detail: t(
         'conn_step_cli_sign_in_detail',
-        'Run this where the gateway runs. It opens PostQueen in your browser, and a workspace admin approves.'
+        'Run this where the gateway runs, as the user the gateway runs as. It opens PostQueen in your browser, and a workspace admin approves.'
       ),
       code: 'postqueen auth:login',
     },
@@ -866,7 +866,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_openclaw_step_sign_in', 'Sign the CLI in.'),
               detail: t(
                 'conn_openclaw_step_sign_in_detail',
-                'Run this on the gateway. It opens PostQueen in your browser, and a workspace admin approves.'
+                'Run this on the gateway, as the user the gateway runs as. It opens PostQueen in your browser, and a workspace admin approves.'
               ),
               code: 'postqueen auth:login',
               codeLabel: 'terminal',
@@ -1890,7 +1890,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_claude_apps_step_2', 'Open Claude’s connectors.'),
               detail: t(
                 'conn_claude_apps_step_2_detail',
-                'On Team and Enterprise, only an Owner can add a custom connector, so ask one first. In Claude, open Customize > Connectors, then + > Add custom connector.'
+                'On Team and Enterprise, ask an Owner to add it first. In Claude, open Customize > Connectors, then + > Add custom connector.'
               ),
             },
             {
@@ -1917,7 +1917,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_claude_apps_signin_step_1', 'Open Claude’s connectors.'),
               detail: t(
                 'conn_claude_apps_signin_step_1_detail',
-                'On Team and Enterprise, only an Owner can add a custom connector, so ask one first. In Claude, open Customize > Connectors, then + > Add custom connector.'
+                'On Team and Enterprise, ask an Owner to add it first. In Claude, open Customize > Connectors, then + > Add custom connector.'
               ),
             },
             {
@@ -2528,7 +2528,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_claude_cowork_step_2', 'Add the connector in Claude.'),
               detail: t(
                 'conn_claude_cowork_step_2_detail',
-                'Skip this if Claude already has it. On Team and Enterprise, only an Owner can add a custom connector, so ask one first. Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL, with your key in it. If Claude asks in two steps, choose No sign-in.'
+                'Skip this if Claude already has it. On Team and Enterprise, ask an Owner to add it first. Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL, with your key in it. If Claude asks in two steps, choose No sign-in.'
               ),
               code: `Name: PostQueen\nURL:  ${mcpUrlWithKey}`,
               codeLabel: t('conn_claude_cowork_step_2_code_label', 'custom connector'),
@@ -2551,7 +2551,7 @@ openclaw pairing approve discord <CODE>`,
               ),
               detail: t(
                 'conn_claude_cowork_signin_step_1_detail',
-                'Skip this if Claude already has it. On Team and Enterprise, only an Owner can add a custom connector, so ask one first. Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL. If Claude asks in two steps, choose Sign in now, and under OAuth client choose Register automatically.'
+                'Skip this if Claude already has it. On Team and Enterprise, ask an Owner to add it first. Customize > Connectors > + > Add custom connector. Name it PostQueen and use this as the URL. If Claude asks in two steps, choose Sign in now, and under OAuth client choose Register automatically.'
               ),
               code: `Name: PostQueen\nURL:  ${mcpSignInUrl}`,
               codeLabel: t(
@@ -3150,7 +3150,7 @@ openclaw pairing approve discord <CODE>`,
             {
               symptom: t(
                 'conn_gemini_fix_account',
-                'Gemini CLI stopped working with your free or Google AI Pro account'
+                'Gemini CLI stopped working with your free, Google AI Pro or Ultra account'
               ),
               fix: t(
                 'conn_gemini_fix_account_detail',
