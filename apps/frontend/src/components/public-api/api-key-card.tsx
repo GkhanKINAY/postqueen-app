@@ -201,7 +201,7 @@ export const ApiKeyCard: FC<{
         {showDocs && (
           <a
             className="flex h-[30px] shrink-0 cursor-pointer items-center rounded-pqSm bg-pqSettings px-[11px] text-[12.5px] font-[500] text-pqText transition-colors hover:bg-pqHover"
-            href="https://docs.postqueen.ai/public-api"
+            href="https://docs.postqueen.ai/public-api/introduction"
             target="_blank"
             rel="noreferrer"
           >
