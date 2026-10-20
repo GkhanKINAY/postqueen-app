@@ -143,18 +143,31 @@ describe('TikTok interactions and disclosure follow the guidelines', () => {
     assert.match(block, /register\('comment', \{\s*value: false,\s*\}\)/);
   });
 
-  it('hides Duet, Stitch and the AI label on photo posts without unregistering them', () => {
+  it('hides Duet and Stitch on photo posts without unregistering them', () => {
     // TikTokDto requires duet and stitch, and only these boxes register them:
     // unmounted, a photo-first post could not be saved.
     assert.match(
       component,
-      /<div className=\{clsx\(isTitle && 'invisible h-0 overflow-hidden'\)\}>\s*<FormSection\s*icon="post"/
+      /className=\{clsx\(\s*'flex flex-wrap gap-x-\[20px\] gap-y-\[12px\]',\s*isTitle && 'hidden'\s*\)\}\s*>\s*<Checkbox\s*variant="hollow"\s*icon="duet"/
     );
     assert.doesNotMatch(component, /\{!isTitle && \(\s*<FormSection/);
     // the account notice still explains a comments switch on a photo post
     assert.match(component, /duetOff && !isTitle/);
     const comments = component.indexOf("label={t('label_comments', 'Allow Comments')}");
     assert.ok(component.indexOf('{accountDisabledNotice && (', comments) > comments);
+  });
+
+  it('shows the AI label on TikTok photo posts, and on TikTok Business videos only', () => {
+    // A photo carries is_aigc on the TikTok tile, so a box left ticked from a
+    // video must stay in sight; TikTok Business photos have no such field.
+    assert.match(
+      component,
+      /className=\{clsx\(\s*isTitle && isBusiness && 'invisible h-0 overflow-hidden'\s*\)\}\s*>\s*<FormSection/
+    );
+    const ai = component.indexOf('icon="ai"');
+    const block = component.slice(ai, component.indexOf('/>', ai));
+    assert.match(block, /isTitle\s*\?\s*t\('label_made_with_ai', 'Made with AI'\)/);
+    assert.match(block, /register\('video_made_with_ai'/);
   });
 
   it('hides Auto add music on video posts without unregistering it', () => {

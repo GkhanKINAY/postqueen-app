@@ -668,39 +668,58 @@ const TikTokSettings: FC<{
             )}
           </FormSection>
         </div>
-        {/* Duet, Stitch and the AI label do not exist for photo posts, so a
-            photo post shows only Allow Comments (guideline 2c). Hidden, not
+        {/* Duet and Stitch do not exist for photo posts, so a photo post
+            shows no interaction but Allow Comments (guideline 2c). The AI
+            label exists for photos on the TikTok tile only: TikTok Business
+            has no such field, so there the whole section goes. Hidden, not
             unmounted: TikTokDto requires duet and stitch, and these boxes are
             what registers them. */}
-        <div className={clsx(isTitle && 'invisible h-0 overflow-hidden')}>
+        <div
+          className={clsx(
+            isTitle && isBusiness && 'invisible h-0 overflow-hidden'
+          )}
+        >
           <FormSection
-            icon="post"
-            title={t('tiktok_video_features', 'Video features')}
+            icon={isTitle ? undefined : 'post'}
+            title={
+              isTitle ? undefined : t('tiktok_video_features', 'Video features')
+            }
           >
             <div className="flex flex-wrap gap-x-[20px] gap-y-[12px]">
-              <Checkbox
-                variant="hollow"
-                icon="duet"
-                label={t('label_duet', 'Allow Duet')}
-                disabled={isUploadMode || duetOff}
-                defaultValue={false}
-                {...register('duet', {
-                  value: false,
-                })}
-              />
-              <Checkbox
-                icon="stitch"
-                label={t('label_stitch', 'Allow Stitch')}
-                variant="hollow"
-                disabled={isUploadMode || stitchOff}
-                defaultValue={false}
-                {...register('stitch', {
-                  value: false,
-                })}
-              />
+              <div
+                className={clsx(
+                  'flex flex-wrap gap-x-[20px] gap-y-[12px]',
+                  isTitle && 'hidden'
+                )}
+              >
+                <Checkbox
+                  variant="hollow"
+                  icon="duet"
+                  label={t('label_duet', 'Allow Duet')}
+                  disabled={isUploadMode || duetOff}
+                  defaultValue={false}
+                  {...register('duet', {
+                    value: false,
+                  })}
+                />
+                <Checkbox
+                  icon="stitch"
+                  label={t('label_stitch', 'Allow Stitch')}
+                  variant="hollow"
+                  disabled={isUploadMode || stitchOff}
+                  defaultValue={false}
+                  {...register('stitch', {
+                    value: false,
+                  })}
+                />
+              </div>
               <Checkbox
                 icon="ai"
-                label={t('video_made_with_ai', 'Video made with AI')}
+                label={
+                  isTitle
+                    ? t('label_made_with_ai', 'Made with AI')
+                    : t('video_made_with_ai', 'Video made with AI')
+                }
                 variant="hollow"
                 disabled={isUploadMode}
                 defaultValue={false}

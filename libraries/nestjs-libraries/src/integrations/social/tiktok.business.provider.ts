@@ -32,8 +32,9 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only saves the media as a draft in the user inbox of the TikTok app, where the user must manually complete and publish it. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
     'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
     'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API posts videos publicly and has no privacy field for them, so send privacy_level=PUBLIC_TO_EVERYONE with a video (the field is still required) and never tell the user a video will be private. For a photo post, ask the user who can see it (privacy_level, from the creatorInfo function) instead of choosing it for them.',
+    'TikTok Business has no AI-generated label for photo posts: its photo API has no such field, so video_made_with_ai is ignored on a photo and the post goes out unlabeled. Never tell the user a TikTok Business photo post will carry the AI label. When the photos are AI generated, say so before scheduling and let the user choose: a disclosure in the caption (for example "AI generated"), which TikTok accepts in place of the label; content_posting_method=UPLOAD, then turning on the AI-generated label in the TikTok app before publishing; or a video, where video_made_with_ai=true is applied.',
     'The music setting attaches a commercial music library track (found via the musicSearch function) to a video or photo post, and the location setting tags the post with a location (found via the locationSearch function). Both apply only with content_posting_method=DIRECT_POST. music.audio_volume / music.video_volume (0-100, default 50) apply to video posts only. For photos, autoAddMusic=yes attaches a RANDOM commercial music library track and overrides any music selection - use autoAddMusic=no when the user wants a specific track.',
-    'Media is pulled by TikTok from its URL, so the media must be uploaded to PostQueen and the media domain must be a verified URL property of the TikTok Business app.',
+    'Media is pulled by TikTok from its URL, so the media must be uploaded to PostQueen and the media domain must be a verified URL property of the TikTok Business app. When a post fails on URL ownership and its media came from another address, upload it with uploadFromUrlTool and use the new path; when the media was already on PostQueen, it is a PostQueen setting, not a problem with the post: do not retry, tell the user to contact support.',
   ].join(' ')
 )
 export class TiktokBusinessProvider
@@ -215,11 +216,18 @@ export class TiktokBusinessProvider
       };
     }
 
-    if (body.indexOf('url_ownership_unverified') > -1) {
+    // The Business API answers with a non-zero code and only this sentence,
+    // never the url_ownership_unverified name the Content Posting API uses.
+    // Media from another address needs uploading; media already on PostQueen
+    // means the upload domain is not verified for the app.
+    if (
+      body.indexOf('url_ownership_unverified') > -1 ||
+      body.indexOf('URL ownership verification') > -1
+    ) {
       return {
         type: 'bad-body' as const,
         value:
-          'The media domain is not a verified URL property of the TikTok app',
+          'TikTok only takes media from an address verified for PostQueen. Upload the media to PostQueen, and if it already is, please contact support',
       };
     }
 

@@ -62,8 +62,10 @@ export class TikTokLocation {
 // content_posting_method=UPLOAD the media lands in the user's TikTok inbox as a
 // draft, and TikTok's inbox/upload endpoints accept nothing but the title /
 // description - every other field below is silently discarded.
-// video_made_with_ai / duet / stitch are additionally video-only: TikTok's photo
-// post_info has no is_aigc, disable_duet or disable_stitch field.
+// duet / stitch are additionally video-only: TikTok's photo post_info has no
+// disable_duet or disable_stitch field. video_made_with_ai labels photos too on
+// the TikTok tile (a top-level is_aigc), but not on TikTok Business, whose
+// photo endpoint has no AI field at all.
 // music / location are TikTok Business only: the legacy TikTok provider ignores
 // them (its Content Posting API has no music_sound_info / location fields).
 // Fields stay required here (existing clients depend on it); the constraints are
@@ -138,7 +140,9 @@ export class TikTokDto {
   @IsOptional()
   @JSONSchema({
     description:
-      'Labels the post as AI generated. Video posts only, and only when content_posting_method=DIRECT_POST. TikTok has no AI-generated label for photo posts, and discards it on UPLOAD.',
+      'Labels the post as AI generated; set it to true whenever the media is AI generated. Applied only when content_posting_method=DIRECT_POST. Ignored by TikTok on UPLOAD. ' +
+      'On legacy TikTok (tiktok) it labels video and photo posts. ' +
+      'On TikTok Business (tiktok-business) it labels video posts only: its photo API has no AI-generated label, so a photo post goes out unlabeled.',
   })
   video_made_with_ai: boolean;
 

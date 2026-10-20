@@ -51,7 +51,7 @@ export function classifyTikTokPostId(
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only sends the media to the user inbox of the TikTok app, where the user must manually complete and publish it within 24 hours or it is discarded. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
     'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
     'Ask the user who can see the post (privacy_level, from the creatorInfo function) instead of choosing it for them. comment, duet and stitch stay false unless the user asks to allow them. When the post promotes something, set disclose to true with brand_organic_toggle (their own brand) or brand_content_toggle (a third party); branded content cannot be SELF_ONLY.',
-    'video_made_with_ai, duet and stitch apply to video posts only. TikTok has no equivalent field for photo posts, so those settings are discarded when the attachment is a picture.',
+    'duet and stitch apply to video posts only. TikTok has no equivalent field for photo posts, so those settings are discarded when the attachment is a picture. video_made_with_ai=true labels a video or a photo post as AI generated, and should be set whenever the media is AI generated.',
   ].join(' ')
 )
 export class TiktokProvider extends SocialAbstract implements SocialProvider {
@@ -279,7 +279,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value:
-          'You have to upload the picture/video to PostQueen when sending a URL',
+          'TikTok only takes media from an address verified for PostQueen. Upload the media to PostQueen, and if it already is, please contact support',
       };
     }
 
@@ -652,6 +652,11 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
     if (method === 'DIRECT_POST') {
       return {
+        // A photo carries the AI label beside post_info, a video inside it.
+        // Sent only when set, so every other photo body stays as it was.
+        ...(isPhoto && this.assetBoolean(firstPost.settings.video_made_with_ai)
+          ? { is_aigc: true }
+          : {}),
         post_info: {
           ...(isPhoto && firstPost.settings.title
             ? { title: firstPost.settings.title.slice(0, 90) }
