@@ -33,6 +33,18 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
 
 export const META_GRAPH_API_VERSION = 'v25.0';
 
+// Insights metrics, measured on v25.0 against live Pages on 2026-10-20. Meta
+// removed the legacy impressions metrics (total_video_impressions among them)
+// on 2026-06-15, and a single removed name fails the whole request with
+// "(#100) The value must be a valid insights metric".
+const FACEBOOK_POST_METRICS =
+  'post_total_media_view_unique,post_reactions_by_type_total,post_clicks,post_clicks_by_type';
+// A plain video answers the total_video_* metrics, a reel only
+// fb_reels_total_plays and the post_video_* ones. Graph leaves out the ones
+// that do not apply, so one request serves both.
+const FACEBOOK_VIDEO_METRICS =
+  'total_video_views,total_video_reactions_by_type_total,fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions';
+
 @Rules(
   "Facebook posts can be text only, or include photos or a video. If it's a story, it must have at least one attachment (photo or video), and each media is published as a separate story. Video posts (not stories) can carry an optional title."
 )
@@ -1141,7 +1153,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       // Graph API v23.0+. Engagement metrics below are unaffected.
       const { data } = await (
         await fetch(
-          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/insights?metric=post_total_media_view_unique,post_reactions_by_type_total,post_clicks,post_clicks_by_type&access_token=${accessToken}`
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/insights?metric=${FACEBOOK_POST_METRICS}&access_token=${accessToken}`
         )
       ).json();
 
@@ -1152,6 +1164,9 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       const result: AnalyticsData[] = [];
 
       for (const metric of data) {
+        // post_total_media_view_unique also answers with a `day` row after
+        // its lifetime one; only the lifetime row is the post's total.
+        if (metric.period && metric.period !== 'lifetime') continue;
         const value = metric.values?.[0]?.value;
         if (value === undefined) continue;
 
@@ -1228,24 +1243,11 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         // (see postAnalytics). Stories have no video_insights either, so that
         // one error stays quiet instead of being logged on every sync.
         if (!postId.includes('_')) {
-          const videoInsights = async (metrics: string) => {
-            const response = await fetch(
-              `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=${metrics}&access_token=${accessToken}`
-            );
-            const json = await response.text();
-            return { response, json, ...JSON.parse(json || '{}') };
-          };
-          let { response, json, data, error } = await videoInsights(
-            'total_video_impressions,total_video_reactions_by_type_total'
+          const response = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/video_insights?metric=${FACEBOOK_VIDEO_METRICS}&access_token=${accessToken}`
           );
-          // A reel answers the total_video_* metrics with an empty data array
-          // and has its own set (see videoPostAnalytics). Asked only when the
-          // first answer is empty, so a plain video's request is unchanged.
-          if (!error && !data?.length) {
-            ({ response, json, data, error } = await videoInsights(
-              'fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions'
-            ));
-          }
+          const json = await response.text();
+          const { data, error } = JSON.parse(json || '{}');
           if (error && !/nonexisting field/i.test(error.message || '')) {
             // A dead token must still flag the channel, as this.fetch does on
             // the feed path below, even for a channel that only posts reels.
@@ -1270,7 +1272,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         }
 
         const response = await this.fetch(
-          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/insights?metric=post_total_media_view_unique,post_reactions_by_type_total,post_clicks,post_clicks_by_type&access_token=${accessToken}`,
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${postId}/insights?metric=${FACEBOOK_POST_METRICS}&access_token=${accessToken}`,
           {},
           this.identifier
         );
@@ -1303,21 +1305,17 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     today: string
   ): Promise<AnalyticsData[]> {
     try {
-      // Metric names verified against the Graph API v23.0 video_insights docs:
-      //   - total_video_impressions: times the video was shown
-      //   - total_video_views: 3s+ (or full, if shorter) plays
+      // The same metrics the sync reads (FACEBOOK_VIDEO_METRICS):
+      //   - total_video_views: 3s+ (or full, if shorter) plays of a plain video
       //   - total_video_reactions_by_type_total: reactions object, keyed by type
-      // Reels never return the total_video_* metrics (the edge answers with an
-      // empty data array), only the reels ones, so both sets are requested at
-      // once and Graph simply omits the metrics that don't apply:
-      //   - fb_reels_total_plays: plays including replays
+      //   - fb_reels_total_plays: plays of a reel, including replays
       //   - post_video_likes_by_reaction_type: reactions object, keyed by type
       //   - post_video_social_actions: comments/shares object, keyed by type
       // Use plain fetch (not this.fetch) so a `(#100) nonexisting field` / story
       // response doesn't throw an ApplicationFailure — we want a quiet `[]` instead.
       const { data, error } = await (
         await fetch(
-          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${videoId}/video_insights?metric=total_video_impressions,total_video_views,total_video_reactions_by_type_total,fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions&access_token=${accessToken}`
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${videoId}/video_insights?metric=${FACEBOOK_VIDEO_METRICS}&access_token=${accessToken}`
         )
       ).json();
 
@@ -1340,6 +1338,8 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       const result: AnalyticsData[] = [];
 
       for (const metric of data) {
+        // Only the lifetime row is the video's total, as on the feed path.
+        if (metric.period && metric.period !== 'lifetime') continue;
         const value = metric.values?.[0]?.value;
         if (value === undefined) continue;
 
@@ -1347,10 +1347,6 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         let total = '';
 
         switch (metric.name) {
-          case 'total_video_impressions':
-            label = 'Impressions';
-            total = String(value);
-            break;
           case 'total_video_views':
             label = 'Views';
             total = String(value);

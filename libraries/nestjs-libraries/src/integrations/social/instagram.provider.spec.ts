@@ -241,6 +241,25 @@ describe('Instagram story metrics', () => {
       }
     });
 
+    it(`${name}: shows a story's own metrics in the Statistics modal too`, async () => {
+      const g = graph((id, metrics) =>
+        metrics.includes('saved') ? [400, notForStories] : [200, storyData]
+      );
+      try {
+        const series = await provider.postAnalytics!('ig', 'token', 'story1', 7);
+        assert.deepEqual(g.asked, [
+          'story1:views,reach,saved,likes,comments,shares',
+          'story1:views,reach,shares,replies,total_interactions',
+        ]);
+        assert.deepEqual(
+          series.map((s) => s.label),
+          ['Views', 'Reach', 'Shares', 'Replies', 'Interactions']
+        );
+      } finally {
+        g.restore();
+      }
+    });
+
     it(`${name}: does not ask again for a story too few accounts have seen`, async () => {
       const g = graph(() => [
         400,

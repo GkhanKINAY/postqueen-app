@@ -211,7 +211,7 @@ describe('platform field maps', () => {
 
   it('maps Facebook video insights and sums reactions by type', () => {
     const mapped = mapFacebookVideoInsights('fbv1', [
-      { name: 'total_video_impressions', values: [{ value: 450 }] },
+      { name: 'total_video_views', values: [{ value: 450 }] },
       {
         name: 'total_video_reactions_by_type_total',
         values: [{ value: { like: 4, wow: 1 } }],
@@ -239,6 +239,31 @@ describe('platform field maps', () => {
     assert.equal(mapped.reactions, 32);
     assert.equal(mapped.comments, 7);
     assert.equal(mapped.shares, 3);
+  });
+
+  it('counts Facebook reactions nobody gave as 0, and a missing metric as unknown', () => {
+    const post = mapFacebookPostInsights('fb2', [
+      { name: 'post_total_media_view_unique', values: [{ value: 3 }] },
+      { name: 'post_reactions_by_type_total', values: [{ value: {} }] },
+    ]);
+    assert.equal(post.reactions, 0);
+    const reel = mapFacebookVideoInsights('fbr3', [
+      { name: 'fb_reels_total_plays', values: [{ value: 9 }] },
+      { name: 'post_video_likes_by_reaction_type', values: [{ value: {} }] },
+    ]);
+    assert.equal(reel.reactions, 0);
+    const bare = mapFacebookPostInsights('fb3', [
+      { name: 'post_total_media_view_unique', values: [{ value: 3 }] },
+    ]);
+    assert.equal(bare.reactions, null);
+  });
+
+  it('keeps the lifetime row when Facebook answers a metric once per period', () => {
+    const mapped = mapFacebookPostInsights('fb4', [
+      { name: 'post_total_media_view_unique', period: 'lifetime', values: [{ value: 40 }] },
+      { name: 'post_total_media_view_unique', period: 'day', values: [{ value: 0 }] },
+    ]);
+    assert.equal(mapped.impressions, 40);
   });
 
   it('leaves Facebook comments and shares unknown when no action matches', () => {

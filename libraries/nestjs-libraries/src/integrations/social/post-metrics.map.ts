@@ -147,6 +147,7 @@ export function mapLinkedInShareStats(
 
 type GraphInsight = {
   name?: string;
+  period?: string;
   values?: Array<{ value?: unknown; end_time?: string }>;
   total_value?: { value?: unknown };
 };
@@ -173,10 +174,15 @@ function insightValue(metric: GraphInsight): unknown {
   return metric.values?.[0]?.value ?? metric.total_value?.value;
 }
 
+// A metric Graph answers once per period keeps its lifetime row: Facebook's
+// post_total_media_view_unique comes back as a lifetime row and a day row.
 function insightsByName(data: GraphInsight[] | null | undefined) {
   const out: Record<string, unknown> = {};
   for (const metric of data || []) {
     if (!metric.name) {
+      continue;
+    }
+    if (metric.name in out && metric.period !== 'lifetime') {
       continue;
     }
     out[metric.name] = insightValue(metric);
@@ -196,6 +202,16 @@ function actionCount(value: unknown, type: RegExp): number | null {
       )
     )
   );
+}
+
+// Facebook's reactions-by-type metrics answer `{}` for a post nobody reacted
+// to, so an object that is there is a count, 0 included. A missing metric
+// stays unknown.
+function facebookReactionCount(value: unknown): number | null {
+  if (value && typeof value === 'object') {
+    return asCount(value) ?? 0;
+  }
+  return asCount(value);
 }
 
 export function mapInstagramMediaInsights(
@@ -249,7 +265,7 @@ export function mapFacebookPostInsights(
   if (clicks != null) raw.clicks = clicks;
   return row(platformPostId, {
     impressions: asCount(byName.post_total_media_view_unique),
-    reactions: asCount(byName.post_reactions_by_type_total),
+    reactions: facebookReactionCount(byName.post_reactions_by_type_total),
     comments: null,
     shares: null,
     raw: Object.keys(raw).length ? raw : undefined,
@@ -260,7 +276,8 @@ export function mapFacebookPostInsights(
 // `/{videoId}/video_insights`, the same edge FacebookProvider.postAnalytics
 // reads for them; reactions arrive as an object keyed by type. A plain video
 // answers the total_video_* metrics; a reel answers only fb_reels_total_plays
-// and the post_video_* ones.
+// and the post_video_* ones. total_video_impressions is gone (Meta removed it
+// on 2026-06-15), so a plain video's views stand in for its impressions.
 export function mapFacebookVideoInsights(
   platformPostId: string,
   data: GraphInsight[] | null | undefined
@@ -268,9 +285,9 @@ export function mapFacebookVideoInsights(
   const byName = insightsByName(data);
   return row(platformPostId, {
     impressions: asCount(
-      byName.total_video_impressions ?? byName.fb_reels_total_plays
+      byName.total_video_views ?? byName.fb_reels_total_plays
     ),
-    reactions: asCount(
+    reactions: facebookReactionCount(
       byName.total_video_reactions_by_type_total ??
         byName.post_video_likes_by_reaction_type
     ),
