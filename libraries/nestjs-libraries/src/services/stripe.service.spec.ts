@@ -1123,40 +1123,38 @@ describe('the sales card for a paid invoice', () => {
 });
 
 describe('a full refund', () => {
-  // The invoice each PaymentIntent paid, as Stripe's invoice payments link them.
-  let paidBy: Record<string, string>;
-  let saved: Record<string, unknown>;
-  const resources = () => ({
-    invoices: Object.getPrototypeOf(probe.invoices),
-    invoicePayments: Object.getPrototypeOf(probe.invoicePayments),
-    paymentIntents: Object.getPrototypeOf(probe.paymentIntents),
-  });
+  // The invoice the refunded charge's PaymentIntent paid.
+  let paidInvoice: string;
+
+  // What this block replaces, put back after it. The SDK's own methods are
+  // not enumerable, so each one is saved by name.
+  const faked: [object, string][] = [
+    [probe.invoices, 'retrieve'],
+    [probe.invoicePayments, 'list'],
+    [probe.paymentIntents, 'retrieve'],
+  ];
+  let saved: unknown[];
   before(() => {
-    const r = resources();
-    saved = {
-      invoices: r.invoices.retrieve,
-      invoicePayments: r.invoicePayments.list,
-      paymentIntents: r.paymentIntents.retrieve,
-    };
+    saved = faked.map(
+      ([resource, method]) => Object.getPrototypeOf(resource)[method],
+    );
     fake(probe.invoices, {
       retrieve: async (id: string) => invoices.find((i) => i.id === id),
     });
     fake(probe.invoicePayments, {
-      list: async ({ payment }: any) => ({
-        data: [{ invoice: paidBy[payment.payment_intent] }],
-      }),
+      list: async () => ({ data: [{ invoice: paidInvoice }] }),
     });
     // Not a credits pack: the plan's own payment.
     fake(probe.paymentIntents, { retrieve: async () => ({ metadata: {} }) });
   });
   after(() => {
-    fake(probe.invoices, { retrieve: saved.invoices });
-    fake(probe.invoicePayments, { list: saved.invoicePayments });
-    fake(probe.paymentIntents, { retrieve: saved.paymentIntents });
+    faked.forEach(([resource, method], i) =>
+      fake(resource, { [method]: saved[i] }),
+    );
   });
 
-  // A line of the subscription's price for the period [start, end]: its own
-  // charge for that period, or a proration (a change in the middle of one).
+  // A line for the period [start, end]: the subscription's own charge for
+  // it, or a proration (a change in the middle of a period).
   const line = (start: number, end: number, proration = false, amount = 4900) => ({
     amount,
     period: { start, end },
@@ -1177,9 +1175,10 @@ describe('a full refund', () => {
     parent: { subscription_details: { subscription: 'sub_1' } } as any,
     lines: { data: lines } as any,
   });
-  // The subscription, in the period [start, end].
-  const running = (start: number, end: number) =>
+  // The subscription in the period [start, end], `latest` its latest invoice.
+  const running = (start: number, end: number, latest: string) =>
     sub('sub_1', 100, {
+      latest_invoice: latest as any,
       items: {
         data: [
           {
@@ -1198,7 +1197,7 @@ describe('a full refund', () => {
       line(250, 300, true, 9900),
     ]);
   const refund = (invoiceId: string) => {
-    paidBy = { pi_1: invoiceId };
+    paidInvoice = invoiceId;
     return service().chargeRefunded({
       data: {
         object: {
@@ -1211,11 +1210,13 @@ describe('a full refund', () => {
     } as unknown as Stripe.ChargeRefundedEvent);
   };
 
-  it('ends a plan whose trial was ended early from Billing', async () => {
-    // Stripe bills that first period as `subscription_update`.
-    subs = [running(200, 300)];
-    invoices = [invoice('in_1', 'subscription_update', [line(200, 300)])];
-    const result = await refund('in_1');
+  it('ends a plan whose running period is refunded', async () => {
+    subs = [running(300, 400, 'in_2')];
+    invoices = [
+      invoice('in_1', 'subscription_create', [line(200, 300)]),
+      invoice('in_2', 'subscription_cycle', [line(300, 400)]),
+    ];
+    const result = await refund('in_2');
     assert.deepEqual(called('subscriptions.cancel')[0], [
       'sub_1',
       { invoice_now: false, prorate: false },
@@ -1224,8 +1225,19 @@ describe('a full refund', () => {
     assert.equal(result.revoked, true);
   });
 
+  it('ends a plan whose trial was ended early from Billing', async () => {
+    // Stripe bills that first period as `subscription_update`.
+    subs = [running(200, 300, 'in_1')];
+    invoices = [invoice('in_1', 'subscription_update', [line(200, 300)])];
+    const result = await refund('in_1');
+    assert.equal(called('subscriptions.cancel').length, 1);
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
   it('ends a plan when its period is refunded after an upgrade was paid', async () => {
-    subs = [running(200, 300)];
+    // The upgrade is the latest invoice; the period's own charge is not.
+    subs = [running(200, 300, 'in_2')];
     invoices = [
       invoice('in_1', 'subscription_create', [line(200, 300)]),
       upgrade('in_2'),
@@ -1235,8 +1247,24 @@ describe('a full refund', () => {
     assert.equal(result.revoked, true);
   });
 
+  it('ends a classic-mode plan whose switch to yearly is refunded', async () => {
+    // Classic billing restarts the period at the switch and bills the year
+    // as one line; flexible billing bills the switch as prorations.
+    subs = [running(250, 1250, 'in_2')];
+    invoices = [
+      invoice('in_1', 'subscription_create', [line(200, 300)]),
+      invoice('in_2', 'subscription_update', [
+        line(250, 300, true, -2450),
+        line(250, 1250, false, 99000),
+      ]),
+    ];
+    const result = await refund('in_2');
+    assert.equal(called('subscriptions.cancel').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
   it('keeps the plan when only an upgrade’s difference is refunded', async () => {
-    subs = [running(200, 300)];
+    subs = [running(200, 300, 'in_2')];
     invoices = [
       invoice('in_1', 'subscription_create', [line(200, 300)]),
       upgrade('in_2'),
@@ -1248,9 +1276,8 @@ describe('a full refund', () => {
   });
 
   it('keeps a yearly plan when the month before the switch is refunded', async () => {
-    // Stripe keeps the period's start and moves its end a year on; the
-    // switch itself is billed as prorations.
-    subs = [running(200, 1200)];
+    // Flexible billing keeps the period's start and moves its end a year on.
+    subs = [running(200, 1200, 'in_2')];
     invoices = [
       invoice('in_1', 'subscription_update', [line(200, 300)]),
       invoice('in_2', 'subscription_update', [
@@ -1264,7 +1291,7 @@ describe('a full refund', () => {
   });
 
   it('keeps the plan when a past period is refunded', async () => {
-    subs = [running(300, 400)];
+    subs = [running(300, 400, 'in_2')];
     invoices = [
       invoice('in_1', 'subscription_create', [line(200, 300)]),
       invoice('in_2', 'subscription_cycle', [line(300, 400)]),

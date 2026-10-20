@@ -3291,13 +3291,14 @@ export class StripeService extends PaymentProviderAbstract {
       return null;
     }
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    // The current period's own charge, read from the lines: its price for the
-    // whole period now running. `billing_reason` cannot tell it: ending a trial
-    // early from Billing bills the first period as `subscription_update`, the
-    // reason an upgrade's proration has, so that period kept running after a
-    // full refund. A proration refunded is goodwill, and a month paid before a
-    // switch to yearly (its line ends where the month did) or a past period is
-    // not a reason to end the period running now.
+    // The current period's own charge, read from the lines: one that is not a
+    // proration and covers exactly the period now running. `billing_reason`
+    // cannot tell it: ending a trial early from Billing bills the first period
+    // as `subscription_update`, the reason an upgrade's proration has, so that
+    // period kept running after a full refund. A proration refunded is
+    // goodwill, and a month paid before a switch to yearly (its line ends
+    // where the month did) or a past period is not a reason to end the period
+    // running now.
     const item = subscription.items?.data?.[0];
     const current =
       !!item?.current_period_start &&
