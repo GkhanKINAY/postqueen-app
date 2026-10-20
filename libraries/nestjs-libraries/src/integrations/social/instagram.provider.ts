@@ -26,6 +26,11 @@ import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/s
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+// A story refuses the post metrics as a whole ("does not support the saved,
+// likes, comments metric for this media product type") and has a set of its own.
+const INSTAGRAM_POST_METRICS = 'views,reach,saved,likes,comments,shares';
+const INSTAGRAM_STORY_METRICS = 'views,reach,shares,replies,total_interactions';
+
 @Rules(
   "Instagram should have at least one attachment, if it's a story, each attachment is published as its own separate story"
 )
@@ -1370,11 +1375,18 @@ export class InstagramProvider
 
     try {
       // Fetch media insights from Instagram Graph API
-      const { data } = await (
-        await fetch(
-          `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=views,reach,saved,likes,comments,shares&access_token=${accessToken}`
-        )
-      ).json();
+      const insights = async (metrics: string) =>
+        (
+          await fetch(
+            `https://${type}/${META_GRAPH_API_VERSION}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
+          )
+        ).json();
+      const first = await insights(INSTAGRAM_POST_METRICS);
+      let { data } = first;
+      // A story: ask again with its own set, as postsAnalytics does.
+      if ((first.error?.message || '').indexOf('for this media product type') > -1) {
+        ({ data } = await insights(INSTAGRAM_STORY_METRICS));
+      }
 
       if (!data || data.length === 0) {
         return [];
@@ -1409,6 +1421,12 @@ export class InstagramProvider
             break;
           case 'shares':
             label = 'Shares';
+            break;
+          case 'replies':
+            label = 'Replies';
+            break;
+          case 'total_interactions':
+            label = 'Interactions';
             break;
         }
 
@@ -1462,11 +1480,9 @@ export class InstagramProvider
         let story = false;
         let data: any[] | undefined;
         try {
-          ({ data } = await insights('views,reach,saved,likes,comments,shares'));
+          ({ data } = await insights(INSTAGRAM_POST_METRICS));
         } catch (err) {
-          // A story refuses the post metrics as a whole ("does not support the
-          // saved, likes, comments metric for this media product type") and
-          // has a set of its own, asked only after that refusal so a post or
+          // A story's own set is asked only after that refusal, so a post or
           // reel still costs one request.
           if (
             String((err as any)?.details?.[0]?.json ?? '').indexOf(
@@ -1476,9 +1492,7 @@ export class InstagramProvider
             throw err;
           }
           story = true;
-          ({ data } = await insights(
-            'views,reach,shares,replies,total_interactions'
-          ));
+          ({ data } = await insights(INSTAGRAM_STORY_METRICS));
         }
         if (!data || data.length === 0) {
           continue;

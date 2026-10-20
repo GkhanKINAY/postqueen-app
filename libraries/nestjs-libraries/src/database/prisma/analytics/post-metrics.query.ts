@@ -282,6 +282,7 @@ const SERIES_FIELD: Record<
   'impressions' | 'reactions' | 'comments' | 'shares'
 > = {
   Views: 'impressions',
+  Plays: 'impressions',
   Reach: 'impressions',
   Impressions: 'impressions',
   'Media views': 'impressions',
@@ -302,6 +303,7 @@ const SERIES_RAW: Record<string, string> = {
   Saved: 'saves',
   Reach: 'reach',
   Clicks: 'clicks',
+  Interactions: 'interactions',
   Quotes: 'quotes',
   Bookmarks: 'bookmarks',
   Favorites: 'favorites',

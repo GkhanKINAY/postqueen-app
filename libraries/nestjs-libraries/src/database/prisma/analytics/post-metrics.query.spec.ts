@@ -319,6 +319,50 @@ describe('overlaySnapshotSeries', () => {
     assert.equal(out[0].data[5].date, '2026-09-15');
   });
 
+  it("plots a Facebook reel's Plays and an Instagram story's Interactions from their snapshots", () => {
+    const live = [
+      {
+        label: 'Plays',
+        percentageChange: 0,
+        data: [{ total: '12', date: '2026-09-15' }],
+      },
+      {
+        label: 'Interactions',
+        percentageChange: 0,
+        data: [{ total: '4', date: '2026-09-15' }],
+      },
+    ];
+    const out = overlaySnapshotSeries(
+      live,
+      [
+        {
+          capturedDay: '2026-09-14',
+          impressions: 5,
+          reactions: 0,
+          comments: 0,
+          shares: 0,
+          raw: { interactions: 1 },
+        },
+        {
+          capturedDay: '2026-09-15',
+          impressions: 12,
+          reactions: 0,
+          comments: 0,
+          shares: 0,
+          raw: { interactions: 4 },
+        },
+      ],
+      range,
+    );
+    assert.deepEqual(
+      out.map((series) => series.data.map((point) => point.total)),
+      [
+        ['0', '0', '0', '0', '5', '7', '0'],
+        ['0', '0', '0', '0', '1', '3', '0'],
+      ],
+    );
+  });
+
   it('plots daily growth, not a lifetime plateau, across the selected days', () => {
     const live = [
       {
