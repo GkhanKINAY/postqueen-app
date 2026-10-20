@@ -14,7 +14,8 @@ export class MediaListTool implements AgentToolInterface {
     return createTool({
       id: 'mediaListTool',
       description: `List the media (images and videos) already uploaded to the media library, newest first, 18 per page, optionally searched by original filename.
-Use the returned id and path as an attachment in integrationSchedulePostTool instead of uploading the file again.`,
+Use the returned id and path as an attachment in integrationSchedulePostTool instead of uploading the file again.
+This is also how to pick up files the user uploaded on the Media page of PostQueen (the mediaPageUrl of uploadWidgetTool): search by each file name. A video still being converted is not listed yet: wait about 10 seconds and search again.`,
       inputSchema: z.object({
         search: z
           .string()
