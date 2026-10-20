@@ -5,6 +5,10 @@ import { createPortal } from 'react-dom';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { useMediaDirectory } from '@gitroom/react/helpers/use.media.directory';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '@gitroom/frontend/components/ui/icons';
 
 export type LightboxMedia = {
   id: string;
@@ -46,10 +50,15 @@ export const MediaLightbox: FC<{
   onClose: () => void;
   onDelete?: () => void;
   onDownload?: () => void;
-}> = ({ media, onClose, onDelete, onDownload }) => {
+  /** The neighbouring files; left out at either end of the list. */
+  onPrev?: () => void;
+  onNext?: () => void;
+}> = ({ media, onClose, onDelete, onDownload, onPrev, onNext }) => {
   const t = useT();
   const mediaDirectory = useMediaDirectory();
-  const [imgFailed, setImgFailed] = useState(false);
+  // Kept per file, so a broken image does not blank the next one shown.
+  const [failedPath, setFailedPath] = useState<string | null>(null);
+  const imgFailed = failedPath === media.path;
   const [mounted, setMounted] = useState(false);
   const isVideo =
     hasExtension(media.path, 'mp4') || /\.webm$/i.test(media.path);
@@ -68,14 +77,30 @@ export const MediaLightbox: FC<{
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
+        return;
       }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      // Alt/Cmd + arrow is the browser's Back, and a focused video seeks
+      // with the arrows itself.
+      if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('video, input, textarea, [contenteditable="true"]')) {
+        return;
+      }
+      // The arrow that points at a button walks that way, so RTL swaps them.
+      const rtl = document.documentElement.getAttribute('dir') === 'rtl';
+      const step =
+        e.key === (rtl ? 'ArrowLeft' : 'ArrowRight') ? onNext : onPrev;
+      if (!step) return;
+      e.preventDefault();
+      step();
     };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
     };
-  }, [mounted, onClose]);
+  }, [mounted, onClose, onPrev, onNext]);
 
   const stop = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -155,6 +180,7 @@ export const MediaLightbox: FC<{
         <div className="relative grid max-h-[min(72vh,720px)] min-h-[200px] w-full place-items-center overflow-hidden rounded-[14px] bg-black/35 outline outline-1 outline-white/12 -outline-offset-1">
           {isVideo ? (
             <video
+              key={url}
               className="relative z-[1] max-h-[min(72vh,720px)] max-w-full object-contain"
               src={url}
               controls
@@ -163,12 +189,37 @@ export const MediaLightbox: FC<{
             />
           ) : !imgFailed ? (
             <img
+              key={url}
               src={url}
               alt={t('media', 'Media')}
               className="relative z-[1] max-h-[min(72vh,720px)] max-w-full object-contain"
-              onError={() => setImgFailed(true)}
+              onError={() => setFailedPath(media.path)}
             />
           ) : null}
+          {onPrev && (
+            <button
+              type="button"
+              onClick={onPrev}
+              title={t('previous', 'Previous')}
+              aria-label={t('previous', 'Previous')}
+              data-pq="media-lightbox-prev"
+              className="absolute start-[10px] top-1/2 z-[2] grid h-[44px] w-[44px] -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+            >
+              <ChevronLeftIcon size={20} className="rtl:rotate-180" />
+            </button>
+          )}
+          {onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              title={t('next', 'Next')}
+              aria-label={t('next', 'Next')}
+              data-pq="media-lightbox-next"
+              className="absolute end-[10px] top-1/2 z-[2] grid h-[44px] w-[44px] -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+            >
+              <ChevronRightIcon size={20} className="rtl:rotate-180" />
+            </button>
+          )}
         </div>
       </div>
     </div>,
