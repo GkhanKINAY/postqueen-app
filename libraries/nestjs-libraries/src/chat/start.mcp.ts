@@ -267,7 +267,8 @@ export const startMcp = async (app: INestApplication) => {
     // new URL(): only their pathname is read, matched against the paths mounted
     // here, which never carry the base path (the proxy strips /api first). With
     // it kept they would stop matching, and the OAuth middleware would let
-    // /mcp-oauth past the token check
+    // /mcp-oauth past the token check. SSE is the exception: it puts the base
+    // path on both its url and the paths it matches (ssePrefix below)
     const url = new URL('/.well-known/oauth-protected-resource', process.env.NEXT_PUBLIC_BACKEND_URL);
     await resource.middleware(req, res, url);
   });
@@ -446,6 +447,16 @@ export const startMcp = async (app: INestApplication) => {
     );
   });
 
+  // An MCPServer holds one SSE transport, so each stream keeps its own server
+  // and the POSTs of that session must reach it; a fresh server per request
+  // answered every message with 503. Keyed by the transport's sessionId,
+  // which the endpoint event hands the client.
+  const sseSessions = new Map<string, { id: string; server: MCPServer }>();
+  // The endpoint event is a path on the client's origin, so a backend served
+  // under a path (https://host/api, no override) needs that path in front of
+  // /message. Empty in production, where the base is https://api.postqueen.ai
+  const ssePrefix = new URL(mcpBackendUrl).pathname.replace(/\/+$/, '');
+
   app.use(['/sse/:id', '/message/:id'], async (req: Request, res: Response) => {
     // @ts-ignore
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -466,20 +477,46 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
-    const url = new URL(req.originalUrl, process.env.NEXT_PUBLIC_BACKEND_URL);
+    const url = new URL(
+      `${ssePrefix}${req.originalUrl}`,
+      process.env.NEXT_PUBLIC_BACKEND_URL
+    );
+    const ssePath = `${ssePrefix}/sse/${req.params.id}`;
+    const messagePath = `${ssePrefix}/message/${req.params.id}`;
+
+    let sseServer: MCPServer;
+    if (url.pathname === messagePath) {
+      const session = sseSessions.get(String(req.query.sessionId));
+      if (!session || session.id !== req.params.id) {
+        res.status(404).send('Unknown SSE session');
+        return;
+      }
+      sseServer = session.server;
+    } else {
+      sseServer = new MCPServer(serverConfig);
+    }
 
     await runWithContext(
       // @ts-ignore
       { requestId: req.params.id, auth: req.auth },
       async () => {
-        await new MCPServer(serverConfig).startSSE({
+        await sseServer.startSSE({
           url,
-          ssePath: `/sse/${req.params.id}`,
-          messagePath: `/message/${req.params.id}`,
+          ssePath,
+          messagePath,
           req,
           res,
         });
       }
     );
+
+    // A new stream is connected by now and has its sessionId. A client gone
+    // before that (while resolveAuth ran) already fired 'close', so it is
+    // never added
+    const sessionId = sseServer.getSseTransport()?.sessionId;
+    if (url.pathname === ssePath && sessionId && !res.destroyed) {
+      sseSessions.set(sessionId, { id: req.params.id, server: sseServer });
+      res.on('close', () => sseSessions.delete(sessionId));
+    }
   });
 };
