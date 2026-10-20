@@ -696,7 +696,7 @@
   "conn_oauth_step_create": "Create the app",
   "conn_oauth_step_create_detail": "Connections → Developers, or Settings → Developers. Set your redirect URL there. This is not where the workspace API key lives, that is API Keys.",
   "conn_oauth_step_token": "Use the token",
-  "conn_oauth_step_token_detail": "Tokens are prefixed pos_ and go in the same Authorization header as an API key (raw, no Bearer) on the Public API. On MCP, send them as Authorization: Bearer pos_… on https://api.postqueen.ai/mcp. Do not put a pos_ token in the /mcp/KEY URL; that form only looks up API keys.",
+  "conn_oauth_step_token_detail": "Tokens are prefixed pos_ and go in the same Authorization header as an API key (raw, no Bearer) on the Public API. On MCP, send them as Authorization: Bearer pos_… on {{mcp}}. Do not put a pos_ token in the /mcp/KEY URL; that form only looks up API keys.",
   "conn_all": "All connections",
   "conn_soon": "OFFICIAL APP SOON",
   "conn_search": "Search connections",

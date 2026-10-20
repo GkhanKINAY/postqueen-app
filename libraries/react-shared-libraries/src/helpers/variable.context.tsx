@@ -45,6 +45,12 @@ interface VariableContextInterface {
   oauthLogoUrl: string;
   oauthDisplayName: string;
   mcpUrl?: string;
+  /**
+   * The backend's public address when it differs from backendUrl
+   * (NEXT_PUBLIC_OVERRIDE_BACKEND_URL). The MCP server advertises it in OAuth
+   * discovery, so the addresses Connections gives agents use it too.
+   */
+  overrideBackendUrl?: string;
   cloudflareUrl: string;
   mainUrl: string;
   frontEndUrl: string;
@@ -124,6 +130,7 @@ const VariableContext = createContext({
   googleAdsTrialTracking: '',
   oauthDisplayName: '',
   mcpUrl: '',
+  overrideBackendUrl: '',
   cloudflareUrl: '',
   mainUrl: '',
   frontEndUrl: '',

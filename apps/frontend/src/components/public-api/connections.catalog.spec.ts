@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import {
+  joinBaseUrl,
+  mcpOAuthBaseUrl,
+} from '../../../../../libraries/nestjs-libraries/src/chat/oauth-types.ts';
 import {
   AGENTS_DISPLAY_ORDER,
   BOTS_DISPLAY_ORDER,
@@ -16,6 +20,7 @@ import {
   CONNECT_NAV_ACCOUNT,
   LEGACY_NAV_CONNECTOR,
   buildConnectionsCatalog,
+  connectionAddresses,
   connectionsForNav,
   searchConnections,
   defaultNavForConnection,
@@ -23,16 +28,20 @@ import {
   resolveConnectNavId,
   resolveConnectorId,
   settingsExitHref,
+  type CatalogTranslate,
 } from './connections.catalog.ts';
 
+// i18next's own interpolation, as the panel's t does it
+const interpolate: CatalogTranslate = (_key, fallback, options) =>
+  fallback.replace(/\{\{(\w+)\}\}/g, (_, name) =>
+    String((options as Record<string, unknown> | undefined)?.[name] ?? '')
+  );
+
 const catalog = buildConnectionsCatalog({
-  // i18next's own interpolation, as the panel's t does it
-  t: (_key, fallback, options) =>
-    fallback.replace(/\{\{(\w+)\}\}/g, (_, name) =>
-      String((options as Record<string, unknown> | undefined)?.[name] ?? '')
-    ),
+  t: interpolate,
   backendUrl: 'https://api.postqueen.ai',
   mcpUrl: 'https://api.postqueen.ai/mcp',
+  mcpSignInUrl: 'https://api.postqueen.ai/mcp-oauth-dynamic',
   apiKey: 'test-key',
 });
 
@@ -649,5 +658,138 @@ describe('Connect marketplace catalog', () => {
       'base64'
     ).toString('utf8');
     assert.match(zedMark, /M8\.4375 5\.625C6\.8842 5\.625/);
+  });
+});
+
+describe('Connection addresses', () => {
+  // Production: the app calls its backend through app.postqueen.ai/api, while
+  // the MCP server advertises api.postqueen.ai in its OAuth discovery.
+  const production = {
+    backendUrl: 'https://app.postqueen.ai/api',
+    overrideBackendUrl: 'https://api.postqueen.ai',
+  };
+
+  const saved = {
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    NEXT_PUBLIC_OVERRIDE_BACKEND_URL:
+      process.env.NEXT_PUBLIC_OVERRIDE_BACKEND_URL,
+  };
+
+  const setEnv = (name: keyof typeof saved, value: string | undefined) => {
+    if (value === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = value;
+    }
+  };
+
+  afterEach(() => {
+    for (const [name, value] of Object.entries(saved)) {
+      setEnv(name as keyof typeof saved, value);
+    }
+  });
+
+  it('gives agents the host the MCP server advertises, not the one the app calls', () => {
+    const expected = {
+      apiUrl: 'https://api.postqueen.ai',
+      mcpUrl: 'https://api.postqueen.ai/mcp',
+      mcpSignInUrl: 'https://api.postqueen.ai/mcp-oauth-dynamic',
+    };
+    assert.deepEqual(connectionAddresses(production), expected);
+    assert.deepEqual(
+      connectionAddresses({
+        ...production,
+        overrideBackendUrl: 'https://api.postqueen.ai/',
+      }),
+      expected
+    );
+  });
+
+  it('stays on the backend URL when no override is set', () => {
+    assert.deepEqual(
+      connectionAddresses({
+        backendUrl: 'https://social.example.com/api',
+        overrideBackendUrl: '',
+      }),
+      {
+        apiUrl: 'https://social.example.com/api',
+        mcpUrl: 'https://social.example.com/api/mcp',
+        mcpSignInUrl: 'https://social.example.com/api/mcp-oauth-dynamic',
+      }
+    );
+    // Relative resolves against the page, and outside a browser localhost
+    assert.equal(
+      connectionAddresses({ backendUrl: '/api' }).apiUrl,
+      'http://localhost/api'
+    );
+  });
+
+  it('lets MCP_URL move the /mcp addresses but never the sign-in address', () => {
+    assert.deepEqual(
+      connectionAddresses({
+        ...production,
+        mcpBaseUrl: 'https://mcp.example.com/',
+      }),
+      {
+        apiUrl: 'https://api.postqueen.ai',
+        mcpUrl: 'https://mcp.example.com/mcp',
+        mcpSignInUrl: 'https://api.postqueen.ai/mcp-oauth-dynamic',
+      }
+    );
+  });
+
+  it('gives the exact resource the MCP server advertises for the same settings', () => {
+    // start.mcp.ts: resource = joinBaseUrl(mcpBackendUrl, mcpPath), with
+    // mcpBackendUrl = mcpOAuthBaseUrl(). Clients such as Codex refuse a
+    // sign-in address that differs from it.
+    const settings: [string, string | undefined][] = [
+      ['https://app.postqueen.ai/api', 'https://api.postqueen.ai'],
+      ['https://app.postqueen.ai/api', 'https://api.postqueen.ai/'],
+      ['https://social.example.com/api', undefined],
+      ['http://localhost:3000', undefined],
+    ];
+    for (const [backendUrl, overrideBackendUrl] of settings) {
+      setEnv('NEXT_PUBLIC_BACKEND_URL', backendUrl);
+      setEnv('NEXT_PUBLIC_OVERRIDE_BACKEND_URL', overrideBackendUrl);
+      assert.equal(
+        connectionAddresses({ backendUrl, overrideBackendUrl }).mcpSignInUrl,
+        joinBaseUrl(mcpOAuthBaseUrl(), '/mcp-oauth-dynamic')
+      );
+    }
+  });
+
+  it('puts no address on the app host anywhere in the production catalog', () => {
+    const addresses = connectionAddresses(production);
+    const text = JSON.stringify(
+      buildConnectionsCatalog({
+        t: interpolate,
+        backendUrl: addresses.apiUrl,
+        mcpUrl: addresses.mcpUrl,
+        mcpSignInUrl: addresses.mcpSignInUrl,
+        apiKey: 'test-key',
+      })
+    );
+    assert.doesNotMatch(text, /app\.postqueen\.ai\/api/);
+    const signIns = text.match(/https?:\/\/[^\s"\\]*mcp-oauth[\w-]*/g) ?? [];
+    assert.ok(signIns.length > 10, `only ${signIns.length} sign-in addresses`);
+    for (const address of signIns) {
+      assert.equal(address, 'https://api.postqueen.ai/mcp-oauth-dynamic');
+    }
+  });
+
+  it('keeps hosts out of translations, which override the catalog fallbacks', () => {
+    const locales = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../../../libraries/react-shared-libraries/src/translation/locales'
+    );
+    for (const lang of readdirSync(locales)) {
+      const file = join(locales, lang, 'translation.json');
+      if (!existsSync(file)) continue;
+      assert.doesNotMatch(
+        readFileSync(file, 'utf8'),
+        /\b(?:api|app)\.postqueen\.ai\b/,
+        `${lang} hardcodes an address`
+      );
+    }
   });
 });
