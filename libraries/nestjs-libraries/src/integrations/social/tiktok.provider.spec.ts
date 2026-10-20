@@ -397,6 +397,75 @@ describe('TikTok direct post body', () => {
   });
 });
 
+describe('TikTok AI label', () => {
+  const post = (path: string, settings: Record<string, unknown>) => ({
+    message: 'Caption',
+    media: [{ path }],
+    settings: {
+      content_posting_method: 'DIRECT_POST',
+      privacy_level: 'SELF_ONLY',
+      comment: false,
+      autoAddMusic: 'no',
+      brand_content_toggle: false,
+      brand_organic_toggle: false,
+      ...settings,
+    },
+  });
+  const tiktok = (path: string, settings: Record<string, unknown>) =>
+    (new TiktokProvider() as any).buildTikokPostInfoBody(post(path, settings));
+
+  it('labels a TikTok photo beside post_info, and a video inside it', () => {
+    const photo = tiktok('https://cdn.test/a.jpg', { video_made_with_ai: true });
+    assert.equal(photo.is_aigc, true);
+    assert.equal('is_aigc' in photo.post_info, false);
+    const video = tiktok('https://cdn.test/a.mp4', { video_made_with_ai: true });
+    assert.equal(video.post_info.is_aigc, true);
+    assert.equal('is_aigc' in video, false);
+  });
+
+  it('leaves an unlabeled TikTok photo body as it was', () => {
+    assert.equal('is_aigc' in tiktok('https://cdn.test/a.jpg', { video_made_with_ai: false }), false);
+    assert.equal('is_aigc' in tiktok('https://cdn.test/a.jpg', {}), false);
+  });
+
+  it('sends no AI label with a TikTok photo going to the inbox', () => {
+    const upload = tiktok('https://cdn.test/a.jpg', {
+      content_posting_method: 'UPLOAD',
+      video_made_with_ai: true,
+    });
+    assert.doesNotMatch(JSON.stringify(upload), /aigc/);
+  });
+
+  it('has no AI field to send on a TikTok Business photo, only on a video', async () => {
+    const provider = new TiktokBusinessProvider() as any;
+    const photo = await provider.buildPhotoBody(
+      'business-1',
+      post('https://cdn.test/a.jpg', { video_made_with_ai: true }),
+      'token'
+    );
+    assert.doesNotMatch(JSON.stringify(photo), /ai_generated|aigc/);
+    const video = provider.buildVideoBody(
+      'business-1',
+      post('https://cdn.test/a.mp4', { video_made_with_ai: true })
+    );
+    assert.equal(video.post_info.is_ai_generated, true);
+  });
+});
+
+describe('TikTok Business media domain refusal', () => {
+  it('names the refusal TikTok Business sends without an error name', () => {
+    const answer = new TiktokBusinessProvider().handleErrors(
+      // the sentence a live photo post got back on 2026-10-20
+      JSON.stringify({
+        message:
+          'Please review our URL ownership verification rules at https://developers.tiktok.com/doc/content-posting-api-media-transfer-guide/#pull_from_url.',
+      })
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /Upload the media to PostQueen/);
+  });
+});
+
 describe('Upload to the TikTok inbox, on both tiles', () => {
   it('asks for video.upload on both tiles', () => {
     assert.equal(new TiktokProvider().scopes.includes('video.upload'), true);
