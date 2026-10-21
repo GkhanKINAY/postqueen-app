@@ -463,6 +463,10 @@ export const startMcp = async (app: INestApplication) => {
     res.setHeader('Access-Control-Allow-Methods', '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
     res.setHeader('Access-Control-Expose-Headers', '*');
+    // nginx buffers proxied responses by default, which holds the events of
+    // an SSE stream back until the buffer fills, so the client never sees the
+    // reply to its first request. The container's nginx is one such proxy.
+    res.setHeader('X-Accel-Buffering', 'no');
 
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);
