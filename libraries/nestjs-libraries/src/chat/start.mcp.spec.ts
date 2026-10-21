@@ -27,6 +27,12 @@ describe('MCP over SSE', () => {
     );
   });
 
+  // Behind nginx's default proxy buffering (the container's own nginx) the
+  // stream's events never reached the client, and every request timed out
+  it('tells nginx not to buffer the stream', () => {
+    assert.match(startMcp, /res\.setHeader\('X-Accel-Buffering', 'no'\)/);
+  });
+
   // The endpoint event is a path on the client's origin
   it('keeps the base path in the address it sends messages to', () => {
     assert.match(
