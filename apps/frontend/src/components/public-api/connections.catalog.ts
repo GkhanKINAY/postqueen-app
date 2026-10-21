@@ -3908,7 +3908,7 @@ openclaw pairing approve discord <CODE>`,
             signInStep(
               t(
                 'conn_other_mcp_step_sign_in_detail',
-                'For clients that sign in to MCP servers themselves. A workspace admin approves access. This address has 21 tools, all but ask_postqueen. Not tested by PostQueen yet.'
+                'For clients that sign in to MCP servers themselves. A workspace admin approves access. This address has 21 tools, all but ask_postqueen.'
               )
             ),
           ],
