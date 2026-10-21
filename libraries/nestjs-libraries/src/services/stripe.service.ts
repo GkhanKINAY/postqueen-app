@@ -3687,12 +3687,9 @@ export class StripeService extends PaymentProviderAbstract {
           typeof payment === 'string' ? payment : payment?.id,
           invoice.currency
         ),
-        customerName: invoice.customer_name,
-        customerEmail: invoice.customer_email,
         business: !!invoice.customer_tax_ids?.length,
         country: invoice.customer_address?.country,
         paymentNumber: earlier.length + 1,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}invoices/${invoice.id}`,
         test: !livemode,
       }, subscription);
     } catch (err) {
@@ -3738,14 +3735,9 @@ export class StripeService extends PaymentProviderAbstract {
         tax: session.total_details?.amount_tax || 0,
         discount: session.total_details?.amount_discount || 0,
         fee: await this.feeOfPayment(paymentIntent, session.currency || 'usd'),
-        customerName: session.customer_details?.name,
-        customerEmail: session.customer_details?.email,
         business: !!session.customer_details?.tax_ids?.length,
         country: session.customer_details?.address?.country,
         paymentNumber: earlier.length + 1,
-        link: paymentIntent
-          ? `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${paymentIntent}`
-          : null,
         test: !livemode,
       });
     } catch (err) {
@@ -3777,14 +3769,7 @@ export class StripeService extends PaymentProviderAbstract {
             ? 'Rest of the payment refunded'
             : 'Fully refunded'
           : 'Partly refunded',
-        customerName: charge.billing_details?.name,
-        customerEmail: charge.billing_details?.email || charge.receipt_email,
         country: charge.billing_details?.address?.country,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${
-          typeof charge.payment_intent === 'string'
-            ? charge.payment_intent
-            : charge.payment_intent?.id || charge.id
-        }`,
         test: !livemode,
       });
     } catch (err) {
@@ -3816,10 +3801,7 @@ export class StripeService extends PaymentProviderAbstract {
         amount: dispute.amount,
         currency: dispute.currency,
         reason: dispute.reason?.replace(/_/g, ' '),
-        customerName: charge.billing_details?.name,
-        customerEmail: charge.billing_details?.email || charge.receipt_email,
         country: charge.billing_details?.address?.country,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}disputes/${dispute.id}`,
         test: !livemode,
       });
     } catch (err) {
@@ -3856,11 +3838,11 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Adds what every card shares and posts it: the organization (which also
-   * scopes the card to this app, since the webhook takes untagged events), when
-   * it signed up, the affiliate click on the customer, and the attribution the
-   * checkout stored on the subscription. A sale with no subscription of its
-   * own reads the customer's latest one.
+   * Adds what every card shares and posts it: the affiliate click on the
+   * customer and the attribution the checkout stored on the subscription. A
+   * sale with no subscription of its own reads the customer's latest one. The
+   * organization is looked up only to scope the card to this app, since the
+   * webhook takes untagged events; its name never goes on the card.
    */
   private async announceSale(
     customer: string,
@@ -3884,8 +3866,6 @@ export class StripeService extends PaymentProviderAbstract {
       .catch((): null => null);
     await this._salesNotificationService.announce({
       ...sale,
-      organizationName: org.name,
-      signedUpAt: org.createdAt,
       attribution: this.attributionOf(metadata),
       affiliate:
         !!stripeCustomer &&

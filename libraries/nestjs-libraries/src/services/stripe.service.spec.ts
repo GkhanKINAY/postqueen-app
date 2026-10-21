@@ -1085,6 +1085,27 @@ describe('the sales card for a paid invoice', () => {
     assert.equal(posted[0].attribution.medium, 'landing');
   });
 
+  it('hands the card no name, address, sign-up date or link', async () => {
+    invoices = [
+      paid('in_1', 200, {
+        billing_reason: 'subscription_create',
+        customer_name: 'Jane Doe',
+        customer_email: 'jane.doe@example.com',
+      }),
+    ];
+    await announce(invoices[0]);
+    for (const key of [
+      'organizationName',
+      'customerName',
+      'customerEmail',
+      'signedUpAt',
+      'link',
+    ]) {
+      assert.equal(key in posted[0], false, key);
+    }
+    assert.doesNotMatch(JSON.stringify(posted[0]), /jane/i);
+  });
+
   it('a trial ended early from Billing is a conversion, not an upgrade', async () => {
     subs[0].trial_end = 150;
     invoices = [
