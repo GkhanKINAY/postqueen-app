@@ -292,8 +292,27 @@ describe('Connect marketplace catalog', () => {
   });
 
   it('puts the key in the step that needs it, and never on the sign-in route', () => {
-    for (const id of ['grok-bot', 'muse', 'openclaw', 'claude-code', 'codex', 'gemini', 'grok-build', 'paperclip']) {
+    for (const id of ['grok-bot', 'muse', 'claude-code', 'codex', 'gemini', 'grok-build', 'paperclip']) {
       assert.equal(byId(id).steps[0].inline, 'key', `${id} starts with the key`);
+    }
+    // The CLI signs in through the browser; the key is for a gateway without one.
+    for (const id of ['openclaw', 'cli', 'whatsapp', 'telegram', 'slack-chat', 'discord-chat']) {
+      const steps = byId(id).steps;
+      const signIn = steps.findIndex((s) => s.code === 'postqueen auth:login');
+      const key = steps.findIndex((s) => /POSTQUEEN_API_KEY[=:]/.test(s.code || ''));
+      assert.ok(signIn >= 0, `${id} signs the CLI in`);
+      assert.ok(key > signIn, `${id} offers the key after the sign-in`);
+      // The key is in the command, so the page adds the key row only for members.
+      assert.ok(!steps.some((s) => s.inline === 'key'), `${id} repeats the key in a row`);
+    }
+    // A gateway run as a service never sees a shell export, so OpenClaw gets
+    // the key from openclaw.json; only the bare CLI card exports it.
+    for (const id of ['openclaw', 'whatsapp', 'telegram', 'slack-chat', 'discord-chat']) {
+      const key = byId(id).steps.find((s) => /POSTQUEEN_API_KEY/.test(s.code || ''));
+      assert.equal(key?.codeLabel, '~/.openclaw/openclaw.json', id);
+      assert.match(key?.code || '', /skills: \{\n    entries: \{\n      postqueen: \{\n        env: \{ POSTQUEEN_API_KEY: "test-key" \},/, id);
+      assert.match(key?.detail || '', /`openclaw gateway restart`/, id);
+      assert.doesNotMatch(codes(byId(id).steps), /export POSTQUEEN_API_KEY/, id);
     }
     for (const id of ['claude-apps', 'chatgpt', 'claude-cowork']) {
       const c = byId(id);
@@ -317,13 +336,35 @@ describe('Connect marketplace catalog', () => {
     assert.match((claude.fixes || []).map((f) => f.fix).join('\n'), /not in Anthropic’s directory/);
     assert.ok(!codes(claude.steps).includes('claude mcp add'));
     assert.match(codes(code.steps), /claude mcp add --transport http postqueen/);
-    assert.match((code.goodToKnow || []).join('\n'), /does not reach Claude Code/);
+    assert.match(
+      (code.goodToKnow || []).join('\n'),
+      /show up in Claude Code when you log in with your claude\.ai account, not with an API key/
+    );
     assert.match((byId('chatgpt').goodToKnow || []).join('\n'), /Codex, OpenAI’s coding agent, is a different product/);
     assert.match((byId('codex').fixes || []).map((f) => f.symptom).join('\n'), /ChatGPT on the web does not see it/);
-    assert.match(stepText(byId('chatgpt').signInSteps), /Settings > Security and login/);
-    assert.match(stepText(byId('chatgpt').signInSteps), /chatgpt\.com\/plugins/);
-    assert.match(codes(byId('chatgpt').steps), /Authentication: No Authentication/);
+    // ChatGPT adds custom MCP servers from Plugins with no Developer mode step.
+    const chatgpt = byId('chatgpt');
+    for (const steps of [chatgpt.steps, chatgpt.signInSteps]) {
+      assert.doesNotMatch(stepText(steps), /Developer mode|Drafts/);
+      assert.match(stepText(steps), /chatgpt\.com\/plugins, select \+, then Add custom MCP server/);
+      assert.match(stepText(steps), /I understand and want to continue, select Create as a plugin/);
+      assert.match(stepText(steps), /type @ and pick PostQueen/);
+    }
+    assert.match(codes(chatgpt.steps), /Server URL: +https:\/\/api\.postqueen\.ai\/mcp\/test-key\nAuthentication: No authentication/);
+    assert.match(codes(chatgpt.signInSteps), /Authentication: OAuth/);
+    assert.doesNotMatch(pageText('chatgpt'), /older path|Plus\b/);
+    assert.match(pageText('chatgpt'), /Business, Enterprise and Edu, on the web\. Pro can connect them with read and fetch tools only/);
+    assert.match(chatgpt.teamNote || '', /Create plugins with MCPs/);
+    // Claude asks for the connector in one screen or in two steps.
+    assert.match(stepText(claude.steps), /If Claude asks in two steps, choose No sign-in/);
+    assert.match(stepText(claude.signInSteps), /choose Sign in now, and under OAuth client choose Register automatically/);
+    for (const id of ['claude-apps', 'claude-cowork']) {
+      assert.match(byId(id).teamNote || '', /^On Team and Enterprise, only an Owner can add a custom connector/);
+      assert.match(byId(id).teamNote || '', /gives everyone who uses it your workspace key’s access/);
+    }
     const gemini = byId('gemini');
+    assert.doesNotMatch(pageText('gemini'), /[Ff]ree with|refuses|1,000 a day/);
+    assert.match((gemini.goodToKnow || [])[0] || '', /^Since June 18, 2026, free and Google AI Pro or Ultra accounts use Antigravity CLI/);
     assert.match(codes(gemini.steps), /gemini mcp add --transport http --scope user/);
     assert.match((gemini.goodToKnow || []).join('\n'), /"type": "http"/);
     assert.match((gemini.goodToKnow || []).join('\n'), /httpUrl/);
@@ -348,25 +389,71 @@ describe('Connect marketplace catalog', () => {
     assert.doesNotMatch(codes(grokBot.steps), /test-key/);
     assert.match(stepText(grokBot.steps), /secure prompt, never into the chat/);
     assert.match((grokBot.goodToKnow || []).join('\n'), /not Grok on grok\.com and not Grok Build/);
-    assert.match(grokBot.soonNote || '', /Marketplace/);
+    assert.match(grokBot.soonNote || '', /Connect apps/);
+    assert.doesNotMatch(pageText('grok-bot'), /Marketplace/);
+    assert.match(stepText(grokBot.steps), /open Connect apps in the sidebar, choose Your plugins and check PostQueen is under Installed/);
+    assert.match((grokBot.goodToKnow || []).join('\n'), /Disabled by team admin/);
     assert.match(codes(grokBuild.steps), /grok mcp add --transport http postqueen/);
+    assert.match(stepText(grokBuild.steps), /This is the terminal agent \(the `grok` CLI\), not Grok Build on grok\.com or in the apps/);
     assert.match((grokBuild.goodToKnow || []).join('\n'), /not Grok on grok\.com and not Grok Bot/);
+    // PostQueen is not in xAI's marketplace: the plugin route adds its own first.
+    const plugin = grokBuild.routes?.find((r) => /grok plugin/.test(`${r.address} ${r.how}`));
+    assert.equal(plugin?.address, 'grok plugin marketplace add GkhanKINAY/postqueen-agent');
+    assert.match(plugin?.how || '', /^Then `grok plugin install postqueen --trust`/);
     assert.equal(resolveConnectorId('grok-cli'), 'grok-build');
   });
 
   it('connects the bots you host the way their docs say', () => {
     const openclaw = byId('openclaw');
     assert.match(codes(openclaw.steps), /npm install -g postqueen/);
-    assert.match(codes(openclaw.steps), /npx skills add GkhanKINAY\/postqueen-agent/);
+    // Without -g the skill goes into the current project only.
+    assert.match(codes(openclaw.steps), /npx skills add GkhanKINAY\/postqueen-agent -g -a openclaw/);
     assert.match(codes(openclaw.steps), /openclaw skills list --eligible/);
-    assert.match(stepText(openclaw.steps), /skills\.entries\.postqueen\.env/);
+    assert.match(codes(openclaw.steps), /entries: \{\n      postqueen: \{\n        env: \{ POSTQUEEN_API_KEY:/);
+    assert.match((openclaw.goodToKnow || []).join('\n'), /skills\.entries\.postqueen\.env/);
+    assert.doesNotMatch((openclaw.goodToKnow || []).join('\n'), /eligible[^.]*POSTQUEEN_API_KEY/);
+    // Skills load when a session starts.
+    assert.match(stepText(openclaw.steps), /start a new session, then ask OpenClaw to list your channels/);
     assert.match((openclaw.fixes || []).map((f) => f.fix).join('\n'), /--transport streamable-http/);
     assert.ok(openclaw.routes?.some((r) => /openclaw mcp add/.test(r.how)));
+    // OpenClaw assumes SSE, so every remote PostQueen address needs the
+    // transport, and `openclaw mcp` refuses to save while the gateway runs.
+    for (const route of (openclaw.routes || []).filter((r) => /openclaw mcp add/.test(r.how))) {
+      assert.match(route.how, /--transport streamable-http/, route.name);
+      assert.match(route.how, /^`openclaw gateway stop`, then `openclaw mcp add postqueen /, route.name);
+      assert.match(route.how, /, then `openclaw gateway start`\.$/, route.name);
+    }
+    // OpenClaw's --header takes KEY=VALUE.
+    assert.match(
+      openclaw.routes?.find((r) => r.need === 'key' && /--header/.test(r.how))?.how || '',
+      /--url https:\/\/api\.postqueen\.ai\/mcp --transport streamable-http --header "Authorization=Bearer YOUR_API_KEY"/
+    );
+    assert.match(
+      openclaw.routes?.find((r) => r.need === 'none')?.how || '',
+      /^`openclaw gateway stop`, then `openclaw mcp add postqueen --url https:\/\/api\.postqueen\.ai\/mcp-oauth-dynamic --transport streamable-http --auth oauth` and `openclaw mcp login postqueen`/
+    );
     const nanoclaw = byId('nanoclaw');
     const nano = codes(nanoclaw.steps);
     assert.match(nano, /onecli secrets create .*\\\n  --value test-key --host-pattern api\.postqueen\.ai /);
     assert.match(nano, /ncl groups config add-mcp-server --id YOUR_GROUP_ID \\\n  --name postqueen --url https:\/\/api\.postqueen\.ai\/mcp\n/);
     assert.doesNotMatch(nano, /\/mcp\/test-key/);
+    // The OneCLI NanoClaw installs gives agents secret mode all, which picks the
+    // secret up by its host: check the agent after creating the secret. A grant
+    // is only for selective agents, and set-secrets, which would switch an agent
+    // to selective and cut it off from its other secrets, is never offered.
+    const created = nanoclaw.steps.findIndex((s) => /onecli secrets create/.test(s.code || ''));
+    const checked = nanoclaw.steps.findIndex((s) => s.code === 'onecli agents list');
+    assert.equal(checked, created + 1, 'the check follows the secret');
+    assert.match(nanoclaw.steps[checked].detail || '', /secret mode `all`.*nothing to grant/);
+    assert.match(nanoclaw.steps[checked].detail || '', /CLI 2\.9 or later\), run `onecli agents grants attach-secret --id YOUR_AGENT_ID --secret-id YOUR_SECRET_ID`/);
+    assert.doesNotMatch(pageText('nanoclaw'), /set-secrets/);
+    assert.equal(nanoclaw.way?.label, 'Three commands');
+    // NanoClaw keeps credentials in the vault; a key in the path is not refused,
+    // it would just sit in the group's config.
+    assert.doesNotMatch(pageText('nanoclaw'), /rejects URLs that embed credentials|no sign-in flow|do not work inside/);
+    assert.match((nanoclaw.goodToKnow || []).join('\n'), /the key would sit in the group’s config/);
+    assert.match((nanoclaw.goodToKnow || []).join('\n'), /^Last resort only, against NanoClaw’s advice to keep real credentials in the vault/m);
+    assert.match((nanoclaw.fixes || [])[0]?.fix || '', /host pattern is `api\.postqueen\.ai`/);
     for (const id of ['openclaw', 'hermes', 'nanoclaw']) {
       assert.equal(byId(id).chatApps, true);
     }
@@ -375,7 +462,7 @@ describe('Connect marketplace catalog', () => {
   it('adds Muse, Cowork, Perplexity Computer and Paperclip through their own panels', () => {
     const muse = byId('muse');
     assert.match(codes(muse.steps), /Create a custom connector for PostQueen/);
-    assert.match(codes(muse.steps), /secure prompt, not in this chat/);
+    assert.match(codes(muse.steps), /Secure Credentials Store, not in this chat/);
     assert.equal(muse.steps[1].fold, 4);
     assert.match((muse.goodToKnow || []).join('\n'), /Muse is not Muse Code/);
     const cowork = byId('claude-cowork');
@@ -386,15 +473,25 @@ describe('Connect marketplace catalog', () => {
     const perplexity = byId('perplexity-computer');
     assert.match(codes(perplexity.steps), /MCP Server URL: https:\/\/api\.postqueen\.ai\/mcp\/test-key/);
     assert.match(codes(perplexity.steps), /Authentication: None/);
-    assert.match((perplexity.goodToKnow || []).join('\n'), /sign-in address, which does not work with Perplexity yet/);
+    assert.match(stepText(perplexity.steps), /Open Plugins in the sidebar \(or Customize > Connectors if you don’t see Plugins yet\), then Add custom > Connector > Add MCP connector, and choose Remote/);
+    assert.match(perplexity.teamNote || '', /Enterprise settings > Permissions > Connectors permissions and clicks \+ Custom connector/);
+    // No Settings > MCP servers path, and no claim either way about signing in.
+    assert.doesNotMatch(pageText('perplexity-computer'), /Settings, then MCP servers|Settings > MCP servers|Account settings|sign-in address/);
     const paperclip = byId('paperclip');
     assert.equal(paperclip.steps[1].code, 'https://api.postqueen.ai/mcp');
     assert.match(stepText(paperclip.steps), /without the word Bearer/);
     assert.ok(paperclip.routes?.some((r) => r.address === 'https://api.postqueen.ai/mcp-oauth-dynamic'));
+    // Paperclip's menu is Connectors, not Apps.
+    assert.match(stepText(paperclip.steps), /open Connectors, choose Connect on Connect your own tool, then Connect your own MCP server/);
+    assert.doesNotMatch(pageText('paperclip'), /Apps >|Connect an app|in Apps|Apps (page|connection)|Skills Store/);
+    // A new connection starts every action as Allowed, writes included.
+    assert.match(stepText(paperclip.steps), /every PostQueen tool as Allowed, including scheduling/);
+    assert.match(stepText(paperclip.steps), /Set all: Ask first on the Write group/);
+    assert.doesNotMatch(pageText('paperclip'), /start off|then ask for approval|Approved by you|you approved/);
     assert.equal(resolveConnectorId('perplexity'), 'perplexity-computer');
   });
 
-  it('uses the official VS Code, Devin Desktop and Zed JSON keys, not Cursor mcpServers', () => {
+  it('uses the official VS Code, Devin Desktop and Zed JSON keys', () => {
     const vscode = byId('vscode');
     const devin = byId('devin-desktop');
     const zed = byId('zed');
@@ -403,12 +500,15 @@ describe('Connect marketplace catalog', () => {
     const devinJson = codes(devin.steps);
     const zedJson = codes(zed.steps);
 
-    assert.match(vscodeJson, /"servers"/);
-    assert.match(vscodeJson, /"type": "http"/);
-    assert.doesNotMatch(vscodeJson, /mcpServers/);
-    assert.match(vscode.intro || '', /not Cursor/);
-    assert.match(vscode.info || '', /Copilot CLI is a different product/);
+    // MCP: Add Server > Global > Copilot Global writes ~/.copilot/mcp-config.json.
+    assert.match(vscodeJson, /"mcpServers": \{\n    "postqueen": \{\n      "type": "http",\n      "url": "https:\/\/api\.postqueen\.ai\/mcp\/test-key"/);
+    assert.match(stepText(vscode.steps), /run MCP: Add Server and choose HTTP\. Paste this address, enter the ID postqueen, then choose Global and Copilot Global/);
+    assert.match(stepText(vscode.steps), /`\.vscode\/mcp\.json` with `servers` in place of `mcpServers` still works for compatibility/);
+    assert.match(vscode.intro || '', /Copilot Global/);
+    assert.match(vscode.info || '', /your organization’s MCP servers in Copilot policy must allow it/);
+    assert.doesNotMatch(`${vscode.info} ${stepText(vscode.steps)}`, /agent mode|different product/);
     assert.match(stepText(vscode.steps), /Do not look for PostQueen in an extension marketplace/);
+    assert.match(stepText(cursor.steps), /Save the file and restart Cursor, then check Customize > MCPs/);
 
     assert.equal(devin.name, 'Devin Desktop');
     assert.match(devinJson, /devin mcp add -s user postqueen/);
@@ -430,6 +530,7 @@ describe('Connect marketplace catalog', () => {
     assert.match(zed.info || '', /only when a server answers 401/);
 
     assert.match(byId('other-mcp').note || '', /Cline, Continue, Goose/);
+    assert.match(byId('other-mcp').note || '', /Cline also needs `"type": "streamableHttp"`/);
     assert.equal(resolveConnectorId('vs-code'), 'vscode');
     assert.equal(resolveConnectorId('windsurf'), 'devin-desktop');
     assert.equal(resolveConnectorId('cascade'), 'devin-desktop');
@@ -441,24 +542,62 @@ describe('Connect marketplace catalog', () => {
         .steps.map((s) => `${s.detail || ''} ${s.code || ''}`)
         .join('\n');
     assert.match(text('whatsapp'), /npm install -g postqueen/);
+    assert.match(text('whatsapp'), /npx skills add GkhanKINAY\/postqueen-agent -g -a openclaw/);
+    assert.match(text('whatsapp'), /Hermes connects over MCP instead/);
     assert.match(text('whatsapp'), /channels add --channel whatsapp/);
     assert.match(text('whatsapp'), /channels login --channel whatsapp/);
     assert.match(text('telegram'), /BotFather/);
-    assert.match(text('telegram'), /TELEGRAM_BOT_TOKEN/);
+    assert.match(text('telegram'), /openclaw channels add --channel telegram --token <BOT_TOKEN>/);
     assert.match(text('slack-chat'), /@openclaw\/slack/);
     assert.match(text('discord-chat'), /Message Content Intent/);
     assert.match(text('discord-chat'), /@openclaw\/discord/);
+    // The tokens do nothing until the channel is in OpenClaw's config.
+    assert.match(text('slack-chat'), /slack: \{\n      enabled: true,\n      mode: "socket",/);
+    assert.match(text('discord-chat'), /discord: \{\n      enabled: true,\n      token: /);
+    // `openclaw config patch` needs the gateway stopped.
+    assert.match(text('slack-chat'), /openclaw gateway stop\nopenclaw config patch --file \.\/slack\.socket\.patch\.json5\nopenclaw gateway start/);
+    assert.match(text('discord-chat'), /openclaw gateway stop\nopenclaw config patch --file \.\/discord\.patch\.json5\nopenclaw gateway start/);
+    // The bot answers in a Slack channel or a Discord server only once it is on the allowlist.
+    assert.match(text('slack-chat'), /groupPolicy: "allowlist",\n      channels: \{\n        "<CHANNEL_ID>": \{ enabled: true, requireMention: true \},/);
+    assert.match(text('discord-chat'), /groupPolicy: "allowlist",\n      guilds: \{\n        "<SERVER_ID>": \{ requireMention: true, users: \["<YOUR_USER_ID>"\] \},/);
+    assert.match(text('slack-chat'), /Create New App > From a manifest/);
+    // A gateway run as a service reads its tokens from ~/.openclaw/.env, not a shell export.
+    for (const id of ['slack-chat', 'discord-chat']) {
+      assert.match(text(id), /cat >> ~\/\.openclaw\/\.env <<'ENV'/, id);
+      assert.doesNotMatch(text(id), /^export /m, id);
+      assert.match(text(id), new RegExp(`openclaw pairing approve ${id.replace('-chat', '')} <CODE>`), id);
+    }
+    assert.doesNotMatch(text('discord-chat'), /receives nothing readable/);
   });
 
   it('states CLI, API and OAuth capabilities without mixing surfaces', () => {
     assert.match(byId('cli').intro || '', /17 commands/);
     assert.match(byId('cli').info || '', /on the API and on MCP/);
-    assert.match(stepText(byId('cli').steps), /logs in with the API key only/);
-    assert.doesNotMatch(stepText(byId('cli').steps), /auth:login|device flow/);
+    // postqueen 2.0.28 signs in through the browser; the key is for machines without one.
+    assert.match(codes(byId('cli').steps), /^npm install -g postqueen\npostqueen auth:login\nexport POSTQUEEN_API_KEY=/);
+    assert.match(stepText(byId('cli').steps), /a workspace admin approves/);
+    assert.doesNotMatch(stepText(byId('cli').steps), /API key only/);
     assert.match(byId('cli').intro || '', /does not generate video/);
     assert.match(byId('api').intro || '', /Image generation is MCP only/);
+    assert.doesNotMatch(byId('api').intro || '', /\d+ key authenticated operations/);
     assert.match(byId('oauth').intro || '', /pos_/);
     assert.match(byId('oauth').intro || '', /Bearer token on \/mcp/);
+    // A pos_ token is refused nowhere by the URL form; it just must not travel in one.
+    for (const text of [byId('oauth').intro || '', stepText(byId('oauth').steps)]) {
+      assert.doesNotMatch(text, /only accepts API keys|only looks up API keys|under Developers\./);
+      assert.match(text, /where it can end up in logs/);
+    }
+    assert.match(stepText(byId('sdk').steps), /Pass your API key to `new PostQueen\(\.\.\.\)`/);
+    // n8n Cloud installs only verified community nodes.
+    assert.match(byId('n8n').info || '', /^Self-hosted n8n only: n8n Cloud installs only verified community nodes, and this one is not verified yet\./);
+    assert.match(byId('n8n').info || '', /HTTP Request node with a Header Auth credential/);
+    assert.match(stepText(byId('make').steps), /Body content type application\/JSON, Body input method JSON string/);
+    assert.match(codes(byId('zapier').steps), /^Authorization: test-key\nContent-Type: application\/json$/m);
+    assert.doesNotMatch(JSON.stringify(catalog), /Custom Webhook|below Plugs|She checks|Settings → Autopost/);
+    assert.match(byId('paperclip').short, /^Claude Code and Codex agents in Paperclip/);
+    assert.doesNotMatch(byId('muse-code').intro || '', /does not take an MCP URL/);
+    assert.match(byId('reelfarm').intro || '', /UGC and green-screen videos, not slideshows\. The Reel\.Farm API needs a Growth, Scale or Unlimited plan/);
+    assert.match(byId('heygen').intro || '', /HeyGen API credits are bought separately/);
     assert.match(byId('zapier').intro || '', /Professional/);
     assert.match(codes(byId('codex').steps), /codex mcp add postqueen \\\n  --url https:\/\/api\.postqueen\.ai\/mcp\/test-key/);
     assert.match((byId('codex').goodToKnow || []).join('\n'), /network access off/);

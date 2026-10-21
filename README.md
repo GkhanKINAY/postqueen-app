@@ -155,13 +155,13 @@ Connect PostQueen once, and your agent can list your channels, write and schedul
 
 Any other MCP client works with the same addresses: see [other MCP clients](https://docs.postqueen.ai/agents/other-mcp-clients).
 
-**Connect in one line.** In PostQueen, open Connections > API Keys (workspace admins) to copy your key, or your agent's ready-made address:
+**Connect in one line.** In PostQueen, open Connections > API key (workspace admins) to copy your key, or your agent's ready-made address:
 
 ```bash
 claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/YOUR_API_KEY
 ```
 
-The key address has 21 tools: 20 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 20 tools; a workspace admin approves access. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
+The key address has 22 tools: 21 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 21 tools; a workspace admin approves access. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
 
 ## PostQueen Cloud or self-hosted
 
@@ -204,12 +204,12 @@ PostQueen posts to 30+ networks. Each one has its own page in the docs: what you
 
 ## For developers
 
-Every route uses your workspace API key: open Connections > API Keys in PostQueen to copy it. Only workspace admins can see the key, and each workspace has one.
+The API, the SDK and n8n use your workspace API key: open Connections > API key in PostQueen to copy it. Only workspace admins can see the key, and each workspace has one. The CLI can sign in through the browser instead.
 
 ```bash
 # The CLI (Node.js 20.19+ or 22.12+)
 npm install -g postqueen
-export POSTQUEEN_API_KEY=YOUR_API_KEY
+postqueen auth:login   # or, on a machine with no browser: export POSTQUEEN_API_KEY=YOUR_API_KEY
 postqueen integrations:list
 
 # The REST API: the raw key goes in the Authorization header, with no Bearer prefix
