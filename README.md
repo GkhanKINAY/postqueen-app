@@ -161,7 +161,7 @@ Any other MCP client works with the same addresses: see [other MCP clients](http
 claude mcp add --transport http postqueen https://api.postqueen.ai/mcp/YOUR_API_KEY
 ```
 
-The key address has 22 tools: 21 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 21 tools; a workspace admin approves access. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
+The key address has 23 tools: 22 for channels, posts, media, images, video and analytics, plus `ask_postqueen`, which hands a whole request to the PostQueen agent. Agents that support sign-in can use `https://api.postqueen.ai/mcp-oauth-dynamic` instead, with the same 22 tools; a workspace admin approves access. For Grok Bot, give the Bot `https://api.postqueen.ai/mcp` and paste the key into its secure prompt, never into the chat.
 
 ## PostQueen Cloud or self-hosted
 
