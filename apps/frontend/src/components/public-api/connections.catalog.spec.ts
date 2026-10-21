@@ -462,7 +462,7 @@ describe('Connect marketplace catalog', () => {
   it('adds Muse, Cowork, Perplexity Computer and Paperclip through their own panels', () => {
     const muse = byId('muse');
     assert.match(codes(muse.steps), /Create a custom connector for PostQueen/);
-    assert.match(codes(muse.steps), /secure prompt, not in this chat/);
+    assert.match(codes(muse.steps), /Secure Credentials Store, not in this chat/);
     assert.equal(muse.steps[1].fold, 4);
     assert.match((muse.goodToKnow || []).join('\n'), /Muse is not Muse Code/);
     const cowork = byId('claude-cowork');

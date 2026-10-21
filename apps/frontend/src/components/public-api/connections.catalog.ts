@@ -191,7 +191,6 @@ export type WayKind =
   | 'command'
   | 'config'
   | 'connector'
-  | 'panel'
   | 'address';
 
 export interface Way {
@@ -684,7 +683,7 @@ export function buildConnectionsCatalog(
       title: t('conn_chat_step_cli_ready', 'Confirm the CLI half'),
       detail: t(
         'conn_chat_step_cli_ready_detail',
-        'A JSON list of your channels means the agent can reach PostQueen. Finish this before pairing a chat app.'
+        'A JSON list of your channels means the CLI can reach PostQueen. If you put the key in openclaw.json instead of signing in, your shell does not have it, so ask OpenClaw in its own chat to list your PostQueen channels instead. Finish this before pairing a chat app.'
       ),
       code: 'postqueen integrations:list',
     },
@@ -764,12 +763,12 @@ openclaw pairing approve telegram <CODE>`,
       title: t('conn_slack_chat_step_plugin', 'Install the Slack plugin and pick a channel'),
       detail: t(
         'conn_slack_chat_step_plugin_detail',
-        'The tokens do nothing until channels.slack is in the OpenClaw config. Put both tokens in ~/.openclaw/.env, where a gateway installed as a service finds them. The patch turns on Socket Mode and lets the bot answer in one channel. Replace <CHANNEL_ID> with that channel’s ID and invite the app to it. The patch needs the gateway stopped, so the commands stop it first and start it again. For DMs, approve your pairing code. OpenClaw’s Slack setup page has more allowlist options.'
+        'The tokens do nothing until channels.slack is in the OpenClaw config. Put both tokens in ~/.openclaw/.env, where a gateway installed as a service finds them. The patch turns on Socket Mode and lets the bot answer in one channel. Replace <CHANNEL_ID> with that channel’s ID and invite the app to it. The patch needs the gateway stopped, so the commands stop it first and start it again. If you run the gateway in a terminal with `openclaw gateway` instead of as a service, press Ctrl+C there before the patch and run `openclaw gateway` again after it. For DMs, approve your pairing code. OpenClaw’s Slack setup page has more allowlist options.'
       ),
       code: `openclaw plugins install @openclaw/slack
 cat >> ~/.openclaw/.env <<'ENV'
-SLACK_APP_TOKEN=your-app-token
-SLACK_BOT_TOKEN=your-bot-token
+SLACK_APP_TOKEN=YOUR_APP_TOKEN
+SLACK_BOT_TOKEN=YOUR_BOT_TOKEN
 ENV
 cat > slack.socket.patch.json5 <<'JSON5'
 {
@@ -802,14 +801,14 @@ openclaw pairing approve slack <CODE>`,
       title: t('conn_discord_chat_step_bot', 'Create a Discord bot'),
       detail: t(
         'conn_discord_chat_step_bot_detail',
-        'In the Discord Developer Portal, create an application with a bot user. Turn on Message Content Intent so the bot can read ordinary channel messages. DMs and mentions work without it. Invite it with the bot and applications.commands scopes. Publishing into Discord is a separate Channels setup.'
+        'In the Discord Developer Portal, create an application with a bot user. Turn on Message Content Intent: OpenClaw asks Discord for it, and the bot needs it to read ordinary server messages. Invite it with the bot and applications.commands scopes. Publishing into Discord is a separate Channels setup.'
       ),
     },
     {
       title: t('conn_discord_chat_step_plugin', 'Install the Discord plugin and allow your server'),
       detail: t(
         'conn_discord_chat_step_plugin_detail',
-        'The token does nothing until channels.discord is in the OpenClaw config. Put it in ~/.openclaw/.env, where a gateway installed as a service finds it. Without the guild allowlist the bot answers DMs only. To copy your server ID and user ID, turn on Developer Mode in Discord under User Settings > Developer. The patch needs the gateway stopped, so the commands stop it first and start it again. Then DM the bot and approve the pairing code.'
+        'The token does nothing until channels.discord is in the OpenClaw config. Put it in ~/.openclaw/.env, where a gateway installed as a service finds it. Without the guild allowlist the bot answers DMs only. To copy your server ID and user ID, turn on Developer Mode in Discord under User Settings > Developer. Add teammates’ user IDs to users, or leave users out to let anyone in the server ask. The patch needs the gateway stopped, so the commands stop it first and start it again. If you run the gateway in a terminal with `openclaw gateway` instead of as a service, press Ctrl+C there before the patch and run `openclaw gateway` again after it. Then DM the bot and approve the pairing code.'
       ),
       code: `openclaw plugins install @openclaw/discord
 cat >> ~/.openclaw/.env <<'ENV'
@@ -1511,7 +1510,7 @@ openclaw pairing approve discord <CODE>`,
               ),
               detail: t(
                 'conn_codex_step_4_detail',
-                'In the extension: gear menu > MCP servers > Add server > Streamable HTTP, paste the URL, save and choose Restart extension. In the ChatGPT desktop app: Settings > MCP servers > Add server. Enter a name, choose Streamable HTTP, paste the URL, then select Restart.'
+                'In the extension: gear menu > MCP servers > Add server > Streamable HTTP, paste the URL, save and choose Restart extension. In the ChatGPT desktop app: Settings > MCP servers > Add server. Enter a name, choose Streamable HTTP, paste the URL, save it, then select Restart.'
               ),
             },
           ],
@@ -3565,7 +3564,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_paperclip_step_2', 'Connect your own MCP server.'),
               detail: t(
                 'conn_paperclip_step_2_detail',
-                'In Paperclip, open Connectors, choose Connect on Connect your own tool, then Connect your own MCP server. Enter this address and press Check link.'
+                'In Paperclip, open Connectors, choose Connect on Connect your own tool, then Connect your own MCP server. Paste this address and choose Continue.'
               ),
               code: `${mcpUrl}`,
               codeLabel: 'value',
@@ -3574,7 +3573,7 @@ openclaw pairing approve discord <CODE>`,
               title: t('conn_paperclip_step_3', 'Paste the key.'),
               detail: t(
                 'conn_paperclip_step_3_detail',
-                'Under Advanced authentication, choose Key or token. Paste the key into App key on its own, without the word Bearer.'
+                'Under Advanced authentication, choose Key or token. Paste the key into App key on its own, without the word Bearer, then press Check link.'
               ),
             },
             {
@@ -3613,7 +3612,7 @@ openclaw pairing approve discord <CODE>`,
           goodToKnow: [
             t(
               'conn_paperclip_tip_1',
-              'Paperclip hands PostQueen’s tools to its Claude Code and Codex agents, and to agents on its ACP engine. Other agent types in Paperclip use their own MCP settings.'
+              'Paperclip hands PostQueen’s tools straight to its Claude Code and Codex agents, and to agents on its ACP engine. For other agent types, the PostQueen CLI is the surer route.'
             ),
             t(
               'conn_paperclip_tip_2',
@@ -3664,7 +3663,7 @@ openclaw pairing approve discord <CODE>`,
               ),
               fix: t(
                 'conn_paperclip_fix_4_detail',
-                'Only Claude Code and Codex agents, and agents on Paperclip’s ACP engine, use a Connectors connection. Give other agents the PostQueen CLI instead.'
+                'Claude Code and Codex agents, and agents on Paperclip’s ACP engine, get the tools directly. Give other agents the PostQueen CLI instead.'
               ),
             },
           ],
@@ -3686,7 +3685,7 @@ openclaw pairing approve discord <CODE>`,
               bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
               how: t(
                 'conn_paperclip_route_2_how',
-                'Enter this address and press Check link, which starts the browser sign-in. Approve as a PostQueen admin.'
+                'Enter this address, choose Continue, then press Check link, which starts the browser sign-in. Approve as a PostQueen admin.'
               ),
             },
             {
@@ -3737,15 +3736,15 @@ openclaw pairing approve discord <CODE>`,
                 'conn_muse_step_2_detail',
                 'In a chat in the Muse app, on muse.ai or in WhatsApp.'
               ),
-              code: `Create a custom connector for PostQueen, my social media scheduler.\nIts MCP server is ${mcpUrl} and it takes my PostQueen API key as a Bearer token.\nAsk me for the key in a secure prompt, not in this chat.\nSave a skill so every request to post, schedule or check my social media goes through PostQueen.\nWhen you are connected, list my PostQueen channels.`,
+              code: `Create a custom connector for PostQueen, my social media scheduler.\nIts MCP server is ${mcpUrl} and it takes my PostQueen API key as a Bearer token.\nAsk me for the key through your Secure Credentials Store, not in this chat.\nSave a skill so every request to post, schedule or check my social media goes through PostQueen.\nWhen you are connected, list my PostQueen channels.`,
               codeLabel: t('conn_muse_step_2_code_label', 'new message to Muse'),
               fold: 4,
             },
             {
-              title: t('conn_muse_step_3', 'Use the secure prompt.'),
+              title: t('conn_muse_step_3', 'Keep the key out of the chat.'),
               detail: t(
                 'conn_muse_step_3_detail',
-                'When Muse asks for the key, paste it there, never into the chat. Muse keeps it in its Secure Credentials Store, then asks before it acts: Allow once, Allow for this task or Always allow.'
+                'When Muse asks for the key, enter it where Muse asks, never as a chat message. Muse keeps it in its Secure Credentials Store, then asks before it acts: Allow once, Allow for this task or Always allow.'
               ),
             },
             {
@@ -3806,7 +3805,7 @@ openclaw pairing approve discord <CODE>`,
               symptom: t('conn_muse_fix_2', 'Muse asks for the key in the chat'),
               fix: t(
                 'conn_muse_fix_2_detail',
-                'Do not paste it there; use the secure prompt. If the key was sent in a chat, a workspace admin can rotate it under API key in this panel.'
+                'Do not send it as a chat message; enter it where Muse asks for it, so it goes into the Secure Credentials Store. If the key was sent in a chat, a workspace admin can rotate it under API key in this panel.'
               ),
             },
             {

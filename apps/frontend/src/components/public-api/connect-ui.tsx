@@ -168,7 +168,6 @@ const WAY_ICON: Record<WayKind, string[]> = {
   command: ICONS.terminal,
   config: ICONS.config,
   connector: ICONS.plug,
-  panel: ICONS.plug,
   address: ICONS.plug,
 };
 
