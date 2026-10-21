@@ -390,7 +390,6 @@ billing_view_invoice
 billing_where_you_left_off
 billing_year
 billing_yearly
-billing_yearly_credits_note
 billing_your_7_day_trial_is
 billing_your_first
 billing_zero_due_today_until
@@ -2332,6 +2331,8 @@ publishing
 publishing_now
 publishing_options
 purchase
+purchase_terms_agree
+purchase_terms_withdrawal
 quick_edits
 range_30d
 range_7d
@@ -2748,11 +2749,6 @@ welcome_back
 what_do_you_want_to_do
 whats_new
 which_version_editing
-withdrawal_waiver_checkout_required
-withdrawal_waiver_credits
-withdrawal_waiver_required
-withdrawal_waiver_yearly
-withdrawal_waiver_yearly_required
 workspace
 would_you_mind_shortly_tell_us_what_we_could_have_done_better
 write

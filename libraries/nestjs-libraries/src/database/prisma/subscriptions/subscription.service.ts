@@ -86,6 +86,24 @@ export class SubscriptionService {
   }
 
   /**
+   * The month of a period that today is in, ending no later than the period
+   * does. Each month starts on the period's day of the month, the way Stripe
+   * counts them, so a period that starts on the 31st has a month starting on
+   * the last day of a shorter one and the next on the 31st again.
+   */
+  periodMonth(start: Date, end: Date) {
+    const month = (n: number) => dayjs(start).add(n, 'month');
+    let n = 0;
+    while (month(n + 1).isBefore(end) && !month(n + 1).isAfter(dayjs())) {
+      n++;
+    }
+    return {
+      start: month(n).toDate(),
+      end: (month(n + 1).isBefore(end) ? month(n + 1) : dayjs(end)).toDate(),
+    };
+  }
+
+  /**
    * Adds a plan period's credits: every provider's paid period and trial comes
    * through here, so they all follow one set of rules.
    *
@@ -105,6 +123,14 @@ export class SubscriptionService {
    * not a whole year of credits for a year that is partly over. The decision
    * is taken under the ledger's lock, against the grants in force at that
    * moment, so two events for one period cannot both add to it.
+   *
+   * `month` is for a yearly plan whose credits come a month at a time: the
+   * month of the year that today is in (see `periodMonth`). That month is the
+   * period then, with a month's credits, so an upgrade tops up what is left
+   * of the month and nothing hands out the rest of the year. A year granted
+   * whole before the plan moved to monthly credits stays the period until it
+   * ends: an upgrade on it is topped up as before, and no month is added on
+   * top of it.
    */
   async grantPlanPeriod(
     organizationId: string,
@@ -116,6 +142,7 @@ export class SubscriptionService {
       ref: string;
       trial?: boolean;
       prorate?: boolean;
+      month?: { start: Date; end: Date };
     }
   ) {
     const tier = normalizeTier(period.tier);
@@ -151,21 +178,37 @@ export class SubscriptionService {
             : null;
         }
 
-        const expiresAt = dayjs(period.end)
+        const plans = current.filter((grant) => grant.source === 'plan');
+        const yearGranted = plans.some(
+          (grant) =>
+            grant.periodStart?.getTime() === period.start.getTime() &&
+            grant.periodEnd?.getTime() === period.end.getTime()
+        );
+        // What these credits are for: the month, or the whole period.
+        const span =
+          period.month && !yearGranted
+            ? { ...period.month, period: 'MONTHLY' as const }
+            : period;
+        const amount = planCredits(tier, span.period);
+        const expiresAt = dayjs(span.end)
           .add(CREDIT_PLAN_GRACE_DAYS, 'day')
           .toDate();
-        const plans = current.filter((grant) => grant.source === 'plan');
+        const spanDates = {
+          tier,
+          periodStart: span.start,
+          periodEnd: span.end,
+        };
         // Newest first, so this is the plan the period was last topped up to.
         const samePeriod = plans.find(
-          (grant) => grant.periodEnd?.getTime() === period.end.getTime()
+          (grant) => grant.periodEnd?.getTime() === span.end.getTime()
         );
 
         if (samePeriod) {
           const left =
-            dayjs(period.end).diff(dayjs()) /
-            dayjs(period.end).diff(dayjs(period.start));
+            dayjs(span.end).diff(dayjs()) /
+            dayjs(span.end).diff(dayjs(span.start));
           const difference = Math.floor(
-            (allowance - planCredits(samePeriod.tier, period.period)) *
+            (amount - planCredits(samePeriod.tier, span.period)) *
               Math.min(Math.max(left, 0), 1)
           );
           return difference > 0
@@ -175,14 +218,16 @@ export class SubscriptionService {
                   amount: difference,
                   expiresAt,
                   externalRef: period.ref,
-                  ...dates,
+                  ...spanDates,
                 },
               }
             : null;
         }
 
         if (
-          plans.some((grant) => grant.periodEnd && grant.periodEnd > period.end)
+          plans.some(
+            (grant) => grant.periodEnd && grant.periodEnd > span.end
+          )
         ) {
           return null;
         }
@@ -191,16 +236,16 @@ export class SubscriptionService {
           grant: {
             source: 'plan',
             amount:
-              period.prorate && period.period === 'YEARLY'
+              period.prorate && span.period === 'YEARLY'
                 ? planCredits(tier, 'MONTHLY') *
                   Math.min(
-                    Math.ceil(dayjs(period.end).diff(dayjs(), 'month', true)),
+                    Math.ceil(dayjs(span.end).diff(dayjs(), 'month', true)),
                     12
                   )
-                : allowance,
+                : amount,
             expiresAt,
             externalRef: period.ref,
-            ...dates,
+            ...spanDates,
           },
           close: ['plan', 'trial'],
         };
@@ -321,6 +366,21 @@ export class SubscriptionService {
         ])
       ).length > 0
     );
+  }
+
+  /**
+   * Whether the period a plan or trial's credits were last granted for is
+   * still running. The grace days after it do not count, as they do above, so
+   * a month that follows another is due the day it starts.
+   */
+  async hasRunningPlanPeriod(organizationId: string) {
+    const now = new Date();
+    return (
+      await this._creditsService.currentGrants(organizationId, [
+        'plan',
+        'trial',
+      ])
+    ).some((grant) => !!grant.periodEnd && grant.periodEnd > now);
   }
 
   getCreditGrantTargets() {

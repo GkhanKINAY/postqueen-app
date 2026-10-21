@@ -294,7 +294,6 @@ describe('Credits packs', () => {
     const sell = between(stripe, 'async createCreditPackCheckout(', 'private async grantCreditPack(');
     assert.match(sell, /allow_promotion_codes: false,/);
     assert.match(sell, /payment_intent_data: \{ metadata \},/);
-    assert.match(sell, /withdrawal_waiver_at: new Date\(\)\.toISOString\(\),/);
   });
 
   it('go back on a refund or a dispute before anything can end the plan', () => {
@@ -313,29 +312,23 @@ describe('Credits packs', () => {
   });
 });
 
-describe('Withdrawal waiver', () => {
-  it('is required for a pack, and for a yearly plan before anything reaches Stripe', () => {
-    assert.match(buyCreditsDto, /@Equals\(true\)\n\s+withdrawalWaiver: true;/);
-    assert.match(stripe, /if \(body\.period === 'YEARLY' && body\.withdrawalWaiver !== true\) \{/);
-    // first thing in both ways a plan is bought
-    for (const from of ['async embedded(', 'async subscribe(']) {
-      const start = stripe.indexOf(from);
-      const opening = stripe.slice(start, stripe.indexOf('{', start) + 200);
-      assert.match(opening, /this\.assertWithdrawalWaiver\(body\);/, from);
-    }
+describe('The right of withdrawal', () => {
+  it('is never asked to be given up: no pack or plan waits for a box', () => {
+    assert.match(buyCreditsDto, /@IsOptional\(\)\n\s+@IsBoolean\(\)\n\s+withdrawalWaiver\?: boolean;/);
+    assert.doesNotMatch(buyCreditsDto, /@Equals/);
+    assert.doesNotMatch(stripe, /assertWithdrawalWaiver|confirmYearlyCredits/);
+    assert.doesNotMatch(stripe, /withdrawal_waiver/);
+    assert.match(stripe, /async createCreditPackCheckout\(\n\s+organization: Organization,\n\s+packId: CreditPackId\n\s+\)/);
   });
 
-  it('is confirmed by email once per consent, after the year of credits is granted', () => {
-    const handler = between(stripe, 'async paymentSucceeded(', 'async paymentFailed(');
-    const grant = handler.indexOf('await this.grantPeriodCredits(');
-    assert.ok(grant > -1 && grant < handler.indexOf('this.confirmYearlyCredits('));
-    assert.match(stripe, /subscription\.metadata\?\.withdrawal_waiver_confirmed === consentAt/);
-    assert.match(stripe, /metadata: \{ withdrawal_waiver_confirmed: consentAt \},/);
-  });
-
-  it('goes into Stripe as the time it was given, never as the flag', () => {
+  it('keeps the flag an older app still sends out of Stripe', () => {
     assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'\),/g) || []).length, 3);
     assert.doesNotMatch(stripe, /\.\.\.body,/);
+  });
+
+  it('is offset by yearly credits a month at a time, stamped on every plan sold or changed', () => {
+    assert.equal((stripe.match(/\.\.\.MONTHLY_CREDITS,/g) || []).length, 3);
+    assert.match(stripe, /const MONTHLY_CREDITS = \{ credits_schedule: 'monthly' \};/);
   });
 });
 
