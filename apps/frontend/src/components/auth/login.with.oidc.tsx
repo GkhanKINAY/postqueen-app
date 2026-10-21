@@ -3,6 +3,7 @@
 import { OauthProvider } from '@gitroom/frontend/components/auth/providers/oauth.provider';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { AuthTermsNotice } from '@gitroom/frontend/components/auth/auth-chrome';
 
 export const LoginWithOidc = () => {
   const { isGeneral, genericOauth } = useVariables();
@@ -20,6 +21,8 @@ export const LoginWithOidc = () => {
         </h1>
       </div>
       <OauthProvider />
+      {/* The OIDC button opens an account even while registration is closed. */}
+      <AuthTermsNotice />
       <div className="h-[20px] mb-[24px] mt-[24px] relative">
         <div className="absolute w-full h-[1px] bg-fifth top-[50%] -translate-y-[50%]" />
         <div
