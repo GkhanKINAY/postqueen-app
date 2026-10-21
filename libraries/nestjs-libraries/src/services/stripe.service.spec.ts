@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import Stripe from 'stripe';
+import { Logger } from '@nestjs/common';
 import type { StripeService as StripeServiceType } from './stripe.service.ts';
 import { pricing } from '../database/prisma/subscriptions/pricing.ts';
 
@@ -1300,5 +1301,247 @@ describe('a full refund', () => {
     assert.equal(called('subscriptions.cancel').length, 0);
     assert.equal(called('revokeLocalSubscription').length, 0);
     assert.equal(result.reason, 'still subscribed');
+  });
+});
+
+describe('a founding member’s plan', () => {
+  // What the refunded or disputed charge is found through: its PaymentIntent,
+  // the invoice that PaymentIntent paid, and the checkout it came from.
+  let intent: { metadata: Record<string, string> };
+  let paidInvoice: string | undefined;
+  let session: Partial<Stripe.Checkout.Session> | undefined;
+
+  const charge = {
+    id: 'ch_1',
+    customer: 'cus_1',
+    refunded: true,
+    payment_intent: 'pi_1',
+  };
+
+  // What this block replaces, put back after it, as in the block above.
+  const faked: [object, string][] = [
+    [probe.invoices, 'retrieve'],
+    [probe.invoicePayments, 'list'],
+    [probe.paymentIntents, 'retrieve'],
+    [probe.checkout.sessions, 'list'],
+    [probe.charges, 'retrieve'],
+  ];
+  let saved: unknown[];
+  before(() => {
+    saved = faked.map(
+      ([resource, method]) => Object.getPrototypeOf(resource)[method],
+    );
+    fake(probe.invoices, {
+      retrieve: async (id: string) => invoices.find((i) => i.id === id),
+    });
+    fake(probe.invoicePayments, {
+      list: async () => ({
+        data: paidInvoice ? [{ invoice: paidInvoice }] : [],
+      }),
+    });
+    fake(probe.paymentIntents, { retrieve: async () => intent });
+    fake(probe.checkout.sessions, {
+      list: record('checkout.sessions.list', () => ({
+        data: session ? [session] : [],
+      })),
+    });
+    fake(probe.charges, { retrieve: async () => charge });
+  });
+  after(() => {
+    faked.forEach(([resource, method], i) =>
+      fake(resource, { [method]: saved[i] }),
+    );
+  });
+
+  // An invoice of org1's customer with one line.
+  const paid = (
+    id: string,
+    description: string,
+    extra: Partial<Stripe.Invoice> = {},
+  ): Partial<Stripe.Invoice> => ({
+    id,
+    customer: 'cus_1',
+    metadata: {},
+    parent: null,
+    lines: { data: [{ description }] } as any,
+    ...extra,
+  });
+  const founding = { service: 'postqueen', organizationId: 'org1' };
+
+  beforeEach(() => {
+    localSub = { isLifetime: true };
+    intent = { metadata: {} };
+    paidInvoice = undefined;
+    session = undefined;
+    // The monthly plan they had before they bought the founding one.
+    subs = [sub('sub_old', 100, { status: 'canceled' })];
+    invoices = [
+      paid('in_month', '1 × PRO (at $49.00 / month)', {
+        parent: { subscription_details: { subscription: 'sub_old' } } as any,
+      }),
+      paid('in_founding', 'PostQueen — founding member', {
+        metadata: { ...founding, lifetime_charge: '1' },
+      }),
+      paid('in_retention', 'PostQueen — founding member (retention)', {
+        metadata: { ...founding, lifetime_retention: '1', lifetime_charge: '1' },
+      }),
+      // A checkout paid at once makes its invoice with no metadata.
+      paid('in_checkout', 'PostQueen — founding member'),
+    ];
+  });
+
+  const refund = () =>
+    service().chargeRefunded({
+      data: { object: charge },
+    } as unknown as Stripe.ChargeRefundedEvent);
+  const dispute = () =>
+    service().disputeCreated({
+      data: {
+        object: { id: 'dp_1', status: 'needs_response', charge: 'ch_1' },
+      },
+    } as unknown as Stripe.ChargeDisputeCreatedEvent);
+
+  it('stays when a month paid before it is refunded', async () => {
+    paidInvoice = 'in_month';
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(result.reason, 'founding plan');
+  });
+
+  it('ends when the deferred founding fee is refunded', async () => {
+    paidInvoice = 'in_founding';
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('ends when the retention offer that bought it is refunded', async () => {
+    // Half the founding fee, paid instead of it: the plan's only payment.
+    paidInvoice = 'in_retention';
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('ends when a checkout paid at once is refunded, by its invoice line', async () => {
+    paidInvoice = 'in_checkout';
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('ends when a founding fee charged before it had an invoice is refunded', async () => {
+    intent = { metadata: { ...founding, lifetime_charge: '1' } };
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('ends when a checkout from before checkouts made invoices is refunded', async () => {
+    session = { id: 'cs_1', mode: 'payment', metadata: founding };
+    const result = await refund();
+    assert.deepEqual(called('checkout.sessions.list')[0], [
+      { payment_intent: 'pi_1', limit: 1 },
+    ]);
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('stays, and the charge is logged, when it cannot be placed', async (t) => {
+    const warn = t.mock.method(Logger, 'warn', () => undefined);
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(result.reason, 'founding plan');
+    const lines = warn.mock.calls.map((c) => String(c.arguments[0]));
+    assert.ok(lines.some((line) => line.includes('ch_1')));
+    assert.ok(!lines.some((line) => /cus_1|org1|pi_1/.test(line)));
+  });
+
+  it('stays when a month paid before it is disputed', async () => {
+    paidInvoice = 'in_month';
+    const result = await dispute();
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(result.reason, 'founding plan');
+  });
+
+  it('is suspended when the founding fee is disputed', async () => {
+    paidInvoice = 'in_founding';
+    const result = await dispute();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+  });
+
+  it('changes nothing for a customer without one', async () => {
+    // The same refund ends a plan as it always did, and nothing is looked up
+    // to place the charge.
+    localSub = { isLifetime: false };
+    const result = await refund();
+    assert.equal(called('revokeLocalSubscription').length, 1);
+    assert.equal(result.revoked, true);
+    assert.equal(called('checkout.sessions.list').length, 0);
+  });
+});
+
+describe('an admin refund', () => {
+  // The charges Stripe holds, by id, and what this block replaces.
+  let charges: Record<string, { id: string; customer: string | null }>;
+  const faked: [object, string][] = [
+    [probe.charges, 'retrieve'],
+    [probe.refunds, 'create'],
+  ];
+  let saved: unknown[];
+  before(() => {
+    saved = faked.map(
+      ([resource, method]) => Object.getPrototypeOf(resource)[method],
+    );
+    fake(probe.charges, {
+      retrieve: async (id: string) => {
+        if (!charges[id]) {
+          throw new Error('No such charge');
+        }
+        return charges[id];
+      },
+    });
+    fake(probe.refunds, {
+      create: record('refunds.create', (body) => ({ id: 're_1', ...body })),
+    });
+  });
+  after(() => {
+    faked.forEach(([resource, method], i) =>
+      fake(resource, { [method]: saved[i] }),
+    );
+  });
+  beforeEach(() => {
+    charges = {
+      ch_own: { id: 'ch_own', customer: 'cus_1' },
+      ch_other: { id: 'ch_other', customer: 'cus_2' },
+      ch_guest: { id: 'ch_guest', customer: null },
+    };
+  });
+
+  it('refunds the organization’s own charge in full', async () => {
+    const result = await service().refundCharges('org1', ['ch_own']);
+    assert.deepEqual(called('refunds.create'), [[{ charge: 'ch_own' }]]);
+    assert.deepEqual(result, { refunded: ['ch_own'], failed: [] });
+  });
+
+  it('refuses a charge of another customer, or of none', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
+    const result = await service().refundCharges('org1', [
+      'ch_other',
+      'ch_guest',
+      'ch_own',
+    ]);
+    assert.deepEqual(called('refunds.create'), [[{ charge: 'ch_own' }]]);
+    assert.deepEqual(result, {
+      refunded: ['ch_own'],
+      failed: ['ch_other', 'ch_guest'],
+    });
+  });
+
+  it('refuses a charge Stripe does not know', async () => {
+    const result = await service().refundCharges('org1', ['ch_missing']);
+    assert.equal(called('refunds.create').length, 0);
+    assert.deepEqual(result, { refunded: [], failed: ['ch_missing'] });
   });
 });

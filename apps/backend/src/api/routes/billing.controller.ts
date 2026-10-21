@@ -11,6 +11,7 @@ import {
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { AdminApplyCouponDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.apply.coupon.dto';
+import { AdminRefundChargesDto } from '@gitroom/nestjs-libraries/dtos/billing/admin.refund.charges.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -407,7 +408,7 @@ export class BillingController {
   async refundCharges(
     @GetUserFromRequest() user: User,
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { chargeIds: string[] }
+    @Body() body: AdminRefundChargesDto
   ) {
     if (!user.isSuperAdmin) {
       throw new HttpException('Unauthorized', 400);
