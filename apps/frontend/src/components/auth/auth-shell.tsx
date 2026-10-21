@@ -9,7 +9,7 @@ import { GoogleProvider } from '@gitroom/frontend/components/auth/providers/goog
 import { AppleProvider } from '@gitroom/frontend/components/auth/providers/apple.provider';
 import { FarcasterProvider } from '@gitroom/frontend/components/auth/providers/farcaster.provider';
 import { shouldShowAppleSignIn } from '@gitroom/frontend/components/auth/apple-sign-in';
-import { AuthModeFooter, authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
+import { AuthModeFooter, AuthTermsNotice, authSubtitleClass, authTitleClass } from '@gitroom/frontend/components/auth/auth-chrome';
 
 /**
  * The provider buttons (Google / Apple / OIDC / GitHub / Farcaster), stacked
@@ -35,6 +35,8 @@ function Providers({ extraProviders }: { extraProviders?: ReactNode }) {
 /**
  * Shared chrome for login and register: one screen, every viewport.
  * Providers, then or, then email. OTP still swaps only the email block.
+ * The Terms line sits under the form, so it covers every way in on both
+ * screens and stays next to the button that submits it.
  */
 export function AuthShell({
   title,
@@ -69,6 +71,7 @@ export function AuthShell({
           </div>
         </div>
         {emailStep}
+        <AuthTermsNotice />
         <AuthModeFooter />
       </div>
     </div>

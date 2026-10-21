@@ -24,6 +24,21 @@ const appLayout = readFileSync(
   fileURLToPath(new URL('../../app/(app)/layout.tsx', import.meta.url)),
   'utf8'
 );
+const oidc = readFileSync(
+  fileURLToPath(new URL('./login.with.oidc.tsx', import.meta.url)),
+  'utf8'
+);
+const en = JSON.parse(
+  readFileSync(
+    fileURLToPath(
+      new URL(
+        '../../../../../libraries/react-shared-libraries/src/translation/locales/en/translation.json',
+        import.meta.url
+      )
+    ),
+    'utf8'
+  )
+);
 
 describe('auth mode chrome', () => {
   it('puts create-account next to the logo, keeps the footer, and drops the title tabs', () => {
@@ -64,5 +79,41 @@ describe('auth mode chrome', () => {
       appLayout,
       /isBillingEnabled\(\) \? 'https:\/\/postqueen\.ai'/
     );
+  });
+});
+
+describe('terms agreement line', () => {
+  it('sits under the form on every AuthShell screen, so login, the code step and every provider are covered', () => {
+    assert.match(chrome, /export const AuthTermsNotice/);
+    assert.match(
+      chrome,
+      /t\(\s*'by_continuing_you_agree_to_our',\s*'By continuing, you agree to our',?\s*\)/
+    );
+    assert.match(chrome, /\$\{legalUrl\}\/terms-of-service/);
+    assert.match(chrome, /\$\{legalUrl\}\/privacy-policy/);
+    assert.match(
+      shell,
+      /\{emailStep\}\s*<AuthTermsNotice \/>\s*<AuthModeFooter \/>/
+    );
+    assert.equal(
+      en.by_continuing_you_agree_to_our,
+      'By continuing, you agree to our'
+    );
+  });
+
+  it('stays hidden where LEGAL_URL is unset', () => {
+    assert.match(
+      chrome,
+      /AuthTermsNotice = \(\) => \{[\s\S]*?if \(!legalUrl\) \{\s*return null;/
+    );
+  });
+
+  it('shows one line per screen: register keeps its own only after a provider round-trip', () => {
+    assert.match(register, /\{!!legalUrl && isAfterProvider && \(/);
+    assert.doesNotMatch(register, /<AuthTermsNotice/);
+  });
+
+  it('covers the OIDC sign-up shown while registration is closed', () => {
+    assert.match(oidc, /<OauthProvider \/>[\s\S]*<AuthTermsNotice \/>/);
   });
 });

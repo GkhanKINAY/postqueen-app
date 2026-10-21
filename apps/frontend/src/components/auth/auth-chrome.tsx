@@ -99,6 +99,51 @@ export const AuthModeFooter = () => {
   );
 };
 
+/**
+ * The agreement line under every form that can open an account. Sign-in
+ * opens one too: a one-time code for an unknown address does, and Google and
+ * Apple create the account with no screen after this one. So it sits below
+ * all of the choices, and the backend records the moment on the new User.
+ * Hidden without LEGAL_URL, like the footer links, so a self-hosted install
+ * never claims agreement to pages it does not serve.
+ */
+export const AuthTermsNotice = () => {
+  const t = useT();
+  const { legalUrl } = useVariables();
+
+  if (!legalUrl) {
+    return null;
+  }
+
+  return (
+    <p
+      data-pq="auth-terms-notice"
+      className="mt-[16px] text-center text-[12px] text-textItemBlur"
+    >
+      {t(
+        'by_continuing_you_agree_to_our',
+        'By continuing, you agree to our',
+      )}{' '}
+      <a
+        href={`${legalUrl}/terms-of-service`}
+        rel="nofollow"
+        className="underline hover:font-bold text-newTextColor"
+      >
+        {t('terms_of_service', 'Terms of Service')}
+      </a>{' '}
+      {t('and', 'and')}{' '}
+      <a
+        href={`${legalUrl}/privacy-policy`}
+        rel="nofollow"
+        className="underline hover:font-bold text-newTextColor"
+      >
+        {t('privacy_policy', 'Privacy Policy')}
+      </a>
+      .
+    </p>
+  );
+};
+
 /** `year` comes from the server so the copyright never hydrates twice. */
 export const AuthFooter = ({ year }: { year: number }) => {
   const t = useT();

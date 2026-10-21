@@ -204,8 +204,10 @@ export function RegisterAfter({
       {/* Only claim the user agreed to terms when this deployment actually
           publishes them. Without LEGAL_URL these links resolved to pages the
           app does not serve, so self-hosted signups pointed at a 404 while
-          still asserting agreement. */}
-      {!!legalUrl && (
+          still asserting agreement. Only after a provider round-trip: the
+          first screen is AuthShell, which carries AuthTermsNotice, and
+          two agreement lines on one form say the same thing twice. */}
+      {!!legalUrl && isAfterProvider && (
         <div className={clsx('text-[12px] text-textItemBlur')}>
           {t(
             'by_registering_you_agree_to_our',

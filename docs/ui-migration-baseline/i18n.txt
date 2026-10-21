@@ -404,6 +404,7 @@ bug_mail_body
 bug_mail_subject
 by_channel
 by_channel_hint
+by_continuing_you_agree_to_our
 by_posting_you_agree_to_tiktoks
 by_registering_you_agree_to_our
 cal_swipe_for_days
