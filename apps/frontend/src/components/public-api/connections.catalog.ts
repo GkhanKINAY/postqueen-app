@@ -3860,7 +3860,7 @@ openclaw pairing approve discord <CODE>`,
           short: t('conn_other_mcp_short', 'Any other MCP client with the URL'),
           intro: t(
             'conn_other_mcp_intro',
-            'PostQueen exposes 22 tools at a single streamable HTTP endpoint (21 tools plus the ask_postqueen agent). If your editor or agent can reach a remote MCP server, use the URL below (API key in the path or as a Bearer token). Get your key under API key in this panel (workspace admins only).'
+            'PostQueen exposes 23 tools at a single streamable HTTP endpoint (22 tools plus the ask_postqueen agent). If your editor or agent can reach a remote MCP server, use the URL below (API key in the path or as a Bearer token). Get your key under API key in this panel (workspace admins only).'
           ),
           examples: [
             sample({
@@ -3908,7 +3908,7 @@ openclaw pairing approve discord <CODE>`,
             signInStep(
               t(
                 'conn_other_mcp_step_sign_in_detail',
-                'For clients that sign in to MCP servers themselves. A workspace admin approves access. This address has 21 tools, all but ask_postqueen.'
+                'For clients that sign in to MCP servers themselves. A workspace admin approves access. This address has 22 tools, all but ask_postqueen.'
               )
             ),
           ],
