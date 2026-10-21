@@ -518,6 +518,7 @@ export class OrganizationRepository {
   async createOrgAndUser(
     body: Omit<CreateOrgUserDto, 'providerToken'> & { providerId?: string },
     mustActivate: boolean,
+    termsShown: boolean,
     ip: string,
     userAgent: string
   ) {
@@ -542,6 +543,10 @@ export class OrganizationRepository {
                 timezone: 0,
                 ip,
                 agent: userAgent,
+                // Every sign-up lands here (email, one-time code, Google,
+                // Apple, GitHub, Farcaster, wallet, OIDC). Stamped only when
+                // the sign-up screens showed the Terms line.
+                ...(termsShown ? { termsAcceptedAt: new Date() } : {}),
                 ...(body.provider !== Provider.LOCAL && body.providerId
                   ? {
                       identities: {

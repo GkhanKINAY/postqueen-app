@@ -138,6 +138,11 @@ model User {
   /// Sessions signed before this are refused. Set when the password changes,
   /// so a reset ends every session that existed, not only the one in hand.
   sessionsNotBefore     DateTime?
+  /// When this person agreed to the Terms of Service and Privacy Policy, which
+  /// every sign-up screen states. Set once, when the account is created; the
+  /// Terms that applied are the ones in force on that date. Null on accounts
+  /// made before it was recorded, and on installs that publish no Terms.
+  termsAcceptedAt       DateTime?
   /// Set when the account purge has scrubbed this deleted user down to a
   /// tombstone. Null on every live user.
   purgedAt              DateTime?

@@ -46,6 +46,10 @@ export class OrganizationService {
       // the account needs activating while the response waves it through.
       isEmailActivationRequired() &&
         this._notificationsService.hasEmailProvider(),
+      // Must match the app's `legalUrl`: the sign-up screens show the Terms
+      // line only when there are Terms to link, and a self-hosted install
+      // without LEGAL_URL shows none, so it records no agreement either.
+      !!process.env.LEGAL_URL || isBillingEnabled(),
       ip,
       userAgent
     );
