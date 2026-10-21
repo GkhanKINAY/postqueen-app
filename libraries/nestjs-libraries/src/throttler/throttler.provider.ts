@@ -33,6 +33,8 @@ const UPLOAD_ROUTES = [
   '/media/upload-server',
   '/media/upload-simple',
   '/public/v1/upload',
+  // the MCP upload widget, and uploadLinkTool's curl link to the same route
+  '/media-widget/upload',
 ];
 
 const isUpload = (path: string) =>
@@ -110,7 +112,8 @@ export class ThrottlerBehindProxyGuard extends ThrottlerGuard {
       ? 'posts'
       : 'other';
 
-    // Every route the guard above lets through sits behind AuthMiddleware, so
+    // Every route the guard above lets through sits behind AuthMiddleware (or,
+    // for /media-widget/upload, the upload ticket's own middleware), so
     // `req.org` is always there today and the fallback never runs. It exists so
     // that adding an unauthenticated route to that list is a rate limit that
     // keys on something else, rather than a 500.
