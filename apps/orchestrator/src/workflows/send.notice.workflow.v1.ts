@@ -25,8 +25,8 @@ const { startNoticeBatch } = proxyActivities<NoticeActivity>({
 
 // On the bulk email queue, under its rate limit. It throws only when the email
 // never reached the provider, so a retry cannot send a second copy. Patient,
-// about two hours in all, since the workflow id cannot be started again while
-// Temporal keeps this run.
+// about two hours in all, so a provider outage is waited out; an account that
+// still fails is started again by sending the same notice again.
 const { sendNoticeEmail } = proxyActivities<NoticeActivity>({
   startToCloseTimeout: '10 minute',
   taskQueue: emailQueues.bulk.taskQueue,
@@ -91,7 +91,8 @@ export async function sendNoticeWorkflowV1(notice: {
 
 /**
  * One account's notice, under the id `notice:<noticeKey>:<userId>`, started
- * with REJECT_DUPLICATE: the same notice cannot start twice for an account.
+ * with ALLOW_DUPLICATE_FAILED_ONLY: the same notice starts again for an
+ * account only after its run failed.
  */
 export async function sendNoticeEmailWorkflowV1(email: NoticeEmail) {
   await sendNoticeEmail(email);

@@ -36,8 +36,10 @@ export interface NoticeEmail {
 export const noticeWorkflowId = (noticeKey: string) => `notice:${noticeKey}`;
 
 /**
- * One per notice and account. Started with REJECT_DUPLICATE, so running the
- * same notice again cannot email an account a second copy.
+ * One per notice and account. Started with ALLOW_DUPLICATE_FAILED_ONLY:
+ * running the same notice again starts no account whose email is sent or on
+ * its way, and starts again one whose every attempt failed. The delivery row
+ * is checked before each send, so even that cannot be a second copy.
  */
 export const noticeEmailWorkflowId = (noticeKey: string, userId: string) =>
   `notice:${noticeKey}:${userId}`;
@@ -118,8 +120,8 @@ export class NoticesService {
   /**
    * POST /admin/notices. Answers at once; the sending runs in Temporal.
    * Sending the same notice again once a run has finished reaches only who
-   * it missed: an account created during the run, or one whose email failed
-   * after Temporal has forgotten that run (its retention period).
+   * it missed: an account created during the run, or one whose every attempt
+   * failed.
    */
   async sendNotice(body: SendNoticeDto) {
     const content = noticeContent(body.content);
@@ -181,8 +183,9 @@ export class NoticesService {
 
   /**
    * One page of the fan-out: starts the email workflow for the next `limit`
-   * accounts after `after`. An account whose workflow already exists is
-   * skipped, so a retried or repeated batch emails nobody twice.
+   * accounts after `after`. An account whose workflow is running or has
+   * completed is skipped, so a retried or repeated batch emails nobody twice;
+   * one whose workflow failed is started again.
    */
   async startNoticeBatch({
     noticeKey,
@@ -207,7 +210,7 @@ export class NoticesService {
         await client.workflow.start('sendNoticeEmailWorkflowV1', {
           workflowId: noticeEmailWorkflowId(noticeKey, userId),
           taskQueue: 'main',
-          workflowIdReusePolicy: 'REJECT_DUPLICATE',
+          workflowIdReusePolicy: 'ALLOW_DUPLICATE_FAILED_ONLY',
           args: [{ noticeKey, userId, subject, html } satisfies NoticeEmail],
         });
         started += 1;

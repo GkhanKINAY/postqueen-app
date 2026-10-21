@@ -38,7 +38,8 @@ const alreadyStarted = () =>
 let users: { id: string; email: string }[];
 let delivered: { userId: string; user: { email: string } }[];
 let starts: { type: string; options: any }[];
-let existing: Set<string>;
+// Workflow ids Temporal has seen, and how each run ended.
+let existing: Map<string, 'running' | 'completed' | 'failed'>;
 let recorded: string[];
 let accepted: boolean;
 let refused: boolean;
@@ -46,7 +47,8 @@ let recordFails: boolean;
 let sends: number;
 
 // Every collaborator faked: the users and deliveries are lists, Temporal
-// remembers the workflow ids it was handed, and the provider accepts or not.
+// remembers the workflow ids it was handed and applies the id reuse policy,
+// and the provider accepts or not.
 const service = () =>
   new NoticesService(
     {
@@ -81,10 +83,14 @@ const service = () =>
         getRawClient: () => ({
           workflow: {
             start: async (type: string, options: any) => {
-              if (existing.has(options.workflowId)) {
+              const run = existing.get(options.workflowId);
+              const reusable =
+                run === 'failed' &&
+                options.workflowIdReusePolicy === 'ALLOW_DUPLICATE_FAILED_ONLY';
+              if (run && !reusable) {
                 throw alreadyStarted();
               }
-              existing.add(options.workflowId);
+              existing.set(options.workflowId, 'running');
               starts.push({ type, options });
             },
           },
@@ -102,7 +108,7 @@ beforeEach(() => {
   ];
   delivered = [];
   starts = [];
-  existing = new Set();
+  existing = new Map();
   recorded = [];
   accepted = true;
   refused = false;
@@ -213,7 +219,7 @@ describe('the fan-out', () => {
     );
   });
 
-  it('starts each account once, with REJECT_DUPLICATE, page by page', async () => {
+  it('starts each account once, with ALLOW_DUPLICATE_FAILED_ONLY, page by page', async () => {
     const notices = service();
     const first = await notices.startNoticeBatch({ ...batch, limit: 2 });
     assert.deepEqual(first, { started: 2, skipped: 0, next: 'u3' });
@@ -234,7 +240,10 @@ describe('the fan-out', () => {
     );
     for (const { type, options } of starts) {
       assert.equal(type, 'sendNoticeEmailWorkflowV1');
-      assert.equal(options.workflowIdReusePolicy, 'REJECT_DUPLICATE');
+      assert.equal(
+        options.workflowIdReusePolicy,
+        'ALLOW_DUPLICATE_FAILED_ONLY'
+      );
       // no address in the workflow: it is read when the email is sent
       assert.deepEqual(Object.keys(options.args[0]).sort(), [
         'html',
@@ -251,6 +260,16 @@ describe('the fan-out', () => {
     const again = await notices.startNoticeBatch({ ...batch, limit: 10 });
     assert.deepEqual(again, { started: 0, skipped: 3, next: undefined });
     assert.equal(starts.length, 3);
+  });
+
+  it('starts a failed account again on a re-run, and none that sent or still runs', async () => {
+    const notices = service();
+    await notices.startNoticeBatch({ ...batch, limit: 10 });
+    existing.set('notice:terms-2026-11:u1', 'failed');
+    existing.set('notice:terms-2026-11:u3', 'completed');
+    const again = await notices.startNoticeBatch({ ...batch, limit: 10 });
+    assert.deepEqual(again, { started: 1, skipped: 2, next: undefined });
+    assert.equal(starts.at(-1)!.options.workflowId, 'notice:terms-2026-11:u1');
   });
 });
 
