@@ -334,7 +334,8 @@ export class MediaService {
 
   // Upload widget (MCP Apps): the session id is what the model sees and polls,
   // the ticket is the credential the widget uploads with. It is handed to the
-  // widget only, so it doesn't end up in the conversation
+  // widget only, so it doesn't end up in the conversation - except through
+  // uploadLinkTool, which gives one to an agent that uploads with curl
   async createUploadSession(org: string) {
     const sessionId = randomBytes(16).toString('hex');
     await ioRedis.set(`uploadSession:${sessionId}`, org, 'EX', 3600);

@@ -22,6 +22,7 @@ import { AnalyticsPostTool } from '@gitroom/nestjs-libraries/chat/tools/analytic
 import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.tool';
 import { UploadWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.ticket.tool';
 import { UploadWidgetStatusTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.status.tool';
+import { UploadLinkTool } from '@gitroom/nestjs-libraries/chat/tools/upload.link.tool';
 
 export const toolList = [
   IntegrationListTool,
@@ -48,4 +49,5 @@ export const toolList = [
   UploadWidgetTool,
   UploadWidgetTicketTool,
   UploadWidgetStatusTool,
+  UploadLinkTool,
 ];
