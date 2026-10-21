@@ -276,6 +276,11 @@ describe('Connect marketplace catalog', () => {
     assert.equal(byId('gemini').site, 'https://postqueen.ai/gemini-cli');
   });
 
+  it('carries no test status on any card', () => {
+    // Owner, 2026-10-21: no "not tested yet" notes anywhere in Connections
+    assert.doesNotMatch(JSON.stringify(catalog), /not tested|untested/i);
+  });
+
   it('speaks from inside the panel, not from the site', () => {
     for (const id of SITE_AGENTS) {
       const text = pageText(id);
