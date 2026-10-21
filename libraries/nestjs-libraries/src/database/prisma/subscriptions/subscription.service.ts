@@ -90,6 +90,9 @@ export class SubscriptionService {
    * does. Each month starts on the period's day of the month, the way Stripe
    * counts them, so a period that starts on the 31st has a month starting on
    * the last day of a shorter one and the next on the 31st again.
+   *
+   * `monthlyWindow` above steps a month at a time and drifts after a short
+   * month. It stays as it is: its start is in the refs of grants already made.
    */
   periodMonth(start: Date, end: Date) {
     const month = (n: number) => dayjs(start).add(n, 'month');
@@ -150,12 +153,6 @@ export class SubscriptionService {
     if (!allowance || dayjs(period.end).isBefore(dayjs())) {
       return false;
     }
-    const dates = {
-      tier,
-      periodStart: period.start,
-      periodEnd: period.end,
-    };
-
     const { granted } = await this._creditsService.grantWith(
       organizationId,
       ['plan', 'trial'],
@@ -172,7 +169,9 @@ export class SubscriptionService {
                   amount: allowance - given,
                   expiresAt: period.end,
                   externalRef: `${prefix}${allowance}`,
-                  ...dates,
+                  tier,
+                  periodStart: period.start,
+                  periodEnd: period.end,
                 },
               }
             : null;
@@ -193,7 +192,7 @@ export class SubscriptionService {
         const expiresAt = dayjs(span.end)
           .add(CREDIT_PLAN_GRACE_DAYS, 'day')
           .toDate();
-        const spanDates = {
+        const dates = {
           tier,
           periodStart: span.start,
           periodEnd: span.end,
@@ -218,7 +217,7 @@ export class SubscriptionService {
                   amount: difference,
                   expiresAt,
                   externalRef: period.ref,
-                  ...spanDates,
+                  ...dates,
                 },
               }
             : null;
@@ -245,7 +244,7 @@ export class SubscriptionService {
                 : amount,
             expiresAt,
             externalRef: period.ref,
-            ...spanDates,
+            ...dates,
           },
           close: ['plan', 'trial'],
         };

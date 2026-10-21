@@ -1871,6 +1871,37 @@ describe('yearly credits, a month at a time', () => {
     assert.deepEqual(inForce(), [latest()]);
   });
 
+  it('starts a switch from monthly to yearly on a month, however Stripe bills it', async () => {
+    const monthly = () =>
+      running(month(0), month(1), 'CREATOR', STAMPED, {}, 'month');
+    // Classic billing restarts the period at the switch: its first month
+    // replaces what the monthly plan left.
+    subs = [monthly()];
+    await paid('in_1');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0) + 10 * DAY, month(12) + 10 * DAY, 'PRO', STAMPED)];
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(latest().periodEnd, new Date(month(1) + 10 * DAY));
+    assert.deepEqual(inForce(), [latest()]);
+
+    // Flexible billing keeps the period's start: the month is the one already
+    // granted, so only the higher plan's difference is added for what is left.
+    ledger = [];
+    at(month(0) + HOUR);
+    subs = [monthly()];
+    await paid('in_3');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    await paid('in_4');
+    const left =
+      (planCredits('PRO', 'MONTHLY') - planCredits('CREATOR', 'MONTHLY')) *
+      ((month(1) - Date.now()) / (month(1) - month(0)));
+    assert.equal(ledger.length, 2);
+    assert.ok(Math.abs(latest().amount - left) <= 1, `${latest().amount} vs ${left}`);
+    assert.deepEqual(latest().periodEnd, new Date(month(1)));
+  });
+
   it('gives a trial one month, then the first month when it converts to yearly', async () => {
     subs = [
       running(month(0), month(0) + 7 * DAY, 'PRO', STAMPED, {

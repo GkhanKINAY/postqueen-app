@@ -327,8 +327,8 @@ describe('The right of withdrawal', () => {
   });
 
   it('is offset by yearly credits a month at a time, stamped on every plan sold or changed', () => {
-    assert.equal((stripe.match(/\.\.\.MONTHLY_CREDITS,/g) || []).length, 3);
-    assert.match(stripe, /const MONTHLY_CREDITS = \{ credits_schedule: 'monthly' \};/);
+    assert.equal((stripe.match(/credits_schedule: MONTHLY_CREDITS,/g) || []).length, 3);
+    assert.match(stripe, /const MONTHLY_CREDITS = 'monthly';/);
   });
 });
 

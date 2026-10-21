@@ -64,13 +64,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
 
 /**
- * Stamped on every subscription this app sells or changes since a yearly
- * plan's credits come a month at a time (see `creditMonth`). One without it
- * was sold when a year's credits came at once, and keeps that until
- * `YEARLY_MONTHLY_CREDITS_FROM`. A monthly plan carries it too, so a switch
- * to yearly made anywhere finds it already there.
+ * `credits_schedule`, stamped on every subscription this app sells or changes
+ * since a yearly plan's credits come a month at a time (see `creditMonth`).
+ * One without it was sold when a year's credits came at once, and keeps that
+ * until `YEARLY_MONTHLY_CREDITS_FROM`; that date also covers one switched to
+ * yearly outside this app (the Dashboard). A monthly plan sold since carries
+ * it too, so a later switch to yearly finds it already there.
  */
-const MONTHLY_CREDITS = { credits_schedule: 'monthly' };
+const MONTHLY_CREDITS = 'monthly';
 
 /**
  * Written on a trialing subscription cancelled before anything was charged,
@@ -747,8 +748,7 @@ export class StripeService extends PaymentProviderAbstract {
     const start = new Date(item.current_period_start * 1000);
     const from = process.env.YEARLY_MONTHLY_CREDITS_FROM;
     if (
-      subscription.metadata?.credits_schedule !==
-        MONTHLY_CREDITS.credits_schedule &&
+      subscription.metadata?.credits_schedule !== MONTHLY_CREDITS &&
       !(from && start >= new Date(from))
     ) {
       return undefined;
@@ -2183,7 +2183,7 @@ export class StripeService extends PaymentProviderAbstract {
           // Lets the webhook find the organization even when the customer is
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
-          ...MONTHLY_CREDITS,
+          credits_schedule: MONTHLY_CREDITS,
         },
       },
       ...(body.datafast_session_id && body.datafast_visitor_id
@@ -2268,7 +2268,7 @@ export class StripeService extends PaymentProviderAbstract {
           // Lets the webhook find the organization even when the customer is
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
-          ...MONTHLY_CREDITS,
+          credits_schedule: MONTHLY_CREDITS,
         },
       },
       allow_promotion_codes: true,
@@ -2907,7 +2907,7 @@ export class StripeService extends PaymentProviderAbstract {
       // `/billing/check/<new id>` could never resolve.
       uniqueId,
       ud: uniqueId,
-      ...MONTHLY_CREDITS,
+      credits_schedule: MONTHLY_CREDITS,
     };
 
     try {
@@ -2942,11 +2942,9 @@ export class StripeService extends PaymentProviderAbstract {
       // returns below before the rest of the metadata is written, and the
       // invoice that pays for a switch to yearly must find it, or the year's
       // credits would come at once.
-      if (
-        current.metadata?.credits_schedule !== MONTHLY_CREDITS.credits_schedule
-      ) {
+      if (current.metadata?.credits_schedule !== MONTHLY_CREDITS) {
         await stripe.subscriptions.update(current.id, {
-          metadata: MONTHLY_CREDITS,
+          metadata: { credits_schedule: MONTHLY_CREDITS },
         });
       }
 
