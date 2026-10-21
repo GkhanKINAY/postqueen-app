@@ -53,7 +53,11 @@ export type EmailFooter =
   | 'billing'
   | 'internal'
   | 'welcome'
-  | 'general';
+  | 'general'
+  // A service notice every account holder must get (a Terms change, a new
+  // sub-processor). It is about the account, not marketing, so it has no
+  // unsubscribe, the way security and billing emails have none.
+  | 'legal';
 
 /**
  * What one-click unsubscribe switches off, by the footer the email carries.

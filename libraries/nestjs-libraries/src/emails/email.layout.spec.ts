@@ -185,6 +185,47 @@ describe('one-click unsubscribe', () => {
   });
 });
 
+describe('the legal footer', () => {
+  const notice: EmailContent = {
+    stream: 'account',
+    category: 'Terms update',
+    preheader: 'Our Terms change on 1 December.',
+    tone: 'brand',
+    title: 'Our Terms are changing',
+    blocks: [{ type: 'text', text: 'Here is what changes.' }],
+    footer: 'legal',
+  };
+
+  it('has no unsubscribe, so every account holder gets the notice', () => {
+    assert.equal(emailUnsubscribeKind('legal'), undefined);
+    // Even handed a page, the footer offers nothing to switch off.
+    const { html, text } = renderEmail(
+      env,
+      'x',
+      notice,
+      'https://app.example.com/unsubscribe?token=abc',
+    );
+    for (const out of [html, text]) {
+      assert.ok(!out.includes('unsubscribe'));
+      assert.ok(!out.includes('Turn off'));
+      assert.ok(!out.includes('Manage email notifications'));
+    }
+  });
+
+  it('says why the reader gets it, or what the notice sets instead', () => {
+    const why =
+      'You get this because we must tell every account holder about changes to our Terms.';
+    assert.ok(renderEmail(env, 'x', notice).html.includes(why));
+    assert.ok(renderEmail(env, 'x', notice).text.includes(why));
+    const subProcessors = renderEmail(env, 'x', {
+      ...notice,
+      footerText: 'You get this because we must tell every account holder about new sub-processors.',
+    });
+    assert.ok(subProcessors.text.includes('about new sub-processors.'));
+    assert.ok(!subProcessors.text.includes(why));
+  });
+});
+
 describe('renderLegacyEmail', () => {
   it('keeps the old markup and its links inside the new frame', () => {
     const { html, text } = renderLegacyEmail(

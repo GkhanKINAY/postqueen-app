@@ -29,6 +29,7 @@ export * from './missing.post.workflow.v2';
 // exported so the running `send_email` singleton can drain what it holds.
 export * from './send.email.workflow';
 export * from './send.single.email.workflow.v1';
+export * from './send.notice.workflow.v1';
 export * from './refresh.token.workflow';
 export * from './streak.workflow';
 export * from './streak.workflow.v2';

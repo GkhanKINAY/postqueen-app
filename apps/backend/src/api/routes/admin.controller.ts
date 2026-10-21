@@ -1,7 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
   HttpException,
+  Post,
   Query,
 } from '@nestjs/common';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -9,6 +11,8 @@ import { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
+import { NoticesService } from '@gitroom/nestjs-libraries/database/prisma/notices/notices.service';
+import { SendNoticeDto } from '@gitroom/nestjs-libraries/dtos/notices/send.notice.dto';
 import dayjs from 'dayjs';
 
 @ApiTags('Admin')
@@ -16,7 +20,8 @@ import dayjs from 'dayjs';
 export class AdminController {
   constructor(
     private _errorsService: ErrorsService,
-    private _adminStatsService: AdminStatsService
+    private _adminStatsService: AdminStatsService,
+    private _noticesService: NoticesService
   ) {}
 
   private assertSuperAdmin(user: User) {
@@ -67,5 +72,20 @@ export class AdminController {
       to: toDate.endOf('day').toDate(),
       unknownOnly: unknownOnly === 'true' || unknownOnly === '1',
     });
+  }
+
+  /**
+   * Emails every account holder a service notice once (a Terms change, a new
+   * sub-processor), whatever their email settings. `dryRun` only counts.
+   * Answers at once with how many accounts it goes to; the sending runs in
+   * Temporal, and the same `noticeKey` never reaches an account twice.
+   */
+  @Post('/notices')
+  async sendNotice(
+    @GetUserFromRequest() user: User,
+    @Body() body: SendNoticeDto
+  ) {
+    this.assertSuperAdmin(user);
+    return this._noticesService.sendNotice(body);
   }
 }

@@ -153,6 +153,7 @@ model User {
   picture               Media?               @relation(fields: [pictureId], references: [id])
   organizations         UserOrganization[]
   identities            UserIdentity[]
+  noticeDeliveries      NoticeDelivery[]
 
   @@unique([email, providerName])
   @@index([lastReadNotifications])
@@ -177,6 +178,22 @@ model UserIdentity {
 
   @@unique([provider, providerAccountId])
   @@unique([userId, provider])
+  @@index([userId])
+}
+
+/// Proof that a service notice (a Terms change, a new sub-processor) reached
+/// an account: one row per notice and user, written once the email provider
+/// accepted the email. No address is kept, so the row says nothing about the
+/// person once account deletion has scrubbed the user row; the account purge
+/// removes it with the rest of the user's rows.
+model NoticeDelivery {
+  id        String   @id @default(uuid())
+  noticeKey String
+  userId    String
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeKey, userId])
   @@index([userId])
 }
 

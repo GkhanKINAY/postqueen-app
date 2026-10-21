@@ -356,6 +356,8 @@ const FOOTER_WHY: Record<EmailFooter, string> = {
     'Internal. Sent to the support inbox when a customer does something the team should know about.',
   welcome: 'You get this because you just created an account.',
   general: 'You get this because you have an account.',
+  legal:
+    'You get this because we must tell every account holder about changes to our Terms.',
 };
 const MANAGE: EmailFooter[] = ['success', 'failure', 'digest', 'streak'];
 const TURN_OFF: Partial<Record<EmailFooter, string>> = {
