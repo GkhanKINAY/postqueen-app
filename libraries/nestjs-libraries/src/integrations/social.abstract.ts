@@ -55,6 +55,93 @@ export function truncateForTemporal(value: any, max: number): string {
   return `${str.slice(0, max)}… [truncated ${str.length - max} chars]`;
 }
 
+// The user reads this in the calendar and in the failure email, so it is one
+// short line with nothing in it that could be a credential: query strings,
+// auth headers, and long token-shaped runs are dropped.
+const MAX_PLATFORM_MESSAGE = 280;
+
+function cleanPlatformMessage(text: string) {
+  const line = text
+    .trim()
+    .split(/\r?\n/)[0]
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/https?:\/\/[^\s"'<>]+/g, (url) => stripQuery(url))
+    .replace(/\b(Bearer|Basic)\s+\S+/gi, '[hidden]')
+    .replace(/[A-Za-z0-9_-]{32,}/g, '[hidden]')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return line.length > MAX_PLATFORM_MESSAGE
+    ? `${line.slice(0, MAX_PLATFORM_MESSAGE - 1).trimEnd()}…`
+    : line;
+}
+
+// A bare code like "invalid_request" or "PERMISSION_DENIED" tells the user
+// nothing, so the status fallback reads better than echoing it.
+const readable = (text: string) => {
+  const rest = text.replace(/\[hidden\]/g, '').trim();
+  return !!rest && !/^[a-z0-9_.]+$/i.test(rest);
+};
+
+/**
+ * The reason a platform gave when it refused a request, cleaned up to show
+ * the user, or '' when it gave none. JSON bodies only: an HTML error page or
+ * a proxy's plain-text reply is not a reason anyone can act on.
+ */
+export function platformMessage(body: unknown): string {
+  let parsed: any = body;
+  if (typeof body === 'string') {
+    try {
+      parsed = JSON.parse(body);
+    } catch (err) {
+      return '';
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return '';
+  }
+
+  const text = (value: unknown) =>
+    typeof value === 'string' ? cleanPlatformMessage(value) : '';
+
+  const errors = Array.isArray(parsed.errors)
+    ? parsed.errors
+        .map((e: any) => text(e?.message))
+        .filter(readable)
+        .slice(0, 3)
+        .join(' ')
+    : '';
+
+  return (
+    [
+      text(parsed.error_description),
+      text(parsed.error?.message),
+      errors,
+      text(parsed.message),
+      text(parsed.detail),
+      text(parsed.error),
+    ].find(readable) || ''
+  );
+}
+
+/** What the user is told when the platform gave no reason of its own. */
+export function statusMessage(status: number): string {
+  if (status === 429) {
+    return 'The network is limiting how many requests PostQueen can send, so the post was not published. Try again later.';
+  }
+  if (status >= 500) {
+    return 'The network had a problem on its side, so the post was not published. Try again in a few minutes.';
+  }
+  if (status === 403) {
+    return 'The network refused the post. Check that the connected account is still allowed to post there.';
+  }
+  if (status === 404) {
+    return 'The network could not find where to publish. Check the post settings, or reconnect the channel in Channels.';
+  }
+  return 'The network refused the post without giving a reason. Check the text, media and settings, then try again.';
+}
+
 export class RefreshToken extends ApplicationFailure {
   constructor(identifier: string, json: string, body: BodyInit, message = '') {
     super(
@@ -93,13 +180,22 @@ export class Disconnect extends ApplicationFailure {
   }
 }
 
+// `unmapped` marks a refusal no handleErrors mapping explained, so the admin
+// stats can still count the failures that once read "Unknown Error".
 export class BadBody extends ApplicationFailure {
-  constructor(identifier: string, json: string, body: BodyInit, message = '') {
+  constructor(
+    identifier: string,
+    json: string,
+    body: BodyInit,
+    message = '',
+    unmapped = false
+  ) {
     super(truncateForTemporal(message, MAX_FAILURE_MESSAGE), 'bad_body', true, [
       {
         identifier,
         json: truncateForTemporal(json, MAX_FAILURE_FIELD),
         body: truncateForTemporal(body, MAX_FAILURE_FIELD),
+        ...(unmapped ? { unmapped: true } : {}),
       },
     ]);
   }
@@ -403,9 +499,9 @@ export abstract class SocialAbstract {
         if (response.status !== 206) {
           throw new BadBody(
             identifier,
-            '{}',
+            JSON.stringify({ status: response.status, start, end }),
             Buffer.from('{}'),
-            `Media server did not honor the range request (status ${response.status})`
+            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
           );
         }
         return Buffer.from(await response.arrayBuffer());
@@ -502,8 +598,7 @@ export abstract class SocialAbstract {
         (status === 429 ||
           (status === 500 && !handleError) ||
           handleError?.type === 'retry' ||
-          json.includes('rate_limit_exceeded') ||
-          json.includes('Rate limit'))
+          (!handleError && /rate[ _-]?limit/i.test(json)))
       ) {
         await timer(5000);
         return this.runStreamedUpload(func, identifier, totalRetries + 1);
@@ -525,9 +620,25 @@ export abstract class SocialAbstract {
         identifier,
         json,
         '{}',
-        handleError?.value || 'Unknown Error'
+        handleError?.value || this.failureMessage(json, status),
+        !handleError?.value
       );
     }
+  }
+
+  // What the user is told when no handleErrors mapping explains a refusal:
+  // the platform's own reason, named after it, or what the status means.
+  protected failureMessage(body: unknown, status: number) {
+    const said = platformMessage(body);
+    if (!said) {
+      return statusMessage(status);
+    }
+
+    // some names carry a second line for the picker, "Instagram\n(Standalone)"
+    const name = ((this as { name?: string }).name || '')
+      .split('\n')[0]
+      .trim();
+    return `${name || 'The network'} said: ${said}`;
   }
 
   public async mention(
@@ -550,9 +661,27 @@ export abstract class SocialAbstract {
     let value: any;
     try {
       value = await func();
-    } catch (err) {
+    } catch (err: any) {
+      // Already classified, by this.fetch or readOrFetch inside func.
+      // Rewrapping it as BadBody lost both its message and its type, so a
+      // token that only needed a refresh failed the post.
+      if (err instanceof ApplicationFailure) {
+        throw err;
+      }
+
       const handle = this.handleErrors(safeStringify(err), 200);
-      value = { err: true, value: 'Unknown Error', ...(handle || {}) };
+      // SDK errors keep the platform's reply on `data` (twitter-api-v2) or
+      // `response.data` (axios, gaxios)
+      const status =
+        Number(err?.response?.status || err?.code || err?.status) || 0;
+      value = {
+        err: true,
+        unmapped: !handle?.value,
+        ...(handle || {}),
+        value:
+          handle?.value ||
+          this.failureMessage(err?.data ?? err?.response?.data, status),
+      };
       globalErr = err;
     }
 
@@ -577,7 +706,8 @@ export abstract class SocialAbstract {
         '',
         safeStringify(globalErr),
         {} as any,
-        value.value || ''
+        value.value || '',
+        value.unmapped
       );
     }
 
@@ -615,19 +745,18 @@ export abstract class SocialAbstract {
       json = '{}';
     }
 
-    if (totalRetries > 2) {
-      // Include the platform's actual response body so the failure is
-      // diagnosable, instead of an empty '{}'.
-      throw new BadBody(identifier, json, options.body || '{}', message);
-    }
-
     const handleError = this.handleErrors(json || '{}', request.status);
 
+    // Once the retries are spent, the last response is classified like any
+    // other: a mapped reason, a 401 or a disconnect on the final attempt
+    // used to surface as "Unknown Error". A mapped refresh or disconnect
+    // also wins over a body that merely mentions a rate limit.
     if (
-      request.status === 429 ||
-      (request.status === 500 && !handleError) ||
-      json.includes('rate_limit_exceeded') ||
-      json.includes('Rate limit')
+      totalRetries <= 2 &&
+      (request.status === 429 ||
+        (request.status === 500 && !handleError) ||
+        handleError?.type === 'retry' ||
+        (!handleError && /rate[ _-]?limit/i.test(json)))
     ) {
       await timer(5000);
       return this.fetch(
@@ -636,19 +765,7 @@ export abstract class SocialAbstract {
         identifier,
         totalRetries + 1,
         ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
-      );
-    }
-
-    if (handleError?.type === 'retry') {
-      await timer(5000);
-      return this.fetch(
-        url,
-        options,
-        identifier,
-        totalRetries + 1,
-        ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
+        handleError?.value || message
       );
     }
 
@@ -674,11 +791,15 @@ export abstract class SocialAbstract {
       );
     }
 
+    // `message` is the reason an earlier attempt was retried for
     throw new BadBody(
       identifier,
       json,
       options.body!,
-      handleError?.value || 'Unknown Error'
+      handleError?.value ||
+        message ||
+        this.failureMessage(json, request.status),
+      !handleError?.value && !message
     );
   }
 

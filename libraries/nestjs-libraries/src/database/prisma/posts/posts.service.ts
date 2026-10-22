@@ -2333,8 +2333,14 @@ export class PostsService {
     }
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
-    return this._postRepository.changeState(id, state, err, body);
+  async changeState(
+    id: string,
+    state: State,
+    err?: any,
+    body?: any,
+    reason?: string
+  ) {
+    return this._postRepository.changeState(id, state, err, body, reason);
   }
 
   async changePostStatus(

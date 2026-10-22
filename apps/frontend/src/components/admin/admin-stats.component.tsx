@@ -218,7 +218,7 @@ export const AdminStatsComponent: FC = () => {
 
         <label
           className="flex items-center gap-[6px] text-[13px] cursor-pointer h-[38px]"
-          title='Only count errors whose message matches "message":"Unknown Error" (affects the error stats only)'
+          title='Only count errors no mapping explained, whose message matches "message":"Unknown Error" or "unmapped":true (affects the error stats only)'
         >
           <input
             type="checkbox"
