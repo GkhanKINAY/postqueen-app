@@ -37,7 +37,8 @@ export class DevToProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('Canonical url has already been taken') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Canonical URL already exists',
+        value:
+          'Dev.to already has an article with this canonical URL. Change or remove it in the post settings, then try again.',
       };
     }
 

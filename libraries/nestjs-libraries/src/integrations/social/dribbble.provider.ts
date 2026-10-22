@@ -8,8 +8,8 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import FormData from 'form-data';
 import {
-  BadBody,
   SocialAbstract,
+  stripQuery,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { DribbbleDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/dribbble.dto';
@@ -32,23 +32,79 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
   override async checkValidity([firstItem]: Array<ValidityMedia[]>): Promise<
     string | true
   > {
-    const isMp4 = firstItem?.find(
-      (item) => (item?.path?.indexOf?.('mp4') ?? -1) > -1
-    );
     if (firstItem?.length !== 1) {
-      return 'Requires one item';
+      return 'Dribbble needs exactly one image for a shot.';
     }
-    if (isMp4) {
-      return 'Does not support mp4 files';
+    const path = firstItem[0]?.path || '';
+    // The type comes from the extension the path ends with. Looking for "mp4"
+    // anywhere in it refused a picture whose name or folder held those letters
+    // and let every other video format through. A path without an extension
+    // is left to the size checks and to Dribbble.
+    const type = mime.lookup(stripQuery(path));
+    if (type && type.indexOf('video/') === 0) {
+      return 'Dribbble does not accept videos. Attach one GIF, JPG or PNG image.';
     }
-    const details = await this.getImageDimensions(firstItem?.[0]?.path);
+    if (type && !['image/gif', 'image/jpeg', 'image/png'].includes(type)) {
+      return 'Dribbble does not accept this file type. Attach one GIF, JPG or PNG image.';
+    }
+    // A size that cannot be read is left for Dribbble to judge.
+    if (
+      path.indexOf('http') === 0 &&
+      (await this.mediaSize(path, this.identifier).catch(() => 0)) >
+        8 * 1024 * 1024
+    ) {
+      return 'Dribbble accepts images up to 8 MB.';
+    }
+    const details = await this.getImageDimensions(path);
     if (
       (details?.width === 400 && details?.height === 300) ||
       (details?.width === 800 && details?.height === 600)
     ) {
       return true;
     }
-    return 'Invalid image size. Requires 400x300 or 800x600 px images.';
+    return `Dribbble needs an image of exactly 400 x 300 or 800 x 600 pixels. This one is ${details?.width} x ${details?.height}.`;
+  }
+
+  override handleErrors(
+    body: string,
+    status: number
+  ):
+    | { type: 'refresh-token' | 'bad-body'; value: string }
+    | undefined {
+    // Dribbble tokens do not expire, so a 401 means it was revoked.
+    if (status === 401) {
+      return {
+        type: 'refresh-token',
+        value: 'Reconnect Dribbble in Channels, then schedule the post again.',
+      };
+    }
+
+    // 429 and 500 are retried by the caller, which only retries a 500 that
+    // has no mapping here.
+    if (status < 400 || status === 429 || status >= 500) {
+      return undefined;
+    }
+
+    // A 422 says only "Validation failed." in `message`, the reasons are in
+    // `errors`: [{ "attribute": "image", "message": "..." }].
+    let parsed: any;
+    try {
+      parsed = JSON.parse(body);
+    } catch (err) {
+      parsed = undefined;
+    }
+    const reasons = (Array.isArray(parsed?.errors) ? parsed.errors : [])
+      .map((error: any) => String(error?.message || '').trim())
+      .filter(Boolean)
+      .join(' ');
+
+    return {
+      type: 'bad-body',
+      value:
+        reasons ||
+        parsed?.message ||
+        `Dribbble rejected the shot with status ${status}.`,
+    };
   }
 
   /**
@@ -144,33 +200,31 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
     accessToken: string,
     postDetails: PostDetails<DribbbleDto>[]
   ): Promise<PostResponse[]> {
-    const { data, status } = await this.getSsrfSafeAxios().get(
-      postDetails?.[0]?.media?.[0]?.path!,
-      {
-        responseType: 'stream',
+    const path = postDetails?.[0]?.media?.[0]?.path!;
+    const slash = path.split('/').at(-1);
+
+    // runStreamedUpload rebuilds the form per attempt (a consumed stream
+    // can't be replayed) and classifies Dribbble's answer with handleErrors.
+    // mediaStream fails with BadBody, not an error carrying a response, so a
+    // refusal from the media host is never read as Dribbble's.
+    const data2 = await this.runStreamedUpload(async () => {
+      const formData = new FormData();
+      formData.append('image', await this.mediaStream(path, this.identifier), {
+        filename: slash,
+        contentType: mime.lookup(slash!) || '',
+        knownLength: await this.mediaSize(path, this.identifier),
+      });
+
+      formData.append('title', postDetails[0].settings.title);
+      formData.append('description', postDetails[0].message);
+      // Only a team id is sent: an empty choice, or a URL stored by an API
+      // caller when the setting asked for one, is left out as it always was.
+      const team = String(postDetails[0].settings.team ?? '');
+      if (/^\d+$/.test(team)) {
+        formData.append('team_id', team);
       }
-    );
 
-    const slash = postDetails?.[0]?.media?.[0]?.path.split('/').at(-1);
-
-    const formData = new FormData();
-    formData.append('image', data, {
-      filename: slash,
-      contentType: mime.lookup(slash!) || '',
-    });
-
-    formData.append('title', postDetails[0].settings.title);
-    formData.append('description', postDetails[0].message);
-    // Only a team id is sent: an empty choice, or a URL stored by an API
-    // caller when the setting asked for one, is left out as it always was.
-    const team = String(postDetails[0].settings.team ?? '');
-    if (/^\d+$/.test(team)) {
-      formData.append('team_id', team);
-    }
-
-    let data2;
-    try {
-      data2 = await this.getSsrfSafeAxios().post(
+      return this.getSsrfSafeAxios().post(
         'https://api.dribbble.com/v2/shots',
         formData,
         {
@@ -180,22 +234,11 @@ export class DribbbleProvider extends SocialAbstract implements SocialProvider {
           },
         }
       );
-    } catch (err: any) {
-      const status = err?.response?.status;
-      if (status >= 400 && status < 500 && status !== 429) {
-        throw new BadBody(
-          this.identifier,
-          JSON.stringify(err?.response?.data ?? {}),
-          '{}',
-          err?.response?.data?.message ||
-            `Dribbble rejected the shot with status ${status}`
-        );
-      }
-      throw err;
-    }
+    }, this.identifier);
 
-    const location = data2.headers['location'];
-    const newId = location.split('/').at(-1);
+    // Dribbble answers 202 with the new shot's API URL in Location.
+    const location: string | undefined = data2?.headers?.['location'];
+    const newId = location?.split('/').at(-1) || '';
 
     return [
       {
