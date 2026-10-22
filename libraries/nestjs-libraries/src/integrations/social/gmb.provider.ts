@@ -38,14 +38,14 @@ const clientAndGmb = () => {
 };
 
 @Rules(
-  'Google My Business posts can have text content and optionally one image. Posts can be updates, events, or offers. An event needs eventTitle, eventStartDate and eventEndDate; an offer needs the same three settings for its title and dates, and takes no call to action.'
+  'Google Business Profile posts can have text content and optionally one image. Posts can be updates, events, or offers. An event needs eventTitle, eventStartDate and eventEndDate; an offer needs the same three settings for its title and dates, and takes no call to action.'
 )
 export class GmbProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 3;
   identifier = 'gmb';
   analyticsIntervals = [7, 30, 90] as const;
   category = 'business' as const;
-  name = 'Google My Business';
+  name = 'Google Business Profile';
   isBetweenSteps = true;
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
@@ -65,14 +65,14 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
   ): Promise<string | true> {
     // GMB posts can have text only, or text with one image
     if ((items?.length ?? 0) > 0 && (items?.[0]?.length ?? 0) > 1) {
-      return 'Google My Business posts can only have one image';
+      return 'Google Business Profile posts can only have one image';
     }
 
     // Check for video - GMB doesn't support video in local posts
     if ((items?.length ?? 0) > 0 && (items?.[0]?.length ?? 0) > 0) {
       const media = items?.[0]?.[0];
       if ((media?.path?.indexOf?.('mp4') ?? -1) > -1) {
-        return 'Google My Business posts do not support video attachments';
+        return 'Google Business Profile posts do not support video attachments';
       }
     }
 
@@ -103,53 +103,107 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
     return true;
   }
 
+  // Google echoes rejected values (the post text among them) back in an
+  // error's details, so a Google error object is read by its own status and
+  // reasons, never searched as a whole. Any other body is searched as before.
+  private googleError(body: string) {
+    try {
+      const error = JSON.parse(body)?.error;
+      if (error && typeof error === 'object') {
+        const details: any[] = Array.isArray(error.details) ? error.details : [];
+        return {
+          code: error.code,
+          status: String(error.status || ''),
+          reasons: details.map((detail) => detail?.reason).filter(Boolean),
+          field: details
+            .flatMap((detail) => detail?.errorDetails || [])
+            .map((item: any) => item?.field)
+            .find(Boolean) as string | undefined,
+        };
+      }
+    } catch (err) {
+      /**empty**/
+    }
+    return undefined;
+  }
+
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body';
+        type: 'refresh-token' | 'bad-body' | 'disconnect';
         value: string;
       }
     | undefined {
-    if (body.includes('UNAUTHENTICATED') || body.includes('invalid_grant')) {
+    const google = this.googleError(body);
+    const is = (status: string) =>
+      google ? google.status === status : body.includes(status);
+
+    if (
+      is('UNAUTHENTICATED') ||
+      (!google && body.includes('invalid_grant'))
+    ) {
       return {
         type: 'refresh-token',
-        value: 'Please re-authenticate your Google My Business account',
+        value: 'Reconnect your Google Business Profile channel.',
       };
     }
 
-    if (body.includes('Unauthorized')) {
+    if (google ? google.code === 401 : body.includes('Unauthorized')) {
       return {
         type: 'refresh-token',
         value:
-          'Token expired or invalid, please reconnect your Google My Business account.',
+          'The Google sign-in expired or is no longer valid. Reconnect your Google Business Profile channel.',
       };
     }
 
-    if (body.includes('PERMISSION_DENIED')) {
+    // A grant without business.manage: a token refresh cannot add the
+    // permission, only reconnecting can.
+    if (
+      google
+        ? google.reasons.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')
+        : body.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')
+    ) {
       return {
-        type: 'refresh-token',
+        type: 'disconnect',
         value:
-          'Permission denied. Please ensure you have access to this business location.',
+          'PostQueen is missing a Google permission. Reconnect the channel and allow every permission.',
       };
     }
 
-    if (body.includes('NOT_FOUND')) {
+    // The token is fine but this profile refuses the post: refreshing it
+    // again only repeats the refusal.
+    if (is('PERMISSION_DENIED')) {
       return {
         type: 'bad-body',
-        value: 'Business location not found. It may have been deleted.',
+        value:
+          'Google refused to post to this Business Profile. Check that it is verified and not suspended, and that the connected Google account is still an owner or manager.',
       };
     }
 
-    if (body.includes('INVALID_ARGUMENT')) {
+    if (is('NOT_FOUND')) {
       return {
         type: 'bad-body',
-        value: 'Invalid post content. Please check your post details.',
+        value:
+          'Google could not find this Business Profile location. It may have been deleted.',
       };
     }
 
-    if (body.includes('RESOURCE_EXHAUSTED')) {
+    if (is('INVALID_ARGUMENT')) {
+      const field = google?.field;
       return {
         type: 'bad-body',
-        value: 'Rate limit exceeded. Please try again later.',
+        value: field?.includes('media')
+          ? 'Google could not download the image for this post. Try another image.'
+          : field
+          ? `Google refused the post because the ${field} field is not valid.`
+          : 'Google refused the post content. Check the post details and try again.',
+      };
+    }
+
+    if (is('RESOURCE_EXHAUSTED')) {
+      return {
+        type: 'bad-body',
+        value:
+          'Google is limiting how many requests PostQueen can send. Try again later.',
       };
     }
 

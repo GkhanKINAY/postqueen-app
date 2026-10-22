@@ -13,7 +13,10 @@ import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library/build/src/auth/oauth2client';
-import { YoutubeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
+import {
+  YoutubeSettingsDto,
+  YOUTUBE_TAGS_TOO_LONG,
+} from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
 import {
   BadBody,
   PublishedWithError,
@@ -131,7 +134,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('invalidTags')) {
       return {
         type: 'bad-body',
-        value: 'The maximum allowed is 500 characters in total.',
+        value: YOUTUBE_TAGS_TOO_LONG,
       };
     }
 
@@ -139,7 +142,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'We have uploaded your video but we could not set the title. Title is too long.',
+          'YouTube refused the title, so nothing was uploaded. Use 1 to 100 characters without < or >.',
       };
     }
 
@@ -210,35 +213,45 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.includes('imageFormatUnsupported')) {
+    // thumbnails.set errors: the video is already live when they arrive, and
+    // they come before 'youtube.thumbnail' (their domain) and
+    // 'rateLimitExceeded' (a substring of uploadRateLimitExceeded)
+    if (body.includes('invalidImage')) {
       return {
         type: 'bad-body',
         value:
-          'We have uploaded your video but the thumbnail format is not supported, please use JPEG or PNG.',
+          'Your video is live on YouTube, but YouTube could not read the thumbnail. Set it in YouTube Studio with a JPG or PNG.',
       };
     }
 
-    if (body.includes('imageTooTall')) {
+    if (body.includes('uploadRateLimitExceeded')) {
       return {
         type: 'bad-body',
         value:
-          'We have uploaded your video but the thumbnail image is too tall.',
+          'Your video is live on YouTube, but this channel set too many thumbnails recently. Set this one later in YouTube Studio.',
       };
     }
 
-    if (body.includes('imageTooWide')) {
+    // The per-project "Video Uploads per day" cap arrives with the same
+    // rateLimitExceeded reason as a short burst, so it is matched first.
+    if (
+      body.includes('defaultVideoInsertPerDayPerProject') ||
+      body.includes('Video Uploads per day')
+    ) {
       return {
         type: 'bad-body',
         value:
-          'We have uploaded your video but the thumbnail image is too wide.',
+          'PostQueen reached its daily YouTube upload limit, so nothing was uploaded. The limit resets at midnight Pacific time. Reschedule this post for later.',
       };
     }
 
-    if (body.includes('defaultVideoInsertPerDayPerProject')) {
+    // The project's daily API units: it can also run out on a later call
+    // (the thumbnail, a comment), after the video is live.
+    if (body.includes('quotaExceeded')) {
       return {
         type: 'bad-body',
         value:
-          "YouTube's daily upload quota is exhausted for today, please reschedule this post for a later time.",
+          'PostQueen reached its daily YouTube limit, which resets at midnight Pacific time.',
       };
     }
 
@@ -247,14 +260,6 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
         type: 'bad-body',
         value:
           'You are sending requests too quickly, please wait a little while and try again.',
-      };
-    }
-
-    if (body.includes('failedPrecondition')) {
-      return {
-        type: 'bad-body',
-        value:
-          'We have uploaded your video but we could not set the thumbnail. Thumbnail size is too large.',
       };
     }
 
@@ -277,7 +282,15 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'You have to link your youtube account to your google account first.',
+          'This Google account has no YouTube channel yet. Create one on youtube.com, then reconnect.',
+      };
+    }
+
+    if (body.includes('insufficientPermissions')) {
+      return {
+        type: 'bad-body',
+        value:
+          'PostQueen is missing a YouTube permission. Reconnect the channel and allow every permission.',
       };
     }
 
@@ -293,14 +306,14 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'refresh-token',
         value:
-          'Token expired or invalid, please reconnect your YouTube account.',
+          'The YouTube sign-in expired or is no longer valid. Reconnect the channel.',
       };
     }
 
     if (body.includes('UNAUTHENTICATED') || body.includes('invalid_grant')) {
       return {
         type: 'refresh-token',
-        value: 'Please re-authenticate your YouTube account',
+        value: 'Reconnect your YouTube channel.',
       };
     }
 

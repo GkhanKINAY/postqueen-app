@@ -98,11 +98,9 @@ export class PinterestProvider
     if ((firstItem?.length ?? 0) > 5) {
       return 'You can only have up to 5 media items';
     }
-    if (isMp4 && firstItem?.length !== 2 && !isPicture) {
-      return 'If posting a video you have to also include a cover image as second media';
-    }
-    if (isMp4 && (firstItem?.length ?? 0) > 2) {
-      return 'If posting a video you can only have two media items';
+    // a video alone, two videos, or a video with two more items
+    if (isMp4 && (firstItem?.length !== 2 || !isPicture)) {
+      return 'A Pinterest video pin needs one video and one cover image';
     }
 
     if (
@@ -157,20 +155,21 @@ export class PinterestProvider
       return {
         type: 'bad-body' as const,
         value:
-          'The board ID must be a numeric string. Please check the board ID format.',
+          'The board saved on this post is not a valid Pinterest board. Pick the board again.',
       };
     }
     if (body.indexOf('Board not found') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'The specified board was not found. Please check the board ID.',
+        value:
+          'Pinterest could not find this board. It may have been deleted. Pick another board.',
       };
     }
     if (body.indexOf('You are not permitted to access that resource') > -1) {
       return {
         type: 'bad-body' as const,
         value:
-          'The connected Pinterest account is not permitted to post to this board. Please check the board ID and that the account owns or can write to the board.',
+          'The connected Pinterest account cannot post to this board. Pick a board the account owns or can save pins to.',
       };
     }
     if (body.indexOf('cover_image_url or cover_image_content_type') > -1) {
@@ -434,7 +433,7 @@ export class PinterestProvider
         'pinterest',
         JSON.stringify({}),
         {} as any,
-        'The file is corrupted and cannot be uploaded'
+        'Pinterest could not process this video. Try a standard MP4, or a shorter or smaller file.'
       );
     }
 

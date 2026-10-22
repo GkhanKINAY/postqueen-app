@@ -95,3 +95,46 @@ describe('LinkedIn storage rules', () => {
     assert.equal(new LinkedinProvider().profileRetentionDays, undefined);
   });
 });
+
+for (const [name, provider] of [
+  ['LinkedIn', new LinkedinProvider()],
+  ['LinkedIn Page', new LinkedinPageProvider()],
+] as const) {
+  describe(`${name} errors`, () => {
+    const answer = (body: object) => provider.handleErrors(JSON.stringify(body));
+
+    it('tells an outage from a refused media file, and still retries both', () => {
+      const outage = answer({ message: 'Service Unavailable', status: 503 });
+      assert.equal(outage?.type, 'retry');
+      assert.match(String(outage?.value), /temporarily unavailable/);
+      assert.equal(answer({ code: 'SERVICE_UNAVAILABLE', status: 503 })?.type, 'retry');
+
+      const forbidden = answer({ message: 'The resource is forbidden', status: 403 });
+      assert.equal(forbidden?.type, 'retry');
+      assert.match(String(forbidden?.value), /refused access to this post's media/);
+    });
+
+    it('retries a comment on a post LinkedIn has not finished', () => {
+      assert.deepEqual(answer({ message: 'Unable to obtain activity urn:li:activity:1' }), {
+        type: 'retry',
+        value: 'LinkedIn was not ready to accept a comment on this post yet.',
+      });
+    });
+
+    it('explains access, duplicate and length refusals without retrying', () => {
+      for (const [body, text] of [
+        [{ status: 403, code: 'ACCESS_DENIED', message: 'Not enough permissions' }, /cannot post here/],
+        [{ status: 422, message: 'Content is a duplicate of urn:li:share:7000' }, /same text was posted recently/],
+        [{ status: 422, code: 'FIELD_LENGTH_TOO_LONG' }, /under 3,000 characters/],
+      ] as const) {
+        const result = answer(body);
+        assert.equal(result?.type, 'bad-body');
+        assert.match(String(result?.value), text);
+      }
+    });
+
+    it('leaves an unknown answer to the default handling', () => {
+      assert.equal(answer({ status: 400, message: 'Something else' }), undefined);
+    });
+  });
+}
