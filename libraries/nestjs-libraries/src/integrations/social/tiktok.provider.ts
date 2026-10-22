@@ -14,6 +14,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import {
   BadBody,
   Disconnect,
+  platformMessage,
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
@@ -137,23 +138,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     }
 
     // A fail_reason of the status check: the creator revoked the app while
-    // the media was uploading. TikTok says not to retry.
+    // the media was uploading. TikTok says not to retry, and the reconnect
+    // is the user's to make.
     if (body.indexOf('auth_removed') > -1) {
       return {
-        type: 'refresh-token' as const,
+        type: 'bad-body' as const,
         value:
           "The TikTok account removed PostQueen's access while the post was uploading. Reconnect the channel, then schedule the post again.",
       };
     }
 
     // The token lacks video.publish or video.upload: a new token for the same
-    // grant cannot add a scope, only a new connect can.
+    // grant cannot add a scope, only a new connect can. Not a disconnect:
+    // creatorInfo runs when the composer opens, and a disconnect there would
+    // drop the channel before anything was posted.
     if (
       body.indexOf('scope_not_authorized') > -1 ||
       body.indexOf('scope_permission_missed') > -1
     ) {
       return {
-        type: 'disconnect' as const,
+        type: 'bad-body' as const,
         value:
           'TikTok says this channel has not given PostQueen permission to post. Reconnect the channel and allow every permission TikTok asks for.',
       };
@@ -266,7 +270,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         return {
           type: 'disconnect' as const,
           value:
-            'TikTok daily user limit reached, please re-connect your account',
+            "TikTok limits how many accounts can post through PostQueen's TikTok app each day, and that limit is reached. Reconnect the channel in Channels, then schedule the post again.",
         };
       }
 
@@ -320,25 +324,29 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     // The error code is invalid_param (singular), and TikTok puts the field it
     // refused in error.message.
     if (body.indexOf('invalid_param') > -1) {
-      let detail = '';
-      try {
-        detail = JSON.parse(body)?.error?.message || '';
-      } catch (err) {
-        detail = '';
-      }
-
       return {
         type: 'bad-body' as const,
-        value: detail
-          ? `TikTok rejected the post settings: ${detail}`
-          : 'TikTok rejected the post settings.',
+        value:
+          platformMessage(body) ||
+          'TikTok refused the post settings. Check them, then schedule the post again.',
       };
     }
 
-    // Server errors: the error code internal_error, or the status check's
-    // fail_reason internal, which TikTok calls retryable. Matched as a value,
-    // not as text, so a message saying "international" is not a server error.
-    if (/"(code|fail_reason)":\s*"internal(_error)?"/.test(body)) {
+    // The error code internal_error. Not retried: a publish init TikTok
+    // failed on its side may still have gone through, and sending it again
+    // could publish the post twice. Matched as a value, not as text, so a
+    // message saying "international" is not a server error.
+    if (/"code":\s*"internal(_error)?"/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'TikTok had a server problem and did not publish the post. Try again in a few minutes.',
+      };
+    }
+
+    // The status check's fail_reason internal, which TikTok calls retryable.
+    // Only checkPostStatus reads it, for the message.
+    if (/"fail_reason":\s*"internal(_error)?"/.test(body)) {
       return {
         type: 'retry' as const,
         value:

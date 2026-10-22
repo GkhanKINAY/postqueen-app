@@ -86,6 +86,25 @@ describe('platformMessage', () => {
     );
   });
 
+  it('reads the detail of a JSON:API error', () => {
+    assert.equal(
+      platformMessage(
+        JSON.stringify({
+          errors: [
+            { title: 'Bad Request', code: 8001, detail: 'Posts cannot be empty.' },
+          ],
+        })
+      ),
+      'Posts cannot be empty.'
+    );
+    assert.equal(
+      platformMessage(
+        JSON.stringify({ errors: [{ title: 'Bad Request', code: 8001 }] })
+      ),
+      ''
+    );
+  });
+
   it('skips bare codes', () => {
     assert.equal(
       platformMessage(
@@ -152,7 +171,7 @@ describe('runInConcurrent', () => {
     }
   });
 
-  it('names the network when an SDK error carries its reason', async () => {
+  it('passes on the reason an SDK error carries, without naming the network', async () => {
     const provider = new Network();
     await assert.rejects(
       provider.runInConcurrent(async () => {
@@ -184,6 +203,26 @@ describe('runInConcurrent', () => {
         return true;
       }
     );
+  });
+
+  it('does not blame the network for an error that never reached it', async () => {
+    const provider = new Network();
+    for (const thrown of [
+      Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }),
+      new Error('Input buffer contains unsupported image format'),
+    ]) {
+      await assert.rejects(
+        provider.runInConcurrent(async () => {
+          throw thrown;
+        }),
+        (err) => {
+          assert.ok(err instanceof BadBody);
+          assert.equal(err.message, statusMessage(0));
+          assert.match(err.message, /^PostQueen could not complete the request/);
+          return true;
+        }
+      );
+    }
   });
 });
 

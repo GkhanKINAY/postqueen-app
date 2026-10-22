@@ -213,10 +213,10 @@ describe('YouTube errors', () => {
       })
     );
 
-  it('says the video is live when YouTube cannot read the thumbnail', () => {
+  it('says the video was uploaded when YouTube cannot read the thumbnail', () => {
     const answer = reason('invalidImage', 'thumbnail');
     assert.equal(answer?.type, 'bad-body');
-    assert.match(String(answer?.value), /^Your video is live on YouTube, but YouTube could not read the thumbnail/);
+    assert.match(String(answer?.value), /^Your video was uploaded to YouTube, but YouTube could not read the thumbnail/);
   });
 
   it('names the thumbnail rate limit before the general one', () => {

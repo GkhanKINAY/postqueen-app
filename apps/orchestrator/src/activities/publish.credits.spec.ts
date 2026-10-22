@@ -180,7 +180,7 @@ describe('Publish credits in the post activities', () => {
       assert.deepEqual(stored, {
         err,
         reason:
-          "Something went wrong on PostQueen's side while publishing this post.",
+          'Something went wrong while sending this post, so it was not published. Try again in a few minutes, and contact support if it keeps happening.',
       });
     }
 

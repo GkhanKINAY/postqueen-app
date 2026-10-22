@@ -2,10 +2,12 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { afterEach, describe, it } from 'node:test';
+import { AxiosError } from 'axios';
 import { WordpressProvider } from './wordpress.provider.ts';
 import { DribbbleProvider } from './dribbble.provider.ts';
 import { DevToProvider } from './dev.to.provider.ts';
 import { BadBody, RefreshToken } from '../social.abstract.ts';
+import { getSsrfSafeAxios } from '../../dtos/webhooks/ssrf.safe.dispatcher.ts';
 
 const realFetch = globalThis.fetch;
 
@@ -40,9 +42,10 @@ class ScriptedWordpress extends WordpressProvider {
   calls: Array<{ url: string; init: RequestInit }> = [];
   reads: string[] = [];
 
+  // `cover: null` reads the cover for real, through SocialAbstract.
   constructor(
     private readonly answers: Array<Response | string>,
-    private readonly cover: () => Promise<Buffer> = async () =>
+    private readonly cover: (() => Promise<Buffer>) | null = async () =>
       Buffer.from('png')
   ) {
     super();
@@ -58,7 +61,7 @@ class ScriptedWordpress extends WordpressProvider {
 
   protected override async readOrFetch(path: string) {
     this.reads.push(path);
-    return this.cover();
+    return this.cover ? this.cover() : super.readOrFetch(path);
   }
 }
 
@@ -130,22 +133,36 @@ describe('WordPress reads its answer tolerantly', () => {
   });
 
   it('reads the cover with readOrFetch, so a media host 401 is not a WordPress reconnect', async () => {
-    const provider = new ScriptedWordpress([], async () => {
-      throw Object.assign(new Error('Request failed with status code 401'), {
-        response: { status: 401, data: {} },
-      });
-    });
-    await assert.rejects(
-      provider.post(
-        'id',
-        wordpressToken,
-        wordpressPost({ main_image: { id: 'm', path: 'https://cdn.test/cover.png' } }),
-        {} as any
-      ),
-      (err: any) => !(err instanceof RefreshToken)
-    );
-    assert.deepEqual(provider.reads, ['https://cdn.test/cover.png']);
-    assert.equal(provider.calls.length, 0);
+    // The media host answers 401, as readOrFetch's axios reports it.
+    const http = getSsrfSafeAxios();
+    const adapter = http.defaults.adapter;
+    http.defaults.adapter = async (config) => {
+      throw new AxiosError(
+        'Request failed with status code 401',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        null,
+        { status: 401, statusText: 'Unauthorized', data: {}, headers: {}, config } as any
+      );
+    };
+    try {
+      const provider = new ScriptedWordpress([], null);
+      await assert.rejects(
+        provider.post(
+          'id',
+          wordpressToken,
+          wordpressPost({ main_image: { id: 'm', path: 'https://cdn.test/cover.png' } }),
+          {} as any
+        ),
+        (err: any) =>
+          err instanceof BadBody &&
+          /could not read the media for this post/.test(err.message)
+      );
+      assert.deepEqual(provider.reads, ['https://cdn.test/cover.png']);
+      assert.equal(provider.calls.length, 0);
+    } finally {
+      http.defaults.adapter = adapter;
+    }
   });
 });
 

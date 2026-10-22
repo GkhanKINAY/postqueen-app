@@ -155,29 +155,6 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
-  override handleErrors(
-    body: string,
-    status: number
-  ): { type: 'bad-body'; value: string } | undefined {
-    if (status < 400 || status >= 500 || status === 401 || status === 429) {
-      return undefined;
-    }
-
-    let message = '';
-    try {
-      message = String(JSON.parse(body)?.message || '');
-    } catch {
-      message = '';
-    }
-
-    return {
-      type: 'bad-body',
-      value: message
-        ? `Kick refused the message: ${message}`
-        : 'Kick refused the message.',
-    };
-  }
-
   // Kick answers 200 with is_sent false for a message it did not post, which
   // used to be marked published.
   private checkSent(data: any) {

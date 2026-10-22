@@ -586,32 +586,37 @@ describe('TikTok error mapping', () => {
 
   it('disconnects at the cap only when TikTok is being migrated', () => {
     withMigrate('linkedin:linkedin-page, tiktok:tiktok-business', () => {
-      assert.equal(
-        new TiktokProvider().handleErrors(
-          contentPosting('reached_active_user_cap')
-        )?.type,
-        'disconnect'
+      const answer = new TiktokProvider().handleErrors(
+        contentPosting('reached_active_user_cap')
       );
+      assert.equal(answer?.type, 'disconnect');
+      assert.match(String(answer?.value), /Reconnect the channel in Channels/);
+      assert.doesNotMatch(String(answer?.value), /re-connect/);
     });
   });
 
-  it('asks for a reconnect when a scope is missing', () => {
+  it('asks for a reconnect when a scope is missing, without disconnecting', () => {
     for (const code of ['scope_not_authorized', 'scope_permission_missed']) {
       const answer = new TiktokProvider().handleErrors(contentPosting(code));
-      assert.equal(answer?.type, 'disconnect', code);
+      assert.equal(answer?.type, 'bad-body', code);
       assert.match(String(answer?.value), /allow every permission/);
     }
   });
 
-  it('retries a TikTok server error, by code or by fail_reason', () => {
-    for (const body of [
-      contentPosting('internal_error', 'Something went wrong.'),
-      contentPostingFailed('internal'),
-    ]) {
-      const answer = new TiktokProvider().handleErrors(body);
-      assert.equal(answer?.type, 'retry', body);
-      assert.match(String(answer?.value), /server problem/);
-    }
+  it('never resends a publish TikTok failed on its side', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPosting('internal_error', 'Something went wrong.')
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /server problem/);
+  });
+
+  it('names the status check fail_reason internal as a server problem', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPostingFailed('internal')
+    );
+    assert.equal(answer?.type, 'retry');
+    assert.match(String(answer?.value), /server problem/);
   });
 
   it('no longer reads "internal" or "international" in a message as a server error', () => {
@@ -639,18 +644,19 @@ describe('TikTok error mapping', () => {
       contentPosting('invalid_param', 'The title is too long.')
     );
     assert.equal(answer?.type, 'bad-body');
+    assert.equal(answer?.value, 'The title is too long.');
     assert.equal(
-      answer?.value,
-      'TikTok rejected the post settings: The title is too long.'
+      new TiktokProvider().handleErrors(contentPosting('invalid_param'))?.value,
+      'TikTok refused the post settings. Check them, then schedule the post again.'
     );
   });
 
-  it('names a revoked app during the upload', () => {
+  it('names a revoked app during the upload, and does not retry it', () => {
     for (const answer of [
       new TiktokProvider().handleErrors(contentPostingFailed('auth_removed')),
       new TiktokBusinessProvider().handleErrors(businessFailed('auth_removed')),
     ]) {
-      assert.equal(answer?.type, 'refresh-token');
+      assert.equal(answer?.type, 'bad-body');
       assert.match(String(answer?.value), /removed PostQueen's access/);
     }
   });
@@ -704,17 +710,24 @@ describe('TikTok error mapping', () => {
     }
   });
 
-  it('retries a TikTok Business server error, by code or by reason', () => {
+  it('never resends a TikTok Business publish that failed on its side', () => {
     for (const body of [
       business(50000, 'System error'),
       business(50002, 'Error processing request on TikTok side.'),
       business(60001, 'The system is in maintenance.'),
-      businessFailed('internal'),
     ]) {
       const answer = new TiktokBusinessProvider().handleErrors(body);
-      assert.equal(answer?.type, 'retry', body);
+      assert.equal(answer?.type, 'bad-body', body);
       assert.match(String(answer?.value), /server problem/);
     }
+  });
+
+  it('names the TikTok Business status reason internal as a server problem', () => {
+    const answer = new TiktokBusinessProvider().handleErrors(
+      businessFailed('internal')
+    );
+    assert.equal(answer?.type, 'retry');
+    assert.match(String(answer?.value), /server problem/);
   });
 
   it('names the TikTok Business media size limits', () => {

@@ -7,6 +7,7 @@ import { WhopProvider } from './whop.provider.ts';
 import { MeweProvider } from './mewe.provider.ts';
 import { TwitchProvider } from './twitch.provider.ts';
 import { MoltbookProvider } from './moltbook.provider.ts';
+import { FarcasterProvider } from './farcaster.provider.ts';
 import { BadBody, Disconnect, RefreshToken } from '../social.abstract.ts';
 
 // The post workflow publishes again, up to five times, after any error that
@@ -205,7 +206,14 @@ describe('Whop refusals', () => {
         }),
         400,
       )!.value,
-      'Whop refused the post: title is too long',
+      'title is too long',
+    );
+    assert.equal(
+      provider.handleErrors(
+        JSON.stringify({ error: { type: 'invalid_request' } }),
+        400,
+      )!.value,
+      'Whop refused the post because a field is not valid.',
     );
   });
 
@@ -230,12 +238,16 @@ describe('MeWe refusals', () => {
   });
 
   it('reads the rate limit from the status, not "420" in the body', () => {
-    assert.equal(
-      provider.handleErrors('{"id":"14200"}', 400)?.type,
-      'bad-body',
-    );
+    assert.equal(provider.handleErrors('{"id":"14200"}', 400), undefined);
     assert.equal(provider.handleErrors('', 420)?.type, 'retry');
     assert.equal(provider.handleErrors('', 401)?.type, 'refresh-token');
+  });
+
+  it('asks for a new token on a 401 only, not on the word Unauthorized', () => {
+    assert.equal(
+      provider.handleErrors('{"message":"Unauthorized to post here"}', 400),
+      undefined,
+    );
   });
 
   it('refuses a video at scheduling instead of dropping it', async () => {
@@ -362,5 +374,23 @@ describe('Moltbook limits', () => {
       )!.value,
       'Moltbook limits how often this agent can post. Schedule this one at least 12 minutes later.',
     );
+  });
+});
+
+// A refusal these providers do not map is left to the shared layer, which
+// passes on the platform's reason or explains the status.
+describe('Unmapped chat refusals', () => {
+  it('leaves any other 4xx to the shared layer', () => {
+    const body = JSON.stringify({ error: 'Title is required', hint: 'Add one' });
+    assert.equal(new MoltbookProvider().handleErrors(body, 400), undefined);
+    assert.equal(new TwitchProvider().handleErrors(body, 400), undefined);
+    assert.equal(new FarcasterProvider().handleErrors(body, 400), undefined);
+  });
+
+  it("names PostQueen's API key when Neynar answers 401", () => {
+    assert.deepEqual(new FarcasterProvider().handleErrors('{}', 401), {
+      type: 'bad-body',
+      value: "Farcaster refused PostQueen's API access. Please contact support.",
+    });
   });
 });

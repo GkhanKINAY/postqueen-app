@@ -70,16 +70,6 @@ export class MoltbookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (status >= 400 && status < 500) {
-      const reason = [parsed.error, parsed.hint].filter(Boolean).join('. ');
-      return {
-        type: 'bad-body',
-        value: reason
-          ? `Moltbook refused the post: ${reason}`
-          : 'Moltbook refused the post.',
-      };
-    }
-
     return undefined;
   }
 

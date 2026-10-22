@@ -160,14 +160,14 @@ describe('Telegram refusals', () => {
     );
     assert.match(
       handleErrors,
-      /code === 403 \|\|\s*parsed\.parameters\?\.migrate_to_chat_id \|\|\s*\(code === 400 && \/chat not found\/i\.test\(description\)\)\s*\) \{\s*return \{\s*type: 'disconnect',/
+      /parsed\.error_code === 403 \|\|\s*parsed\.parameters\?\.migrate_to_chat_id \|\|\s*\(code === 400 && \/chat not found\/i\.test\(description\)\)\s*\) \{\s*return \{\s*type: 'disconnect',/
     );
   });
 
   it('asks for rights before it disconnects, and keeps other 400s as BadBody', () => {
     assert.ok(
       handleErrors.indexOf('not enough rights|need administrator rights') <
-        handleErrors.indexOf('code === 403 ||')
+        handleErrors.indexOf('parsed.error_code === 403 ||')
     );
     assert.match(
       handleErrors,

@@ -243,11 +243,16 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       }
 
       // X refuses a post with more than one cashtag when it comes through
-      // the API, so it is caught here instead of at publish time.
+      // the API, so it is caught here instead of at publish time. The same
+      // cashtag twice, in any case, is still one.
       if (
         texts.some(
           (text) =>
-            twitter.extractCashtags(this.toTweetText(text || '')).length > 1,
+            new Set(
+              twitter
+                .extractCashtags(this.toTweetText(text || ''))
+                .map((tag) => tag.toLowerCase()),
+            ).size > 1,
         )
       ) {
         return CASHTAG_LIMIT;

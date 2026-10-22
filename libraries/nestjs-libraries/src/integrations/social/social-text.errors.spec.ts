@@ -5,6 +5,7 @@ import { XRPCError } from '@atproto/api';
 import { XProvider } from './x.provider.ts';
 import { BlueskyProvider } from './bluesky.provider.ts';
 import { MastodonProvider } from './mastodon.provider.ts';
+import { MastodonCustomProvider } from './mastodon.custom.provider.ts';
 import { RedditProvider } from './reddit.provider.ts';
 import { TumblrProvider } from './tumblr.provider.ts';
 import { BadBody } from '../social.abstract.ts';
@@ -27,6 +28,13 @@ describe('X cashtags, before scheduling', () => {
     assert.equal(await x.checkValidity([[]], post, [], ['Buying $TSLA']), true);
     assert.equal(await x.checkValidity([[]], post, [], ['No tickers']), true);
     assert.equal(await x.checkValidity([[]], post, []), true);
+  });
+
+  it('counts the same cashtag twice, in any case, as one', async () => {
+    assert.equal(
+      await x.checkValidity([[]], post, [], ['$TSLA up today, $tsla up again']),
+      true
+    );
   });
 
   it('refuses a second one in the post or in any thread reply', async () => {
@@ -172,6 +180,15 @@ describe('Mastodon media per post', () => {
       'Mastodon allows one video per post, without other media.'
     );
   });
+
+  it('leaves a custom instance to set its own limits', async () => {
+    const custom = new MastodonCustomProvider();
+    assert.equal(
+      await custom.checkValidity([media('jpg', 'jpg', 'jpg', 'jpg', 'jpg')]),
+      true
+    );
+    assert.equal(await custom.checkValidity([media('mp4', 'jpg')]), true);
+  });
 });
 
 describe('Mastodon errors', () => {
@@ -186,7 +203,7 @@ describe('Mastodon errors', () => {
       {
         type: 'bad-body',
         value:
-          'Your Mastodon instance says: Your login is currently pending approval. Sign in on the instance to fix it.',
+          'Your login is currently pending approval. Sign in on the instance to fix it.',
       }
     );
   });
@@ -226,8 +243,7 @@ describe('Mastodon errors', () => {
       ),
       {
         type: 'bad-body',
-        value:
-          'Mastodon refused the post: Validation failed: Text character limit of 500 exceeded',
+        value: 'Validation failed: Text character limit of 500 exceeded',
       }
     );
   });
@@ -235,7 +251,7 @@ describe('Mastodon errors', () => {
   it('survives a body that is not JSON', () => {
     assert.deepEqual(mastodon.handleErrors('<html>Bad gateway</html>', 422), {
       type: 'bad-body',
-      value: 'Mastodon refused the post',
+      value: 'Mastodon refused the post.',
     });
     assert.equal(mastodon.handleErrors('<html>Bad gateway</html>', 502), undefined);
   });
@@ -267,19 +283,19 @@ describe('Reddit and Tumblr wording', () => {
     });
   });
 
-  it('adds the reason Tumblr gives for a content format refusal', () => {
+  it('passes on the reason Tumblr gives for a content format refusal', () => {
     const tumblr = new TumblrProvider();
     assert.equal(
       tumblr.handleErrors(
         '{"errors":[{"title":"Bad Request","code":8001,"detail":"Posts cannot be empty."}]}',
         400
       )?.value,
-      'Tumblr rejected the post content format: Posts cannot be empty.'
+      'Posts cannot be empty.'
     );
     assert.equal(
       tumblr.handleErrors('{"errors":[{"title":"Bad Request","code":8001}]}', 400)
         ?.value,
-      'Tumblr rejected the post content format: Bad Request'
+      'Tumblr rejected the post content format.'
     );
     assert.equal(
       tumblr.handleErrors('code 8001', 400)?.value,

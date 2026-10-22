@@ -370,8 +370,10 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // Only Telegram's own 403 disconnects: a bare HTTP 403 with no Bot API
+    // body is not proof the bot was removed.
     if (
-      code === 403 ||
+      parsed.error_code === 403 ||
       parsed.parameters?.migrate_to_chat_id ||
       (code === 400 && /chat not found/i.test(description))
     ) {

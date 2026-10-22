@@ -4,6 +4,7 @@ import {
   PostResponse,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { MastodonProvider } from '@gitroom/nestjs-libraries/integrations/social/mastodon.provider';
+import { ValidityMedia } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -15,6 +16,14 @@ export class MastodonCustomProvider extends MastodonProvider {
   override name = 'M. Instance';
   override maxConcurrentJob = 5; // Custom Mastodon instances typically have generous limits
   editor = 'normal' as const;
+
+  // The 4-file and video-alone limits are mastodon.social's defaults. An
+  // instance can raise them, so a custom one is left to say what it takes.
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>
+  ): Promise<string | true> {
+    return true;
+  }
 
   async externalUrl(url: string) {
     const form = new FormData();

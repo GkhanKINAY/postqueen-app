@@ -105,10 +105,11 @@ export function platformMessage(body: unknown): string {
   const text = (value: unknown) =>
     typeof value === 'string' ? cleanPlatformMessage(value) : '';
 
+  // JSON:API errors (Tumblr's, for one) put the reason in `detail`.
   const errors = Array.isArray(parsed.errors)
     ? parsed.errors
-        .map((e: any) => text(e?.message))
-        .filter(readable)
+        .map((e: any) => [text(e?.message), text(e?.detail)].find(readable))
+        .filter(Boolean)
         .slice(0, 3)
         .join(' ')
     : '';
@@ -127,6 +128,11 @@ export function platformMessage(body: unknown): string {
 
 /** What the user is told when the platform gave no reason of its own. */
 export function statusMessage(status: number): string {
+  // No HTTP answer at all: a dropped connection, or a step on PostQueen's
+  // side such as reading an image, failed before the network replied.
+  if (!status) {
+    return 'PostQueen could not complete the request to the network, so the post was not published. Try again in a few minutes.';
+  }
   if (status === 429) {
     return 'The network is limiting how many requests PostQueen can send, so the post was not published. Try again later.';
   }
@@ -420,10 +426,14 @@ export abstract class SocialAbstract {
     return value || false;
   }
 
-  /** Reads the pixel dimensions of an image via sharp (works for http or local paths). */
+  /**
+   * Reads the pixel dimensions of an image via sharp (works for http or local
+   * paths). They are the stored ones: an EXIF `orientation` of 5 or more means
+   * the image shows rotated a quarter turn, with width and height swapped.
+   */
   protected async getImageDimensions(
     path: string
-  ): Promise<{ width: number; height: number }> {
+  ): Promise<{ width: number; height: number; orientation?: number }> {
     // Stored media paths are relative (e.g. "uploads/x.png"); resolve them to a
     // fetchable URL the same way posts.service.updateMedia does.
     const url =
@@ -431,20 +441,33 @@ export abstract class SocialAbstract {
         ? `${process.env.FRONTEND_URL}/${path}`
         : path;
     setHeartbeatDetails(`read media ${stripQuery(url)}`);
-    const { width = 0, height = 0 } = await sharp(
-      await this.readOrFetch(url)
-    ).metadata();
-    return { width, height };
+    const {
+      width = 0,
+      height = 0,
+      orientation,
+    } = await sharp(await this.readOrFetch(url)).metadata();
+    return { width, height, orientation };
   }
 
   // Reads the whole media into memory (images the providers hand to sharp).
   // A read that stalls twice fails the post with BadBody rather than a
   // retryable error: repeating the publish would re-read the same media and
   // re-upload what was already sent while holding the provider's queue slot.
+  // So does a media host that refuses the file (4xx): reading it again gets
+  // the same answer, and its 401 is not the network asking for a reconnect.
   protected async readOrFetch(path: string): Promise<Buffer> {
     try {
       return await readOrFetch(path);
-    } catch (err) {
+    } catch (err: any) {
+      const status = Number(err?.response?.status);
+      if (status >= 400 && status < 500) {
+        throw new BadBody(
+          '',
+          JSON.stringify({ status, path: stripQuery(path) }),
+          Buffer.from('{}'),
+          'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+        );
+      }
       if (!isReadTimeout(err)) {
         throw err;
       }
@@ -581,7 +604,7 @@ export abstract class SocialAbstract {
         identifier,
         '{}',
         Buffer.from('{}'),
-        'Could not read the media for upload'
+        'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
       );
     }
 

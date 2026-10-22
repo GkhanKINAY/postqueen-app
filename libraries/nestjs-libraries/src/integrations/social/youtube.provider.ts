@@ -220,7 +220,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'Your video is live on YouTube, but YouTube could not read the thumbnail. Set it in YouTube Studio with a JPG or PNG.',
+          'Your video was uploaded to YouTube, but YouTube could not read the thumbnail. Set it in YouTube Studio with a JPG or PNG.',
       };
     }
 
@@ -228,7 +228,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'Your video is live on YouTube, but this channel set too many thumbnails recently. Set this one later in YouTube Studio.',
+          'Your video was uploaded to YouTube, but this channel set too many thumbnails recently. Set this one later in YouTube Studio.',
       };
     }
 

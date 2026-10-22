@@ -10,6 +10,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
+  platformMessage,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -61,22 +62,11 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
     }
 
     if (body.includes('invalid_request')) {
-      let message = '';
-      try {
-        const parsed = JSON.parse(body);
-        message =
-          parsed?.error?.message ||
-          parsed?.error_description ||
-          parsed?.message ||
-          '';
-      } catch {
-        message = '';
-      }
       return {
         type: 'bad-body' as const,
-        value: message
-          ? `Whop refused the post: ${message}`
-          : 'Whop refused the post because a field is not valid.',
+        value:
+          platformMessage(body) ||
+          'Whop refused the post because a field is not valid.',
       };
     }
 
@@ -307,9 +297,9 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
         if (!fileResponse.ok || !fileResponse.body) {
           throw new BadBody(
             this.identifier,
+            JSON.stringify({ status: fileResponse.status }),
             '{}',
-            '{}',
-            `Could not read a media file in this post: ${fileResponse.status} ${fileResponse.statusText}`
+            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
           );
         }
         const uploadResponse = await fetch(createFileResponse.upload_url, {

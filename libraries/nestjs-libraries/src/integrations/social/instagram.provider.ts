@@ -103,12 +103,19 @@ export class InstagramProvider
     // Instagram refuses a feed photo outside 4:5 to 1.91:1 only when it
     // publishes (error 36003). The ratio is rounded to two decimals, so
     // 1200x628 still counts as 1.91:1. A file sharp cannot read is left for
-    // Instagram to judge.
+    // Instagram to judge. An EXIF orientation of 5 or more shows the photo a
+    // quarter turn round, so it is measured the way it is shown.
     const dimensions = await Promise.all(
       media.map((m) =>
         hasExtension(m?.path, 'mp4')
           ? undefined
-          : this.getImageDimensions(m?.path).catch(() => undefined)
+          : this.getImageDimensions(m?.path).then(
+              ({ width, height, orientation }) =>
+                (orientation ?? 0) >= 5
+                  ? { width: height, height: width }
+                  : { width, height },
+              () => undefined
+            )
       )
     );
     const outside = dimensions.findIndex((d) => {

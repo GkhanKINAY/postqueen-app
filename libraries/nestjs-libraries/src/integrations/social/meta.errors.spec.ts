@@ -19,10 +19,14 @@ const images = (count: number, ext = 'jpg') =>
 
 // Both Instagram tiles measure feed photos through InstagramProvider, which
 // reads the file with sharp. Every photo here measures as `size` says.
-let size = { width: 1080, height: 1080 };
+let size: { width: number; height: number; orientation?: number } | undefined =
+  { width: 1080, height: 1080 };
 let measured = 0;
 (InstagramProvider.prototype as any).getImageDimensions = async () => {
   measured++;
+  if (!size) {
+    throw new Error('Input buffer contains unsupported image format');
+  }
   return size;
 };
 
@@ -320,6 +324,35 @@ describe('Instagram carousel and photo shape, on both tiles', () => {
       assert.equal(
         await provider.checkValidity([images(1)], { post_type: 'post' }, []),
         'Image 1 is 1080x1920. Instagram feed photos must be between 4:5 and 1.91:1. Crop the photo or post it as a story.'
+      );
+    });
+
+    it(`${name}: measures a photo the way its EXIF orientation shows it`, async () => {
+      // stored 1920x1080, shown 1080x1920
+      size = { width: 1920, height: 1080, orientation: 6 };
+      assert.equal(
+        await provider.checkValidity([images(1)], { post_type: 'post' }, []),
+        'Image 1 is 1080x1920. Instagram feed photos must be between 4:5 and 1.91:1. Crop the photo or post it as a story.'
+      );
+      // stored 1080x1920, shown 1920x1080 (1.78:1)
+      size = { width: 1080, height: 1920, orientation: 8 };
+      assert.equal(
+        await provider.checkValidity([images(1)], { post_type: 'post' }, []),
+        true
+      );
+      // mirrored only, not turned
+      size = { width: 1080, height: 1350, orientation: 2 };
+      assert.equal(
+        await provider.checkValidity([images(1)], { post_type: 'post' }, []),
+        true
+      );
+    });
+
+    it(`${name}: leaves a photo it cannot read for Instagram to judge`, async () => {
+      size = undefined;
+      assert.equal(
+        await provider.checkValidity([images(1)], { post_type: 'post' }, []),
+        true
       );
     });
 

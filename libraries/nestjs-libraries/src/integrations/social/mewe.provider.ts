@@ -47,7 +47,7 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    if (status === 401 || body.indexOf('Unauthorized') > -1) {
+    if (status === 401) {
       return {
         type: 'refresh-token' as const,
         value: 'MeWe signed PostQueen out. Reconnect the channel.',
@@ -68,13 +68,6 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value: 'Insufficient permissions for this action',
-      };
-    }
-
-    if (status >= 400 && status < 500 && status !== 429) {
-      return {
-        type: 'bad-body' as const,
-        value: `MeWe refused the post (HTTP ${status}).`,
       };
     }
 

@@ -8,6 +8,7 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   BadBody,
+  platformMessage,
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
@@ -70,23 +71,15 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    // Mastodon answers with { "error": "..." }, written for people to read.
-    let error = '';
-    try {
-      const parsed = JSON.parse(body);
-      error = typeof parsed?.error === 'string' ? parsed.error : '';
-    } catch (err) {
-      error = '';
-    }
-
     // "Your login is currently disabled", "... pending approval" or "... is
     // missing a confirmed e-mail address": the token is fine, a new one would
-    // be refused the same way, so only the instance can fix it.
+    // be refused the same way, so only the instance can fix it. Mastodon
+    // answers with { "error": "..." }, written for people to read.
     if (body.includes('Your login is')) {
       return {
         type: 'bad-body',
-        value: `Your Mastodon instance says: ${
-          error || 'Your login is not active'
+        value: `${
+          platformMessage(body) || 'Your login is not active'
         }. Sign in on the instance to fix it.`,
       };
     }
@@ -119,7 +112,7 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
     if (status === 422) {
       return {
         type: 'bad-body',
-        value: `Mastodon refused the post${error ? `: ${error}` : ''}`,
+        value: platformMessage(body) || 'Mastodon refused the post.',
       };
     }
 

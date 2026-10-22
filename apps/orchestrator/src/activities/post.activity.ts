@@ -85,11 +85,13 @@ const NEVER_PUBLISHED = [
 ];
 
 // Shown in place of a bug's or a broken HTTP call's own text ("Cannot read
-// properties of undefined"), which tells the user nothing and is not the
-// network's answer. The Errors row keeps the raw text. Temporal turns an
-// unclassified error into an ApplicationFailure typed by its class name.
+// properties of undefined", or "fetch failed" when the network could not be
+// reached), which tells the user nothing and is not the network's answer.
+// Neutral on whose side it was, since an outage reads the same. The Errors
+// row keeps the raw text. Temporal turns an unclassified error into an
+// ApplicationFailure typed by its class name.
 const INTERNAL_FAILURE =
-  "Something went wrong on PostQueen's side while publishing this post.";
+  'Something went wrong while sending this post, so it was not published. Try again in a few minutes, and contact support if it keeps happening.';
 const RAW_ERRORS = [
   'TypeError',
   'SyntaxError',
@@ -1081,11 +1083,7 @@ export class PostActivity {
     // thumbnail): the publish activity kept its link, and it keeps its credits.
     const live = state === 'ERROR' && !!before?.releaseURL;
 
-    const internal =
-      state === 'ERROR' &&
-      (RAW_ERRORS.includes(cause?.type) ||
-        // a plain Error handed over directly, never typed by Temporal
-        [...RAW_ERRORS, 'Error'].includes(err?.name));
+    const internal = state === 'ERROR' && RAW_ERRORS.includes(cause?.type);
 
     if (lapsed) {
       reason = LAPSED_SUBSCRIPTION;

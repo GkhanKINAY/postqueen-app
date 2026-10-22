@@ -277,9 +277,9 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
       if (!fileResponse.ok || !fileResponse.body) {
         throw new BadBody(
           this.identifier,
+          JSON.stringify({ status: fileResponse.status }),
           '{}',
-          '{}',
-          `Could not read a media file in this post: ${fileResponse.status} ${fileResponse.statusText}`
+          'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
         );
       }
       const uploadResponse = await fetch(createFileResponse.write_url, {

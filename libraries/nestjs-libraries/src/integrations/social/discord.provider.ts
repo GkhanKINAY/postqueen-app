@@ -450,7 +450,8 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
       case 20028:
         return {
           type: 'retry',
-          value: 'Rate limited by Discord',
+          value:
+            'Discord is limiting how fast PostQueen can post. Reschedule the post a few minutes later.',
         };
     }
 

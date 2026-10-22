@@ -264,15 +264,6 @@ export class TwitchProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (status >= 400 && status < 500 && status !== 401) {
-      return {
-        type: 'bad-body',
-        value: message
-          ? `Twitch refused the post: ${message}`
-          : 'Twitch refused the post.',
-      };
-    }
-
     return undefined;
   }
 

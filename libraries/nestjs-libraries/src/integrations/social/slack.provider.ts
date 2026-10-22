@@ -290,7 +290,7 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'Slack is limiting how fast PostQueen can post in this workspace. Reschedule the post a few minutes later.',
+          'Slack is limiting how fast PostQueen can post. Reschedule the post a few minutes later.',
       };
     }
     if (body.includes('downloading image failed')) {

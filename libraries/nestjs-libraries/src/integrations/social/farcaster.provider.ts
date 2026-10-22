@@ -98,10 +98,6 @@ export class FarcasterProvider
     body: string,
     status: number
   ): { type: 'bad-body'; value: string } | undefined {
-    if (status < 400 || status >= 500) {
-      return undefined;
-    }
-
     // Retried first by runStreamedUpload; this is what is left once those
     // retries run out.
     if (status === 429) {
@@ -112,19 +108,16 @@ export class FarcasterProvider
       };
     }
 
-    let message = '';
-    try {
-      message = String(JSON.parse(body)?.message || '');
-    } catch {
-      message = '';
+    // Neynar's 401 is about PostQueen's own API key, not the channel, so a
+    // token refresh cannot fix it.
+    if (status === 401) {
+      return {
+        type: 'bad-body',
+        value: "Farcaster refused PostQueen's API access. Please contact support.",
+      };
     }
 
-    return {
-      type: 'bad-body',
-      value: message
-        ? `Farcaster refused the cast: ${message}`
-        : 'Farcaster refused the cast.',
-    };
+    return undefined;
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
