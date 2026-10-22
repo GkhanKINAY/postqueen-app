@@ -175,6 +175,29 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     ];
   }
 
+  override handleErrors(
+    body: string,
+    status: number
+  ): { type: 'bad-body'; value: string } | undefined {
+    if (status < 400 || status >= 500 || status === 401 || status === 429) {
+      return undefined;
+    }
+
+    let message = '';
+    try {
+      message = String(JSON.parse(body)?.message || '');
+    } catch {
+      message = '';
+    }
+
+    return {
+      type: 'bad-body',
+      value: message
+        ? `Listmonk refused the campaign: ${message}`
+        : 'Listmonk refused the campaign.',
+    };
+  }
+
   async post(
     id: string,
     accessToken: string,

@@ -18,7 +18,7 @@ describe('Lemmy cover image', () => {
   });
 
   it('still refuses a video as the cover', async () => {
-    assert.equal(await cover('mp4'), 'You can set only one picture for a cover');
+    assert.equal(await cover('mp4'), 'Lemmy uses the first picture as the post thumbnail, so it must be a PNG, JPG, GIF or WEBP.');
   });
 });
 

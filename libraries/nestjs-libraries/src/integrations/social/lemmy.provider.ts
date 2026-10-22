@@ -47,14 +47,65 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('not_logged_in') || body.includes('incorrect_login')) {
       return {
         type: 'refresh-token',
-        value: 'Lemmy session is no longer valid, please reconnect the channel',
+        value:
+          'Lemmy refused the username or password. Reconnect the channel with your current password.',
       };
     }
 
-    if (body.includes('site_ban') || body.includes('"error":"banned"')) {
+    if (body.includes('missing_totp_token')) {
+      return {
+        type: 'bad-body',
+        value:
+          'This Lemmy account uses two-factor login, which PostQueen cannot complete. Turn it off for this account, then reconnect the channel.',
+      };
+    }
+
+    if (
+      body.includes('site_ban') ||
+      body.includes('person_is_banned_from_site') ||
+      body.includes('"error":"banned"')
+    ) {
       return {
         type: 'bad-body',
         value: 'This account is banned on the Lemmy instance',
+      };
+    }
+
+    if (
+      body.includes('banned_from_community') ||
+      body.includes('person_is_banned_from_community')
+    ) {
+      return {
+        type: 'bad-body',
+        value: 'This account is banned from the selected Lemmy community.',
+      };
+    }
+
+    if (body.includes('only_mods_can_post_in_community')) {
+      return {
+        type: 'bad-body',
+        value:
+          'Only moderators can post in the selected Lemmy community. Pick another one.',
+      };
+    }
+
+    if (body.includes('language_not_allowed')) {
+      return {
+        type: 'bad-body',
+        value:
+          "The selected Lemmy community does not accept posts in this account's language. Change the language in your Lemmy settings, or pick another community.",
+      };
+    }
+
+    if (
+      body.includes(
+        'cannot_create_post_or_comment_in_deleted_or_removed_community'
+      )
+    ) {
+      return {
+        type: 'bad-body',
+        value:
+          'The selected Lemmy community was deleted or removed. Pick another one.',
       };
     }
 
@@ -102,7 +153,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
       (firstItems?.[0]?.path?.indexOf?.('gif') ?? -1) === -1 &&
       (firstItems?.[0]?.path?.indexOf?.('webp') ?? -1) === -1
     ) {
-      return 'You can set only one picture for a cover';
+      return 'Lemmy uses the first picture as the post thumbnail, so it must be a PNG, JPG, GIF or WEBP.';
     }
     return true;
   }
