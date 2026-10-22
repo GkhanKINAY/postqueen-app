@@ -40,6 +40,11 @@
 # proxy-addr, fast-copy, fast-uri, ip-address, js-yaml 5, pbkdf2, piscina,
 # probe-image-size and source-map-js. The nine below need a major the holder
 # has not taken, or have no released fix.
+# Regenerated 2026-10-22 after moving the MCP set: @mastra/mcp 1.18, the last
+# 1.x, pins @modelcontextprotocol 2.0.0 exactly (2.5 pins 2.2.0), so a root
+# override holds core, server, client and server-legacy at 2.3.1 and node at
+# 2.1.1, as one set. Sentry moved to 10.76. Seven entries stopped appearing and
+# are gone.
 # @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
 # 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
@@ -75,25 +80,9 @@ image-size GHSA-w3rx-r6r6-pgpr
 # CopilotKit's markdown (streamdown, rehype-katex, remark-math) takes katex
 # 0.16; the fix is 0.18. Low severity and needs a prototype already polluted.
 katex GHSA-238p-pmpm-9mq7
-# @mastra/mcp pins client 2.0.0 exactly with core/node/server 2.0.0, up to its
-# latest release; we only run MCPServer, never the OAuth client.
-@modelcontextprotocol/client GHSA-6qxp-vccf-f47h
-# 2026-10-20 advisories for the same pinned 2.0.0 set (fixed in 2.3). Our MCP
-# endpoint does run @mastra/mcp's MCPServer on server 2.0.0, so these matter:
-# moving the whole set (core, node, server, client, server-legacy) together
-# with an end-to-end MCP check is the next dependency PR, not this Next.js fix.
-@modelcontextprotocol/client GHSA-6prh-2h8m-c8cw
-@modelcontextprotocol/server GHSA-46jr-4wx8-v453
-@modelcontextprotocol/server GHSA-jm63-cq47-j5jp
-@modelcontextprotocol/server GHSA-rvq5-wwqv-78pq
-@modelcontextprotocol/server-legacy GHSA-rvq5-wwqv-78pq
 # @langchain/google-gauth -> google-auth-library 8 -> gtoken -> google-p12-pem
 # only converts a p12 key; no released fix, and nothing verifies signatures.
 node-forge GHSA-86w9-cpqp-85rv
-# @sentry/nextjs 10.69: the bypass needs Sentry's tunnelRoute, which
-# next.config.js does not set. Moving to 10.75 waits for the same next PR, with
-# a check that source maps still upload.
-@sentry/nextjs GHSA-mchm-gjx6-7h55
 # polotno's editor holds quill 2.0.3, the latest; the issue is in Quill's HTML
 # export of the user's own design.
 quill GHSA-v3m3-f69x-jf25
