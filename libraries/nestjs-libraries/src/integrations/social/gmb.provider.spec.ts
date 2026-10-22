@@ -175,3 +175,80 @@ describe('Google Business call to action', () => {
     assert.equal(errors.length, 0);
   });
 });
+
+describe('Google Business Profile errors', () => {
+  const provider = new GmbProvider();
+  const google = (error: object) => provider.handleErrors(JSON.stringify({ error }));
+
+  it('asks for a reconnect when the grant lacks a scope, before the 403 status', () => {
+    const answer = google({
+      code: 403,
+      message: 'Request had insufficient authentication scopes.',
+      status: 'PERMISSION_DENIED',
+      details: [{ reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT', domain: 'googleapis.com' }],
+    });
+    assert.equal(answer?.type, 'disconnect');
+    assert.match(String(answer?.value), /missing a Google permission/);
+  });
+
+  it('fails a refused profile once instead of refreshing the token in a loop', () => {
+    const answer = google({
+      code: 403,
+      message: 'The caller does not have permission',
+      status: 'PERMISSION_DENIED',
+    });
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /verified and not suspended/);
+  });
+
+  it('reads the status, not the post text Google echoes back', () => {
+    const answer = google({
+      code: 400,
+      status: 'INVALID_ARGUMENT',
+      details: [
+        {
+          errorDetails: [
+            { field: 'summary', value: 'UNAUTHENTICATED PERMISSION_DENIED NOT_FOUND' },
+          ],
+        },
+      ],
+    });
+    assert.deepEqual(answer, {
+      type: 'bad-body',
+      value: 'Google refused the post because the summary field is not valid.',
+    });
+  });
+
+  it('names an image Google could not download', () => {
+    assert.match(
+      String(
+        google({
+          status: 'INVALID_ARGUMENT',
+          details: [{ errorDetails: [{ field: 'media.source_url' }] }],
+        })?.value
+      ),
+      /could not download the image/
+    );
+    assert.equal(google({ status: 'INVALID_ARGUMENT' })?.type, 'bad-body');
+  });
+
+  it('keeps the other types as they were', () => {
+    assert.equal(google({ code: 401, status: 'UNAUTHENTICATED' })?.type, 'refresh-token');
+    assert.equal(google({ code: 404, status: 'NOT_FOUND' })?.type, 'bad-body');
+    assert.equal(google({ code: 429, status: 'RESOURCE_EXHAUSTED' })?.type, 'bad-body');
+    assert.equal(
+      provider.handleErrors('{"error":"invalid_grant","error_description":"Bad Request"}')?.type,
+      'refresh-token'
+    );
+    assert.equal(provider.handleErrors('Unauthorized')?.type, 'refresh-token');
+    assert.equal(provider.handleErrors('{}'), undefined);
+  });
+
+  it('says Google Business Profile in its copy', () => {
+    assert.equal(provider.name, 'Google Business Profile');
+    assert.doesNotMatch(
+      String(google({ status: 'UNAUTHENTICATED' })?.value),
+      /My Business|account/
+    );
+  });
+});

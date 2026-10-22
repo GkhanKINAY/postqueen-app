@@ -180,6 +180,28 @@ export class Disconnect extends ApplicationFailure {
   }
 }
 
+// The platform already accepted the post (it is live) but a follow-up mutation
+// on it failed (e.g. YouTube rejected the thumbnail after the upload): the post
+// still ends in ERROR, yet its platform id / URL must survive so the user can
+// reach the live post instead of re-publishing it. The post activity records
+// them and rethrows as BadBody, like Disconnect.
+export class PublishedWithError extends ApplicationFailure {
+  constructor(
+    identifier: string,
+    public readonly postDbId: string,
+    public readonly releaseId: string,
+    public readonly releaseURL: string,
+    message = ''
+  ) {
+    super(
+      truncateForTemporal(message, MAX_FAILURE_MESSAGE),
+      'published_with_error',
+      true,
+      [{ identifier, postDbId, releaseId, releaseURL }]
+    );
+  }
+}
+
 // `unmapped` marks a refusal no handleErrors mapping explained, so the admin
 // stats can still count the failures that once read "Unknown Error".
 export class BadBody extends ApplicationFailure {
