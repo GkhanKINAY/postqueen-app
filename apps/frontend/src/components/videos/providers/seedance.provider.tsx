@@ -7,6 +7,12 @@ import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.co
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { FormChoice } from '@gitroom/react/form/form.choice';
+import { Skeleton } from '@gitroom/react/ui/skeleton';
+import {
+  CreditPricing,
+  SEEDANCE_CREDIT_COSTS,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
 
 // What each model offers; `seedance.ts` refuses the rest.
 const RESOLUTIONS: Record<string, string[]> = {
@@ -26,7 +32,11 @@ const SeedanceSettings: FC = () => {
   const { register, watch, setValue, formState, control } = useFormContext();
   const { value } = useVideo();
   const t = useT();
-  const model = useWatch({ control, name: 'model' }) || 'fast';
+  // The choices start at the default of the organization's price list, the
+  // video a request that names nothing gets. They wait for the list, since a
+  // choice's default is written once.
+  const creditPricing = useCreditPricing();
+  const model = useWatch({ control, name: 'model' }) || 'mini';
   const resolution = useWatch({ control, name: 'resolution' }) || '720p';
 
   // A resolution the new model does not offer falls back to 720p, which
@@ -84,49 +94,71 @@ const SeedanceSettings: FC = () => {
         }
         error={formState?.errors?.images?.message}
       />
-      <div className="mt-[16px] flex flex-col gap-[14px]">
-        <FormChoice
-          name="model"
-          label="Model"
-          translationKey="video_model"
-          layout="segment"
-          defaultValue="fast"
-          options={[
-            { label: t('seedance_model_fast', 'Fast'), value: 'fast' },
-            {
-              label: t('seedance_model_standard', 'Standard'),
-              value: 'standard',
-            },
-            { label: t('seedance_model_mini', 'Mini'), value: 'mini' },
-          ]}
-          hint={t(
-            'seedance_model_hint',
-            'Mini costs the least. Standard is the sharpest and the only one in 1080p.'
-          )}
+      {creditPricing ? (
+        <SeedanceChoices
+          creditPricing={creditPricing}
+          model={model}
         />
-        <FormChoice
-          name="resolution"
-          label="Resolution"
-          translationKey="video_resolution"
-          layout="segment"
-          defaultValue="720p"
-          options={(RESOLUTIONS[model] || RESOLUTIONS.fast).map((p) => ({
-            label: p,
-            value: p,
-          }))}
-        />
-        <FormChoice
-          name="duration"
-          label="Length"
-          translationKey="video_length"
-          layout="pills"
-          defaultValue="8"
-          options={SECONDS.map((p) => ({
-            label: t('n_seconds', '{{count}} s', { count: p }),
-            value: String(p),
-          }))}
-        />
-      </div>
+      ) : (
+        <div className="mt-[16px] flex flex-col gap-[14px]">
+          <Skeleton className="h-[58px] w-full" />
+          <Skeleton className="h-[58px] w-full" />
+          <Skeleton className="h-[58px] w-full" />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SeedanceChoices: FC<{
+  creditPricing: CreditPricing;
+  model: string;
+}> = ({ creditPricing, model }) => {
+  const t = useT();
+  const defaults = SEEDANCE_CREDIT_COSTS[creditPricing].defaults;
+  return (
+    <div className="mt-[16px] flex flex-col gap-[14px]">
+      <FormChoice
+        name="model"
+        label="Model"
+        translationKey="video_model"
+        layout="segment"
+        defaultValue={defaults.model}
+        options={[
+          { label: t('seedance_model_mini', 'Mini'), value: 'mini' },
+          { label: t('seedance_model_fast', 'Fast'), value: 'fast' },
+          {
+            label: t('seedance_model_standard', 'Standard'),
+            value: 'standard',
+          },
+        ]}
+        hint={t(
+          'seedance_model_hint',
+          'Mini costs the least. Standard is the sharpest and the only one in 1080p.'
+        )}
+      />
+      <FormChoice
+        name="resolution"
+        label="Resolution"
+        translationKey="video_resolution"
+        layout="segment"
+        defaultValue={defaults.resolution}
+        options={(RESOLUTIONS[model] || RESOLUTIONS.mini).map((p) => ({
+          label: p,
+          value: p,
+        }))}
+      />
+      <FormChoice
+        name="duration"
+        label="Length"
+        translationKey="video_length"
+        layout="pills"
+        defaultValue={String(defaults.duration)}
+        options={SECONDS.map((p) => ({
+          label: t('n_seconds', '{{count}} s', { count: p }),
+          value: String(p),
+        }))}
+      />
     </div>
   );
 };

@@ -28,7 +28,7 @@ const repository = read('./credits.repository.ts');
 const schema = read('../schema.prisma');
 const migration = read('../migrations/20260926120000_credit_balance/migration.sql');
 const pricingMigration = read(
-  '../migrations/20261023120000_subscription_credit_pricing/migration.sql'
+  '../migrations/20261023130000_subscription_credit_pricing/migration.sql'
 );
 const databaseModule = read('../database.module.ts');
 const stripe = read('../../../services/stripe.service.ts');
