@@ -745,7 +745,7 @@ describe('Wiring', () => {
   it('registers the activity with the worker and exports the workflow', () => {
     assert.match(
       orchestratorModule,
-      /const activities = \[[\s\S]*\n\s+AccountPurgeActivity,\n\];/
+      /const activities = \[[^\]]*\n\s+AccountPurgeActivity,\n[^\]]*\];/
     );
     assert.match(
       workflowIndex,

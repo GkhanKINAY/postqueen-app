@@ -14,6 +14,7 @@ import { PostMetricsActivity } from '@gitroom/orchestrator/activities/post-metri
 import { MediaActivity } from '@gitroom/orchestrator/activities/media.activity';
 import { ClippingActivity } from '@gitroom/orchestrator/activities/clipping.activity';
 import { AccountPurgeActivity } from '@gitroom/orchestrator/activities/account-purge.activity';
+import { NoticeActivity } from '@gitroom/orchestrator/activities/notice.activity';
 import { VideoModule } from '@gitroom/nestjs-libraries/videos/video.module';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
@@ -35,6 +36,7 @@ const activities = [
   MediaActivity,
   ClippingActivity,
   AccountPurgeActivity,
+  NoticeActivity,
 ];
 @Module({
   imports: [

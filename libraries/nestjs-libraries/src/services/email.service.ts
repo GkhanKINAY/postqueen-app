@@ -151,15 +151,37 @@ export class EmailService {
     html: string,
     replyTo?: string
   ) {
+    const result = await this.deliverEmail(to, subject, html, replyTo);
+    if ('error' in result) {
+      console.log(`Email to ${to} failed after 3 attempts:`, result.error);
+    }
+  }
+
+  /**
+   * sendEmailSync, answering whether the provider accepted the email.
+   * `refused`: the provider answered with an error (Resend refusing an
+   * address), which sending again will not change. `error`: every attempt
+   * threw; sendEmailSync logs it with the address, this leaves that to the
+   * caller, which can log an id instead. The provider's answer is still logged
+   * on each send, as it always was (with Resend, an email id).
+   * `idempotencyKey`: see EmailExtras.
+   */
+  async deliverEmail(
+    to: string,
+    subject: string,
+    html: string,
+    replyTo?: string,
+    options?: { idempotencyKey?: string }
+  ): Promise<{ accepted: boolean; refused?: boolean; error?: unknown }> {
     if (to.indexOf('@') === -1) {
-      return;
+      return { accepted: false };
     }
 
     if (!process.env.EMAIL_FROM_ADDRESS || !process.env.EMAIL_FROM_NAME) {
       console.log(
         'Email sender information not found in environment variables'
       );
-      return;
+      return { accepted: false };
     }
 
     const content = readEmailContent(html);
@@ -180,10 +202,17 @@ export class EmailService {
           process.env.EMAIL_FROM_NAME,
           sender.from,
           replyTo || sender.replyTo,
-          { text: rendered.text, headers: unsubscribe?.headers }
+          {
+            text: rendered.text,
+            headers: unsubscribe?.headers,
+            idempotencyKey: options?.idempotencyKey,
+          }
         );
         console.log(sends);
-        return;
+        if (sends?.error) {
+          return { accepted: false, refused: true };
+        }
+        return { accepted: !(this.emailService instanceof EmptyProvider) };
       } catch (err) {
         lastErr = err;
         console.log(`Email attempt ${attempt + 1}/3 failed:`, err);
@@ -192,6 +221,6 @@ export class EmailService {
         }
       }
     }
-    console.log(`Email to ${to} failed after 3 attempts:`, lastErr);
+    return { accepted: false, error: lastErr };
   }
 }

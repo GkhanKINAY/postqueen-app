@@ -4,6 +4,11 @@ export interface EmailExtras {
   text?: string;
   /** Extra headers, e.g. List-Unsubscribe. */
   headers?: Record<string, string>;
+  /**
+   * The same key on a retry makes a provider that supports it (Resend)
+   * answer with the first send instead of sending again. Others ignore it.
+   */
+  idempotencyKey?: string;
 }
 
 export interface EmailInterface {

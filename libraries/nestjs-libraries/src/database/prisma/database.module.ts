@@ -62,6 +62,8 @@ import { AccountPurgeRepository } from '@gitroom/nestjs-libraries/database/prism
 import { AccountPurgeService } from '@gitroom/nestjs-libraries/database/prisma/account-purge/account-purge.service';
 import { PlatformCallbacksRepository } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.repository';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
+import { NoticesRepository } from '@gitroom/nestjs-libraries/database/prisma/notices/notices.repository';
+import { NoticesService } from '@gitroom/nestjs-libraries/database/prisma/notices/notices.service';
 
 @Global()
 @Module({
@@ -133,6 +135,8 @@ import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/pri
     AccountPurgeService,
     PlatformCallbacksRepository,
     PlatformCallbacksService,
+    NoticesRepository,
+    NoticesService,
   ],
   get exports() {
     return this.providers;

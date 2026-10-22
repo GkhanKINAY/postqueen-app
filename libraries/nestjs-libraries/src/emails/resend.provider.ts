@@ -18,15 +18,20 @@ export class ResendProvider implements EmailInterface {
     replyTo?: string,
     extras?: EmailExtras,
   ) {
-    const sends = await resend.emails.send({
-      from: `${emailFromName} <${emailFromAddress}>`,
-      to,
-      subject,
-      html,
-      ...(extras?.text && { text: extras.text }),
-      ...(extras?.headers && { headers: extras.headers }),
-      ...(replyTo && { reply_to: replyTo }),
-    });
+    const sends = await resend.emails.send(
+      {
+        from: `${emailFromName} <${emailFromAddress}>`,
+        to,
+        subject,
+        html,
+        ...(extras?.text && { text: extras.text }),
+        ...(extras?.headers && { headers: extras.headers }),
+        ...(replyTo && { reply_to: replyTo }),
+      },
+      extras?.idempotencyKey
+        ? { idempotencyKey: extras.idempotencyKey }
+        : undefined,
+    );
 
     // The SDK returns API errors (like a 429 rate limit) instead of throwing.
     // Throw on the ones a retry can fix (429, 5xx, no response), so

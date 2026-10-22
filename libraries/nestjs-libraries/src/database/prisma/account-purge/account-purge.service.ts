@@ -720,6 +720,8 @@ export class AccountPurgeService {
         return repository.purgeMemberComments(userId, apply);
       case 'identities':
         return repository.purgeIdentities(userId, apply);
+      case 'noticeDeliveries':
+        return repository.purgeNoticeDeliveries(userId, apply);
       default:
         return Promise.resolve({ count: 0, more: false });
     }

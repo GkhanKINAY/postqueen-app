@@ -60,6 +60,7 @@ export class AccountPurgeRepository {
     private _itemUser: PrismaRepository<'itemUser'>,
     private _agency: PrismaRepository<'socialMediaAgency'>,
     private _agencyNiche: PrismaRepository<'socialMediaAgencyNiche'>,
+    private _noticeDelivery: PrismaRepository<'noticeDelivery'>,
     private _mastraThreads: PrismaRepository<'mastra_threads'>,
     private _mastraMessages: PrismaRepository<'mastra_messages'>,
     private _mastraThreadState: PrismaRepository<'mastra_thread_state'>,
@@ -1196,6 +1197,21 @@ export class AccountPurgeRepository {
       apply,
       () => this._userIdentity.model.userIdentity.count({ where }),
       () => this._userIdentity.model.userIdentity.deleteMany({ where })
+    );
+  }
+
+  // The proof that a service notice reached the account. It holds no address,
+  // but goes with the account like everything else keyed by it.
+  purgeNoticeDeliveries(userId: string, apply: boolean) {
+    const where: Prisma.NoticeDeliveryWhereInput = { userId };
+    return this.step(
+      apply,
+      () => this._noticeDelivery.model.noticeDelivery.count({ where }),
+      () =>
+        this._noticeDelivery.model.noticeDelivery.deleteMany({
+          where,
+          limit: PURGE_BATCH,
+        })
     );
   }
 

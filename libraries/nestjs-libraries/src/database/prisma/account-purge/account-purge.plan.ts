@@ -106,6 +106,7 @@ export const USER_PURGE_STEPS = [
   { step: 'agency', model: 'SocialMediaAgency' },
   { step: 'memberComments', model: 'Comments' },
   { step: 'identities', model: 'UserIdentity' },
+  { step: 'noticeDeliveries', model: 'NoticeDelivery' },
 ] as const;
 
 export type UserPurgeStep = (typeof USER_PURGE_STEPS)[number]['step'];

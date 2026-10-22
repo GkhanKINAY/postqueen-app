@@ -4,7 +4,11 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
+import {
+  Prisma,
+  Provider,
+  Role,
+} from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
@@ -14,6 +18,13 @@ import {
   sessionsNotBeforeFrom,
   exactEmail,
 } from '@gitroom/helpers/auth/account-security';
+
+const NOTICE_RECIPIENT = {
+  deletedAt: null,
+  purgedAt: null,
+  activated: true,
+  email: { contains: '@' },
+} satisfies Prisma.UserWhereInput;
 
 @Injectable()
 export class UsersRepository {
@@ -591,6 +602,28 @@ export class UsersRepository {
         },
       },
       data: Object.fromEntries(fields.map((field) => [field, false])),
+    });
+  }
+
+  /**
+   * Every account a service notice goes to, oldest first, so a notice keeps
+   * the first account of an address that has several. Live, activated
+   * accounts with a real address: wallet and Farcaster sign-ins keep an id in
+   * `email`. Ids and addresses only.
+   */
+  listNoticeRecipients() {
+    return this._user.model.user.findMany({
+      where: NOTICE_RECIPIENT,
+      select: { id: true, email: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  /** One of listNoticeRecipients, read again when its email is sent. */
+  getNoticeRecipient(id: string) {
+    return this._user.model.user.findFirst({
+      where: { ...NOTICE_RECIPIENT, id },
+      select: { id: true, email: true },
     });
   }
 
