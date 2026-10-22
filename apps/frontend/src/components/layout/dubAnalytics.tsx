@@ -1,12 +1,32 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { Analytics as DubAnalyticsIn } from '@dub/analytics/react';
 import { getCookie } from 'react-use-cookie';
 
+// Loading Dub's script hands Dub the visitor's IP, and the cookie policy says
+// it runs only for a visit through an affiliate link. So it loads when the URL
+// carries one of the two parameters the script itself reads (`?dub_id=` from a
+// Dub short link, `?via=` from a partner link), or when one of the cookies it
+// writes for such a visit is already there. A referred visitor gets the script
+// on every page as before; everyone else never loads it.
+const isReferredVisit = (query: URLSearchParams) => {
+  if (query.get('dub_id') || query.get('via')) {
+    return true;
+  }
+  try {
+    return !!getCookie('dub_id', '') || !!getCookie('dub_partner_data', '');
+  } catch (e) {
+    // `getCookie` decodes the value, and only a cookie that exists can fail to.
+    return true;
+  }
+};
+
 export const DubAnalytics = () => {
   const { dub } = useVariables();
-  if (!dub) return null;
+  const query = useSearchParams();
+  if (!dub || !isReferredVisit(query)) return null;
   return (
     <DubAnalyticsIn />
   );

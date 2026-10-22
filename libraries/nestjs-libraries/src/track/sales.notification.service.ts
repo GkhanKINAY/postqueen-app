@@ -19,6 +19,10 @@ export interface SaleAttribution {
  * One money event, in a provider neutral shape. Amounts are minor units in
  * `currency`. A field that could not be read is null or absent, and the card
  * then leaves its row out rather than guessing.
+ *
+ * Nothing here names a person: no customer or workspace name, no email
+ * address, no sign-up date, no id or Dashboard link. The card is read in Slack
+ * for its amounts, and the plan, amount and time find the payment in Stripe.
  */
 export interface SaleNotification {
   kind:
@@ -41,23 +45,17 @@ export interface SaleNotification {
   discountName?: string | null;
   /** The payment provider's fee. null = not read, and the card says so. */
   fee?: number | null;
-  organizationName?: string | null;
-  customerName?: string | null;
-  /** Used only when there is no name, and never printed whole. */
-  customerEmail?: string | null;
   /** A tax ID is on the invoice. */
   business?: boolean;
   /** ISO 3166-1 alpha-2. */
   country?: string | null;
   /** 1 = this customer's first payment ever. */
   paymentNumber?: number | null;
-  signedUpAt?: Date | null;
   attribution?: SaleAttribution | null;
   /** Came through an affiliate link. */
   affiliate?: boolean;
   /** Refund or dispute reason, as the provider gives it. */
   reason?: string | null;
-  link?: string | null;
   test?: boolean;
 }
 
@@ -121,17 +119,6 @@ const country = (code?: string | null) => {
   return { flag, name };
 };
 
-/** The local part with the domain cut off: "jane.doe@…". Cannot be written to. */
-const maskEmail = (email?: string | null) => {
-  const local = plain((email || '').split('@')[0], 29);
-  return local ? `${local}@…` : '';
-};
-
-const daysAgo = (date: Date) => {
-  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
-  return days <= 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
-};
-
 /**
  * Posts every sale, renewal, refund and dispute to the sales channel in Slack.
  *
@@ -175,20 +162,16 @@ export class SalesNotificationService {
 
   card(sale: SaleNotification) {
     const lost = sale.kind === 'refund' || sale.kind === 'dispute';
-    const who =
-      plain(sale.organizationName, 60) ||
-      plain(sale.customerName, 60) ||
-      'A customer';
     const place = country(sale.country);
     const { emoji, verb } = HEADLINE[sale.kind];
 
-    // Line one is who and what, so a lock-screen push says it whole. Line two
+    // Line one is what happened, so a lock-screen push says it whole. Line two
     // is the single number that matters: what lands in the account.
     const chips = [
       sale.paymentNumber && !lost ? `${ordinal(sale.paymentNumber)} payment` : '',
       place ? place.flag : '',
     ].filter(Boolean);
-    const first = `${sale.test ? '`[TEST]` ' : ''}${emoji} *${who}* ${verb} *${plain(
+    const first = `${sale.test ? '`[TEST]` ' : ''}${emoji} *A customer* ${verb} *${plain(
       sale.product,
       60
     )}*${chips.length ? ` · ${chips.join(' · ')}` : ''}`;
@@ -235,30 +218,12 @@ export class SalesNotificationService {
       field('Reason', plain(sale.reason, 80));
     }
 
-    // Who bought
-    field('Organization', plain(sale.organizationName, 80));
-    field(
-      'Customer',
-      [
-        plain(sale.customerName, 60) || maskEmail(sale.customerEmail),
-        sale.business ? 'Business (tax ID on the invoice)' : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    );
+    // The buyer, never by name
+    field('Customer', sale.business ? 'Business (tax ID on the invoice)' : '');
     field('Country', place ? `${place.flag} ${place.name}` : '');
     field(
       'Buyer',
-      [
-        sale.paymentNumber ? `${ordinal(sale.paymentNumber)} payment` : '',
-        sale.signedUpAt
-          ? `signed up ${daysAgo(sale.signedUpAt)} (${sale.signedUpAt
-              .toISOString()
-              .slice(0, 10)})`
-          : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')
+      sale.paymentNumber ? `${ordinal(sale.paymentNumber)} payment` : ''
     );
 
     // From where. No row when nothing was recorded: subscriptions bought
@@ -281,11 +246,6 @@ export class SalesNotificationService {
     field('Referrer', plain(a.referrer, 80));
     field('Landing page', plain(a.landing, 80));
     field('Affiliate', sale.affiliate ? 'Dub referral' : '');
-
-    // Look it up
-    if (sale.link) {
-      field('Stripe', `<${sale.link}|Open in Dashboard ↗>`);
-    }
 
     return {
       text: `${first}\n${second}`,

@@ -501,7 +501,7 @@ export class StripeService extends PaymentProviderAbstract {
    *
    * A founding member has no Stripe subscription at all, so this correctly
    * reports false for them — a disputed or refunded founding payment should
-   * revoke.
+   * revoke. Their other payments are left to `keepsFoundingPlan`.
    *
    * Deliberately does NOT exclude the subscription that triggered the event.
    * Excluding it looked right — "ignore the one that just died" — but it blinds
@@ -3261,10 +3261,22 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * The invoice a PaymentIntent paid, if any. A Charge no longer carries its
+   * invoice on this API version, so the link is the invoice payment behind
+   * the charge's PaymentIntent.
+   */
+  private async invoiceIdOfPaymentIntent(paymentIntent: string) {
+    const payments = await stripe.invoicePayments.list({
+      payment: { type: 'payment_intent', payment_intent: paymentIntent },
+      limit: 1,
+    });
+    const invoiceRef = payments.data[0]?.invoice;
+    return typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id;
+  }
+
+  /**
    * The subscription a charge paid for, found through the invoice it settled,
-   * and whether that invoice paid for the period now running. A Charge no
-   * longer carries its invoice on this API version, so the link is the invoice
-   * payment behind the charge's PaymentIntent.
+   * and whether that invoice paid for the period now running.
    */
   private async subscriptionOfCharge(charge: Stripe.Charge) {
     const paymentIntent =
@@ -3274,13 +3286,7 @@ export class StripeService extends PaymentProviderAbstract {
     if (!paymentIntent) {
       return null;
     }
-    const payments = await stripe.invoicePayments.list({
-      payment: { type: 'payment_intent', payment_intent: paymentIntent },
-      limit: 1,
-    });
-    const invoiceRef = payments.data[0]?.invoice;
-    const invoiceId =
-      typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id;
+    const invoiceId = await this.invoiceIdOfPaymentIntent(paymentIntent);
     if (!invoiceId) {
       return null;
     }
@@ -3334,6 +3340,86 @@ export class StripeService extends PaymentProviderAbstract {
       prorate: false,
     });
     return true;
+  }
+
+  /**
+   * Whether a charge paid for the founding-member plan, or `null` when nothing
+   * tells. The deferred fee and the retention offer carry `lifetime_charge` on
+   * their invoice, and on the PaymentIntent they were charged as before they
+   * had one. A checkout paid at once has the founding line on its invoice, or,
+   * from before the checkout made one (2026-08-09), only its session: paid
+   * once, ours, and with no `kind`, which every credits pack has.
+   */
+  private async isFoundingCharge(charge: Stripe.Charge) {
+    const paymentIntent =
+      typeof charge.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+    if (!paymentIntent) {
+      return null;
+    }
+    const intent = await stripe.paymentIntents.retrieve(paymentIntent);
+    if (intent.metadata?.lifetime_charge === '1') {
+      return true;
+    }
+    const invoiceId = await this.invoiceIdOfPaymentIntent(paymentIntent);
+    if (invoiceId) {
+      const invoice = await stripe.invoices.retrieve(invoiceId);
+      if (
+        invoice.metadata?.lifetime_charge === '1' ||
+        invoice.lines?.data?.some((line) =>
+          line.description?.startsWith(FOUNDING_MEMBER_PRODUCT)
+        )
+      ) {
+        return true;
+      }
+      // A plan's own invoice: a month or a year paid before the founding plan.
+      if (invoice.parent?.subscription_details?.subscription) {
+        return false;
+      }
+    }
+    const session = (
+      await stripe.checkout.sessions.list({
+        payment_intent: paymentIntent,
+        limit: 1,
+      })
+    ).data[0];
+    if (!session) {
+      return null;
+    }
+    return (
+      session.mode === 'payment' &&
+      session.metadata?.service === SUBSCRIPTION_SERVICE_TAG &&
+      !session.metadata?.kind
+    );
+  }
+
+  /**
+   * Whether a founding member's plan outlives this refunded or disputed
+   * charge. The plan has no Stripe subscription for `hasEntitlingSubscription`
+   * to find, so any charge of theirs used to end it: a month paid before they
+   * bought the plan took the plan with it. Only the payment for the plan
+   * itself ends it now. A charge that cannot be placed leaves the plan as it
+   * is and is logged, for a look by hand.
+   */
+  private async keepsFoundingPlan(
+    organizationId: string,
+    charge: Stripe.Charge
+  ) {
+    const local =
+      await this._subscriptionService.getSubscriptionByOrganizationId(
+        organizationId
+      );
+    if (!local?.isLifetime) {
+      return false;
+    }
+    const founding = await this.isFoundingCharge(charge);
+    if (founding === null) {
+      Logger.warn(
+        `[stripe] charge ${charge.id} could not be matched to a founding purchase, so the founding plan stays`
+      );
+    }
+    return founding !== true;
   }
 
   /**
@@ -3391,6 +3477,11 @@ export class StripeService extends PaymentProviderAbstract {
     // paying on another live subscription.
     if (await this.hasEntitlingSubscription(customer)) {
       return { ok: true, revoked: false, reason: 'still subscribed' };
+    }
+
+    // Nor one on a payment that did not buy the founding plan they hold.
+    if (await this.keepsFoundingPlan(org.id, charge)) {
+      return { ok: true, revoked: false, reason: 'founding plan' };
     }
 
     await this._subscriptionService.revokeLocalSubscription(org.id);
@@ -3459,6 +3550,10 @@ export class StripeService extends PaymentProviderAbstract {
 
     if (await this.hasEntitlingSubscription(customer)) {
       return { ok: true, revoked: false, reason: 'still subscribed' };
+    }
+
+    if (await this.keepsFoundingPlan(org.id, charge)) {
+      return { ok: true, revoked: false, reason: 'founding plan' };
     }
 
     await this._subscriptionService.revokeLocalSubscription(org.id);
@@ -3592,12 +3687,9 @@ export class StripeService extends PaymentProviderAbstract {
           typeof payment === 'string' ? payment : payment?.id,
           invoice.currency
         ),
-        customerName: invoice.customer_name,
-        customerEmail: invoice.customer_email,
         business: !!invoice.customer_tax_ids?.length,
         country: invoice.customer_address?.country,
         paymentNumber: earlier.length + 1,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}invoices/${invoice.id}`,
         test: !livemode,
       }, subscription);
     } catch (err) {
@@ -3643,14 +3735,9 @@ export class StripeService extends PaymentProviderAbstract {
         tax: session.total_details?.amount_tax || 0,
         discount: session.total_details?.amount_discount || 0,
         fee: await this.feeOfPayment(paymentIntent, session.currency || 'usd'),
-        customerName: session.customer_details?.name,
-        customerEmail: session.customer_details?.email,
         business: !!session.customer_details?.tax_ids?.length,
         country: session.customer_details?.address?.country,
         paymentNumber: earlier.length + 1,
-        link: paymentIntent
-          ? `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${paymentIntent}`
-          : null,
         test: !livemode,
       });
     } catch (err) {
@@ -3682,14 +3769,7 @@ export class StripeService extends PaymentProviderAbstract {
             ? 'Rest of the payment refunded'
             : 'Fully refunded'
           : 'Partly refunded',
-        customerName: charge.billing_details?.name,
-        customerEmail: charge.billing_details?.email || charge.receipt_email,
         country: charge.billing_details?.address?.country,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}payments/${
-          typeof charge.payment_intent === 'string'
-            ? charge.payment_intent
-            : charge.payment_intent?.id || charge.id
-        }`,
         test: !livemode,
       });
     } catch (err) {
@@ -3721,10 +3801,7 @@ export class StripeService extends PaymentProviderAbstract {
         amount: dispute.amount,
         currency: dispute.currency,
         reason: dispute.reason?.replace(/_/g, ' '),
-        customerName: charge.billing_details?.name,
-        customerEmail: charge.billing_details?.email || charge.receipt_email,
         country: charge.billing_details?.address?.country,
-        link: `https://dashboard.stripe.com/${livemode ? '' : 'test/'}disputes/${dispute.id}`,
         test: !livemode,
       });
     } catch (err) {
@@ -3761,11 +3838,11 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Adds what every card shares and posts it: the organization (which also
-   * scopes the card to this app, since the webhook takes untagged events), when
-   * it signed up, the affiliate click on the customer, and the attribution the
-   * checkout stored on the subscription. A sale with no subscription of its
-   * own reads the customer's latest one.
+   * Adds what every card shares and posts it: the affiliate click on the
+   * customer and the attribution the checkout stored on the subscription. A
+   * sale with no subscription of its own reads the customer's latest one. The
+   * organization is looked up only to scope the card to this app, since the
+   * webhook takes untagged events; its name never goes on the card.
    */
   private async announceSale(
     customer: string,
@@ -3789,8 +3866,6 @@ export class StripeService extends PaymentProviderAbstract {
       .catch((): null => null);
     await this._salesNotificationService.announce({
       ...sale,
-      organizationName: org.name,
-      signedUpAt: org.createdAt,
       attribution: this.attributionOf(metadata),
       affiliate:
         !!stripeCustomer &&
@@ -4092,6 +4167,20 @@ export class StripeService extends PaymentProviderAbstract {
 
     for (const chargeId of chargeIds) {
       try {
+        // The ids come from the request, so each one is checked to be a
+        // payment of this organization's own customer before any money moves.
+        const charge = await stripe.charges.retrieve(chargeId);
+        const customer =
+          typeof charge.customer === 'string'
+            ? charge.customer
+            : charge.customer?.id;
+        if (customer !== org.paymentId) {
+          Logger.warn(
+            `[stripe] refund of charge ${chargeId} refused: it is not this organization's`
+          );
+          failed.push(chargeId);
+          continue;
+        }
         await stripe.refunds.create({ charge: chargeId });
         refunded.push(chargeId);
       } catch (err) {
