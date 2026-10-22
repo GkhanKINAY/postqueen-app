@@ -374,6 +374,9 @@ describe('Connect marketplace catalog', () => {
     assert.match((gemini.goodToKnow || []).join('\n'), /"type": "http"/);
     assert.match((gemini.goodToKnow || []).join('\n'), /httpUrl/);
     assert.match((gemini.goodToKnow || []).join('\n'), /gemini\.google\.com/);
+    // Gemini CLI signs in through /mcp auth since PostQueen sends the RFC 9207 iss.
+    assert.ok(gemini.routes?.some((r) => r.address === 'https://api.postqueen.ai/mcp-oauth-dynamic'));
+    assert.match((gemini.goodToKnow || []).join('\n'), /`\/mcp auth postqueen`/);
     assert.equal(resolveConnectorId('claude code'), 'claude-code');
   });
 

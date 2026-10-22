@@ -850,6 +850,7 @@ conn_gemini_fix_account_detail
 conn_gemini_line
 conn_gemini_route_2_best
 conn_gemini_route_2_how
+conn_gemini_route_3_how
 conn_gemini_step_2
 conn_gemini_step_2_detail
 conn_gemini_step_3
@@ -859,6 +860,7 @@ conn_gemini_tip_2
 conn_gemini_tip_3
 conn_gemini_tip_account
 conn_gemini_tip_app_1
+conn_gemini_tip_sign_in
 conn_good_to_know
 conn_grok_bot_ask
 conn_grok_bot_chip_3

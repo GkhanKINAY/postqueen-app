@@ -3170,6 +3170,11 @@ openclaw pairing approve discord <CODE>`,
               urlVars
             ),
             t(
+              'conn_gemini_tip_sign_in',
+              'Prefer to sign in? Add `{{signin}}` instead, then run `/mcp auth postqueen` in Gemini CLI and sign in to PostQueen as a workspace admin.',
+              urlVars
+            ),
+            t(
               'conn_gemini_tip_app_1',
               'This is Gemini CLI in your terminal. It does not add PostQueen to gemini.google.com or the Gemini apps.'
             ),
@@ -3226,6 +3231,16 @@ openclaw pairing approve discord <CODE>`,
               how: t(
                 'conn_gemini_route_2_how',
                 '`--header` sends the key as a Bearer token.'
+              ),
+            },
+            {
+              name: t('conn_route_name_sign_in', 'Sign-in'),
+              address: `${mcpSignInUrl}`,
+              need: 'none',
+              bestFor: t('conn_route_best_no_key', 'Not copying or storing a key'),
+              how: t(
+                'conn_gemini_route_3_how',
+                'Run `/mcp auth postqueen` and sign in to PostQueen as a workspace admin.'
               ),
             },
           ],
