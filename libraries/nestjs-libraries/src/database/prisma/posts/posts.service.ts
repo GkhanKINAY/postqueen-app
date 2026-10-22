@@ -1574,6 +1574,9 @@ export class PostsService {
       // converted file at publish time by media id, so a made-up id leaves the
       // post pointing at the original, which is removed once the conversion
       // is done. Use the id of this organization's media row with that path.
+      // A conversion that finished first has moved the file already, so the
+      // path the caller was handed (the row's uploadedPath) becomes the
+      // converted one here, the way publishing would have swapped it.
       const mediaPaths = [
         ...new Set(
           (post.value || [])
@@ -1584,19 +1587,35 @@ export class PostsService {
       ];
 
       if (mediaPaths.length) {
-        const idByPath = new Map(
-          (
-            await this._mediaService.findOwnedMediaByPaths(orgId, mediaPaths)
-          ).map((row) => [row.path, row.id])
+        const rows = await this._mediaService.findOwnedMediaByPaths(
+          orgId,
+          mediaPaths
         );
+        // Uploaded paths first, so a row asked for by its current path wins.
+        const rowByPath = new Map<string, (typeof rows)[number]>([
+          ...rows
+            .filter((row) => row.uploadedPath)
+            .map((row) => [row.uploadedPath!, row] as const),
+          ...rows.map((row) => [row.path, row] as const),
+        ]);
 
         post.value = (post.value || []).map((p) => ({
           ...p,
-          image: (p.image || []).map((image: any) =>
-            idByPath.has(image?.path)
-              ? { ...image, id: idByPath.get(image.path) }
-              : image
-          ),
+          image: (p.image || []).map((image: any) => {
+            const row = rowByPath.get(image?.path);
+            if (!row) {
+              return image;
+            }
+            if (row.path === image.path) {
+              return { ...image, id: row.id };
+            }
+            return {
+              ...image,
+              id: row.id,
+              path: row.path,
+              ...(row.thumbnail ? { thumbnail: row.thumbnail } : {}),
+            };
+          }),
         }));
 
         // Publish reads a video's row by id as well, so an id left over
@@ -1605,7 +1624,7 @@ export class PostsService {
           ...new Set(
             (post.value || [])
               .flatMap((p) => p.image || [])
-              .filter((image: any) => image?.id && !idByPath.has(image?.path))
+              .filter((image: any) => image?.id && !rowByPath.has(image?.path))
               .map((image: any) => image.id as string)
           ),
         ];

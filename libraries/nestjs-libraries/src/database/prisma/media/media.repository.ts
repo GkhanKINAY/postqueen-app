@@ -56,7 +56,8 @@ export class MediaRepository {
 
   /**
    * The row as the normalizer left it: a new name and path when the file was
-   * re-encoded, the poster, the size; or the error, which marks it failed.
+   * re-encoded (with the path it was uploaded under), the poster, the size; or
+   * the error, which marks it failed.
    */
   finishProcessing(
     org: string,
@@ -64,6 +65,7 @@ export class MediaRepository {
     result: {
       name?: string;
       path?: string;
+      uploadedPath?: string;
       thumbnail?: string;
       fileSize?: number;
       error?: string;
@@ -76,6 +78,7 @@ export class MediaRepository {
         processingError: result.error ? result.error.slice(0, 2000) : null,
         ...(result.name ? { name: result.name } : {}),
         ...(result.path ? { path: result.path } : {}),
+        ...(result.uploadedPath ? { uploadedPath: result.uploadedPath } : {}),
         ...(result.thumbnail ? { thumbnail: result.thumbnail } : {}),
         ...(result.fileSize ? { fileSize: result.fileSize } : {}),
       },
@@ -138,16 +141,18 @@ export class MediaRepository {
 
   /**
    * This organization's live media rows at `paths`. Posts made outside the
-   * dashboard name their media by path, with an id of the caller's own.
+   * dashboard name their media by path, with an id of the caller's own. A
+   * video is matched by the path it was uploaded under as well: the caller
+   * was handed that one, and normalizing may have moved the file since.
    */
   findOwnedMediaByPaths(org: string, paths: string[]) {
     return this._media.model.media.findMany({
       where: {
         organizationId: org,
-        path: { in: paths },
+        OR: [{ path: { in: paths } }, { uploadedPath: { in: paths } }],
         deletedAt: null,
       },
-      select: { id: true, path: true },
+      select: { id: true, path: true, uploadedPath: true, thumbnail: true },
     });
   }
 

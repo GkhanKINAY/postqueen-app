@@ -45,6 +45,12 @@ let writes: {
 let started: { workflowId: string; args: any[] }[];
 let published: string[];
 let foreignMedia: string[];
+let ownedMedia: {
+  id: string;
+  path: string;
+  uploadedPath: string | null;
+  thumbnail: string | null;
+}[];
 let foreignPosts: string[];
 let shortenerDown: boolean;
 
@@ -98,7 +104,12 @@ const service = () =>
     {
       findOwnedMediaIds: async (org: string, ids: string[]) =>
         ids.filter((id) => !foreignMedia.includes(id)).map((id) => ({ id })),
-      findOwnedMediaByPaths: async () => [],
+      findOwnedMediaByPaths: async (org: string, paths: string[]) =>
+        ownedMedia.filter(
+          (row) =>
+            paths.includes(row.path) ||
+            (row.uploadedPath && paths.includes(row.uploadedPath))
+        ),
       getMediaByIds: async (ids: string[]) =>
         ids.filter((id) => foreignMedia.includes(id)).map((id) => ({ id })),
     },
@@ -162,6 +173,7 @@ beforeEach(() => {
   started = [];
   published = [];
   foreignMedia = [];
+  ownedMedia = [];
   foreignPosts = [];
   shortenerDown = false;
 });
@@ -340,6 +352,68 @@ describe(
         started.map((s) => s.workflowId),
         ['post_first-0']
       );
+    });
+  }
+);
+
+describe(
+  'createPost names media by the library row with that path',
+  {
+    skip: !canLoadService,
+  },
+  () => {
+    const UPLOADED = 'https://app.example/api/uploads/Original01.mp4';
+    const CONVERTED = 'https://app.example/api/uploads/Converted1.mp4';
+    const POSTER = 'https://app.example/api/uploads/Poster0001.jpg';
+    const withImage = (image: any) => {
+      const body = request();
+      body.posts = [body.posts[0]];
+      body.posts[0].value[0].image = [image];
+      return body;
+    };
+
+    it('points a path handed out before the conversion at the converted file', async () => {
+      ownedMedia = [
+        { id: 'row-1', path: CONVERTED, uploadedPath: UPLOADED, thumbnail: POSTER },
+      ];
+
+      await service().createPost(
+        'org-1',
+        withImage({ id: 'made-up-id', path: UPLOADED }),
+        'API'
+      );
+
+      assert.deepEqual(writes[0].value[0].image, [
+        { id: 'row-1', path: CONVERTED, thumbnail: POSTER },
+      ]);
+    });
+
+    it('only takes the id when the path is already the current one', async () => {
+      ownedMedia = [
+        { id: 'row-1', path: CONVERTED, uploadedPath: UPLOADED, thumbnail: POSTER },
+      ];
+
+      await service().createPost(
+        'org-1',
+        withImage({ id: 'made-up-id', path: CONVERTED }),
+        'API'
+      );
+
+      assert.deepEqual(writes[0].value[0].image, [
+        { id: 'row-1', path: CONVERTED },
+      ]);
+    });
+
+    it('leaves a path no row has as it was', async () => {
+      await service().createPost(
+        'org-1',
+        withImage({ id: 'made-up-id', path: UPLOADED }),
+        'API'
+      );
+
+      assert.deepEqual(writes[0].value[0].image, [
+        { id: 'made-up-id', path: UPLOADED },
+      ]);
     });
   }
 );
