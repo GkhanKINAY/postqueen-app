@@ -128,18 +128,17 @@ export class TiktokBusinessProvider
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body' | 'disconnect';
+        type: 'refresh-token' | 'bad-body' | 'retry' | 'disconnect';
         value: string;
       }
     | undefined {
     // Authentication/Authorization errors - require re-authentication.
     // The Business API answers HTTP 200 with a non-zero `code`, so token
-    // problems are detected from the body, not the status code.
+    // problems are detected from the body, not the status code: 40102
+    // expired, 40104 empty, 40105 invalid or revoked.
     if (
-      body.indexOf('access_token_invalid') > -1 ||
-      body.indexOf('Access token is incorrect') > -1 ||
-      body.indexOf('Access token has expired') > -1 ||
-      body.indexOf('auth_removed') > -1
+      /"code":\s*(40102|40104|40105)\b/.test(body) ||
+      body.indexOf('Access token is incorrect') > -1
     ) {
       return {
         type: 'refresh-token' as const,
@@ -148,35 +147,61 @@ export class TiktokBusinessProvider
       };
     }
 
-    // Rate limiting errors
-    if (
-      body.indexOf('rate_limit_exceeded') > -1 ||
-      body.indexOf('Too many requests') > -1
-    ) {
+    // A reason of the status check: the creator revoked the app while the
+    // media was uploading. TikTok says not to retry.
+    if (body.indexOf('auth_removed') > -1) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          "The TikTok account removed PostQueen's access while the post was uploading. Reconnect the channel, then schedule the post again.",
+      };
+    }
+
+    // Rate limiting errors: 40016 and 40100 per app, 40133 per account.
+    if (/"code":\s*(40016|40100|40133)\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'TikTok API rate limit exceeded, please try again later',
+        value:
+          'TikTok is limiting requests from PostQueen right now. Try again in a few minutes.',
+      };
+    }
+
+    // Server errors: 50000 and 50002 on TikTok's side, 60001 maintenance, or
+    // the status check's reason internal, which TikTok calls retryable.
+    // Matched as a value, not as text, so a message saying "international" is
+    // not a server error.
+    if (
+      /"code":\s*(50000|50002|60001)\b/.test(body) ||
+      /"reason":\s*"internal"/.test(body)
+    ) {
+      return {
+        type: 'retry' as const,
+        value:
+          'TikTok had a server problem and did not publish the post. Try again in a few minutes.',
       };
     }
 
     if (body.indexOf('file_format_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'File format is invalid, please check video specifications',
+        value:
+          'TikTok cannot read this file. Use an MP4, MOV or WebM video, or JPEG or WebP photos.',
       };
     }
 
     if (body.indexOf('duration_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Video duration is invalid, please check video specifications',
+        value:
+          'TikTok refused the video length. Videos must be 3 seconds to 10 minutes, and no longer than this account allows.',
       };
     }
 
     if (body.indexOf('frame_rate_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Video frame rate is invalid, please check video specifications',
+        value:
+          'TikTok refused the video. It must be between 23 and 60 frames per second.',
       };
     }
 
@@ -190,7 +215,8 @@ export class TiktokBusinessProvider
     if (body.indexOf('photo_pull_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Failed to pull photo from URL, please check the URL',
+        value:
+          'TikTok could not download the photos from PostQueen in time. Try again, and contact support if it keeps happening.',
       };
     }
 
@@ -213,7 +239,7 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value:
-          'TikTok says your daily post limit reached, please try again tomorrow',
+          "This TikTok account has reached TikTok's limit of 15 posts a day from apps. Try again later, or post it from the TikTok app.",
       };
     }
 
@@ -221,17 +247,6 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value: 'TikTok detected potential spam',
-      };
-    }
-
-    // Unlike the legacy app there is no migration target configured for this
-    // provider, so the cap stays a failed post (re-connecting cannot reset a
-    // daily quota) - if this app is ever migrated too, switch to 'disconnect'.
-    if (body.indexOf('reached_active_user_cap') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value:
-          'TikTok daily user limit reached, please try again tomorrow',
       };
     }
 
@@ -261,23 +276,7 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value:
-          'Video must be at least 360p, Picture must not exceed 1080x1920',
-      };
-    }
-
-    // Content/Format validation errors
-    if (body.indexOf('invalid_params') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value: 'Invalid request parameters, please check content format',
-      };
-    }
-
-    // Server errors
-    if (body.indexOf('internal') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value: 'There is a problem with TikTok servers, please try again later',
+          'TikTok refused the media size. Photos can be at most 1080x1920 or 1920x1080, and videos must be at least 360px on each side.',
       };
     }
 
@@ -546,7 +545,8 @@ export class TiktokBusinessProvider
         'tiktok-business-error-upload',
         JSON.stringify(post),
         Buffer.from(JSON.stringify(post)),
-        handleError?.value || ''
+        handleError?.value ||
+          `TikTok did not publish the post (${reason || 'no reason given'})`
       );
     }
 

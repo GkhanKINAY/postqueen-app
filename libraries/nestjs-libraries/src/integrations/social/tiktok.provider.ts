@@ -123,7 +123,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
   override handleErrors(body: string):
     | {
-        type: 'refresh-token' | 'bad-body' | 'disconnect';
+        type: 'refresh-token' | 'bad-body' | 'retry' | 'disconnect';
         value: string;
       }
     | undefined {
@@ -136,18 +136,26 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('scope_not_authorized') > -1) {
+    // A fail_reason of the status check: the creator revoked the app while
+    // the media was uploading. TikTok says not to retry.
+    if (body.indexOf('auth_removed') > -1) {
       return {
-        type: 'bad-body' as const,
+        type: 'refresh-token' as const,
         value:
-          'Missing required permissions, please re-authenticate with all scopes',
+          "The TikTok account removed PostQueen's access while the post was uploading. Reconnect the channel, then schedule the post again.",
       };
     }
 
-    if (body.indexOf('scope_permission_missed') > -1) {
+    // The token lacks video.publish or video.upload: a new token for the same
+    // grant cannot add a scope, only a new connect can.
+    if (
+      body.indexOf('scope_not_authorized') > -1 ||
+      body.indexOf('scope_permission_missed') > -1
+    ) {
       return {
-        type: 'bad-body' as const,
-        value: 'Additional permissions required, please re-authenticate',
+        type: 'disconnect' as const,
+        value:
+          'TikTok says this channel has not given PostQueen permission to post. Reconnect the channel and allow every permission TikTok asks for.',
       };
     }
 
@@ -162,7 +170,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('file_format_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'File format is invalid, please check video specifications',
+        value:
+          'TikTok cannot read this file. Use an MP4, MOV or WebM video, or JPEG or WebP photos.',
       };
     }
 
@@ -177,14 +186,16 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('duration_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Video duration is invalid, please check video specifications',
+        value:
+          'TikTok refused the video length. Videos must be 3 seconds to 10 minutes, and no longer than this account allows.',
       };
     }
 
     if (body.indexOf('frame_rate_check_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Video frame rate is invalid, please check video specifications',
+        value:
+          'TikTok refused the video. It must be between 23 and 60 frames per second.',
       };
     }
 
@@ -198,7 +209,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('photo_pull_failed') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Failed to pull photo from URL, please check the URL',
+        value:
+          'TikTok could not download the photos from PostQueen in time. Try again, and contact support if it keeps happening.',
       };
     }
 
@@ -221,7 +233,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value:
-          'TikTok says your daily post limit reached, please try again tomorrow',
+          "This TikTok account has reached TikTok's limit of about 15 posts a day from apps. Try again later, or post it from the TikTok app.",
       };
     }
 
@@ -233,14 +245,6 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('spam_risk_user_banned_from_posting') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value:
-          'Account banned from posting, please check TikTok account status',
-      };
-    }
-
     if (body.indexOf('spam_risk') > -1) {
       return {
         type: 'bad-body' as const,
@@ -248,14 +252,28 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    // TikTok limits how many users of this app can post per day: refreshing
-    // the token cannot help, the channel must be re-connected (and can be
-    // migrated to another app via MIGRATE_PROVIDERS).
+    // TikTok limits how many users of this app can post per day. That is a
+    // quota on PostQueen's app, not a problem with the channel, so it only
+    // disconnects when MIGRATE_PROVIDERS moves this provider to another app
+    // and a reconnect would carry the channel there.
     if (body.indexOf('reached_active_user_cap') > -1) {
+      const migrating = (process.env.MIGRATE_PROVIDERS || '')
+        .split(',')
+        .map((p) => p.trim().split(':'))
+        .some(([from, to]) => from === this.identifier && !!to);
+
+      if (migrating) {
+        return {
+          type: 'disconnect' as const,
+          value:
+            'TikTok daily user limit reached, please re-connect your account',
+        };
+      }
+
       return {
-        type: 'disconnect' as const,
+        type: 'bad-body' as const,
         value:
-          'TikTok daily user limit reached, please re-connect your account',
+          "TikTok limits how many accounts can post through PostQueen's TikTok app each day, and that limit is reached. Your channel is fine. Try again in 24 hours.",
       };
     }
 
@@ -271,7 +289,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value:
-          'This TikTok app has not passed TikTok\'s review yet, so it can only publish with the "Self only" privacy level. Choose Self only, or submit the app for review in the TikTok developer portal.',
+          "TikTok has not finished reviewing PostQueen's TikTok app, so for now it only accepts posts from private TikTok accounts set to Self only. Make the account private in the TikTok app, choose Self only, and schedule the post again.",
       };
     }
 
@@ -286,7 +304,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('privacy_level_option_mismatch') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Privacy level mismatch, please check privacy settings',
+        value:
+          'TikTok no longer offers the privacy level chosen for this post. Open the post, choose one of the privacy options shown, and schedule it again.',
       };
     }
 
@@ -298,18 +317,32 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('invalid_params') > -1) {
+    // The error code is invalid_param (singular), and TikTok puts the field it
+    // refused in error.message.
+    if (body.indexOf('invalid_param') > -1) {
+      let detail = '';
+      try {
+        detail = JSON.parse(body)?.error?.message || '';
+      } catch (err) {
+        detail = '';
+      }
+
       return {
         type: 'bad-body' as const,
-        value: 'Invalid request parameters, please check content format',
+        value: detail
+          ? `TikTok rejected the post settings: ${detail}`
+          : 'TikTok rejected the post settings.',
       };
     }
 
-    // Server errors
-    if (body.indexOf('internal') > -1) {
+    // Server errors: the error code internal_error, or the status check's
+    // fail_reason internal, which TikTok calls retryable. Matched as a value,
+    // not as text, so a message saying "international" is not a server error.
+    if (/"(code|fail_reason)":\s*"internal(_error)?"/.test(body)) {
       return {
-        type: 'bad-body' as const,
-        value: 'There is a problem with TikTok servers, please try again later',
+        type: 'retry' as const,
+        value:
+          'TikTok had a server problem and did not publish the post. Try again in a few minutes.',
       };
     }
 
@@ -597,7 +630,10 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         'titok-error-upload',
         JSON.stringify(post),
         Buffer.from(JSON.stringify(post)),
-        handleError?.value || ''
+        handleError?.value ||
+          `TikTok did not publish the post (${
+            post?.data?.fail_reason || 'no reason given'
+          })`
       );
     }
 
@@ -849,7 +885,13 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
           'tiktok-error-upload',
           '{}',
           '{}',
-          'The media storage did not return the requested byte range, please try again'
+          `We could not read this video from PostQueen's media storage (status ${
+            response.status
+          }), so it was not sent to TikTok. ${
+            response.status >= 500
+              ? 'Try again in a few minutes.'
+              : 'Attach the video again, then schedule the post.'
+          }`
         );
       }
 
