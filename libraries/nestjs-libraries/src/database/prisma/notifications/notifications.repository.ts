@@ -61,6 +61,27 @@ export class NotificationsRepository {
     });
   }
 
+  /** Whether the organization got this same notice, with this link, since `since`. */
+  async hasNotificationSince(
+    organizationId: string,
+    content: string,
+    link: string,
+    since: Date
+  ) {
+    return !!(await this._notifications.model.notifications.findFirst({
+      where: {
+        organizationId,
+        content,
+        link,
+        deletedAt: null,
+        createdAt: {
+          gte: since,
+        },
+      },
+      select: { id: true },
+    }));
+  }
+
   async getNotificationsPaginated(organizationId: string, page: number) {
     const limit = 100;
     const skip = page * limit;

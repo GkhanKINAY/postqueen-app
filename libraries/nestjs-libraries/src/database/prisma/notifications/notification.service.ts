@@ -49,6 +49,20 @@ export class NotificationService {
     return this._notificationRepository.markAllAsRead(userId);
   }
 
+  hasNotificationSince(
+    organizationId: string,
+    content: string,
+    link: string,
+    since: Date
+  ) {
+    return this._notificationRepository.hasNotificationSince(
+      organizationId,
+      content,
+      link,
+      since
+    );
+  }
+
   /**
    * `email` is what the email says when the in-app line alone would make a poor
    * one. Without it the email is drawn from the subject, message and link.

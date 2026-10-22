@@ -153,7 +153,10 @@ export const Menu: FC<{
   const disableChannel = useCallback(async () => {
     if (
       !(await deleteDialog(
-        t('are_you_sure_disable_channel', 'Are you sure you want to disable this channel?'),
+        t(
+          'are_you_sure_disable_channel',
+          'Are you sure you want to disable this channel? Posts that come due while it is disabled will not be published.'
+        ),
         t('disable_channel_title', 'Disable Channel')
       ))
     ) {

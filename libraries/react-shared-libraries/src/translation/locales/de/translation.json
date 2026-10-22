@@ -699,7 +699,7 @@
   "channel_disconnected_click_to_reconnect": "Kanal getrennt, klicken Sie zum Wiederverbinden.",
   "channel_disabled_upgrade_plan": "Dieser Kanal ist deaktiviert, bitte aktualisieren Sie Ihren Plan, um ihn zu aktivieren.",
   "channel_added": "Kanal hinzugefügt",
-  "are_you_sure_disable_channel": "Sind Sie sicher, dass Sie diesen Kanal deaktivieren möchten?",
+  "are_you_sure_disable_channel": "Sind Sie sicher, dass Sie diesen Kanal deaktivieren möchten? Beiträge, die fällig werden, solange er deaktiviert ist, werden nicht veröffentlicht.",
   "disable_channel_title": "Kanal deaktivieren",
   "channel_disabled": "Kanal deaktiviert",
   "are_you_sure_delete_channel": "Wenn Sie diesen Kanal löschen, werden auch alle seine Beiträge in PostQueen gelöscht, einschließlich geplanter Beiträge, Entwürfe und veröffentlichter Beiträge. Geplante Beiträge werden nicht veröffentlicht, und wenn Sie den Kanal später erneut verbinden, kommen die Beiträge nicht zurück. Bereits veröffentlichte Beiträge werden nicht von der Plattform entfernt. PostQueen gibt außerdem seinen Zugriff auf den Kanal auf.",

@@ -699,7 +699,7 @@
   "channel_disconnected_click_to_reconnect": "频道已断开连接，点击重新连接。",
   "channel_disabled_upgrade_plan": "该频道已被禁用，请升级您的套餐以启用。",
   "channel_added": "频道已添加",
-  "are_you_sure_disable_channel": "您确定要禁用此频道吗？",
+  "are_you_sure_disable_channel": "您确定要禁用此频道吗？禁用期间到达发布时间的帖子将不会发布。",
   "disable_channel_title": "禁用频道",
   "channel_disabled": "频道已禁用",
   "are_you_sure_delete_channel": "删除此频道也会删除它在 PostQueen 中的所有帖子，包括定时帖子、草稿和已发布的帖子。定时帖子将不会发布，之后重新连接该频道也不会恢复这些帖子。已经发布的帖子不会从平台上撤下。PostQueen 也会放弃对该频道的访问权限。",

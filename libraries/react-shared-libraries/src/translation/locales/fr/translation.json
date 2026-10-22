@@ -699,7 +699,7 @@
   "channel_disconnected_click_to_reconnect": "Canal déconnecté, cliquez pour reconnecter.",
   "channel_disabled_upgrade_plan": "Ce canal est désactivé, veuillez mettre à niveau votre abonnement pour l'activer.",
   "channel_added": "Canal ajouté",
-  "are_you_sure_disable_channel": "Êtes-vous sûr de vouloir désactiver ce canal ?",
+  "are_you_sure_disable_channel": "Êtes-vous sûr de vouloir désactiver ce canal ? Les publications prévues pendant qu’il est désactivé ne seront pas publiées.",
   "disable_channel_title": "Désactiver le canal",
   "channel_disabled": "Canal désactivé",
   "are_you_sure_delete_channel": "Supprimer ce canal supprime aussi toutes ses publications dans PostQueen, y compris les publications programmées, les brouillons et celles déjà publiées. Les publications programmées ne seront pas publiées, et reconnecter le canal plus tard ne les restaure pas. Celles qui ont déjà été publiées ne sont pas retirées de la plateforme. PostQueen renonce aussi à son accès au canal.",
