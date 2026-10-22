@@ -263,9 +263,10 @@ export default withProvider({
   dto: XDto,
   maximumCharacters: (settings) => {
     // The server's `maxLength` holds an account X said has no subscription to
-    // 280 whatever the switch says, so the counter does too.
+    // 280 whatever the switch says, so the counter does too. Premium
+    // accounts can post up to 25,000 characters.
     if (settings?.[0]?.value && settings?.[0]?.subscriptionType !== 'None') {
-      return 4000;
+      return 25000;
     }
     return 280;
   },

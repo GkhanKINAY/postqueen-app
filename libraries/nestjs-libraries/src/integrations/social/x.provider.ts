@@ -31,6 +31,8 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { PostPlug } from '@gitroom/helpers/decorators/post.plug';
 import dayjs from 'dayjs';
 import { chunk, uniqBy } from 'lodash';
+// @ts-ignore
+import twitter from 'twitter-text';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import {
   hasLinks,
@@ -72,6 +74,10 @@ type XPendingData = {
   attempting?: boolean;
   confirmed?: boolean;
 };
+
+// Shown before scheduling and again if X refuses the post at publish time.
+const CASHTAG_LIMIT =
+  'X allows only one cashtag (like $TSLA) per post sent through its API. Remove the others.';
 
 @Rules(
   `X can have maximum 4 pictures, or maximum one video, it can also be without attachments, it can also be published as a long-form article (draft or published) when post_type is set to article, in an article pictures go inside the content as <img src="..."> where they should appear (the src must be a picture from the media library, upload it with uploadFromUrlTool first) ${
@@ -174,10 +180,11 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
     // Accepts either the parsed additionalSettings array (from validation) or a
     // plain boolean (legacy callers). "Verified" => premium => higher limit.
+    // Premium accounts can post up to 25,000 characters (help.x.com).
     const isTwitterPremium = Array.isArray(additionalSettings)
       ? !!additionalSettings.find((p: any) => p?.title === 'Verified')?.value
       : !!additionalSettings;
-    return isTwitterPremium ? 4000 : 280;
+    return isTwitterPremium ? 25000 : 280;
   }
 
   // Article bodies hold pictures, tweets only take attachments.
@@ -208,6 +215,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     [firstPost, ...comments]: Array<{ path: string }[]>,
     settings: any,
     additionalSettings: any[],
+    texts: string[] = [],
   ): Promise<string | true> {
     const withoutPremium = this.withoutPremium(additionalSettings);
 
@@ -232,6 +240,17 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         if (media.length > 4) {
           return 'X allows up to 4 pictures per post';
         }
+      }
+
+      // X refuses a post with more than one cashtag when it comes through
+      // the API, so it is caught here instead of at publish time.
+      if (
+        texts.some(
+          (text) =>
+            twitter.extractCashtags(this.toTweetText(text || '')).length > 1,
+        )
+      ) {
+        return CASHTAG_LIMIT;
       }
       return true;
     }
@@ -267,7 +286,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'There is a problem posting, please edit your post and check character count and media attachments',
+          'X refused this post without saying why. Check the text length, media and reply settings, then try again.',
       };
     }
     if (body.includes('Service Unavailable')) {
@@ -285,7 +304,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('maximum of one cashtag')) {
       return {
         type: 'bad-body',
-        value: 'There can be maximum of one cashtag ($SYMBOL) per post',
+        value: CASHTAG_LIMIT,
       };
     }
     if (body.includes('maximum of 4 items')) {
@@ -297,21 +316,26 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('Unsupported Authentication')) {
       return {
         type: 'refresh-token',
-        value: 'X authentication has expired, please reconnect your account',
+        value:
+          'X did not accept how this channel signed in. Reconnect the X channel and try again.',
       };
     }
 
-    if (body.includes('You are not allowed to create a Tweet')) {
+    // Also what a publish that X took but answered with a 5xx gets on its
+    // retry, so the post may be live already.
+    if (/create a (Tweet|post) with duplicate content/.test(body)) {
       return {
         type: 'bad-body',
-        value: 'You are not allowed to create a post with duplicate content',
+        value:
+          'X says you posted this text recently. If X was having problems, it may already be live. Check your profile before posting again.',
       };
     }
 
     if (body.includes('usage-capped')) {
       return {
         type: 'bad-body',
-        value: 'Posting failed - capped reached. Please try again later',
+        value:
+          "PostQueen's X API allowance ran out, so nothing was published. Please contact support.",
       };
     }
 
@@ -319,14 +343,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'Your X account has been suspended, please reconnect with another account',
-      };
-    }
-    if (body.includes('duplicate-rules')) {
-      return {
-        type: 'bad-body',
-        value:
-          'You have already posted this post, please wait before posting again',
+          'X says this account is suspended, so nothing was published. Check the account on x.com.',
       };
     }
     if (body.includes('Your account is not permitted to access this feature')) {
@@ -338,29 +355,17 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     if (body.includes('The Tweet contains an invalid URL.')) {
       return {
         type: 'bad-body',
-        value: 'The Tweet contains a URL that is not allowed on X',
+        value:
+          'X says a link in this post is not valid or not allowed. Check or remove the link and try again.',
       };
     }
-    if (
-      body.includes(
-        'This user is not allowed to post a video longer than 2 minutes',
-      )
-    ) {
+    const videoLength = body.match(
+      /not allowed to post a video longer than (\d+) minutes/,
+    );
+    if (videoLength) {
       return {
         type: 'bad-body',
-        value:
-          'The video you are trying to post is longer than 2 minutes, which is not allowed for this account',
-      };
-    }
-    if (
-      body.includes(
-        'This user is not allowed to post a video longer than 10 minutes'
-      )
-    ) {
-      return {
-        type: 'bad-body',
-        value:
-          'The video you are trying to post is longer than 10 minutes, which is not allowed for this account',
+        value: `X lets this account post videos up to ${videoLength[1]} minutes. Trim the video and schedule it again.`,
       };
     }
     if (body.includes('Your account is temporarily locked')) {
@@ -374,7 +379,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'X does not allow crypto addresses in posts for the first 7 days after connecting the account',
+          'X does not allow crypto addresses in posts from this account. Remove the address and try again.',
       };
     }
     if (body.includes('Your media IDs are invalid')) {

@@ -75,6 +75,37 @@ async function reduceImageBySize(url: string, maxSizeKB = 976) {
 // status - it does NOT wait for the processing. The blob only exists once the
 // job completes; a BlobRef can't survive JSON serialization through the
 // workflow history, so callers re-read it from getVideoJobStatus when needed.
+// The video service names why a processing job failed in `message`.
+const videoFailed = (status?: AppBskyVideoDefs.JobStatus) =>
+  `Bluesky could not process the video${
+    status?.message ? `: ${status.message}` : ''
+  }`;
+
+// A definite 4xx rejection (invalid record, payload too large) means the post
+// was NOT created. Ambiguous answers (network errors, 5xx, 429) are left to
+// the caller. No 408 exclusion: the xrpc client maps every status it does not
+// know - including 408 - to 400 before we see it.
+const refusedPost = (err: any) => {
+  const status = err?.status;
+  if (
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500 &&
+    status !== 429
+  ) {
+    return new BadBody(
+      'bluesky',
+      JSON.stringify(err?.error || err?.message || {}),
+      {} as any,
+      `Bluesky refused the post, nothing was published${
+        err?.message ? `: ${err.message}` : ''
+      }`
+    );
+  }
+
+  return undefined;
+};
+
 async function startVideoUpload(
   agent: AtpAgent,
   videoPath: string
@@ -139,12 +170,25 @@ async function startVideoUpload(
   const jobStatus = (await uploadResponse.json()) as AppBskyVideoDefs.JobStatus;
   console.log('JobId:', jobStatus.jobId);
 
+  // A refusal has no job to wait for. A video uploaded before answers with an
+  // error status too, but carries the job id of the first upload.
+  if (!uploadResponse.ok && !jobStatus.jobId) {
+    throw new BadBody(
+      'bluesky',
+      JSON.stringify(jobStatus),
+      {} as any,
+      `Bluesky refused the video upload: ${
+        jobStatus.message || uploadResponse.status
+      }`
+    );
+  }
+
   if (jobStatus.state === 'JOB_STATE_FAILED') {
     throw new BadBody(
       'bluesky',
       JSON.stringify({}),
       {} as any,
-      'Could not upload video, job failed'
+      videoFailed(jobStatus)
     );
   }
 
@@ -195,7 +239,7 @@ async function uploadVideo(
         'bluesky',
         JSON.stringify({}),
         {} as any,
-        'Could not upload video, job failed'
+        videoFailed(status)
       );
     }
 
@@ -535,7 +579,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         'bluesky',
         JSON.stringify(status),
         {} as any,
-        'Could not upload video, job failed'
+        videoFailed(status)
       );
     }
 
@@ -582,7 +626,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
             'bluesky',
             JSON.stringify(status),
             {} as any,
-            'Could not upload video, job failed'
+            videoFailed(status)
           );
         }
 
@@ -661,28 +705,10 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       });
       uri = created.uri;
     } catch (err: any) {
-      // A definite 4xx rejection (invalid record, payload too large) means
-      // the post was NOT created: fail it properly instead of leaving the
+      // A definite rejection fails the post properly instead of leaving the
       // armed handshake to report a false "may already be published" warning.
-      // Ambiguous answers (network errors, 5xx, 429) stay on the conservative
-      // unknown-outcome path. No 408 exclusion: the xrpc client maps every
-      // status it does not know - including 408 - to 400 before we see it.
-      const status = err?.status;
-      if (
-        typeof status === 'number' &&
-        status >= 400 &&
-        status < 500 &&
-        status !== 429
-      ) {
-        throw new BadBody(
-          'bluesky',
-          JSON.stringify(err?.error || err?.message || {}),
-          {} as any,
-          'Bluesky rejected the post, nothing was published, please check the content and try again'
-        );
-      }
-
-      throw err;
+      // Ambiguous answers stay on the conservative unknown-outcome path.
+      throw refusedPost(err) || err;
     }
 
     return {
@@ -807,23 +833,31 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     const rootCid = parentPost?.record?.reply?.root?.cid || parentCid;
 
     setHeartbeatDetails('bluesky: create post');
-    // @ts-ignore
-    const { cid, uri, commit } = await agent.post({
-      text: rt.text,
-      facets: rt.facets,
-      createdAt: new Date().toISOString(),
-      ...(Object.keys(embed).length > 0 ? { embed } : {}),
-      reply: {
-        root: {
-          uri: rootUri,
-          cid: rootCid,
+    let uri: string;
+    try {
+      // @ts-ignore
+      const created = await agent.post({
+        text: rt.text,
+        facets: rt.facets,
+        createdAt: new Date().toISOString(),
+        ...(Object.keys(embed).length > 0 ? { embed } : {}),
+        reply: {
+          root: {
+            uri: rootUri,
+            cid: rootCid,
+          },
+          parent: {
+            uri: parentUri,
+            cid: parentCid,
+          },
         },
-        parent: {
-          uri: parentUri,
-          cid: parentCid,
-        },
-      },
-    });
+      });
+      uri = created.uri;
+    } catch (err: any) {
+      // A refused reply was not created, so retrying it would only fail the
+      // same way. Ambiguous answers are rethrown as they were.
+      throw refusedPost(err) || err;
+    }
 
     return [
       {

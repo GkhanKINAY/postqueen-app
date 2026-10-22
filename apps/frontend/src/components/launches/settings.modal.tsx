@@ -33,14 +33,14 @@ export function publishingOptionCopy(
       title: t('x_long_posts', 'Long posts'),
       hint: t(
         'x_long_posts_hint',
-        'X Premium character limit: 4000 instead of 280.'
+        'X Premium character limit: 25,000 instead of 280.'
       ),
       description: t(
         'x_long_posts_description',
-        'Turn on if this account has X Premium so the composer allows 4000 characters. Off keeps the classic 280-character limit. This is not the blue check.'
+        'Turn on if this account has X Premium so the composer allows 25,000 characters. Off keeps the classic 280-character limit. This is not the blue check.'
       ),
       status: on
-        ? t('x_long_posts_enabled', '4000')
+        ? t('x_long_posts_enabled', '25,000')
         : t('x_long_posts_disabled', '280'),
     };
   }

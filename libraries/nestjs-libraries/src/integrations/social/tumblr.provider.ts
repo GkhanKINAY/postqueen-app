@@ -133,7 +133,7 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
     ) {
       return {
         type: 'refresh-token',
-        value: 'Please re-authenticate your Tumblr account.',
+        value: 'Reconnect the Tumblr channel.',
       };
     }
 
@@ -145,9 +145,12 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
     }
 
     if (this.hasErrorCode(body, 8001)) {
+      const reason = this.firstErrorText(body);
       return {
         type: 'bad-body',
-        value: 'Tumblr rejected the post content format.',
+        value: `Tumblr rejected the post content format${
+          reason ? `: ${reason}` : '.'
+        }`,
       };
     }
 
@@ -647,5 +650,16 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
 
   private hasErrorCode(body: string, code: number) {
     return new RegExp(`(?:\\b|\\.)${code}\\b`).test(body);
+  }
+
+  // Tumblr names the problem in errors[0] ({ title, code, detail }).
+  private firstErrorText(body: string) {
+    try {
+      const [first] = JSON.parse(body)?.errors || [];
+      const text = first?.detail || first?.title;
+      return typeof text === 'string' ? text : '';
+    } catch (err) {
+      return '';
+    }
   }
 }
