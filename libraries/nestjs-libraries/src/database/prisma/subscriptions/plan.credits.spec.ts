@@ -1,11 +1,15 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeEach, describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SubscriptionService } from './subscription.service.ts';
 import { PaymentService } from '../../../services/payment/payment.service.ts';
 import { CREDIT_UNIT, planCredits, pricing } from './pricing.ts';
+
+// The backend and the orchestrator pin it (see their main.ts); months are
+// counted in it.
+process.env.TZ = 'UTC';
 
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -67,7 +71,14 @@ const credits = {
       ? write(org, decision.grant, decision.close)
       : { id: null, granted: false };
   },
-  revokeGrants: async () => ({ count: 0 }),
+  revokeGrants: async (org: string, sources: string[]) => {
+    for (const grant of grants) {
+      if (grant.org === org && sources.includes(grant.source) && live(grant)) {
+        grant.revokedAt = new Date();
+      }
+    }
+    return { count: 0 };
+  },
 };
 
 let codes: { code: string }[];
@@ -215,6 +226,174 @@ describe('grantPlanPeriod', () => {
     assert.equal(await s.grantPlanPeriod('org', period('FREE', 'MONTHLY', 0, 30, 'x')), false);
     assert.equal(await s.grantPlanPeriod('org', period('NOPE', 'MONTHLY', 0, 30, 'y')), false);
     assert.equal(grants.length, 0);
+  });
+});
+
+describe('A yearly plan a month at a time', () => {
+  // Server time, faked: every grant reads the clock.
+  const at = (iso: string) => mock.timers.setTime(new Date(iso).getTime());
+  beforeEach(() =>
+    mock.timers.enable({ apis: ['Date'], now: new Date('2027-01-31T12:01:00Z') })
+  );
+  afterEach(() => mock.timers.reset());
+
+  // A year that starts on the 31st, so its months are of every length.
+  const YEAR = {
+    start: new Date('2027-01-31T12:00:00Z'),
+    end: new Date('2028-01-31T12:00:00Z'),
+  };
+  const monthOf = (
+    s: SubscriptionService,
+    tier: string,
+    ref: string,
+    extra: { prorate?: boolean } = {}
+  ) => ({
+    tier,
+    period: 'YEARLY' as const,
+    ...YEAR,
+    ref,
+    month: s.periodMonth(YEAR.start, YEAR.end),
+    ...extra,
+  });
+  const inForce = () => grants.filter(live);
+
+  it('counts its months from the day the year started, as Stripe does, and ends with the year', () => {
+    const s = service();
+    at('2027-02-10T00:00:00Z');
+    assert.deepEqual(s.periodMonth(YEAR.start, YEAR.end), {
+      start: new Date('2027-01-31T12:00:00Z'),
+      end: new Date('2027-02-28T12:00:00Z'),
+    });
+    // back on the 31st after February, not stuck on the 28th
+    at('2027-03-05T00:00:00Z');
+    assert.deepEqual(s.periodMonth(YEAR.start, YEAR.end), {
+      start: new Date('2027-02-28T12:00:00Z'),
+      end: new Date('2027-03-31T12:00:00Z'),
+    });
+    at('2028-01-20T00:00:00Z');
+    assert.deepEqual(s.periodMonth(YEAR.start, YEAR.end), {
+      start: new Date('2027-12-31T12:00:00Z'),
+      end: YEAR.end,
+    });
+    // a period that ends inside a month ends that month with it
+    at('2027-03-05T00:00:00Z');
+    assert.deepEqual(
+      s.periodMonth(YEAR.start, new Date('2027-03-15T12:00:00Z')).end,
+      new Date('2027-03-15T12:00:00Z')
+    );
+  });
+
+  it('grants a month, not the rest of the year, even for a plan already running', async () => {
+    const s = service();
+    assert.equal(await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'in_1')), true);
+    assert.equal(grants[0].amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(grants[0].periodEnd, new Date('2027-02-28T12:00:00Z'));
+    // the daily pass in the same month adds nothing
+    assert.equal(
+      await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'period:sub_1:a', { prorate: true })),
+      false
+    );
+    at('2027-06-01T00:00:00Z');
+    assert.equal(
+      await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'period:sub_1:b', { prorate: true })),
+      true
+    );
+    assert.equal(grants[1].amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(grants[1].periodStart, new Date('2027-05-31T12:00:00Z'));
+    // last month's credits do not roll over
+    assert.deepEqual(inForce(), [grants[1]]);
+  });
+
+  it('tops an upgrade in the middle of a month up by that month only', async () => {
+    const s = service();
+    at('2027-03-01T00:00:00Z');
+    await s.grantPlanPeriod('org', monthOf(s, 'CREATOR', 'period:sub_1:a'));
+    // 16 of the month's 31 days left
+    at('2027-03-15T12:00:00Z');
+    assert.equal(await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'in_2')), true);
+    const left =
+      (planCredits('PRO', 'MONTHLY') - planCredits('CREATOR', 'MONTHLY')) * (16 / 31);
+    assert.ok(Math.abs(grants[1].amount - left) <= 1, `${grants[1].amount} vs ${left}`);
+    assert.equal(grants[1].tier, 'PRO');
+    assert.deepEqual(grants[1].periodEnd, new Date('2027-03-31T12:00:00Z'));
+    // the next month is the new plan's, whole
+    at('2027-04-01T00:00:00Z');
+    await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'period:sub_1:b'));
+    assert.equal(grants[2].amount, planCredits('PRO', 'MONTHLY'));
+  });
+
+  it('leaves a year granted whole in force, and tops an upgrade on it up as before', async () => {
+    const s = service();
+    // granted up front, before the plan moved to monthly credits
+    await s.grantPlanPeriod('org', { tier: 'CREATOR', period: 'YEARLY', ...YEAR, ref: 'in_1' });
+    assert.equal(grants[0].amount, planCredits('CREATOR', 'YEARLY'));
+    at('2027-07-31T12:00:00Z');
+    // no month on top of it
+    assert.equal(
+      await s.grantPlanPeriod('org', monthOf(s, 'CREATOR', 'period:sub_1:a', { prorate: true })),
+      false
+    );
+    assert.equal(grants.length, 1);
+    // an upgrade halfway through tops the year up, as it always did
+    assert.equal(await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'in_2')), true);
+    const left =
+      (planCredits('PRO', 'YEARLY') - planCredits('CREATOR', 'YEARLY')) *
+      ((YEAR.end.getTime() - Date.now()) / (YEAR.end.getTime() - YEAR.start.getTime()));
+    assert.ok(Math.abs(grants[1].amount - left) <= 1, `${grants[1].amount} vs ${left}`);
+    assert.deepEqual(grants[1].periodEnd, YEAR.end);
+    assert.equal(inForce().length, 2);
+  });
+
+  it('replaces a trial with the first month when it converts', async () => {
+    const s = service();
+    at('2027-01-25T12:00:00Z');
+    await s.grantPlanPeriod('org', {
+      tier: 'PRO',
+      period: 'YEARLY',
+      start: new Date('2027-01-24T12:00:00Z'),
+      end: YEAR.start,
+      ref: 'sub_1',
+      trial: true,
+    });
+    assert.equal(grants[0].amount, planCredits('PRO', 'MONTHLY'));
+    at('2027-01-31T12:05:00Z');
+    assert.equal(await s.grantPlanPeriod('org', monthOf(s, 'PRO', 'in_1')), true);
+    assert.equal(grants[1].source, 'plan');
+    assert.equal(grants[1].amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(inForce(), [grants[1]]);
+  });
+
+  it('takes the months back when the plan is refunded or ends', async () => {
+    const ending = new SubscriptionService(
+      {
+        getCodesByOrgId: async () => codes,
+        getSubscriptionByOrganizationId: async () => ({ subscriptionTier: 'PRO' }),
+        getSubscriptionByOrgId: async () => ({ subscriptionTier: 'PRO' }),
+        getSubscriptionByCustomerId: async () => ({
+          provider: 'stripe',
+          subscriptionTier: 'PRO',
+          isLifetime: false,
+        }),
+        getOrganizationByCustomerId: async () => ({ id: 'org' }),
+        recordSubscriptionEndedByOrganizationId: async () => ({}),
+        recordSubscriptionEndedByCustomerId: async () => ({}),
+        deleteSubscriptionByOrganizationId: async () => ({ count: 1 }),
+        deleteSubscriptionByCustomerId: async () => ({ count: 1 }),
+      } as any,
+      { getIntegrationsList: async () => [], changeActiveCron: async () => ({}) } as any,
+      { disableOrEnableNonSuperAdminUsers: async () => ({}) } as any,
+      credits as any
+    );
+    // a refund ends the plan here
+    await ending.grantPlanPeriod('org', monthOf(ending, 'PRO', 'in_1'));
+    await ending.revokeLocalSubscription('org');
+    assert.equal(inForce().length, 0);
+    // and Stripe ending the subscription here
+    at('2027-03-05T00:00:00Z');
+    await ending.grantPlanPeriod('org', monthOf(ending, 'PRO', 'period:sub_1:b'));
+    assert.equal(inForce().length, 1);
+    await ending.deleteSubscription('cus_1', 'stripe');
+    assert.equal(inForce().length, 0);
   });
 });
 
@@ -370,8 +549,10 @@ describe('Wiring', () => {
     assert.match(repository, /return \{ organizationId: findOrg\.id \};/);
   });
 
-  it('keys a running plan by its period, not by an invoice that may be unpaid', () => {
-    assert.match(stripe, /`period:\$\{subscription\.id\}:\$\{subscription\.items\.data\[0\]\?\.current_period_start\}`/);
+  it('keys a running plan by its period, or its month, not by an invoice that may be unpaid', () => {
+    assert.match(stripe, /invoice \|\|\n\s+`period:\$\{subscription\.id\}:\$\{\n\s+month \? month\.start\.toISOString\(\) : item\.current_period_start\n\s+\}`,\n\s+prorate: !invoice,/);
+    // the daily pass passes no invoice, the paid invoice its own id
+    assert.match(stripe, /return this\.grantPeriodCredits\(target\.organizationId, subscription\);/);
   });
 
   it('asks the provider that owns each plan, then gives the gift', () => {

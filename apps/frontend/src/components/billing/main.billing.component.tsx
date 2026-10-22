@@ -47,7 +47,7 @@ import { BillingPortalRow } from '@gitroom/frontend/components/billing/billing.p
 import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history';
 import {
   CreditsPacksCard,
-  WithdrawalWaiver,
+  PurchaseTerms,
 } from '@gitroom/frontend/components/billing/credits.packs';
 import { BillingFeatures } from '@gitroom/frontend/components/billing/first.billing.component';
 
@@ -130,7 +130,11 @@ export const Prorate: FC<{
 };
 export const Features: FC<{
   pack: AnyTier;
-  /** A yearly plan's credits come as the year's twelve months at once. */
+  /**
+   * A yearly plan's credits are counted for the year. Whether they come at
+   * once or a month at a time depends on when the subscription was sold, so
+   * the cards do not say.
+   */
   period?: 'MONTHLY' | 'YEARLY';
 }> = (props) => {
   const { pack, period } = props;
@@ -183,7 +187,7 @@ export const Features: FC<{
       list.push({
         label:
           period === 'YEARLY'
-            ? t('plan_n_credits_year', '{{count}} credits a year, up front', {
+            ? t('plan_n_credits_year', '{{count}} credits a year', {
                 count: currentPricing.monthly_credits * 12,
               })
             : t('plan_n_credits_month', '{{count}} credits a month', {
@@ -577,9 +581,6 @@ export const MainBillingComponent: FC<{
   const [monthlyOrYearly, setMonthlyOrYearly] = useState<'on' | 'off'>(
     period === 'MONTHLY' ? 'off' : 'on'
   );
-  // A yearly plan's credits arrive at once, so it is sold with the customer's
-  // consent to that (see WithdrawalWaiver); the server refuses it without.
-  const [waiver, setWaiver] = useState(false);
   const [initialChannels, setInitialChannels] = useState(
     sub?.totalChannels || 1
   );
@@ -882,16 +883,6 @@ export const MainBillingComponent: FC<{
           setLoading(false);
           return;
         }
-        if (monthlyOrYearly === 'on' && !waiver) {
-          toast.show(
-            t(
-              'withdrawal_waiver_yearly_required',
-              'Tick the box above the plans to continue with yearly.'
-            ),
-            'warning'
-          );
-          return;
-        }
         if (
           messages.length &&
           !(await deleteDialog(messages.join(', '), 'Yes, continue'))
@@ -906,7 +897,6 @@ export const MainBillingComponent: FC<{
             ...readAttribution(),
             billing,
             ...(dub ? { dub } : {}),
-            ...(monthlyOrYearly === 'on' ? { withdrawalWaiver: waiver } : {}),
           }),
         });
 
@@ -1009,7 +999,7 @@ export const MainBillingComponent: FC<{
         }
         setLoading(false);
       },
-    [monthlyOrYearly, waiver, subscription, user, modal, mutate, fetch, toast, t, dub, track]
+    [monthlyOrYearly, subscription, user, modal, mutate, fetch, toast, t, dub, track]
   );
   // An organization subscribed through the mobile app's store is managed
   // there: nothing on this page can change it, so say where to go instead.
@@ -1349,9 +1339,7 @@ export const MainBillingComponent: FC<{
         </div>
       )}
 
-      {!lifetimePaid && monthlyOrYearly === 'on' && (
-        <WithdrawalWaiver kind="yearly" checked={waiver} onChange={setWaiver} />
-      )}
+      {!lifetimePaid && <PurchaseTerms />}
 
       {!lifetimePaid && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(238px,1fr))] gap-[13px]">
