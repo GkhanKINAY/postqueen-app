@@ -948,13 +948,10 @@ describe('a plan change', () => {
     assert.deepEqual(change.items, [
       { id: 'si_1', price: 'price_growth_yearly', quantity: 1 },
     ]);
-    // A year's credits come a month at a time: the subscription says so
-    // before the charge, so the invoice that pays for it finds it.
+    // A plan change leaves the credits schedule as it is: a subscription
+    // sold before monthly credits keeps its year at once.
     const updates = called('subscriptions.update').map(([, b]) => b as any);
-    const stamp = updates.findIndex(
-      (b) => b.metadata?.credits_schedule === 'monthly',
-    );
-    assert.ok(stamp >= 0 && stamp < updates.indexOf(change));
+    assert.ok(updates.every((b) => !('credits_schedule' in (b.metadata || {}))));
     assert.equal(change.metadata, undefined);
   });
 
@@ -1023,28 +1020,70 @@ describe('a plan change', () => {
     }
   });
 
-  it('still takes the withdrawal flag an older app sends, and keeps it out of Stripe', async () => {
+  it('still takes the withdrawal flag an older app sends, and keeps it and the credits schedule out of Stripe', async () => {
     subs = [
       on('GROWTH', 'MONTHLY', { metadata: { credits_schedule: 'monthly' } }),
     ];
     localPlan = { subscriptionTier: 'GROWTH' };
+    // A blank value would unset the stamp, and with it monthly credits.
     await service().subscribe(
       'unique',
       'org1',
       'user1',
-      { billing: 'GROWTH', period: 'YEARLY', withdrawalWaiver: true } as any,
+      {
+        billing: 'GROWTH',
+        period: 'YEARLY',
+        withdrawalWaiver: true,
+        credits_schedule: '',
+      } as any,
       false,
     );
     const updates = called('subscriptions.update').map(([, b]) => b as any);
     assert.ok(updates.some((b) => b.items));
-    // already stamped, so not stamped again
-    assert.equal(
-      updates.filter((b) => b.metadata && !b.automatic_tax).length,
-      0,
-    );
     const written = updates.find((b) => b.metadata?.uniqueId);
-    assert.equal(written.metadata.credits_schedule, 'monthly');
     assert.equal('withdrawalWaiver' in written.metadata, false);
+    assert.equal('credits_schedule' in written.metadata, false);
+  });
+
+  it('carries the credits schedule a downgrade at renewal finds, and adds none', async () => {
+    const saved = [
+      Object.getPrototypeOf(probe.subscriptionSchedules).create,
+      Object.getPrototypeOf(probe.subscriptionSchedules).update,
+    ];
+    fake(probe.subscriptionSchedules, {
+      create: record('subscriptionSchedules.create', () => ({
+        id: 'sub_sched_1',
+        phases: [{ start_date: 100 }],
+        current_phase: { start_date: 100 },
+      })),
+      update: record('subscriptionSchedules.update', () => ({})),
+    });
+    const renewal = async (metadata: Record<string, string>) => {
+      calls = [];
+      subs = [on('GROWTH', 'MONTHLY', { metadata })];
+      localPlan = { subscriptionTier: 'GROWTH' };
+      const result = await service().subscribe(
+        'unique',
+        'org1',
+        'user1',
+        { billing: 'CREATOR', period: 'YEARLY' } as any,
+        false,
+      );
+      assert.equal((result as any).scheduledAt?.getTime(), 5_000_000);
+      const [, body] = called('subscriptionSchedules.update')[0] as any[];
+      return body.phases[1].metadata;
+    };
+    try {
+      assert.equal((await renewal({ credits_schedule: 'monthly' })).credits_schedule, 'monthly');
+      assert.equal('credits_schedule' in (await renewal({})), false);
+      assert.ok(
+        called('subscriptions.update').every(
+          ([, b]: any) => !('credits_schedule' in (b.metadata || {})),
+        ),
+      );
+    } finally {
+      fake(probe.subscriptionSchedules, { create: saved[0], update: saved[1] });
+    }
   });
 });
 
@@ -1818,12 +1857,47 @@ describe('yearly credits, a month at a time', () => {
     assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
   });
 
-  it('tops up a year granted whole when a plan change stamps it, and adds no month to it', async () => {
+  it('keeps a subscription sold before on a year up front when it is upgraded, and at its next renewal', async () => {
     subs = [running(month(0), month(12), 'CREATOR')];
     await paid('in_1');
     assert.equal(ledger[0].amount, planCredits('CREATOR', 'YEARLY'));
-    // the change stamps the subscription, and its upgrade is paid mid-year
-    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    // upgraded mid-year: the year is topped up, as it always was
+    subs = [running(month(0), month(12), 'PRO')];
+    at(month(6) + HOUR);
+    assert.equal(await daily(), false);
+    await paid('in_2');
+    const left =
+      (planCredits('PRO', 'YEARLY') - planCredits('CREATOR', 'YEARLY')) *
+      ((month(12) - Date.now()) / (month(12) - month(0)));
+    assert.ok(Math.abs(latest().amount - left) <= 1, `${latest().amount} vs ${left}`);
+    assert.deepEqual(latest().periodEnd, new Date(month(12)));
+    at(month(7) + HOUR);
+    assert.equal(await daily(), false);
+    // and the next year comes whole, on the higher plan
+    subs = [running(month(12), month(24), 'PRO')];
+    at(month(12) + HOUR);
+    await paid('in_3');
+    assert.equal(latest().amount, planCredits('PRO', 'YEARLY'));
+    assert.equal(ledger.length, 3);
+  });
+
+  it('keeps a subscription sold before on a year up front when it switches from monthly to yearly', async () => {
+    subs = [running(month(0), month(1), 'CREATOR', {}, {}, 'month')];
+    await paid('in_1');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0) + 10 * DAY, month(12) + 10 * DAY, 'PRO')];
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'YEARLY'));
+    assert.deepEqual(inForce(), [latest()]);
+  });
+
+  it('never adds a month on top of a year granted whole, and tops an upgrade on it up as before', async () => {
+    subs = [running(month(0), month(12), 'CREATOR')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('CREATOR', 'YEARLY'));
+    // YEARLY_MONTHLY_CREDITS_FROM set after this year was granted whole
+    process.env.YEARLY_MONTHLY_CREDITS_FROM = new Date(month(0)).toISOString();
+    subs = [running(month(0), month(12), 'PRO')];
     at(month(6) + HOUR);
     assert.equal(await daily(), false);
     await paid('in_2');
@@ -1871,7 +1945,7 @@ describe('yearly credits, a month at a time', () => {
     assert.deepEqual(inForce(), [latest()]);
   });
 
-  it('starts a switch from monthly to yearly on a month, however Stripe bills it', async () => {
+  it('gives a subscription sold since a month at a time when it switches to yearly, however Stripe bills it', async () => {
     const monthly = () =>
       running(month(0), month(1), 'CREATOR', STAMPED, {}, 'month');
     // Classic billing restarts the period at the switch: its first month

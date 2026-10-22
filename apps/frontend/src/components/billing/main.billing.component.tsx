@@ -130,7 +130,11 @@ export const Prorate: FC<{
 };
 export const Features: FC<{
   pack: AnyTier;
-  /** A yearly plan's credits are counted for the year, added a month at a time. */
+  /**
+   * A yearly plan's credits are counted for the year. Whether they come at
+   * once or a month at a time depends on when the subscription was sold, so
+   * the cards do not say.
+   */
   period?: 'MONTHLY' | 'YEARLY';
 }> = (props) => {
   const { pack, period } = props;
@@ -183,11 +187,9 @@ export const Features: FC<{
       list.push({
         label:
           period === 'YEARLY'
-            ? t(
-                'plan_n_credits_year',
-                '{{count}} credits a year, added a month at a time',
-                { count: currentPricing.monthly_credits * 12 }
-              )
+            ? t('plan_n_credits_year', '{{count}} credits a year', {
+                count: currentPricing.monthly_credits * 12,
+              })
             : t('plan_n_credits_month', '{{count}} credits a month', {
                 count: currentPricing.monthly_credits,
               }),

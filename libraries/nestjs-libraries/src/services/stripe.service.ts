@@ -64,12 +64,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
 
 /**
- * `credits_schedule`, stamped on every subscription this app sells or changes
- * since a yearly plan's credits come a month at a time (see `creditMonth`).
- * One without it was sold when a year's credits came at once, and keeps that
- * until `YEARLY_MONTHLY_CREDITS_FROM`; that date also covers one switched to
- * yearly outside this app (the Dashboard). A monthly plan sold since carries
- * it too, so a later switch to yearly finds it already there.
+ * `credits_schedule`, stamped at checkout on every subscription sold since a
+ * yearly plan's credits come a month at a time (see `creditMonth`), monthly
+ * plans included, so a later switch to yearly finds it there. Only a checkout
+ * writes it. A plan change keeps whatever the subscription has: one sold
+ * before goes on getting a year's credits at once, whatever it changes to.
  */
 const MONTHLY_CREDITS = 'monthly';
 
@@ -732,9 +731,10 @@ export class StripeService extends PaymentProviderAbstract {
    * credits comes at once.
    *
    * A subscription stamped with `MONTHLY_CREDITS` gets them monthly. One sold
-   * before the stamp keeps its year up front until `YEARLY_MONTHLY_CREDITS_FROM`
-   * (an ISO date), and gets them monthly from its first year that starts on or
-   * after it. Unset, it never switches.
+   * before the stamp keeps its year up front, including after a switch to
+   * yearly or an upgrade, unless `YEARLY_MONTHLY_CREDITS_FROM` (an ISO date)
+   * is set: then from its first year that starts on or after it. Production
+   * leaves it unset, so those never switch.
    */
   private creditMonth(subscription: Stripe.Subscription) {
     const item = subscription.items?.data?.[0];
@@ -2896,8 +2896,10 @@ export class StripeService extends PaymentProviderAbstract {
     const metadata = {
       service: SUBSCRIPTION_SERVICE_TAG,
       // An app loaded before the withdrawal box was removed still sends it,
-      // and the body is not stripped of unknown fields.
-      ...omit(body, 'withdrawalWaiver'),
+      // and the body is not stripped of unknown fields. Nor is a body allowed
+      // to write the credits schedule, or blank it to remove it: a plan
+      // change keeps the one the subscription has (see `MONTHLY_CREDITS`).
+      ...omit(body, 'withdrawalWaiver', 'credits_schedule'),
       userId,
       id,
       // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
@@ -2907,7 +2909,6 @@ export class StripeService extends PaymentProviderAbstract {
       // `/billing/check/<new id>` could never resolve.
       uniqueId,
       ud: uniqueId,
-      credits_schedule: MONTHLY_CREDITS,
     };
 
     try {
@@ -2935,16 +2936,6 @@ export class StripeService extends PaymentProviderAbstract {
       if (current.cancel_at_period_end) {
         await stripe.subscriptions.update(current.id, {
           cancel_at_period_end: false,
-        });
-      }
-
-      // Stamped first and on its own: an upgrade that waits on payment
-      // returns below before the rest of the metadata is written, and the
-      // invoice that pays for a switch to yearly must find it, or the year's
-      // credits would come at once.
-      if (current.metadata?.credits_schedule !== MONTHLY_CREDITS) {
-        await stripe.subscriptions.update(current.id, {
-          metadata: { credits_schedule: MONTHLY_CREDITS },
         });
       }
 
@@ -2978,7 +2969,13 @@ export class StripeService extends PaymentProviderAbstract {
               proration_behavior: 'none',
               automatic_tax: { enabled: true },
               discounts,
-              metadata,
+              // Carried as it is, in case the phase sets the metadata whole.
+              metadata: {
+                ...metadata,
+                ...(current.metadata?.credits_schedule
+                  ? { credits_schedule: current.metadata.credits_schedule }
+                  : {}),
+              },
             },
           ],
         });

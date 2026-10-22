@@ -1429,7 +1429,10 @@ export const BillingFeatures: FC<{
    * founding-member card (amber tick tiles on the lt text colours).
    */
   tone?: 'brand' | 'lifetime';
-  /** A yearly plan's credits are counted for the year, added a month at a time. */
+  /**
+   * A yearly plan's credits are counted for the year. Only the first checkout
+   * passes it, and a yearly plan bought there gets them a month at a time.
+   */
   period?: string;
 }> = ({ tier, tone = 'brand', period }) => {
   const t = useT();

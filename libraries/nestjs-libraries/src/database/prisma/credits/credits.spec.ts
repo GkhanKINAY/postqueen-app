@@ -322,13 +322,22 @@ describe('The right of withdrawal', () => {
   });
 
   it('keeps the flag an older app still sends out of Stripe', () => {
-    assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'\),/g) || []).length, 3);
+    assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'(, 'credits_schedule')?\),/g) || []).length, 3);
     assert.doesNotMatch(stripe, /\.\.\.body,/);
   });
 
-  it('is offset by yearly credits a month at a time, stamped on every plan sold or changed', () => {
-    assert.equal((stripe.match(/credits_schedule: MONTHLY_CREDITS,/g) || []).length, 3);
+  it('is offset by yearly credits a month at a time, stamped at checkout only', () => {
     assert.match(stripe, /const MONTHLY_CREDITS = 'monthly';/);
+    // both checkouts, after the body, so a body cannot unset it
+    for (const from of ['private async createEmbeddedCheckout(', 'private async createCheckoutSession(']) {
+      const checkout = between(stripe, from, 'line_items:');
+      assert.ok(checkout.indexOf('credits_schedule: MONTHLY_CREDITS,') > checkout.indexOf("...omit(body, 'withdrawalWaiver'),"), from);
+    }
+    assert.equal((stripe.match(/credits_schedule: MONTHLY_CREDITS,/g) || []).length, 2);
+    // a plan change keeps what the subscription has, and no body writes it
+    const change = between(stripe, 'async subscribe(', 'async paymentSucceeded(');
+    assert.doesNotMatch(change, /credits_schedule: MONTHLY_CREDITS/);
+    assert.match(change, /\.\.\.omit\(body, 'withdrawalWaiver', 'credits_schedule'\),/);
   });
 });
 
