@@ -241,24 +241,33 @@ Clips must not overlap. Write the title and the post in this language, whatever 
   async generateImage(
     prompt: string,
     orientation: ImageOrientation = 'square',
-    quality?: ImageQuality
+    quality?: ImageQuality,
+    // For a caller with a deadline of its own, as `pickClips` has.
+    request?: { timeout: number; maxRetries: number }
   ) {
     // gpt-image models always return base64 (b64_json) and do not accept the
     // `response_format` parameter, unlike the deprecated dall-e-3. Left out,
     // the quality is the model's own choice, which is only right where the
     // image is not charged for (see MediaService.generateImage).
+    // OpenAI shuts chatgpt-image-latest down on 2026-12-01. Flare rather than
+    // Sunburst: the same price and the same tokens an image, made in half the
+    // time (a medium portrait took 10 s against 18 s, measured 2026-10-22),
+    // and Sunburst's edge is editing, which nothing here does.
     const generate = (
-      await openai.images.generate({
-        prompt,
-        model: 'chatgpt-image-latest',
-        ...(quality ? { quality } : {}),
-        size:
-          orientation === 'portrait'
-            ? '1024x1536'
-            : orientation === 'landscape'
-            ? '1536x1024'
-            : '1024x1024',
-      })
+      await openai.images.generate(
+        {
+          prompt,
+          model: 'gpt-image-2.5-flare',
+          ...(quality ? { quality } : {}),
+          size:
+            orientation === 'portrait'
+              ? '1024x1536'
+              : orientation === 'landscape'
+              ? '1536x1024'
+              : '1024x1024',
+        },
+        request
+      )
     ).data[0];
 
     return generate.b64_json;

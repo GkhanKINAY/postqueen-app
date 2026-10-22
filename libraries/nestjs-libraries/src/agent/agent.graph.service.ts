@@ -5,7 +5,7 @@ import {
   ToolMessage,
 } from '@langchain/core/messages';
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { TavilySearch } from '@langchain/tavily';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
@@ -17,6 +17,8 @@ import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { GeneratorDto } from '@gitroom/nestjs-libraries/dtos/generator/generator.dto';
 import { generationError } from '@gitroom/nestjs-libraries/openai/generation.error';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { AI_FIXED_CREDIT_COSTS_PROPOSAL } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
@@ -29,11 +31,6 @@ const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
   model: 'gpt-4.1',
   temperature: 0.7,
-});
-
-const dalle = new DallEAPIWrapper({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'chatgpt-image-latest',
 });
 
 interface WorkflowChannelsState {
@@ -114,7 +111,8 @@ export class AgentGraphService {
   constructor(
     private _postsService: PostsService,
     private _mediaService: MediaService,
-    private _creditsService: CreditsService
+    private _creditsService: CreditsService,
+    private _openaiService: OpenaiService
   ) {}
   static state = () =>
     new StateGraph<WorkflowChannelsState>({
@@ -345,10 +343,21 @@ export class AgentGraphService {
         () =>
           Promise.all(
             content.map(async (p) => {
-              const image = await dalle.invoke(p.prompt!);
+              // Priced as a medium square image (`generatorPicture`), so
+              // made as one. Stored here, inside the charge: the route
+              // streams the run's state to the browser, which must carry an
+              // address and not megabytes of base64, and an upload that
+              // fails hands the charge back.
+              const image = await this._openaiService.generateImage(
+                p.prompt!,
+                'square',
+                isBillingEnabled() ? 'medium' : undefined
+              );
               return {
                 ...p,
-                image,
+                image: await this.storage.uploadSimple(
+                  'data:image/png;base64,' + image
+                ),
               };
             })
           )
@@ -383,12 +392,13 @@ export class AgentGraphService {
     const all = await Promise.all(
       (state.content || []).map(async (p) => {
         if (p.image) {
-          const upload = await this.storage.uploadSimple(p.image);
-          const name = upload.split('/').pop()!;
+          // Already in storage (see `generatePictures`); only the library
+          // row is missing.
+          const name = p.image.split('/').pop()!;
           const uploadWithId = await this._mediaService.saveFile(
             state.orgId,
             name,
-            upload
+            p.image
           );
 
           return {

@@ -6,7 +6,7 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { AutoPost, Integration, Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { BaseMessage } from '@langchain/core/messages';
 import striptags from 'striptags';
-import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { JSDOM } from 'jsdom';
 import { z } from 'zod';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
@@ -20,6 +20,8 @@ import {
   pricing,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
+import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { createHash } from 'crypto';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { TemporalService } from 'nestjs-temporal-core';
@@ -53,13 +55,6 @@ const model = new ChatOpenAI({
   temperature: 0.7,
 });
 
-// DallEAPIWrapper always sends dall-e-3 shaped params (response_format, style,
-// quality). Pointing it at a gpt-image-* model made every generation 400.
-const dalle = new DallEAPIWrapper({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'dall-e-3',
-});
-
 const generateContent = z.object({
   socialMediaPostContent: z
     .string()
@@ -79,13 +74,15 @@ const dallePrompt = z.object({
 
 @Injectable()
 export class AutopostService {
+  private storage = UploadFactory.createStorage();
   constructor(
     private _autopostsRepository: AutopostRepository,
     private _temporalService: TemporalService,
     private _integrationService: IntegrationService,
     private _postsService: PostsService,
     private _notificationService: NotificationService,
-    private _creditsService: CreditsService
+    private _creditsService: CreditsService,
+    private _openaiService: OpenaiService
   ) {}
 
   async stopAll(org: string) {
@@ -430,7 +427,19 @@ export class AutopostService {
                 ),
               });
 
-          return dalle.invoke(generatedTextToBeSentToDallE);
+          // dall-e-3, which this used, was shut down on 2026-05-12. A gpt-image
+          // model answers with base64 only, so the picture is stored here and
+          // the post carries its address. Priced as a medium square image.
+          // Bounded well inside the activity's ten minutes: an attempt given
+          // up on must not still be running, and claiming the item, when its
+          // retry gets there, or the item goes out twice.
+          const image = await this._openaiService.generateImage(
+            generatedTextToBeSentToDallE,
+            'square',
+            isBillingEnabled() ? 'medium' : undefined,
+            { timeout: 3 * 60 * 1000, maxRetries: 0 }
+          );
+          return this.storage.uploadSimple('data:image/png;base64,' + image);
         }
       );
 

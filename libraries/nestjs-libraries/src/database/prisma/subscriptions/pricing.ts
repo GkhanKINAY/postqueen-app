@@ -545,9 +545,16 @@ export const IMAGE_QUALITIES = ['low', 'medium', 'high'] as const;
 export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
 
 /**
- * What one AI image costs, in hundredths, by quality and shape: a portrait or
- * landscape image is larger than a square one and the model charges more for
- * it. The prompt rewrite that comes first is included.
+ * What one AI image costs, in hundredths, by quality and shape. The prompt
+ * rewrite that comes first is included.
+ *
+ * Set by the usual rule (the provider's price times 25) for
+ * chatgpt-image-latest, where a portrait or landscape image cost more than a
+ * square one. gpt-image-2.5-flare, which replaced it, costs far less: $0.006 /
+ * $0.014 / $0.053 a square image and $0.005 / $0.011 / $0.042 a portrait or
+ * landscape one at low / medium / high, measured 2026-10-22. The owner kept
+ * these prices rather than lowering them (2026-10-22), so they stand above
+ * the rule and keep the shape ordering the docs describe.
  */
 export const IMAGE_CREDIT_COSTS: Record<
   ImageQuality,
@@ -637,8 +644,8 @@ export const LLM_CONTINUATION_FLOOR = -500;
  *   image (`imageCreditCost`).
  * - `autopostText`: one gpt-4.1 call on a feed item (read up to 8,000
  *   characters), about $0.01.
- * - `autopostPicture`: a gpt-4.1 call for the prompt, then a standard
- *   1024x1024 dall-e-3 image ($0.04).
+ * - `autopostPicture`: a medium square AI image (`imageCreditCost`), plus
+ *   10 for the gpt-4.1 call that writes its prompt from the feed item.
  * - `separatePosts`: one gpt-4.1 call on the post (up to 20,000 characters),
  *   a few more when a part has to be shortened, about $0.01 for a usual
  *   post and several times that at the limit.
@@ -647,7 +654,7 @@ export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
   generator: 125,
   generatorPicture: imageCreditCost('medium', 'square'),
   autopostText: 25,
-  autopostPicture: 110,
+  autopostPicture: imageCreditCost('medium', 'square') + 10,
   separatePosts: 25,
 };
 
