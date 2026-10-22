@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { before, beforeEach, describe, it } from 'node:test';
+import { HttpException } from '@nestjs/common';
+import { insufficientCredits } from '../credits/credits.repository.ts';
 
 let PostMetricsService: any;
 let redis: { set: (...args: unknown[]) => Promise<string | null> };
@@ -11,7 +13,10 @@ before(async () => {
   )) as any);
   // Every test decides whether the cooldown key is free, so none depends on
   // a key another test or a real Redis left behind
-  redis.set = async () => (claimFree ? 'OK' : null);
+  redis.set = async () => {
+    claims += 1;
+    return claimFree ? 'OK' : null;
+  };
 });
 
 // `x` stands for any provider that bills post reads: short lookback, read
@@ -30,6 +35,15 @@ const providers: Record<string, any> = {
     },
     analyticsLookbackDays: 7,
     analyticsManualOnly: true,
+    // Billed per post read and for the overview on v2, free before.
+    creditCost: (op: any, creditPricing: string) =>
+      creditPricing !== 'v2'
+        ? 0
+        : op.type === 'post-metrics'
+        ? op.posts * 25
+        : op.type === 'account-metrics'
+        ? 50
+        : undefined,
   },
   linkedin: {
     postsAnalytics: async () => [],
@@ -52,6 +66,12 @@ let prunes: Array<{ identifiers: string[]; before: Date; limit: number }>;
 let pruneCounts: number[];
 let pruneFails: boolean;
 let profileRuns: string[];
+let claims: number;
+let capturedToday: Record<string, string[]>;
+let creditPricing: 'legacy' | 'v2';
+let balance: number;
+let spends: Array<{ key: string; amount: number }>;
+let overviewFails: boolean;
 
 const service = () =>
   new PostMetricsService(
@@ -93,9 +113,14 @@ const service = () =>
           },
         ];
       },
-      upsertSnapshot: async (row: { integrationId: string }) => {
+      upsertSnapshot: async (row: { integrationId: string; postId: string }) => {
         lastSnapshot[row.integrationId] = new Date();
+        capturedToday[row.integrationId] = [
+          ...(capturedToday[row.integrationId] || []),
+          row.postId,
+        ];
       },
+      postIdsCapturedOn: async (id: string) => capturedToday[id] || [],
       deleteSnapshotsBefore: async (
         identifiers: string[],
         before: Date,
@@ -145,8 +170,29 @@ const service = () =>
         readManualOnly: boolean,
       ) => {
         assert.equal(readManualOnly, true);
+        if (overviewFails) {
+          throw new Error('X is down');
+        }
         overviews.push(id);
         return [];
+      },
+    },
+    // The ledger, faked: a key is charged once, as the real one makes it.
+    {
+      creditPricing: async () => creditPricing,
+      assertAvailable: async (_: string, amount: number) => {
+        if (amount > balance) {
+          throw insufficientCredits(amount, balance);
+        }
+      },
+      everReserved: async (_: string, key: string) =>
+        spends.some((spend) => spend.key === key),
+      spend: async (_: string, spend: { key: string; amount: number }) => {
+        if (!spends.some((s) => s.key === spend.key)) {
+          spends.push({ key: spend.key, amount: spend.amount });
+          balance -= spend.amount;
+        }
+        return { id: spend.key, charged: true };
       },
     },
   );
@@ -162,6 +208,12 @@ beforeEach(() => {
   pruneCounts = [];
   pruneFails = false;
   profileRuns = [];
+  claims = 0;
+  capturedToday = {};
+  creditPricing = 'legacy';
+  balance = 0;
+  spends = [];
+  overviewFails = false;
 });
 
 describe('post metrics lookback', () => {
@@ -241,7 +293,71 @@ describe('manual post metrics refresh', () => {
 
   it('reports no manual-only channels for an organization without one', async () => {
     const status = await service().manualRefreshStatus('org-1', 'int-li');
-    assert.deepEqual(status, { integrations: 0, lastSyncedAt: null });
+    assert.deepEqual(status, {
+      integrations: 0,
+      lastSyncedAt: null,
+      credits: 0,
+    });
+  });
+});
+
+describe('manual refresh on the credits balance', () => {
+  it('costs nothing on the list sold before v2', async () => {
+    assert.equal((await service().manualRefreshStatus('org-1')).credits, 0);
+    await service().manualRefresh('org-1');
+    assert.deepEqual(reads, ['release-int-x']);
+    assert.deepEqual(spends, []);
+  });
+
+  it('says what it will cost, and charges each post read and the overview on v2', async () => {
+    creditPricing = 'v2';
+    balance = 1000;
+    // one post not read today, and the overview: 25 + 50
+    assert.equal((await service().manualRefreshStatus('org-1')).credits, 0.75);
+    await service().manualRefresh('org-1');
+    assert.deepEqual(
+      spends.map((spend) => spend.amount),
+      [25, 50]
+    );
+    assert.match(spends[0].key, /^post-metrics:int-x:/);
+    assert.match(spends[1].key, /^account-metrics:int-x:\d{4}-\d{2}-\d{2}$/);
+    assert.equal(balance, 925);
+  });
+
+  it('charges nothing again the same day, once the cooldown has passed', async () => {
+    creditPricing = 'v2';
+    balance = 1000;
+    await service().manualRefresh('org-1');
+    lastSnapshot['int-x'] = new Date(Date.now() - 60 * 60 * 1000);
+    assert.equal((await service().manualRefreshStatus('org-1')).credits, 0);
+    await service().manualRefresh('org-1');
+    assert.deepEqual(reads, ['release-int-x', 'release-int-x']);
+    assert.equal(balance, 925);
+  });
+
+  it('is refused with a 402 before anything is read when the balance cannot pay', async () => {
+    creditPricing = 'v2';
+    balance = 74;
+    await assert.rejects(
+      service().manualRefresh('org-1'),
+      (err) => err instanceof HttpException && err.getStatus() === 402
+    );
+    assert.deepEqual(reads, []);
+    assert.deepEqual(overviews, []);
+    assert.equal(claims, 0);
+    assert.deepEqual(spends, []);
+  });
+
+  it('charges nothing for an overview it could not read', async () => {
+    creditPricing = 'v2';
+    balance = 1000;
+    overviewFails = true;
+    const result = await service().manualRefresh('org-1');
+    assert.equal(result.failed, 1);
+    assert.deepEqual(
+      spends.map((spend) => spend.amount),
+      [25]
+    );
   });
 });
 

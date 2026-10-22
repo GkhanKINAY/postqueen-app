@@ -24,6 +24,10 @@ import {
   downloadToFile,
   uploadTempDir,
 } from '@gitroom/nestjs-libraries/upload/uploaded.file';
+import {
+  CreditPricing,
+  IMAGE_SLIDES_CREDIT_COST,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 const limit = pLimit(2);
 
 // ElevenLabs reports quota and permission problems as 401 with the reason in
@@ -89,10 +93,13 @@ export class ImagesSlides extends VideoAbstract<ImagesSlidesParams> {
     super();
   }
 
-  // One price whatever the length: the slides are three to five, each an
-  // image and a narration, and what they cost together stays under this.
-  cost() {
-    return 1400;
+  // One price whatever the length (`IMAGE_SLIDES_CREDIT_COST`).
+  cost(
+    output: 'vertical' | 'horizontal',
+    customParams: ImagesSlidesParams | undefined,
+    creditPricing: CreditPricing
+  ) {
+    return IMAGE_SLIDES_CREDIT_COST[creditPricing];
   }
 
   async process(

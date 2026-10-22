@@ -4,7 +4,10 @@ import {
   CREDIT_PACK_MONTHS,
   CREDIT_PLAN_GRACE_DAYS,
   CREDIT_UNIT,
+  CreditPricing,
+  creditPricingOf,
   effectiveIsTrailing,
+  monthlyCredits,
   normalizeTier,
   planCredits,
   pricing,
@@ -134,10 +137,15 @@ export class SubscriptionService {
    * whole before the plan moved to monthly credits stays the period until it
    * ends: an upgrade on it is topped up as before, and no month is added on
    * top of it.
+   *
+   * `creditPricing` is the subscription's price list. A subscription keeps
+   * its list for life, so both sides of an upgrade's difference come from
+   * the same one.
    */
   async grantPlanPeriod(
     organizationId: string,
     period: {
+      creditPricing: CreditPricing;
       tier: string;
       period: 'MONTHLY' | 'YEARLY';
       start: Date;
@@ -149,7 +157,12 @@ export class SubscriptionService {
     }
   ) {
     const tier = normalizeTier(period.tier);
-    const allowance = planCredits(tier, period.period, period.trial);
+    const allowance = planCredits(
+      period.creditPricing,
+      tier,
+      period.period,
+      period.trial
+    );
     if (!allowance || dayjs(period.end).isBefore(dayjs())) {
       return false;
     }
@@ -188,7 +201,7 @@ export class SubscriptionService {
           period.month && !yearGranted
             ? { ...period.month, period: 'MONTHLY' as const }
             : period;
-        const amount = planCredits(tier, span.period);
+        const amount = planCredits(period.creditPricing, tier, span.period);
         const expiresAt = dayjs(span.end)
           .add(CREDIT_PLAN_GRACE_DAYS, 'day')
           .toDate();
@@ -207,7 +220,8 @@ export class SubscriptionService {
             dayjs(span.end).diff(dayjs()) /
             dayjs(span.end).diff(dayjs(span.start));
           const difference = Math.floor(
-            (amount - planCredits(samePeriod.tier, span.period)) *
+            (amount -
+              planCredits(period.creditPricing, samePeriod.tier, span.period)) *
               Math.min(Math.max(left, 0), 1)
           );
           return difference > 0
@@ -236,7 +250,7 @@ export class SubscriptionService {
             source: 'plan',
             amount:
               period.prorate && span.period === 'YEARLY'
-                ? planCredits(tier, 'MONTHLY') *
+                ? planCredits(period.creditPricing, tier, 'MONTHLY') *
                   Math.min(
                     Math.ceil(dayjs(span.end).diff(dayjs(), 'month', true)),
                     12
@@ -266,15 +280,18 @@ export class SubscriptionService {
   async grantScheduledPlanCredits(target: {
     organizationId: string;
     subscriptionTier: string;
+    creditPricing: string;
     createdAt: Date;
     organization: { createdAt: Date };
   }) {
+    const creditPricing = creditPricingOf(target);
     if (await this.isFoundingFeeUnpaid(target.organizationId)) {
       const trial = trialWindow(target.organization.createdAt);
       if (!trial.endsAt) {
         return false;
       }
       return this.grantPlanPeriod(target.organizationId, {
+        creditPricing,
         tier: target.subscriptionTier,
         period: 'MONTHLY',
         start: new Date(target.organization.createdAt),
@@ -286,6 +303,7 @@ export class SubscriptionService {
 
     const { start, end } = this.monthlyWindow(target.createdAt);
     return this.grantPlanPeriod(target.organizationId, {
+      creditPricing,
       tier: target.subscriptionTier,
       period: 'MONTHLY',
       start: start.toDate(),
@@ -299,6 +317,7 @@ export class SubscriptionService {
   async grantMonthlyGift(target: {
     organizationId: string;
     subscriptionTier: string;
+    creditPricing: string;
     isLifetime: boolean;
     organization: { isTrailing: boolean; createdAt: Date };
   }) {
@@ -312,7 +331,7 @@ export class SubscriptionService {
         })
       : target.organization.isTrailing;
     if (
-      !pricing[normalizeTier(target.subscriptionTier)]?.monthly_credits ||
+      !monthlyCredits(creditPricingOf(target), target.subscriptionTier) ||
       trialing
     ) {
       return false;
@@ -384,6 +403,11 @@ export class SubscriptionService {
 
   getCreditGrantTargets() {
     return this._subscriptionRepository.getCreditGrantTargets();
+  }
+
+  /** The organization's credit price list (see `CreditPricing`). */
+  creditPricing(organizationId: string) {
+    return this._creditsService.creditPricing(organizationId);
   }
 
   // What a plan gave ends with it. Purchased credits stay: they were paid for
@@ -791,7 +815,8 @@ export class SubscriptionService {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: string
+    org?: string,
+    creditPricing?: CreditPricing
   ) {
     if (!code) {
       if (!(await this.isManagedBy(customerId, provider))) {
@@ -840,7 +865,8 @@ export class SubscriptionService {
       period,
       cancelAt,
       code,
-      org ? { id: org } : undefined
+      org ? { id: org } : undefined,
+      creditPricing
     );
   }
 

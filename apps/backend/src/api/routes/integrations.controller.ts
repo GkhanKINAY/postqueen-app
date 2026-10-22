@@ -60,8 +60,11 @@ export class IntegrationsController {
   }
 
   @Get('/:identifier/internal-plugs')
-  getInternalPlugs(@Param('identifier') identifier: string) {
-    return this._integrationManager.getInternalPlugs(identifier);
+  getInternalPlugs(
+    @GetOrgFromRequest() org: Organization,
+    @Param('identifier') identifier: string
+  ) {
+    return this._integrationService.getInternalPlugs(org.id, identifier);
   }
 
   @Get('/customers')
@@ -512,8 +515,8 @@ export class IntegrationsController {
   }
 
   @Get('/plug/list')
-  async getPlugList() {
-    return { plugs: this._integrationManager.getAllPlugs() };
+  async getPlugList(@GetOrgFromRequest() org: Organization) {
+    return { plugs: await this._integrationService.getAllPlugs(org.id) };
   }
 
   @Get('/:id/plugs')

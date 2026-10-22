@@ -70,6 +70,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import {
   AI_FIXED_CREDIT_COSTS_PROPOSAL,
+  CreditPricing,
   PUBLISH_CREDITS_SINCE,
   pricing,
   toCredits,
@@ -1308,6 +1309,7 @@ export class PostsService {
       settings?: any;
     }>
   ) {
+    const creditPricing = await this._creditsService.creditPricing(orgId);
     return Promise.all(
       (posts || []).map(async (post) => {
         // The same lookup as mapTypeToPost: a removed channel is refused here
@@ -1410,6 +1412,7 @@ export class PostsService {
             (sum, part, index) =>
               sum +
               this.publishCost(
+                creditPricing,
                 integration.providerIdentifier,
                 settings,
                 part.content || '',
@@ -1923,12 +1926,15 @@ export class PostsService {
   }
 
   /** Paid for from the credits balance, and handed back if it fails. */
-  separatePosts(orgId: string, content: string, len: number) {
+  async separatePosts(orgId: string, content: string, len: number) {
     return this._creditsService.withCredits(
       orgId,
       {
         key: `separate:${makeId(20)}`,
-        amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.separatePosts,
+        amount:
+          AI_FIXED_CREDIT_COSTS_PROPOSAL[
+            await this._creditsService.creditPricing(orgId)
+          ].separatePosts,
         action: 'separate_posts',
       },
       () => this._openaiService.separatePosts(content, len)
@@ -1946,6 +1952,7 @@ export class PostsService {
   // "(post:<id>)" placeholder goes out as the link to that post (updateTags),
   // so it is priced as one.
   private publishCost(
+    creditPricing: CreditPricing,
     providerIdentifier: string,
     settings: any,
     message: string,
@@ -1954,15 +1961,18 @@ export class PostsService {
     return (
       this._integrationManager
         .getSocialIntegration(providerIdentifier)
-        ?.creditCost?.({
-          type: 'publish',
-          message: (message || '').replace(
-            /\(post:[a-zA-Z0-9-_]+\)/g,
-            'https://postqueen.app/p'
-          ),
-          settings,
-          index,
-        }) || 0
+        ?.creditCost?.(
+          {
+            type: 'publish',
+            message: (message || '').replace(
+              /\(post:[a-zA-Z0-9-_]+\)/g,
+              'https://postqueen.app/p'
+            ),
+            settings,
+            index,
+          },
+          creditPricing
+        ) || 0
     );
   }
 
@@ -2011,6 +2021,7 @@ export class PostsService {
     type: CreatePostDto['type'],
     posts: CreatePostDto['posts']
   ) {
+    const creditPricing = await this._creditsService.creditPricing(orgId);
     const priced = (posts || []).filter((post) => post?.integration?.id);
     const channels = await Promise.all(
       priced.map(async (post) => {
@@ -2033,6 +2044,7 @@ export class PostsService {
         const costs: number[] = providerIdentifier
           ? value.map((part: { content?: string }, index: number) =>
               this.publishCost(
+                creditPricing,
                 providerIdentifier,
                 settings,
                 part?.content || '',
@@ -2063,6 +2075,7 @@ export class PostsService {
         (sum, channel) => sum + channel.cost - channel.reserved,
         0
       ),
+      creditPricing,
     };
   }
 
@@ -2083,7 +2096,11 @@ export class PostsService {
     if (!isBillingEnabled()) {
       return { credits: 0, needed: 0, channels: [] };
     }
-    const { channels, needed } = await this.publishCredits(orgId, type, posts);
+    const { channels, needed, creditPricing } = await this.publishCredits(
+      orgId,
+      type,
+      posts
+    );
     return {
       credits: toCredits(channels.reduce((sum, c) => sum + c.cost, 0)),
       needed: toCredits(Math.max(0, needed)),
@@ -2091,8 +2108,15 @@ export class PostsService {
         .filter((channel) => channel.cost)
         .map((channel) => {
           const rates = {
-            post: this.publishCost(channel.providerIdentifier!, {}, '', 0),
+            post: this.publishCost(
+              creditPricing,
+              channel.providerIdentifier!,
+              {},
+              '',
+              0
+            ),
             link: this.publishCost(
+              creditPricing,
               channel.providerIdentifier!,
               {},
               'https://example.com',
@@ -2141,9 +2165,11 @@ export class PostsService {
     const [root] = thread;
     const costs = new Map<string, number>();
     if (root?.integration) {
+      const creditPricing = await this._creditsService.creditPricing(orgId);
       const settings = JSON.parse(root.settings || '{}');
       thread.forEach((part, index) => {
         const cost = this.publishCost(
+          creditPricing,
           root.integration!.providerIdentifier,
           settings,
           part.content,
@@ -2294,6 +2320,7 @@ export class PostsService {
     }
 
     const amount = this.publishCost(
+      await this._creditsService.creditPricing(part.organizationId),
       providerIdentifier,
       JSON.parse(part.settings || '{}'),
       part.content,

@@ -3,7 +3,11 @@ import 'reflect-metadata';
 import { Injectable } from '@nestjs/common';
 import { XProvider } from '@gitroom/nestjs-libraries/integrations/social/x.provider';
 import { SocialProvider } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { toCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  CreditPricing,
+  CURRENT_CREDIT_PRICING,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import { RedditProvider } from '@gitroom/nestjs-libraries/integrations/social/reddit.provider';
 import { DevToProvider } from '@gitroom/nestjs-libraries/integrations/social/dev.to.provider';
@@ -216,26 +220,35 @@ export class IntegrationManager {
 
   // What a plug costs from the credits balance, in credits: each run's look
   // at the post, and acting on it, and acting with a link in what it writes
-  // when that costs more. Nothing on a network that does not bill.
+  // when that costs more, on the organization's price list. Nothing on a
+  // network that does not bill.
   private plugCredits(
     provider: SocialProvider,
     plug: string,
     fields: { name: string }[] = [],
-    checks = true
+    checks = true,
+    creditPricing: CreditPricing = CURRENT_CREDIT_PRICING
   ) {
     const check = checks
-      ? provider.creditCost?.({ type: 'plug-check', plug }) || 0
+      ? provider.creditCost?.({ type: 'plug-check', plug }, creditPricing) ||
+        0
       : 0;
     const trigger =
-      provider.creditCost?.({ type: 'plug-trigger', plug, fields: {} }) || 0;
+      provider.creditCost?.(
+        { type: 'plug-trigger', plug, fields: {} },
+        creditPricing
+      ) || 0;
     const withLink =
-      provider.creditCost?.({
-        type: 'plug-trigger',
-        plug,
-        fields: Object.fromEntries(
-          fields.map((field) => [field.name, 'https://example.com'])
-        ),
-      }) || 0;
+      provider.creditCost?.(
+        {
+          type: 'plug-trigger',
+          plug,
+          fields: Object.fromEntries(
+            fields.map((field) => [field.name, 'https://example.com'])
+          ),
+        },
+        creditPricing
+      ) || 0;
     return check || trigger
       ? {
           check: toCredits(check),
@@ -245,7 +258,7 @@ export class IntegrationManager {
       : undefined;
   }
 
-  getAllPlugs() {
+  getAllPlugs(creditPricing: CreditPricing = CURRENT_CREDIT_PRICING) {
     return socialIntegrationList
       .map((provider) => {
         return {
@@ -260,7 +273,13 @@ export class IntegrationManager {
             .filter((f: any) => !f.disabled)
             .map((p: any) => ({
               ...p,
-              credits: this.plugCredits(provider, p.methodName, p.fields),
+              credits: this.plugCredits(
+                provider,
+                p.methodName,
+                p.fields,
+                true,
+                creditPricing
+              ),
               fields: p.fields.map((c: any) => ({
                 ...c,
                 validation: c?.validation?.toString(),
@@ -281,7 +300,10 @@ export class IntegrationManager {
     );
   }
 
-  getInternalPlugs(providerName: string) {
+  getInternalPlugs(
+    providerName: string,
+    creditPricing: CreditPricing = CURRENT_CREDIT_PRICING
+  ) {
     const p = socialIntegrationList.find((p) => p.identifier === providerName)!;
     return {
       internalPlugs:
@@ -296,7 +318,13 @@ export class IntegrationManager {
             ...f,
             // An internal plug acts once, on the post it is attached to,
             // without watching it first.
-            credits: this.plugCredits(p, f.methodName, f.fields, false),
+            credits: this.plugCredits(
+              p,
+              f.methodName,
+              f.fields,
+              false,
+              creditPricing
+            ),
           })) || [],
     };
   }

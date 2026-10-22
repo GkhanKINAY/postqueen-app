@@ -3,22 +3,34 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 import { Seedance } from './seedance.ts';
 import {
+  CREDIT_PRICINGS,
   IMAGE_CREDIT_COSTS,
   imageCreditCost,
+  SEEDANCE_CREDIT_COSTS,
+  SEEDANCE_MODELS,
+  SEEDANCE_RESOLUTIONS,
 } from '../../database/prisma/subscriptions/pricing.ts';
 
 const seedance = new Seedance();
 const realFetch = globalThis.fetch;
 
 // The request the generator would send, caught before it leaves.
-const requestFor = async (params: Record<string, unknown>, output: 'vertical' | 'horizontal' = 'vertical') => {
+const requestFor = async (
+  params: Record<string, unknown>,
+  output: 'vertical' | 'horizontal' = 'vertical',
+  creditPricing: 'legacy' | 'v2' = 'legacy'
+) => {
   let body: any;
   globalThis.fetch = (async (_url: string, init: any) => {
     body = JSON.parse(init.body);
     throw new Error('stop');
   }) as any;
   await assert.rejects(
-    seedance.process(output, { prompt: 'a harbour at dawn', images: [], ...params } as any),
+    seedance.process(
+      output,
+      { prompt: 'a harbour at dawn', images: [], ...params } as any,
+      creditPricing
+    ),
     /stop/
   );
   return body;
@@ -30,16 +42,46 @@ afterEach(() => {
 
 describe('Seedance price', () => {
   it('prices the request that names nothing as every video was priced before: fast, 720p, 8 s', () => {
-    assert.equal(seedance.cost('vertical', undefined), 3200);
-    assert.equal(seedance.cost('vertical', { prompt: 'x', images: [] } as any), 3200);
+    assert.equal(seedance.cost('vertical', undefined, 'legacy'), 3200);
+    assert.equal(
+      seedance.cost('vertical', { prompt: 'x', images: [] } as any, 'legacy'),
+      3200
+    );
+  });
+
+  it('prices it on v2 as mini, 720p, 5 s', () => {
+    assert.equal(seedance.cost('vertical', undefined, 'v2'), 2000);
+    assert.deepEqual(SEEDANCE_CREDIT_COSTS.v2.defaults, {
+      model: 'mini',
+      resolution: '720p',
+      duration: 5,
+    });
   });
 
   it('prices by model, resolution and seconds, the seconds read from a form as text', () => {
-    assert.equal(seedance.cost('vertical', { model: 'mini', resolution: '480p', duration: '5' } as any), 250);
-    assert.equal(seedance.cost('vertical', { model: 'standard', resolution: '1080p', duration: 8 } as any), 10000);
-    assert.equal(seedance.cost('horizontal', { model: 'fast', resolution: '720p', duration: '15' } as any), 6000);
+    assert.equal(seedance.cost('vertical', { model: 'mini', resolution: '480p', duration: '5' } as any, 'legacy'), 250);
+    assert.equal(seedance.cost('vertical', { model: 'standard', resolution: '1080p', duration: 8 } as any, 'legacy'), 10000);
+    assert.equal(seedance.cost('horizontal', { model: 'fast', resolution: '720p', duration: '15' } as any, 'legacy'), 6000);
+    assert.equal(seedance.cost('vertical', { model: 'fast', resolution: '720p', duration: 8 } as any, 'v2'), 5600);
     // priced before validation for the quote: an unknown choice is nothing, not a crash
-    assert.equal(seedance.cost('vertical', { model: 'nope' } as any), 0);
+    assert.equal(seedance.cost('vertical', { model: 'nope' } as any, 'legacy'), 0);
+  });
+
+  it('keeps mini the cheapest at every resolution, and every default priced, on each list', () => {
+    for (const cp of CREDIT_PRICINGS) {
+      const { perSecond, defaults } = SEEDANCE_CREDIT_COSTS[cp];
+      assert.ok(perSecond[defaults.model]?.[defaults.resolution], cp);
+      for (const resolution of SEEDANCE_RESOLUTIONS) {
+        const offered = SEEDANCE_MODELS.filter((m) => perSecond[m][resolution]);
+        if (!perSecond.mini[resolution]) continue;
+        for (const model of offered) {
+          assert.ok(
+            perSecond.mini[resolution]! <= perSecond[model][resolution]!,
+            `${cp} ${model} ${resolution}`
+          );
+        }
+      }
+    }
   });
 
   it('refuses a resolution the model does not offer', async () => {
@@ -51,6 +93,11 @@ describe('Seedance price', () => {
       seedance.processAndValidate({ prompt: 'x', images: [], duration: 20 } as any)
     );
     await seedance.processAndValidate({ prompt: 'x', images: [], model: 'standard', resolution: '1080p' } as any);
+    // on v2 a request that names no model is mini, which has no 1080p
+    await assert.rejects(
+      seedance.processAndValidate({ prompt: 'x', images: [], resolution: '1080p' } as any, 'v2'),
+      /Seedance mini does not offer 1080p/
+    );
   });
 });
 
@@ -61,6 +108,17 @@ describe('Seedance request', () => {
       prompt: 'a harbour at dawn',
       aspect_ratio: '9:16',
       duration: 8,
+      quality: '720p',
+      generate_audio: true,
+    });
+  });
+
+  it('sends the v2 default when nothing is chosen there, the video it was priced at', async () => {
+    assert.deepEqual(await requestFor({}, 'vertical', 'v2'), {
+      model: 'seedance-2.0-mini-text-to-video',
+      prompt: 'a harbour at dawn',
+      aspect_ratio: '9:16',
+      duration: 5,
       quality: '720p',
       generate_audio: true,
     });
@@ -83,14 +141,24 @@ describe('Seedance request', () => {
 });
 
 describe('Image price', () => {
-  it('is by quality, and a portrait or landscape image costs more than a square one', () => {
-    assert.equal(imageCreditCost(), IMAGE_CREDIT_COSTS.medium.square);
-    assert.equal(imageCreditCost('medium', 'square'), 100);
+  it('is by quality, and before v2 a portrait or landscape image costs more than a square one', () => {
+    assert.equal(imageCreditCost('legacy'), IMAGE_CREDIT_COSTS.legacy.medium.square);
+    assert.equal(imageCreditCost('legacy', 'medium', 'square'), 100);
     for (const quality of ['low', 'medium', 'high'] as const) {
-      assert.ok(imageCreditCost(quality, 'portrait') > imageCreditCost(quality, 'square'));
-      assert.equal(imageCreditCost(quality, 'portrait'), imageCreditCost(quality, 'landscape'));
+      assert.ok(imageCreditCost('legacy', quality, 'portrait') > imageCreditCost('legacy', quality, 'square'));
+      assert.equal(imageCreditCost('legacy', quality, 'portrait'), imageCreditCost('legacy', quality, 'landscape'));
     }
-    assert.ok(imageCreditCost('low') < imageCreditCost('medium'));
-    assert.ok(imageCreditCost('medium') < imageCreditCost('high'));
+    assert.ok(imageCreditCost('legacy', 'low') < imageCreditCost('legacy', 'medium'));
+    assert.ok(imageCreditCost('legacy', 'medium') < imageCreditCost('legacy', 'high'));
+  });
+
+  it('is one price a quality on v2, whatever the shape: 1, 2 and 4 credits', () => {
+    for (const shape of ['square', 'portrait', 'landscape'] as const) {
+      assert.deepEqual(
+        (['low', 'medium', 'high'] as const).map((q) => imageCreditCost('v2', q, shape)),
+        [100, 200, 400]
+      );
+    }
+    assert.equal(imageCreditCost('v2'), 200);
   });
 });

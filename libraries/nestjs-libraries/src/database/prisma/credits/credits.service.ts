@@ -7,6 +7,8 @@ import {
   insufficientCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.repository';
 import {
+  CreditPricing,
+  creditPricingOf,
   LLM_CONTINUATION_FLOOR,
   LLM_TURN_MINIMUM,
   llmCreditCost,
@@ -18,7 +20,10 @@ export interface LlmUsage {
   /** Unique per model call, so a callback that fires twice charges once. */
   key: string;
   model?: string | null;
+  /** The whole prompt, the cached part included. */
   inputTokens: number;
+  /** The part of `inputTokens` the provider served from its cache. */
+  cachedInputTokens?: number;
   outputTokens: number;
   action: string;
 }
@@ -36,11 +41,26 @@ export class CreditsService {
 
   constructor(private _creditsRepository: CreditsRepository) {}
 
+  /**
+   * The price list the organization's credits follow (see `CreditPricing`),
+   * read from its subscription. Callers read it once for a piece of work and
+   * pass it down, so one request never prices with two lists.
+   */
+  async creditPricing(organizationId: string): Promise<CreditPricing> {
+    return creditPricingOf(
+      await this._creditsRepository.subscriptionCreditPricing(organizationId)
+    );
+  }
+
   async balance(organizationId: string) {
+    // The screens price what they show (a plan's images, a pack's videos)
+    // with the organization's own list, billing on or off.
+    const creditPricing = await this.creditPricing(organizationId);
+
     // `balance: null` rather than a number, so a screen that forgets to check
     // `unlimited` shows nothing instead of a wrong figure.
     if (!isBillingEnabled()) {
-      return { unlimited: true, balance: null, expiring: null };
+      return { unlimited: true, balance: null, expiring: null, creditPricing };
     }
 
     const { balance, expiring } = await this._creditsRepository.balance(
@@ -53,6 +73,7 @@ export class CreditsService {
       expiring: expiring
         ? { amount: toCredits(expiring.amount), at: expiring.at }
         : null,
+      creditPricing,
     };
   }
 
@@ -103,14 +124,25 @@ export class CreditsService {
    * already paid for by then, so the balance may go below zero; the next
    * turn is refused instead (`LLM_TURN_MINIMUM`).
    */
-  chargeLlm(organizationId: string, usage: LlmUsage) {
+  async chargeLlm(organizationId: string, usage: LlmUsage) {
+    // Nothing is metered with billing off, so there is no list to read.
+    if (!isBillingEnabled()) {
+      return { id: null, charged: false };
+    }
     return this.spend(organizationId, {
       key: usage.key,
-      amount: llmCreditCost(usage.model, usage.inputTokens, usage.outputTokens),
+      amount: llmCreditCost(
+        await this.creditPricing(organizationId),
+        usage.model,
+        usage.inputTokens,
+        usage.outputTokens,
+        usage.cachedInputTokens
+      ),
       action: usage.action,
       meta: {
         model: usage.model || null,
         inputTokens: usage.inputTokens,
+        cachedInputTokens: usage.cachedInputTokens || 0,
         outputTokens: usage.outputTokens,
       },
       allowOverdraft: true,

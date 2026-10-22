@@ -13,7 +13,8 @@ import {
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
   CreditPackId,
-  pricing,
+  CURRENT_CREDIT_PRICING,
+  monthlyCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   formatCredits,
@@ -186,7 +187,10 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
     return <CreditsPacksGhost />;
   }
 
-  const planCredits = tier ? pricing[tier]?.monthly_credits : 0;
+  // The plan's credits on the organization's own list: a subscription keeps
+  // the one it started with.
+  const creditPricing = data?.creditPricing ?? CURRENT_CREDIT_PRICING;
+  const planCredits = tier ? monthlyCredits(creditPricing, tier) : 0;
 
   return (
     <div

@@ -1,4 +1,5 @@
 import { Injectable, Type, ValidationPipe } from '@nestjs/common';
+import { CreditPricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export type URL = string;
 
@@ -12,7 +13,11 @@ export type VideoOutput = URL | { localPath: string };
 export abstract class VideoAbstract<T> {
   dto: Type<T>;
 
-  async processAndValidate(customParams?: T) {
+  /**
+   * Checks the parameters. `creditPricing` is the organization's price list,
+   * for a generator whose defaults depend on it.
+   */
+  async processAndValidate(customParams?: T, _creditPricing?: CreditPricing) {
     const validationPipe = new ValidationPipe({
       skipMissingProperties: false,
       transform: true,
@@ -27,17 +32,27 @@ export abstract class VideoAbstract<T> {
     });
   }
 
+  /**
+   * Makes the video. `creditPricing` is the list it is charged on, so a
+   * request that leaves a setting out gets the default it was priced at.
+   */
   abstract process(
     output: 'vertical' | 'horizontal',
-    customParams?: T
+    customParams: T | undefined,
+    creditPricing: CreditPricing
   ): Promise<VideoOutput>;
 
   /**
    * What generating this video costs, in hundredths of a credit, for these
-   * parameters. Each generator prices itself: what a provider charges for a
-   * second of video, and which options change it, is the generator's to know.
+   * parameters on this price list. Each generator prices itself: what a
+   * provider charges for a second of video, and which options change it, is
+   * the generator's to know.
    */
-  abstract cost(output: 'vertical' | 'horizontal', customParams?: T): number;
+  abstract cost(
+    output: 'vertical' | 'horizontal',
+    customParams: T | undefined,
+    creditPricing: CreditPricing
+  ): number;
 }
 
 export interface VideoParams {

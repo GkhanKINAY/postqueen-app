@@ -288,13 +288,13 @@ export class AutopostService {
    * item, checked before anything is made so a short balance spends nothing.
    */
   private async creditsShort(autopost: AutoPost) {
+    const costs =
+      AI_FIXED_CREDIT_COSTS_PROPOSAL[
+        await this._creditsService.creditPricing(autopost.organizationId)
+      ];
     const amount =
-      (autopost.generateContent
-        ? AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText
-        : 0) +
-      (autopost.addPicture
-        ? AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture
-        : 0);
+      (autopost.generateContent ? costs.autopostText : 0) +
+      (autopost.addPicture ? costs.autopostPicture : 0);
     if (!amount) {
       return false;
     }
@@ -353,7 +353,12 @@ export class AutopostService {
         state.body.organizationId,
         {
           key: `${state.creditKey}:text`,
-          amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText,
+          amount:
+            AI_FIXED_CREDIT_COSTS_PROPOSAL[
+              await this._creditsService.creditPricing(
+                state.body.organizationId
+              )
+            ].autopostText,
           action: 'autopost',
         },
         () => this.writeDescription(description)
@@ -405,7 +410,12 @@ export class AutopostService {
         state.body.organizationId,
         {
           key: `${state.creditKey}:picture`,
-          amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture,
+          amount:
+            AI_FIXED_CREDIT_COSTS_PROPOSAL[
+              await this._creditsService.creditPricing(
+                state.body.organizationId
+              )
+            ].autopostPicture,
           action: 'autopost_image',
         },
         async () => {

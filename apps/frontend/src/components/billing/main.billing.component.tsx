@@ -17,12 +17,14 @@ import {
   LIFETIME_ON_SALE,
   LIFETIME_PRICE,
   LIFETIME_RETENTION_PRICE,
+  monthlyCredits,
   monthsFree,
   PaidTier,
   pricing,
   TRIAL_DAYS,
   tierLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billing-period-toggle';
 import { useSWRConfig } from 'swr';
@@ -140,6 +142,9 @@ export const Features: FC<{
   const { pack, period } = props;
   const t = useT();
   const { clippingEnabled } = useVariables();
+  // The plan's credits on the viewer's own list, once that is known.
+  const creditPricing = useCreditPricing();
+  const monthly = creditPricing ? monthlyCredits(creditPricing, pack) : 0;
   const features = useMemo(() => {
     const currentPricing = pricing[pack];
     const channelsOr = currentPricing.channel;
@@ -183,15 +188,15 @@ export const Features: FC<{
     }
     list.push({ label: t('plan_picture_editor', 'Advanced Picture Editor') });
     // One balance pays for AI images, videos and the rest, by what each costs.
-    if (currentPricing?.monthly_credits) {
+    if (monthly) {
       list.push({
         label:
           period === 'YEARLY'
             ? t('plan_n_credits_year', '{{count}} credits a year', {
-                count: currentPricing.monthly_credits * 12,
+                count: monthly * 12,
               })
             : t('plan_n_credits_month', '{{count}} credits a month', {
-                count: currentPricing.monthly_credits,
+                count: monthly,
               }),
       });
     }
@@ -207,7 +212,7 @@ export const Features: FC<{
       });
     }
     return list;
-  }, [pack, period, t, clippingEnabled]);
+  }, [pack, period, t, clippingEnabled, monthly]);
   return (
     <div className="flex flex-col gap-[9px]">
       {features.map((feature) => (

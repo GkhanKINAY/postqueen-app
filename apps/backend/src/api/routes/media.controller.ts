@@ -77,8 +77,8 @@ export class MediaController {
 
   // What a video with these settings costs, shown before it is made.
   @Post('/generate-video/quote')
-  quoteVideo(@Body() body: VideoDto) {
-    return this._mediaService.quoteVideo(body);
+  quoteVideo(@GetOrgFromRequest() org: Organization, @Body() body: VideoDto) {
+    return this._mediaService.quoteVideo(org, body);
   }
 
   // A short balance is refused by the charge itself, with a 402 that says

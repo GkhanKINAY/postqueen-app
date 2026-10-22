@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import Loading from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
+  CURRENT_CREDIT_PRICING,
   IMAGE_QUALITIES,
   ImageQuality,
   imageCreditCost,
@@ -89,8 +90,10 @@ const AiImageModal: FC<{
   const [quality, setQuality] = useState<ImageQuality>('medium');
   const { billingEnabled } = useVariables();
   const { data: credits } = useCreditsBalance();
-  // What this image costs with the quality and shape chosen, in credits.
-  const cost = toCredits(imageCreditCost(quality, orientation));
+  // What this image costs with the quality and shape chosen, in credits, on
+  // the organization's price list.
+  const creditPricing = credits?.creditPricing ?? CURRENT_CREDIT_PRICING;
+  const cost = toCredits(imageCreditCost(creditPricing, quality, orientation));
   const short =
     billingEnabled &&
     !!credits &&
@@ -238,7 +241,7 @@ const AiImageModal: FC<{
               {qualityLabel[p]}
               {billingEnabled && (
                 <CreditsAmount
-                  amount={toCredits(imageCreditCost(p, orientation))}
+                  amount={toCredits(imageCreditCost(creditPricing, p, orientation))}
                   size={11}
                   className={clsx(
                     'text-[11px] font-[500]',

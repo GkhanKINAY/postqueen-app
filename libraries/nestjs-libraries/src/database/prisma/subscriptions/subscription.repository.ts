@@ -5,6 +5,10 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import dayjs from 'dayjs';
 import { Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
+import {
+  CreditPricing,
+  CURRENT_CREDIT_PRICING,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 @Injectable()
 export class SubscriptionRepository {
@@ -184,6 +188,7 @@ export class SubscriptionRepository {
         provider: true,
         isLifetime: true,
         subscriptionTier: true,
+        creditPricing: true,
         createdAt: true,
         organization: {
           select: {
@@ -361,7 +366,8 @@ export class SubscriptionRepository {
     period: 'MONTHLY' | 'YEARLY',
     cancelAt: number | null,
     code?: string,
-    org?: { id: string }
+    org?: { id: string },
+    creditPricing: CreditPricing = CURRENT_CREDIT_PRICING
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -401,6 +407,9 @@ export class SubscriptionRepository {
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         identifier,
         deletedAt: null,
+        // Fixed here and never updated: a plan change, a renewal or a
+        // provider event keeps the list the subscription started with.
+        creditPricing,
       },
     });
 

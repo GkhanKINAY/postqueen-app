@@ -33,12 +33,17 @@ before(async () => {
   }
 });
 
-// A network that bills per post, priced the way X is: a link costs more.
+// A network that bills per post, priced the way X is: a link costs more,
+// and each price list has its own prices.
 const billed = {
-  creditCost: (op: any) =>
+  creditCost: (op: any, creditPricing: string) =>
     op.type === 'publish'
       ? /https?:\/\//.test(op.message)
-        ? 500
+        ? creditPricing === 'v2'
+          ? 1000
+          : 500
+        : creditPricing === 'v2'
+        ? 100
         : 40
       : undefined,
 };
@@ -49,7 +54,11 @@ let open: Map<string, number>;
 let ever: Set<string>;
 let settled: string[];
 let balance: number;
+let creditPricing: 'legacy' | 'v2';
 const credits = {
+  async creditPricing() {
+    return creditPricing;
+  },
   async assertAvailable(_org: string, amount: number) {
     if (amount > balance) {
       throw insufficientCredits(amount, balance);
@@ -199,6 +208,7 @@ beforeEach(() => {
   open = new Map();
   ever = new Set();
   settled = [];
+  creditPricing = 'legacy';
   posts = new Map();
   balance = 1000;
 });
@@ -247,6 +257,25 @@ describe(
       );
       balance = 580;
       await service().assertPublishCredits('org-1', [request]);
+    });
+
+    it("prices on the organization's own list", async () => {
+      // A subscription sold since v2 pays its prices; one sold before keeps
+      // the old ones (the other tests).
+      creditPricing = 'v2';
+      const { channels, needed } = await service().publishCredits(
+        'org-1',
+        'schedule',
+        [
+          channel('x-1', 'x', ['<p>Launch</p>']),
+          channel('x-2', 'x', ['<p>Read https://example.com</p>']),
+        ]
+      );
+      assert.deepEqual(
+        channels.map((c: any) => c.cost),
+        [100, 1000]
+      );
+      assert.equal(needed, 1100);
     });
 
     it('prices a channel by what it is, whatever the request says it is', async () => {

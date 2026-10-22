@@ -42,6 +42,7 @@ import { organizationId } from '@gitroom/nestjs-libraries/temporal/temporal.sear
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   effectiveIsTrailing,
+  CreditPricing,
   imageCreditCost,
   ImageQuality,
   toCredits,
@@ -144,11 +145,12 @@ export class MediaService {
     key = `image:${makeId(20)}`
   ) {
     try {
+      const creditPricing = await this._creditsService.creditPricing(org.id);
       return await this._creditsService.withCredits(
         org.id,
         {
           key,
-          amount: imageCreditCost(quality, orientation),
+          amount: imageCreditCost(creditPricing, quality, orientation),
           action: 'image',
           meta: { quality: quality || 'medium', orientation: orientation || 'square' },
         },
@@ -587,7 +589,11 @@ export class MediaService {
     return true;
   }
 
-  private async validateVideoRequest(org: Organization, body: VideoDto) {
+  private async validateVideoRequest(
+    org: Organization,
+    body: VideoDto,
+    creditPricing: CreditPricing
+  ) {
     const video = this._videoManager.getVideoByName(body.type);
     if (!video) {
       throw new HttpException(`Video generator ${body.type} not found`, 404);
@@ -597,13 +603,13 @@ export class MediaService {
       throw new HttpException('This video is not available in trial mode', 406);
     }
 
-    await video.instance.processAndValidate(body.customParams);
+    await video.instance.processAndValidate(body.customParams, creditPricing);
 
     // Refused before a job exists, with what it would cost; the charge itself
     // is taken when the video is made.
     await this._creditsService.assertAvailable(
       org.id,
-      video.instance.cost(body.output, body.customParams)
+      video.instance.cost(body.output, body.customParams, creditPricing)
     );
     return video;
   }
@@ -613,13 +619,16 @@ export class MediaService {
    * is still being filled in, so a prompt not written yet is not an error
    * here. The charge itself is priced again from the validated request.
    */
-  quoteVideo(body: VideoDto) {
+  async quoteVideo(org: Organization, body: VideoDto) {
     const video = this._videoManager.getVideoByName(body.type);
     if (!video) {
       throw new HttpException(`Video generator ${body.type} not found`, 404);
     }
+    const creditPricing = await this._creditsService.creditPricing(org.id);
     return {
-      credits: toCredits(video.instance.cost(body.output, body.customParams)),
+      credits: toCredits(
+        video.instance.cost(body.output, body.customParams, creditPricing)
+      ),
     };
   }
 
@@ -630,20 +639,26 @@ export class MediaService {
    */
   async generateVideo(org: Organization, body: VideoDto, key?: string) {
     try {
-      const video = await this.validateVideoRequest(org, body);
+      const creditPricing = await this._creditsService.creditPricing(org.id);
+      const video = await this.validateVideoRequest(org, body, creditPricing);
 
       return await this._creditsService.withCredits(
         org.id,
         {
           key: `video:${key || makeId(20)}`,
-          amount: video.instance.cost(body.output, body.customParams),
+          amount: video.instance.cost(
+            body.output,
+            body.customParams,
+            creditPricing
+          ),
           action: 'video',
           meta: { type: body.type, output: body.output },
         },
         async () => {
           const produced = await video.instance.process(
             body.output,
-            body.customParams
+            body.customParams,
+            creditPricing
           );
           // A provider's own URL is downloaded beside a file the generator
           // rendered here; either is brought to the rules and given a poster
@@ -694,7 +709,11 @@ export class MediaService {
   async startGenerateVideo(org: Organization, body: VideoDto) {
     // validated here as well as in the workflow so bad input fails before a job exists
     try {
-      await this.validateVideoRequest(org, body);
+      await this.validateVideoRequest(
+        org,
+        body,
+        await this._creditsService.creditPricing(org.id)
+      );
     } catch (err) {
       throw generationError(err);
     }

@@ -24,11 +24,13 @@ import {
   lifetimeWindow,
   monthsFree,
   normalizeTier,
+  monthlyCredits,
   pricing,
   TRIAL_DAYS,
   tierLabel,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
 import clsx from 'clsx';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { Button } from '@gitroom/react/form/button';
@@ -1437,6 +1439,9 @@ export const BillingFeatures: FC<{
 }> = ({ tier, tone = 'brand', period }) => {
   const t = useT();
   const { clippingEnabled } = useVariables();
+  // The plan's credits on the viewer's own list, once that is known.
+  const creditPricing = useCreditPricing();
+  const monthly = creditPricing ? monthlyCredits(creditPricing, tier) : 0;
   const features = useMemo(() => {
     const currentPricing = pricing[tier];
     const channelsOr = currentPricing.channel;
@@ -1492,18 +1497,18 @@ export const BillingFeatures: FC<{
       defaultValue: 'Advanced Picture Editor',
     });
     // One balance pays for AI images, videos and the rest, by what each costs.
-    if (currentPricing?.monthly_credits) {
+    if (monthly) {
       list.push(
         period === 'YEARLY'
           ? {
               key: 'billing_credits_per_year',
               defaultValue: 'credits a year, added a month at a time',
-              prefix: currentPricing.monthly_credits * 12,
+              prefix: monthly * 12,
             }
           : {
               key: 'billing_credits_per_month',
               defaultValue: 'credits a month',
-              prefix: currentPricing.monthly_credits,
+              prefix: monthly,
             }
       );
     }
@@ -1517,7 +1522,7 @@ export const BillingFeatures: FC<{
       });
     }
     return list;
-  }, [tier, period, clippingEnabled]);
+  }, [tier, period, clippingEnabled, monthly]);
 
   const renderFeature = (feature: FeatureItem) => {
     const translatedText = t(feature.key, feature.defaultValue);

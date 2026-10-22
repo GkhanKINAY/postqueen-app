@@ -12,6 +12,7 @@ import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
+  CURRENT_CREDIT_PRICING,
   imageCreditCost,
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -20,9 +21,6 @@ import {
   useCreditsBalance,
 } from '@gitroom/frontend/components/billing/use.credits.balance';
 
-// This tab makes a medium, square image, the route's default.
-const COST = toCredits(imageCreditCost('medium', 'square'));
-
 const GenerateTab = observer(({ store }: any) => {
   const inputRef = React.useRef<any>(null);
   const [image, setImage] = React.useState(null);
@@ -30,6 +28,15 @@ const GenerateTab = observer(({ store }: any) => {
   const fetch = useFetch();
   const toast = useToaster();
   const { data, mutate } = useCreditsBalance();
+  // This tab makes a medium, square image, the route's default, priced on
+  // the organization's list.
+  const COST = toCredits(
+    imageCreditCost(
+      data?.creditPricing ?? CURRENT_CREDIT_PRICING,
+      'medium',
+      'square'
+    )
+  );
   const short = !!data && !data.unlimited && (data.balance ?? 0) < COST;
   const t = useT();
 

@@ -19,35 +19,20 @@ import {
 import { Type } from 'class-transformer';
 import { JSONSchema } from 'class-validator-jsonschema';
 import { BadRequestException } from '@nestjs/common';
-
-const MODELS = ['fast', 'standard', 'mini'] as const;
-const RESOLUTIONS = ['480p', '720p', '1080p'] as const;
-const ASPECT_RATIOS = ['9:16', '16:9', '1:1', '4:3', '3:4'] as const;
-type SeedanceModel = (typeof MODELS)[number];
-type SeedanceResolution = (typeof RESOLUTIONS)[number];
-
-/**
- * Credits a second of video costs, in hundredths, by model and resolution:
- * EvoLink's price per second times the rate every credit cost is set by
- * (25 credits a dollar), read from its pricing pages on 2026-09-26. A
- * resolution a model does not offer is missing, and refused. Audio is free.
- */
-const PER_SECOND: Record<
+import {
+  CreditPricing,
+  SEEDANCE_CREDIT_COSTS,
+  SEEDANCE_MODELS,
+  SEEDANCE_RESOLUTIONS,
   SeedanceModel,
-  Partial<Record<SeedanceResolution, number>>
-> = {
-  mini: { '480p': 50, '720p': 100 },
-  fast: { '480p': 185, '720p': 400 },
-  standard: { '480p': 235, '720p': 500, '1080p': 1250 },
-};
+  SeedanceResolution,
+  seedanceCreditCost,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
-// What a request that names nothing gets, which is what every video was
-// before these could be chosen.
-const DEFAULTS = {
-  model: 'fast' as SeedanceModel,
-  resolution: '720p' as SeedanceResolution,
-  duration: 8,
-};
+// The price a second, by model and resolution, and what a request that names
+// nothing gets, are in pricing.ts (`SEEDANCE_CREDIT_COSTS`), one set per
+// price list, so the form and the charge read the same numbers.
+const ASPECT_RATIOS = ['9:16', '16:9', '1:1', '4:3', '3:4'] as const;
 
 class Image {
   @IsString()
@@ -59,7 +44,7 @@ class Image {
 class SeedanceParams {
   @JSONSchema({
     description:
-      'One scene of about 8 seconds as a visual brief: camera, subject, motion, light, atmosphere. Plain text, no JSON, no on-screen text or logos.',
+      'One scene as a visual brief: camera, subject, motion, light, atmosphere. Plain text, no JSON, no on-screen text or logos.',
   })
   @IsString()
   prompt: string;
@@ -76,10 +61,10 @@ class SeedanceParams {
 
   @JSONSchema({
     description:
-      'fast (default), standard (sharper, and the only one with 1080p) or mini. Standard costs the most credits per second, mini the least.',
+      'mini, fast or standard (sharper, and the only one with 1080p). Mini costs the fewest credits per second, standard the most. Left out, the account default.',
   })
   @IsOptional()
-  @IsIn(MODELS)
+  @IsIn(SEEDANCE_MODELS)
   model?: SeedanceModel;
 
   @JSONSchema({
@@ -87,11 +72,12 @@ class SeedanceParams {
       '480p, 720p (default) or 1080p (standard only). Higher costs more credits.',
   })
   @IsOptional()
-  @IsIn(RESOLUTIONS)
+  @IsIn(SEEDANCE_RESOLUTIONS)
   resolution?: SeedanceResolution;
 
   @JSONSchema({
-    description: 'Length in seconds, 4 to 15 (default 8). Credits are per second.',
+    description:
+      'Length in seconds, 4 to 15. Credits are per second. Left out, the account default.',
   })
   @IsOptional()
   @IsInt()
@@ -115,12 +101,19 @@ class SeedanceParams {
 
 // A form or an API client can post its choices as text ("8", "false"), and
 // validation does not write its conversion back, so they are converted here.
-const settings = (params?: SeedanceParams) => ({
-  model: params?.model || DEFAULTS.model,
-  resolution: params?.resolution || DEFAULTS.resolution,
-  duration: Number(params?.duration) || DEFAULTS.duration,
-  audio: String(params?.audio ?? true) !== 'false',
-});
+// Left out, a setting is the default of the list the video is charged on.
+const settings = (
+  params: SeedanceParams | undefined,
+  creditPricing: CreditPricing
+) => {
+  const defaults = SEEDANCE_CREDIT_COSTS[creditPricing].defaults;
+  return {
+    model: params?.model || defaults.model,
+    resolution: params?.resolution || defaults.resolution,
+    duration: Number(params?.duration) || defaults.duration,
+    audio: String(params?.audio ?? true) !== 'false',
+  };
+};
 
 @Video({
   identifier: 'seedance',
@@ -135,29 +128,42 @@ const settings = (params?: SeedanceParams) => ({
 export class Seedance extends VideoAbstract<SeedanceParams> {
   override dto = SeedanceParams;
 
-  override async processAndValidate(customParams?: SeedanceParams) {
+  override async processAndValidate(
+    customParams?: SeedanceParams,
+    creditPricing: CreditPricing = 'legacy'
+  ) {
     await super.processAndValidate(customParams);
-    const { model, resolution } = settings(customParams);
-    if (!PER_SECOND[model]?.[resolution]) {
+    const { model, resolution } = settings(customParams, creditPricing);
+    if (!SEEDANCE_CREDIT_COSTS[creditPricing].perSecond[model]?.[resolution]) {
       throw new BadRequestException(
         `Seedance ${model} does not offer ${resolution}`
       );
     }
   }
 
-  cost(output: 'vertical' | 'horizontal', customParams?: SeedanceParams) {
+  cost(
+    output: 'vertical' | 'horizontal',
+    customParams: SeedanceParams | undefined,
+    creditPricing: CreditPricing
+  ) {
     // Priced before validation too (the quote): an unknown choice prices at
     // nothing rather than failing, and the request itself is refused.
-    const { model, resolution, duration } = settings(customParams);
-    return Math.ceil((PER_SECOND[model]?.[resolution] || 0) * duration);
+    return seedanceCreditCost(
+      creditPricing,
+      settings(customParams, creditPricing)
+    );
   }
 
   async process(
     output: 'vertical' | 'horizontal',
-    customParams: SeedanceParams
+    customParams: SeedanceParams,
+    creditPricing: CreditPricing
   ): Promise<URL> {
     const imageUrls = customParams?.images?.map((p) => p.path) || [];
-    const { model, resolution, duration, audio } = settings(customParams);
+    const { model, resolution, duration, audio } = settings(
+      customParams,
+      creditPricing
+    );
     const value = await (
       await fetch('https://api.evolink.ai/v1/videos/generations', {
         headers: {

@@ -93,6 +93,7 @@ describe('meteredFetch', () => {
         id: 'resp_1',
         model: 'gpt-4.1-2025-04-14',
         inputTokens: 812,
+        cachedInputTokens: 0,
         outputTokens: 47,
       },
     ]);
@@ -119,6 +120,7 @@ describe('meteredFetch', () => {
         id: 'chatcmpl-1',
         model: 'gpt-4.1-2025-04-14',
         inputTokens: 300,
+        cachedInputTokens: 0,
         outputTokens: 20,
       },
     ]);
@@ -199,7 +201,13 @@ describe('meteredFetch', () => {
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(sent[0].body.stream_options, undefined);
     assert.deepEqual(reported, [
-      { id: 'chatcmpl-2', model: 'gpt-4.1', inputTokens: 10, outputTokens: 2 },
+      {
+        id: 'chatcmpl-2',
+        model: 'gpt-4.1',
+        inputTokens: 10,
+        cachedInputTokens: 0,
+        outputTokens: 2,
+      },
     ]);
   });
 
@@ -225,6 +233,31 @@ describe('meteredFetch', () => {
 });
 
 describe('openAiUsage', () => {
+  it('reads the cached part of the prompt, as either API names it', () => {
+    assert.equal(
+      openAiUsage({
+        id: 'resp_c',
+        usage: {
+          input_tokens: 100,
+          output_tokens: 5,
+          input_tokens_details: { cached_tokens: 80 },
+        },
+      })?.cachedInputTokens,
+      80
+    );
+    assert.equal(
+      openAiUsage({
+        id: 'chatcmpl-c',
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 5,
+          prompt_tokens_details: { cached_tokens: 64 },
+        },
+      })?.cachedInputTokens,
+      64
+    );
+  });
+
   it('is nothing until the usage is there', () => {
     assert.equal(
       openAiUsage({
@@ -288,6 +321,7 @@ describe('meteredClient', () => {
           key: 'llm:chatcmpl-9',
           model: 'gpt-4.1-2025-04-14',
           inputTokens: 120,
+          cachedInputTokens: 0,
           outputTokens: 8,
           action: 'copilot_chat',
         },
@@ -363,6 +397,7 @@ describe('/copilot/chat', () => {
           key: 'llm:resp_7',
           model: 'gpt-4.1-2025-04-14',
           inputTokens: 640,
+          cachedInputTokens: 0,
           outputTokens: 32,
           action: 'copilot_chat',
         },

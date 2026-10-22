@@ -13,6 +13,9 @@ import {
   LLM_CONTINUATION_FLOOR,
   LLM_CREDIT_RATES,
   LLM_TURN_MINIMUM,
+  CREDIT_PRICINGS,
+  creditPricingOf,
+  CURRENT_CREDIT_PRICING,
   imageCreditCost,
   llmCreditCost,
   llmCreditRate,
@@ -24,6 +27,9 @@ const read = (rel: string) =>
 const repository = read('./credits.repository.ts');
 const schema = read('../schema.prisma');
 const migration = read('../migrations/20260926120000_credit_balance/migration.sql');
+const pricingMigration = read(
+  '../migrations/20261023120000_subscription_credit_pricing/migration.sql'
+);
 const databaseModule = read('../database.module.ts');
 const stripe = read('../../../services/stripe.service.ts');
 const buyCreditsDto = read('../../../dtos/billing/buy.credits.dto.ts');
@@ -36,10 +42,12 @@ let calls: unknown[][];
 let spends: unknown[];
 let charged: boolean;
 let balance: number;
+let subscription: { creditPricing: string } | null;
 
 const service = () =>
   new CreditsService({
     balance: async () => ({ balance, expiring: null }),
+    subscriptionCreditPricing: async () => subscription,
     spend: async (org: string, spend: { key: string }) => {
       calls.push(['spend', org, spend.key]);
       spends.push(spend);
@@ -72,6 +80,7 @@ beforeEach(() => {
   spends = [];
   charged = true;
   balance = 0;
+  subscription = { creditPricing: 'legacy' };
   billing(true);
 });
 
@@ -179,6 +188,7 @@ describe('Billing off', () => {
       unlimited: true,
       balance: null,
       expiring: null,
+      creditPricing: 'legacy',
     });
     assert.deepEqual(await service().spend('org-1', spend), {
       id: null,
@@ -202,7 +212,47 @@ describe('Billing off', () => {
       unlimited: false,
       balance: 12.34,
       expiring: null,
+      creditPricing: 'legacy',
     });
+  });
+});
+
+describe('Price lists', () => {
+  it("reads an organization's from its subscription, today's without one", async () => {
+    assert.equal(await service().creditPricing('org-1'), 'legacy');
+    subscription = { creditPricing: 'v2' };
+    assert.equal(await service().creditPricing('org-1'), 'v2');
+    subscription = null;
+    assert.equal(await service().creditPricing('org-1'), CURRENT_CREDIT_PRICING);
+    assert.equal(CURRENT_CREDIT_PRICING, 'v2');
+    // a value this code does not know never charges more
+    assert.equal(creditPricingOf({ creditPricing: 'v9' }), 'legacy');
+    assert.equal(creditPricingOf({ creditPricing: null }), 'legacy');
+    assert.deepEqual([...CREDIT_PRICINGS], ['legacy', 'v2']);
+  });
+
+  it('keeps every subscription that existed before v2 on legacy, and stamps new ones', () => {
+    assert.match(schema, /creditPricing\s+String\s+@default\("legacy"\)/);
+    assert.match(
+      pricingMigration,
+      /ALTER TABLE "Subscription" ADD COLUMN IF NOT EXISTS "creditPricing" TEXT NOT NULL DEFAULT 'legacy';/
+    );
+    for (const from of ['private async createEmbeddedCheckout(', 'private async createCheckoutSession(']) {
+      const checkout = between(stripe, from, 'line_items:');
+      assert.ok(
+        checkout.indexOf('credit_pricing: CURRENT_CREDIT_PRICING,') >
+          checkout.indexOf("...omit(body, 'withdrawalWaiver'),"),
+        from
+      );
+    }
+    assert.equal(
+      (stripe.match(/credit_pricing: CURRENT_CREDIT_PRICING,/g) || []).length,
+      2
+    );
+    // a plan change keeps the stamp the subscription has
+    const change = between(stripe, 'async subscribe(', 'async paymentSucceeded(');
+    assert.doesNotMatch(change, /credit_pricing: CURRENT_CREDIT_PRICING/);
+    assert.match(change, /credit_pricing: current\.metadata\.credit_pricing/);
   });
 });
 
@@ -322,7 +372,7 @@ describe('The right of withdrawal', () => {
   });
 
   it('keeps the flag an older app still sends out of Stripe', () => {
-    assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'(, 'credits_schedule')?\),/g) || []).length, 3);
+    assert.equal((stripe.match(/\.\.\.omit\(body, 'withdrawalWaiver'(, 'credits_schedule', 'credit_pricing')?\),/g) || []).length, 3);
     assert.doesNotMatch(stripe, /\.\.\.body,/);
   });
 
@@ -337,17 +387,22 @@ describe('The right of withdrawal', () => {
     // a plan change keeps what the subscription has, and no body writes it
     const change = between(stripe, 'async subscribe(', 'async paymentSucceeded(');
     assert.doesNotMatch(change, /credits_schedule: MONTHLY_CREDITS/);
-    assert.match(change, /\.\.\.omit\(body, 'withdrawalWaiver', 'credits_schedule'\),/);
+    assert.match(change, /\.\.\.omit\(body, 'withdrawalWaiver', 'credits_schedule', 'credit_pricing'\),/);
   });
 });
 
 describe('Model tokens', () => {
-  it('are priced at the provider cost times 25, in credits a thousand', () => {
-    assert.deepEqual(LLM_CREDIT_RATES['gpt-5.2'], {
+  it('are priced before v2 at the provider cost times 25, cached input at the full rate', () => {
+    assert.deepEqual(LLM_CREDIT_RATES.legacy['gpt-5.2'], {
       input: 0.044,
+      cachedInput: 0.044,
       output: 0.35,
     });
-    assert.deepEqual(LLM_CREDIT_RATES['gpt-4.1'], { input: 0.05, output: 0.2 });
+    assert.deepEqual(LLM_CREDIT_RATES.legacy['gpt-4.1'], {
+      input: 0.05,
+      cachedInput: 0.05,
+      output: 0.2,
+    });
     // $1.75 / $14 and $2 / $8 a million tokens, times 25
     const perThousand = (dollarsPerMillion: number) =>
       (dollarsPerMillion / 1000) * 25;
@@ -358,33 +413,72 @@ describe('Model tokens', () => {
     assert.ok(close(perThousand(8), 0.2));
   });
 
+  it('are priced on v2 at the provider cost times 50, cached input at its own rate', () => {
+    // $1.75 / $0.175 / $14 and $2 / $0.50 / $8 a million tokens, times 50
+    const perThousand = (dollarsPerMillion: number) =>
+      (dollarsPerMillion / 1000) * 50;
+    const close = (a: number, b: number) => Math.abs(a - b) < 0.000001;
+    const gpt52 = LLM_CREDIT_RATES.v2['gpt-5.2'];
+    const gpt41 = LLM_CREDIT_RATES.v2['gpt-4.1'];
+    assert.ok(close(gpt52.input, perThousand(1.75)));
+    assert.ok(close(gpt52.cachedInput, perThousand(0.175)));
+    assert.ok(close(gpt52.output, perThousand(14)));
+    assert.ok(close(gpt41.input, perThousand(2)));
+    assert.ok(close(gpt41.cachedInput, perThousand(0.5)));
+    assert.ok(close(gpt41.output, perThousand(8)));
+  });
+
   it('come to whole hundredths, rounded up', () => {
     // 1000 in and 200 out on gpt-5.2: 4.4 + 7 hundredths
-    assert.equal(llmCreditCost('gpt-5.2', 1000, 200), 12);
+    assert.equal(llmCreditCost('legacy', 'gpt-5.2', 1000, 200), 12);
     // a million in and a million out: 44 + 350 credits exactly
-    assert.equal(llmCreditCost('gpt-5.2', 1_000_000, 1_000_000), 39400);
-    assert.equal(llmCreditCost('gpt-4.1', 1_000_000, 1_000_000), 25000);
+    assert.equal(llmCreditCost('legacy', 'gpt-5.2', 1_000_000, 1_000_000), 39400);
+    assert.equal(llmCreditCost('legacy', 'gpt-4.1', 1_000_000, 1_000_000), 25000);
     // the smallest call still costs a hundredth
-    assert.equal(llmCreditCost('gpt-4.1', 1, 0), 1);
-    assert.equal(llmCreditCost('gpt-5.2', 0, 0), 0);
+    assert.equal(llmCreditCost('legacy', 'gpt-4.1', 1, 0), 1);
+    assert.equal(llmCreditCost('legacy', 'gpt-5.2', 0, 0), 0);
+    // v2: 8.75 + 14 hundredths
+    assert.equal(llmCreditCost('v2', 'gpt-5.2', 1000, 200), 23);
+  });
+
+  it('charge the cached part of a prompt at its rate on v2, and in full before', () => {
+    // 200 at 8.75, 800 at 0.875 and 200 out at 70 a thousand: 16.45
+    assert.equal(llmCreditCost('v2', 'gpt-5.2', 1000, 200, 800), 17);
+    assert.equal(
+      llmCreditCost('legacy', 'gpt-5.2', 1000, 200, 800),
+      llmCreditCost('legacy', 'gpt-5.2', 1000, 200)
+    );
+    // never more cached than the prompt
+    assert.equal(
+      llmCreditCost('v2', 'gpt-5.2', 1000, 0, 5000),
+      llmCreditCost('v2', 'gpt-5.2', 1000, 0, 1000)
+    );
   });
 
   it('read a dated snapshot as its model, and anything unknown at the highest rates', () => {
     assert.equal(
-      llmCreditRate('gpt-4.1-2025-04-14'),
-      LLM_CREDIT_RATES['gpt-4.1']
+      llmCreditRate('legacy', 'gpt-4.1-2025-04-14'),
+      LLM_CREDIT_RATES.legacy['gpt-4.1']
     );
     assert.equal(
-      llmCreditRate('gpt-5.2-2025-12-11'),
-      LLM_CREDIT_RATES['gpt-5.2']
+      llmCreditRate('v2', 'gpt-5.2-2025-12-11'),
+      LLM_CREDIT_RATES.v2['gpt-5.2']
     );
-    assert.deepEqual(llmCreditRate('gpt-9'), { input: 0.05, output: 0.35 });
-    assert.deepEqual(llmCreditRate(undefined), { input: 0.05, output: 0.35 });
-    // not a prefix match: a mini model is not priced as its big sibling
-    assert.deepEqual(llmCreditRate('gpt-4.1-mini'), {
+    assert.deepEqual(llmCreditRate('legacy', 'gpt-9'), {
       input: 0.05,
+      cachedInput: 0.05,
       output: 0.35,
     });
+    assert.deepEqual(llmCreditRate('v2', undefined), {
+      input: 0.1,
+      cachedInput: 0.025,
+      output: 0.7,
+    });
+    // not a prefix match: a mini model is not priced as its big sibling
+    assert.deepEqual(
+      llmCreditRate('legacy', 'gpt-4.1-mini'),
+      llmCreditRate('legacy', 'gpt-9')
+    );
   });
 
   it('are charged after the call, below zero if need be, once per call', async () => {
@@ -400,7 +494,12 @@ describe('Model tokens', () => {
         key: 'llm:resp_1',
         amount: 12,
         action: 'copilot',
-        meta: { model: 'gpt-5.2', inputTokens: 1000, outputTokens: 200 },
+        meta: {
+          model: 'gpt-5.2',
+          inputTokens: 1000,
+          cachedInputTokens: 0,
+          outputTokens: 200,
+        },
         allowOverdraft: true,
       },
     ]);
@@ -477,14 +576,24 @@ describe('Model tokens', () => {
 
 describe('Fixed charges for the older AI features', () => {
   it('are proposals in whole hundredths, a picture priced as a medium square image', () => {
-    assert.ok(
-      Object.values(AI_FIXED_CREDIT_COSTS_PROPOSAL).every(
-        (amount) => Number.isInteger(amount) && amount > 0
-      )
-    );
-    assert.equal(
-      AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
-      imageCreditCost('medium', 'square')
-    );
+    for (const cp of CREDIT_PRICINGS) {
+      assert.ok(
+        Object.values(AI_FIXED_CREDIT_COSTS_PROPOSAL[cp]).every(
+          (amount) => Number.isInteger(amount) && amount > 0
+        ),
+        cp
+      );
+      assert.equal(
+        AI_FIXED_CREDIT_COSTS_PROPOSAL[cp].generatorPicture,
+        imageCreditCost(cp, 'medium', 'square')
+      );
+    }
+    assert.deepEqual(AI_FIXED_CREDIT_COSTS_PROPOSAL.v2, {
+      generator: 250,
+      generatorPicture: 200,
+      autopostText: 50,
+      autopostPicture: 210,
+      separatePosts: 50,
+    });
   });
 });

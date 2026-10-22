@@ -79,8 +79,17 @@ export class CreditsRepository {
     private _creditGrant: PrismaRepository<'creditGrant'>,
     private _creditAllocation: PrismaRepository<'creditAllocation'>,
     private _transaction: PrismaTransaction,
-    private _credits: PrismaRepository<'credits'>
+    private _credits: PrismaRepository<'credits'>,
+    private _subscription: PrismaRepository<'subscription'>
   ) {}
+
+  /** The organization's live subscription's price list, when it has one. */
+  subscriptionCreditPricing(organizationId: string) {
+    return this._subscription.model.subscription.findFirst({
+      where: { organizationId, deletedAt: null },
+      select: { creditPricing: true },
+    });
+  }
 
   // Every write to an organization's balance runs under this one lock, so two
   // spends started together cannot both see the same last credit as free.

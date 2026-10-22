@@ -38,7 +38,10 @@ import {
   hasLinks,
   stripLinks as removeLinks,
 } from '@gitroom/helpers/utils/strip.links';
-import { X_CREDIT_COSTS } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  CreditPricing,
+  X_CREDIT_COSTS,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { XDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/x.dto';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
@@ -104,32 +107,37 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   // X bills every call (see X_CREDIT_COSTS). A post is priced by the text
   // that reaches X, so a link this instance strips is not a link post, and
   // an article by its body.
-  creditCost(op: CreditOperation) {
+  creditCost(op: CreditOperation, creditPricing: CreditPricing) {
+    const costs = X_CREDIT_COSTS[creditPricing];
     switch (op.type) {
       case 'publish': {
         const article = op.index === 0 && op.settings?.post_type === 'article';
         const text = article ? op.message : this.toTweetText(op.message);
         return hasLinks(this.stripLinks() ? removeLinks(text) : text)
-          ? X_CREDIT_COSTS.postWithLink
-          : X_CREDIT_COSTS.post;
+          ? costs.postWithLink
+          : costs.post;
       }
       case 'function':
         // Both read one user. The other methods the app calls cost nothing.
         return ['mention', 'subscriptionInfo'].includes(op.name)
-          ? X_CREDIT_COSTS.userRead
+          ? costs.userRead
           : undefined;
       case 'plug-check':
-        return X_CREDIT_COSTS.postRead;
+        return costs.postRead;
       case 'plug-trigger': {
         // Auto plug replies with a post; the others repost.
         if (op.plug !== 'autoPlugPost') {
-          return X_CREDIT_COSTS.interaction;
+          return costs.interaction;
         }
         const text = stripHtmlValidation('normal', op.fields.post || '', true);
         return hasLinks(this.stripLinks() ? removeLinks(text) : text)
-          ? X_CREDIT_COSTS.postWithLink
-          : X_CREDIT_COSTS.post;
+          ? costs.postWithLink
+          : costs.post;
       }
+      case 'post-metrics':
+        return op.posts * costs.metricsPostRead;
+      case 'account-metrics':
+        return costs.metricsAccount;
     }
   }
   // X rate limits are per user (300 posts / 3 hours), not per app, so the cap

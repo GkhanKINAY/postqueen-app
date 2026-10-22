@@ -15,8 +15,13 @@ import {
   llmCreditCost,
 } from '../database/prisma/subscriptions/pricing.ts';
 
-const usage = (input: number, output: number) => ({
-  inputTokens: { total: input, noCache: input, cacheRead: 0, cacheWrite: 0 },
+const usage = (input: number, output: number, cached = 0) => ({
+  inputTokens: {
+    total: input,
+    noCache: input - cached,
+    cacheRead: cached,
+    cacheWrite: 0,
+  },
   outputTokens: { total: output, text: output, reasoning: 0 },
 });
 
@@ -123,6 +128,9 @@ let failCharges: boolean;
 // The credits service with its ledger faked: a key is charged once, the way
 // the real one's unique (organizationId, idempotencyKey) makes it.
 const credits = () => ({
+  async creditPricing() {
+    return 'legacy';
+  },
   async assertLlmTurn(org: string, continuation = false, pending?: number) {
     // Before a run; the checks between its steps pass what is owed.
     if (pending === undefined) {
@@ -141,9 +149,11 @@ const credits = () => ({
     if (!charges.some((c) => c.org === org && c.key === usage.key)) {
       charges.push({ org, ...usage });
       balance -= llmCreditCost(
+        'legacy',
         usage.model,
         usage.inputTokens,
-        usage.outputTokens
+        usage.outputTokens,
+        usage.cachedInputTokens
       );
     }
     return { id: 'spend', charged: true };
@@ -287,6 +297,19 @@ describe('Copilot runs are charged by the tokens of each model call', () => {
     assert.deepEqual(
       charges.map((c) => c.key),
       ['llm:resp_1', 'llm:resp_2']
+    );
+  });
+
+  it('passes on the part of each prompt the provider served from its cache', async () => {
+    const steps = turn();
+    const finish = steps[0].find((p: any) => p.type === 'finish') as any;
+    finish.usage = usage(1000, 200, 800);
+    await agentFor(steps).generate('Schedule it', {
+      requestContext: appContext({ id: 'org-1' }),
+    });
+    assert.deepEqual(
+      charges.map((c: any) => c.cachedInputTokens),
+      [800, 0]
     );
   });
 
