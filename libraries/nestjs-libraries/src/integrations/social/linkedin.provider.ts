@@ -160,7 +160,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body',
         value:
-          'LinkedIn rejected this post because the same text was posted recently. Change the text and post again. If LinkedIn was having problems, it may already be live. Check the Page before posting again.',
+          'LinkedIn rejected this post because the same text was posted recently. Change the text and post again. If LinkedIn was having problems, it may already be live. Check the profile or Page before posting again.',
       };
     }
 

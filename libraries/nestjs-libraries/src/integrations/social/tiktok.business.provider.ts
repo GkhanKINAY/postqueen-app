@@ -176,7 +176,7 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value:
-          'TikTok had a server problem and did not publish the post. Try again in a few minutes.',
+          "TikTok had a server problem while taking the post. It may have gone through, so check the TikTok profile before posting it again.",
       };
     }
 
