@@ -31,5 +31,6 @@ export default withProvider({
   SettingsComponent: MoltbookSettings,
   CustomPreviewComponent: undefined,
   dto: MoltbookDto,
-  maximumCharacters: 300,
+  // the body takes 40,000; the title is the first 300 (moltbook.provider.ts)
+  maximumCharacters: 40000,
 });
