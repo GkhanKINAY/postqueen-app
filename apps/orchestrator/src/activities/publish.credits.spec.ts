@@ -10,6 +10,9 @@ import { BadBody } from '../../../../libraries/nestjs-libraries/src/integrations
  */
 let calls: unknown[][];
 let short: boolean;
+// what changeState wrote: the error for the Errors row, the line for the user
+let stored: { err?: unknown; reason?: string };
+let notified: number;
 
 const activity = () =>
   new (PostActivity as any)(
@@ -17,8 +20,16 @@ const activity = () =>
       getPostsRecursively: async () => [
         { id: 'p1', organizationId: 'org-1', state: 'QUEUE' },
       ],
-      changeState: async (id: string, state: string) =>
-        calls.push(['changeState', id, state]),
+      changeState: async (
+        id: string,
+        state: string,
+        err?: unknown,
+        body?: unknown,
+        reason?: string
+      ) => {
+        stored = { err, reason };
+        calls.push(['changeState', id, state]);
+      },
       releasePublish: async (id: string, thread?: { id: string }[]) =>
         calls.push(['release', id, thread?.map((p) => p.id)]),
       updatePost: async (id: string) => calls.push(['updatePost', id]),
@@ -34,7 +45,11 @@ const activity = () =>
       updateMedia: async () => [],
       shouldSkipPublishNotice: () => true,
     },
-    { inAppNotification: async () => undefined },
+    {
+      inAppNotification: async () => {
+        notified++;
+      },
+    },
     {
       getSocialIntegration: () => ({
         editor: 'html',
@@ -58,6 +73,16 @@ const refused = { cause: { type: 'bad_body', message: 'Duplicate content' } };
 beforeEach(() => {
   calls = [];
   short = false;
+  stored = {};
+  notified = 0;
+});
+
+// What a failed activity looks like once the workflow hands it to
+// changeState: the ApplicationFailure messages survive only on `failure`.
+const failed = (activityType: string, type: string, message = '') => ({
+  activityType,
+  cause: { type, failure: { message } },
+  failure: { message: 'Activity task failed' },
 });
 
 describe('Publish credits in the post activities', () => {
@@ -111,6 +136,62 @@ describe('Publish credits in the post activities', () => {
         `${reason} released credits`
       );
     }
+  });
+
+  it('hands back a post whose token could not be refreshed, without a second email', async () => {
+    const err = failed('postSocialPending', 'refresh_token');
+    await activity().changeState('p1', 'ERROR', err, thread);
+    assert.deepEqual(stored, { err, reason: 'Refresh channel needed' });
+    assert.deepEqual(calls.at(-1), ['release', 'p1', ['p1', 'p2', 'p3']]);
+    assert.equal(notified, 0);
+  });
+
+  it('hands back a refused token that carried its own text, still without a second email', async () => {
+    const err = failed(
+      'postSocialPending',
+      'refresh_token',
+      'Access token invalid, please re-authenticate'
+    );
+    await activity().changeState('p1', 'ERROR', err, thread);
+    assert.notEqual(stored.reason, 'Refresh channel needed');
+    assert.deepEqual(calls.at(-1), ['release', 'p1', ['p1', 'p2', 'p3']]);
+    assert.equal(notified, 0);
+  });
+
+  it('keeps the credits when the token failed while checking an accepted post', async () => {
+    await activity().changeState(
+      'p1',
+      'ERROR',
+      failed('checkPostStatus', 'refresh_token'),
+      thread
+    );
+    assert.equal(stored.reason, 'Activity task failed');
+    assert.ok(!calls.some(([what]) => what === 'release'));
+  });
+
+  it('shows our own line for a bug, and keeps the raw error for the Errors row', async () => {
+    for (const type of ['TypeError', 'AxiosError']) {
+      const err = failed(
+        'postSocialPending',
+        type,
+        "Cannot read properties of undefined (reading 'id')"
+      );
+      await activity().changeState('p1', 'ERROR', err, thread);
+      assert.deepEqual(stored, {
+        err,
+        reason:
+          "Something went wrong on PostQueen's side while publishing this post.",
+      });
+    }
+
+    // a provider's own plain Error still says what it says
+    await activity().changeState(
+      'p1',
+      'ERROR',
+      failed('postSocialPending', 'Error', 'No Nostr relay accepted the note'),
+      thread
+    );
+    assert.equal(stored.reason, 'No Nostr relay accepted the note');
   });
 
   it('settles what an item used once it is live', async () => {

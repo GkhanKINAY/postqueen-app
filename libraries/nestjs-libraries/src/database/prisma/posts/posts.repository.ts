@@ -668,7 +668,15 @@ export class PostsRepository {
     });
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
+  // `reason` replaces the line shown to the user when the caller knows
+  // better than the error's own text; the Errors row keeps the original.
+  async changeState(
+    id: string,
+    state: State,
+    err?: any,
+    body?: any,
+    reason?: string
+  ) {
     const update = await this._post.model.post.update({
       where: {
         id,
@@ -679,7 +687,7 @@ export class PostsRepository {
         // by the list queries and rendered into the error tooltip, so the raw
         // object put a multi-KB blob with internal stack traces in front of
         // every org member. The Errors row below still keeps the full object.
-        ...(err ? { error: extractPostErrorMessage(err) } : {}),
+        ...(err ? { error: reason || extractPostErrorMessage(err) } : {}),
         // A failure settles the publish too. Any other change leaves the
         // claim alone: re-queueing a post mid-publish must not free it for a
         // second run while the first may still reach the platform.

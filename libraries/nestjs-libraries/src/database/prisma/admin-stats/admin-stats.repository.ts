@@ -18,6 +18,9 @@ export interface OrgActivityParams {
 // Unknown errors are stored as the serialized error payload, e.g.
 // {..."message":"Unknown Error"...}. Matches `message LIKE '%"message":"Unknown Error"%'`.
 const UNKNOWN_ERROR_TOKEN = '"message":"Unknown Error"';
+// Newer rows carry the network's own reason or a status-based message in
+// place of "Unknown Error", and mark the BadBody details instead.
+const UNMAPPED_ERROR_TOKEN = '"unmapped":true';
 
 interface PerSocial {
   provider: string;
@@ -73,7 +76,12 @@ export class AdminStatsRepository {
     const where: Prisma.ErrorsWhereInput = {
       createdAt: { gte: params.from, lte: params.to },
       ...(params.unknownOnly
-        ? { message: { contains: UNKNOWN_ERROR_TOKEN } }
+        ? {
+            OR: [
+              { message: { contains: UNKNOWN_ERROR_TOKEN } },
+              { message: { contains: UNMAPPED_ERROR_TOKEN } },
+            ],
+          }
         : {}),
       ...(params.organizationId
         ? { organizationId: params.organizationId }
