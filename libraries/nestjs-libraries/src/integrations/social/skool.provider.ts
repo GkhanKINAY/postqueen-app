@@ -58,10 +58,17 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
     if (body.includes('must be admin or level')) {
-      return { type: 'bad-body', value: 'You can\'t post to this channel' };
+      return {
+        type: 'bad-body',
+        value:
+          "Skool only lets admins, or members at this group's required level, post here.",
+      };
     }
     if (body.includes('cannot post to this label')) {
-      return { type: 'bad-body', value: 'Cannot post to this label' };
+      return {
+        type: 'bad-body',
+        value: 'Skool does not let you post in this category. Pick another one.',
+      };
     }
     return undefined;
   }
@@ -268,7 +275,12 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
         dispatcher: getSsrfSafeDispatcher(),
       });
       if (!fileResponse.ok || !fileResponse.body) {
-        throw new Error(`Failed to fetch media: ${fileResponse.statusText}`);
+        throw new BadBody(
+          this.identifier,
+          '{}',
+          '{}',
+          `Could not read a media file in this post: ${fileResponse.status} ${fileResponse.statusText}`
+        );
       }
       const uploadResponse = await fetch(createFileResponse.write_url, {
         method: 'PUT',

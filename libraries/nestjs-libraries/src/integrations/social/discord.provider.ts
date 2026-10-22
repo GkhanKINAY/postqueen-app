@@ -11,6 +11,24 @@ import { DiscordDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-setti
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import FormDataUpload from 'form-data';
 
+// A 50035 (Invalid Form Body) says what was wrong per field, nested under
+// the field's path: { content: { _errors: [{ code, message }] } }.
+const firstFormError = (errors: any): string | undefined => {
+  if (!errors || typeof errors !== 'object') {
+    return undefined;
+  }
+  if (Array.isArray(errors._errors) && errors._errors[0]?.message) {
+    return errors._errors[0].message;
+  }
+  for (const value of Object.values(errors)) {
+    const message = firstFormError(value);
+    if (message) {
+      return message;
+    }
+  }
+  return undefined;
+};
+
 export class DiscordProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // Discord has generous rate limits for webhook posting
   identifier = 'discord';
@@ -372,44 +390,68 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     return `[[[@${idOrHandle.replace('@', '')}]]]`;
   }
 
+  // Classified on Discord's JSON error code. Matching digits anywhere in the
+  // body also matched ids, so a channel id holding "50013" read as a
+  // permission error.
   override handleErrors(
     body: string
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    if (body.includes('50001')) {
-      return {
-        type: 'bad-body',
-        value: "Bot doesn't have access to this channel",
-      };
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return undefined;
     }
 
-    if (body.includes('50013')) {
-      return {
-        type: 'bad-body',
-        value: 'Bot lacks permission to send messages in this channel',
-      };
-    }
-
-    if (body.includes('10003')) {
-      return {
-        type: 'bad-body',
-        value: 'Channel no longer exists',
-      };
-    }
-
-    if (body.includes('40005')) {
-      return {
-        type: 'bad-body',
-        value: "Attachment exceeds Discord's size limit",
-      };
-    }
-
-    if (body.includes('20028')) {
-      return {
-        type: 'retry',
-        value: 'Rate limited by Discord',
-      };
+    switch (parsed?.code) {
+      case 50001:
+        return {
+          type: 'bad-body',
+          value:
+            'The PostQueen bot cannot see this channel. Give it View Channel, or add it back to the server.',
+        };
+      case 50013:
+        return {
+          type: 'bad-body',
+          value:
+            'The PostQueen bot is missing a permission in this channel. Give it View Channel, Send Messages, Embed Links, Attach Files and Create Public Threads.',
+        };
+      case 10003:
+        return {
+          type: 'bad-body',
+          value: 'This Discord channel no longer exists. Pick another channel.',
+        };
+      case 10008:
+        return {
+          type: 'bad-body',
+          value:
+            'The original Discord message was deleted, so the reply could not be posted.',
+        };
+      case 50008:
+        return {
+          type: 'bad-body',
+          value: 'Discord cannot post in this kind of channel. Pick a text channel.',
+        };
+      case 40005:
+        return {
+          type: 'bad-body',
+          value:
+            'A file in this post is larger than this Discord server accepts. Use a smaller file.',
+        };
+      case 50035:
+        return {
+          type: 'bad-body',
+          value: `Discord refused the post: ${
+            firstFormError(parsed.errors) || parsed.message
+          }`,
+        };
+      case 20028:
+        return {
+          type: 'retry',
+          value: 'Rate limited by Discord',
+        };
     }
 
     return undefined;

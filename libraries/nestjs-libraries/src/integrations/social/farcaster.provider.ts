@@ -80,7 +80,7 @@ export class FarcasterProvider
         item?.some((field) => (field?.path?.indexOf?.('mp4') ?? -1) > -1)
       )
     ) {
-      return 'Can only accept images';
+      return 'Farcaster casts can include pictures but not videos.';
     }
     // Every image is an embed, and a cast takes at most 4 (engine V20).
     if (list?.some((item) => (item?.length ?? 0) > 4)) {
@@ -90,6 +90,41 @@ export class FarcasterProvider
       return 'Farcaster casts can be at most 1,024 bytes, and accented letters, emoji and non-Latin scripts take 2 to 4 bytes each';
     }
     return true;
+  }
+
+  // Neynar answers { code, message }. A 401 is Neynar refusing PostQueen's
+  // API key, not this channel's signer, so it is not a reconnect.
+  override handleErrors(
+    body: string,
+    status: number
+  ): { type: 'bad-body'; value: string } | undefined {
+    if (status < 400 || status >= 500) {
+      return undefined;
+    }
+
+    // Retried first by runStreamedUpload; this is what is left once those
+    // retries run out.
+    if (status === 429) {
+      return {
+        type: 'bad-body',
+        value:
+          'Farcaster is limiting how fast PostQueen can post. Reschedule the post a few minutes later.',
+      };
+    }
+
+    let message = '';
+    try {
+      message = String(JSON.parse(body)?.message || '');
+    } catch {
+      message = '';
+    }
+
+    return {
+      type: 'bad-body',
+      value: message
+        ? `Farcaster refused the cast: ${message}`
+        : 'Farcaster refused the cast.',
+    };
   }
 
   async refreshToken(refresh_token: string): Promise<AuthTokenDetails> {
@@ -217,7 +252,9 @@ export class FarcasterProvider
         : firstPost?.settings?.subreddit;
 
     for (const channel of channels) {
-      const data = await client.publishCast({
+      // The SDK throws axios errors; runStreamedUpload types them through
+      // handleErrors so a refused cast is not published again.
+      const data = await this.runStreamedUpload(() => client.publishCast({
         // Cast because the SDK's generated `PostCastReqBodyEmbeds` demands
         // `url`, `cast_id` *and* `castId` together. The Farcaster API accepts a
         // url-only embed — it is an `anyOf` in their schema that the OpenAPI
@@ -228,7 +265,7 @@ export class FarcasterProvider
         signerUuid: accessToken,
         text: firstPost.message,
         ...(channel?.value?.id ? { channelId: channel?.value?.id } : {}),
-      });
+      }), this.identifier);
 
       ids.push({
         // @ts-ignore
@@ -262,7 +299,7 @@ export class FarcasterProvider
     const parentIds = (lastCommentId || postId).split(',');
 
     for (const parentHash of parentIds) {
-      const data = await client.publishCast({
+      const data = await this.runStreamedUpload(() => client.publishCast({
         // Same cast as above: the generated type demands all three keys.
         embeds: (commentPost?.media?.map((media) => ({
           url: media.path,
@@ -270,7 +307,7 @@ export class FarcasterProvider
         signerUuid: accessToken,
         text: commentPost.message,
         parent: parentHash,
-      });
+      }), this.identifier);
 
       ids.push({
         // @ts-ignore

@@ -6,7 +6,10 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getPublicKey, Relay, finalizeEvent, SimplePool } from 'nostr-tools';
 
 import WebSocket from 'ws';
@@ -124,6 +127,7 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
    */
   private async publish(event: { id: string }) {
     let accepted = 0;
+    const refusals: string[] = [];
     for (const relay of list) {
       try {
         const relayInstance = await Relay.connect(relay);
@@ -133,13 +137,19 @@ export class NostrProvider extends SocialAbstract implements SocialProvider {
         } finally {
           relayInstance.close();
         }
-      } catch (err) {
+      } catch (err: any) {
         // One relay being down or refusing is not a failed post.
+        refusals.push(`${relay}: ${err?.message || String(err)}`);
       }
     }
 
     if (!accepted) {
-      throw new Error('No Nostr relay accepted the note');
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify({ refusals }),
+        '{}',
+        'No Nostr relay accepted the note.'
+      );
     }
 
     return event.id;

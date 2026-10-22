@@ -214,23 +214,99 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
       return;
     }
     const json = JSON.stringify(all);
-    const message =
-      [all.error, ...(all.errors || [])].filter(Boolean).join(': ') ||
-      'Slack rejected the request';
+    const handleError = this.handleErrors(json);
+    if (handleError?.type === 'refresh-token') {
+      throw new RefreshToken(
+        this.identifier,
+        json,
+        Buffer.from('{}'),
+        handleError.value
+      );
+    }
+    throw new BadBody(
+      this.identifier,
+      json,
+      Buffer.from('{}'),
+      handleError?.value || 'Slack rejected the request'
+    );
+  }
+
+  override handleErrors(
+    body: string
+  ): { type: 'refresh-token' | 'bad-body'; value: string } | undefined {
+    let all: any = {};
+    try {
+      all = JSON.parse(body);
+    } catch {
+      return undefined;
+    }
+    if (all?.ok !== false) {
+      return undefined;
+    }
+    const error = String(all.error || '');
+
     if (
       [
         'invalid_auth',
+        'not_authed',
         'token_revoked',
         'token_expired',
         'account_inactive',
-      ].includes(all.error)
+      ].includes(error)
     ) {
-      throw new RefreshToken(this.identifier, json, Buffer.from('{}'), message);
+      return {
+        type: 'refresh-token',
+        value: 'Slack signed PostQueen out of this workspace. Reconnect Slack.',
+      };
     }
-    if (all.error === 'ratelimited') {
-      throw new Error(message);
+    if (error === 'missing_scope') {
+      return {
+        type: 'refresh-token',
+        value:
+          'PostQueen is missing a Slack permission. Reconnect Slack and allow every permission.',
+      };
     }
-    throw new BadBody(this.identifier, json, Buffer.from('{}'), message);
+    if (error === 'channel_not_found' || error === 'not_in_channel') {
+      return {
+        type: 'bad-body',
+        value:
+          'Invite the PostQueen app to this Slack channel with /invite, or pick another channel.',
+      };
+    }
+    if (error === 'is_archived') {
+      return {
+        type: 'bad-body',
+        value:
+          'This Slack channel is archived. Unarchive it, or pick another channel.',
+      };
+    }
+    if (error.startsWith('restricted_action')) {
+      return {
+        type: 'bad-body',
+        value: 'A Slack workspace setting stops apps posting here.',
+      };
+    }
+    if (error === 'ratelimited' || error === 'rate_limited') {
+      return {
+        type: 'bad-body',
+        value:
+          'Slack is limiting how fast PostQueen can post in this workspace. Reschedule the post a few minutes later.',
+      };
+    }
+    if (body.includes('downloading image failed')) {
+      return {
+        type: 'bad-body',
+        value: 'Slack could not download a picture in this post.',
+      };
+    }
+
+    return {
+      type: 'bad-body',
+      value: `Slack rejected the post: ${
+        [error, ...(all.errors || [])].filter(Boolean).join(': ') ||
+        'no reason given'
+      }`,
+    };
   }
 
   async post(

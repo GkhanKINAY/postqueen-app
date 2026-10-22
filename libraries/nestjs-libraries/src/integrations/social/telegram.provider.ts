@@ -8,6 +8,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
 import {
   BadBody,
+  Disconnect,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -303,26 +304,96 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
         replyToMessageId
       );
     } catch (error: any) {
-      // A Telegram 400 is a permanent rejection of this request (caption too
-      // long, media Telegram could not download, ...): retrying it can never
-      // succeed, so surface it to the user instead.
+      // A refusal from the Bot API is final for this request: anything thrown
+      // untyped is published again by the workflow, and Telegram refuses it
+      // again. Network failures (EFATAL) and server errors stay untyped.
       const body = error?.response?.body;
-      if (error?.code === 'ETELEGRAM' && body?.error_code === 400) {
-        const description = (body.description || '').replace(
-          'Bad Request: ',
-          ''
+      const handleError =
+        error?.code === 'ETELEGRAM' && body
+          ? this.handleErrors(JSON.stringify(body), body.error_code)
+          : undefined;
+      if (handleError?.type === 'disconnect') {
+        throw new Disconnect(
+          'telegram-error',
+          JSON.stringify(body),
+          Buffer.from(JSON.stringify(body)),
+          handleError.value
         );
+      }
+      if (handleError) {
         throw new BadBody(
           'telegram-error',
           JSON.stringify(body),
           Buffer.from(JSON.stringify(body)),
-          description === 'failed to get HTTP URL content'
-            ? 'Telegram could not download your media file, please check the file and try again'
-            : `Telegram rejected the post: ${description}`
+          handleError.value
         );
       }
       throw error;
     }
+  }
+
+  // Classified on the Bot API's documented error_code and parameters
+  // (retry_after, migrate_to_chat_id); the description only narrows a case
+  // down inside them.
+  override handleErrors(
+    body: string,
+    status: number
+  ):
+    | { type: 'bad-body' | 'disconnect'; value: string }
+    | undefined {
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      parsed = {};
+    }
+    const code = parsed.error_code ?? status;
+    const description = String(parsed.description || '');
+
+    if (code === 429) {
+      const seconds = parsed.parameters?.retry_after;
+      return {
+        type: 'bad-body',
+        value: seconds
+          ? `Telegram paused the bot for ${seconds} seconds. Reschedule the post.`
+          : 'Telegram paused the bot for a while. Reschedule the post.',
+      };
+    }
+
+    if (
+      /not enough rights|need administrator rights/i.test(description)
+    ) {
+      return {
+        type: 'bad-body',
+        value:
+          'Give the PostQueen bot permission to post messages and media in this chat.',
+      };
+    }
+
+    if (
+      code === 403 ||
+      parsed.parameters?.migrate_to_chat_id ||
+      (code === 400 && /chat not found/i.test(description))
+    ) {
+      return {
+        type: 'disconnect',
+        value:
+          'The PostQueen bot can no longer post in this Telegram chat. Add it back as an admin, then reconnect the channel.',
+      };
+    }
+
+    if (code === 400) {
+      const reason = description.replace('Bad Request: ', '');
+      return {
+        type: 'bad-body',
+        value:
+          reason === 'failed to get HTTP URL content'
+            ? 'Telegram could not download the media. By link it accepts photos up to 5 MB and other files up to 20 MB.'
+            : `Telegram rejected the post: ${reason}`,
+      };
+    }
+
+    return undefined;
   }
 
   private async sendMessageInternal(
