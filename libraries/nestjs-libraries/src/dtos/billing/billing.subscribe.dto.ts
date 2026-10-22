@@ -84,9 +84,8 @@ export class BillingSubscribeDto {
   datafast_visitor_id: string;
 
   /**
-   * The customer asked for the credits to start now and acknowledged that,
-   * once they are used, the 14-day right of withdrawal ends. Required for a
-   * yearly plan, whose twelve months of credits arrive at once.
+   * Ignored. The box that asked customers to give up their right of
+   * withdrawal is gone; an app loaded before that still sends it.
    */
   @IsOptional()
   @IsBoolean()

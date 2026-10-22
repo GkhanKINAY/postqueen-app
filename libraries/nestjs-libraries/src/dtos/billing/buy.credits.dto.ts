@@ -1,4 +1,4 @@
-import { Equals, IsIn } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional } from 'class-validator';
 import {
   CREDIT_PACKS,
   CreditPackId,
@@ -9,10 +9,10 @@ export class BuyCreditsDto {
   pack: CreditPackId;
 
   /**
-   * Bought credits can be used the moment they arrive, so the customer asks
-   * for that and acknowledges the 14-day right of withdrawal ends once they
-   * are used. There is no pack without it.
+   * Ignored. The box that asked customers to give up their right of
+   * withdrawal is gone; an app loaded before that still sends it.
    */
-  @Equals(true)
-  withdrawalWaiver: true;
+  @IsOptional()
+  @IsBoolean()
+  withdrawalWaiver?: boolean;
 }

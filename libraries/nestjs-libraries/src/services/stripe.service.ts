@@ -43,16 +43,6 @@ import {
 import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
 
 /**
- * What a credits pack's buyer agreed to, on their receipt: the durable record
- * EU law asks for when a withdrawal right ends with performance.
- */
-const CREDITS_WAIVER_NOTE =
-  'You asked for these credits to be available at once and acknowledged that your 14-day right of withdrawal ends once you use them.';
-/** The same for a yearly plan, whose year of credits arrives at once. */
-const YEARLY_WAIVER_NOTE =
-  'You asked for your yearly credits to be available at once and acknowledged that your 14-day right of withdrawal ends once you use them.';
-
-/**
  * Pinned on purpose. This file reads deep, version-sensitive shapes —
  * `invoice.parent.subscription_details.subscription`, `discount.source.coupon` —
  * that a Stripe API version bump can move without any type error, because the
@@ -72,6 +62,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_nothing', {
  * drift apart, subscription events are silently discarded and nothing errors.
  */
 export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
+
+/**
+ * `credits_schedule`, stamped at checkout on every subscription sold since a
+ * yearly plan's credits come a month at a time (see `creditMonth`), monthly
+ * plans included, so a later switch to yearly finds it there. Only a checkout
+ * writes it. A plan change keeps whatever the subscription has: one sold
+ * before goes on getting a year's credits at once, whatever it changes to.
+ */
+const MONTHLY_CREDITS = 'monthly';
 
 /**
  * Written on a trialing subscription cancelled before anything was charged,
@@ -669,15 +668,20 @@ export class StripeService extends PaymentProviderAbstract {
 
   /**
    * Adds the credits a subscription's current period carries, or its trial's
-   * (see `grantPlanPeriod`). `ref` makes it happen once: the id of the invoice
-   * that paid for the period. A trial is keyed by the subscription instead,
-   * since nothing has been paid for it.
+   * (see `grantPlanPeriod`), once:
+   *
+   * - With `invoice`, the one that paid for the period, keyed by it.
+   * - Without one (the daily pass, see `grantMissingPlanCredits`), keyed by
+   *   the period, and a yearly plan already running gets only the months it
+   *   has left.
+   * - A yearly plan whose credits come a month at a time gets the month it is
+   *   in (see `creditMonth`), keyed by that month when there is no invoice.
+   * - A trial is keyed by the subscription, since nothing has been paid for it.
    */
   private async grantPeriodCredits(
     organizationId: string,
     subscription: Stripe.Subscription,
-    ref: string,
-    prorate = false
+    invoice?: string
   ) {
     const { billing, period } = this.tierOfSubscription(subscription);
     if (!pricing[billing]) {
@@ -704,64 +708,55 @@ export class StripeService extends PaymentProviderAbstract {
     if (!item?.current_period_end) {
       return false;
     }
+    const month = this.creditMonth(subscription);
     return this._subscriptionService.grantPlanPeriod(organizationId, {
       tier: billing,
       period,
       start: new Date(item.current_period_start * 1000),
       end: new Date(item.current_period_end * 1000),
-      ref,
-      prorate,
+      ref:
+        invoice ||
+        `period:${subscription.id}:${
+          month ? month.start.toISOString() : item.current_period_start
+        }`,
+      prorate: !invoice,
+      month,
     });
   }
 
   /**
-   * A yearly plan's year of credits has just arrived, as the customer asked
-   * at checkout. The law wants that consent confirmed on something they keep,
-   * and a subscription's invoices cannot carry our text on this API version,
-   * so this email does: once per consent, whether the year starts with the
-   * checkout, at the end of a trial, or with a switch to yearly. A renewal is
-   * the same contract running on and is not confirmed again.
+   * The month of a yearly plan's year that today is in, for a plan whose
+   * credits come a month at a time. Undefined for a monthly plan, a trial
+   * (one month of credits either way), and a yearly plan whose year of
+   * credits comes at once.
+   *
+   * A subscription stamped with `MONTHLY_CREDITS` gets them monthly. One sold
+   * before the stamp keeps its year up front, including after a switch to
+   * yearly or an upgrade, unless `YEARLY_MONTHLY_CREDITS_FROM` (an ISO date)
+   * is set: then from its first year that starts on or after it. Production
+   * leaves it unset, so those never switch.
    */
-  private async confirmYearlyCredits(
-    organizationId: string,
-    subscription: Stripe.Subscription
-  ) {
-    const consentAt = subscription.metadata?.withdrawal_waiver_at;
-    const { billing, period } = this.tierOfSubscription(subscription);
+  private creditMonth(subscription: Stripe.Subscription) {
+    const item = subscription.items?.data?.[0];
     if (
-      period !== 'YEARLY' ||
-      !consentAt ||
-      subscription.metadata?.withdrawal_waiver_confirmed === consentAt
+      subscription.status === 'trialing' ||
+      this.tierOfSubscription(subscription).period !== 'YEARLY' ||
+      !item?.current_period_end
     ) {
-      return;
+      return undefined;
     }
-    const credits = (pricing[billing]?.monthly_credits || 0) * 12;
-    await this._notificationService.inAppNotification(
-      organizationId,
-      'Your yearly credits are ready',
-      `Your plan’s ${credits} credits for the year are in your balance. ${YEARLY_WAIVER_NOTE}`,
-      true,
-      false,
-      'info',
-      '/billing',
-      {
-        stream: 'notifications',
-        category: 'Billing',
-        preheader: `${credits} credits for the year are in your balance.`,
-        tone: 'ok',
-        icon: 'check',
-        title: 'Your yearly credits are ready',
-        lead: `Your plan’s ${credits} credits for the year are in your balance, ready for AI images, videos and more.`,
-        blocks: [
-          { type: 'callout', text: YEARLY_WAIVER_NOTE },
-          { type: 'button', link: { label: 'Go to Billing', url: '/billing' } },
-        ],
-        footer: 'billing',
-      }
+    const start = new Date(item.current_period_start * 1000);
+    const from = process.env.YEARLY_MONTHLY_CREDITS_FROM;
+    if (
+      subscription.metadata?.credits_schedule !== MONTHLY_CREDITS &&
+      !(from && start >= new Date(from))
+    ) {
+      return undefined;
+    }
+    return this._subscriptionService.periodMonth(
+      start,
+      new Date(item.current_period_end * 1000)
     );
-    await stripe.subscriptions.update(subscription.id, {
-      metadata: { withdrawal_waiver_confirmed: consentAt },
-    });
   }
 
   // A trial's credits come with the subscription events, because there is no
@@ -775,11 +770,7 @@ export class StripeService extends PaymentProviderAbstract {
     if (subscription.status !== 'trialing' || !saved?.organizationId) {
       return;
     }
-    await this.grantPeriodCredits(
-      saved.organizationId,
-      subscription,
-      subscription.id
-    );
+    await this.grantPeriodCredits(saved.organizationId, subscription);
   }
 
   /**
@@ -2183,7 +2174,8 @@ export class StripeService extends PaymentProviderAbstract {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
           service: SUBSCRIPTION_SERVICE_TAG,
-          // The consent goes in as its timestamp, below.
+          // An app loaded before the withdrawal box was removed still sends
+          // it, and the body is not stripped of unknown fields.
           ...omit(body, 'withdrawalWaiver'),
           userId,
           uniqueId,
@@ -2191,10 +2183,7 @@ export class StripeService extends PaymentProviderAbstract {
           // Lets the webhook find the organization even when the customer is
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
-          // When the customer consented; see assertWithdrawalWaiver.
-          ...(body.withdrawalWaiver
-            ? { withdrawal_waiver_at: new Date().toISOString() }
-            : {}),
+          credits_schedule: MONTHLY_CREDITS,
         },
       },
       ...(body.datafast_session_id && body.datafast_visitor_id
@@ -2270,7 +2259,8 @@ export class StripeService extends PaymentProviderAbstract {
         ...(allowTrial ? { trial_period_days: 7 } : {}),
         metadata: {
           service: SUBSCRIPTION_SERVICE_TAG,
-          // The consent goes in as its timestamp, below.
+          // An app loaded before the withdrawal box was removed still sends
+          // it, and the body is not stripped of unknown fields.
           ...omit(body, 'withdrawalWaiver'),
           userId,
           uniqueId,
@@ -2278,10 +2268,7 @@ export class StripeService extends PaymentProviderAbstract {
           // Lets the webhook find the organization even when the customer is
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
-          // When the customer consented; see assertWithdrawalWaiver.
-          ...(body.withdrawalWaiver
-            ? { withdrawal_waiver_at: new Date().toISOString() }
-            : {}),
+          credits_schedule: MONTHLY_CREDITS,
         },
       },
       allow_promotion_codes: true,
@@ -2675,21 +2662,6 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * A yearly plan's twelve months of credits arrive at once, so it is sold
-   * only once the customer has asked for them to start now and acknowledged
-   * that the 14-day right of withdrawal ends once they are used (EU digital
-   * content). The consent travels in the subscription's metadata.
-   */
-  private assertWithdrawalWaiver(body: BillingSubscribeDto) {
-    if (body.period === 'YEARLY' && body.withdrawalWaiver !== true) {
-      throw new HttpException(
-        'Please confirm that your yearly credits start now and that your right of withdrawal ends once you use them.',
-        HttpStatus.BAD_REQUEST
-      );
-    }
-  }
-
-  /**
    * The check above each first checkout reads this app's own Subscription
    * row, which the webhook writes moments after Stripe has the subscription.
    * A second checkout in that gap (a second tab, a double click, a retry)
@@ -2714,7 +2686,6 @@ export class StripeService extends PaymentProviderAbstract {
     body: BillingSubscribeDto,
     allowTrial: boolean
   ) {
-    this.assertWithdrawalWaiver(body);
     // First-run checkout only. Without this, an org that already pays could
     // reach it again (direct POST, or a stale render that still thinks the tier
     // is FREE) and Stripe would create a *second* subscription on the same
@@ -2828,7 +2799,6 @@ export class StripeService extends PaymentProviderAbstract {
     body: BillingSubscribeDto,
     allowTrial: boolean
   ) {
-    this.assertWithdrawalWaiver(body);
     const id = makeId(10);
     const priceData = pricing[body.billing];
     const org = await this._organizationService.getOrgById(organizationId);
@@ -2925,8 +2895,11 @@ export class StripeService extends PaymentProviderAbstract {
 
     const metadata = {
       service: SUBSCRIPTION_SERVICE_TAG,
-      // The consent goes in as its timestamp, below.
-      ...omit(body, 'withdrawalWaiver'),
+      // An app loaded before the withdrawal box was removed still sends it,
+      // and the body is not stripped of unknown fields. Nor is a body allowed
+      // to write the credits schedule, or blank it to remove it: a plan
+      // change keeps the one the subscription has (see `MONTHLY_CREDITS`).
+      ...omit(body, 'withdrawalWaiver', 'credits_schedule'),
       userId,
       id,
       // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
@@ -2936,10 +2909,6 @@ export class StripeService extends PaymentProviderAbstract {
       // `/billing/check/<new id>` could never resolve.
       uniqueId,
       ud: uniqueId,
-      // When the customer consented; see assertWithdrawalWaiver.
-      ...(body.withdrawalWaiver
-        ? { withdrawal_waiver_at: new Date().toISOString() }
-        : {}),
     };
 
     try {
@@ -2967,15 +2936,6 @@ export class StripeService extends PaymentProviderAbstract {
       if (current.cancel_at_period_end) {
         await stripe.subscriptions.update(current.id, {
           cancel_at_period_end: false,
-        });
-      }
-
-      // The consent to a yearly plan's credits is written first and on its
-      // own: an upgrade that waits on payment returns below before the rest
-      // of the metadata is written.
-      if (metadata.withdrawal_waiver_at) {
-        await stripe.subscriptions.update(current.id, {
-          metadata: { withdrawal_waiver_at: metadata.withdrawal_waiver_at },
         });
       }
 
@@ -3009,7 +2969,13 @@ export class StripeService extends PaymentProviderAbstract {
               proration_behavior: 'none',
               automatic_tax: { enabled: true },
               discounts,
-              metadata,
+              // Carried as it is, in case the phase sets the metadata whole.
+              metadata: {
+                ...metadata,
+                ...(current.metadata?.credits_schedule
+                  ? { credits_schedule: current.metadata.credits_schedule }
+                  : {}),
+              },
             },
           ],
         });
@@ -3131,22 +3097,11 @@ export class StripeService extends PaymentProviderAbstract {
         ? await this._organizationService.getOrgByCustomerId(customer)
         : null;
     if (org && (await this.isEntitled(subscription))) {
-      const granted = await this.grantPeriodCredits(
+      await this.grantPeriodCredits(
         org.id,
         subscription,
         event.data.object.id!
       );
-      // After the grant: the credits are in, so a failure here must not send
-      // the invoice back for a retry.
-      if (granted) {
-        await this.confirmYearlyCredits(org.id, subscription).catch((err) =>
-          Logger.warn(
-            `[stripe] yearly credits on ${subscription.id} granted, confirmation not sent: ${
-              (err as Error)?.message || err
-            }`
-          )
-        );
-      }
     }
 
     const { userId, ud } = subscription.metadata;
@@ -4025,14 +3980,17 @@ export class StripeService extends PaymentProviderAbstract {
    *   keyed by the period rather than by an invoice, because the latest
    *   invoice can be an upgrade not paid yet, and its own grant must still be
    *   able to happen once it is.
+   * - A yearly plan whose credits come a month at a time gets every month
+   *   after the first here, the day it starts: no invoice brings those.
    */
   override async grantMissingPlanCredits(target: CreditGrantTarget) {
     const customer = target.organization.paymentId;
     if (target.isLifetime || !customer?.startsWith('cus_')) {
       return this._subscriptionService.grantScheduledPlanCredits(target);
     }
+    // Nothing is due while the period, or the month, last granted is running.
     if (
-      await this._subscriptionService.hasCurrentPlanCredits(
+      await this._subscriptionService.hasRunningPlanPeriod(
         target.organizationId
       )
     ) {
@@ -4059,12 +4017,21 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     const subscription = await this.retrieveSubscription(live.id);
-    return this.grantPeriodCredits(
-      target.organizationId,
-      subscription,
-      `period:${subscription.id}:${subscription.items.data[0]?.current_period_start}`,
-      true
-    );
+    // A new period's credits come with the invoice that pays for it, and the
+    // last period's grace days are left for that invoice to land. Only a later
+    // month of a year already paid for is granted the day it starts.
+    const month = this.creditMonth(subscription);
+    if (
+      (!month ||
+        month.start.getTime() ===
+          subscription.items.data[0]?.current_period_start * 1000) &&
+      (await this._subscriptionService.hasCurrentPlanCredits(
+        target.organizationId
+      ))
+    ) {
+      return false;
+    }
+    return this.grantPeriodCredits(target.organizationId, subscription);
   }
 
   /**
@@ -4532,20 +4499,11 @@ export class StripeService extends PaymentProviderAbstract {
    */
   async createCreditPackCheckout(
     organization: Organization,
-    packId: CreditPackId,
-    withdrawalWaiver: boolean
+    packId: CreditPackId
   ) {
     const pack = CREDIT_PACKS.find((p) => p.id === packId);
     if (!pack) {
       throw new HttpException('Unknown credits pack', HttpStatus.BAD_REQUEST);
-    }
-    // Checked here as well as in the DTO, as a yearly plan's is: the stamp
-    // below records a consent this call has seen.
-    if (withdrawalWaiver !== true) {
-      throw new HttpException(
-        'Please confirm that your credits start now and that your right of withdrawal ends once you use them.',
-        HttpStatus.BAD_REQUEST
-      );
     }
 
     const customer = await this.createOrGetCustomer(organization);
@@ -4555,7 +4513,6 @@ export class StripeService extends PaymentProviderAbstract {
       kind: 'credit_pack',
       pack: pack.id,
       credits: String(pack.credits),
-      withdrawal_waiver_at: new Date().toISOString(),
     };
     const { url } = await stripe.checkout.sessions.create({
       customer,
@@ -4569,7 +4526,7 @@ export class StripeService extends PaymentProviderAbstract {
       allow_promotion_codes: false,
       invoice_creation: {
         enabled: true,
-        invoice_data: { footer: CREDITS_WAIVER_NOTE, metadata },
+        invoice_data: { metadata },
       },
       metadata,
       payment_intent_data: { metadata },

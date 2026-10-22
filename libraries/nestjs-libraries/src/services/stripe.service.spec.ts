@@ -1,10 +1,22 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { after, before, beforeEach, describe, it } from 'node:test';
+import {
+  after,
+  afterEach,
+  before,
+  beforeEach,
+  describe,
+  it,
+  mock,
+} from 'node:test';
 import Stripe from 'stripe';
 import { Logger } from '@nestjs/common';
 import type { StripeService as StripeServiceType } from './stripe.service.ts';
-import { pricing } from '../database/prisma/subscriptions/pricing.ts';
+import type { SubscriptionService as SubscriptionServiceType } from '../database/prisma/subscriptions/subscription.service.ts';
+import {
+  planCredits,
+  pricing,
+} from '../database/prisma/subscriptions/pricing.ts';
 
 // Every Stripe call below is faked, and the resources no test uses throw. The
 // service builds its client from the environment when it is loaded, so the
@@ -13,9 +25,16 @@ import { pricing } from '../database/prisma/subscriptions/pricing.ts';
 // checks that ask (`isBillingEnabled`).
 process.env.STRIPE_SECRET_KEY = 'sk_test_unit_never_valid';
 process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_unit_never_valid';
+// The backend and the orchestrator pin it (see their main.ts); months are
+// counted in it.
+process.env.TZ = 'UTC';
 let StripeService: typeof StripeServiceType;
+let SubscriptionService: typeof SubscriptionServiceType;
 before(async () => {
   ({ StripeService } = await import('./stripe.service.ts'));
+  ({ SubscriptionService } = await import(
+    '../database/prisma/subscriptions/subscription.service.ts'
+  ));
 });
 
 // The SDK keeps its methods on each resource's prototype, shared by every
@@ -910,7 +929,7 @@ describe('a plan change', () => {
       'unique',
       'org1',
       'user1',
-      { billing: 'GROWTH', period: 'YEARLY', withdrawalWaiver: true } as any,
+      { billing: 'GROWTH', period: 'YEARLY' } as any,
       false,
     );
 
@@ -929,12 +948,11 @@ describe('a plan change', () => {
     assert.deepEqual(change.items, [
       { id: 'si_1', price: 'price_growth_yearly', quantity: 1 },
     ]);
-    // The consent to the year's credits is written before the charge.
+    // A plan change leaves the credits schedule as it is: a subscription
+    // sold before monthly credits keeps its year at once.
     const updates = called('subscriptions.update').map(([, b]) => b as any);
-    assert.ok(
-      updates.findIndex((b) => b.metadata?.withdrawal_waiver_at) <
-        updates.indexOf(change),
-    );
+    assert.ok(updates.every((b) => !('credits_schedule' in (b.metadata || {}))));
+    assert.equal(change.metadata, undefined);
   });
 
   const upgrade = () =>
@@ -1002,20 +1020,70 @@ describe('a plan change', () => {
     }
   });
 
-  it('refuses a switch to yearly without the withdrawal consent', async () => {
-    subs = [on('GROWTH', 'MONTHLY')];
+  it('still takes the withdrawal flag an older app sends, and keeps it and the credits schedule out of Stripe', async () => {
+    subs = [
+      on('GROWTH', 'MONTHLY', { metadata: { credits_schedule: 'monthly' } }),
+    ];
     localPlan = { subscriptionTier: 'GROWTH' };
-    await assert.rejects(
-      service().subscribe(
+    // A blank value would unset the stamp, and with it monthly credits.
+    await service().subscribe(
+      'unique',
+      'org1',
+      'user1',
+      {
+        billing: 'GROWTH',
+        period: 'YEARLY',
+        withdrawalWaiver: true,
+        credits_schedule: '',
+      } as any,
+      false,
+    );
+    const updates = called('subscriptions.update').map(([, b]) => b as any);
+    assert.ok(updates.some((b) => b.items));
+    const written = updates.find((b) => b.metadata?.uniqueId);
+    assert.equal('withdrawalWaiver' in written.metadata, false);
+    assert.equal('credits_schedule' in written.metadata, false);
+  });
+
+  it('carries the credits schedule a downgrade at renewal finds, and adds none', async () => {
+    const saved = [
+      Object.getPrototypeOf(probe.subscriptionSchedules).create,
+      Object.getPrototypeOf(probe.subscriptionSchedules).update,
+    ];
+    fake(probe.subscriptionSchedules, {
+      create: record('subscriptionSchedules.create', () => ({
+        id: 'sub_sched_1',
+        phases: [{ start_date: 100 }],
+        current_phase: { start_date: 100 },
+      })),
+      update: record('subscriptionSchedules.update', () => ({})),
+    });
+    const renewal = async (metadata: Record<string, string>) => {
+      calls = [];
+      subs = [on('GROWTH', 'MONTHLY', { metadata })];
+      localPlan = { subscriptionTier: 'GROWTH' };
+      const result = await service().subscribe(
         'unique',
         'org1',
         'user1',
-        { billing: 'GROWTH', period: 'YEARLY' } as any,
+        { billing: 'CREATOR', period: 'YEARLY' } as any,
         false,
-      ),
-      (err: any) => err.getStatus?.() === 400,
-    );
-    assert.equal(called('subscriptions.update').length, 0);
+      );
+      assert.equal((result as any).scheduledAt?.getTime(), 5_000_000);
+      const [, body] = called('subscriptionSchedules.update')[0] as any[];
+      return body.phases[1].metadata;
+    };
+    try {
+      assert.equal((await renewal({ credits_schedule: 'monthly' })).credits_schedule, 'monthly');
+      assert.equal('credits_schedule' in (await renewal({})), false);
+      assert.ok(
+        called('subscriptions.update').every(
+          ([, b]: any) => !('credits_schedule' in (b.metadata || {})),
+        ),
+      );
+    } finally {
+      fake(probe.subscriptionSchedules, { create: saved[0], update: saved[1] });
+    }
   });
 });
 
@@ -1564,5 +1632,366 @@ describe('an admin refund', () => {
     const result = await service().refundCharges('org1', ['ch_missing']);
     assert.equal(called('refunds.create').length, 0);
     assert.deepEqual(result, { refunded: [], failed: ['ch_missing'] });
+  });
+});
+
+describe('yearly credits, a month at a time', () => {
+  // The grant logic itself (SubscriptionService), over a ledger faked in
+  // memory the way plan.credits.spec.ts fakes it: refs are unique, and
+  // `close` ends what is live from those sources.
+  type Grant = {
+    source: string;
+    amount: number;
+    tier?: string | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    externalRef?: string | null;
+    expiresAt?: Date | null;
+    revokedAt?: Date | null;
+  };
+  let ledger: Grant[];
+  const live = (grant: Grant) =>
+    !grant.revokedAt && (!grant.expiresAt || grant.expiresAt > new Date());
+  const inForce = () => ledger.filter(live);
+  const currentGrants = async (_org: string, sources: string[]) =>
+    ledger.filter((grant) => sources.includes(grant.source) && live(grant)).reverse();
+  const credits = {
+    currentGrants,
+    grantWith: async (
+      org: string,
+      sources: string[],
+      decide: (current: Grant[]) => { grant: Grant; close?: string[] } | null,
+    ) => {
+      const decision = decide(await currentGrants(org, sources));
+      if (
+        !decision ||
+        ledger.some((grant) => grant.externalRef === decision.grant.externalRef)
+      ) {
+        return { id: null, granted: false };
+      }
+      for (const grant of ledger) {
+        if (decision.close?.includes(grant.source) && live(grant)) {
+          grant.expiresAt = new Date();
+        }
+      }
+      ledger.push(decision.grant);
+      return { id: 'grant', granted: true };
+    },
+  };
+  const withPlans = () =>
+    new StripeService(
+      new SubscriptionService(
+        {
+          getOrganizationByCustomerId: async (customer: string) =>
+            orgOn(customer),
+          getSubscriptionByCustomerId: async () => ({ provider: 'stripe' }),
+        } as any,
+        {} as any,
+        {} as any,
+        credits as any,
+      ) as any,
+      organizationService as any,
+      { getUserById: async () => ({ email: 'a@b.co' }) } as any,
+      {} as any,
+      { inAppNotification: async () => ({}) } as any,
+      { announce: async () => false } as any,
+    );
+
+  // Server time, faked: every grant reads the clock. Months start on the
+  // 15th, n months after 15 January 2027.
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const month = (n: number) => Date.UTC(2027, n, 15, 12);
+  const at = (ms: number) => mock.timers.setTime(ms);
+  beforeEach(() => {
+    ledger = [];
+    mock.timers.enable({ apis: ['Date'], now: month(0) + HOUR });
+  });
+  afterEach(() => {
+    mock.timers.reset();
+    delete process.env.YEARLY_MONTHLY_CREDITS_FROM;
+  });
+
+  const price = (tier: string, interval: 'month' | 'year') =>
+    ({
+      id: `price_${tier}_${interval}`,
+      product: { name: tier },
+      recurring: { interval },
+    }) as unknown as Stripe.Price;
+  const STAMPED = { credits_schedule: 'monthly' };
+  // The subscription in the period [from, to], on `tier`'s yearly price
+  // unless another is given.
+  const running = (
+    from: number,
+    to: number,
+    tier: string,
+    metadata: Record<string, string> = {},
+    extra: Partial<Sub> = {},
+    interval: 'month' | 'year' = 'year',
+  ) =>
+    sub('sub_y', 100, {
+      metadata: { service: 'postqueen', ...metadata },
+      items: {
+        data: [
+          {
+            price: price(tier, interval),
+            current_period_start: from / 1000,
+            current_period_end: to / 1000,
+          },
+        ],
+      } as any,
+      ...extra,
+    });
+  const paid = (invoice: string) =>
+    withPlans().paymentSucceeded({
+      data: {
+        object: {
+          id: invoice,
+          customer: 'cus_1',
+          amount_paid: 100,
+          parent: { subscription_details: { subscription: 'sub_y' } },
+        },
+      },
+    } as unknown as Stripe.InvoicePaymentSucceededEvent);
+  const daily = () =>
+    withPlans().grantMissingPlanCredits({
+      organizationId: 'org1',
+      provider: 'stripe',
+      isLifetime: false,
+      subscriptionTier: 'PRO',
+      createdAt: new Date(month(0)),
+      organization: {
+        paymentId: 'cus_1',
+        isTrailing: false,
+        createdAt: new Date(month(0)),
+      },
+    });
+  const latest = () => ledger[ledger.length - 1];
+
+  it('gives a new subscription its first month with the invoice, then each month the day it starts', async () => {
+    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    await paid('in_1');
+    assert.equal(ledger.length, 1);
+    assert.equal(ledger[0].amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(ledger[0].periodEnd, new Date(month(1)));
+    at(month(1) - HOUR);
+    assert.equal(await daily(), false);
+
+    for (let n = 1; n < 12; n++) {
+      at(month(n) + HOUR);
+      assert.equal(await daily(), true, `month ${n + 1}`);
+      assert.equal(await daily(), false);
+      assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+      assert.equal(
+        latest().externalRef,
+        `period:sub_y:${new Date(month(n)).toISOString()}`,
+      );
+      // one month's credits in force at a time
+      assert.deepEqual(inForce(), [latest()]);
+    }
+    assert.equal(ledger.length, 12);
+
+    // The next year's first month waits for its invoice, as a new period's
+    // credits always have.
+    subs = [running(month(12), month(24), 'PRO', STAMPED)];
+    at(month(12) + HOUR);
+    assert.equal(await daily(), false);
+    await paid('in_2');
+    assert.equal(ledger.length, 13);
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(inForce(), [latest()]);
+  });
+
+  it('leaves a monthly plan as it was: its renewal waits out the grace days for the invoice', async () => {
+    subs = [running(month(0), month(1), 'PRO', STAMPED, {}, 'month')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('PRO', 'MONTHLY'));
+    // renewed, its invoice not paid yet
+    subs = [running(month(1), month(2), 'PRO', STAMPED, {}, 'month')];
+    at(month(1) + HOUR);
+    assert.equal(await daily(), false);
+    at(month(1) + 2 * DAY);
+    assert.equal(await daily(), false);
+    // past them, the daily pass steps in, keyed by the period as before
+    at(month(1) + 3 * DAY + HOUR);
+    assert.equal(await daily(), true);
+    assert.equal(latest().externalRef, `period:sub_y:${month(1) / 1000}`);
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+  });
+
+  it('keeps a subscription sold before with its year up front while YEARLY_MONTHLY_CREDITS_FROM is unset', async () => {
+    subs = [running(month(0), month(12), 'PRO')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('PRO', 'YEARLY'));
+    at(month(5) + HOUR);
+    assert.equal(await daily(), false);
+    subs = [running(month(12), month(24), 'PRO')];
+    at(month(12) + HOUR);
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'YEARLY'));
+  });
+
+  it('moves a subscription sold before to monthly credits from its first year that starts on or after YEARLY_MONTHLY_CREDITS_FROM', async () => {
+    process.env.YEARLY_MONTHLY_CREDITS_FROM = '2027-07-01';
+    subs = [running(month(0), month(12), 'PRO')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('PRO', 'YEARLY'));
+    // this year started before the date, so it stays as it was granted
+    at(month(7) + HOUR);
+    assert.equal(await daily(), false);
+    assert.equal(ledger.length, 1);
+    // the next one starts after it
+    subs = [running(month(12), month(24), 'PRO')];
+    at(month(12) + HOUR);
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    at(month(13) + HOUR);
+    assert.equal(await daily(), true);
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    assert.equal(ledger.length, 3);
+    // a year that starts on the date itself switches too
+    process.env.YEARLY_MONTHLY_CREDITS_FROM = new Date(month(24)).toISOString();
+    subs = [running(month(24), month(36), 'PRO')];
+    at(month(24) + HOUR);
+    await paid('in_3');
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+  });
+
+  it('keeps a subscription sold before on a year up front when it is upgraded, and at its next renewal', async () => {
+    subs = [running(month(0), month(12), 'CREATOR')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('CREATOR', 'YEARLY'));
+    // upgraded mid-year: the year is topped up, as it always was
+    subs = [running(month(0), month(12), 'PRO')];
+    at(month(6) + HOUR);
+    assert.equal(await daily(), false);
+    await paid('in_2');
+    const left =
+      (planCredits('PRO', 'YEARLY') - planCredits('CREATOR', 'YEARLY')) *
+      ((month(12) - Date.now()) / (month(12) - month(0)));
+    assert.ok(Math.abs(latest().amount - left) <= 1, `${latest().amount} vs ${left}`);
+    assert.deepEqual(latest().periodEnd, new Date(month(12)));
+    at(month(7) + HOUR);
+    assert.equal(await daily(), false);
+    // and the next year comes whole, on the higher plan
+    subs = [running(month(12), month(24), 'PRO')];
+    at(month(12) + HOUR);
+    await paid('in_3');
+    assert.equal(latest().amount, planCredits('PRO', 'YEARLY'));
+    assert.equal(ledger.length, 3);
+  });
+
+  it('keeps a subscription sold before on a year up front when it switches from monthly to yearly', async () => {
+    subs = [running(month(0), month(1), 'CREATOR', {}, {}, 'month')];
+    await paid('in_1');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0) + 10 * DAY, month(12) + 10 * DAY, 'PRO')];
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'YEARLY'));
+    assert.deepEqual(inForce(), [latest()]);
+  });
+
+  it('never adds a month on top of a year granted whole, and tops an upgrade on it up as before', async () => {
+    subs = [running(month(0), month(12), 'CREATOR')];
+    await paid('in_1');
+    assert.equal(ledger[0].amount, planCredits('CREATOR', 'YEARLY'));
+    // YEARLY_MONTHLY_CREDITS_FROM set after this year was granted whole
+    process.env.YEARLY_MONTHLY_CREDITS_FROM = new Date(month(0)).toISOString();
+    subs = [running(month(0), month(12), 'PRO')];
+    at(month(6) + HOUR);
+    assert.equal(await daily(), false);
+    await paid('in_2');
+    assert.equal(ledger.length, 2);
+    assert.deepEqual(latest().periodEnd, new Date(month(12)));
+    const left =
+      (planCredits('PRO', 'YEARLY') - planCredits('CREATOR', 'YEARLY')) *
+      ((month(12) - Date.now()) / (month(12) - month(0)));
+    assert.ok(Math.abs(latest().amount - left) <= 1, `${latest().amount} vs ${left}`);
+    at(month(7) + HOUR);
+    assert.equal(await daily(), false);
+    assert.equal(ledger.length, 2);
+  });
+
+  it('tops an upgrade in the middle of a month up by that month only', async () => {
+    subs = [running(month(0), month(12), 'CREATOR', STAMPED)];
+    await paid('in_1');
+    at(month(3) + HOUR);
+    await daily();
+    at((month(3) + month(4)) / 2);
+    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    await paid('in_2');
+    const half =
+      (planCredits('PRO', 'MONTHLY') - planCredits('CREATOR', 'MONTHLY')) / 2;
+    assert.ok(Math.abs(latest().amount - half) <= 1, `${latest().amount} vs ${half}`);
+    assert.deepEqual(latest().periodEnd, new Date(month(4)));
+    // the next month is the new plan's, whole
+    at(month(4) + HOUR);
+    assert.equal(await daily(), true);
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+  });
+
+  it('gives a plan already running a month, and starts the year after a downgrade on the lower plan', async () => {
+    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    // nothing granted yet: a month, not the eleven left
+    at(month(11) + HOUR);
+    assert.equal(await daily(), true);
+    assert.equal(ledger[0].amount, planCredits('PRO', 'MONTHLY'));
+    // scheduled down to Creator, which starts with the renewal
+    subs = [running(month(12), month(24), 'CREATOR', STAMPED)];
+    at(month(12) + HOUR);
+    await paid('in_2');
+    assert.equal(latest().tier, 'CREATOR');
+    assert.equal(latest().amount, planCredits('CREATOR', 'MONTHLY'));
+    assert.deepEqual(inForce(), [latest()]);
+  });
+
+  it('gives a subscription sold since a month at a time when it switches to yearly, however Stripe bills it', async () => {
+    const monthly = () =>
+      running(month(0), month(1), 'CREATOR', STAMPED, {}, 'month');
+    // Classic billing restarts the period at the switch: its first month
+    // replaces what the monthly plan left.
+    subs = [monthly()];
+    await paid('in_1');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0) + 10 * DAY, month(12) + 10 * DAY, 'PRO', STAMPED)];
+    await paid('in_2');
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(latest().periodEnd, new Date(month(1) + 10 * DAY));
+    assert.deepEqual(inForce(), [latest()]);
+
+    // Flexible billing keeps the period's start: the month is the one already
+    // granted, so only the higher plan's difference is added for what is left.
+    ledger = [];
+    at(month(0) + HOUR);
+    subs = [monthly()];
+    await paid('in_3');
+    at(month(0) + 10 * DAY);
+    subs = [running(month(0), month(12), 'PRO', STAMPED)];
+    await paid('in_4');
+    const left =
+      (planCredits('PRO', 'MONTHLY') - planCredits('CREATOR', 'MONTHLY')) *
+      ((month(1) - Date.now()) / (month(1) - month(0)));
+    assert.equal(ledger.length, 2);
+    assert.ok(Math.abs(latest().amount - left) <= 1, `${latest().amount} vs ${left}`);
+    assert.deepEqual(latest().periodEnd, new Date(month(1)));
+  });
+
+  it('gives a trial one month, then the first month when it converts to yearly', async () => {
+    subs = [
+      running(month(0), month(0) + 7 * DAY, 'PRO', STAMPED, {
+        status: 'trialing',
+        trial_start: month(0) / 1000,
+        trial_end: (month(0) + 7 * DAY) / 1000,
+      }),
+    ];
+    assert.equal(await daily(), true);
+    assert.equal(ledger[0].source, 'trial');
+    assert.equal(ledger[0].amount, planCredits('PRO', 'MONTHLY'));
+    subs = [running(month(0) + 7 * DAY, month(12) + 7 * DAY, 'PRO', STAMPED)];
+    at(month(0) + 7 * DAY + HOUR);
+    await paid('in_1');
+    assert.equal(latest().source, 'plan');
+    assert.equal(latest().amount, planCredits('PRO', 'MONTHLY'));
+    assert.deepEqual(inForce(), [latest()]);
   });
 });

@@ -522,11 +522,7 @@ export class BillingController {
       );
     }
 
-    return this._stripeService.createCreditPackCheckout(
-      org,
-      body.pack,
-      body.withdrawalWaiver
-    );
+    return this._stripeService.createCreditPackCheckout(org, body.pack);
   }
 
   @Post('/add-subscription')

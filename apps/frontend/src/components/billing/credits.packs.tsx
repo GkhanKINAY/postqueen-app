@@ -4,10 +4,10 @@ import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@gitroom/react/form/button';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
-import { Checkbox } from '@gitroom/react/form/checkbox';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import {
   CREDIT_PACK_MONTHS,
@@ -25,35 +25,35 @@ import {
 } from '@gitroom/frontend/components/billing/credits.amount';
 
 /**
- * The customer asking for what they buy to start at once, and acknowledging
- * that their 14-day right of withdrawal ends once they use it. A yearly plan
- * and a credits pack are both sold only with it ticked; the server refuses
- * either without it.
+ * The terms a plan or a credits pack is bought on, next to every way of
+ * paying for one. A consumer keeps the right to withdraw: nothing asks them to
+ * give it up. Only where this deployment publishes terms (see register.tsx).
  */
-export const WithdrawalWaiver: FC<{
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  kind: 'yearly' | 'credits';
-}> = ({ checked, onChange, kind }) => {
+export const PurchaseTerms: FC = () => {
   const t = useT();
+  const { legalUrl } = useVariables();
+  if (!legalUrl) {
+    return null;
+  }
   return (
-    <div data-pq="withdrawal-waiver" className="text-[13px] leading-[1.5]">
-      <Checkbox
-        disableForm
-        checked={checked}
-        onChange={(e) => onChange(e.target.value)}
-        label={
-          kind === 'yearly'
-            ? t(
-                'withdrawal_waiver_yearly',
-                'I want my yearly credits right away, and I understand I lose my 14-day right to withdraw once I use them.',
-              )
-            : t(
-                'withdrawal_waiver_credits',
-                'I want these credits right away, and I understand I lose my 14-day right to withdraw once I use them.',
-              )
-        }
-      />
+    <div
+      data-pq="purchase-terms"
+      className="text-[12.5px] leading-[1.5] text-pqMuted"
+    >
+      {t('purchase_terms_agree', 'By paying you agree to our')}{' '}
+      <a
+        href={`${legalUrl}/terms-of-service`}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        className="text-pqText underline"
+      >
+        {t('terms_of_service', 'Terms of Service')}
+      </a>
+      .{' '}
+      {t(
+        'purchase_terms_withdrawal',
+        'If you are a consumer in the EU, the EEA or the UK, you can withdraw within 14 days and get a full refund.',
+      )}
     </div>
   );
 };
@@ -103,7 +103,6 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
   const pathname = usePathname();
   const queryParams = useSearchParams();
   const { data, isLoading, mutate } = useCreditsBalance();
-  const [waiver, setWaiver] = useState(false);
   const [buying, setBuying] = useState<CreditPackId | null>(null);
 
   // Back from Stripe. The credits come with the webhook, which can land a
@@ -141,21 +140,11 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
 
   const buy = useCallback(
     (pack: CreditPackId) => async () => {
-      if (!waiver) {
-        toast.show(
-          t(
-            'withdrawal_waiver_required',
-            'Tick the box below the packs to continue.',
-          ),
-          'warning',
-        );
-        return;
-      }
       setBuying(pack);
       try {
         const response = await fetch('/billing/credits/checkout', {
           method: 'POST',
-          body: JSON.stringify({ pack, withdrawalWaiver: true }),
+          body: JSON.stringify({ pack }),
         });
         const body = await response.json().catch(() => ({}) as any);
         if (response.ok && body?.url) {
@@ -185,7 +174,7 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
         );
       }
     },
-    [waiver, fetch, toast, t],
+    [fetch, toast, t],
   );
 
   // Billing off never reaches this page (BillingComponent says so instead),
@@ -321,7 +310,7 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
         })}
       </div>
 
-      <WithdrawalWaiver kind="credits" checked={waiver} onChange={setWaiver} />
+      <PurchaseTerms />
     </div>
   );
 };
