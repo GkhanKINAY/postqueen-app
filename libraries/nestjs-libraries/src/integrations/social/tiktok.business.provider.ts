@@ -105,6 +105,22 @@ export class TiktokBusinessProvider
       return 'TikTok only accepts JPEG or WebP pictures and BMP files cannot be converted, please use a JPEG or PNG';
     }
 
+    // The Business video endpoint caps a video at 1 GB. Read with a HEAD and
+    // taken as binary GB, so a file is never refused that TikTok would take;
+    // when the size cannot be read, TikTok decides.
+    if (firstItems?.length === 1 && hasExtension(firstItems[0]?.path, 'mp4')) {
+      // capped at 30 seconds so a slow host cannot hold up scheduling
+      const size = await Promise.race([
+        this.mediaSize(firstItems[0].path).catch(() => 0),
+        new Promise<number>((resolve) =>
+          setTimeout(() => resolve(0), 30_000).unref()
+        ),
+      ]);
+      if (size > 1024 ** 3) {
+        return 'TikTok Business accepts videos up to 1 GB. Use a smaller file.';
+      }
+    }
+
     // The Business photo endpoint takes at most 1080x1920 (or 1920x1080) and
     // fails the whole post when a single image is bigger, at publish time.
     // Conversion to JPEG keeps the size, so it is checked here.

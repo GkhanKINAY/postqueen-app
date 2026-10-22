@@ -97,13 +97,18 @@ describe('VK in-body errors', () => {
     );
   });
 
-  it('runs again after a per second limit, and not after flood control', async () => {
+  it('retries a per second limit itself, and fails flood control at once', async () => {
+    // error 6 means VK did not run the call: vkCall sends it again, and only a
+    // limit that outlasts those retries fails the post, as BadBody
+    const tooFast = {
+      error: { error_code: 6, error_msg: 'Too many requests per second' },
+    };
+    const limited = answers(tooFast, tooFast, tooFast);
     await assert.rejects(
-      answers({
-        error: { error_code: 6, error_msg: 'Too many requests per second' },
-      }).provider.post('1', 'token', post()),
-      (err) => !(err instanceof BadBody) && /per second/.test(String(err))
+      limited.provider.post('1', 'token', post()),
+      (err) => err instanceof BadBody && /limiting how fast/.test(err.message)
     );
+    assert.equal(limited.urls.length, 3);
     await assert.rejects(
       answers({
         error: { error_code: 9, error_msg: 'Flood control' },

@@ -10,6 +10,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
+  MEDIA_READ_FAILED,
   platformMessage,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -299,7 +300,7 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
             this.identifier,
             JSON.stringify({ status: fileResponse.status }),
             '{}',
-            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+            MEDIA_READ_FAILED
           );
         }
         const uploadResponse = await fetch(createFileResponse.upload_url, {

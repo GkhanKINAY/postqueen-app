@@ -8,6 +8,7 @@ import { MeweProvider } from './mewe.provider.ts';
 import { TwitchProvider } from './twitch.provider.ts';
 import { MoltbookProvider } from './moltbook.provider.ts';
 import { FarcasterProvider } from './farcaster.provider.ts';
+import { VkProvider } from './vk.provider.ts';
 import { BadBody, Disconnect, RefreshToken } from '../social.abstract.ts';
 
 // The post workflow publishes again, up to five times, after any error that
@@ -96,6 +97,65 @@ describe('Slack refusals', () => {
       provider.post('team', 'token', post(), integration),
       RefreshToken,
     );
+  });
+
+  it('sends the message again after a 429, which Slack did not post', async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      calls.push(String(url));
+      if (String(url).includes('chat.postMessage')) {
+        const first = calls.filter((u) => u.includes('chat.postMessage')).length === 1;
+        return first
+          ? new Response('', { status: 429, headers: { 'retry-after': '0' } })
+          : new Response(JSON.stringify({ ok: true, ts: '1.2', channel: 'C1' }));
+      }
+      return new Response(JSON.stringify({ ok: true, permalink: 'https://slack.test/p' }));
+    }) as any;
+    const [result] = await provider.post('team', 'token', post(), integration);
+    assert.equal(result.postId, '1.2');
+    assert.equal(calls.filter((u) => u.includes('chat.postMessage')).length, 2);
+  });
+
+  it('fails as BadBody once Slack keeps answering 429', async () => {
+    globalThis.fetch = (async () =>
+      new Response('', { status: 429, headers: { 'retry-after': '0' } })) as any;
+    await assert.rejects(
+      provider.post('team', 'token', post(), integration),
+      (err: any) => err instanceof BadBody && /limiting how fast/.test(err.message),
+    );
+  });
+});
+
+describe('VK too many requests per second', () => {
+  // wall.post through this.fetch, answering VK's HTTP 200 envelopes in order
+  class ScriptedVk extends VkProvider {
+    calls = 0;
+    constructor(private readonly answers: any[]) {
+      super();
+    }
+    override async fetch(): Promise<Response> {
+      const answer = this.answers[Math.min(this.calls, this.answers.length - 1)];
+      this.calls++;
+      return new Response(JSON.stringify(answer));
+    }
+  }
+  const tooFast = { error: { error_code: 6, error_msg: 'Too many requests per second' } };
+  const vkPost = { id: 'p1', message: 'Hello', media: [], settings: {} } as any;
+
+  it('sends the post again after error 6, which VK did not run', async () => {
+    const vk = new ScriptedVk([tooFast, { response: { post_id: 42 } }]);
+    const [result] = await vk.post('1', 'token', [vkPost]);
+    assert.equal(result.postId, '42');
+    assert.equal(vk.calls, 2);
+  });
+
+  it('fails as BadBody once error 6 outlasts the retries', async () => {
+    const vk = new ScriptedVk([tooFast]);
+    await assert.rejects(
+      vk.post('1', 'token', [vkPost]),
+      (err: any) => err instanceof BadBody && /limiting how fast/.test(err.message),
+    );
+    assert.equal(vk.calls, 3);
   });
 });
 

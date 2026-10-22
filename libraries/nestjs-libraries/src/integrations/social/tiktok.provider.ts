@@ -104,6 +104,22 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       return 'TikTok only accepts JPEG or WebP pictures and BMP files cannot be converted, please use a JPEG or PNG';
     }
 
+    // TikTok's media transfer guide caps a video at 4 GB. Read with a HEAD and
+    // taken as binary GB, so a file is never refused that TikTok would take;
+    // when the size cannot be read, TikTok decides.
+    if (firstItems?.length === 1 && hasExtension(firstItems[0]?.path, 'mp4')) {
+      // capped at 30 seconds so a slow host cannot hold up scheduling
+      const size = await Promise.race([
+        this.mediaSize(firstItems[0].path).catch(() => 0),
+        new Promise<number>((resolve) =>
+          setTimeout(() => resolve(0), 30_000).unref()
+        ),
+      ]);
+      if (size > 4 * 1024 ** 3) {
+        return 'TikTok accepts videos up to 4 GB. Use a smaller file.';
+      }
+    }
+
     // TikTok fails the whole photo post when a single image is oversized, and
     // the status only says `picture_size_check_failed` without naming it.
     if (firstItems?.every((p) => (p?.path?.indexOf?.('mp4') ?? -1) === -1)) {
