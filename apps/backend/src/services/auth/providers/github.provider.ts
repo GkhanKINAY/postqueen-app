@@ -44,7 +44,9 @@ export class GithubProvider extends AuthProviderAbstract {
       })
     ).json();
 
-    const [{ email }] = await (
+    // Every address on the account is listed, unverified ones included, in no
+    // documented order. Only the verified primary one proves the inbox.
+    const emails = await (
       await fetch('https://api.github.com/user/emails', {
         headers: {
           Authorization: `token ${access_token}`,
@@ -52,8 +54,17 @@ export class GithubProvider extends AuthProviderAbstract {
       })
     ).json();
 
+    const primary = emails.find(
+      (e: { primary: boolean; verified: boolean }) => e.primary && e.verified
+    );
+    if (!primary) {
+      throw new Error(
+        'Your GitHub account has no verified primary email, please verify it on GitHub and try again'
+      );
+    }
+
     return {
-      email: email,
+      email: primary.email,
       id: String(data.id),
     };
   }
