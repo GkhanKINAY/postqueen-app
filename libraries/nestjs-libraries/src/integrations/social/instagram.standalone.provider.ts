@@ -58,7 +58,7 @@ export class InstagramStandaloneProvider
     if (!firstPost?.length) {
       return 'Should have at least one media';
     }
-    const shared = instagramProvider.checkMediaAndCaption(
+    const shared = await instagramProvider.checkMediaAndCaption(
       firstPost,
       caption,
       settings?.post_type
@@ -100,6 +100,15 @@ export class InstagramStandaloneProvider
         value: string;
       }
     | undefined {
+    // This tile connects with Instagram login, so no Facebook Page is
+    // involved and the shared (#200) answer about Page access does not apply.
+    if (body.indexOf('(#200)') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Instagram rejected the post because a permission is missing. Please reconnect the channel and allow all permissions.',
+      };
+    }
     return instagramProvider.handleErrors(body, status);
   }
 
