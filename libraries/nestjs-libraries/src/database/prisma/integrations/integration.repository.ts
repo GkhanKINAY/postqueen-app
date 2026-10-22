@@ -30,7 +30,10 @@ export class IntegrationRepository {
     private _plugs: PrismaRepository<'plugs'>,
     private _exisingPlugData: PrismaRepository<'exisingPlugData'>,
     private _customers: PrismaRepository<'customer'>,
-    private _mentions: PrismaRepository<'mentions'>
+    private _mentions: PrismaRepository<'mentions'>,
+    private _errors: PrismaRepository<'errors'>,
+    private _notifications: PrismaRepository<'notifications'>,
+    private _snapshots: PrismaRepository<'postMetricSnapshot'>
   ) {}
 
   getMentions(platform: string, q: string) {
@@ -205,6 +208,12 @@ export class IntegrationRepository {
         },
       },
     });
+    const target = existing
+      ? existing
+      : await this._integration.model.integration.findUnique({
+          where: { id },
+          select: { picture: true },
+        });
 
     if (existing) {
       await this._posts.model.post.updateMany({
@@ -227,7 +236,7 @@ export class IntegrationRepository {
       });
     }
 
-    return this._integration.model.integration.update({
+    const updated = await this._integration.model.integration.update({
       where: {
         ...(existing ? { id: existing.id } : { id }),
       },
@@ -240,8 +249,21 @@ export class IntegrationRepository {
         // enable query looks at today but is a trap for whoever reads it next.
         autoDisabledAt: null,
         deletedAt: null,
+        // The page was just picked with fresh credentials, so the channel no
+        // longer waits for its person, and the hourly run must not erase it.
+        refreshNeeded: false,
+        disconnectedAt: null,
+        dataErasedAt: null,
       },
     });
+
+    // The picture it had (the account's own, from the first step, or the
+    // page's earlier one) is no longer shown anywhere.
+    if (target?.picture && target.picture !== updated.picture) {
+      await this.removeOwnPicture(target.picture);
+    }
+
+    return updated;
   }
 
   // Extra pages from a two-step picker (Facebook, Instagram, …). The first
@@ -298,6 +320,8 @@ export class IntegrationRepository {
         : {}),
       inBetweenSteps: false,
       refreshNeeded: false,
+      disconnectedAt: null,
+      dataErasedAt: null,
       disabled: false,
       autoDisabledAt: null,
       deletedAt: null,
@@ -443,6 +467,18 @@ export class IntegrationRepository {
           ]),
         }
       : {};
+    // A new picture replaces the stored one, whose copy is then deleted.
+    const previous = picture
+      ? await this._integration.model.integration.findUnique({
+          where: {
+            organizationId_internalId: {
+              internalId,
+              organizationId: org,
+            },
+          },
+          select: { picture: true },
+        })
+      : null;
     const upsert = await this._integration.model.integration.upsert({
       where: {
         organizationId_internalId: {
@@ -499,8 +535,16 @@ export class IntegrationRepository {
         organizationId: org,
         deletedAt: null,
         refreshNeeded: false,
+        // Fresh credentials: the clock of a channel waiting for its person
+        // starts again, and one whose data was erased fills up again.
+        disconnectedAt: null,
+        dataErasedAt: null,
       },
     });
+
+    if (previous?.picture && previous.picture !== upsert.picture) {
+      await this.removeOwnPicture(previous.picture);
+    }
 
     if (oneTimeToken) {
       const rootId =
@@ -525,6 +569,8 @@ export class IntegrationRepository {
           token,
           refreshToken,
           refreshNeeded: false,
+          disconnectedAt: null,
+          dataErasedAt: null,
           ...(expiresIn
             ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
             : {}),
@@ -666,6 +712,206 @@ export class IntegrationRepository {
     }
 
     return { count: rows.length };
+  }
+
+  // A provider's channels that started waiting for their person (a
+  // reconnect, or a setup never finished) get the time it was first seen. A
+  // repeat keeps it; fresh credentials clear it.
+  markDisconnectedChannels(providerIdentifier: string) {
+    return this._integration.model.integration.updateMany({
+      where: {
+        providerIdentifier,
+        deletedAt: null,
+        disconnectedAt: null,
+        OR: [{ refreshNeeded: true }, { inBetweenSteps: true }],
+      },
+      data: {
+        disconnectedAt: new Date(),
+      },
+    });
+  }
+
+  // A provider's channels whose network data is due to go: removed before
+  // removedBefore (a removed workspace's are the account purge's), or waiting
+  // for their person since before disconnectedBefore. With the credentials,
+  // for the revoke, and the number of posts.
+  listChannelsToErase(
+    providerIdentifier: string,
+    removedBefore: Date | undefined,
+    disconnectedBefore: Date | undefined,
+    take: number
+  ) {
+    const due: Prisma.IntegrationWhereInput[] = [
+      ...(removedBefore
+        ? [
+            {
+              deletedAt: { lt: removedBefore },
+              organization: { deletedAt: null },
+            },
+          ]
+        : []),
+      ...(disconnectedBefore
+        ? [
+            {
+              deletedAt: null,
+              disconnectedAt: { lt: disconnectedBefore },
+              OR: [{ refreshNeeded: true }, { inBetweenSteps: true }],
+            },
+          ]
+        : []),
+    ];
+    if (!due.length) {
+      return Promise.resolve([]);
+    }
+
+    return this._integration.model.integration.findMany({
+      where: {
+        providerIdentifier,
+        dataErasedAt: null,
+        OR: due,
+      },
+      include: {
+        _count: {
+          select: { posts: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take,
+    });
+  }
+
+  // Whether another live channel of the same provider may sign in through
+  // the same person, so revoking this one's access would end theirs too: one
+  // grant can back several channels (extra pages copy it, and the same
+  // account can be connected in another workspace). The person is
+  // platformUserId, or rootInternalId on rows from before it, read as
+  // getIntegrationsByPlatformUser does; any overlap counts, since a revoke
+  // left out costs nothing and a wrong one breaks a channel that works.
+  async sharesAccessWithLiveChannel(
+    integration: Integration,
+    otherOrganizationsOnly = false
+  ) {
+    const people = [
+      ...new Set(
+        [
+          integration.platformUserId,
+          integration.rootInternalId,
+          integration.internalId,
+        ].filter((id): id is string => !!id)
+      ),
+    ];
+
+    const other = await this._integration.model.integration.findFirst({
+      where: {
+        id: { not: integration.id },
+        providerIdentifier: integration.providerIdentifier,
+        deletedAt: null,
+        ...(otherOrganizationsOnly
+          ? { organizationId: { not: integration.organizationId } }
+          : {}),
+        OR: [
+          { platformUserId: { in: people } },
+          { rootInternalId: { in: people } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return !!other;
+  }
+
+  // Deletes what a channel's network gave PostQueen, for a provider whose
+  // terms limit it: the notices about the channel and its posts, its post
+  // statistics and errors, the links and errors on its posts, and the name,
+  // picture, public name and credentials on the row, which shows the
+  // network's name instead. A removed channel also loses its ids the way
+  // eraseChannelData does it, so a later connect starts a fresh row. A
+  // channel waiting for a reconnect keeps them and its posts, so Reconnect
+  // fills the same row again. Everything before the row is safe to repeat,
+  // and the row update only lands while the channel is still as it was
+  // listed, so a reconnect in between wins. The picture file goes last.
+  async eraseNetworkData(integration: Integration, label: string) {
+    const removed = !!integration.deletedAt;
+    const { id, organizationId } = integration;
+
+    const releaseURLs = (
+      await this._posts.model.post.findMany({
+        where: { integrationId: id, releaseURL: { not: null } },
+        select: { releaseURL: true },
+      })
+    ).map((post) => post.releaseURL!);
+    await this._notifications.model.notifications.deleteMany({
+      where: { organizationId, link: { endsWith: `focus=${id}` } },
+    });
+    for (let i = 0; i < releaseURLs.length; i += 500) {
+      await this._notifications.model.notifications.deleteMany({
+        where: {
+          organizationId,
+          link: { in: releaseURLs.slice(i, i + 500) },
+        },
+      });
+    }
+
+    await this._snapshots.model.postMetricSnapshot.deleteMany({
+      where: { integrationId: id },
+    });
+    await this._errors.model.errors.deleteMany({
+      where: { post: { integrationId: id } },
+    });
+    // 'missing' is PostQueen's own mark for a post the platform no longer
+    // has, not the platform's id, so it stays.
+    await this._posts.model.post.updateMany({
+      where: { integrationId: id, releaseId: { not: 'missing' } },
+      data: { releaseId: null },
+    });
+    await this._posts.model.post.updateMany({
+      where: {
+        integrationId: id,
+        OR: [{ releaseURL: { not: null } }, { error: { not: null } }],
+      },
+      data: { releaseURL: null, error: null },
+    });
+
+    const { count } = await this._integration.model.integration.updateMany({
+      where: removed
+        ? { id, deletedAt: { not: null }, dataErasedAt: null }
+        : {
+            id,
+            deletedAt: null,
+            dataErasedAt: null,
+            OR: [{ refreshNeeded: true }, { inBetweenSteps: true }],
+          },
+      data: {
+        name: label,
+        picture: null,
+        profile: null,
+        platformUserId: null,
+        token: this.hashValue(integration.token),
+        refreshToken: integration.refreshToken
+          ? this.hashValue(integration.refreshToken)
+          : null,
+        ...(removed
+          ? {
+              internalId: `deleted_${this.hashValue(
+                integration.internalId
+              )}_${makeId(10)}`,
+              rootInternalId: integration.rootInternalId
+                ? this.hashValue(integration.rootInternalId)
+                : null,
+              customInstanceDetails: integration.customInstanceDetails
+                ? this.hashValue(integration.customInstanceDetails)
+                : null,
+            }
+          : {}),
+        dataErasedAt: new Date(),
+      },
+    });
+
+    if (count && integration.picture) {
+      await this.removeOwnPicture(integration.picture);
+    }
+
+    return { erased: count > 0 };
   }
 
   // Only a copy in our own storage is deleted; a failed delete leaves the
@@ -1073,7 +1319,8 @@ export class IntegrationRepository {
   // find it by internalId), but not what it signed in with. The token, refresh
   // token and custom instance details are replaced the same way account
   // deletion does it, so a removed channel holds no working credentials. A
-  // reconnect writes fresh ones through createOrUpdateIntegration.
+  // reconnect writes fresh ones through createOrUpdateIntegration. Removing it
+  // again keeps the first date, which is what the hourly erase counts from.
   async deleteChannel(org: string, id: string) {
     const integration = await this._integration.model.integration.findFirst({
       where: {
@@ -1093,7 +1340,10 @@ export class IntegrationRepository {
         organizationId: org,
       },
       data: {
-        deletedAt: new Date(),
+        deletedAt: integration?.deletedAt || new Date(),
+        // A live channel erased while it waited for a reconnect still has its
+        // ids; the removed channels' erase takes those too.
+        ...(integration && !integration.deletedAt ? { dataErasedAt: null } : {}),
         ...(integration
           ? {
               token: this.hashValue(integration.token),
@@ -1150,7 +1400,7 @@ export class IntegrationRepository {
       return;
     }
 
-    return this._integration.model.integration.update({
+    const erased = await this._integration.model.integration.update({
       where: {
         id,
         organizationId: org,
@@ -1174,8 +1424,16 @@ export class IntegrationRepository {
           ? this.hashValue(integration.customInstanceDetails)
           : null,
         deletedAt: integration.deletedAt || new Date(),
+        dataErasedAt: new Date(),
       },
     });
+
+    // The copy of the picture in our storage goes with the row's link to it.
+    if (integration.picture) {
+      await this.removeOwnPicture(integration.picture);
+    }
+
+    return erased;
   }
 
   private hashValue(value: string) {

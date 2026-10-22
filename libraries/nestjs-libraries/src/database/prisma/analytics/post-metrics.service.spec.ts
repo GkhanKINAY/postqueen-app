@@ -131,6 +131,9 @@ const service = () =>
     },
     {},
     {
+      eraseExpiredChannelData: async () => {
+        profileRuns.push('erase');
+      },
       clearExpiredProfiles: async () => {
         profileRuns.push('clear');
       },
@@ -271,11 +274,11 @@ describe('post metrics retention', () => {
     assert.equal(prunes.length, 1);
   });
 
-  it('reads due channel profiles and clears expired ones on the hourly run only', async () => {
+  it('reads due channel profiles, erases expired channel data and clears expired profiles on the hourly run only', async () => {
     await service().listIntegrationsNeedingSync();
-    assert.deepEqual(profileRuns, ['refresh', 'clear']);
+    assert.deepEqual(profileRuns, ['refresh', 'erase', 'clear']);
     await service().maybeEnqueueStaleSync('org-1');
-    assert.deepEqual(profileRuns, ['refresh', 'clear']);
+    assert.deepEqual(profileRuns, ['refresh', 'erase', 'clear']);
   });
 
   it('still lists the hourly targets when the prune fails', async () => {

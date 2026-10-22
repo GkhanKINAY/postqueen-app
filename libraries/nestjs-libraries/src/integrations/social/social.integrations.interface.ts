@@ -20,6 +20,15 @@ export interface IAuthenticator {
     requiredId: string,
     accessToken: string,
   ): Promise<Omit<AuthTokenDetails, 'refreshToken' | 'expiresIn'>>;
+  /**
+   * Gives up PostQueen's access at the platform, for a platform whose terms
+   * ask for it when someone removes their channel. Called with the channel's
+   * own tokens before they are replaced, and never while another live channel
+   * still signs in through the same person, since one grant can back several.
+   * A token the platform no longer knows counts as done. Omit it when there is
+   * nothing to revoke.
+   */
+  revokeAccess?(accessToken: string, refreshToken?: string): Promise<void>;
   generateAuthUrl(
     clientInformation?: ClientInformation,
   ): Promise<GenerateAuthUrlResponse>;
@@ -115,6 +124,23 @@ export interface IAuthenticator {
    * long. Omit it to keep them as they are.
    */
   profileRetentionDays?: number;
+  /**
+   * How many days after a channel is removed what its network gave PostQueen
+   * may be kept, for a platform whose terms limit it: its name, picture,
+   * public name and ids, its post statistics, and the links, errors and
+   * notices of its posts. The hourly run deletes them once the channel has
+   * been removed this long. Omit it to keep them.
+   */
+  removedDataRetentionDays?: number;
+  /**
+   * How many days a channel that needs reconnecting, or whose setup was never
+   * finished, may keep what its network gave PostQueen, for a platform whose
+   * terms limit it. After that the hourly run deletes its name, picture,
+   * statistics, post links and credentials but keeps the channel and its
+   * posts, so Reconnect brings it back with fresh ones. A setup never finished
+   * and with no posts is removed instead. Omit it to keep them.
+   */
+  disconnectedDataRetentionDays?: number;
   changeNickname?(
     id: string,
     accessToken: string,

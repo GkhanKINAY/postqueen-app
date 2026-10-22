@@ -73,6 +73,17 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   name = 'YouTube';
   isBetweenSteps = true;
   dto = YoutubeSettingsDto;
+  // YouTube's developer policies (III.D.2.3, III.E.4) limit what PostQueen
+  // keeps. A removed channel's data goes within 7 days; here within a day.
+  // Statistics stay at most 30 days. A channel's name and picture are read
+  // again within 30 days; reading them weekly also confirms the token still
+  // works, and a channel whose token cannot be refreshed loses its YouTube
+  // data 14 days later, so at most 7 + 14 days after access ended, inside
+  // YouTube's 30.
+  analyticsRetentionDays = 29;
+  profileRetentionDays = 8;
+  removedDataRetentionDays = 1;
+  disconnectedDataRetentionDays = 14;
   // youtube.force-ssl allows everything youtube does (editing, deleting,
   // playlists) plus comments, so youtube itself is not requested;
   // youtubepartner is only for YouTube content-owner partners.
@@ -399,7 +410,28 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       name: data.name!,
       picture: upgradeProfileImageUrl(data?.picture),
       username: '',
+      // The Google account that signed in. The channel it picks gets its own
+      // id, so this is how another channel on the same grant is recognised.
+      platformUserId: data.id!,
     };
+  }
+
+  // A refresh token ends the whole grant, and with it every access token it
+  // issued. Google answers 400 for a token it no longer knows. The library's
+  // error carries the token in its URL, so only the status goes on.
+  async revokeAccess(accessToken: string, refreshToken?: string) {
+    const { client } = clientAndYoutube();
+    try {
+      await client.revokeToken(refreshToken || accessToken);
+    } catch (err: any) {
+      const status = err?.response?.status || err?.status;
+      if (status === 400) {
+        return;
+      }
+      throw new Error(
+        `Google did not revoke the access (${status || 'no answer'})`
+      );
+    }
   }
 
   async pages(accessToken: string) {
@@ -433,8 +465,13 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     }
   }
 
-  async fetchPageInformation(accessToken: string, data: { id: string }) {
-    if (!data?.id) {
+  // The picker sends { id }; the hourly profile read sends { page }.
+  async fetchPageInformation(
+    accessToken: string,
+    data: { id?: string; page?: string }
+  ) {
+    const id = data?.id || data?.page;
+    if (!id) {
       throw new Error('No YouTube channel was selected.');
     }
 
@@ -445,7 +482,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     try {
       const response = await youtubeClient.channels.list({
         part: ['snippet', 'contentDetails', 'statistics'],
-        id: [data.id],
+        id: [id],
       });
 
       const channel = response.data.items?.[0];

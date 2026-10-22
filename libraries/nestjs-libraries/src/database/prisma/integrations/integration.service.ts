@@ -53,6 +53,14 @@ dayjs.extend(utc);
 // last Refresh. Long, because nothing else ever writes it.
 const MANUAL_ANALYTICS_TTL_SECONDS = 90 * 24 * 60 * 60;
 
+// Channels whose network data one hourly run erases, and the time that may
+// take beside the profile reads, well inside the listing activity's 10-minute
+// limit, so a backlog spreads over a few hours. A revoke that hangs is given
+// up after 10 seconds; what asked for it goes on either way.
+const ERASE_PER_RUN = 50;
+const ERASE_RUN_BUDGET_MS = 2 * 60 * 1000;
+const REVOKE_TIMEOUT_MS = 10 * 1000;
+
 // Provider methods that publish, read analytics, handle tokens or price
 // work. The workflows and the app's own routes run them, with their checks
 // and charges; `/integrations/function` never does. Plugs are added per
@@ -73,6 +81,7 @@ const NOT_CALLABLE_FUNCTIONS = [
   'generateAuthUrl',
   'fetchPageInformation',
   'creditCost',
+  'revokeAccess',
 ];
 
 @Injectable()
@@ -319,8 +328,11 @@ export class IntegrationService implements OnModuleInit {
       }
     })();
 
+    // A copy already in our storage is kept too: a token refresh passes the
+    // stored picture back, and copying it again left the old file behind on
+    // every refresh, where nothing could find it to delete it.
     const uploadedPicture = picture
-      ? onCloudflareImages
+      ? onCloudflareImages || this.storage.isOwnFile(picture)
         ? picture
         : await this.storage.uploadSimple(picture).catch((err) => {
             console.log('Failed to upload profile picture:', picture, err);
@@ -411,6 +423,134 @@ export class IntegrationService implements OnModuleInit {
         this._integrationManager.getSocialIntegrationName(identifier),
         dayjs().subtract(days, 'day').toDate()
       );
+    }
+  }
+
+  // A provider with removedDataRetentionDays or disconnectedDataRetentionDays
+  // may keep what its network gave PostQueen only that long after a channel
+  // is removed, or after it started waiting for its person. The hourly run
+  // stamps the channels that started waiting, then erases the due ones, a
+  // few per run and within a time budget:
+  // - a removed channel's access is given up first, for the rows removed
+  //   before removing did it (a hashed token is simply refused);
+  // - a setup never finished, with no posts, is removed like any channel,
+  //   and erased once that is due;
+  // - a channel waiting for a reconnect keeps its posts and ids, and its
+  //   profile is read again soon after Reconnect brings it back.
+  async eraseExpiredChannelData() {
+    const stopAt = Date.now() + ERASE_RUN_BUDGET_MS;
+    let handled = 0;
+    for (const identifier of this._integrationManager.getAllowedSocialsIntegrations()) {
+      const provider = this._integrationManager.getSocialIntegration(identifier);
+      const removedDays = provider?.removedDataRetentionDays;
+      const disconnectedDays = provider?.disconnectedDataRetentionDays;
+      if (!removedDays && !disconnectedDays) {
+        continue;
+      }
+
+      if (disconnectedDays) {
+        await this._integrationRepository.markDisconnectedChannels(identifier);
+      }
+      const channels = await this._integrationRepository.listChannelsToErase(
+        identifier,
+        removedDays ? dayjs().subtract(removedDays, 'day').toDate() : undefined,
+        disconnectedDays
+          ? dayjs().subtract(disconnectedDays, 'day').toDate()
+          : undefined,
+        ERASE_PER_RUN
+      );
+      const label = this._integrationManager.getSocialIntegrationName(identifier);
+      const counts = { removed: 0, disconnected: 0, unfinished: 0 };
+      for (const channel of channels) {
+        if (handled >= ERASE_PER_RUN || Date.now() > stopAt) {
+          break;
+        }
+        handled++;
+
+        try {
+          if (channel.deletedAt) {
+            await this.revokeChannelAccess(channel);
+            await this._integrationRepository.eraseNetworkData(channel, label);
+            counts.removed++;
+          } else if (
+            channel.inBetweenSteps &&
+            channel.internalId === channel.rootInternalId &&
+            !channel._count.posts
+          ) {
+            await this.deleteChannel(channel.organizationId, channel.id);
+            counts.unfinished++;
+          } else {
+            await this._integrationRepository.eraseNetworkData(channel, label);
+            await ioRedis.del(`integration:profile-read:${channel.id}`);
+            counts.disconnected++;
+          }
+        } catch (err) {
+          Logger.warn(
+            `[erase] channel=${channel.id} failed: ${(err as Error).message}`
+          );
+        }
+      }
+
+      if (counts.removed || counts.disconnected || counts.unfinished) {
+        Logger.log(
+          `[erase] provider=${identifier} removed=${counts.removed} disconnected=${counts.disconnected} unfinished=${counts.unfinished}`
+        );
+      }
+    }
+  }
+
+  // Gives up PostQueen's access at the platform, for a provider that can,
+  // unless another live channel may sign in through the same person. Never
+  // holds up what asked for it: a failure or a hang is only logged, by id.
+  private async revokeChannelAccess(
+    integration: Integration,
+    otherOrganizationsOnly = false
+  ) {
+    const provider = this._integrationManager.getSocialIntegration(
+      integration.providerIdentifier
+    );
+    if (
+      !provider?.revokeAccess ||
+      (!integration.token && !integration.refreshToken)
+    ) {
+      return;
+    }
+
+    try {
+      if (
+        await this._integrationRepository.sharesAccessWithLiveChannel(
+          integration,
+          otherOrganizationsOnly
+        )
+      ) {
+        Logger.log(`[revoke] channel=${integration.id} shared`);
+        return;
+      }
+
+      const result = await Promise.race([
+        provider
+          .revokeAccess(integration.token, integration.refreshToken || undefined)
+          .then(
+            () => 'ok',
+            (err: Error) => `failed: ${err?.message}`
+          ),
+        timer(REVOKE_TIMEOUT_MS).then(() => 'timed out'),
+      ]);
+      Logger.log(`[revoke] channel=${integration.id} ${result}`);
+    } catch (err) {
+      Logger.warn(
+        `[revoke] channel=${integration.id} failed: ${(err as Error).message}`
+      );
+    }
+  }
+
+  // Deleting an account takes every channel of the workspace at once, so only
+  // a live channel in another workspace keeps a shared access from going.
+  async revokeAccountChannels(org: string) {
+    for (const integration of await this._integrationRepository.getIntegrationsList(
+      org
+    )) {
+      await this.revokeChannelAccess(integration, true);
     }
   }
 
@@ -767,7 +907,18 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.getPostsForChannel(org, id);
   }
 
+  // Removing a channel also gives up PostQueen's access at the platform, for
+  // a provider that can, while the row still holds its own tokens: the
+  // repository replaces them. A channel already removed has none left.
   async deleteChannel(org: string, id: string) {
+    const integration = await this._integrationRepository.getIntegrationById(
+      org,
+      id
+    );
+    if (integration && !integration.deletedAt) {
+      await this.revokeChannelAccess(integration);
+    }
+
     return this._integrationRepository.deleteChannel(org, id);
   }
 

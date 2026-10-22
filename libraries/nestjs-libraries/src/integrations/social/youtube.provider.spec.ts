@@ -300,3 +300,122 @@ describe('YoutubeSettingsDto tags', () => {
     assert.equal(getYoutubeTagsLength([{ value: 'x' } as any, ...tags('ab')]), 3);
   });
 });
+
+// YouTube's policies (III.D.2.3.1): removing a channel revokes the token at
+// Google right away.
+describe('YouTube access revoke', () => {
+  const provider = new YoutubeProvider();
+  const withRevoke = async (
+    revoke: (token: string) => Promise<unknown>,
+    run: () => Promise<void>
+  ) => {
+    const proto = (google.auth.OAuth2 as any).prototype;
+    const real = proto.revokeToken;
+    proto.revokeToken = revoke;
+    try {
+      await run();
+    } finally {
+      proto.revokeToken = real;
+    }
+  };
+
+  it('revokes the refresh token, which ends the whole grant, or else the access token', async () => {
+    const revoked: string[] = [];
+    await withRevoke(
+      async (token) => revoked.push(token),
+      async () => {
+        await provider.revokeAccess('access', 'refresh');
+        await provider.revokeAccess('access');
+      }
+    );
+    assert.deepEqual(revoked, ['refresh', 'access']);
+  });
+
+  it('counts a token Google no longer knows as revoked', async () => {
+    await withRevoke(
+      async () => {
+        throw Object.assign(new Error('invalid_token'), {
+          response: { status: 400 },
+        });
+      },
+      () => provider.revokeAccess('access', 'refresh')
+    );
+  });
+
+  it('fails with the status only, never the token in the request URL', async () => {
+    await withRevoke(
+      async () => {
+        throw Object.assign(
+          new Error(
+            'Request failed: https://oauth2.googleapis.com/revoke?token=refresh'
+          ),
+          {
+            response: { status: 503 },
+            config: {
+              url: 'https://oauth2.googleapis.com/revoke?token=refresh',
+            },
+          }
+        );
+      },
+      async () => {
+        await assert.rejects(provider.revokeAccess('access', 'refresh'), (err: Error) => {
+          assert.equal(err.message, 'Google did not revoke the access (503)');
+          assert.ok(!JSON.stringify(err).includes('refresh'));
+          return true;
+        });
+      }
+    );
+  });
+});
+
+describe('YouTube channel profile read', () => {
+  it('reads the channel the hourly run names with { page }, as the picker does with { id }', async () => {
+    const provider = new YoutubeProvider();
+    const asked: string[][] = [];
+    const real = google.youtube;
+    (google as any).youtube = () => ({
+      channels: {
+        list: async ({ id }: { id: string[] }) => {
+          asked.push(id);
+          return {
+            data: {
+              items: [
+                {
+                  id: id[0],
+                  snippet: {
+                    title: 'PostQueen',
+                    customUrl: '@postqueen',
+                    thumbnails: {},
+                  },
+                },
+              ],
+            },
+          };
+        },
+      },
+    });
+    try {
+      const page = await provider.fetchPageInformation('token', {
+        page: 'UC-page',
+      });
+      const picked = await provider.fetchPageInformation('token', {
+        id: 'UC-id',
+      });
+      assert.deepEqual(asked, [['UC-page'], ['UC-id']]);
+      assert.equal(page.id, 'UC-page');
+      assert.equal(page.name, 'PostQueen');
+      assert.equal(page.username, '@postqueen');
+      assert.equal(picked.id, 'UC-id');
+    } finally {
+      (google as any).youtube = real;
+    }
+  });
+
+  it('keeps what PostQueen holds within YouTube\'s limits', () => {
+    const provider = new YoutubeProvider();
+    assert.equal(provider.analyticsRetentionDays, 29);
+    assert.equal(provider.removedDataRetentionDays, 1);
+    // A weekly read finds a dead token within 7 days; 7 + 14 stays inside 30.
+    assert.ok(provider.profileRetentionDays - 1 + provider.disconnectedDataRetentionDays < 30);
+  });
+});

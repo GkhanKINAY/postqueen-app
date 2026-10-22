@@ -206,3 +206,80 @@ describe('RefreshIntegrationService.refreshDueProfiles', { skip: !canLoad }, () 
     assert.ok(!saved.some((s) => s.id === 'x-1'));
   });
 });
+
+// A removed channel's token must not be refreshed: the write would bring the
+// row back, and a failure would email its person to reconnect it.
+describe('RefreshIntegrationService.refresh on a removed channel', { skip: !canLoad }, () => {
+  it('returns false without asking the platform or writing anything', async () => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const touched: string[] = [];
+    const removed = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => {
+            touched.push('refreshToken');
+            return { accessToken: 'fresh' };
+          },
+        }),
+      } as any,
+      {
+        createOrUpdateIntegration: async () => touched.push('write'),
+        refreshNeeded: async () => touched.push('flag'),
+        informAboutRefreshError: async () => touched.push('notify'),
+      } as any,
+      {} as any,
+    );
+
+    assert.equal(
+      await removed.refresh({
+        id: 'ch-gone',
+        providerIdentifier: 'youtube',
+        deletedAt: new Date(),
+      } as any),
+      false,
+    );
+    assert.deepEqual(touched, []);
+  });
+});
+
+// A channel deleted from its Google account keeps a working token, so the
+// refresh throws in reConnect. A provider whose terms limit what a
+// disconnected channel keeps sets it between steps; LinkedIn keeps the old
+// behaviour of trying again a day later.
+describe('RefreshIntegrationService.refreshDueProfiles when the refresh throws', { skip: !canLoad }, () => {
+  const run = async (limited: boolean) => {
+    reads = [];
+    saved = [];
+    marks = {};
+    channels = [page('100', { tokenExpiration: past })];
+    const between: string[] = [];
+    if (limited) {
+      (pageProvider as any).disconnectedDataRetentionDays = 14;
+    }
+    try {
+      const service = await profileService({ get: async () => null });
+      service.refresh = async () => {
+        throw new Error('Channel not found');
+      };
+      service.setBetweenSteps = async (channel: any, cause: string) => {
+        between.push(`${channel.id}:${cause}`);
+      };
+      await service.refreshDueProfiles();
+    } finally {
+      delete (pageProvider as any).disconnectedDataRetentionDays;
+    }
+    return between;
+  };
+
+  it('sets the channel between steps for a provider that limits it', async () => {
+    assert.deepEqual(await run(true), ['ch-100:Channel not found']);
+    assert.deepEqual(reads, []);
+    assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+  });
+
+  it('only tries again a day later for a provider that does not', async () => {
+    assert.deepEqual(await run(false), []);
+    assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+  });
+});

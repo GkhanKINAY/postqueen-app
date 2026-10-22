@@ -568,6 +568,17 @@ model Integration {
   /// deletion or deauthorize callback names. Null on rows connected before it
   /// existed; those are matched on rootInternalId and internalId instead.
   platformUserId        String?
+  /// When the channel started waiting for its person: a reconnect, or a
+  /// setup never finished. Stamped by the hourly run, for a provider with
+  /// disconnectedDataRetentionDays, and cleared whenever fresh credentials
+  /// are written. Null on a channel that works.
+  disconnectedAt        DateTime?
+  /// When what the channel's network gave PostQueen was deleted under the
+  /// network's terms (removedDataRetentionDays, disconnectedDataRetentionDays
+  /// or a platform's deletion callback), so the hourly run leaves it alone.
+  /// Cleared by fresh credentials, and by removing a channel that was erased
+  /// while it waited, so the removal is erased in full.
+  dataErasedAt          DateTime?
   exisingPlugData       ExisingPlugData[]
   customer              Customer?              @relation(fields: [customerId], references: [id])
   organization          Organization           @relation(fields: [organizationId], references: [id])
