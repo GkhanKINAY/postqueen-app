@@ -173,7 +173,7 @@
     "music-metadata": "^11.16.1",
     "nestjs-command": "^3.1.5",
     "nestjs-temporal-core": "^3.4.0",
-    "next": "16.3.8",
+    "next": "16.4.2",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^1.2.0",
     "nodemailer": "^10.0.16",
@@ -244,7 +244,7 @@
     "@vitejs/plugin-react": "^6.0.5",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.2",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
@@ -265,7 +265,7 @@
   },
   "pnpm": {
     "overrides": {
-      "next": "16.3.8",
+      "next": "16.4.2",
       "react": "19.2.8",
       "react-dom": "19.2.8",
       "@types/react": "19.2.18",
