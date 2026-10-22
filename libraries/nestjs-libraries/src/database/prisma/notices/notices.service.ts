@@ -1,5 +1,6 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { TemporalService } from 'nestjs-temporal-core';
+import { ApplicationFailure } from '@temporalio/common';
 import { NoticesRepository } from '@gitroom/nestjs-libraries/database/prisma/notices/notices.repository';
 import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users/users.repository';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
@@ -236,9 +237,10 @@ export class NoticesService {
    * Sends one account its notice and records it. The account is read again,
    * so one deleted since the fan-out gets nothing, and so is the proof, so an
    * address that already has it does not get it twice. An email that did not
-   * reach the provider throws, for Temporal to try again; one the provider
-   * refused or accepted does not, since a retry would be refused again or
-   * send a second copy.
+   * reach the provider throws, for Temporal to try again. One the provider
+   * refused fails without a retry, so the account's workflow fails and
+   * sending the notice again restarts it. One it accepted never throws, since
+   * a retry would send a second copy.
    */
   async sendNoticeEmail({ noticeKey, userId, subject, html }: NoticeEmail) {
     const recipient = await this._usersRepository.getNoticeRecipient(userId);
@@ -257,15 +259,24 @@ export class NoticesService {
       return { sent: false };
     }
 
+    // The same key on every attempt: if the provider took the email and this
+    // stopped before the proof was written, the retry is answered with the
+    // first send instead of sending it again.
     const { accepted, refused } = await this._emailService.deliverEmail(
       recipient.email,
       subject,
-      html
+      html,
+      undefined,
+      { idempotencyKey: noticeEmailWorkflowId(noticeKey, userId) }
     );
-    // An address the provider refuses is refused again on every retry.
+    // Refused again on every retry, so none; but failed, not done, since a
+    // refusal can be ours (a rotated key, an unverified domain) and sending
+    // the notice again must restart the account once that is fixed.
     if (refused) {
-      this._logger.warn(`[notice] key=${noticeKey} user=${userId} refused`);
-      return { sent: false };
+      throw ApplicationFailure.nonRetryable(
+        `[notice] key=${noticeKey} user=${userId} refused`,
+        'notice_refused'
+      );
     }
     if (!accepted) {
       throw new Error(`[notice] key=${noticeKey} user=${userId} not accepted`);

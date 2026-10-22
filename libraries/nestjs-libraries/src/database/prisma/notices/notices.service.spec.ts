@@ -45,6 +45,7 @@ let accepted: boolean;
 let refused: boolean;
 let recordFails: boolean;
 let sends: number;
+let deliverOptions: any;
 
 // Every collaborator faked: the users and deliveries are lists, Temporal
 // remembers the workflow ids it was handed and applies the id reuse policy,
@@ -73,8 +74,9 @@ const service = () =>
     },
     {
       hasProvider: () => true,
-      deliverEmail: async () => {
+      deliverEmail: async (...args: any[]) => {
         sends += 1;
+        deliverOptions = args[4];
         return { accepted, refused };
       },
     },
@@ -114,6 +116,7 @@ beforeEach(() => {
   refused = false;
   recordFails = false;
   sends = 0;
+  deliverOptions = undefined;
 });
 
 describe('who gets a notice', () => {
@@ -288,18 +291,30 @@ describe('one account’s email', () => {
     assert.deepEqual(recorded, ['u1']);
   });
 
+  it('sends under the account’s key, so a retry after an accepted send is not a second copy', async () => {
+    await service().sendNoticeEmail(email('u1'));
+    assert.deepEqual(deliverOptions, {
+      idempotencyKey: 'notice:terms-2026-11:u1',
+    });
+  });
+
   it('throws for a retry when the email never reached the provider, and records nothing', async () => {
     accepted = false;
     await assert.rejects(service().sendNoticeEmail(email('u1')), /not accepted/);
     assert.deepEqual(recorded, []);
   });
 
-  it('does not retry an address the provider refused', async () => {
+  it('fails without a retry when the provider refused, so a re-run restarts the account', async () => {
     accepted = false;
     refused = true;
-    assert.deepEqual(await service().sendNoticeEmail(email('u1')), {
-      sent: false,
+    await assert.rejects(service().sendNoticeEmail(email('u1')), (err: any) => {
+      assert.equal(err.name, 'ApplicationFailure');
+      assert.equal(err.nonRetryable, true);
+      assert.equal(err.type, 'notice_refused');
+      assert.match(err.message, /key=terms-2026-11 user=u1 refused/);
+      return true;
     });
+    assert.equal(sends, 1);
     assert.deepEqual(recorded, []);
   });
 

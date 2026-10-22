@@ -164,12 +164,14 @@ export class EmailService {
    * threw; sendEmailSync logs it with the address, this leaves that to the
    * caller, which can log an id instead. The provider's answer is still logged
    * on each send, as it always was (with Resend, an email id).
+   * `idempotencyKey`: see EmailExtras.
    */
   async deliverEmail(
     to: string,
     subject: string,
     html: string,
-    replyTo?: string
+    replyTo?: string,
+    options?: { idempotencyKey?: string }
   ): Promise<{ accepted: boolean; refused?: boolean; error?: unknown }> {
     if (to.indexOf('@') === -1) {
       return { accepted: false };
@@ -200,7 +202,11 @@ export class EmailService {
           process.env.EMAIL_FROM_NAME,
           sender.from,
           replyTo || sender.replyTo,
-          { text: rendered.text, headers: unsubscribe?.headers }
+          {
+            text: rendered.text,
+            headers: unsubscribe?.headers,
+            idempotencyKey: options?.idempotencyKey,
+          }
         );
         console.log(sends);
         if (sends?.error) {

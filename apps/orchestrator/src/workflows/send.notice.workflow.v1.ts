@@ -23,10 +23,11 @@ const { startNoticeBatch } = proxyActivities<NoticeActivity>({
   },
 });
 
-// On the bulk email queue, under its rate limit. It throws only when the email
-// never reached the provider, so a retry cannot send a second copy. Patient,
-// about two hours in all, so a provider outage is waited out; an account that
-// still fails is started again by sending the same notice again.
+// On the bulk email queue, under its rate limit. It is retried only when the
+// email never reached the provider, so a retry cannot send a second copy; a
+// refusal fails at once. Patient, about two hours in all, so a provider outage
+// is waited out; an account that still fails, or was refused, is started
+// again by sending the same notice again.
 const { sendNoticeEmail } = proxyActivities<NoticeActivity>({
   startToCloseTimeout: '10 minute',
   taskQueue: emailQueues.bulk.taskQueue,
