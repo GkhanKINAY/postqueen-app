@@ -16,8 +16,9 @@ const fields = (form: any) =>
 const publish = async (settings: Record<string, any>) => {
   const provider = new DribbbleProvider();
   let form: any;
+  (provider as any).mediaStream = async () => Readable.from(['x']);
+  (provider as any).mediaSize = async () => 1;
   (provider as any).getSsrfSafeAxios = () => ({
-    get: async () => ({ data: Readable.from(['x']), status: 200 }),
     post: async (_url: string, body: any) => {
       form = body;
       return { headers: { location: 'https://dribbble.com/shots/99' } };

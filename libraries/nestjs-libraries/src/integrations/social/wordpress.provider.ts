@@ -4,7 +4,10 @@ import {
   PostResponse,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -15,8 +18,26 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { string } from 'yup';
+import mime from 'mime-types';
 
 const WORDPRESS_USER_AGENT = 'PostQueen/1.0 (+https://postqueen.ai)';
+
+// WordPress sites often print a PHP notice, or a plugin its own output, around
+// the JSON (`<b>Notice</b>: ... on line 12<br />{"id":12,...}`), so the object
+// is read from the first `{` to the last `}` instead of from the whole text.
+// Undefined when there is still no object to read.
+const readWordpressJson = (text: string): any => {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end < start) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch (err) {
+    return undefined;
+  }
+};
 
 @Rules(
   'WordPress publishes the content as an article: pictures go inside the content as <img src="..."> where they should appear, the src must be a picture from the media library (upload it with uploadFromUrlTool first), attachments are not published, the cover picture is the main_image setting'
@@ -62,17 +83,38 @@ export class WordpressProvider
     };
   }
   override handleErrors(
-    body: string
+    body: string,
+    status: number
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    if (body.indexOf('rest_cannot_create') > -1) {
+    // rest_cannot_create, rest_cannot_publish and the rest of the family, for
+    // posts and media alike. A 401 is WordPress answering a visitor that is not
+    // logged in, which with an Application Password means the header never
+    // reached it. Both are bad-body: a reconnect would send the same header.
+    const { code, message } = readWordpressJson(body) || {};
+    if (String(code || '').indexOf('rest_cannot_') !== 0) {
+      return undefined;
+    }
+
+    if (status === 401) {
       return {
         type: 'bad-body',
-        value: 'The connect user has insufficient permissions to create posts',
+        value:
+          'WordPress did not see the login. A security plugin or server setting may be removing the Authorization header.',
       };
     }
-    return undefined;
+
+    let reason = String(message || '').trim();
+    if (reason && !/[.!?]$/.test(reason)) {
+      reason = `${reason}.`;
+    }
+    return {
+      type: 'bad-body',
+      value: `${
+        reason ? `WordPress refused: ${reason}` : 'WordPress refused the post.'
+      } Check that the connected user has the Author or Editor role.`,
+    };
   }
 
   async customFields() {
@@ -321,24 +363,39 @@ export class WordpressProvider
         postDetails[0].settings.main_image.path
       );
 
-      const blob = await this.fetch(
+      // Read with readOrFetch rather than this.fetch: a 401 from the media
+      // host would otherwise be classified as WordPress asking for a reconnect.
+      const fileName = postDetails[0].settings.main_image.path.split('/').pop();
+      const image = await this.readOrFetch(
         postDetails[0].settings.main_image.path
-      ).then((r) => r.blob());
+      );
 
-      const mediaResponse = await (
+      const mediaText = await (
         await this.fetch(`${body.domain}/wp-json/wp/v2/media`, {
           method: 'POST',
           headers: {
             Authorization: `Basic ${auth}`,
-            'Content-Disposition': `attachment; filename="${postDetails[0].settings.main_image.path
-              .split('/')
-              .pop()}"`,
-            'Content-Type': blob.type,
+            'Content-Disposition': `attachment; filename="${fileName}"`,
+            'Content-Type':
+              mime.lookup((fileName || '').split('?')[0]) ||
+              'application/octet-stream',
             'User-Agent': WORDPRESS_USER_AGENT,
           },
-          body: blob,
+          body: new Uint8Array(image),
         })
-      ).json();
+      )
+        .text()
+        .catch(() => '');
+
+      const mediaResponse = readWordpressJson(mediaText);
+      if (!mediaResponse?.id) {
+        throw new BadBody(
+          this.identifier,
+          mediaText,
+          '{}',
+          'WordPress did not confirm the cover image upload, so the post was not published. Check the media library on your site, then try again.'
+        );
+      }
 
       mediaId = mediaResponse.id;
     }
@@ -350,7 +407,7 @@ export class WordpressProvider
       .map((tag) => Number(tag))
       .filter((tag) => !isNaN(tag));
 
-    const submit = await (
+    const submitText = await (
       await this.fetch(
         `${body.domain}/wp-json/wp/v2/${postDetails?.[0]?.settings?.type}`,
         {
@@ -375,7 +432,23 @@ export class WordpressProvider
           }),
         }
       )
-    ).json();
+    )
+      .text()
+      .catch(() => '');
+
+    // WordPress has created the post once it answers 200/201. A plain error
+    // here would be retried by the post workflow and publish it again, so an
+    // answer that still cannot be read fails as BadBody, which is never
+    // retried.
+    const submit = readWordpressJson(submitText);
+    if (!submit?.id) {
+      throw new BadBody(
+        this.identifier,
+        submitText,
+        '{}',
+        'WordPress may have published the post, but its answer could not be read. Check your site before posting again.'
+      );
+    }
 
     return [
       {
