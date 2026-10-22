@@ -10,6 +10,7 @@ const service = read('./media.service.ts');
 const repository = read('./media.repository.ts');
 const schema = read('../schema.prisma');
 const migration = read('../migrations/20260918120000_media_processing_status/migration.sql');
+const uploadedPathMigration = read('../migrations/20261023120000_media_uploaded_path/migration.sql');
 const posts = read('../posts/posts.service.ts');
 const uploadInterface = read('../../../upload/upload.interface.ts');
 const localStorage = read('../../../upload/local.storage.ts');
@@ -150,5 +151,14 @@ describe('Uploaded video normalization', () => {
     // Only a video: a provider's JPEG conversion of an image is written onto the post on purpose.
     assert.match(posts, /if \(live && hasExtension\(live\.path, 'mp4'\) && live\.path !== p\.path\) \{\n\s+imageUpdateNeeded = true;/);
     assert.match(repository, /getMediaByIds\(ids: string\[\]\)/);
+  });
+
+  it('keeps the path a video was uploaded under, so a post made from it later still finds the row', () => {
+    assert.match(schema, /processingError\s+String\?\n\s+\/\/\/[^\n]*\n\s+uploadedPath\s+String\?/);
+    assert.match(uploadedPathMigration, /ADD COLUMN IF NOT EXISTS "uploadedPath" TEXT/);
+    // Only when the file moved: action=none keeps the path it had.
+    assert.match(service, /path: uploaded\.path,\n\s+uploadedPath: media\.path,/);
+    assert.match(repository, /\.\.\.\(result\.uploadedPath \? \{ uploadedPath: result\.uploadedPath \} : \{\}\)/);
+    assert.match(repository, /OR: \[\{ path: \{ in: paths \} \}, \{ uploadedPath: \{ in: paths \} \}\]/);
   });
 });

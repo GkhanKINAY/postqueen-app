@@ -452,9 +452,13 @@ export class MediaService {
 
       const rendered = spooledFile(result.outputPath, 'video/mp4', 'video.mp4');
       const uploaded = await this.storage.uploadFile(rendered);
+      // The MCP tool, the CLI and the public API may have handed out the
+      // original's path already; createPost matches a post made from it later
+      // by uploadedPath.
       const row = await this._mediaRepository.finishProcessing(org, mediaId, {
         name: uploaded.originalname,
         path: uploaded.path,
+        uploadedPath: media.path,
         thumbnail,
         fileSize: rendered.size,
       });
