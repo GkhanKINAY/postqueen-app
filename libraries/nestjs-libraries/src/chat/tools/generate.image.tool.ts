@@ -44,7 +44,7 @@ export class GenerateImageTool implements AgentToolInterface {
           .enum(IMAGE_QUALITIES)
           .optional()
           .describe(
-            'low, medium or high. Medium when omitted. It sets what the image costs in credits: high costs several times medium, low a fraction of it.'
+            'low, medium or high. Medium when omitted. It sets what the image costs in credits: low costs the least, high the most.'
           ),
       }),
       // Mastra validates the return against this schema, so it must also
