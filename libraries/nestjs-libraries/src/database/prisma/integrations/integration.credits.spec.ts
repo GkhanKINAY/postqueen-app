@@ -242,7 +242,13 @@ describe(
   { skip: !canLoadService },
   () => {
     it('refuses the ones that publish, read analytics or run as plugs', () => {
-      for (const name of ['post', 'comment', 'analytics', 'autoRepostPost']) {
+      for (const name of [
+        'post',
+        'comment',
+        'analytics',
+        'autoRepostPost',
+        'revokeAccess',
+      ]) {
         assert.equal(service().isCallableFunction('x', name), false, name);
       }
       for (const name of ['mention', 'subscriptionInfo', 'boards']) {

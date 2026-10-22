@@ -6,6 +6,7 @@ import {
   AuthTokenDetails,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { Disconnect } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { TemporalService } from 'nestjs-temporal-core';
 import dayjs from 'dayjs';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
@@ -29,6 +30,12 @@ export class RefreshIntegrationService {
     private _temporalService: TemporalService
   ) {}
   async refresh(integration: Integration, cause = ''): Promise<false | AuthTokenDetails> {
+    // A removed channel stays removed: the write below would bring the row
+    // back, and a failure would ask the person to reconnect it.
+    if (integration.deletedAt) {
+      return false as const;
+    }
+
     const socialProvider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
@@ -44,7 +51,9 @@ export class RefreshIntegrationService {
       !!socialProvider.oneTimeToken,
       integration.organizationId,
       integration.name,
-      integration.picture!,
+      // The stored picture stays as it is: the copy this caller holds may be
+      // older than the row's, whose file a profile read has replaced.
+      undefined,
       'social',
       integration.internalId,
       integration.providerIdentifier,
@@ -110,7 +119,19 @@ export class RefreshIntegrationService {
         try {
           let token = channel.token;
           if (this.isExpired(channel)) {
-            const refreshed = await this.refresh(channel);
+            // A Disconnect from the refresh means the token works but the
+            // channel is gone from the account: it then waits for its person,
+            // as when a post finds it so. Any other failure is read again a
+            // day later.
+            const refreshed = await this.refresh(channel).catch(
+              async (err: Error) => {
+                if (!(err instanceof Disconnect)) {
+                  throw err;
+                }
+                await this.setBetweenSteps(channel, err.message || '');
+                return false as const;
+              }
+            );
             token = refreshed ? refreshed.accessToken : '';
             if (token && provider.refreshWait) {
               await timer(10000);

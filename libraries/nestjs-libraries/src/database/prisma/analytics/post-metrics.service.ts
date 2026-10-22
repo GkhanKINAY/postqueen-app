@@ -74,14 +74,19 @@ export class PostMetricsService {
   ) {
     // Without an organization this is the hourly run, which also applies the
     // platforms' storage limits: it drops the snapshots a platform does not
-    // let us keep, reads due channel profiles again, and clears removed
-    // channels' expired ones. None of them failing ever stops the sync.
+    // let us keep, reads due channel profiles again, erases what a network
+    // gave PostQueen about channels removed or waiting for a reconnect too
+    // long, and clears removed channels' expired profiles. None of them
+    // failing ever stops the sync.
     if (!organizationId) {
       await this.quietly('prune expired post metric snapshots', () =>
         this.pruneExpiredSnapshots()
       );
       await this.quietly('refresh due channel profiles', () =>
         this._refreshIntegrationService.refreshDueProfiles()
+      );
+      await this.quietly('erase expired channel data', () =>
+        this._integrationService.eraseExpiredChannelData()
       );
       await this.quietly('clear expired channel profiles', () =>
         this._integrationService.clearExpiredProfiles()

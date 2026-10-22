@@ -194,7 +194,14 @@ export class PostsService {
     forceRefresh = false
   ): Promise<{ id: string; url: string }[]> {
     const post = await this._postRepository.getPostById(postId, orgId);
-    if (!post || post.releaseId !== 'missing') {
+    // A deleted post, or one on a removed channel, is not read from the
+    // platform at all: PostQueen has given up that access.
+    if (
+      !post ||
+      post.deletedAt ||
+      post.integration?.deletedAt ||
+      post.releaseId !== 'missing'
+    ) {
       return [];
     }
 
@@ -437,7 +444,14 @@ export class PostsService {
     forceRefresh = false
   ): Promise<AnalyticsData[] | { missing: true }> {
     const post = await this._postRepository.getPostById(postId, orgId);
-    if (!post || !post.releaseId) {
+    // As in getMissingContent: nothing is read for a deleted post or a
+    // removed channel.
+    if (
+      !post ||
+      !post.releaseId ||
+      post.deletedAt ||
+      post.integration?.deletedAt
+    ) {
       return [];
     }
 

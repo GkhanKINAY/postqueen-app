@@ -206,3 +206,76 @@ describe('RefreshIntegrationService.refreshDueProfiles', { skip: !canLoad }, () 
     assert.ok(!saved.some((s) => s.id === 'x-1'));
   });
 });
+
+// A removed channel's token must not be refreshed: the write would bring the
+// row back, and a failure would email its person to reconnect it.
+describe('RefreshIntegrationService.refresh on a removed channel', { skip: !canLoad }, () => {
+  it('returns false without asking the platform or writing anything', async () => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const touched: string[] = [];
+    const removed = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => {
+            touched.push('refreshToken');
+            return { accessToken: 'fresh' };
+          },
+        }),
+      } as any,
+      {
+        createOrUpdateIntegration: async () => touched.push('write'),
+        refreshNeeded: async () => touched.push('flag'),
+        informAboutRefreshError: async () => touched.push('notify'),
+      } as any,
+      {} as any,
+    );
+
+    assert.equal(
+      await removed.refresh({
+        id: 'ch-gone',
+        providerIdentifier: 'youtube',
+        deletedAt: new Date(),
+      } as any),
+      false,
+    );
+    assert.deepEqual(touched, []);
+  });
+});
+
+// A channel deleted from its account keeps a working token, so the refresh
+// throws a Disconnect from reConnect: the channel then waits for its person.
+// A failure that may pass (an outage, a spent quota) is tried a day later.
+describe('RefreshIntegrationService.refreshDueProfiles when the refresh throws', { skip: !canLoad }, () => {
+  const run = async (failure: Error) => {
+    reads = [];
+    saved = [];
+    marks = {};
+    channels = [page('100', { tokenExpiration: past })];
+    const between: string[] = [];
+    const service = await profileService({ get: async () => null });
+    service.refresh = async () => {
+      throw failure;
+    };
+    service.setBetweenSteps = async (channel: any, cause: string) => {
+      between.push(`${channel.id}:${cause}`);
+    };
+    await service.refreshDueProfiles();
+    return between;
+  };
+
+  it('sets the channel between steps when it is gone from the account', async () => {
+    const { Disconnect } = await import('./social.abstract.ts');
+    assert.deepEqual(
+      await run(new Disconnect('youtube', '{}', '{}', 'Channel not found')),
+      ['ch-100:Channel not found'],
+    );
+    assert.deepEqual(reads, []);
+    assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+  });
+
+  it('only tries again a day later on any other failure', async () => {
+    assert.deepEqual(await run(new Error('quotaExceeded')), []);
+    assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
+  });
+});
