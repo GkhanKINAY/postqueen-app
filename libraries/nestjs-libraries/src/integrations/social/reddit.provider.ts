@@ -118,6 +118,25 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
     return 10000;
   }
 
+  // Reddit answers a refusal on these endpoints (a banned account, a private
+  // or restricted community) with a bare 403 that names no reason.
+  override handleErrors(
+    body: string,
+    status: number
+  ):
+    | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
+    | undefined {
+    if (status === 403) {
+      return {
+        type: 'bad-body',
+        value:
+          'Reddit refused this request. The account may be suspended or banned from this community, or the community may be private.',
+      };
+    }
+
+    return undefined;
+  }
+
   override async checkValidity(
     posts: Array<ValidityMedia[]>,
     settings: any
@@ -127,7 +146,7 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
         (p: any) => p?.value?.type === 'media' && posts?.[0]?.length !== 1
       )
     ) {
-      return 'When posting a media post, you must attached exactly one media file.';
+      return 'When posting a media post, you must attach exactly one media file.';
     }
 
     if (
@@ -620,7 +639,9 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
         JSON.stringify(all),
         Buffer.from('{}'),
         `Reddit rejected the post to r/${postData.sr}: ${all.json.errors
-          .map((e: any[]) => e?.[1] || e?.[0] || '')
+          .map((e: any[]) =>
+            e?.[1] && e?.[2] ? `${e[1]} (${e[2]})` : e?.[1] || e?.[0] || ''
+          )
           .join(', ')}`
       );
     }

@@ -50,10 +50,22 @@ describe('X premium-only settings come from the platform', () => {
     // allow what the save then refuses.
     const limit = component.slice(component.indexOf('maximumCharacters:'));
     assert.match(limit, /subscriptionType !== 'None'/);
-    // And the channel's "Long posts" status says 280 rather than 4000.
+    // And the channel's "Long posts" status says 280 rather than 25,000.
     const copy = read('../../../launches/settings.modal.tsx');
     const verified = copy.slice(copy.indexOf("option.title === 'Verified'"));
     assert.match(verified, /const on = .*subscriptionType !== 'None'/);
+  });
+
+  it('lets a Premium account write the 25,000 characters X allows', () => {
+    // The counter and the server have to agree, or one of them refuses what
+    // the other allowed.
+    const limit = component.slice(component.indexOf('maximumCharacters:'));
+    assert.match(limit, /return 25000;/);
+    assert.doesNotMatch(limit, /return 4000;/);
+    const maxLength = provider.slice(provider.indexOf('maxLength('));
+    assert.match(maxLength, /isTwitterPremium \? 25000 : 280/);
+    const copy = read('../../../launches/settings.modal.tsx');
+    assert.doesNotMatch(copy, /\b4000\b/);
   });
 });
 
