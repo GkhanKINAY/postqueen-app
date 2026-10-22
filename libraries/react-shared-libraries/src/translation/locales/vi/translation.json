@@ -699,7 +699,7 @@
   "channel_disconnected_click_to_reconnect": "Kênh đã bị ngắt kết nối, nhấn để kết nối lại.",
   "channel_disabled_upgrade_plan": "Kênh này đã bị vô hiệu hóa, vui lòng nâng cấp gói của bạn để kích hoạt.",
   "channel_added": "Đã thêm kênh",
-  "are_you_sure_disable_channel": "Bạn có chắc chắn muốn vô hiệu hóa kênh này không?",
+  "are_you_sure_disable_channel": "Bạn có chắc chắn muốn vô hiệu hóa kênh này không? Các bài đăng đến hạn trong lúc kênh bị vô hiệu hóa sẽ không được đăng.",
   "disable_channel_title": "Vô hiệu hóa kênh",
   "channel_disabled": "Kênh đã bị vô hiệu hóa",
   "are_you_sure_delete_channel": "Xóa kênh này cũng sẽ xóa tất cả bài đăng của kênh trong PostQueen, bao gồm bài đăng đã lên lịch, bản nháp và bài đăng đã xuất bản. Bài đăng đã lên lịch sẽ không được đăng, và việc kết nối lại kênh sau này không khôi phục các bài đăng. Những bài đăng đã xuất bản sẽ không bị gỡ khỏi nền tảng. PostQueen cũng sẽ từ bỏ quyền truy cập vào kênh.",

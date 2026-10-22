@@ -16,14 +16,33 @@ const post = {
   integration: { id: 'i1', name: 'Sunrise Studio', providerIdentifier: 'linkedin-page' },
 };
 
-const run = async (notice: any, detail?: string) => {
+// `sent` stands in for the notifications table: what went out, and when.
+const run = async (
+  notice: any,
+  detail?: string,
+  sent: { org: string; message: string; link: string; at: number }[] = [],
+  target: any = post
+) => {
   const calls: any[] = [];
   const activity = new (PostActivity as any)(
     {
-      getPostsRecursively: async () => [post],
+      getPostsRecursively: async () => (target ? [target] : []),
       shouldSkipPublishNotice: (p: any) => p?.settings === '{"pq_notify":false}',
     },
-    { inAppNotification: async (...args: any[]) => calls.push(args) },
+    {
+      inAppNotification: async (...args: any[]) => {
+        calls.push(args);
+        sent.push({ org: args[0], message: args[2], link: args[6], at: Date.now() });
+      },
+      hasNotificationSince: async (org: string, message: string, link: string, since: Date) =>
+        sent.some(
+          (n) =>
+            n.org === org &&
+            n.message === message &&
+            n.link === link &&
+            n.at >= since.getTime()
+        ),
+    },
     { getSocialIntegrationName: () => 'LinkedIn Page' }
   );
   await activity.publishingNotice('org1', 'p1', notice, detail);
@@ -84,5 +103,45 @@ describe('publishingNotice', () => {
     assert.equal(subject, 'Publishing your post on LinkedIn Page');
     assert.match(message, /^LinkedIn Page accepted your post/);
     assert.match(message, /can take a few minutes to appear on your profile/);
+  });
+
+  it('tells about a channel problem once a day for each channel', async () => {
+    const sent: any[] = [];
+    assert.ok(await run('disabled', undefined, sent));
+    assert.equal(await run('disabled', undefined, sent), undefined);
+    // Another problem of the same channel, and the same problem of another one
+    assert.ok(await run('reconnect', undefined, sent));
+    assert.ok(
+      await run('disabled', undefined, sent, {
+        ...post,
+        integration: { ...post.integration, id: 'i2', name: 'Studio Two' },
+      })
+    );
+    assert.equal(await run('reconnect', undefined, sent), undefined);
+    assert.ok(await run('unfinished', undefined, sent));
+    assert.equal(await run('unfinished', undefined, sent), undefined);
+  });
+
+  it('tells again once the day has passed', async () => {
+    const sent: any[] = [];
+    await run('disabled', undefined, sent);
+    sent[0].at -= 25 * 60 * 60 * 1000;
+    assert.ok(await run('disabled', undefined, sent));
+  });
+
+  it('never holds back what is about the post itself', async () => {
+    const sent: any[] = [];
+    const url = 'https://www.linkedin.com/feed/update/1';
+    assert.ok(await run('published', url, sent));
+    assert.ok(await run('published', url, sent));
+    assert.ok(await run('bad_body', 'Duplicate content', sent));
+    assert.ok(await run('bad_body', 'Duplicate content', sent));
+  });
+
+  it('sends every channel notice when the channel cannot be read', async () => {
+    // The link falls back to /channels then, the same for every channel
+    const sent: any[] = [];
+    assert.ok(await run('disabled', undefined, sent, null));
+    assert.ok(await run('disabled', undefined, sent, null));
   });
 });

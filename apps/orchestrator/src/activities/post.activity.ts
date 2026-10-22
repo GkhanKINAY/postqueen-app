@@ -59,6 +59,15 @@ export type PublishingNotice =
   | 'bad_body_comment';
 
 /**
+ * Notices about the channel rather than the post: every post due on it says
+ * the same thing. A channel turned off with three posts a day still scheduled
+ * sent three emails a day until it was turned back on, so each goes out once
+ * a day per channel; the calendar still marks every post that failed.
+ */
+const CHANNEL_NOTICES: PublishingNotice[] = ['reconnect', 'disabled', 'unfinished'];
+const CHANNEL_NOTICE_EVERY_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Written to `Post.error` when a scheduled post could not run because the org
  * has no active subscription. Deliberately not 'No Post': that string is a
  * silence sentinel, and it is what the frozen workflow writes for this case.
@@ -1027,6 +1036,21 @@ export class PostActivity {
         };
         break;
       }
+    }
+
+    // Only with the channel known: without it the link is plain /channels and
+    // the account "your channel", the same for every channel of the org.
+    if (
+      post?.integration &&
+      CHANNEL_NOTICES.includes(notice) &&
+      (await this._notificationService.hasNotificationSince(
+        orgId,
+        n.message,
+        channelLink,
+        new Date(Date.now() - CHANNEL_NOTICE_EVERY_MS)
+      ))
+    ) {
+      return;
     }
 
     await this._notificationService.inAppNotification(

@@ -699,7 +699,7 @@
   "channel_disconnected_click_to_reconnect": "Canal desconectado, clique para reconectar.",
   "channel_disabled_upgrade_plan": "Este canal está desativado, por favor faça upgrade do seu plano para habilitá-lo.",
   "channel_added": "Canal adicionado",
-  "are_you_sure_disable_channel": "Tem certeza de que deseja desativar este canal?",
+  "are_you_sure_disable_channel": "Tem certeza de que deseja desativar este canal? As publicações cujo horário chegar enquanto estiver desativado não serão publicadas.",
   "disable_channel_title": "Desativar Canal",
   "channel_disabled": "Canal Desativado",
   "are_you_sure_delete_channel": "Excluir este canal também exclui todas as publicações dele no PostQueen, incluindo as agendadas, os rascunhos e as já publicadas. As publicações agendadas não serão publicadas, e reconectar o canal depois não traz as publicações de volta. As publicações que já foram publicadas não são removidas da plataforma. O PostQueen também abre mão do seu acesso ao canal.",
