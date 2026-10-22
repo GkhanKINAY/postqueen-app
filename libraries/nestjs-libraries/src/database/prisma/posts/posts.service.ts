@@ -174,6 +174,20 @@ export class PostsService {
     return this._postRepository.getPublishClaim(id);
   }
 
+  updateResolvedRelease(
+    id: string,
+    orgId: string,
+    releaseId: string,
+    releaseURL: string
+  ) {
+    return this._postRepository.updateResolvedRelease(
+      id,
+      orgId,
+      releaseId,
+      releaseURL
+    );
+  }
+
   async getMissingContent(
     orgId: string,
     postId: string,
@@ -2333,8 +2347,14 @@ export class PostsService {
     }
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
-    return this._postRepository.changeState(id, state, err, body);
+  async changeState(
+    id: string,
+    state: State,
+    err?: any,
+    body?: any,
+    reason?: string
+  ) {
+    return this._postRepository.changeState(id, state, err, body, reason);
   }
 
   async changePostStatus(

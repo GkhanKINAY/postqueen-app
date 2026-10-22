@@ -5,10 +5,14 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { TwitchDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/twitch.dto';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { isUUID } from 'class-validator';
 
 export class TwitchProvider extends SocialAbstract implements SocialProvider {
   override maxConcurrentJob = 5; // Twitch limits are per user
@@ -142,24 +146,38 @@ export class TwitchProvider extends SocialAbstract implements SocialProvider {
     message: string,
     color: string = 'primary'
   ): Promise<{ success: boolean }> {
-    await fetch(
-      `https://api.twitch.tv/helix/chat/announcements?broadcaster_id=${broadcasterId}&moderator_id=${broadcasterId}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Client-Id': process.env.TWITCH_CLIENT_ID!,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message.substring(0, 500),
-          color,
-        }),
-      }
-    );
+    // Announcements return 204 No Content on success, which this.fetch
+    // reads as a failure, so the answer was never read at all and a refused
+    // announcement was marked published. Anything else goes through
+    // runStreamedUpload's classification like this.fetch.
+    return this.runStreamedUpload(async () => {
+      const response = await fetch(
+        `https://api.twitch.tv/helix/chat/announcements?broadcaster_id=${broadcasterId}&moderator_id=${broadcasterId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Client-Id': process.env.TWITCH_CLIENT_ID!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: message.substring(0, 500),
+            color,
+          }),
+        }
+      );
 
-    // Announcements return 204 No Content on success
-    return { success: true };
+      if (response.status !== 204) {
+        throw {
+          response: {
+            status: response.status,
+            data: await response.text().catch(() => '{}'),
+          },
+        };
+      }
+
+      return { success: true };
+    }, this.identifier);
   }
 
   private async sendChatMessage(
@@ -193,10 +211,60 @@ export class TwitchProvider extends SocialAbstract implements SocialProvider {
 
     const data = await response.json();
 
+    // Twitch answers 200 for a message it dropped (AutoMod, a follower-only
+    // chat, a duplicate), with is_sent false and the reason.
+    if (data.data?.[0]?.is_sent === false) {
+      const reason = data.data[0].drop_reason?.message;
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(data),
+        JSON.stringify(body),
+        reason
+          ? `Twitch did not send the message: ${reason}`
+          : 'Twitch did not send the message.'
+      );
+    }
+
     return {
       messageId: data.data?.[0]?.message_id || makeId(10),
       isSent: data.data?.[0]?.is_sent ?? false,
     };
+  }
+
+  override handleErrors(
+    body: string,
+    status: number
+  ):
+    | { type: 'refresh-token' | 'bad-body' | 'disconnect'; value: string }
+    | undefined {
+    let message = '';
+    try {
+      message = String(JSON.parse(body)?.message || '');
+    } catch {
+      message = '';
+    }
+
+    // A token without a scope PostQueen now asks for: refreshing it keeps
+    // the same scopes, so only a reconnect helps.
+    if (status === 401 && /missing scope/i.test(message)) {
+      return {
+        type: 'disconnect',
+        value:
+          'PostQueen is missing a Twitch permission. Reconnect the channel and allow every permission.',
+      };
+    }
+
+    // Retried first by this.fetch and runStreamedUpload; this is what is
+    // left once those retries run out.
+    if (status === 429) {
+      return {
+        type: 'bad-body',
+        value:
+          'Twitch is limiting how fast PostQueen can post. Reschedule the post a few minutes later.',
+      };
+    }
+
+    return undefined;
   }
 
   async post(
@@ -272,12 +340,15 @@ export class TwitchProvider extends SocialAbstract implements SocialProvider {
       ];
     }
 
-    // Regular chat message with reply
+    // Regular chat message with reply. An announcement has no message id, so
+    // its post keeps a made-up one that Twitch refuses as a reply parent;
+    // Twitch's own ids are UUIDs, so only those are replied to.
+    const parentId = lastCommentId || postId;
     const result = await this.sendChatMessage(
       id,
       accessToken,
       commentPost.message,
-      lastCommentId || postId
+      isUUID(parentId) ? parentId : undefined
     );
 
     return [

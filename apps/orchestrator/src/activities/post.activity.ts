@@ -32,6 +32,7 @@ import {
 import {
   BadBody,
   Disconnect,
+  PublishedWithError,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { extractPostErrorMessage } from '@gitroom/helpers/utils/post.error.message';
@@ -63,6 +64,10 @@ export type PublishingNotice =
  * Rendered into the calendar tooltip, so it reads as a sentence fragment.
  */
 const LAPSED_SUBSCRIPTION = 'Subscription required';
+// What the publish run throws (as BadBody) when the plan lapsed before it
+// reached the network; changeState turns it into the lapsed case above.
+const LAPSED_PUBLISH =
+  'Your PostQueen subscription is not active. Renew it in Billing, then schedule the post again.';
 
 // Failures that never reached the network: the credits set aside to publish
 // the item and the rest of its thread go back (all of the post's, when the
@@ -78,6 +83,26 @@ const NEVER_PUBLISHED = [
   LAPSED_SUBSCRIPTION,
   'This channel cannot post comments',
 ];
+
+// Shown in place of a bug's or a broken HTTP call's own text ("Cannot read
+// properties of undefined", or "fetch failed" when the network could not be
+// reached), which tells the user nothing and is not the network's answer.
+// Neutral on whose side it was, since an outage reads the same. The Errors
+// row keeps the raw text. Temporal turns an unclassified error into an
+// ApplicationFailure typed by its class name.
+const INTERNAL_FAILURE =
+  'Something went wrong while sending this post, so it was not published. Try again in a few minutes, and contact support if it keeps happening.';
+const RAW_ERRORS = [
+  'TypeError',
+  'SyntaxError',
+  'ReferenceError',
+  'RangeError',
+  'AxiosError',
+];
+
+// These run after the network accepted the post, so a token that fails in
+// them leaves the outcome unknown rather than unpublished.
+const AFTER_ACCEPTED = ['checkPostStatus', 'finalizePost'];
 
 // Drops fields the workflow and downstream activities never read — biggest wins are `error` (grows per retry) and `childrenPost` (Prisma side-loads it on every recursive row).
 function slimPost(post: any) {
@@ -408,6 +433,28 @@ export class PostActivity {
         );
       }
 
+      // The post is live but a follow-up mutation failed: keep its platform
+      // id / URL on the post, then fail it as BadBody like any other error.
+      if (err instanceof PublishedWithError) {
+        try {
+          await this._postService.updateResolvedRelease(
+            err.postDbId,
+            integration.organizationId,
+            err.releaseId,
+            err.releaseURL
+          );
+        } catch (e) {
+          /**empty**/
+        }
+
+        throw new BadBody(
+          integration.providerIdentifier,
+          JSON.stringify({}),
+          Buffer.from('{}'),
+          err.message
+        );
+      }
+
       throw err;
     }
   }
@@ -471,8 +518,15 @@ export class PostActivity {
         integration.organizationId
       );
 
+      // BadBody, not a plain Error: the workflow republishes an unknown error
+      // up to five times, and a lapsed plan fails the same way each time.
       if (!subscription) {
-        throw new Error('No active subscription found for this organization.');
+        throw new BadBody(
+          integration.providerIdentifier,
+          JSON.stringify({ organizationId: integration.organizationId }),
+          Buffer.from('{}'),
+          LAPSED_PUBLISH
+        );
       }
     }
 
@@ -889,9 +943,17 @@ export class PostActivity {
       }
       case 'bad_body':
       case 'bad_body_comment': {
+        // a lapsed plan already got its own notice from changeState
+        if (detail === LAPSED_PUBLISH) {
+          return;
+        }
         const comment = notice === 'bad_body_comment';
+        // the publish went through, a later step on it did not
+        const live = !comment && !!post?.releaseURL;
         const title = comment
           ? `${network} didn’t accept a comment on your post`
+          : live
+          ? `Your post is live on ${network}, with a problem`
           : `${network} didn’t accept your post`;
         n = {
           subject: title,
@@ -910,6 +972,8 @@ export class PostActivity {
             title,
             lead: comment
               ? `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
+              : live
+              ? `Your post from ${account} is live on ${network}, but ${network} returned an error for a step after it was published. Do not post it again.`
               : `We sent your post from ${account} to ${network}, and ${network} returned an error, so it was not published.`,
             blocks: [
               ...(detail
@@ -923,7 +987,13 @@ export class PostActivity {
                 : []),
               {
                 type: 'rows',
-                rows: [postRow({ label: 'Failed', tone: 'danger' })],
+                rows: [
+                  postRow(
+                    live
+                      ? { label: 'Live', tone: 'warn' }
+                      : { label: 'Failed', tone: 'danger' }
+                  ),
+                ],
               },
               {
                 type: 'button',
@@ -988,15 +1058,39 @@ export class PostActivity {
     let reason = extractPostErrorMessage(err);
     const lapsed =
       state === 'ERROR' &&
-      reason === 'No Post' &&
-      !!before?.organizationId &&
-      isBillingEnabled() &&
-      !(await this._subscriptionService
-        .getSubscription(before.organizationId)
-        .catch(() => null));
+      (reason === LAPSED_PUBLISH ||
+        (reason === 'No Post' &&
+          !!before?.organizationId &&
+          isBillingEnabled() &&
+          !(await this._subscriptionService
+            .getSubscription(before.organizationId)
+            .catch(() => null))));
+
+    // A token that could not be refreshed before the network took the post:
+    // nothing was published, so the credits go back, and the reconnect notice
+    // the refresh already sent is not followed by a second email. Without a
+    // text of its own it was stored as "Activity task failed", so it reads the
+    // way the workflow's pre-flight check writes it.
+    const cause = err?.cause;
+    const refreshFailed =
+      state === 'ERROR' &&
+      cause?.type === 'refresh_token' &&
+      !AFTER_ACCEPTED.includes(err?.activityType);
+    const refreshWithoutText =
+      refreshFailed && !(cause.message || cause.failure?.message);
+
+    // Live on the network but failed a later step (YouTube refused the
+    // thumbnail): the publish activity kept its link, and it keeps its credits.
+    const live = state === 'ERROR' && !!before?.releaseURL;
+
+    const internal = state === 'ERROR' && RAW_ERRORS.includes(cause?.type);
 
     if (lapsed) {
       reason = LAPSED_SUBSCRIPTION;
+    } else if (refreshWithoutText) {
+      reason = 'Refresh channel needed';
+    } else if (internal) {
+      reason = INTERNAL_FAILURE;
     }
 
     // The post stays ERROR rather than going back to QUEUE on purpose. A post
@@ -1007,12 +1101,16 @@ export class PostActivity {
       id,
       state,
       lapsed ? reason : err,
-      body
+      body,
+      reason
     );
 
     if (
       state === 'ERROR' &&
-      (NEVER_PUBLISHED.includes(reason) || err?.cause?.type === 'bad_body')
+      !live &&
+      (NEVER_PUBLISHED.includes(reason) ||
+        err?.cause?.type === 'bad_body' ||
+        refreshFailed)
     ) {
       await this._postService
         .releasePublish(id, Array.isArray(body) ? body : undefined)
@@ -1047,7 +1145,8 @@ export class PostActivity {
       // notice for the whole set. Left to speak for itself it would send one
       // per dropped part, all saying the same thing.
       reason === 'This channel cannot post comments' ||
-      err?.cause?.type === 'bad_body';
+      (err?.cause?.type === 'bad_body' && !lapsed) ||
+      refreshFailed;
     if (alreadyReported) {
       return;
     }
@@ -1112,7 +1211,10 @@ export class PostActivity {
           : {
               stream: 'notifications',
               category: 'Not published',
-              preheader: reason
+              // our own failure is not something the network said
+              preheader: internal
+                ? reason
+                : reason
                 ? `${network} said: ${reason}`
                 : `Your post to ${network} didn’t go out.`,
               tone: 'danger',

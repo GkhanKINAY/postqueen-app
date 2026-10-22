@@ -122,3 +122,60 @@ describe('Telegram media groups', () => {
     assert.match(sendMessage, /reply_to_message_id: replyToMessageId/);
   });
 });
+
+describe('Telegram refusals', () => {
+  const handleErrors = classBody.slice(
+    classBody.indexOf('override handleErrors('),
+    classBody.indexOf('private async sendMessageInternal(')
+  );
+  const catchBlock = sendMessage.slice(
+    sendMessage.indexOf('} catch (error: any) {'),
+    sendMessage.indexOf('override handleErrors(')
+  );
+
+  // The workflow publishes an untyped error again, up to five times, and
+  // Telegram refuses it again each time.
+  it('throws Disconnect or BadBody from the classification, and rethrows the rest', () => {
+    assert.match(
+      catchBlock,
+      /error\?\.code === 'ETELEGRAM' && body\s*\?\s*this\.handleErrors\(JSON\.stringify\(body\), body\.error_code\)/
+    );
+    assert.match(
+      catchBlock,
+      /handleError\?\.type === 'disconnect'\) \{\s*throw new Disconnect\(/
+    );
+    assert.match(catchBlock, /if \(handleError\) \{\s*throw new BadBody\(/);
+    assert.match(catchBlock, /\}\s*throw error;\s*\}\s*\}/);
+  });
+
+  it('classifies on error_code: 429 with retry_after, 403 disconnects', () => {
+    assert.match(handleErrors, /const code = parsed\.error_code \?\? status;/);
+    assert.match(
+      handleErrors,
+      /if \(code === 429\) \{\s*const seconds = parsed\.parameters\?\.retry_after;/
+    );
+    assert.match(
+      handleErrors,
+      /`Telegram paused the bot for \$\{seconds\} seconds\. Reschedule the post\.`/
+    );
+    assert.match(
+      handleErrors,
+      /parsed\.error_code === 403 \|\|\s*parsed\.parameters\?\.migrate_to_chat_id \|\|\s*\(code === 400 && \/chat not found\/i\.test\(description\)\)\s*\) \{\s*return \{\s*type: 'disconnect',/
+    );
+  });
+
+  it('asks for rights before it disconnects, and keeps other 400s as BadBody', () => {
+    assert.ok(
+      handleErrors.indexOf('not enough rights|need administrator rights') <
+        handleErrors.indexOf('parsed.error_code === 403 ||')
+    );
+    assert.match(
+      handleErrors,
+      /'Give the PostQueen bot permission to post messages and media in this chat\.'/
+    );
+    assert.match(
+      handleErrors,
+      /if \(code === 400\) \{[\s\S]*type: 'bad-body',[\s\S]*By link it accepts photos up to 5 MB and other files up to 20 MB\./
+    );
+  });
+});

@@ -8,11 +8,14 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   BadBody,
+  platformMessage,
   RefreshToken,
   SocialAbstract,
+  ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { number, string } from 'yup';
@@ -42,32 +45,74 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
     return 500;
   }
 
+  // Every post and reply takes up to 4 files, and a video goes alone
+  // (Mastodon's PostStatusService refuses anything else with a 422).
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>
+  ): Promise<string | true> {
+    for (const media of posts || []) {
+      if ((media?.length || 0) > 4) {
+        return 'Mastodon allows up to 4 files per post.';
+      }
+      if (
+        (media?.length || 0) > 1 &&
+        media.some((m) => hasExtension(m?.path, 'mp4'))
+      ) {
+        return 'Mastodon allows one video per post, without other media.';
+      }
+    }
+
+    return true;
+  }
+
   override handleErrors(
     body: string,
     status: number
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    if (body.includes('Your login is currently disabled')) {
+    // "Your login is currently disabled", "... pending approval" or "... is
+    // missing a confirmed e-mail address": the token is fine, a new one would
+    // be refused the same way, so only the instance can fix it. Mastodon
+    // answers with { "error": "..." }, written for people to read.
+    if (body.includes('Your login is')) {
       return {
-        type: 'refresh-token',
-        value: 'Your login is currently disabled',
+        type: 'bad-body',
+        value: `${
+          platformMessage(body) || 'Your login is not active'
+        }. Sign in on the instance to fix it.`,
       };
     }
 
+    // "Try again in a moment!", as Mastodon puts it.
     if (body.includes('not finished processing')) {
       return {
-        type: 'bad-body',
+        type: 'retry',
         value:
           'The media was still processing when the post was published, please try again',
       };
     }
 
-    if (body.includes('could not be found')) {
+    if (body.includes('not found or already attached')) {
       return {
         type: 'bad-body',
         value:
           'The uploaded media expired before the post was published, please post again',
+      };
+    }
+
+    if (status === 429) {
+      return {
+        type: 'retry',
+        value:
+          'Your Mastodon instance is limiting how often this channel can post. Try again in a few minutes.',
+      };
+    }
+
+    if (status === 422) {
+      return {
+        type: 'bad-body',
+        value: platformMessage(body) || 'Mastodon refused the post.',
       };
     }
 
@@ -335,12 +380,13 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
         continue;
       }
 
+      // 422 here is the instance saying the file failed processing.
       if (response.status === 422) {
         throw new BadBody(
           this.identifier,
           await response.text().catch(() => '{}'),
           '{}',
-          'The uploaded media expired before the post was published, please post again'
+          'Your Mastodon instance could not process this media file. Try a different file or format.'
         );
       }
 

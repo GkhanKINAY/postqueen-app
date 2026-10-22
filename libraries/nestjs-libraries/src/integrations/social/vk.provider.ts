@@ -249,8 +249,21 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     if (all.error.error_code === 5) {
       throw new RefreshToken(this.identifier, json, Buffer.from('{}'), message);
     }
-    if ([6, 9, 29].includes(all.error.error_code)) {
+    // Too many requests per second (6) is over in a moment, so it stays
+    // untyped and the publish runs again. These calls answer HTTP 200, so
+    // this.fetch never sees the error to retry it itself.
+    if (all.error.error_code === 6) {
       throw new Error(message);
+    }
+    // Flood control (9) and a method's daily limit (29). Thrown untyped, the
+    // post was published again, up to five times, into the same limit.
+    if ([9, 29].includes(all.error.error_code)) {
+      throw new BadBody(
+        this.identifier,
+        json,
+        Buffer.from('{}'),
+        `VK is limiting how often this account can post (${message}). Reschedule the post for later.`
+      );
     }
     throw new BadBody(this.identifier, json, Buffer.from('{}'), message);
   }

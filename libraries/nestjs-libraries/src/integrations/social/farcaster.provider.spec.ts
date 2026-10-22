@@ -41,7 +41,7 @@ describe('Farcaster casts', () => {
   it('still refuse video', async () => {
     assert.equal(
       await cast('hi', [{ path: 'https://cdn.test/a.mp4' }]),
-      'Can only accept images'
+      'Farcaster casts can include pictures but not videos.'
     );
   });
 

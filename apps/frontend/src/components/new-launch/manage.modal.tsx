@@ -16,6 +16,7 @@ import { EditorWrapper } from '@gitroom/frontend/components/new-launch/editor';
 import { SelectCurrent } from '@gitroom/frontend/components/new-launch/select.current';
 import { ShowAllProviders } from '@gitroom/frontend/components/new-launch/providers/show.all.providers';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
+import { usePostErrorText } from '@gitroom/frontend/components/launches/helpers/use.post.error.text';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import {
   ComposePublishedAt,
@@ -145,6 +146,7 @@ const ComposerStepTabs: FC<{
 
 export const ManageModal: FC<AddEditModalProps> = (props) => {
   const t = useT();
+  const postErrorTooltip = usePostErrorText();
   const fetch = useFetch();
   // Scheduling sets credits aside, and a draft or a delete hands them back.
   const { mutate: mutateKey } = useSWRConfig();
@@ -1498,7 +1500,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         {!!existingData.posts[0].error && (
                           <span className="break-words">
                             {t('post_failed_reason', 'Reason: {{error}}', {
-                              error: existingData.posts[0].error,
+                              error: postErrorTooltip(
+                                existingData.posts[0].error
+                              ),
                               interpolation: { escapeValue: false },
                             })}{' '}
                           </span>

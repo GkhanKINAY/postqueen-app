@@ -125,14 +125,50 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     if (body.indexOf('Unable to obtain activity') > -1) {
       return {
         type: 'retry',
-        value: 'Unable to obtain activity',
+        value: 'LinkedIn was not ready to accept a comment on this post yet.',
       };
     }
 
-    if (body.indexOf('resource is forbidden') > -1 || body.indexOf('Service Unavailable') > -1) {
+    if (
+      body.indexOf('Service Unavailable') > -1 ||
+      body.indexOf('SERVICE_UNAVAILABLE') > -1
+    ) {
       return {
         type: 'retry',
-        value: 'Resource is forbidden',
+        value:
+          'LinkedIn is temporarily unavailable, so the post was not published. Try again in a few minutes.',
+      };
+    }
+
+    if (body.indexOf('resource is forbidden') > -1) {
+      return {
+        type: 'retry',
+        value:
+          "LinkedIn refused access to this post's media. Check that the connected account is still an admin or content admin of the Page, then reconnect the channel.",
+      };
+    }
+
+    if (body.indexOf('ACCESS_DENIED') > -1) {
+      return {
+        type: 'bad-body',
+        value:
+          'LinkedIn says this account cannot post here. For a Page, check that you are still an admin or content admin.',
+      };
+    }
+
+    if (body.indexOf('is a duplicate of urn:li:') > -1) {
+      return {
+        type: 'bad-body',
+        value:
+          'LinkedIn rejected this post because the same text was posted recently. Change the text and post again. If LinkedIn was having problems, it may already be live. Check the profile or Page before posting again.',
+      };
+    }
+
+    if (body.indexOf('FIELD_LENGTH_TOO_LONG') > -1) {
+      return {
+        type: 'bad-body',
+        value:
+          'LinkedIn says the post text is too long. Keep it under 3,000 characters.',
       };
     }
 

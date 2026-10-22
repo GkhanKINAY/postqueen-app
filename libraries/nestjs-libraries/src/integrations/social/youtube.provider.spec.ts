@@ -5,7 +5,11 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
-import { YoutubeSettingsDto } from '../../dtos/posts/providers-settings/youtube.settings.dto.ts';
+import {
+  getYoutubeTagsLength,
+  YoutubeSettingsDto,
+  YOUTUBE_TAGS_TOO_LONG,
+} from '../../dtos/posts/providers-settings/youtube.settings.dto.ts';
 
 const provider = new YoutubeProvider();
 const video = [[{ path: 'https://cdn.test/clip.mp4' }]];
@@ -198,5 +202,101 @@ describe('YouTube comments', () => {
     } finally {
       (google as any).youtube = real;
     }
+  });
+});
+
+describe('YouTube errors', () => {
+  const reason = (r: string, extra = '') =>
+    provider.handleErrors(
+      JSON.stringify({
+        error: { errors: [{ reason: r, domain: `youtube.${extra || 'video'}` }] },
+      })
+    );
+
+  it('says the video was uploaded when YouTube cannot read the thumbnail', () => {
+    const answer = reason('invalidImage', 'thumbnail');
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /^Your video was uploaded to YouTube, but YouTube could not read the thumbnail/);
+  });
+
+  it('names the thumbnail rate limit before the general one', () => {
+    assert.match(
+      String(reason('uploadRateLimitExceeded', 'thumbnail')?.value),
+      /set too many thumbnails recently/
+    );
+    assert.match(
+      String(reason('rateLimitExceeded')?.value),
+      /sending requests too quickly/
+    );
+  });
+
+  it('names the daily upload cap, which shares the rateLimitExceeded reason', () => {
+    for (const body of [
+      '{"error":{"message":"Quota exceeded for quota metric \'Video Uploads\' and limit \'Video Uploads per day\'","errors":[{"reason":"rateLimitExceeded"}],"details":[{"metadata":{"quota_limit":"defaultVideoInsertPerDayPerProject"}}]}}',
+      '{"error":{"message":"limit \'Video Uploads per day\'","errors":[{"reason":"rateLimitExceeded"}]}}',
+    ]) {
+      const answer = provider.handleErrors(body);
+      assert.equal(answer?.type, 'bad-body');
+      assert.match(String(answer?.value), /daily YouTube upload limit, so nothing was uploaded/);
+    }
+  });
+
+  it('does not promise nothing was uploaded when the API units run out', () => {
+    const answer = reason('quotaExceeded', 'quota');
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /daily YouTube limit/);
+    assert.doesNotMatch(String(answer?.value), /nothing was uploaded/);
+  });
+
+  it('keeps the type of the title, permission and signup errors', () => {
+    assert.deepEqual(reason('invalidTitle'), {
+      type: 'bad-body',
+      value:
+        'YouTube refused the title, so nothing was uploaded. Use 1 to 100 characters without < or >.',
+    });
+    assert.equal(reason('insufficientPermissions')?.type, 'bad-body');
+    assert.match(String(reason('insufficientPermissions')?.value), /Reconnect the channel/);
+    assert.equal(reason('youtubeSignupRequired')?.type, 'bad-body');
+    assert.match(String(reason('youtubeSignupRequired')?.value), /no YouTube channel yet/);
+  });
+
+  it('explains the tag limit with the same words as the composer', () => {
+    assert.equal(reason('invalidTags')?.value, YOUTUBE_TAGS_TOO_LONG);
+  });
+});
+
+describe('YoutubeSettingsDto tags', () => {
+  const tags = (...labels: string[]) => labels.map((label) => ({ value: label, label }));
+  const errors = (list: { value: string; label: string }[]) =>
+    validate(
+      plainToInstance(YoutubeSettingsDto, {
+        title: 'A title',
+        type: 'public',
+        tags: list,
+      }) as object,
+      { skipMissingProperties: false }
+    );
+
+  it('counts the comma between two tags', () => {
+    // 5 tags of 99 characters and the 4 commas between them: 499
+    assert.equal(getYoutubeTagsLength(tags(...Array(5).fill('a'.repeat(99)))), 499);
+    assert.equal(getYoutubeTagsLength(tags('one')), 3);
+    assert.equal(getYoutubeTagsLength([]), 0);
+  });
+
+  it('adds the quotes YouTube puts around a tag with a space', () => {
+    assert.equal(getYoutubeTagsLength(tags('two words', 'x')), 9 + 2 + 1 + 1);
+  });
+
+  it('accepts exactly 500 and refuses 501 with the new message', async () => {
+    const fits = tags('a'.repeat(249), 'b'.repeat(250)); // 249 + 1 + 250
+    assert.equal((await errors(fits)).length, 0);
+    const [error] = await errors(tags('a'.repeat(250), 'b'.repeat(250)));
+    assert.equal(error.property, 'tags');
+    assert.ok(Object.values(error.constraints || {}).includes(YOUTUBE_TAGS_TOO_LONG));
+  });
+
+  it('still reads a stored tag without a label', () => {
+    assert.equal(getYoutubeTagsLength([{ value: 'x' } as any, ...tags('ab')]), 3);
   });
 });

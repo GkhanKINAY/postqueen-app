@@ -5,7 +5,10 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  BadBody,
+  SocialAbstract,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { createHash, randomBytes } from 'crypto';
@@ -152,6 +155,19 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
     };
   }
 
+  // Kick answers 200 with is_sent false for a message it did not post, which
+  // used to be marked published.
+  private checkSent(data: any) {
+    if ((data.data?.is_sent ?? data.is_sent) === false) {
+      throw new BadBody(
+        this.identifier,
+        JSON.stringify(data),
+        '{}',
+        'Kick did not send the message to the chat.'
+      );
+    }
+  }
+
   async post(
     id: string,
     accessToken: string,
@@ -176,6 +192,7 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
     });
 
     const data = await response.json();
+    this.checkSent(data);
 
     return [
       {
@@ -213,6 +230,7 @@ export class KickProvider extends SocialAbstract implements SocialProvider {
     });
 
     const data = await response.json();
+    this.checkSent(data);
 
     return [
       {

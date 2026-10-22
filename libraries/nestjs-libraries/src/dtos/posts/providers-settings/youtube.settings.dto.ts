@@ -17,15 +17,19 @@ import {
 import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 import { Type } from 'class-transformer';
 
-// YouTube caps the combined length of all tags at 500 characters.
-// Tags containing whitespace are wrapped in quotes by YouTube, which adds
-// two extra characters per tag toward that limit.
+// YouTube caps the combined length of all tags at 500 characters, and counts
+// the comma between two tags toward it. Tags containing whitespace are
+// wrapped in quotes by YouTube, which adds two extra characters per tag.
 export const YOUTUBE_TAGS_MAX_LENGTH = 500;
 
+export const YOUTUBE_TAGS_TOO_LONG = `YouTube tags can total at most ${YOUTUBE_TAGS_MAX_LENGTH} characters. Commas between tags count, and a tag with a space counts 2 extra. Remove some tags.`;
+
 export function getYoutubeTagsLength(tags: YoutubeTagsSettings[]): number {
-  return (tags ?? []).reduce((total, tag) => {
+  return (tags ?? []).reduce((total, tag, index) => {
     const label = tag?.label ?? '';
-    return total + label.length + (/\s/.test(label) ? 2 : 0);
+    return (
+      total + label.length + (/\s/.test(label) ? 2 : 0) + (index > 0 ? 1 : 0)
+    );
   }, 0);
 }
 
@@ -41,7 +45,7 @@ export class IsYoutubeTagsLengthConstraint
   }
 
   defaultMessage(_args: ValidationArguments): string {
-    return `The maximum allowed is ${YOUTUBE_TAGS_MAX_LENGTH} characters in total for all tags.`;
+    return YOUTUBE_TAGS_TOO_LONG;
   }
 }
 

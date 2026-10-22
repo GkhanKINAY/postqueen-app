@@ -11,6 +11,15 @@ import { RefreshToken } from '../social.abstract.ts';
 const images = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
 
+// Feed photos are measured with sharp, which reads the file over the
+// network. Both tiles measure through InstagramProvider, and these tests are
+// about counts and captions, so every photo measures square; the ratio rule
+// has its own tests in meta.errors.spec.ts.
+(InstagramProvider.prototype as any).getImageDimensions = async () => ({
+  width: 1080,
+  height: 1080,
+});
+
 const tiles = [
   ['Facebook login', new InstagramProvider()],
   ['standalone', new InstagramStandaloneProvider()],
@@ -22,14 +31,14 @@ describe('Instagram limits, on both tiles', () => {
       assert.equal(provider.convertToJPEG, true);
     });
 
-    it(`${name}: refuses more than 10 carousel items`, async () => {
+    it(`${name}: refuses more than 20 carousel items`, async () => {
       assert.equal(
-        await provider.checkValidity([images(10)], { post_type: 'post' }, []),
+        await provider.checkValidity([images(20)], { post_type: 'post' }, []),
         true
       );
       assert.equal(
-        await provider.checkValidity([images(11)], { post_type: 'post' }, []),
-        'Instagram carousel only supports up to 10 media attachments'
+        await provider.checkValidity([images(21)], { post_type: 'post' }, []),
+        'Instagram carousels can have up to 20 photos or videos'
       );
     });
 

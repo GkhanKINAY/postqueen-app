@@ -55,6 +55,99 @@ export function truncateForTemporal(value: any, max: number): string {
   return `${str.slice(0, max)}… [truncated ${str.length - max} chars]`;
 }
 
+// The user reads this in the calendar and in the failure email, so it is one
+// short line with nothing in it that could be a credential: query strings,
+// auth headers, and long token-shaped runs are dropped.
+const MAX_PLATFORM_MESSAGE = 280;
+
+function cleanPlatformMessage(text: string) {
+  const line = text
+    .trim()
+    .split(/\r?\n/)[0]
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/https?:\/\/[^\s"'<>]+/g, (url) => stripQuery(url))
+    .replace(/\b(Bearer|Basic)\s+\S+/gi, '[hidden]')
+    .replace(/[A-Za-z0-9_-]{32,}/g, '[hidden]')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return line.length > MAX_PLATFORM_MESSAGE
+    ? `${line.slice(0, MAX_PLATFORM_MESSAGE - 1).trimEnd()}…`
+    : line;
+}
+
+// A bare code like "invalid_request" or "PERMISSION_DENIED" tells the user
+// nothing, so the status fallback reads better than echoing it.
+const readable = (text: string) => {
+  const rest = text.replace(/\[hidden\]/g, '').trim();
+  return !!rest && !/^[a-z0-9_.]+$/i.test(rest);
+};
+
+/**
+ * The reason a platform gave when it refused a request, cleaned up to show
+ * the user, or '' when it gave none. JSON bodies only: an HTML error page or
+ * a proxy's plain-text reply is not a reason anyone can act on.
+ */
+export function platformMessage(body: unknown): string {
+  let parsed: any = body;
+  if (typeof body === 'string') {
+    try {
+      parsed = JSON.parse(body);
+    } catch (err) {
+      return '';
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return '';
+  }
+
+  const text = (value: unknown) =>
+    typeof value === 'string' ? cleanPlatformMessage(value) : '';
+
+  // JSON:API errors (Tumblr's, for one) put the reason in `detail`.
+  const errors = Array.isArray(parsed.errors)
+    ? parsed.errors
+        .map((e: any) => [text(e?.message), text(e?.detail)].find(readable))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(' ')
+    : '';
+
+  return (
+    [
+      text(parsed.error_description),
+      text(parsed.error?.message),
+      errors,
+      text(parsed.message),
+      text(parsed.detail),
+      text(parsed.error),
+    ].find(readable) || ''
+  );
+}
+
+/** What the user is told when the platform gave no reason of its own. */
+export function statusMessage(status: number): string {
+  // No HTTP answer at all: a dropped connection, or a step on PostQueen's
+  // side such as reading an image, failed before the network replied.
+  if (!status) {
+    return 'PostQueen could not complete the request to the network, so the post was not published. Try again in a few minutes.';
+  }
+  if (status === 429) {
+    return 'The network is limiting how many requests PostQueen can send, so the post was not published. Try again later.';
+  }
+  if (status >= 500) {
+    return 'The network had a problem on its side, so the post was not published. Try again in a few minutes.';
+  }
+  if (status === 403) {
+    return 'The network refused the post. Check that the connected account is still allowed to post there.';
+  }
+  if (status === 404) {
+    return 'The network could not find where to publish. Check the post settings, or reconnect the channel in Channels.';
+  }
+  return 'The network refused the post without giving a reason. Check the text, media and settings, then try again.';
+}
+
 export class RefreshToken extends ApplicationFailure {
   constructor(identifier: string, json: string, body: BodyInit, message = '') {
     super(
@@ -93,13 +186,44 @@ export class Disconnect extends ApplicationFailure {
   }
 }
 
+// The platform already accepted the post (it is live) but a follow-up mutation
+// on it failed (e.g. YouTube rejected the thumbnail after the upload): the post
+// still ends in ERROR, yet its platform id / URL must survive so the user can
+// reach the live post instead of re-publishing it. The post activity records
+// them and rethrows as BadBody, like Disconnect.
+export class PublishedWithError extends ApplicationFailure {
+  constructor(
+    identifier: string,
+    public readonly postDbId: string,
+    public readonly releaseId: string,
+    public readonly releaseURL: string,
+    message = ''
+  ) {
+    super(
+      truncateForTemporal(message, MAX_FAILURE_MESSAGE),
+      'published_with_error',
+      true,
+      [{ identifier, postDbId, releaseId, releaseURL }]
+    );
+  }
+}
+
+// `unmapped` marks a refusal no handleErrors mapping explained, so the admin
+// stats can still count the failures that once read "Unknown Error".
 export class BadBody extends ApplicationFailure {
-  constructor(identifier: string, json: string, body: BodyInit, message = '') {
+  constructor(
+    identifier: string,
+    json: string,
+    body: BodyInit,
+    message = '',
+    unmapped = false
+  ) {
     super(truncateForTemporal(message, MAX_FAILURE_MESSAGE), 'bad_body', true, [
       {
         identifier,
         json: truncateForTemporal(json, MAX_FAILURE_FIELD),
         body: truncateForTemporal(body, MAX_FAILURE_FIELD),
+        ...(unmapped ? { unmapped: true } : {}),
       },
     ]);
   }
@@ -302,10 +426,14 @@ export abstract class SocialAbstract {
     return value || false;
   }
 
-  /** Reads the pixel dimensions of an image via sharp (works for http or local paths). */
+  /**
+   * Reads the pixel dimensions of an image via sharp (works for http or local
+   * paths). They are the stored ones: an EXIF `orientation` of 5 or more means
+   * the image shows rotated a quarter turn, with width and height swapped.
+   */
   protected async getImageDimensions(
     path: string
-  ): Promise<{ width: number; height: number }> {
+  ): Promise<{ width: number; height: number; orientation?: number }> {
     // Stored media paths are relative (e.g. "uploads/x.png"); resolve them to a
     // fetchable URL the same way posts.service.updateMedia does.
     const url =
@@ -313,20 +441,33 @@ export abstract class SocialAbstract {
         ? `${process.env.FRONTEND_URL}/${path}`
         : path;
     setHeartbeatDetails(`read media ${stripQuery(url)}`);
-    const { width = 0, height = 0 } = await sharp(
-      await this.readOrFetch(url)
-    ).metadata();
-    return { width, height };
+    const {
+      width = 0,
+      height = 0,
+      orientation,
+    } = await sharp(await this.readOrFetch(url)).metadata();
+    return { width, height, orientation };
   }
 
   // Reads the whole media into memory (images the providers hand to sharp).
   // A read that stalls twice fails the post with BadBody rather than a
   // retryable error: repeating the publish would re-read the same media and
   // re-upload what was already sent while holding the provider's queue slot.
+  // So does a media host that refuses the file (4xx): reading it again gets
+  // the same answer, and its 401 is not the network asking for a reconnect.
   protected async readOrFetch(path: string): Promise<Buffer> {
     try {
       return await readOrFetch(path);
-    } catch (err) {
+    } catch (err: any) {
+      const status = Number(err?.response?.status);
+      if (status >= 400 && status < 500) {
+        throw new BadBody(
+          '',
+          JSON.stringify({ status, path: stripQuery(path) }),
+          Buffer.from('{}'),
+          'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+        );
+      }
       if (!isReadTimeout(err)) {
         throw err;
       }
@@ -403,9 +544,9 @@ export abstract class SocialAbstract {
         if (response.status !== 206) {
           throw new BadBody(
             identifier,
-            '{}',
+            JSON.stringify({ status: response.status, start, end }),
             Buffer.from('{}'),
-            `Media server did not honor the range request (status ${response.status})`
+            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
           );
         }
         return Buffer.from(await response.arrayBuffer());
@@ -463,7 +604,7 @@ export abstract class SocialAbstract {
         identifier,
         '{}',
         Buffer.from('{}'),
-        'Could not read the media for upload'
+        'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
       );
     }
 
@@ -502,8 +643,7 @@ export abstract class SocialAbstract {
         (status === 429 ||
           (status === 500 && !handleError) ||
           handleError?.type === 'retry' ||
-          json.includes('rate_limit_exceeded') ||
-          json.includes('Rate limit'))
+          (!handleError && /rate[ _-]?limit/i.test(json)))
       ) {
         await timer(5000);
         return this.runStreamedUpload(func, identifier, totalRetries + 1);
@@ -525,9 +665,18 @@ export abstract class SocialAbstract {
         identifier,
         json,
         '{}',
-        handleError?.value || 'Unknown Error'
+        handleError?.value || this.failureMessage(json, status),
+        !handleError?.value
       );
     }
+  }
+
+  // What the user is told when no handleErrors mapping explains a refusal:
+  // the platform's own reason, or what the status means. Not prefixed with
+  // the network's name: the failure notice already reads "<network> said: ...",
+  // the same as for a mapped message.
+  protected failureMessage(body: unknown, status: number) {
+    return platformMessage(body) || statusMessage(status);
   }
 
   public async mention(
@@ -550,9 +699,27 @@ export abstract class SocialAbstract {
     let value: any;
     try {
       value = await func();
-    } catch (err) {
+    } catch (err: any) {
+      // Already classified, by this.fetch or readOrFetch inside func.
+      // Rewrapping it as BadBody lost both its message and its type, so a
+      // token that only needed a refresh failed the post.
+      if (err instanceof ApplicationFailure) {
+        throw err;
+      }
+
       const handle = this.handleErrors(safeStringify(err), 200);
-      value = { err: true, value: 'Unknown Error', ...(handle || {}) };
+      // SDK errors keep the platform's reply on `data` (twitter-api-v2) or
+      // `response.data` (axios, gaxios)
+      const status =
+        Number(err?.response?.status || err?.code || err?.status) || 0;
+      value = {
+        err: true,
+        unmapped: !handle?.value,
+        ...(handle || {}),
+        value:
+          handle?.value ||
+          this.failureMessage(err?.data ?? err?.response?.data, status),
+      };
       globalErr = err;
     }
 
@@ -577,7 +744,8 @@ export abstract class SocialAbstract {
         '',
         safeStringify(globalErr),
         {} as any,
-        value.value || ''
+        value.value || '',
+        value.unmapped
       );
     }
 
@@ -615,19 +783,18 @@ export abstract class SocialAbstract {
       json = '{}';
     }
 
-    if (totalRetries > 2) {
-      // Include the platform's actual response body so the failure is
-      // diagnosable, instead of an empty '{}'.
-      throw new BadBody(identifier, json, options.body || '{}', message);
-    }
-
     const handleError = this.handleErrors(json || '{}', request.status);
 
+    // Once the retries are spent, the last response is classified like any
+    // other: a mapped reason, a 401 or a disconnect on the final attempt
+    // used to surface as "Unknown Error". A mapped refresh or disconnect
+    // also wins over a body that merely mentions a rate limit.
     if (
-      request.status === 429 ||
-      (request.status === 500 && !handleError) ||
-      json.includes('rate_limit_exceeded') ||
-      json.includes('Rate limit')
+      totalRetries <= 2 &&
+      (request.status === 429 ||
+        (request.status === 500 && !handleError) ||
+        handleError?.type === 'retry' ||
+        (!handleError && /rate[ _-]?limit/i.test(json)))
     ) {
       await timer(5000);
       return this.fetch(
@@ -636,19 +803,7 @@ export abstract class SocialAbstract {
         identifier,
         totalRetries + 1,
         ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
-      );
-    }
-
-    if (handleError?.type === 'retry') {
-      await timer(5000);
-      return this.fetch(
-        url,
-        options,
-        identifier,
-        totalRetries + 1,
-        ignoreConcurrency,
-        handleError?.value || 'Unknown Error'
+        handleError?.value || message
       );
     }
 
@@ -674,11 +829,15 @@ export abstract class SocialAbstract {
       );
     }
 
+    // `message` is the reason an earlier attempt was retried for
     throw new BadBody(
       identifier,
       json,
       options.body!,
-      handleError?.value || 'Unknown Error'
+      handleError?.value ||
+        message ||
+        this.failureMessage(json, request.status),
+      !handleError?.value && !message
     );
   }
 

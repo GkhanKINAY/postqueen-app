@@ -93,3 +93,42 @@ describe('Pinterest API host', () => {
     assert.equal(source.match(/api\.pinterest\.com/g)?.length, 1);
   });
 });
+
+describe('Pinterest errors', () => {
+  const provider = new PinterestProvider();
+
+  it("retries Pinterest's temporary error 2787", () => {
+    assert.equal(
+      provider.handleErrors(
+        JSON.stringify({ code: 2787, message: 'Sorry! Something went wrong on our end.' })
+      )?.type,
+      'retry'
+    );
+  });
+
+  it('talks about the board, not its ID', () => {
+    for (const body of [
+      `{"message":"'abc' does not match '^\\\\d+$'"}`,
+      '{"code":2,"message":"Board not found."}',
+      '{"code":29,"message":"You are not permitted to access that resource."}',
+    ]) {
+      const answer = provider.handleErrors(body);
+      assert.equal(answer?.type, 'bad-body', body);
+      assert.doesNotMatch(String(answer?.value), /board ID/, body);
+    }
+  });
+});
+
+describe('Pinterest video pins', () => {
+  const provider = new PinterestProvider();
+  const video = { path: 'https://cdn.test/a.mp4' };
+  const cover = { path: 'https://cdn.test/a.jpg' };
+  const message = 'A Pinterest video pin needs one video and one cover image';
+
+  it('need one video and one cover image', async () => {
+    assert.equal(await provider.checkValidity([[video, cover]] as any), true);
+    assert.equal(await provider.checkValidity([[video]] as any), message);
+    assert.equal(await provider.checkValidity([[video, video]] as any), message);
+    assert.equal(await provider.checkValidity([[video, cover, cover]] as any), message);
+  });
+});

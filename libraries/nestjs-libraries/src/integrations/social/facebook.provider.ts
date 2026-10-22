@@ -81,6 +81,15 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       if (!firstPost?.length) {
         return 'Story should have at least one media';
       }
+      return true;
+    }
+    // A video post uploads only the first file, and a photo post would send a
+    // video to the photos endpoint, so a mix never publishes as composed.
+    if (
+      (firstPost?.length ?? 0) > 1 &&
+      firstPost?.some((p) => hasExtension(p?.path, 'mp4'))
+    ) {
+      return 'Facebook posts can have several photos or one video, not both.';
     }
     return true;
   }
@@ -94,6 +103,17 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         value: string;
       }
     | undefined {
+    // A security checkpoint arrives as code 190 "Error validating access
+    // token" with subcode 459, 464 or 490, but a new token cannot clear it:
+    // the user has to log in at facebook.com first.
+    if (/"error_subcode":(459|464|490)\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Facebook has put a security check on your account. Log in at facebook.com, complete it, then try again.',
+      };
+    }
+
     // Access token validation errors - require re-authentication
     if (body.indexOf('Error validating access token') > -1) {
       return {
@@ -131,7 +151,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('1366046') > -1) {
+    if (/\b1366046\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Photos should be smaller than 4 MB and saved as JPG, PNG',
@@ -140,7 +160,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
 
     // code 368 "Temporarily blocked for policies violations" (subcode
     // 1390008): Meta documents it as temporary, "wait and retry the operation"
-    if (body.indexOf('1390008') > -1) {
+    if (/\b1390008\b/.test(body)) {
       return {
         type: 'retry' as const,
         value: 'You are posting too fast, please slow down',
@@ -148,14 +168,14 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
 
     // Content policy violations
-    if (body.indexOf('1346003') > -1) {
+    if (/\b1346003\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Content flagged as abusive by Facebook',
       };
     }
 
-    if (body.indexOf('1404006') > -1) {
+    if (/\b1404006\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -163,14 +183,14 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    if (body.indexOf('2069019') > -1) {
+    if (/\b2069019\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Invalid file',
       }
     }
 
-    if (body.indexOf('1404102') > -1) {
+    if (/\b1404102\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Content violates Facebook Community Standards',
@@ -178,21 +198,21 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
 
     // Permission errors
-    if (body.indexOf('1404078') > -1) {
+    if (/\b1404078\b/.test(body)) {
       return {
         type: 'refresh-token' as const,
         value: 'Page publishing authorization required, please re-authenticate',
       };
     }
 
-    if (body.indexOf('1366051') > -1) {
+    if (/\b1366051\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'These photos were already posted.',
       };
     }
 
-    if (body.indexOf('1609008') > -1) {
+    if (/\b1609008\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Cannot post Facebook.com links',
@@ -200,21 +220,21 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
 
     // Parameter validation errors
-    if (body.indexOf('2061006') > -1) {
+    if (/\b2061006\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Invalid URL format in post content',
       };
     }
 
-    if (body.indexOf('1349125') > -1) {
+    if (/\b1349125\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Invalid content format',
       };
     }
 
-    if (body.indexOf('1404112') > -1) {
+    if (/\b1404112\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -229,22 +249,17 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
-    // Service errors - checking specific subcodes first
-    if (body.indexOf('1363047') > -1) {
+    // Service errors - checking specific subcodes first. Facebook may have
+    // published the post before it failed, so this is not retried.
+    if (/\b(1363047|1609010)\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Facebook service temporarily unavailable',
+        value:
+          'Facebook had a temporary problem. Check your Page first, the post may already be live, then try again.',
       };
     }
 
-    if (body.indexOf('1609010') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value: 'Facebook service temporarily unavailable',
-      };
-    }
-
-    if (body.indexOf('4854002') > -1) {
+    if (/\b4854002\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -255,13 +270,6 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'bad-body' as const,
         value: 'Facebook return: No permission to publish the video',
-      };
-    }
-    if (/"error_subcode":459\b/.test(body)) {
-      return {
-        type: 'bad-body' as const,
-        value:
-          'Facebook is asking you to resolve a security check. Log in at facebook.com, complete it, then try again',
       };
     }
     if (/"error_subcode":492\b/.test(body)) {
@@ -292,12 +300,6 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       return {
         type: 'retry' as const,
         value: 'Facebook is temporarily unavailable, please try again later',
-      };
-    }
-    if (body.indexOf('490') > -1) {
-      return {
-        type: 'refresh-token' as const,
-        value: 'Access token expired, please re-authenticate',
       };
     }
 

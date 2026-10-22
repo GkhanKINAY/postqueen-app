@@ -5,7 +5,10 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  SocialAbstract,
+  ValidityMedia,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { MeweDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mewe.dto';
@@ -39,21 +42,25 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
   }
 
   override handleErrors(
-    body: string
+    body: string,
+    status: number
   ):
     | { type: 'refresh-token' | 'bad-body' | 'retry'; value: string }
     | undefined {
-    if (body.indexOf('Unauthorized') > -1) {
+    if (status === 401) {
       return {
         type: 'refresh-token' as const,
-        value: 'Access token expired, please re-authenticate',
+        value: 'MeWe signed PostQueen out. Reconnect the channel.',
       };
     }
 
-    if (body.indexOf('Enhance Your Calm') > -1 || body.indexOf('420') > -1) {
+    // 420 is MeWe's rate limit status. Matching "420" in the body also
+    // matched ids and timestamps.
+    if (status === 420 || body.indexOf('Enhance Your Calm') > -1) {
       return {
         type: 'retry' as const,
-        value: 'Rate limited, retrying...',
+        value:
+          'MeWe is limiting how fast PostQueen can post. Reschedule the post a few minutes later.',
       };
     }
 
@@ -65,6 +72,21 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
     }
 
     return undefined;
+  }
+
+  // Only pictures are uploaded (uploadPhoto); a video used to be left out
+  // without a word and the post went out without it.
+  override async checkValidity(
+    posts: Array<ValidityMedia[]>
+  ): Promise<string | true> {
+    if (
+      posts?.some((item) =>
+        item?.some((media) => !!media?.path && hasExtension(media.path, 'mp4'))
+      )
+    ) {
+      return 'MeWe posts can include pictures but not videos.';
+    }
+    return true;
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokenDetails> {
@@ -212,25 +234,33 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
     const form = new FormData();
     form.append('file', blob, fileName);
 
-    const uploadResponse = await fetch(
-      `${this.meweHost}/api/dev/photo/upload`,
-      {
-        method: 'POST',
-        headers: {
-          'X-App-Id': process.env.MEWE_APP_ID!,
-          'X-Api-Key': process.env.MEWE_API_KEY!,
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: form,
+    // A refusal goes through runStreamedUpload's classification like
+    // this.fetch, so it is typed instead of published again.
+    const uploadData = await this.runStreamedUpload(async () => {
+      const uploadResponse = await fetch(
+        `${this.meweHost}/api/dev/photo/upload`,
+        {
+          method: 'POST',
+          headers: {
+            'X-App-Id': process.env.MEWE_APP_ID!,
+            'X-Api-Key': process.env.MEWE_API_KEY!,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: form,
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        throw {
+          response: {
+            status: uploadResponse.status,
+            data: await uploadResponse.text().catch(() => '{}'),
+          },
+        };
       }
-    );
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`Photo upload failed: ${errorText}`);
-    }
-
-    const uploadData = await uploadResponse.json();
+      return uploadResponse.json();
+    }, this.identifier);
     return uploadData.id;
   }
 
@@ -266,20 +296,22 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
         : `${this.meweHost}/api/dev/group/${groupId}/post`;
 
     // MeWe post endpoint may return 204 (no content), so use raw fetch
-    const postResponse = await fetch(postUrl, {
-      method: 'POST',
-      headers: this.authHeaders(accessToken),
-      body: JSON.stringify(postBody),
-    });
+    await this.runStreamedUpload(async () => {
+      const postResponse = await fetch(postUrl, {
+        method: 'POST',
+        headers: this.authHeaders(accessToken),
+        body: JSON.stringify(postBody),
+      });
 
-    if (!postResponse.ok) {
-      const errorText = await postResponse.text();
-      const handleError = this.handleErrors(errorText);
-      if (handleError) {
-        throw new Error(handleError.value);
+      if (!postResponse.ok) {
+        throw {
+          response: {
+            status: postResponse.status,
+            data: await postResponse.text().catch(() => '{}'),
+          },
+        };
       }
-      throw new Error('Failed to create MeWe post');
-    }
+    }, this.identifier);
 
     const postId = makeId(12);
 

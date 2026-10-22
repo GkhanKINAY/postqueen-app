@@ -99,7 +99,7 @@ describe('X Premium-only settings follow the subscription kept at connect', () =
         'X only lets Premium accounts limit replies to subscribers or verified accounts, reconnect the channel if this account has Premium now'
       );
     }
-    // The "Long posts" switch is on, and still cannot unlock 4000.
+    // The "Long posts" switch is on, and still cannot unlock 25,000.
     assert.equal(provider.maxLength(none, post), 280);
   });
 
@@ -126,7 +126,7 @@ describe('X Premium-only settings follow the subscription kept at connect', () =
           true
         );
       }
-      assert.equal(provider.maxLength(paid, post), 4000);
+      assert.equal(provider.maxLength(paid, post), 25000);
     }
   });
 
@@ -150,9 +150,9 @@ describe('X Premium-only settings follow the subscription kept at connect', () =
         );
       }
     }
-    assert.equal(provider.maxLength(connected(true), post), 4000);
+    assert.equal(provider.maxLength(connected(true), post), 25000);
     assert.equal(provider.maxLength(connected(false), post), 280);
-    assert.equal(provider.maxLength(true), 4000);
+    assert.equal(provider.maxLength(true), 25000);
     assert.equal(provider.maxLength(false), 280);
   });
 });
@@ -213,7 +213,7 @@ describe('X keeps the subscription when a channel connects', () => {
     const { verified } = await connect(t, { verified: true });
     assert.equal(verified.value, true);
     assert.equal(verified.subscriptionType, undefined);
-    assert.equal(provider.maxLength([verified], post), 4000);
+    assert.equal(provider.maxLength([verified], post), 25000);
   });
 });
 

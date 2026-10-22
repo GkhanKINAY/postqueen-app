@@ -10,6 +10,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
+  platformMessage,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -39,9 +40,10 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
   }
 
   override handleErrors(
-    body: string
+    body: string,
+    status: number
   ):
-    | { type: 'refresh-token' | 'bad-body'; value: string }
+    | { type: 'refresh-token' | 'bad-body' | 'disconnect'; value: string }
     | undefined {
     if (body.includes('invalid_grant')) {
       return {
@@ -50,25 +52,29 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // A refreshed token keeps the scopes it was granted, so only a reconnect
+    // can add the missing one.
     if (body.includes('insufficient_scope')) {
       return {
-        type: 'refresh-token' as const,
-        value:
-          'Insufficient permissions, please re-authenticate with required scopes',
+        type: 'disconnect' as const,
+        value: 'Reconnect Whop to give PostQueen permission to post in forums.',
       };
     }
 
     if (body.includes('invalid_request')) {
       return {
         type: 'bad-body' as const,
-        value: 'Invalid request parameters',
+        value:
+          platformMessage(body) ||
+          'Whop refused the post because a field is not valid.',
       };
     }
 
-    if (body.includes('not_found')) {
+    if (status === 404) {
       return {
         type: 'bad-body' as const,
-        value: 'Forum or experience not found',
+        value:
+          'Whop could not find this forum. Check that it still exists, or pick another one.',
       };
     }
 
@@ -289,7 +295,12 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
           dispatcher: getSsrfSafeDispatcher(),
         });
         if (!fileResponse.ok || !fileResponse.body) {
-          throw new Error(`Failed to fetch media: ${fileResponse.statusText}`);
+          throw new BadBody(
+            this.identifier,
+            JSON.stringify({ status: fileResponse.status }),
+            '{}',
+            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+          );
         }
         const uploadResponse = await fetch(createFileResponse.upload_url, {
           method: 'PUT',
@@ -318,7 +329,12 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
         const maxAttempts = 108; // ~9 minutes at 5s interval
         while (uploadStatus !== 'ready') {
           if (attempts++ >= maxAttempts) {
-            throw new Error('File upload timed out');
+            throw new BadBody(
+              this.identifier,
+              JSON.stringify({ id: createFileResponse.id }),
+              '{}',
+              'Whop did not finish processing a file in this post within 9 minutes.'
+            );
           }
 
           const fileStatus = await (
@@ -336,7 +352,12 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
           ).json();
           uploadStatus = fileStatus.upload_status;
           if (uploadStatus === 'failed') {
-            throw new Error('File upload failed');
+            throw new BadBody(
+              this.identifier,
+              JSON.stringify(fileStatus),
+              '{}',
+              'Whop could not process a file in this post. Try another file.'
+            );
           }
           if (uploadStatus !== 'ready') {
             await timer(5000);

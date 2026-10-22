@@ -6,6 +6,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import {
   BadBody,
+  platformMessage,
   SocialAbstract,
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -133,7 +134,7 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
     ) {
       return {
         type: 'refresh-token',
-        value: 'Please re-authenticate your Tumblr account.',
+        value: 'Reconnect the Tumblr channel.',
       };
     }
 
@@ -144,10 +145,12 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
       };
     }
 
+    // Tumblr names the problem in errors[0].detail.
     if (this.hasErrorCode(body, 8001)) {
       return {
         type: 'bad-body',
-        value: 'Tumblr rejected the post content format.',
+        value:
+          platformMessage(body) || 'Tumblr rejected the post content format.',
       };
     }
 

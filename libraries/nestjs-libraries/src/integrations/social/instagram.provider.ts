@@ -66,24 +66,27 @@ export class InstagramProvider
   /**
    * The rules both Instagram tiles share, so the standalone one delegates here
    * the same way it delegates `handleErrors`: images the JPEG conversion can
-   * read (sharp has no BMP decoder), and for a post or a reel at most 10 items
+   * read (sharp has no BMP decoder), and for a post or a reel at most 20 items
    * and Instagram's caps of 30 hashtags and 20 @mentions per caption. A story
    * publishes each item as its own story and carries no caption, so neither
-   * cap applies to it.
+   * cap applies to it. Feed photos must also sit between 4:5 and 1.91:1,
+   * which stories and reels do not ask for.
    */
-  checkMediaAndCaption(
+  async checkMediaAndCaption(
     media: ValidityMedia[],
     caption = '',
     postType?: string
-  ): string | true {
+  ): Promise<string | true> {
     if (media.some((m) => hasExtension(m?.path, 'bmp'))) {
       return 'Instagram only accepts JPEG images and BMP files cannot be converted, please use a JPEG or PNG';
     }
     if (postType === 'story') {
       return true;
     }
-    if (media.length > 10) {
-      return 'Instagram carousel only supports up to 10 media attachments';
+    // IG Media reference (v26.0): "Carousels can have up to 20 total
+    // images, videos, or a mix".
+    if (media.length > 20) {
+      return 'Instagram carousels can have up to 20 photos or videos';
     }
     const hashtags = caption.match(/(^|[^\p{L}\p{N}_&])#[\p{L}\p{N}_]+/gu);
     if ((hashtags?.length ?? 0) > 30) {
@@ -92,6 +95,40 @@ export class InstagramProvider
     const mentions = caption.match(/(^|[^\p{L}\p{N}_.])@[A-Za-z0-9._]+/gu);
     if ((mentions?.length ?? 0) > 20) {
       return 'Instagram allows up to 20 @mentions in a caption';
+    }
+    if (postType === 'reel') {
+      return true;
+    }
+
+    // Instagram refuses a feed photo outside 4:5 to 1.91:1 only when it
+    // publishes (error 36003). The ratio is rounded to two decimals, so
+    // 1200x628 still counts as 1.91:1. A file sharp cannot read is left for
+    // Instagram to judge. An EXIF orientation of 5 or more shows the photo a
+    // quarter turn round, so it is measured the way it is shown.
+    const dimensions = await Promise.all(
+      media.map((m) =>
+        hasExtension(m?.path, 'mp4')
+          ? undefined
+          : this.getImageDimensions(m?.path).then(
+              ({ width, height, orientation }) =>
+                (orientation ?? 0) >= 5
+                  ? { width: height, height: width }
+                  : { width, height },
+              () => undefined
+            )
+      )
+    );
+    const outside = dimensions.findIndex((d) => {
+      if (!d?.width || !d?.height) {
+        return false;
+      }
+      const ratio = Math.round((d.width / d.height) * 100) / 100;
+      return ratio < 0.8 || ratio > 1.91;
+    });
+    if (outside > -1) {
+      return `Image ${outside + 1} is ${dimensions[outside]?.width}x${
+        dimensions[outside]?.height
+      }. Instagram feed photos must be between 4:5 and 1.91:1. Crop the photo or post it as a story.`;
     }
     return true;
   }
@@ -105,7 +142,7 @@ export class InstagramProvider
     if (!firstPost?.length) {
       return 'Should have at least one media';
     }
-    const shared = this.checkMediaAndCaption(
+    const shared = await this.checkMediaAndCaption(
       firstPost,
       caption,
       settings?.post_type
@@ -173,19 +210,16 @@ export class InstagramProvider
         value: string;
       }
     | undefined {
-    if (body.indexOf('An unknown error occurred') > -1) {
-      return {
-        type: 'retry' as const,
-        value: 'An unknown error occurred, please try again later',
-      };
-    }
-    if (body.indexOf('2207081') > -1) {
+    // Subcodes arrive in the JSON body ("error_subcode":2207001) and in a
+    // failed container's status text ("error code 2207001"), so they are
+    // matched as whole numbers, never inside a longer id.
+    if (/\b2207081\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: "This account doesn't support Trial Reels",
       };
     }
-    if (body.indexOf('2207078') > -1) {
+    if (/\b2207078\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -193,14 +227,21 @@ export class InstagramProvider
       };
     }
 
-    if (
-      body.indexOf('REVOKED_ACCESS_TOKEN') > -1 ||
-      body.indexOf('"error_subcode":33') > -1
-    ) {
+    if (body.indexOf('REVOKED_ACCESS_TOKEN') > -1) {
       return {
         type: 'refresh-token' as const,
         value:
-          'Something is wrong with your connected user, please re-authenticate',
+          "Instagram revoked this channel's access. Please reconnect the channel.",
+      };
+    }
+
+    // Graph code 100, subcode 33: the object does not exist, cannot be loaded
+    // due to missing permissions, or does not support this operation.
+    if (/"error_subcode":33\b/.test(body)) {
+      return {
+        type: 'refresh-token' as const,
+        value:
+          'Instagram could not find this account or media, or this channel no longer has access to it. Please reconnect the channel.',
       };
     }
 
@@ -210,7 +251,7 @@ export class InstagramProvider
       return {
         type: 'refresh-token' as const,
         value:
-          'Your Instagram account is not a business account, please convert it to a business account',
+          'Your Instagram account is not a professional (Business or Creator) account. Switch it in the Instagram app, then reconnect the channel.',
       };
     }
 
@@ -218,151 +259,157 @@ export class InstagramProvider
       return {
         type: 'refresh-token' as const,
         value:
-          'You session has been invalidated, this can usually happen from frequent posting, please re-authenticate, and wait 1-2 days before posting again',
+          'Your Instagram session ended, usually after a password change or a security check. Please reconnect the channel.',
       };
     }
 
-    if (body.indexOf('2207050') > -1) {
+    if (/\b2207050\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Instagram user is restricted',
+        value:
+          'Instagram has restricted this account. Open the Instagram app, complete any steps it shows, then try again.',
       };
     }
 
-    // Media download/upload errors
-    if (body.indexOf('2207003') > -1) {
+    // Media download/upload errors. Meta documents 2207003, 2207032 and
+    // 2207008 as temporary ("try again"), and the failed call created
+    // nothing, so the same request is sent again.
+    if (/\b2207003\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value: 'Timeout downloading media, please try again',
       };
     }
 
-    if (body.indexOf('2207020') > -1) {
+    if (/\b2207020\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Media expired, please upload again',
       };
     }
 
-    if (body.indexOf('2207032') > -1) {
+    if (/\b2207032\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value: 'Failed to create media, please try again',
       };
     }
 
-    if (body.indexOf('2207053') > -1) {
+    if (/\b2207053\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Unknown upload error, please try again',
       };
     }
 
-    if (body.indexOf('2207052') > -1) {
+    if (/\b2207052\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Media fetch failed, please try again',
+        value:
+          'Instagram could not download the media file. Please try again. If it keeps failing, upload the file again.',
       };
     }
 
-    if (body.indexOf('2207057') > -1) {
+    if (/\b2207057\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Invalid thumbnail offset for video',
       };
     }
 
-    if (body.indexOf('2207026') > -1) {
+    if (/\b2207026\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Unsupported video format',
       };
     }
 
-    if (body.indexOf('2207023') > -1) {
+    if (/\b2207023\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Unknown media type',
       };
     }
 
-    if (body.indexOf('2207006') > -1) {
+    if (/\b2207006\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Media not found, please upload again',
       };
     }
 
-    if (body.indexOf('2207008') > -1) {
+    if (/\b2207008\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value: 'Media builder expired, please try again',
       };
     }
 
     // Content validation errors
-    if (body.indexOf('2207028') > -1) {
+    if (/\b2207028\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Carousel validation failed',
       };
     }
 
-    if (body.indexOf('2207010') > -1) {
+    if (/\b2207010\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Caption is too long',
+        value:
+          'Instagram captions allow 2,200 characters, 30 hashtags and 20 @ tags.',
       };
     }
 
     // Product tagging errors
-    if (body.indexOf('2207035') > -1) {
+    if (/\b2207035\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Product tag positions not supported for videos',
       };
     }
 
-    if (body.indexOf('2207036') > -1) {
+    if (/\b2207036\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Product tag positions required for photos',
       };
     }
 
-    if (body.indexOf('2207037') > -1) {
+    if (/\b2207037\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Product tag validation failed',
       };
     }
 
-    if (body.indexOf('2207040') > -1) {
+    if (/\b2207040\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Too many product tags',
+        value: 'Instagram allows up to 20 @ tags per post.',
       };
     }
 
     // Image format/size errors
-    if (body.indexOf('2207004') > -1) {
+    if (/\b2207004\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Image is too large',
+        value: 'Instagram images must be 8 MB or smaller.',
       };
     }
 
-    if (body.indexOf('2207005') > -1) {
+    if (/\b2207005\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Unsupported image format',
       };
     }
 
-    if (body.indexOf('2207009') > -1) {
+    if (/\b2207009\b/.test(body) || /"code":36003\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Aspect ratio not supported, must be between 4:5 to 1.91:1',
+        value:
+          'Instagram feed photos must be between 4:5 and 1.91:1. Crop the photo or post it as a story.',
       };
     }
 
@@ -373,7 +420,7 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('2207042') > -1) {
+    if (/\b2207042\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -396,13 +443,6 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('36003') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value: 'Aspect ratio not supported, must be between 4:5 to 1.91:1',
-      };
-    }
-
     // Meta put the account behind a checkpoint: the token is still valid, so a
     // refresh cannot help and every post fails until the user logs in on
     // Instagram and re-connects the channel.
@@ -417,37 +457,32 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('190,') > -1) {
+    // Code 190 is an expired or invalidated access token (Graph error
+    // handling guide); the checkpoint case above arrives with it too.
+    if (/"code":190\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'refresh-token' as const,
         value:
-          'The account is missing some permissions to perform this action, please re-add the account and allow all permissions',
+          "Instagram ended this channel's session. Please reconnect the channel.",
       };
     }
 
-    if (body.indexOf('36001') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value: 'Invalid Instagram image resolution max: 1920x1080px',
-      };
-    }
-
-    if (body.indexOf('2207051') > -1) {
+    if (/\b2207051\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Instagram blocked your request',
       };
     }
 
-    if (body.indexOf('2207001') > -1) {
+    if (/\b2207001\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value:
-          'Instagram detected that your post is spam, please try again with different content',
+          'Instagram had a temporary server problem. Please try again in a few minutes.',
       };
     }
 
-    if (body.indexOf('2207082') > -1) {
+    if (/\b2207082\b/.test(body)) {
       return {
         type: 'retry' as const,
         value:
@@ -455,7 +490,7 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('2207085') > -1) {
+    if (/\b2207085\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value:
@@ -463,7 +498,7 @@ export class InstagramProvider
       };
     }
 
-    if (body.indexOf('2207077') > -1) {
+    if (/\b2207077\b/.test(body)) {
       return {
         type: 'bad-body' as const,
         value: 'Instagram Video download failed',
@@ -473,14 +508,17 @@ export class InstagramProvider
     if (body.indexOf('too little or too many attachments') > -1) {
       return {
         type: 'bad-body' as const,
-        value: 'Instagram carousel should have between 2 and 10 media attachments',
+        value: 'An Instagram carousel needs 2 to 20 photos or videos.',
       }
     }
 
-    if (body.indexOf('2207027') > -1) {
+    // The container is not finished yet: publishing it again shortly after
+    // is what Meta asks for.
+    if (/\b2207027\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
-        value: 'Unknown error, please try again later or contact support',
+        type: 'retry' as const,
+        value:
+          'Instagram is still processing the media. Please try again in a minute.',
       };
     }
 
@@ -488,6 +526,25 @@ export class InstagramProvider
       return {
         type: 'bad-body' as const,
         value: 'Collaborators are not allowed for carousel',
+      };
+    }
+
+    // Graph rate limits: application (4), user (17), application limit
+    // (341), API calls (613) and the Instagram business use case (80002).
+    if (/"code":(4|17|341|613|80002)\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Meta is limiting requests for this channel right now. Wait an hour, then try again.',
+      };
+    }
+
+    // Broadest check last, so a known subcode sent with this generic message
+    // keeps its own answer.
+    if (body.indexOf('An unknown error occurred') > -1) {
+      return {
+        type: 'retry' as const,
+        value: 'An unknown error occurred, please try again later',
       };
     }
 

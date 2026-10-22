@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { describe, it } from 'node:test';
 import { VkProvider } from './vk.provider.ts';
+import { BadBody } from '../social.abstract.ts';
 
 /**
  * VK answers HTTP 200 with { error } instead of { response } when it refuses
@@ -93,6 +94,21 @@ describe('VK in-body errors', () => {
     await assert.rejects(
       provider.post('1', 'token', post()),
       /Access to adding post denied/
+    );
+  });
+
+  it('runs again after a per second limit, and not after flood control', async () => {
+    await assert.rejects(
+      answers({
+        error: { error_code: 6, error_msg: 'Too many requests per second' },
+      }).provider.post('1', 'token', post()),
+      (err) => !(err instanceof BadBody) && /per second/.test(String(err))
+    );
+    await assert.rejects(
+      answers({
+        error: { error_code: 9, error_msg: 'Flood control' },
+      }).provider.post('1', 'token', post()),
+      (err) => err instanceof BadBody && /limiting how often/.test(err.message)
     );
   });
 });

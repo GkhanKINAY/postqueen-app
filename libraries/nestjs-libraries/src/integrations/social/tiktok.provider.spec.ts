@@ -532,3 +532,252 @@ describe('Upload to the TikTok inbox, on both tiles', () => {
     assert.equal(new TiktokBusinessProvider().scopes.includes('video.upload'), true);
   });
 });
+
+// The Content Posting API names the error in error.code; the Business API
+// answers HTTP 200 with a numeric code. Both shapes as TikTok sends them.
+const contentPosting = (code: string, message = '') =>
+  JSON.stringify({ error: { code, message, log_id: '202610210000000' } });
+const contentPostingFailed = (failReason: string) =>
+  JSON.stringify({
+    data: { status: 'FAILED', fail_reason: failReason },
+    error: { code: 'ok', message: '', log_id: '202610210000000' },
+  });
+const business = (code: number, message: string) =>
+  JSON.stringify({ code, message, request_id: '202610210000000' });
+const businessFailed = (reason: string) => {
+  const post = { code: 0, message: 'OK', data: { status: 'FAILED', reason } };
+  // checkPostStatus hands the reason in front of the body
+  return `${reason} ${JSON.stringify(post)}`;
+};
+
+describe('TikTok error mapping', () => {
+  const withMigrate = (value: string | undefined, run: () => void) => {
+    const before = process.env.MIGRATE_PROVIDERS;
+    if (value === undefined) {
+      delete process.env.MIGRATE_PROVIDERS;
+    } else {
+      process.env.MIGRATE_PROVIDERS = value;
+    }
+    try {
+      run();
+    } finally {
+      if (before === undefined) {
+        delete process.env.MIGRATE_PROVIDERS;
+      } else {
+        process.env.MIGRATE_PROVIDERS = before;
+      }
+    }
+  };
+
+  it('keeps a channel connected at the daily active user cap', () => {
+    const body = contentPosting(
+      'reached_active_user_cap',
+      'The daily quota for active publishing users from your client is reached.'
+    );
+    withMigrate(undefined, () => {
+      const answer = new TiktokProvider().handleErrors(body);
+      assert.equal(answer?.type, 'bad-body');
+      assert.match(String(answer?.value), /Your channel is fine/);
+    });
+    withMigrate('linkedin:linkedin-page', () => {
+      assert.equal(new TiktokProvider().handleErrors(body)?.type, 'bad-body');
+    });
+  });
+
+  it('disconnects at the cap only when TikTok is being migrated', () => {
+    withMigrate('linkedin:linkedin-page, tiktok:tiktok-business', () => {
+      const answer = new TiktokProvider().handleErrors(
+        contentPosting('reached_active_user_cap')
+      );
+      assert.equal(answer?.type, 'disconnect');
+      assert.match(String(answer?.value), /Reconnect the channel in Channels/);
+      assert.doesNotMatch(String(answer?.value), /re-connect/);
+    });
+  });
+
+  it('asks for a reconnect when a scope is missing, without disconnecting', () => {
+    for (const code of ['scope_not_authorized', 'scope_permission_missed']) {
+      const answer = new TiktokProvider().handleErrors(contentPosting(code));
+      assert.equal(answer?.type, 'bad-body', code);
+      assert.match(String(answer?.value), /allow every permission/);
+    }
+  });
+
+  it('never resends a publish TikTok failed on its side', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPosting('internal_error', 'Something went wrong.')
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /server problem/);
+  });
+
+  it('names the status check fail_reason internal as a server problem', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPostingFailed('internal')
+    );
+    assert.equal(answer?.type, 'retry');
+    assert.match(String(answer?.value), /server problem/);
+  });
+
+  it('no longer reads "internal" or "international" in a message as a server error', () => {
+    const provider = new TiktokProvider();
+    assert.equal(
+      provider.handleErrors(
+        contentPosting('some_new_code', 'Not available for international accounts')
+      ),
+      undefined
+    );
+    assert.equal(
+      provider.handleErrors(contentPosting('some_new_code', 'an internal note')),
+      undefined
+    );
+    assert.equal(
+      new TiktokBusinessProvider().handleErrors(
+        business(40002, 'Not available for international accounts')
+      ),
+      undefined
+    );
+  });
+
+  it('reads invalid_param, singular, and passes on what TikTok refused', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPosting('invalid_param', 'The title is too long.')
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.equal(answer?.value, 'The title is too long.');
+    assert.equal(
+      new TiktokProvider().handleErrors(contentPosting('invalid_param'))?.value,
+      'TikTok refused the post settings. Check them, then schedule the post again.'
+    );
+  });
+
+  it('names a revoked app during the upload, and does not retry it', () => {
+    for (const answer of [
+      new TiktokProvider().handleErrors(contentPostingFailed('auth_removed')),
+      new TiktokBusinessProvider().handleErrors(businessFailed('auth_removed')),
+    ]) {
+      assert.equal(answer?.type, 'bad-body');
+      assert.match(String(answer?.value), /removed PostQueen's access/);
+    }
+  });
+
+  it('names the self only gate without sending anyone to support', () => {
+    const answer = new TiktokProvider().handleErrors(
+      contentPosting('unaudited_client_can_only_post_to_private_accounts')
+    );
+    assert.match(String(answer?.value), /Self only/);
+    assert.doesNotMatch(String(answer?.value), /contact support/);
+  });
+
+  it('names the daily post cap on both tiles', () => {
+    assert.match(
+      String(
+        new TiktokProvider().handleErrors(
+          contentPosting('spam_risk_too_many_posts')
+        )?.value
+      ),
+      /about 15 posts a day/
+    );
+    assert.match(
+      String(
+        new TiktokBusinessProvider().handleErrors(
+          businessFailed('spam_risk_too_many_posts')
+        )?.value
+      ),
+      /limit of 15 posts a day/
+    );
+  });
+
+  it('reads the TikTok Business token codes', () => {
+    for (const code of [40102, 40104, 40105]) {
+      assert.equal(
+        new TiktokBusinessProvider().handleErrors(
+          business(code, 'Access token error.')
+        )?.type,
+        'refresh-token',
+        String(code)
+      );
+    }
+  });
+
+  it('reads the TikTok Business rate limit codes', () => {
+    for (const code of [40016, 40100, 40133]) {
+      const answer = new TiktokBusinessProvider().handleErrors(
+        business(code, 'Requests made too frequently.')
+      );
+      assert.equal(answer?.type, 'bad-body', String(code));
+      assert.match(String(answer?.value), /limiting requests/);
+    }
+  });
+
+  it('never resends a TikTok Business publish that failed on its side', () => {
+    for (const body of [
+      business(50000, 'System error'),
+      business(50002, 'Error processing request on TikTok side.'),
+      business(60001, 'The system is in maintenance.'),
+    ]) {
+      const answer = new TiktokBusinessProvider().handleErrors(body);
+      assert.equal(answer?.type, 'bad-body', body);
+      assert.match(String(answer?.value), /server problem/);
+    }
+  });
+
+  it('names the TikTok Business status reason internal as a server problem', () => {
+    const answer = new TiktokBusinessProvider().handleErrors(
+      businessFailed('internal')
+    );
+    assert.equal(answer?.type, 'retry');
+    assert.match(String(answer?.value), /server problem/);
+  });
+
+  it('names the TikTok Business media size limits', () => {
+    assert.match(
+      String(
+        new TiktokBusinessProvider().handleErrors(
+          businessFailed('picture_size_check_failed')
+        )?.value
+      ),
+      /1080x1920 or 1920x1080/
+    );
+  });
+});
+
+class FailedTiktokProvider extends TiktokProvider {
+  constructor(private readonly failReason?: string) {
+    super();
+  }
+
+  override async fetch() {
+    return new Response(
+      JSON.stringify({
+        data: { status: 'FAILED', fail_reason: this.failReason },
+        error: { code: 'ok', message: '' },
+      })
+    );
+  }
+}
+
+describe('TikTok status check FAILED', () => {
+  const check = (provider: TiktokProvider) =>
+    provider.checkPostStatus(
+      'token',
+      { publishId: 'v_pub_file~v2-1.111' },
+      { profile: 'creator' } as any
+    );
+
+  it('names the fail_reason it has no message for', async () => {
+    await assert.rejects(check(new FailedTiktokProvider('something_new')), {
+      message: 'TikTok did not publish the post (something_new)',
+    });
+    await assert.rejects(check(new FailedTiktokProvider()), {
+      message: 'TikTok did not publish the post (no reason given)',
+    });
+  });
+
+  it('keeps the message of a fail_reason it knows', async () => {
+    await assert.rejects(
+      check(new FailedTiktokProvider('frame_rate_check_failed')),
+      (err: any) => err instanceof BadBody && /23 and 60/.test(err.message)
+    );
+  });
+});

@@ -242,7 +242,7 @@ describe('Reddit RATELIMIT', () => {
 
     await rejectsWith(
       new RedditProvider().finalizePost('token', pending() as any, integration),
-      /Reddit rejected the post to r\/first: that subreddit does not exist/
+      /Reddit rejected the post to r\/first: that subreddit does not exist \(sr\)/
     );
   });
 

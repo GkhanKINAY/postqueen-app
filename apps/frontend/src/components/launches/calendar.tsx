@@ -66,7 +66,7 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
-import { postErrorText } from '@gitroom/helpers/utils/post.error.message';
+import { usePostErrorText } from '@gitroom/frontend/components/launches/helpers/use.post.error.text';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
@@ -1973,6 +1973,7 @@ const CalendarItem: FC<{
   };
 }> = memo((props) => {
   const t = useT();
+  const postErrorTooltip = usePostErrorText();
   const { touch } = useViewport();
   const { timePattern } = useDateFormat();
   const {
@@ -2268,10 +2269,7 @@ const CalendarItem: FC<{
               <span
                 className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
                 data-tooltip-id="tooltip"
-                data-tooltip-content={postErrorText(
-                  post.error,
-                  'An error occurred while publishing this post'
-                )}
+                data-tooltip-content={postErrorTooltip(post.error)}
               >
                 !
               </span>
@@ -2409,10 +2407,7 @@ const CalendarItem: FC<{
               <span
                 className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
                 data-tooltip-id="tooltip"
-                data-tooltip-content={postErrorText(
-                  post.error,
-                  'An error occurred while publishing this post'
-                )}
+                data-tooltip-content={postErrorTooltip(post.error)}
               >
                 !
               </span>
@@ -2544,6 +2539,7 @@ const ListItem: FC<{
   };
 }> = memo((props) => {
   const t = useT();
+  const postErrorTooltip = usePostErrorText();
   const { timePattern } = useDateFormat();
   const {
     editPost,
@@ -2680,10 +2676,7 @@ const ListItem: FC<{
             <span
               className="grid size-[14px] shrink-0 place-items-center rounded-full bg-pqDanger text-[10px] font-bold text-pqOnBrand"
               data-tooltip-id="tooltip"
-              data-tooltip-content={postErrorText(
-                post.error,
-                'An error occurred while publishing this post'
-              )}
+              data-tooltip-content={postErrorTooltip(post.error)}
             >
               !
             </span>
