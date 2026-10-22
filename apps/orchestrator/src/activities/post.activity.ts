@@ -64,6 +64,10 @@ export type PublishingNotice =
  * Rendered into the calendar tooltip, so it reads as a sentence fragment.
  */
 const LAPSED_SUBSCRIPTION = 'Subscription required';
+// What the publish run throws (as BadBody) when the plan lapsed before it
+// reached the network; changeState turns it into the lapsed case above.
+const LAPSED_PUBLISH =
+  'Your PostQueen subscription is not active. Renew it in Billing, then schedule the post again.';
 
 // Failures that never reached the network: the credits set aside to publish
 // the item and the rest of its thread go back (all of the post's, when the
@@ -519,7 +523,7 @@ export class PostActivity {
           integration.providerIdentifier,
           JSON.stringify({ organizationId: integration.organizationId }),
           Buffer.from('{}'),
-          'Your PostQueen subscription is not active. Renew it in Billing, then schedule the post again.'
+          LAPSED_PUBLISH
         );
       }
     }
@@ -937,9 +941,17 @@ export class PostActivity {
       }
       case 'bad_body':
       case 'bad_body_comment': {
+        // a lapsed plan already got its own notice from changeState
+        if (detail === LAPSED_PUBLISH) {
+          return;
+        }
         const comment = notice === 'bad_body_comment';
+        // the publish went through, a later step on it did not
+        const live = !comment && !!post?.releaseURL;
         const title = comment
           ? `${network} didn’t accept a comment on your post`
+          : live
+          ? `Your post is live on ${network}, with a problem`
           : `${network} didn’t accept your post`;
         n = {
           subject: title,
@@ -958,6 +970,8 @@ export class PostActivity {
             title,
             lead: comment
               ? `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
+              : live
+              ? `Your post from ${account} is live on ${network}, but ${network} returned an error for a step after it was published. Do not post it again.`
               : `We sent your post from ${account} to ${network}, and ${network} returned an error, so it was not published.`,
             blocks: [
               ...(detail
@@ -971,7 +985,13 @@ export class PostActivity {
                 : []),
               {
                 type: 'rows',
-                rows: [postRow({ label: 'Failed', tone: 'danger' })],
+                rows: [
+                  postRow(
+                    live
+                      ? { label: 'Live', tone: 'warn' }
+                      : { label: 'Failed', tone: 'danger' }
+                  ),
+                ],
               },
               {
                 type: 'button',
@@ -1036,12 +1056,13 @@ export class PostActivity {
     let reason = extractPostErrorMessage(err);
     const lapsed =
       state === 'ERROR' &&
-      reason === 'No Post' &&
-      !!before?.organizationId &&
-      isBillingEnabled() &&
-      !(await this._subscriptionService
-        .getSubscription(before.organizationId)
-        .catch(() => null));
+      (reason === LAPSED_PUBLISH ||
+        (reason === 'No Post' &&
+          !!before?.organizationId &&
+          isBillingEnabled() &&
+          !(await this._subscriptionService
+            .getSubscription(before.organizationId)
+            .catch(() => null))));
 
     // A token that could not be refreshed before the network took the post:
     // nothing was published, so the credits go back, and the reconnect notice
@@ -1055,6 +1076,10 @@ export class PostActivity {
       !AFTER_ACCEPTED.includes(err?.activityType);
     const refreshWithoutText =
       refreshFailed && !(cause.message || cause.failure?.message);
+
+    // Live on the network but failed a later step (YouTube refused the
+    // thumbnail): the publish activity kept its link, and it keeps its credits.
+    const live = state === 'ERROR' && !!before?.releaseURL;
 
     const internal =
       state === 'ERROR' &&
@@ -1084,6 +1109,7 @@ export class PostActivity {
 
     if (
       state === 'ERROR' &&
+      !live &&
       (NEVER_PUBLISHED.includes(reason) ||
         err?.cause?.type === 'bad_body' ||
         refreshFailed)
@@ -1121,7 +1147,7 @@ export class PostActivity {
       // notice for the whole set. Left to speak for itself it would send one
       // per dropped part, all saying the same thing.
       reason === 'This channel cannot post comments' ||
-      err?.cause?.type === 'bad_body' ||
+      (err?.cause?.type === 'bad_body' && !lapsed) ||
       refreshFailed;
     if (alreadyReported) {
       return;
