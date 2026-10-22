@@ -25,6 +25,29 @@ import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
+// The error_message values a failed media container reports, from the
+// Threads media container status reference, against the video specs of the
+// Threads posts reference.
+const THREADS_CONTAINER_ERRORS: Record<string, string> = {
+  FAILED_DOWNLOADING_VIDEO:
+    'Threads could not download the video. Please try again.',
+  FAILED_PROCESSING_VIDEO:
+    'Threads could not process the video. Please try again.',
+  FAILED_PROCESSING_AUDIO:
+    "Threads could not process the video's sound. Use AAC audio, mono or stereo, then try again.",
+  INVALID_AUDIO_CHANNELS:
+    "Threads does not support this video's sound. Use AAC audio, mono or stereo.",
+  INVALID_AUDIO_CHANNEL_LAYOUT:
+    "Threads does not support this video's sound. Use AAC audio, mono or stereo.",
+  INVALID_DURATION: 'Threads videos can be up to 5 minutes long.',
+  INVALID_FRAME_RATE: 'Threads videos need 23 to 60 FPS.',
+  // Spelled this way by Meta.
+  INVALID_ASPEC_RATIO:
+    "This video's shape is not supported by Threads. A 9:16 vertical video works best.",
+  INVALID_BIT_RATE:
+    'The video bitrate is above 100 Mbps, the most Threads accepts. Export it at a lower bitrate.',
+};
+
 export class ThreadsProvider extends SocialAbstract implements SocialProvider {
   identifier = 'threads';
   analyticsIntervals = [7, 30] as const;
@@ -247,9 +270,10 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
         this.identifier,
         JSON.stringify({ status, error_message }),
         '{}',
-        error_message && error_message !== 'UNKNOWN'
-          ? error_message
-          : 'Threads could not process the media, please check the media format and try again'
+        THREADS_CONTAINER_ERRORS[error_message] ||
+          (error_message && error_message !== 'UNKNOWN'
+            ? `Threads could not process the media (${error_message}). Please check the media format and try again.`
+            : 'Threads could not process the media, please check the media format and try again')
       );
     }
 
