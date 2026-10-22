@@ -429,14 +429,10 @@ export class IntegrationService implements OnModuleInit {
   // A provider with removedDataRetentionDays or disconnectedDataRetentionDays
   // may keep what its network gave PostQueen only that long after a channel
   // is removed, or after it started waiting for its person. The hourly run
-  // stamps the channels that started waiting, then erases the due ones, a
-  // few per run and within a time budget:
-  // - a removed channel's access is given up first, for the rows removed
-  //   before removing did it (a hashed token is simply refused);
-  // - a setup never finished, with no posts, is removed like any channel,
-  //   and erased once that is due;
-  // - a channel waiting for a reconnect keeps its posts and ids, and its
-  //   profile is read again soon after Reconnect brings it back.
+  // stamps the channels that started waiting and erases the due ones, a few
+  // per run and within a time budget. A removed channel's access is revoked
+  // first, for rows removed before removing did it. A setup never finished,
+  // with no posts, is removed instead, and erased once that is due.
   async eraseExpiredChannelData() {
     const stopAt = Date.now() + ERASE_RUN_BUDGET_MS;
     let handled = 0;
@@ -477,11 +473,21 @@ export class IntegrationService implements OnModuleInit {
             channel.internalId === channel.rootInternalId &&
             !channel._count.posts
           ) {
-            await this.deleteChannel(channel.organizationId, channel.id);
-            counts.unfinished++;
+            // Read again, so a setup finished a moment ago is left alone.
+            const current = await this.getIntegrationById(
+              channel.organizationId,
+              channel.id
+            );
+            if (
+              current?.inBetweenSteps &&
+              !current.deletedAt &&
+              current.internalId === current.rootInternalId
+            ) {
+              await this.deleteChannel(channel.organizationId, channel.id);
+              counts.unfinished++;
+            }
           } else {
             await this._integrationRepository.eraseNetworkData(channel, label);
-            await ioRedis.del(`integration:profile-read:${channel.id}`);
             counts.disconnected++;
           }
         } catch (err) {
@@ -500,8 +506,9 @@ export class IntegrationService implements OnModuleInit {
   }
 
   // Gives up PostQueen's access at the platform, for a provider that can,
-  // unless another live channel may sign in through the same person. Never
-  // holds up what asked for it: a failure or a hang is only logged, by id.
+  // unless another live channel may sign in through the same person. Waits
+  // at most 10 seconds and never fails what asked for it: a failure or a
+  // hang is only logged, by id.
   private async revokeChannelAccess(
     integration: Integration,
     otherOrganizationsOnly = false
@@ -516,10 +523,24 @@ export class IntegrationService implements OnModuleInit {
       return;
     }
 
+    // Providers on the same OAuth client share the person's grant.
+    const client = provider.oauthClientId?.();
+    const sharing = client
+      ? this._integrationManager
+          .getAllowedSocialsIntegrations()
+          .filter(
+            (identifier) =>
+              this._integrationManager
+                .getSocialIntegration(identifier)
+                ?.oauthClientId?.() === client
+          )
+      : [integration.providerIdentifier];
+
     try {
       if (
         await this._integrationRepository.sharesAccessWithLiveChannel(
           integration,
+          sharing,
           otherOrganizationsOnly
         )
       ) {
@@ -531,12 +552,16 @@ export class IntegrationService implements OnModuleInit {
         provider
           .revokeAccess(integration.token, integration.refreshToken || undefined)
           .then(
-            () => 'ok',
+            () => 'done',
             (err: Error) => `failed: ${err?.message}`
           ),
         timer(REVOKE_TIMEOUT_MS).then(() => 'timed out'),
       ]);
-      Logger.log(`[revoke] channel=${integration.id} ${result}`);
+      if (result === 'done') {
+        Logger.log(`[revoke] channel=${integration.id} done`);
+      } else {
+        Logger.warn(`[revoke] channel=${integration.id} ${result}`);
+      }
     } catch (err) {
       Logger.warn(
         `[revoke] channel=${integration.id} failed: ${(err as Error).message}`
@@ -546,10 +571,11 @@ export class IntegrationService implements OnModuleInit {
 
   // Deleting an account takes every channel of the workspace at once, so only
   // a live channel in another workspace keeps a shared access from going.
-  async revokeAccountChannels(org: string) {
-    for (const integration of await this._integrationRepository.getIntegrationsList(
+  async revokeAccessForAccount(org: string) {
+    const integrations = await this._integrationRepository.getIntegrationsList(
       org
-    )) {
+    );
+    for (const integration of integrations) {
       await this.revokeChannelAccess(integration, true);
     }
   }
@@ -1146,6 +1172,13 @@ export class IntegrationService implements OnModuleInit {
             name: page.name,
             inBetweenSteps: false,
             token: page.access_token,
+            // An earlier row for the same page may hold old or erased
+            // credentials, so the ones just signed in with go with it, as
+            // they do to extra pages.
+            ...(getIntegration.refreshToken
+              ? { refreshToken: getIntegration.refreshToken }
+              : {}),
+            tokenExpiration: getIntegration.tokenExpiration,
             profile: page.username,
             // The page may land on a row it already had; the person who
             // picked it goes with it.

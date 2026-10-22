@@ -6,6 +6,7 @@ import {
   AuthTokenDetails,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
+import { Disconnect } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { TemporalService } from 'nestjs-temporal-core';
 import dayjs from 'dayjs';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
@@ -50,7 +51,9 @@ export class RefreshIntegrationService {
       !!socialProvider.oneTimeToken,
       integration.organizationId,
       integration.name,
-      integration.picture!,
+      // The stored picture stays as it is: the copy this caller holds may be
+      // older than the row's, whose file a profile read has replaced.
+      undefined,
       'social',
       integration.internalId,
       integration.providerIdentifier,
@@ -116,17 +119,16 @@ export class RefreshIntegrationService {
         try {
           let token = channel.token;
           if (this.isExpired(channel)) {
-            // A refresh that throws found the token working but the channel
-            // gone from the account. For a provider whose terms limit what a
-            // disconnected channel keeps, it then waits for its person, as
-            // when a post finds it so, and its data goes in time; otherwise
-            // it is read again a day later, as before.
+            // A Disconnect from the refresh means the token works but the
+            // channel is gone from the account: it then waits for its person,
+            // as when a post finds it so. Any other failure is read again a
+            // day later.
             const refreshed = await this.refresh(channel).catch(
               async (err: Error) => {
-                if (!provider.disconnectedDataRetentionDays) {
+                if (!(err instanceof Disconnect)) {
                   throw err;
                 }
-                await this.setBetweenSteps(channel, err?.message || '');
+                await this.setBetweenSteps(channel, err.message || '');
                 return false as const;
               }
             );

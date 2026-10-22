@@ -195,7 +195,7 @@ export class PostsService {
   ): Promise<{ id: string; url: string }[]> {
     const post = await this._postRepository.getPostById(postId, orgId);
     // A deleted post, or one on a removed channel, is not read from the
-    // platform again: that would refresh the removed channel's token.
+    // platform at all: PostQueen has given up that access.
     if (
       !post ||
       post.deletedAt ||
@@ -444,8 +444,8 @@ export class PostsService {
     forceRefresh = false
   ): Promise<AnalyticsData[] | { missing: true }> {
     const post = await this._postRepository.getPostById(postId, orgId);
-    // As in getMissingContent: a refresh below would bring a removed channel
-    // back, or ask its person to reconnect it.
+    // As in getMissingContent: nothing is read for a deleted post or a
+    // removed channel.
     if (
       !post ||
       !post.releaseId ||

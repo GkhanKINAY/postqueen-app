@@ -8,6 +8,7 @@ import {
   Prisma,
 } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { chunk } from 'lodash';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
@@ -33,7 +34,8 @@ export class IntegrationRepository {
     private _mentions: PrismaRepository<'mentions'>,
     private _errors: PrismaRepository<'errors'>,
     private _notifications: PrismaRepository<'notifications'>,
-    private _snapshots: PrismaRepository<'postMetricSnapshot'>
+    private _postMetricSnapshot: PrismaRepository<'postMetricSnapshot'>,
+    private _media: PrismaRepository<'media'>
   ) {}
 
   getMentions(platform: string, q: string) {
@@ -208,7 +210,7 @@ export class IntegrationRepository {
         },
       },
     });
-    const target = existing
+    const current = existing
       ? existing
       : await this._integration.model.integration.findUnique({
           where: { id },
@@ -259,8 +261,8 @@ export class IntegrationRepository {
 
     // The picture it had (the account's own, from the first step, or the
     // page's earlier one) is no longer shown anywhere.
-    if (target?.picture && target.picture !== updated.picture) {
-      await this.removeOwnPicture(target.picture);
+    if (current?.picture && current.picture !== updated.picture) {
+      await this.removeOwnPicture(current.picture);
     }
 
     return updated;
@@ -468,7 +470,7 @@ export class IntegrationRepository {
         }
       : {};
     // A new picture replaces the stored one, whose copy is then deleted.
-    const previous = picture
+    const current = picture
       ? await this._integration.model.integration.findUnique({
           where: {
             organizationId_internalId: {
@@ -542,8 +544,8 @@ export class IntegrationRepository {
       },
     });
 
-    if (previous?.picture && previous.picture !== upsert.picture) {
-      await this.removeOwnPicture(previous.picture);
+    if (current?.picture && current.picture !== upsert.picture) {
+      await this.removeOwnPicture(current.picture);
     }
 
     if (oneTimeToken) {
@@ -760,9 +762,6 @@ export class IntegrationRepository {
           ]
         : []),
     ];
-    if (!due.length) {
-      return Promise.resolve([]);
-    }
 
     return this._integration.model.integration.findMany({
       where: {
@@ -780,15 +779,14 @@ export class IntegrationRepository {
     });
   }
 
-  // Whether another live channel of the same provider may sign in through
-  // the same person, so revoking this one's access would end theirs too: one
-  // grant can back several channels (extra pages copy it, and the same
-  // account can be connected in another workspace). The person is
-  // platformUserId, or rootInternalId on rows from before it, read as
-  // getIntegrationsByPlatformUser does; any overlap counts, since a revoke
-  // left out costs nothing and a wrong one breaks a channel that works.
+  // Whether another live channel, of one of the providers that share the
+  // grant, may sign in through the same person, whose access a revoke would
+  // end too: extra pages share one grant, and an account can be connected in
+  // two workspaces. Broader than getIntegrationsByPlatformUser on purpose: a
+  // revoke left out costs nothing, and a wrong one breaks a channel that works.
   async sharesAccessWithLiveChannel(
     integration: Integration,
+    providerIdentifiers: string[],
     otherOrganizationsOnly = false
   ) {
     const people = [
@@ -804,7 +802,7 @@ export class IntegrationRepository {
     const other = await this._integration.model.integration.findFirst({
       where: {
         id: { not: integration.id },
-        providerIdentifier: integration.providerIdentifier,
+        providerIdentifier: { in: providerIdentifiers },
         deletedAt: null,
         ...(otherOrganizationsOnly
           ? { organizationId: { not: integration.organizationId } }
@@ -820,16 +818,12 @@ export class IntegrationRepository {
     return !!other;
   }
 
-  // Deletes what a channel's network gave PostQueen, for a provider whose
-  // terms limit it: the notices about the channel and its posts, its post
-  // statistics and errors, the links and errors on its posts, and the name,
-  // picture, public name and credentials on the row, which shows the
-  // network's name instead. A removed channel also loses its ids the way
-  // eraseChannelData does it, so a later connect starts a fresh row. A
-  // channel waiting for a reconnect keeps them and its posts, so Reconnect
-  // fills the same row again. Everything before the row is safe to repeat,
-  // and the row update only lands while the channel is still as it was
-  // listed, so a reconnect in between wins. The picture file goes last.
+  // Deletes what a channel's network gave PostQueen (see the provider's
+  // removedDataRetentionDays). A removed channel also loses its ids, as in
+  // eraseChannelData, so a later connect starts a fresh row; one waiting for
+  // a reconnect keeps them and its posts, so Reconnect fills the same row.
+  // The row is written last, and only while it is still as it was listed;
+  // everything before it is safe to repeat. The picture file goes after it.
   async eraseNetworkData(integration: Integration, label: string) {
     const removed = !!integration.deletedAt;
     const { id, organizationId } = integration;
@@ -840,19 +834,18 @@ export class IntegrationRepository {
         select: { releaseURL: true },
       })
     ).map((post) => post.releaseURL!);
+    // Notices about the channel link to /channels?channel=…&focus=<id>, and
+    // a published post's notice to the post itself.
     await this._notifications.model.notifications.deleteMany({
       where: { organizationId, link: { endsWith: `focus=${id}` } },
     });
-    for (let i = 0; i < releaseURLs.length; i += 500) {
+    for (const batch of chunk(releaseURLs, 500)) {
       await this._notifications.model.notifications.deleteMany({
-        where: {
-          organizationId,
-          link: { in: releaseURLs.slice(i, i + 500) },
-        },
+        where: { organizationId, link: { in: batch } },
       });
     }
 
-    await this._snapshots.model.postMetricSnapshot.deleteMany({
+    await this._postMetricSnapshot.model.postMetricSnapshot.deleteMany({
       where: { integrationId: id },
     });
     await this._errors.model.errors.deleteMany({
@@ -914,10 +907,24 @@ export class IntegrationRepository {
     return { erased: count > 0 };
   }
 
-  // Only a copy in our own storage is deleted; a failed delete leaves the
-  // file, never the row.
+  // Only a copy in our own storage that nothing else shows is deleted: a
+  // picture picked from the media library (a Slack bot's) stays there. A
+  // failed delete leaves the file, never the row.
   private async removeOwnPicture(url: string) {
     if (!this.storage.isOwnFile(url)) {
+      return;
+    }
+    const [media, channel] = await Promise.all([
+      this._media.model.media.findFirst({
+        where: { OR: [{ path: url }, { thumbnail: url }] },
+        select: { id: true },
+      }),
+      this._integration.model.integration.findFirst({
+        where: { picture: url },
+        select: { id: true },
+      }),
+    ]);
+    if (media || channel) {
       return;
     }
     try {

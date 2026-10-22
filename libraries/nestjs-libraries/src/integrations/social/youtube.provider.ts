@@ -19,6 +19,7 @@ import {
 } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/youtube.settings.dto';
 import {
   BadBody,
+  Disconnect,
   PublishedWithError,
   RefreshToken,
   SocialAbstract,
@@ -84,6 +85,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   profileRetentionDays = 8;
   removedDataRetentionDays = 1;
   disconnectedDataRetentionDays = 14;
+  oauthClientId = () => process.env.YOUTUBE_CLIENT_ID;
   // youtube.force-ssl allows everything youtube does (editing, deleting,
   // playlists) plus comments, so youtube itself is not requested;
   // youtubepartner is only for YouTube content-owner partners.
@@ -519,8 +521,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       mine: true,
     });
 
+    // The sign-in works but the channel is no longer on this account, which
+    // no refresh changes. A failed read above stays an ordinary error.
     if (!(data.items || []).some((p) => p.id === requiredId)) {
-      throw new Error('Channel not found');
+      throw new Disconnect(this.identifier, '{}', '{}', 'Channel not found');
     }
 
     const information = await this.fetchPageInformation(accessToken, {

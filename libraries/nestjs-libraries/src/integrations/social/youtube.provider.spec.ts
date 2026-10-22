@@ -5,6 +5,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
+import { Disconnect } from '../social.abstract.ts';
 import {
   getYoutubeTagsLength,
   YoutubeSettingsDto,
@@ -304,7 +305,6 @@ describe('YoutubeSettingsDto tags', () => {
 // YouTube's policies (III.D.2.3.1): removing a channel revokes the token at
 // Google right away.
 describe('YouTube access revoke', () => {
-  const provider = new YoutubeProvider();
   const withRevoke = async (
     revoke: (token: string) => Promise<unknown>,
     run: () => Promise<void>
@@ -370,7 +370,6 @@ describe('YouTube access revoke', () => {
 
 describe('YouTube channel profile read', () => {
   it('reads the channel the hourly run names with { page }, as the picker does with { id }', async () => {
-    const provider = new YoutubeProvider();
     const asked: string[][] = [];
     const real = google.youtube;
     (google as any).youtube = () => ({
@@ -412,10 +411,36 @@ describe('YouTube channel profile read', () => {
   });
 
   it('keeps what PostQueen holds within YouTube\'s limits', () => {
-    const provider = new YoutubeProvider();
     assert.equal(provider.analyticsRetentionDays, 29);
     assert.equal(provider.removedDataRetentionDays, 1);
     // A weekly read finds a dead token within 7 days; 7 + 14 stays inside 30.
     assert.ok(provider.profileRetentionDays - 1 + provider.disconnectedDataRetentionDays < 30);
+  });
+
+  it('says Disconnect only when the channel is gone from the account, not when the read fails', async () => {
+    const real = google.youtube;
+    try {
+      (google as any).youtube = () => ({
+        channels: { list: async () => ({ data: { items: [{ id: 'UC-other' }] } }) },
+      });
+      await assert.rejects(
+        provider.reConnect('google-1', 'UC-gone', 'token'),
+        (err: Error) => err instanceof Disconnect && err.message === 'Channel not found'
+      );
+
+      (google as any).youtube = () => ({
+        channels: {
+          list: async () => {
+            throw Object.assign(new Error('quotaExceeded'), { status: 403 });
+          },
+        },
+      });
+      await assert.rejects(
+        provider.reConnect('google-1', 'UC-gone', 'token'),
+        (err: Error) => !(err instanceof Disconnect)
+      );
+    } finally {
+      (google as any).youtube = real;
+    }
   });
 });

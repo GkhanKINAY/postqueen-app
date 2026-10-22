@@ -242,8 +242,12 @@ describe('IntegrationService.deleteChannel', { skip: !canLoadService }, () => {
       {
         getIntegrationById: async () => row,
         getIntegrationsList: async () => [row],
-        sharesAccessWithLiveChannel: async (_: unknown, otherOrganizationsOnly: boolean) => {
-          calls.push(`shares:${otherOrganizationsOnly}`);
+        sharesAccessWithLiveChannel: async (
+          _: unknown,
+          providers: string[],
+          otherOrganizationsOnly: boolean
+        ) => {
+          calls.push(`shares:${providers.join(',')}:${otherOrganizationsOnly}`);
           return shares;
         },
         deleteChannel: async () => {
@@ -253,13 +257,20 @@ describe('IntegrationService.deleteChannel', { skip: !canLoadService }, () => {
       },
       {},
       {
-        getSocialIntegration: () => ({
-          revokeAccess:
-            revoke ||
-            (async (token: string, refreshToken?: string) => {
-              calls.push(`revoke:${token}:${refreshToken}`);
-            }),
-        }),
+        getAllowedSocialsIntegrations: () => ['youtube', 'gmb', 'x'],
+        getSocialIntegration: (id: string) =>
+          id === 'youtube'
+            ? {
+                oauthClientId: () => 'google-client',
+                revokeAccess:
+                  revoke ||
+                  (async (token: string, refreshToken?: string) => {
+                    calls.push(`revoke:${token}:${refreshToken}`);
+                  }),
+              }
+            : id === 'gmb'
+              ? { oauthClientId: () => 'google-client' }
+              : {},
       },
       {},
       {},
@@ -279,13 +290,19 @@ describe('IntegrationService.deleteChannel', { skip: !canLoadService }, () => {
   it("revokes a live channel's access with its own tokens before they are replaced", async () => {
     const calls: string[] = [];
     await build(live, calls).deleteChannel('org-1', 'ch-1');
-    assert.deepEqual(calls, ['shares:false', 'revoke:access:refresh', 'delete']);
+    // Google Business Profile signs in through the same client, so its live
+    // channels count too.
+    assert.deepEqual(calls, [
+      'shares:youtube,gmb:false',
+      'revoke:access:refresh',
+      'delete',
+    ]);
   });
 
   it('removes the channel without revoking when the access is shared, or the row is already removed', async () => {
     const shared: string[] = [];
     await build(live, shared, { shares: true }).deleteChannel('org-1', 'ch-1');
-    assert.deepEqual(shared, ['shares:false', 'delete']);
+    assert.deepEqual(shared, ['shares:youtube,gmb:false', 'delete']);
 
     const again: string[] = [];
     await build({ ...live, deletedAt: new Date() }, again).deleteChannel('org-1', 'ch-1');
@@ -299,13 +316,13 @@ describe('IntegrationService.deleteChannel', { skip: !canLoadService }, () => {
         throw new Error('Google did not revoke the access (no answer)');
       },
     }).deleteChannel('org-1', 'ch-1');
-    assert.deepEqual(calls, ['shares:false', 'delete']);
+    assert.deepEqual(calls, ['shares:youtube,gmb:false', 'delete']);
   });
 
   it('counts only other workspaces as sharing when the whole account goes', async () => {
     const calls: string[] = [];
-    await build(live, calls).revokeAccountChannels('org-1');
-    assert.deepEqual(calls, ['shares:true', 'revoke:access:refresh']);
+    await build(live, calls).revokeAccessForAccount('org-1');
+    assert.deepEqual(calls, ['shares:youtube,gmb:true', 'revoke:access:refresh']);
   });
 });
 

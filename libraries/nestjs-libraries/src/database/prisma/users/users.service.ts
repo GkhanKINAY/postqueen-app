@@ -182,7 +182,7 @@ export class UsersService {
         // polling feeds for a workspace that no longer exists.
         await this._integrationService.changeActiveCron(org.id);
         // Before the tokens are replaced, while they can still end the access.
-        await this._integrationService.revokeAccountChannels(org.id);
+        await this._integrationService.revokeAccessForAccount(org.id);
         await this._integrationRepository.deleteIntegrationsForAccount(org.id);
         await this._organizationRepository.deleteOrganization(org.id);
       } else {

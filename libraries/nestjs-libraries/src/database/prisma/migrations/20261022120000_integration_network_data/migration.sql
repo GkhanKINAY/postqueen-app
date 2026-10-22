@@ -3,9 +3,10 @@
 -- the network's terms (removedDataRetentionDays, disconnectedDataRetentionDays
 -- or a platform's deletion callback).
 --
--- Two nullable columns and no backfill: the hourly run stamps disconnectedAt
--- on every channel already waiting the first time it runs, and NULL in
--- dataErasedAt means "not erased", which is true of every existing row.
+-- Two nullable columns and no backfill: the first hourly run stamps
+-- disconnectedAt on every channel already waiting, of a provider with
+-- disconnectedDataRetentionDays, and NULL in dataErasedAt means "not
+-- erased", which is true of every existing row.
 -- Generated with `prisma migrate diff`; guarded like the other recent
 -- migrations, so a database that already has them from `db push` finds a
 -- no-op.

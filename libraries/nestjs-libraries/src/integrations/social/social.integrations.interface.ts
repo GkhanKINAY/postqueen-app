@@ -23,12 +23,20 @@ export interface IAuthenticator {
   /**
    * Gives up PostQueen's access at the platform, for a platform whose terms
    * ask for it when someone removes their channel. Called with the channel's
-   * own tokens before they are replaced, and never while another live channel
-   * still signs in through the same person, since one grant can back several.
-   * A token the platform no longer knows counts as done. Omit it when there is
-   * nothing to revoke.
+   * tokens when it is removed, and by the hourly erase for channels removed
+   * before then, whose tokens may already be replaced; never while another
+   * live channel may sign in through the same person, since one grant can
+   * back several. A token the platform no longer knows counts as done, and an
+   * error says why without the token. Omit it when there is nothing to revoke.
    */
   revokeAccess?(accessToken: string, refreshToken?: string): Promise<void>;
+  /**
+   * The OAuth client this provider signs people in with, for providers that
+   * can share one (Google's products on one Google Cloud client). A revoke
+   * ends the person's grant for every provider on that client, so their live
+   * channels count when deciding whether a revoke is safe.
+   */
+  oauthClientId?: () => string | undefined;
   generateAuthUrl(
     clientInformation?: ClientInformation,
   ): Promise<GenerateAuthUrlResponse>;
