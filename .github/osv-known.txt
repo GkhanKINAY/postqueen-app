@@ -63,6 +63,8 @@ file-type GHSA-5v7r-6r5c-r473
 # @copilotkit/runtime -> graphql-yoga 5 holds utils 10 and 11; the fix is 12,
 # which yoga does not accept. mergeDeep only merges CopilotKit's own schema.
 @graphql-tools/utils GHSA-7mx3-vvmw-hjmv
+# The same holder; GHSA-c4qx (2026-10-22, mergeIncrementalResult) is also fixed only in 12.
+@graphql-tools/utils GHSA-c4qx-w738-7hr3
 # @swc/cli's binary downloader (got -> cacheable-request), dev only; no released
 # fix, and it is a shared-cache issue in a single-user build step.
 http-cache-semantics GHSA-ch52-4w7c-c8xp
@@ -76,9 +78,22 @@ katex GHSA-238p-pmpm-9mq7
 # @mastra/mcp pins client 2.0.0 exactly with core/node/server 2.0.0, up to its
 # latest release; we only run MCPServer, never the OAuth client.
 @modelcontextprotocol/client GHSA-6qxp-vccf-f47h
+# 2026-10-20 advisories for the same pinned 2.0.0 set (fixed in 2.3). Our MCP
+# endpoint does run @mastra/mcp's MCPServer on server 2.0.0, so these matter:
+# moving the whole set (core, node, server, client, server-legacy) together
+# with an end-to-end MCP check is the next dependency PR, not this Next.js fix.
+@modelcontextprotocol/client GHSA-6prh-2h8m-c8cw
+@modelcontextprotocol/server GHSA-46jr-4wx8-v453
+@modelcontextprotocol/server GHSA-jm63-cq47-j5jp
+@modelcontextprotocol/server GHSA-rvq5-wwqv-78pq
+@modelcontextprotocol/server-legacy GHSA-rvq5-wwqv-78pq
 # @langchain/google-gauth -> google-auth-library 8 -> gtoken -> google-p12-pem
 # only converts a p12 key; no released fix, and nothing verifies signatures.
 node-forge GHSA-86w9-cpqp-85rv
+# @sentry/nextjs 10.69: the bypass needs Sentry's tunnelRoute, which
+# next.config.js does not set. Moving to 10.75 waits for the same next PR, with
+# a check that source maps still upload.
+@sentry/nextjs GHSA-mchm-gjx6-7h55
 # polotno's editor holds quill 2.0.3, the latest; the issue is in Quill's HTML
 # export of the user's own design.
 quill GHSA-v3m3-f69x-jf25
