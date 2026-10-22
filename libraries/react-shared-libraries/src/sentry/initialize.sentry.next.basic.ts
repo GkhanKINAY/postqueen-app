@@ -58,6 +58,10 @@ export const initializeSentryBasic = (environment: string, dsn: string, extensio
       // `auth` cookie is the session token; in the browser it stores the
       // visitor's IP. The signed-in user is attached by setSentryUser instead.
       sendDefaultPii: false,
+      // Off: the SDK turned it on by default in 10.71, which would start
+      // sending console warnings and errors from the edge runtime as Sentry
+      // Logs, and logs skip beforeSend, so scrubForSentry never sees them.
+      enableLogs: false,
       ...extension,
       debug: environment === 'development',
       tracesSampleRate: 0.1,
