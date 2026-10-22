@@ -163,7 +163,7 @@ describe('runInConcurrent', () => {
       }),
       (err) => {
         assert.ok(err instanceof BadBody);
-        assert.equal(err.message, 'Network said: You cannot post duplicate content.');
+        assert.equal(err.message, 'You cannot post duplicate content.');
         assert.equal(details(err).unmapped, true);
         return true;
       }
@@ -230,7 +230,7 @@ describe('fetch', () => {
       provider.fetch('https://api.network.test/post'),
       (err) => {
         assert.ok(err instanceof BadBody);
-        assert.equal(err.message, 'Network said: The link is not allowed.');
+        assert.equal(err.message, 'The link is not allowed.');
         assert.equal(details(err).unmapped, true);
         return true;
       }
@@ -270,7 +270,7 @@ describe('fetch', () => {
     assert.ok(failure instanceof BadBody);
     assert.equal(
       (failure as BadBody).message,
-      'Network said: API rate limit exceeded.'
+      'API rate limit exceeded.'
     );
   });
 });

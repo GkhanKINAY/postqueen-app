@@ -146,6 +146,18 @@ describe('Publish credits in the post activities', () => {
     assert.equal(notified, 0);
   });
 
+  it('hands back a refused token that carried its own text, still without a second email', async () => {
+    const err = failed(
+      'postSocialPending',
+      'refresh_token',
+      'Access token invalid, please re-authenticate'
+    );
+    await activity().changeState('p1', 'ERROR', err, thread);
+    assert.notEqual(stored.reason, 'Refresh channel needed');
+    assert.deepEqual(calls.at(-1), ['release', 'p1', ['p1', 'p2', 'p3']]);
+    assert.equal(notified, 0);
+  });
+
   it('keeps the credits when the token failed while checking an accepted post', async () => {
     await activity().changeState(
       'p1',

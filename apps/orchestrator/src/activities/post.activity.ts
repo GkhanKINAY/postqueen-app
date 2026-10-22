@@ -1020,17 +1020,18 @@ export class PostActivity {
         .getSubscription(before.organizationId)
         .catch(() => null));
 
-    // A token that could not be refreshed and whose error carried no text
-    // of its own was stored as "Activity task failed". Nothing reached the
-    // network, so it reads the way the workflow's pre-flight check writes it:
-    // the credits go back, and the reconnect notice the refresh already sent
-    // is not followed by a second email.
+    // A token that could not be refreshed before the network took the post:
+    // nothing was published, so the credits go back, and the reconnect notice
+    // the refresh already sent is not followed by a second email. Without a
+    // text of its own it was stored as "Activity task failed", so it reads the
+    // way the workflow's pre-flight check writes it.
     const cause = err?.cause;
     const refreshFailed =
       state === 'ERROR' &&
       cause?.type === 'refresh_token' &&
-      !(cause.message || cause.failure?.message) &&
       !AFTER_ACCEPTED.includes(err?.activityType);
+    const refreshWithoutText =
+      refreshFailed && !(cause.message || cause.failure?.message);
 
     const internal =
       state === 'ERROR' &&
@@ -1040,7 +1041,7 @@ export class PostActivity {
 
     if (lapsed) {
       reason = LAPSED_SUBSCRIPTION;
-    } else if (refreshFailed) {
+    } else if (refreshWithoutText) {
       reason = 'Refresh channel needed';
     } else if (internal) {
       reason = INTERNAL_FAILURE;
@@ -1060,7 +1061,9 @@ export class PostActivity {
 
     if (
       state === 'ERROR' &&
-      (NEVER_PUBLISHED.includes(reason) || err?.cause?.type === 'bad_body')
+      (NEVER_PUBLISHED.includes(reason) ||
+        err?.cause?.type === 'bad_body' ||
+        refreshFailed)
     ) {
       await this._postService
         .releasePublish(id, Array.isArray(body) ? body : undefined)
@@ -1095,7 +1098,8 @@ export class PostActivity {
       // notice for the whole set. Left to speak for itself it would send one
       // per dropped part, all saying the same thing.
       reason === 'This channel cannot post comments' ||
-      err?.cause?.type === 'bad_body';
+      err?.cause?.type === 'bad_body' ||
+      refreshFailed;
     if (alreadyReported) {
       return;
     }

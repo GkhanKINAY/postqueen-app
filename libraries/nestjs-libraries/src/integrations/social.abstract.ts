@@ -627,18 +627,11 @@ export abstract class SocialAbstract {
   }
 
   // What the user is told when no handleErrors mapping explains a refusal:
-  // the platform's own reason, named after it, or what the status means.
+  // the platform's own reason, or what the status means. Not prefixed with
+  // the network's name: the failure notice already reads "<network> said: ...",
+  // the same as for a mapped message.
   protected failureMessage(body: unknown, status: number) {
-    const said = platformMessage(body);
-    if (!said) {
-      return statusMessage(status);
-    }
-
-    // some names carry a second line for the picker, "Instagram\n(Standalone)"
-    const name = ((this as { name?: string }).name || '')
-      .split('\n')[0]
-      .trim();
-    return `${name || 'The network'} said: ${said}`;
+    return platformMessage(body) || statusMessage(status);
   }
 
   public async mention(
