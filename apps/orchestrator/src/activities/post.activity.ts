@@ -955,9 +955,13 @@ export class PostActivity {
         // got an answer), not something the network said
         const ours = OWN_FAILURE_MESSAGES.includes(detail);
         const title = comment
-          ? `${network} didn’t accept a comment on your post`
+          ? ours
+            ? `A comment on your post to ${network} didn’t go out`
+            : `${network} didn’t accept a comment on your post`
           : live
           ? `Your post is live on ${network}, with a problem`
+          : ours
+          ? `Your post to ${network} didn’t go out`
           : `${network} didn’t accept your post`;
         n = {
           subject: title,
@@ -979,9 +983,13 @@ export class PostActivity {
             icon: 'x-circle',
             title,
             lead: comment
-              ? `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
+              ? ours
+                ? `Your post is live on ${network}, but we could not send a comment in its thread, so that comment was not published.`
+                : `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
               : live
-              ? `Your post from ${account} is live on ${network}, but ${network} returned an error for a step after it was published. Do not post it again.`
+              ? ours
+                ? `Your post from ${account} is live on ${network}, but a step after it was published did not finish. Do not post it again.`
+                : `Your post from ${account} is live on ${network}, but ${network} returned an error for a step after it was published. Do not post it again.`
               : ours
               ? `We could not send your post from ${account} to ${network}, so it was not published.`
               : `We sent your post from ${account} to ${network}, and ${network} returned an error, so it was not published.`,

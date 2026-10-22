@@ -56,7 +56,8 @@ describe('publishingNotice', () => {
   });
 
   it('does not put PostQueen\'s own failure in the network\'s mouth', async () => {
-    const [, , , , , , , email] = await run('bad_body', MEDIA_READ_FAILED);
+    const [, subject, , , , , , email] = await run('bad_body', MEDIA_READ_FAILED);
+    assert.equal(subject, 'Your post to LinkedIn Page didn’t go out');
     assert.deepEqual(
       email.blocks.find((b: any) => b.type === 'reason'),
       { type: 'reason', label: 'What happened', text: MEDIA_READ_FAILED }

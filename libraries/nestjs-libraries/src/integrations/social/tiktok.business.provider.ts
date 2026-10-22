@@ -109,7 +109,13 @@ export class TiktokBusinessProvider
     // taken as binary GB, so a file is never refused that TikTok would take;
     // when the size cannot be read, TikTok decides.
     if (firstItems?.length === 1 && hasExtension(firstItems[0]?.path, 'mp4')) {
-      const size = await this.mediaSize(firstItems[0].path).catch(() => 0);
+      // capped at 30 seconds so a slow host cannot hold up scheduling
+      const size = await Promise.race([
+        this.mediaSize(firstItems[0].path).catch(() => 0),
+        new Promise<number>((resolve) =>
+          setTimeout(() => resolve(0), 30_000).unref()
+        ),
+      ]);
       if (size > 1024 ** 3) {
         return 'TikTok Business accepts videos up to 1 GB. Use a smaller file.';
       }

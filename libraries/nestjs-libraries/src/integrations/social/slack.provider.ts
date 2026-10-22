@@ -222,7 +222,10 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
         body: JSON.stringify(payload),
       });
       if (res.status === 429 && attempt < 2) {
-        const retryAfter = Number(res.headers.get('retry-after'));
+        // a missing header is a second, not "right away" (Number(null) is 0)
+        const header = res.headers.get('retry-after');
+        const retryAfter = header === null ? NaN : Number(header);
+        await res.text().catch(() => '');
         await timer(
           Math.min(Number.isFinite(retryAfter) ? retryAfter : 1, 30) * 1000
         );
