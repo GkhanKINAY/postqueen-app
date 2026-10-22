@@ -1,12 +1,39 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import * as nodeModule from 'node:module';
+import { tmpdir } from 'node:os';
 import { before, beforeEach, describe, it } from 'node:test';
 import { insufficientCredits } from '../credits/credits.repository.ts';
 import { AI_FIXED_CREDIT_COSTS_PROPOSAL } from '../subscriptions/pricing.ts';
 
+// tsconfig maps file-type to its type declarations for tsc, and tsx follows
+// that mapping at run time, so the storage would load a .d.ts. Point it at
+// the package's own entry instead, as agent.graph.service.spec.ts does.
+// registerHooks arrived in Node 22.15; on an older 22 the spec is skipped
+// rather than failed.
+const canLoadService = typeof nodeModule.registerHooks === 'function';
+if (canLoadService) {
+  nodeModule.registerHooks({
+    resolve: (specifier, context, next) =>
+      specifier === 'file-type'
+        ? {
+            url: new URL(
+              '../../../../../../node_modules/file-type/source/index.js',
+              import.meta.url
+            ).href,
+            shortCircuit: true,
+          }
+        : next(specifier, context),
+  });
+}
+
 let AutopostService: any;
 before(async () => {
-  ({ AutopostService } = await import('./autopost.service.ts'));
+  // The service builds its storage when it is made; nothing is stored here.
+  process.env.UPLOAD_DIRECTORY ||= tmpdir();
+  if (canLoadService) {
+    ({ AutopostService } = await import('./autopost.service.ts'));
+  }
 });
 
 const rule = {
@@ -129,7 +156,7 @@ beforeEach(() => {
   publishShort = false;
 });
 
-describe('Autopost and credits', () => {
+describe('Autopost and credits', { skip: !canLoadService }, () => {
   it('pays for its AI text and picture under keys of the feed item, and publishes', async () => {
     await run();
     const first = [...spends];
