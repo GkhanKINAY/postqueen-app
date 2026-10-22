@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { PostActivity } from './post.activity.ts';
+import { MEDIA_READ_FAILED } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 
 /**
  * post.workflow v1.0.12 hands every notice to `publishingNotice`. The in-app
@@ -52,6 +53,16 @@ describe('publishingNotice', () => {
       { type: 'reason', label: 'What LinkedIn Page said', text: 'Duplicate content' }
     );
     assert.equal(row.title, 'Saturday sunrise flow is back.');
+  });
+
+  it('does not put PostQueen\'s own failure in the network\'s mouth', async () => {
+    const [, , , , , , , email] = await run('bad_body', MEDIA_READ_FAILED);
+    assert.deepEqual(
+      email.blocks.find((b: any) => b.type === 'reason'),
+      { type: 'reason', label: 'What happened', text: MEDIA_READ_FAILED }
+    );
+    assert.equal(email.preheader, MEDIA_READ_FAILED);
+    assert.match(email.lead, /^We could not send your post from Sunrise Studio to LinkedIn Page/);
   });
 
   it('keeps the published text the panel and the quiet-post check read', async () => {

@@ -5,6 +5,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
   RefreshToken,
@@ -207,6 +208,35 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
     }));
   }
 
+  // A rate-limited chat.postMessage comes back as HTTP 429 with Retry-After,
+  // and Slack has not posted the message, so it is sent again after the wait,
+  // twice at most. Other answers go to checkApiError as they are.
+  private async postMessage(accessToken: string, payload: object) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(`https://slack.com/api/chat.postMessage`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 429 && attempt < 2) {
+        const retryAfter = Number(res.headers.get('retry-after'));
+        await timer(
+          Math.min(Number.isFinite(retryAfter) ? retryAfter : 1, 30) * 1000
+        );
+        continue;
+      }
+      return res
+        .json()
+        .catch(() => ({
+          ok: false,
+          error: res.status === 429 ? 'ratelimited' : `http_${res.status}`,
+        }));
+    }
+  }
+
   // Slack answers HTTP 200 with { ok: false, error } on failures, so the post
   // used to be marked completed with no message in the channel.
   private checkApiError(all: any) {
@@ -331,30 +361,21 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
     });
 
     // Post the main message
-    const posted = await (
-      await fetch(`https://slack.com/api/chat.postMessage`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          channel,
-          username: integration.name,
-          icon_url: integration.picture,
-          blocks: [
-            ...slackSectionBlocks(firstPost.message),
-            ...(firstPost.media?.length
-              ? firstPost.media.map((m) => ({
-                  type: 'image',
-                  image_url: m.path,
-                  alt_text: '',
-                }))
-              : []),
-          ],
-        }),
-      })
-    ).json();
+    const posted = await this.postMessage(accessToken, {
+      channel,
+      username: integration.name,
+      icon_url: integration.picture,
+      blocks: [
+        ...slackSectionBlocks(firstPost.message),
+        ...(firstPost.media?.length
+          ? firstPost.media.map((m) => ({
+              type: 'image',
+              image_url: m.path,
+              alt_text: '',
+            }))
+          : []),
+      ],
+    });
     this.checkApiError(posted);
     const { ts, channel: responseChannel } = posted;
 
@@ -395,31 +416,22 @@ export class SlackProvider extends SocialAbstract implements SocialProvider {
     // Post the threaded reply. thread_ts is always the post's own ts: Slack
     // threads are one level deep and want the parent's ts, never a reply's
     // (lastCommentId), which it used to be from the second reply on.
-    const posted = await (
-      await fetch(`https://slack.com/api/chat.postMessage`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          channel,
-          username: integration.name,
-          icon_url: integration.picture,
-          thread_ts: postId,
-          blocks: [
-            ...slackSectionBlocks(commentPost.message),
-            ...(commentPost.media?.length
-              ? commentPost.media.map((m) => ({
-                  type: 'image',
-                  image_url: m.path,
-                  alt_text: '',
-                }))
-              : []),
-          ],
-        }),
-      })
-    ).json();
+    const posted = await this.postMessage(accessToken, {
+      channel,
+      username: integration.name,
+      icon_url: integration.picture,
+      thread_ts: postId,
+      blocks: [
+        ...slackSectionBlocks(commentPost.message),
+        ...(commentPost.media?.length
+          ? commentPost.media.map((m) => ({
+              type: 'image',
+              image_url: m.path,
+              alt_text: '',
+            }))
+          : []),
+      ],
+    });
     this.checkApiError(posted);
     const { ts, channel: responseChannel } = posted;
 

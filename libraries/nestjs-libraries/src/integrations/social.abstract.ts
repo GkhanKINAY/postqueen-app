@@ -126,12 +126,26 @@ export function platformMessage(body: unknown): string {
   );
 }
 
+// PostQueen's own failure lines, not a network's answer: the failure notice
+// must not present them as "<network> said".
+export const MEDIA_READ_FAILED =
+  'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.';
+export const MEDIA_READ_SLOW =
+  'We could not read the media for this post in time, so it was not published. Try again in a few minutes.';
+export const REQUEST_NOT_COMPLETED =
+  'PostQueen could not complete the request to the network, so the post was not published. Try again in a few minutes.';
+export const OWN_FAILURE_MESSAGES = [
+  MEDIA_READ_FAILED,
+  MEDIA_READ_SLOW,
+  REQUEST_NOT_COMPLETED,
+];
+
 /** What the user is told when the platform gave no reason of its own. */
 export function statusMessage(status: number): string {
   // No HTTP answer at all: a dropped connection, or a step on PostQueen's
   // side such as reading an image, failed before the network replied.
   if (!status) {
-    return 'PostQueen could not complete the request to the network, so the post was not published. Try again in a few minutes.';
+    return REQUEST_NOT_COMPLETED;
   }
   if (status === 429) {
     return 'The network is limiting how many requests PostQueen can send, so the post was not published. Try again later.';
@@ -465,7 +479,7 @@ export abstract class SocialAbstract {
           '',
           JSON.stringify({ status, path: stripQuery(path) }),
           Buffer.from('{}'),
-          'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+          MEDIA_READ_FAILED
         );
       }
       if (!isReadTimeout(err)) {
@@ -475,7 +489,7 @@ export abstract class SocialAbstract {
         '',
         JSON.stringify({ timeoutMs: MEDIA_READ_TIMEOUT, path: stripQuery(path) }),
         Buffer.from('{}'),
-        'We could not read the media for this post, so it was not published'
+        MEDIA_READ_SLOW
       );
     }
   }
@@ -546,7 +560,7 @@ export abstract class SocialAbstract {
             identifier,
             JSON.stringify({ status: response.status, start, end }),
             Buffer.from('{}'),
-            'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+            MEDIA_READ_FAILED
           );
         }
         return Buffer.from(await response.arrayBuffer());
@@ -567,7 +581,7 @@ export abstract class SocialAbstract {
           identifier,
           JSON.stringify({ timeoutMs: MEDIA_READ_TIMEOUT, start, end }),
           Buffer.from('{}'),
-          'We could not read the media for this post, so it was not published'
+          MEDIA_READ_SLOW
         );
       }
     }
@@ -604,7 +618,7 @@ export abstract class SocialAbstract {
         identifier,
         '{}',
         Buffer.from('{}'),
-        'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+        MEDIA_READ_FAILED
       );
     }
 

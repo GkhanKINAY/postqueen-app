@@ -5,6 +5,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import {
   BadBody,
@@ -172,14 +173,13 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     return await Promise.all(
       (post?.media || []).map(async (media) => {
         const isVideo = hasExtension(media.path, 'mp4');
-        const all = await (
-          await this.fetch(
+        const all = await this.vkCall(() =>
+          this.fetch(
             isVideo
               ? `https://api.vk.com/method/video.save?access_token=${accessToken}&v=5.251`
               : `https://api.vk.com/method/photos.getWallUploadServer?owner_id=${userId}&access_token=${accessToken}&v=5.251`
           )
-        ).json();
-        this.checkApiError(all);
+        );
 
         const { data } = await this.getSsrfSafeAxios().get(media.path!, {
           responseType: 'stream',
@@ -218,16 +218,15 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
         formSend.append('server', value.server);
         formSend.append('hash', value.hash);
 
-        const saved = await (
-          await fetch(
+        const saved = await this.vkCall(() =>
+          fetch(
             `https://api.vk.com/method/photos.saveWallPhoto?access_token=${accessToken}&v=5.251`,
             {
               method: 'POST',
               body: formSend,
             }
           )
-        ).json();
-        this.checkApiError(saved);
+        );
         const { id } = saved.response[0];
 
         return {
@@ -236,6 +235,21 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
         };
       })
     );
+  }
+
+  // Too many requests per second (6) means VK did not run the call, so it is
+  // sent again after a second, twice at most. These calls answer HTTP 200, so
+  // this.fetch never sees the error to retry it itself.
+  private async vkCall(request: () => Promise<Response>) {
+    for (let attempt = 0; ; attempt++) {
+      const all = await (await request()).json();
+      if (all?.error?.error_code === 6 && attempt < 2) {
+        await timer(1000);
+        continue;
+      }
+      this.checkApiError(all);
+      return all;
+    }
   }
 
   // VK answers HTTP 200 with { error } instead of { response } on failures,
@@ -249,11 +263,14 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
     if (all.error.error_code === 5) {
       throw new RefreshToken(this.identifier, json, Buffer.from('{}'), message);
     }
-    // Too many requests per second (6) is over in a moment, so it stays
-    // untyped and the publish runs again. These calls answer HTTP 200, so
-    // this.fetch never sees the error to retry it itself.
+    // Too many requests per second (6), still there after vkCall's retries.
     if (all.error.error_code === 6) {
-      throw new Error(message);
+      throw new BadBody(
+        this.identifier,
+        json,
+        Buffer.from('{}'),
+        'VK is limiting how fast PostQueen can call it. Reschedule the post a few minutes later.'
+      );
     }
     // Flood control (9) and a method's daily limit (29). Thrown untyped, the
     // post was published again, up to five times, into the same limit.
@@ -288,16 +305,15 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
       );
     }
 
-    const all = await (
-      await this.fetch(
+    const all = await this.vkCall(() =>
+      this.fetch(
         `https://api.vk.com/method/wall.post?v=5.251&access_token=${accessToken}&client_id=${process.env.VK_ID}`,
         {
           method: 'POST',
           body,
         }
       )
-    ).json();
-    this.checkApiError(all);
+    );
     const { response } = all;
 
     return [
@@ -334,16 +350,15 @@ export class VkProvider extends SocialAbstract implements SocialProvider {
       );
     }
 
-    const all = await (
-      await this.fetch(
+    const all = await this.vkCall(() =>
+      this.fetch(
         `https://api.vk.com/method/wall.createComment?v=5.251&access_token=${accessToken}&client_id=${process.env.VK_ID}`,
         {
           method: 'POST',
           body,
         }
       )
-    ).json();
-    this.checkApiError(all);
+    );
     const { response } = all;
 
     return [

@@ -32,6 +32,7 @@ import {
 import {
   BadBody,
   Disconnect,
+  OWN_FAILURE_MESSAGES,
   PublishedWithError,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
@@ -950,6 +951,9 @@ export class PostActivity {
         const comment = notice === 'bad_body_comment';
         // the publish went through, a later step on it did not
         const live = !comment && !!post?.releaseURL;
+        // PostQueen's own line (a media read that failed, a request that never
+        // got an answer), not something the network said
+        const ours = OWN_FAILURE_MESSAGES.includes(detail);
         const title = comment
           ? `${network} didn’t accept a comment on your post`
           : live
@@ -966,7 +970,11 @@ export class PostActivity {
           email: {
             stream: 'notifications',
             category: 'Not published',
-            preheader: detail ? `${network} said: ${detail}` : title,
+            preheader: detail
+              ? ours
+                ? detail
+                : `${network} said: ${detail}`
+              : title,
             tone: 'danger',
             icon: 'x-circle',
             title,
@@ -974,13 +982,15 @@ export class PostActivity {
               ? `Your post is live on ${network}, but ${network} returned an error for a comment in its thread, so that comment was not published.`
               : live
               ? `Your post from ${account} is live on ${network}, but ${network} returned an error for a step after it was published. Do not post it again.`
+              : ours
+              ? `We could not send your post from ${account} to ${network}, so it was not published.`
               : `We sent your post from ${account} to ${network}, and ${network} returned an error, so it was not published.`,
             blocks: [
               ...(detail
                 ? [
                     {
                       type: 'reason' as const,
-                      label: `What ${network} said`,
+                      label: ours ? 'What happened' : `What ${network} said`,
                       text: detail,
                     },
                   ]

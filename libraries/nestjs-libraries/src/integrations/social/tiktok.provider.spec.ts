@@ -15,7 +15,10 @@ const pictures = (count: number, ext = 'jpg') =>
 // the network. These tests are about counts and formats, so each photo
 // measures as TikTok allows; the size rules have their own tests below.
 class MeasuredTiktokProvider extends TiktokProvider {
-  constructor(private readonly size = { width: 1080, height: 1920 }) {
+  constructor(
+    private readonly size = { width: 1080, height: 1920 },
+    private readonly videoBytes = 1024
+  ) {
     super();
   }
 
@@ -24,11 +27,21 @@ class MeasuredTiktokProvider extends TiktokProvider {
       throw new Error('measured');
     }
     return this.size;
+  }
+
+  protected override async mediaSize() {
+    if (!this.videoBytes) {
+      throw new Error('measured');
+    }
+    return this.videoBytes;
   }
 }
 
 class MeasuredTiktokBusinessProvider extends TiktokBusinessProvider {
-  constructor(private readonly size = { width: 1080, height: 1920 }) {
+  constructor(
+    private readonly size = { width: 1080, height: 1920 },
+    private readonly videoBytes = 1024
+  ) {
     super();
   }
 
@@ -37,6 +50,13 @@ class MeasuredTiktokBusinessProvider extends TiktokBusinessProvider {
       throw new Error('measured');
     }
     return this.size;
+  }
+
+  protected override async mediaSize() {
+    if (!this.videoBytes) {
+      throw new Error('measured');
+    }
+    return this.videoBytes;
   }
 }
 
@@ -778,6 +798,44 @@ describe('TikTok status check FAILED', () => {
     await assert.rejects(
       check(new FailedTiktokProvider('frame_rate_check_failed')),
       (err: any) => err instanceof BadBody && /23 and 60/.test(err.message)
+    );
+  });
+});
+
+describe('TikTok video size, on both tiles', () => {
+  const video = [[{ path: 'https://cdn.test/a.mp4' }]];
+  const GB = 1024 ** 3;
+
+  it('TikTok takes a video up to 4 GB, and names a larger one', async () => {
+    assert.equal(
+      await new MeasuredTiktokProvider(undefined, 4 * GB).checkValidity(video),
+      true
+    );
+    assert.equal(
+      await new MeasuredTiktokProvider(undefined, 4 * GB + 1).checkValidity(video),
+      'TikTok accepts videos up to 4 GB. Use a smaller file.'
+    );
+  });
+
+  it('TikTok Business takes a video up to 1 GB, and names a larger one', async () => {
+    assert.equal(
+      await new MeasuredTiktokBusinessProvider(undefined, GB).checkValidity(video),
+      true
+    );
+    assert.equal(
+      await new MeasuredTiktokBusinessProvider(undefined, GB + 1).checkValidity(video),
+      'TikTok Business accepts videos up to 1 GB. Use a smaller file.'
+    );
+  });
+
+  it('leaves a video whose size cannot be read to TikTok', async () => {
+    assert.equal(
+      await new MeasuredTiktokProvider(undefined, 0).checkValidity(video),
+      true
+    );
+    assert.equal(
+      await new MeasuredTiktokBusinessProvider(undefined, 0).checkValidity(video),
+      true
     );
   });
 });

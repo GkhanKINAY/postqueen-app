@@ -1,5 +1,9 @@
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { BadBody, SocialAbstract } from '../social.abstract';
+import {
+  BadBody,
+  MEDIA_READ_FAILED,
+  SocialAbstract,
+} from '../social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import {
   AuthTokenDetails,
@@ -279,7 +283,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
           this.identifier,
           JSON.stringify({ status: fileResponse.status }),
           '{}',
-          'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.'
+          MEDIA_READ_FAILED
         );
       }
       const uploadResponse = await fetch(createFileResponse.write_url, {
