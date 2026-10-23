@@ -29,6 +29,7 @@ import { TypedSearchAttributes } from '@temporalio/common';
 import {
   organizationId,
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
+import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 const parser = new Parser();
 
 interface WorkflowChannelsState {
@@ -202,9 +203,45 @@ export class AutopostService {
     return data;
   }
 
+  // Every autopost fetch goes through the SSRF-safe dispatcher, which checks
+  // the address of each connection, redirects included. rss-parser's own
+  // client followed a redirect wherever it pointed, and the feed item's link
+  // was fetched with no check at all, so a feed could hand the AI the reply of
+  // a container on this host's network to publish.
+  private async fetchPublicText(url: string, headers?: Record<string, string>) {
+    if (!/^https?:\/\//i.test(url)) {
+      throw new Error('Only http(s) URLs are fetched');
+    }
+    const response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(60000),
+      // @ts-ignore — undici option, not in lib.dom fetch types
+      dispatcher: getSsrfSafeDispatcher(),
+    });
+    if (!response.ok) {
+      throw new Error(`Status code ${response.status}`);
+    }
+    // Decode with the charset the server names, as rss-parser did; a feed in
+    // ISO-8859-1 read as UTF-8 turns every accented letter into U+FFFD.
+    const charset = response.headers
+      .get('content-type')
+      ?.match(/charset=["']?([\w-]+)/i)?.[1];
+    const bytes = await response.arrayBuffer();
+    try {
+      return new TextDecoder(charset || 'utf-8').decode(bytes);
+    } catch {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+  }
+
   async loadXML(url: string) {
     try {
-      const { items } = await parser.parseURL(url);
+      const { items } = await parser.parseString(
+        await this.fetchPublicText(url, {
+          'User-Agent': 'rss-parser',
+          Accept: 'application/rss+xml',
+        })
+      );
       const findLast = items.reduce(
         (all: any, current: any) => {
           if (dayjs(current.pubDate).isAfter(all.pubDate)) {
@@ -314,7 +351,7 @@ export class AutopostService {
 
   async loadUrl(url: string) {
     try {
-      const loadDom = new JSDOM(await (await fetch(url)).text());
+      const loadDom = new JSDOM(await this.fetchPublicText(url));
       loadDom.window.document
         .querySelectorAll('script')
         .forEach((s) => s.remove());
