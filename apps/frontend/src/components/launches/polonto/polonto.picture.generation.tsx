@@ -12,11 +12,11 @@ import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
-  CURRENT_CREDIT_PRICING,
   imageCreditCost,
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
+  CreditsBalance,
   formatCredits,
   useCreditsBalance,
 } from '@gitroom/frontend/components/billing/use.credits.balance';
@@ -29,22 +29,20 @@ const GenerateTab = observer(({ store }: any) => {
   const toast = useToaster();
   const { data, mutate } = useCreditsBalance();
   // This tab makes a medium, square image, the route's default, priced on
-  // the organization's list.
-  const COST = toCredits(
-    imageCreditCost(
-      data?.creditPricing ?? CURRENT_CREDIT_PRICING,
-      'medium',
-      'square'
-    )
-  );
-  const short = !!data && !data.unlimited && (data.balance ?? 0) < COST;
+  // the balance's own list, so nothing is priced before it has been read.
+  const isShort = (balance?: CreditsBalance) =>
+    !!balance &&
+    !balance.unlimited &&
+    (balance.balance ?? 0) <
+      toCredits(imageCreditCost(balance.creditPricing, 'medium', 'square'));
+  const short = isShort(data);
   const t = useT();
 
   const handleGenerate = async () => {
     // Read at click time, not from the cache: credits bought in the Billing
     // tab this opened must not still read as short here.
     const fresh = await mutate();
-    if (fresh && !fresh.unlimited && (fresh.balance ?? 0) < COST) {
+    if (isShort(fresh)) {
       window.open('/billing', '_blank');
       return;
     }

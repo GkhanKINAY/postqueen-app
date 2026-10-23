@@ -1513,12 +1513,12 @@ export class IntegrationService implements OnModuleInit {
     data: unknown,
     run: () => Promise<T>
   ): Promise<T | undefined> {
-    const creditCost = this._integrationManager.getSocialIntegration(
+    const provider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
-    )?.creditCost;
+    );
     const cost =
-      creditCost && isBillingEnabled()
-        ? creditCost(
+      provider?.creditCost && isBillingEnabled()
+        ? provider.creditCost(
             { type: 'function', name },
             await this._creditsService.creditPricing(orgId)
           )

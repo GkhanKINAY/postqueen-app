@@ -679,18 +679,6 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Adds the credits a subscription's current period carries, or its trial's
-   * (see `grantPlanPeriod`), once:
-   *
-   * - With `invoice`, the one that paid for the period, keyed by it.
-   * - Without one (the daily pass, see `grantMissingPlanCredits`), keyed by
-   *   the period, and a yearly plan already running gets only the months it
-   *   has left.
-   * - A yearly plan whose credits come a month at a time gets the month it is
-   *   in (see `creditMonth`), keyed by that month when there is no invoice.
-   * - A trial is keyed by the subscription, since nothing has been paid for it.
-   */
-  /**
    * The price list a subscription was sold on, from its checkout stamp (see
    * `credit_pricing` above): read from Stripe rather than the row, because an
    * invoice can arrive before the row is written, and a row is recreated from
@@ -702,6 +690,18 @@ export class StripeService extends PaymentProviderAbstract {
     });
   }
 
+  /**
+   * Adds the credits a subscription's current period carries, or its trial's
+   * (see `grantPlanPeriod`), once:
+   *
+   * - With `invoice`, the one that paid for the period, keyed by it.
+   * - Without one (the daily pass, see `grantMissingPlanCredits`), keyed by
+   *   the period, and a yearly plan already running gets only the months it
+   *   has left.
+   * - A yearly plan whose credits come a month at a time gets the month it is
+   *   in (see `creditMonth`), keyed by that month when there is no invoice.
+   * - A trial is keyed by the subscription, since nothing has been paid for it.
+   */
   private async grantPeriodCredits(
     organizationId: string,
     subscription: Stripe.Subscription,

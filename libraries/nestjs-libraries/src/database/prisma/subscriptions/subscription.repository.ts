@@ -367,7 +367,7 @@ export class SubscriptionRepository {
     cancelAt: number | null,
     code?: string,
     org?: { id: string },
-    creditPricing: CreditPricing = CURRENT_CREDIT_PRICING
+    creditPricing?: CreditPricing
   ) {
     const findOrg =
       org || (await this.getOrganizationByCustomerId(customerId))!;
@@ -396,6 +396,10 @@ export class SubscriptionRepository {
         isLifetime: !!code,
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         deletedAt: null,
+        // Only a caller that knows the subscription's list (Stripe, from its
+        // checkout stamp) passes one, so a row an older release wrote with
+        // the default is put right on the next event. Nobody else changes it.
+        ...(creditPricing ? { creditPricing } : {}),
       },
       create: {
         organizationId: findOrg.id,
@@ -407,9 +411,9 @@ export class SubscriptionRepository {
         cancelAt: cancelAt ? new Date(cancelAt * 1000) : null,
         identifier,
         deletedAt: null,
-        // Fixed here and never updated: a plan change, a renewal or a
-        // provider event keeps the list the subscription started with.
-        creditPricing,
+        // A plan change or a renewal keeps the list the subscription started
+        // with; a new subscription without one gets today's.
+        creditPricing: creditPricing || CURRENT_CREDIT_PRICING,
       },
     });
 

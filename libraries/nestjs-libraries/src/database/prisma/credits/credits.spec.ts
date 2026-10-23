@@ -32,6 +32,9 @@ const pricingMigration = read(
 );
 const databaseModule = read('../database.module.ts');
 const stripe = read('../../../services/stripe.service.ts');
+const subscriptionRepository = read(
+  '../subscriptions/subscription.repository.ts'
+);
 const buyCreditsDto = read('../../../dtos/billing/buy.credits.dto.ts');
 const between = (text: string, from: string, to: string) =>
   text.slice(text.indexOf(from), text.indexOf(to, text.indexOf(from)));
@@ -253,6 +256,27 @@ describe('Price lists', () => {
     const change = between(stripe, 'async subscribe(', 'async paymentSucceeded(');
     assert.doesNotMatch(change, /credit_pricing: CURRENT_CREDIT_PRICING/);
     assert.match(change, /credit_pricing: current\.metadata\.credit_pricing/);
+  });
+
+  it('writes a row from the stamp, and changes it only when one is passed', () => {
+    const upsert = between(
+      subscriptionRepository,
+      'async createOrUpdateSubscription(',
+      'await this._organization.model.organization.update('
+    );
+    assert.match(
+      between(upsert, 'update: {', 'create: {'),
+      /\.\.\.\(creditPricing \? \{ creditPricing \} : \{\}\),/
+    );
+    assert.match(
+      upsert.slice(upsert.indexOf('create: {')),
+      /creditPricing: creditPricing \|\| CURRENT_CREDIT_PRICING,/
+    );
+    // every Stripe write passes the subscription's stamp
+    assert.equal(
+      (stripe.match(/this\.creditPricingOfSubscription\((?:event\.data\.object|survivor)\)/g) || []).length,
+      3
+    );
   });
 });
 

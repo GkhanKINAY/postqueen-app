@@ -47,12 +47,17 @@ export const useCreditsBalance = () => {
 /**
  * The price list the organization's credits follow, for a screen that prices
  * what it shows. Undefined until the balance has been read; today's list with
- * billing off, where nothing is charged.
+ * billing off, where nothing is charged, and when the balance could not be
+ * read, so a screen waiting on it is never held for good (the server charges
+ * on the right list either way).
  */
 export const useCreditPricing = (): CreditPricing | undefined => {
   const { billingEnabled } = useVariables();
-  const { data } = useCreditsBalance();
-  return billingEnabled ? data?.creditPricing : CURRENT_CREDIT_PRICING;
+  const { data, error } = useCreditsBalance();
+  if (!billingEnabled) {
+    return CURRENT_CREDIT_PRICING;
+  }
+  return data?.creditPricing ?? (error ? CURRENT_CREDIT_PRICING : undefined);
 };
 
 /** A balance as people read it: whole when it is whole, else one decimal. */

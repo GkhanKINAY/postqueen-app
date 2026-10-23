@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { before, beforeEach, describe, it } from 'node:test';
+import { after, before, beforeEach, describe, it } from 'node:test';
 import { HttpException } from '@nestjs/common';
 import { insufficientCredits } from '../credits/credits.repository.ts';
 
@@ -72,6 +72,7 @@ let creditPricing: 'legacy' | 'v2';
 let balance: number;
 let spends: Array<{ key: string; amount: number }>;
 let overviewFails: boolean;
+let overviewEmpty: boolean;
 
 const service = () =>
   new PostMetricsService(
@@ -174,7 +175,8 @@ const service = () =>
           throw new Error('X is down');
         }
         overviews.push(id);
-        return [];
+        // An error the overview swallowed comes back as no data
+        return overviewEmpty ? [] : [{ label: 'Followers', data: [] }];
       },
     },
     // The ledger, faked: a key is charged once, as the real one makes it.
@@ -197,7 +199,22 @@ const service = () =>
     },
   );
 
+const KEYS = ['STRIPE_PUBLISHABLE_KEY', 'STRIPE_SECRET_KEY'];
+const previous = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
+
+after(() => {
+  for (const key of KEYS) {
+    if (previous[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous[key];
+    }
+  }
+});
+
 beforeEach(() => {
+  process.env.STRIPE_PUBLISHABLE_KEY = 'spec';
+  process.env.STRIPE_SECRET_KEY = 'spec';
   reads = [];
   lookbacks = {};
   lastSnapshot = {};
@@ -214,6 +231,7 @@ beforeEach(() => {
   balance = 0;
   spends = [];
   overviewFails = false;
+  overviewEmpty = false;
 });
 
 describe('post metrics lookback', () => {
@@ -358,6 +376,24 @@ describe('manual refresh on the credits balance', () => {
       spends.map((spend) => spend.amount),
       [25]
     );
+  });
+
+  it('charges nothing for an overview that came back empty', async () => {
+    creditPricing = 'v2';
+    balance = 1000;
+    overviewEmpty = true;
+    const result = await service().manualRefresh('org-1');
+    assert.equal(result.refreshed, 1);
+    assert.deepEqual(
+      spends.map((spend) => spend.amount),
+      [25]
+    );
+  });
+
+  it('quotes nothing where billing is off', async () => {
+    delete process.env.STRIPE_PUBLISHABLE_KEY;
+    creditPricing = 'v2';
+    assert.equal((await service().manualRefreshStatus('org-1')).credits, 0);
   });
 });
 

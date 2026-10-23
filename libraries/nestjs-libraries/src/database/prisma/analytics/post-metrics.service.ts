@@ -30,6 +30,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   CreditPricing,
   toCredits,
@@ -199,6 +200,10 @@ export class PostMetricsService {
     }>,
     creditPricing: CreditPricing,
   ) {
+    // Without billing nothing is charged, so nothing is quoted either.
+    if (!isBillingEnabled()) {
+      return 0;
+    }
     const freshAfter = Date.now() - MANUAL_REFRESH_COOLDOWN_MS;
     const day = this.refreshDay();
     let quote = 0;
@@ -212,7 +217,13 @@ export class PostMetricsService {
       const provider = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier,
       );
-      if (!provider?.creditCost) {
+      // A list that prices these reads at nothing needs no counting.
+      const postPrice =
+        provider?.creditCost?.({ type: 'post-metrics', posts: 1 }, creditPricing) ||
+        0;
+      const accountPrice =
+        provider?.creditCost?.({ type: 'account-metrics' }, creditPricing) || 0;
+      if (!postPrice && !accountPrice) {
         continue;
       }
       const read = new Set(
@@ -227,16 +238,16 @@ export class PostMetricsService {
       ).filter((post) => !read.has(post.id)).length;
       quote +=
         (posts
-          ? provider.creditCost({ type: 'post-metrics', posts }, creditPricing) ||
+          ? provider?.creditCost?.({ type: 'post-metrics', posts }, creditPricing) ||
             0
           : 0) +
-        ((await this._creditsService.everReserved(
+        (accountPrice &&
+        !(await this._creditsService.everReserved(
           organizationId,
           this.accountMetricsKey(integration.id, day),
         ))
-          ? 0
-          : provider.creditCost({ type: 'account-metrics' }, creditPricing) ||
-            0);
+          ? accountPrice
+          : 0);
     }
     return quote;
   }
@@ -331,8 +342,9 @@ export class PostMetricsService {
             : 0,
           { integrationId: integration.id, posts: result.read },
         );
-        // The channel overview too, which page views only read from storage
-        await this._integrationService.checkAnalytics(
+        // The channel overview too, which page views only read from storage.
+        // A read that failed comes back empty and is not paid for.
+        const overview = await this._integrationService.checkAnalytics(
           { id: organizationId },
           integration.id,
           '',
@@ -343,8 +355,10 @@ export class PostMetricsService {
         await this.chargeRefresh(
           organizationId,
           this.accountMetricsKey(integration.id, day),
-          provider?.creditCost?.({ type: 'account-metrics' }, creditPricing) ||
-            0,
+          overview.length
+            ? provider?.creditCost?.({ type: 'account-metrics' }, creditPricing) ||
+                0
+            : 0,
           { integrationId: integration.id },
         );
         refreshed += 1;
