@@ -29,6 +29,7 @@ import {
   tierLabel,
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { PlanCreditsBlock } from '@gitroom/frontend/components/billing/plan.credits.block';
 import clsx from 'clsx';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { Button } from '@gitroom/react/form/button';
@@ -1420,6 +1421,8 @@ type FeatureItem = {
   key: string;
   defaultValue: string;
   prefix?: string | number;
+  /** A qualifier after the line, quieter than it. */
+  note?: { key: string; defaultValue: string };
 };
 
 export const BillingFeatures: FC<{
@@ -1430,11 +1433,11 @@ export const BillingFeatures: FC<{
    */
   tone?: 'brand' | 'lifetime';
   /**
-   * A yearly plan's credits are counted for the year. Only the first checkout
-   * passes it, and a yearly plan bought there gets them a month at a time.
+   * The period being bought. The list reads the same either way: credits are
+   * shown a month at a time, and a yearly plan bought here adds them so.
    */
   period?: string;
-}> = ({ tier, tone = 'brand', period }) => {
+}> = ({ tier, tone = 'brand' }) => {
   const t = useT();
   const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
@@ -1467,6 +1470,8 @@ export const BillingFeatures: FC<{
         currentPricing.posts_per_month > 10000
           ? 'unlimited'
           : currentPricing.posts_per_month,
+      // A post to X is paid for from the credits balance.
+      note: { key: 'plan_x_posts_use_credits', defaultValue: 'X posts use credits' },
     });
 
     if (currentPricing.team_members) {
@@ -1491,22 +1496,6 @@ export const BillingFeatures: FC<{
       key: 'billing_advanced_picture_editor',
       defaultValue: 'Advanced Picture Editor',
     });
-    // One balance pays for AI images, videos and the rest, by what each costs.
-    if (currentPricing?.monthly_credits) {
-      list.push(
-        period === 'YEARLY'
-          ? {
-              key: 'billing_credits_per_year',
-              defaultValue: 'credits a year, added a month at a time',
-              prefix: currentPricing.monthly_credits * 12,
-            }
-          : {
-              key: 'billing_credits_per_month',
-              defaultValue: 'credits a month',
-              prefix: currentPricing.monthly_credits,
-            }
-      );
-    }
     // Off until a clipping processor is configured: no plan advertises
     // minutes nobody can spend
     if (clippingEnabled && currentPricing?.clipping_minutes) {
@@ -1517,7 +1506,7 @@ export const BillingFeatures: FC<{
       });
     }
     return list;
-  }, [tier, period, clippingEnabled]);
+  }, [tier, clippingEnabled]);
 
   const renderFeature = (feature: FeatureItem) => {
     const translatedText = t(feature.key, feature.defaultValue);
@@ -1531,51 +1520,69 @@ export const BillingFeatures: FC<{
   };
 
   return (
-    <div className="grid grid-cols-2 gap-x-[18px] gap-y-[10px] mobile:grid-cols-1">
-      {features.map((feature) => {
-        // The one row the design lets glow — carrying `pq-loop` so
-        // prefers-reduced-motion can switch the loop off (see global.css).
-        const unlimited = feature.key === 'plan_unlimited_channels';
-        return (
-          <div
-            key={feature.key}
-            className={clsx(
-              'flex min-w-0 items-center gap-[9px] font-[600]',
-              tone === 'lifetime'
-                ? 'text-[13.5px] text-pqLtText'
-                : 'text-[14px] text-pqText',
-              unlimited && 'animate-pqUnlim pq-loop'
-            )}
-          >
-            <span
+    <div className="flex flex-col gap-[12px]">
+      {/* The plan's credits, and what they buy, on a row of their own above
+          the two columns. */}
+      <PlanCreditsBlock tier={tier} size="checkout" tone={tone} />
+      <div className="grid grid-cols-2 gap-x-[18px] gap-y-[10px] mobile:grid-cols-1">
+        {features.map((feature) => {
+          // The one row the design lets glow — carrying `pq-loop` so
+          // prefers-reduced-motion can switch the loop off (see global.css).
+          const unlimited = feature.key === 'plan_unlimited_channels';
+          return (
+            <div
+              key={feature.key}
               className={clsx(
-                'grid size-[17px] shrink-0 place-items-center rounded-[5px]',
-                tone === 'lifetime' ? 'bg-pqLtTick' : 'bg-pqBrand'
+                'flex min-w-0 items-center gap-[9px] font-[600]',
+                tone === 'lifetime'
+                  ? 'text-[13.5px] text-pqLtText'
+                  : 'text-[14px] text-pqText',
+                unlimited && 'animate-pqUnlim pq-loop'
               )}
             >
-              <svg
-                viewBox="0 0 24 24"
-                width="12"
-                height="12"
-                fill="none"
-                aria-hidden="true"
-                className={
-                  tone === 'lifetime' ? 'text-pqLtTickFg' : 'text-pqOnBrand'
-                }
+              <span
+                className={clsx(
+                  'grid size-[17px] shrink-0 place-items-center rounded-[5px]',
+                  tone === 'lifetime' ? 'bg-pqLtTick' : 'bg-pqBrand'
+                )}
               >
-                <path
-                  d="m5 12.5 4.5 4.5L19 7.5"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <div>{renderFeature(feature)}</div>
-          </div>
-        );
-      })}
+                <svg
+                  viewBox="0 0 24 24"
+                  width="12"
+                  height="12"
+                  fill="none"
+                  aria-hidden="true"
+                  className={
+                    tone === 'lifetime' ? 'text-pqLtTickFg' : 'text-pqOnBrand'
+                  }
+                >
+                  <path
+                    d="m5 12.5 4.5 4.5L19 7.5"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <div>
+                {renderFeature(feature)}
+                {!!feature.note && (
+                  <span
+                    className={clsx(
+                      'whitespace-nowrap font-[500]',
+                      tone === 'lifetime' ? 'text-pqLtText' : 'text-pqMuted'
+                    )}
+                  >
+                    {' · '}
+                    {t(feature.note.key, feature.note.defaultValue)}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

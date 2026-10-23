@@ -29,6 +29,13 @@ import { hasKnownPostMetric } from '@gitroom/nestjs-libraries/integrations/socia
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import {
+  CreditPricing,
+  toCredits,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 
 dayjs.extend(utc);
 
@@ -66,6 +73,7 @@ export class PostMetricsService {
     private _temporalService: TemporalService,
     private _postsService: PostsService,
     private _integrationService: IntegrationService,
+    private _creditsService: CreditsService,
   ) {}
 
   async listIntegrationsNeedingSync(
@@ -166,8 +174,86 @@ export class PostMetricsService {
     );
     return manual.map((integration) => ({
       id: integration.id,
+      providerIdentifier: integration.providerIdentifier,
       lastSyncedAt: last.get(integration.id) || null,
     }));
+  }
+
+  // The day a refresh's reads count against: the network bills a read of the
+  // same post once a UTC day.
+  private refreshDay() {
+    return dayjs.utc().startOf('day');
+  }
+
+  /**
+   * What a Refresh of these channels would cost now, in hundredths: each
+   * channel outside its cooldown, by its network's price for the posts not
+   * read yet today and for the channel's overview, which is read once a day.
+   * An estimate: the charge is made from what the network returned.
+   */
+  private async refreshQuote(
+    organizationId: string,
+    integrations: Array<{
+      id: string;
+      providerIdentifier: string;
+      lastSyncedAt: Date | null;
+    }>,
+    creditPricing: CreditPricing,
+  ) {
+    // Without billing nothing is charged, so nothing is quoted either.
+    if (!isBillingEnabled()) {
+      return 0;
+    }
+    const freshAfter = Date.now() - MANUAL_REFRESH_COOLDOWN_MS;
+    const day = this.refreshDay();
+    let quote = 0;
+    for (const integration of integrations) {
+      if (
+        integration.lastSyncedAt &&
+        integration.lastSyncedAt.getTime() > freshAfter
+      ) {
+        continue;
+      }
+      const provider = this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier,
+      );
+      // A list that prices these reads at nothing needs no counting.
+      const postPrice =
+        provider?.creditCost?.({ type: 'post-metrics', posts: 1 }, creditPricing) ||
+        0;
+      const accountPrice =
+        provider?.creditCost?.({ type: 'account-metrics' }, creditPricing) || 0;
+      if (!postPrice && !accountPrice) {
+        continue;
+      }
+      const read = new Set(
+        await this._repository.postIdsCapturedOn(integration.id, day.toDate()),
+      );
+      const posts = postsWithMetrics(
+        await this._repository.listPublishedPostsForSync(
+          integration.id,
+          provider.analyticsLookbackDays || LOOKBACK_DAYS,
+        ),
+        provider.postMetricsAvailable?.bind(provider),
+      ).filter((post) => !read.has(post.id)).length;
+      quote +=
+        (posts
+          ? provider?.creditCost?.({ type: 'post-metrics', posts }, creditPricing) ||
+            0
+          : 0) +
+        (accountPrice &&
+        !(await this._creditsService.everReserved(
+          organizationId,
+          this.accountMetricsKey(integration.id, day),
+        ))
+          ? accountPrice
+          : 0);
+    }
+    return quote;
+  }
+
+  private accountMetricsKey(integrationId: string, day: dayjs.Dayjs) {
+    return `account-metrics:${integrationId}:${day.format('YYYY-MM-DD')}`;
   }
 
   async manualRefreshStatus(organizationId: string, integrationId?: string) {
@@ -178,14 +264,39 @@ export class PostMetricsService {
     return {
       integrations: integrations.length,
       lastSyncedAt: oldestSync(integrations),
+      // What pressing Refresh would take from the credits balance.
+      credits: toCredits(
+        await this.refreshQuote(
+          organizationId,
+          integrations,
+          await this._creditsService.creditPricing(organizationId),
+        ),
+      ),
     };
   }
 
+  /**
+   * Reads the manual-only channels' numbers now. On a network that bills
+   * its reads, the balance pays for them: refused with a 402 before anything
+   * is read when it cannot cover the estimate, then charged for what the
+   * network returned, and nothing for a read that failed.
+   */
   async manualRefresh(organizationId: string, integrationId?: string) {
     const integrations = await this.listManualRefreshIntegrations(
       organizationId,
       integrationId,
     );
+    const creditPricing =
+      await this._creditsService.creditPricing(organizationId);
+    const quote = await this.refreshQuote(
+      organizationId,
+      integrations,
+      creditPricing,
+    );
+    if (quote > 0) {
+      await this._creditsService.assertAvailable(organizationId, quote);
+    }
+    const day = this.refreshDay();
     const freshAfter = Date.now() - MANUAL_REFRESH_COOLDOWN_MS;
     let synced = 0;
     let refreshed = 0;
@@ -209,16 +320,46 @@ export class PostMetricsService {
         skipped += 1;
         continue;
       }
+      const provider = this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier,
+      );
       try {
-        synced += (await this.syncIntegration(organizationId, integration.id))
-          .synced;
-        // The channel overview too, which page views only read from storage
-        await this._integrationService.checkAnalytics(
+        const result = await this.readIntegration(
+          organizationId,
+          integration.id,
+        );
+        synced += result.synced;
+        // Done by now, so charged whatever the balance, and never failing
+        // the refresh.
+        await this.chargeRefresh(
+          organizationId,
+          `post-metrics:${integration.id}:${makeId(10)}`,
+          result.read
+            ? provider?.creditCost?.(
+                { type: 'post-metrics', posts: result.read },
+                creditPricing,
+              ) || 0
+            : 0,
+          { integrationId: integration.id, posts: result.read },
+        );
+        // The channel overview too, which page views only read from storage.
+        // A read that failed comes back empty and is not paid for.
+        const overview = await this._integrationService.checkAnalytics(
           { id: organizationId },
           integration.id,
           '',
           false,
           true,
+        );
+        // Keyed by the day, so the overview is paid for once a day.
+        await this.chargeRefresh(
+          organizationId,
+          this.accountMetricsKey(integration.id, day),
+          overview.length
+            ? provider?.creditCost?.({ type: 'account-metrics' }, creditPricing) ||
+                0
+            : 0,
+          { integrationId: integration.id },
         );
         refreshed += 1;
       } catch (err) {
@@ -287,7 +428,46 @@ export class PostMetricsService {
     return { syncing: started, started };
   }
 
+  private async chargeRefresh(
+    organizationId: string,
+    key: string,
+    amount: number,
+    meta: Record<string, string | number>,
+  ) {
+    if (!amount) {
+      return;
+    }
+    await this._creditsService
+      .spend(organizationId, {
+        key,
+        amount,
+        action: 'analytics_refresh',
+        meta,
+        allowOverdraft: true,
+      })
+      .catch((err) =>
+        this.logger.error(
+          `Could not charge ${key} to ${organizationId}: ${err}`,
+        ),
+      );
+  }
+
   async syncIntegration(organizationId: string, integrationId: string) {
+    return {
+      synced: (await this.readIntegration(organizationId, integrationId))
+        .synced,
+    };
+  }
+
+  /**
+   * Reads a channel's post numbers and stores them. `read` is how many of
+   * them the network returned that had not been read yet this UTC day: what
+   * a network that bills each read once a day charges for.
+   */
+  private async readIntegration(
+    organizationId: string,
+    integrationId: string,
+  ): Promise<{ synced: number; read: number }> {
     const integration = await this._repository.getIntegration(
       organizationId,
       integrationId,
@@ -298,17 +478,17 @@ export class PostMetricsService {
       integration.refreshNeeded ||
       integration.inBetweenSteps
     ) {
-      return { synced: 0 };
+      return { synced: 0, read: 0 };
     }
 
     const provider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier,
     );
     if (!provider?.postsAnalytics) {
-      return { synced: 0 };
+      return { synced: 0, read: 0 };
     }
     if (provider.analyticsDisabled?.()) {
-      return { synced: 0 };
+      return { synced: 0, read: 0 };
     }
 
     let token = integration.token;
@@ -316,7 +496,7 @@ export class PostMetricsService {
       const refreshed =
         await this._refreshIntegrationService.refresh(integration);
       if (!refreshed || !refreshed.accessToken) {
-        return { synced: 0 };
+        return { synced: 0, read: 0 };
       }
       token = refreshed.accessToken;
       if (provider.refreshWait) {
@@ -332,7 +512,7 @@ export class PostMetricsService {
       provider.postMetricsAvailable?.bind(provider),
     );
     if (posts.length === 0) {
-      return { synced: 0 };
+      return { synced: 0, read: 0 };
     }
 
     // The same release resolution the Statistics modal runs, so a post whose
@@ -388,7 +568,7 @@ export class PostMetricsService {
         const refreshed =
           await this._refreshIntegrationService.refresh(integration);
         if (!refreshed || !refreshed.accessToken) {
-          return { synced: 0 };
+          return { synced: 0, read: 0 };
         }
         rows = await provider.postsAnalytics(
           integration.internalId,
@@ -400,17 +580,26 @@ export class PostMetricsService {
           `postsAnalytics failed for ${integration.providerIdentifier} ${integrationId}`,
           err as Error,
         );
-        return { synced: 0 };
+        return { synced: 0, read: 0 };
       }
     }
 
     const capturedDay = dayjs.utc().startOf('day').toDate();
+    // Read before this read's snapshots are written: a post with one for
+    // today was already asked for today.
+    const readToday = new Set(
+      await this._repository.postIdsCapturedOn(integrationId, capturedDay),
+    );
+    const returned = new Set<string>();
     let synced = 0;
     for (const metrics of rows || []) {
+      const post = byReleaseId.get(metrics.platformPostId);
+      if (post && !readToday.has(post.id)) {
+        returned.add(post.id);
+      }
       if (!hasKnownPostMetric(metrics)) {
         continue;
       }
-      const post = byReleaseId.get(metrics.platformPostId);
       if (!post) {
         continue;
       }
@@ -428,7 +617,7 @@ export class PostMetricsService {
       synced += 1;
     }
 
-    return { synced };
+    return { synced, read: returned.size };
   }
 
   private reportsPostMetrics(providerIdentifier: string) {

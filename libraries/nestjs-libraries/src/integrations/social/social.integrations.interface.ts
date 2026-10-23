@@ -1,4 +1,5 @@
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
+import { CreditPricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export interface ClientInformation {
   client_id: string;
@@ -303,12 +304,18 @@ export type FetchPageInformationResult = {
  *   (`/integrations/function`).
  * - `plug-check`: one run of a plug, which reads the post it watches.
  * - `plug-trigger`: a plug firing, or an internal plug acting.
+ * - `post-metrics`: a manual analytics refresh reading `posts` posts the
+ *   network has not been asked for yet this UTC day.
+ * - `account-metrics`: the channel's overview, read once a UTC day by a
+ *   manual refresh.
  */
 export type CreditOperation =
   | { type: 'publish'; message: string; settings: any; index: number }
   | { type: 'function'; name: string }
   | { type: 'plug-check'; plug: string }
-  | { type: 'plug-trigger'; plug: string; fields: Record<string, string> };
+  | { type: 'plug-trigger'; plug: string; fields: Record<string, string> }
+  | { type: 'post-metrics'; posts: number }
+  | { type: 'account-metrics' };
 
 export interface SocialProvider
   extends IAuthenticator, ISocialMediaIntegration {
@@ -320,9 +327,12 @@ export interface SocialProvider
    * What an action costs from the credits balance, in hundredths
    * (`CREDIT_UNIT`), for a network that bills PostQueen per call. Nothing, or
    * 0, is free. The generic code asks and charges; what the price depends on
-   * stays here.
+   * stays here. `creditPricing` is the organization's price list.
    */
-  creditCost?(op: CreditOperation): number | undefined;
+  creditCost?(
+    op: CreditOperation,
+    creditPricing: CreditPricing
+  ): number | undefined;
   refreshCron?: boolean;
   /**
    * Whether the token a channel of this provider holds never expires, so the

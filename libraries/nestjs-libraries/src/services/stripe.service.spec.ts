@@ -14,9 +14,14 @@ import { Logger } from '@nestjs/common';
 import type { StripeService as StripeServiceType } from './stripe.service.ts';
 import type { SubscriptionService as SubscriptionServiceType } from '../database/prisma/subscriptions/subscription.service.ts';
 import {
-  planCredits,
+  planCredits as planCreditsOn,
   pricing,
 } from '../database/prisma/subscriptions/pricing.ts';
+
+// A subscription without a `credit_pricing` stamp was sold before v2: every
+// ledger test below is on that list unless it stamps another.
+const planCredits = (tier: string, period: 'MONTHLY' | 'YEARLY') =>
+  planCreditsOn('legacy', tier, period);
 
 // Every Stripe call below is faked, and the resources no test uses throw. The
 // service builds its client from the environment when it is loaded, so the
@@ -560,6 +565,10 @@ describe('a subscription ending next to another', () => {
       'GROWTH',
       'YEARLY',
       null,
+      undefined,
+      undefined,
+      // unstamped, so sold before v2
+      'legacy',
     ]);
   });
 
@@ -1767,6 +1776,23 @@ describe('yearly credits, a month at a time', () => {
       },
     });
   const latest = () => ledger[ledger.length - 1];
+
+  it('gives a subscription sold on v2, stamped at checkout, the v2 month', async () => {
+    subs = [
+      running(
+        month(0),
+        month(1),
+        'PRO',
+        { ...STAMPED, credit_pricing: 'v2' },
+        {},
+        'month',
+      ),
+    ];
+    await paid('in_v2');
+    assert.equal(ledger.length, 1);
+    assert.equal(ledger[0].amount, planCreditsOn('v2', 'PRO', 'MONTHLY'));
+    assert.equal(ledger[0].amount, 600 * 100);
+  });
 
   it('gives a new subscription its first month with the invoice, then each month the day it starts', async () => {
     subs = [running(month(0), month(12), 'PRO', STAMPED)];

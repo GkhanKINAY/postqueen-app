@@ -217,9 +217,9 @@ describe('X keeps the subscription when a channel connects', () => {
   });
 });
 
-describe('What X bills, from the credits balance', () => {
+describe('What X bills, from the credits balance, on the list sold before v2', () => {
   const publish = (message: string, index = 0, settings: any = post) =>
-    provider.creditCost({ type: 'publish', message, settings, index });
+    provider.creditCost({ type: 'publish', message, settings, index }, 'legacy');
 
   it('prices a post by whether its text carries a link', () => {
     assert.equal(publish('<p>Launch day</p>'), 40);
@@ -247,33 +247,72 @@ describe('What X bills, from the credits balance', () => {
 
   it('charges the two methods the app calls that read a user, and nothing else', () => {
     for (const name of ['mention', 'subscriptionInfo']) {
-      assert.equal(provider.creditCost({ type: 'function', name }), 25);
+      assert.equal(provider.creditCost({ type: 'function', name }, 'legacy'), 25);
     }
     assert.equal(
-      provider.creditCost({ type: 'function', name: 'other' }),
+      provider.creditCost({ type: 'function', name: 'other' }, 'legacy'),
       undefined
     );
   });
 
   it('prices a plug by its look at the post and what it does when it fires', () => {
     assert.equal(
-      provider.creditCost({ type: 'plug-check', plug: 'autoRepostPost' }),
+      provider.creditCost({ type: 'plug-check', plug: 'autoRepostPost' }, 'legacy'),
       13
     );
     for (const plug of ['autoRepostPost', 'repostPostUsers']) {
       assert.equal(
-        provider.creditCost({ type: 'plug-trigger', plug, fields: {} }),
+        provider.creditCost({ type: 'plug-trigger', plug, fields: {} }, 'legacy'),
         40
       );
     }
     const reply = (text: string) =>
-      provider.creditCost({
-        type: 'plug-trigger',
-        plug: 'autoPlugPost',
-        fields: { post: text },
-      });
+      provider.creditCost(
+        {
+          type: 'plug-trigger',
+          plug: 'autoPlugPost',
+          fields: { post: text },
+        },
+        'legacy'
+      );
     assert.equal(reply('<p>Thanks for the likes</p>'), 40);
     assert.equal(reply('<p>Get it at https://example.com</p>'), 500);
+  });
+});
+
+describe('What X bills, from the credits balance, on v2', () => {
+  const cost = (op: any) => provider.creditCost(op, 'v2');
+
+  it('prices a post at 1 credit, 10 with a link, and a repost at 1', () => {
+    assert.equal(
+      cost({ type: 'publish', message: '<p>Launch day</p>', settings: post, index: 0 }),
+      100
+    );
+    assert.equal(
+      cost({
+        type: 'publish',
+        message: '<p>Launch day https://example.com/launch</p>',
+        settings: post,
+        index: 0,
+      }),
+      1000
+    );
+    assert.equal(
+      cost({ type: 'plug-trigger', plug: 'autoRepostPost', fields: {} }),
+      100
+    );
+    assert.equal(cost({ type: 'plug-check', plug: 'autoRepostPost' }), 25);
+    assert.equal(cost({ type: 'function', name: 'mention' }), 50);
+  });
+
+  it('prices a manual analytics refresh by the posts read and the overview, free before v2', () => {
+    assert.equal(cost({ type: 'post-metrics', posts: 12 }), 300);
+    assert.equal(cost({ type: 'account-metrics' }), 50);
+    assert.equal(
+      provider.creditCost({ type: 'post-metrics', posts: 12 }, 'legacy'),
+      0
+    );
+    assert.equal(provider.creditCost({ type: 'account-metrics' }, 'legacy'), 0);
   });
 });
 

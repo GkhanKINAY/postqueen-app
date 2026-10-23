@@ -511,6 +511,12 @@ model Subscription {
   period           Period
   totalChannels    Int
   isLifetime       Boolean          @default(false)
+  /// Which credit price list the subscription follows (`CREDIT_PRICINGS` in
+  /// pricing.ts), set when the row is created: 'legacy' for every
+  /// subscription that existed before 2026-10-23, today's list for new ones.
+  /// Only Stripe's checkout stamp changes it later. The default is 'legacy'
+  /// so a row written any other way never charges more than it did.
+  creditPricing    String           @default("legacy")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?

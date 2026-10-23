@@ -12,6 +12,8 @@ import {
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
   CreditPackId,
+  CURRENT_CREDIT_PRICING,
+  creditPricingOf,
   LIFETIME_GRANT_TIER,
   LIFETIME_PRICE,
   LIFETIME_RETENTION_PRICE,
@@ -71,6 +73,16 @@ export const SUBSCRIPTION_SERVICE_TAG = 'postqueen';
  * before goes on getting a year's credits at once, whatever it changes to.
  */
 const MONTHLY_CREDITS = 'monthly';
+
+/*
+ * `credit_pricing`, stamped at checkout with the price list the subscription
+ * is sold on (`CURRENT_CREDIT_PRICING`, see `CreditPricing`). The row keeps
+ * it as `Subscription.creditPricing`; the stamp is what a row deleted and
+ * written again (a first charge that failed, then a retry that paid) is
+ * recreated from. Only a checkout writes it, and a plan change keeps it like
+ * `credits_schedule`. A subscription without it was sold before and is
+ * `legacy`, checkouts already open when v2 shipped included.
+ */
 
 /**
  * Written on a trialing subscription cancelled before anything was charged,
@@ -667,6 +679,18 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * The price list a subscription was sold on, from its checkout stamp (see
+   * `credit_pricing` above): read from Stripe rather than the row, because an
+   * invoice can arrive before the row is written, and a row is recreated from
+   * it.
+   */
+  private creditPricingOfSubscription(subscription: Stripe.Subscription) {
+    return creditPricingOf({
+      creditPricing: subscription.metadata?.credit_pricing,
+    });
+  }
+
+  /**
    * Adds the credits a subscription's current period carries, or its trial's
    * (see `grantPlanPeriod`), once:
    *
@@ -693,6 +717,7 @@ export class StripeService extends PaymentProviderAbstract {
         return false;
       }
       return this._subscriptionService.grantPlanPeriod(organizationId, {
+        creditPricing: this.creditPricingOfSubscription(subscription),
         tier: billing,
         period,
         start: new Date(
@@ -710,6 +735,7 @@ export class StripeService extends PaymentProviderAbstract {
     }
     const month = this.creditMonth(subscription);
     return this._subscriptionService.grantPlanPeriod(organizationId, {
+      creditPricing: this.creditPricingOfSubscription(subscription),
       tier: billing,
       period,
       start: new Date(item.current_period_start * 1000),
@@ -1304,7 +1330,10 @@ export class StripeService extends PaymentProviderAbstract {
       pricing[billing].channel!,
       billing,
       period,
-      event.data.object.cancel_at
+      event.data.object.cancel_at,
+      undefined,
+      undefined,
+      this.creditPricingOfSubscription(event.data.object)
     );
     await this.grantTrialCredits(event.data.object, saved);
     return saved;
@@ -1443,7 +1472,10 @@ export class StripeService extends PaymentProviderAbstract {
       pricing[billing].channel!,
       billing,
       period,
-      event.data.object.cancel_at
+      event.data.object.cancel_at,
+      undefined,
+      undefined,
+      this.creditPricingOfSubscription(event.data.object)
     );
     await this.grantTrialCredits(event.data.object, saved);
     return saved;
@@ -1514,7 +1546,10 @@ export class StripeService extends PaymentProviderAbstract {
       pricing[billing].channel!,
       billing,
       period,
-      survivor.cancel_at
+      survivor.cancel_at,
+      undefined,
+      undefined,
+      this.creditPricingOfSubscription(survivor)
     );
   }
 
@@ -2184,6 +2219,7 @@ export class StripeService extends PaymentProviderAbstract {
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
           credits_schedule: MONTHLY_CREDITS,
+          credit_pricing: CURRENT_CREDIT_PRICING,
         },
       },
       ...(body.datafast_session_id && body.datafast_visitor_id
@@ -2269,6 +2305,7 @@ export class StripeService extends PaymentProviderAbstract {
           // not the one it holds (see adoptSubscriptionCustomer).
           organizationId,
           credits_schedule: MONTHLY_CREDITS,
+          credit_pricing: CURRENT_CREDIT_PRICING,
         },
       },
       allow_promotion_codes: true,
@@ -2897,9 +2934,10 @@ export class StripeService extends PaymentProviderAbstract {
       service: SUBSCRIPTION_SERVICE_TAG,
       // An app loaded before the withdrawal box was removed still sends it,
       // and the body is not stripped of unknown fields. Nor is a body allowed
-      // to write the credits schedule, or blank it to remove it: a plan
-      // change keeps the one the subscription has (see `MONTHLY_CREDITS`).
-      ...omit(body, 'withdrawalWaiver', 'credits_schedule'),
+      // to write the credits schedule or the price list, or blank them to
+      // remove them: a plan change keeps the ones the subscription has (see
+      // `MONTHLY_CREDITS` and `credit_pricing`).
+      ...omit(body, 'withdrawalWaiver', 'credits_schedule', 'credit_pricing'),
       userId,
       id,
       // Both webhook handlers read `metadata.uniqueId`. This wrote `id` and
@@ -2974,6 +3012,9 @@ export class StripeService extends PaymentProviderAbstract {
                 ...metadata,
                 ...(current.metadata?.credits_schedule
                   ? { credits_schedule: current.metadata.credits_schedule }
+                  : {}),
+                ...(current.metadata?.credit_pricing
+                  ? { credit_pricing: current.metadata.credit_pricing }
                   : {}),
               },
             },

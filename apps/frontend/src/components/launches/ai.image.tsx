@@ -9,7 +9,10 @@ import {
   imageCreditCost,
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import { useCreditsBalance } from '@gitroom/frontend/components/billing/use.credits.balance';
+import {
+  useCreditPricing,
+  useCreditsBalance,
+} from '@gitroom/frontend/components/billing/use.credits.balance';
 import {
   CreditsAmount,
   CreditsLeft,
@@ -89,8 +92,12 @@ const AiImageModal: FC<{
   const [quality, setQuality] = useState<ImageQuality>('medium');
   const { billingEnabled } = useVariables();
   const { data: credits } = useCreditsBalance();
-  // What this image costs with the quality and shape chosen, in credits.
-  const cost = toCredits(imageCreditCost(quality, orientation));
+  // What this image costs with the quality and shape chosen, in credits, on
+  // the organization's price list; no price is shown until that is known.
+  const creditPricing = useCreditPricing();
+  const cost = creditPricing
+    ? toCredits(imageCreditCost(creditPricing, quality, orientation))
+    : 0;
   const short =
     billingEnabled &&
     !!credits &&
@@ -236,9 +243,9 @@ const AiImageModal: FC<{
               )}
             >
               {qualityLabel[p]}
-              {billingEnabled && (
+              {billingEnabled && creditPricing && (
                 <CreditsAmount
-                  amount={toCredits(imageCreditCost(p, orientation))}
+                  amount={toCredits(imageCreditCost(creditPricing, p, orientation))}
                   size={11}
                   className={clsx(
                     'text-[11px] font-[500]',
@@ -259,7 +266,7 @@ const AiImageModal: FC<{
           <span className="flex items-center gap-[8px]">
             <GenerateSparkle size={16} />
             {t('generate', 'Generate')}
-            {billingEnabled && (
+            {billingEnabled && creditPricing && (
               <CreditsAmount
                 amount={cost}
                 className="ms-[2px] text-[13px] font-[600] opacity-80"

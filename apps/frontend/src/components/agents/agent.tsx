@@ -37,6 +37,8 @@ import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useClickOutside } from '@mantine/hooks';
 import { CopilotCreditsChip } from '@gitroom/frontend/components/agents/agent.credits';
+import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
+import { monthlyCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 const needsAttention = (integration: {
   refreshNeeded?: boolean;
@@ -750,6 +752,11 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
   } = useThreadSync(routeId, properties, setProperties);
   const t = useT();
   const user = useUser();
+  // The plan's credits on the organization's list, once that is known.
+  const creditPricing = useCreditPricing();
+  const planMonthlyCredits = creditPricing
+    ? monthlyCredits(creditPricing, user?.tier?.current)
+    : 0;
   const { mobile } = useViewport();
   const rowRef = useRef<HTMLDivElement>(null);
   const [chatsOpen, setChatsOpen] = useState(false);
@@ -852,10 +859,10 @@ export const Agent: FC<{ children: ReactNode }> = ({ children }) => {
                   'ai_lock_perk_chat',
                   'Copilot chat that drafts and schedules for you'
                 ),
-                ...(user?.tier?.monthly_credits
+                ...(planMonthlyCredits
                   ? [
                       t('plan_n_credits_month', '{{count}} credits a month', {
-                        count: user.tier.monthly_credits,
+                        count: planMonthlyCredits,
                       }),
                     ]
                   : []),

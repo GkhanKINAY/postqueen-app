@@ -3,13 +3,22 @@ import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credit
 import { getAuth } from '@gitroom/nestjs-libraries/chat/async.storage';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
-import { llmCreditCost } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
+  CreditPricing,
+  llmCreditCost,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 type RequestContextReader = { get: (key: never) => unknown };
 
 /** The parts of a finished model call the charge reads. */
 type ModelStep = {
-  usage?: { inputTokens?: number; outputTokens?: number };
+  // `inputTokens` is the whole prompt; `cachedInputTokens` the part of it the
+  // provider served from its cache.
+  usage?: {
+    inputTokens?: number;
+    cachedInputTokens?: number;
+    outputTokens?: number;
+  };
   response?: { id?: string; modelId?: string };
   model?: { modelId?: string };
 };
@@ -107,6 +116,11 @@ export class CopilotCreditsService {
       }
     }
 
+    // Read once for the run, so every step's check prices on the same list.
+    const creditPricing: CreditPricing | undefined = organizationId
+      ? await this._creditsService.creditPricing(organizationId)
+      : undefined;
+
     return {
       // Without a cap Mastra's loop runs until the model stops calling
       // tools, which a model retrying a failing draft never does. A normal
@@ -118,7 +132,7 @@ export class CopilotCreditsService {
       // call past it at most. Mastra asks before the step that just finished
       // is charged, so its cost is counted here.
       stopWhen: async ({ steps }: { steps: ModelStep[] }) => {
-        if (!organizationId) {
+        if (!organizationId || !creditPricing) {
           return false;
         }
         const last = steps[steps.length - 1];
@@ -127,9 +141,11 @@ export class CopilotCreditsService {
             organizationId,
             true,
             llmCreditCost(
+              creditPricing,
               last?.model?.modelId || last?.response?.modelId,
               last?.usage?.inputTokens || 0,
-              last?.usage?.outputTokens || 0
+              last?.usage?.outputTokens || 0,
+              last?.usage?.cachedInputTokens || 0
             )
           );
           return false;
@@ -149,6 +165,7 @@ export class CopilotCreditsService {
             key: `llm:${key}`,
             model: step.model?.modelId || step.response?.modelId,
             inputTokens: step.usage?.inputTokens || 0,
+            cachedInputTokens: step.usage?.cachedInputTokens || 0,
             outputTokens: step.usage?.outputTokens || 0,
             action: ui ? 'copilot' : 'copilot_mcp',
           });

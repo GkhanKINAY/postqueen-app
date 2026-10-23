@@ -32,11 +32,6 @@ export interface PricingInnerInterface {
    * CLIPPING_MINUTES_PROPOSAL.
    */
   clipping_minutes: number;
-  /**
-   * Credits the plan adds each month, in whole credits. A yearly plan gets
-   * twelve months of them at once, a trial gets one month. See `planCredits`.
-   */
-  monthly_credits: number;
   public_api: boolean;
   webhooks: number;
   autoPost: boolean;
@@ -80,7 +75,6 @@ export const pricing: PricingInterface = {
     autoPost: false,
     generate_videos: 0,
     clipping_minutes: 0,
-    monthly_credits: 0,
   },
   // Current sellable tiers (CREATOR / GROWTH / PRO / ULTIMATE).
   // Retired STANDARD / TEAM / LEGACY_ULTIMATE rows below keep old prices so any
@@ -112,7 +106,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 3,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
-    monthly_credits: 150,
   },
   GROWTH: {
     current: 'GROWTH',
@@ -133,7 +126,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 10,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
-    monthly_credits: 300,
   },
   PRO: {
     current: 'PRO',
@@ -159,7 +151,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 30,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.PRO,
-    monthly_credits: 500,
   },
   ULTIMATE: {
     current: 'ULTIMATE',
@@ -185,7 +176,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 60,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
-    monthly_credits: 1000,
   },
 
   // --- retired: kept so existing subscriptions still resolve ---------------
@@ -210,7 +200,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 3,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.CREATOR,
-    monthly_credits: 150,
   },
   TEAM: {
     current: 'TEAM',
@@ -232,7 +221,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 10,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.GROWTH,
-    monthly_credits: 300,
   },
   // The tier upstream sold as ULTIMATE before the fork. Renamed so the top
   // plan could take the name (migration 20260924120000).
@@ -256,7 +244,6 @@ export const pricing: PricingInterface = {
     autoPost: true,
     generate_videos: 60,
     clipping_minutes: CLIPPING_MINUTES_PROPOSAL.ULTIMATE,
-    monthly_credits: 1000,
   },
 };
 
@@ -528,16 +515,87 @@ export const CREDIT_GIFT_MONTHLY = 5;
 export const CREDIT_PLAN_GRACE_DAYS = 3;
 
 /**
+ * Which price list an organization's credits follow. Every amount below has
+ * one value per list:
+ * - `legacy`: what was sold before 2026-10-23. A subscription that existed
+ *   then keeps its credits and its per-action prices (owner, 2026-10-23: no
+ *   change for existing customers until they are told).
+ * - `v2`: new subscriptions from then on, and anyone without a plan looking
+ *   at what one would give.
+ *
+ * The list is stored on the subscription (`Subscription.creditPricing`) and
+ * fixed when it is created; see `creditPricingOf`.
+ */
+export const CREDIT_PRICINGS = ['legacy', 'v2'] as const;
+export type CreditPricing = (typeof CREDIT_PRICINGS)[number];
+
+/** The list a subscription created today gets. */
+export const CURRENT_CREDIT_PRICING: CreditPricing = 'v2';
+
+/**
+ * An organization's list, from its subscription row. No row (no plan) is
+ * today's list; a row with a value this code does not know reads as legacy,
+ * the one that never charges more.
+ */
+export const creditPricingOf = (
+  subscription?: { creditPricing?: string | null } | null
+): CreditPricing =>
+  !subscription
+    ? CURRENT_CREDIT_PRICING
+    : (CREDIT_PRICINGS as readonly string[]).includes(
+        subscription.creditPricing || ''
+      )
+    ? (subscription.creditPricing as CreditPricing)
+    : 'legacy';
+
+/**
+ * Credits each plan adds a month, in whole credits. A yearly plan gets twelve
+ * months of them (a month at a time when stamped `credits_schedule`), a trial
+ * one month. Retired tiers take the numbers of the tier that replaced them.
+ * v2 keeps Creator small and makes Pro the step up (owner, 2026-10-23).
+ */
+export const PLAN_MONTHLY_CREDITS: Record<
+  CreditPricing,
+  Record<string, number>
+> = {
+  legacy: {
+    CREATOR: 150,
+    GROWTH: 300,
+    PRO: 500,
+    ULTIMATE: 1000,
+    STANDARD: 150,
+    TEAM: 300,
+    LEGACY_ULTIMATE: 1000,
+  },
+  v2: {
+    CREATOR: 60,
+    GROWTH: 200,
+    PRO: 600,
+    ULTIMATE: 1200,
+    STANDARD: 60,
+    TEAM: 200,
+    LEGACY_ULTIMATE: 1200,
+  },
+};
+
+/** A plan's monthly credits, in whole credits; 0 for no plan or FREE. */
+export const monthlyCredits = (
+  creditPricing: CreditPricing,
+  tier: string | undefined | null
+) => PLAN_MONTHLY_CREDITS[creditPricing][normalizeTier(tier) || ''] || 0;
+
+/**
  * What a plan period adds to the balance, in hundredths: the monthly amount,
  * or twelve of them for a yearly period. A trial is one month whatever the
  * period, so a yearly trial is not a year of free credits.
  */
 export const planCredits = (
+  creditPricing: CreditPricing,
   tier: string | undefined | null,
   period: 'MONTHLY' | 'YEARLY',
   trial = false
 ) =>
-  (pricing[normalizeTier(tier) || '']?.monthly_credits || 0) *
+  monthlyCredits(creditPricing, tier) *
   (period === 'YEARLY' && !trial ? 12 : 1) *
   CREDIT_UNIT;
 
@@ -548,70 +606,177 @@ export type ImageQuality = (typeof IMAGE_QUALITIES)[number];
  * What one AI image costs, in hundredths, by quality and shape. The prompt
  * rewrite that comes first is included.
  *
- * Set by the usual rule (the provider's price times 25) for
- * chatgpt-image-latest, where a portrait or landscape image cost more than a
- * square one. gpt-image-2.5-flare, which replaced it, costs far less: $0.006 /
- * $0.014 / $0.053 a square image and $0.005 / $0.011 / $0.042 a portrait or
- * landscape one at low / medium / high, measured 2026-10-22. The owner kept
- * these prices rather than lowering them (2026-10-22), so they stand above
- * the rule and keep the shape ordering the docs describe.
+ * gpt-image-2.5-flare costs $0.006 / $0.014 / $0.053 a square image and
+ * $0.005 / $0.011 / $0.042 a portrait or landscape one at low / medium /
+ * high (measured 2026-10-22).
+ * - `legacy` is what chatgpt-image-latest was priced at, the provider's price
+ *   times 25, where a wide image cost more than a square one.
+ * - `v2` is one price a quality, whatever the shape, at four times or more
+ *   what an image costs us.
  */
 export const IMAGE_CREDIT_COSTS: Record<
-  ImageQuality,
-  { square: number; wide: number }
+  CreditPricing,
+  Record<ImageQuality, { square: number; wide: number }>
 > = {
-  low: { square: 30, wide: 40 },
-  medium: { square: 100, wide: 130 },
-  high: { square: 350, wide: 500 },
+  legacy: {
+    low: { square: 30, wide: 40 },
+    medium: { square: 100, wide: 130 },
+    high: { square: 350, wide: 500 },
+  },
+  v2: {
+    low: { square: 100, wide: 100 },
+    medium: { square: 200, wide: 200 },
+    high: { square: 400, wide: 400 },
+  },
 };
 
 export const imageCreditCost = (
+  creditPricing: CreditPricing,
   quality: ImageQuality = 'medium',
   orientation: 'square' | 'portrait' | 'landscape' = 'square'
 ) =>
-  IMAGE_CREDIT_COSTS[quality][orientation === 'square' ? 'square' : 'wide'];
+  IMAGE_CREDIT_COSTS[creditPricing][quality][
+    orientation === 'square' ? 'square' : 'wide'
+  ];
+
+export const SEEDANCE_MODELS = ['mini', 'fast', 'standard'] as const;
+export const SEEDANCE_RESOLUTIONS = ['480p', '720p', '1080p'] as const;
+export type SeedanceModel = (typeof SEEDANCE_MODELS)[number];
+export type SeedanceResolution = (typeof SEEDANCE_RESOLUTIONS)[number];
 
 /**
- * What a model's tokens cost, in credits per thousand, by the rule every AI
- * price here follows: the provider's price times 25. gpt-5.2 is $1.75 in and
- * $14 out a million tokens, gpt-4.1 $2 and $8. Input includes the cached part
- * of the prompt at the full rate, though OpenAI bills it at a tenth, so a
- * long thread pays more than 25 times its cost. Output includes reasoning.
+ * What a second of Seedance video costs, in hundredths, by model and
+ * resolution, and what a request that names nothing gets. A resolution a
+ * model does not offer is missing, and refused. Audio is free.
+ *
+ * EvoLink bills per second; measured 2026-10-22 on its discounted prices,
+ * mini 720p $0.040 and fast 720p $0.121. Its list prices, which apply when the
+ * discounts end, are mini $0.0475 / $0.10, fast $0.075 / $0.161, standard
+ * $0.093 / $0.199 / $0.497 a second at 480p / 720p / 1080p.
+ * - `legacy`: those prices times 25, read on 2026-09-26; fast 720p for 8
+ *   seconds, what every video was before these could be chosen.
+ * - `v2`: four times or more the list prices, mini the cheapest at every
+ *   resolution, and mini 720p for 5 seconds by default.
+ */
+export const SEEDANCE_CREDIT_COSTS: Record<
+  CreditPricing,
+  {
+    perSecond: Record<SeedanceModel, Partial<Record<SeedanceResolution, number>>>;
+    defaults: {
+      model: SeedanceModel;
+      resolution: SeedanceResolution;
+      duration: number;
+    };
+  }
+> = {
+  legacy: {
+    perSecond: {
+      mini: { '480p': 50, '720p': 100 },
+      fast: { '480p': 185, '720p': 400 },
+      standard: { '480p': 235, '720p': 500, '1080p': 1250 },
+    },
+    defaults: { model: 'fast', resolution: '720p', duration: 8 },
+  },
+  v2: {
+    perSecond: {
+      mini: { '480p': 200, '720p': 400 },
+      fast: { '480p': 300, '720p': 700 },
+      standard: { '480p': 400, '720p': 800, '1080p': 2000 },
+    },
+    defaults: { model: 'mini', resolution: '720p', duration: 5 },
+  },
+};
+
+/**
+ * What a Seedance video costs, in hundredths. An unknown choice prices at
+ * nothing rather than failing: the request itself is refused.
+ */
+export const seedanceCreditCost = (
+  creditPricing: CreditPricing,
+  settings: {
+    model: SeedanceModel;
+    resolution: SeedanceResolution;
+    duration: number;
+  }
+) =>
+  Math.ceil(
+    (SEEDANCE_CREDIT_COSTS[creditPricing].perSecond[settings.model]?.[
+      settings.resolution
+    ] || 0) * settings.duration
+  );
+
+/**
+ * One Image Text Slides video, in hundredths, whatever its length: three to
+ * five slides, each a fal image and an ElevenLabs narration, and what they
+ * cost together stays under this.
+ */
+export const IMAGE_SLIDES_CREDIT_COST: Record<CreditPricing, number> = {
+  legacy: 1400,
+  v2: 2000,
+};
+
+/**
+ * What a model's tokens cost, in credits per thousand: the provider's price
+ * times 25 in `legacy`, times 50 in `v2`. gpt-5.2 is $1.75 in, $0.175 cached
+ * and $14 out a million tokens, gpt-4.1 $2, $0.50 and $8. `legacy` charges
+ * the cached part of the prompt at the full input rate, as it always did;
+ * `v2` charges it at the cached rate OpenAI bills. Output includes reasoning.
  */
 export const LLM_CREDIT_RATES: Record<
-  string,
-  { input: number; output: number }
+  CreditPricing,
+  Record<string, { input: number; cachedInput: number; output: number }>
 > = {
-  'gpt-5.2': { input: 0.044, output: 0.35 },
-  'gpt-4.1': { input: 0.05, output: 0.2 },
+  legacy: {
+    'gpt-5.2': { input: 0.044, cachedInput: 0.044, output: 0.35 },
+    'gpt-4.1': { input: 0.05, cachedInput: 0.05, output: 0.2 },
+  },
+  v2: {
+    'gpt-5.2': { input: 0.0875, cachedInput: 0.00875, output: 0.7 },
+    'gpt-4.1': { input: 0.1, cachedInput: 0.025, output: 0.4 },
+  },
 };
 
 // A model not in the table pays the highest of each rate, so a model swapped
 // in without a price is never cheaper than the ones that have one.
-const HIGHEST_LLM_RATE = {
-  input: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.input)),
-  output: Math.max(...Object.values(LLM_CREDIT_RATES).map((r) => r.output)),
+const highestLlmRate = (creditPricing: CreditPricing) => {
+  const rates = Object.values(LLM_CREDIT_RATES[creditPricing]);
+  return {
+    input: Math.max(...rates.map((r) => r.input)),
+    cachedInput: Math.max(...rates.map((r) => r.cachedInput)),
+    output: Math.max(...rates.map((r) => r.output)),
+  };
 };
 
 /** The model answers with a snapshot of it: gpt-4.1-2025-04-14 is gpt-4.1. */
-export const llmCreditRate = (model?: string | null) =>
-  LLM_CREDIT_RATES[(model || '').replace(/-\d{4}-\d{2}-\d{2}$/, '')] ||
-  HIGHEST_LLM_RATE;
+export const llmCreditRate = (
+  creditPricing: CreditPricing,
+  model?: string | null
+) =>
+  LLM_CREDIT_RATES[creditPricing][
+    (model || '').replace(/-\d{4}-\d{2}-\d{2}$/, '')
+  ] || highestLlmRate(creditPricing);
 
 /**
- * What one model call costs, in hundredths, rounded up. Worked in hundredths
- * a million tokens so the sum is whole numbers and never drifts.
+ * What one model call costs, in hundredths, rounded up. `inputTokens` is the
+ * whole prompt, the cached part included, as OpenAI and the AI SDK report
+ * it. Worked in hundredths a million tokens so the sum is whole numbers and
+ * never drifts.
  */
 export const llmCreditCost = (
+  creditPricing: CreditPricing,
   model: string | null | undefined,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  cachedInputTokens = 0
 ) => {
-  const rate = llmCreditRate(model);
+  const rate = llmCreditRate(creditPricing, model);
   const perMillion = (credits: number) =>
     Math.round(credits * CREDIT_UNIT * 1000);
+  const input = Math.max(0, inputTokens || 0);
+  const cached = Math.min(input, Math.max(0, cachedInputTokens || 0));
   return Math.ceil(
-    (Math.max(0, inputTokens || 0) * perMillion(rate.input) +
+    ((input - cached) * perMillion(rate.input) +
+      cached * perMillion(rate.cachedInput) +
       Math.max(0, outputTokens || 0) * perMillion(rate.output)) /
       1_000_000
   );
@@ -635,9 +800,9 @@ export const LLM_TURN_MINIMUM = 1;
 export const LLM_CONTINUATION_FLOOR = -500;
 
 /**
- * PROPOSAL, NOT DECIDED: the owner confirms these. What the older AI features
- * take per call, in hundredths, estimated by the same rule (provider cost
- * times 25) because they cannot report their tokens:
+ * What the older AI features take per call, in hundredths, because they
+ * cannot report their tokens. Estimated from the provider's cost, times 25 in
+ * `legacy` and about 50 in `v2`:
  * - `generator`: POST /posts/generator, about five gpt-4.1 calls over a web
  *   search's results plus the Tavily search itself, about $0.05.
  * - `generatorPicture`: each picture it makes, priced as a medium square AI
@@ -650,12 +815,30 @@ export const LLM_CONTINUATION_FLOOR = -500;
  *   a few more when a part has to be shortened, about $0.01 for a usual
  *   post and several times that at the limit.
  */
-export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
-  generator: 125,
-  generatorPicture: imageCreditCost('medium', 'square'),
-  autopostText: 25,
-  autopostPicture: imageCreditCost('medium', 'square') + 10,
-  separatePosts: 25,
+export const AI_FIXED_CREDIT_COSTS_PROPOSAL: Record<
+  CreditPricing,
+  {
+    generator: number;
+    generatorPicture: number;
+    autopostText: number;
+    autopostPicture: number;
+    separatePosts: number;
+  }
+> = {
+  legacy: {
+    generator: 125,
+    generatorPicture: imageCreditCost('legacy', 'medium', 'square'),
+    autopostText: 25,
+    autopostPicture: imageCreditCost('legacy', 'medium', 'square') + 10,
+    separatePosts: 25,
+  },
+  v2: {
+    generator: 250,
+    generatorPicture: imageCreditCost('v2', 'medium', 'square'),
+    autopostText: 50,
+    autopostPicture: imageCreditCost('v2', 'medium', 'square') + 10,
+    separatePosts: 50,
+  },
 };
 
 /**
@@ -667,34 +850,88 @@ export const AI_FIXED_CREDIT_COSTS_PROPOSAL = {
 export const PUBLISH_CREDITS_SINCE = new Date('2026-09-28T00:00:00Z');
 
 /**
- * What X bills PostQueen for each call, in hundredths, by the same rule:
- * X's price times 25, rounded up. X bills a read of the same post or user
- * once per UTC day, and a post whose text carries a link at over ten times
- * the price of one without.
+ * What PostQueen charges for each X call, in hundredths. X bills a read of the
+ * same post or user once per UTC day, and a post whose text carries a link at
+ * over ten times the price of one without. X's prices:
  * - `post`: a post, or one item of a thread, $0.015.
  * - `postWithLink`: a post whose text carries a link, $0.20.
  * - `postRead`: reading one post (a plug checking its likes), $0.005.
  * - `userRead`: reading one user (a mention search, the account's
  *   subscription), $0.010.
  * - `interaction`: a repost, $0.015.
+ * - `metricsPostRead`, `metricsAccount`: a manual analytics Refresh, per post
+ *   X bills that day ($0.005) and once a day for the account's overview.
+ *
+ * `legacy` is X's price times 25, rounded up, with analytics free; `v2` is
+ * about four times X's price or more.
  */
-export const X_CREDIT_COSTS = {
-  post: 40,
-  postWithLink: 500,
-  postRead: 13,
-  userRead: 25,
-  interaction: 40,
+export const X_CREDIT_COSTS: Record<
+  CreditPricing,
+  {
+    post: number;
+    postWithLink: number;
+    postRead: number;
+    userRead: number;
+    interaction: number;
+    metricsPostRead: number;
+    metricsAccount: number;
+  }
+> = {
+  legacy: {
+    post: 40,
+    postWithLink: 500,
+    postRead: 13,
+    userRead: 25,
+    interaction: 40,
+    metricsPostRead: 0,
+    metricsAccount: 0,
+  },
+  v2: {
+    post: 100,
+    postWithLink: 1000,
+    postRead: 25,
+    userRead: 50,
+    interaction: 100,
+    metricsPostRead: 25,
+    metricsAccount: 50,
+  },
+};
+
+/**
+ * Roughly what an amount of credits buys, for the plan cards and the packs:
+ * medium images, default videos, or plain X posts, each on its own. Whole
+ * credits in, whole counts out, rounded down.
+ */
+export const creditEstimates = (
+  creditPricing: CreditPricing,
+  credits: number
+) => {
+  const units = Math.max(0, credits) * CREDIT_UNIT;
+  return {
+    images: Math.floor(units / imageCreditCost(creditPricing, 'medium')),
+    videos: Math.floor(
+      units /
+        seedanceCreditCost(
+          creditPricing,
+          SEEDANCE_CREDIT_COSTS[creditPricing].defaults
+        )
+    ),
+    xPosts: Math.floor(units / X_CREDIT_COSTS[creditPricing].post),
+  };
 };
 
 /**
  * Credits sold on their own, on top of a plan, in whole credits and whole
- * dollars. The larger packs cost less a credit. Bought credits outlive the
- * plan's: they stay spendable for `CREDIT_PACK_MONTHS`.
+ * dollars, the same for every price list. Each costs more a credit than the
+ * plans that include the most credits, so a plan that keeps running short is
+ * cheaper to upgrade than to top up (owner, 2026-10-23); the larger packs
+ * cost less a credit. Bought credits outlive the plan's: they stay spendable
+ * for `CREDIT_PACK_MONTHS`.
  */
 export const CREDIT_PACKS = [
-  { id: 'credits_100', credits: 100, price: 10 },
-  { id: 'credits_500', credits: 500, price: 45 },
-  { id: 'credits_1000', credits: 1000, price: 80 },
+  { id: 'credits_100', credits: 100, price: 15 },
+  { id: 'credits_500', credits: 500, price: 60 },
+  { id: 'credits_1000', credits: 1000, price: 100 },
 ] as const;
 
 export type CreditPackId = (typeof CREDIT_PACKS)[number]['id'];

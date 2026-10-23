@@ -4,6 +4,10 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useCallback } from 'react';
 import useSWR from 'swr';
+import {
+  CreditPricing,
+  CURRENT_CREDIT_PRICING,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 export interface CreditsBalance {
   /** Billing is off: nothing is metered. */
@@ -12,6 +16,8 @@ export interface CreditsBalance {
   balance: number | null;
   /** The credits that run out soonest, and when. */
   expiring: { amount: number; at: string } | null;
+  /** The price list the organization's credits follow. */
+  creditPricing: CreditPricing;
 }
 
 /**
@@ -36,6 +42,22 @@ export const useCreditsBalance = () => {
   // Read again when the tab comes back into focus: credits bought in the
   // Billing tab show up here without a reload.
   return useSWR(billingEnabled ? 'credits-balance' : null, load);
+};
+
+/**
+ * The price list the organization's credits follow, for a screen that prices
+ * what it shows. Undefined until the balance has been read; today's list with
+ * billing off, where nothing is charged, and when the balance could not be
+ * read, so a screen waiting on it is never held for good (the server charges
+ * on the right list either way).
+ */
+export const useCreditPricing = (): CreditPricing | undefined => {
+  const { billingEnabled } = useVariables();
+  const { data, error } = useCreditsBalance();
+  if (!billingEnabled) {
+    return CURRENT_CREDIT_PRICING;
+  }
+  return data?.creditPricing ?? (error ? CURRENT_CREDIT_PRICING : undefined);
 };
 
 /** A balance as people read it: whole when it is whole, else one decimal. */

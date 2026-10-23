@@ -37,7 +37,10 @@ export type ImageOrientation = 'square' | 'portrait' | 'landscape';
 export interface OpenAiUsage {
   id: string;
   model?: string;
+  /** The whole prompt, the cached part included. */
   inputTokens: number;
+  /** The part of the prompt OpenAI served from its cache. */
+  cachedInputTokens: number;
   outputTokens: number;
 }
 
@@ -58,7 +61,17 @@ export const openAiUsage = (payload: any): OpenAiUsage | null => {
   if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
     return null;
   }
-  return { id: body.id, model: body.model, inputTokens, outputTokens };
+  // The Responses API and chat completions name the cached part differently.
+  const cached =
+    usage.input_tokens_details?.cached_tokens ??
+    usage.prompt_tokens_details?.cached_tokens;
+  return {
+    id: body.id,
+    model: body.model,
+    inputTokens,
+    cachedInputTokens: typeof cached === 'number' ? cached : 0,
+    outputTokens,
+  };
 };
 
 // A streamed chat completion only reports its usage when asked to, as one
@@ -182,6 +195,7 @@ export class OpenaiService {
             key: `llm:${usage.id}`,
             model: usage.model,
             inputTokens: usage.inputTokens,
+            cachedInputTokens: usage.cachedInputTokens,
             outputTokens: usage.outputTokens,
             action,
           })

@@ -5,7 +5,21 @@ import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SubscriptionService } from './subscription.service.ts';
 import { PaymentService } from '../../../services/payment/payment.service.ts';
-import { CREDIT_UNIT, planCredits, pricing } from './pricing.ts';
+import {
+  CREDIT_UNIT,
+  monthlyCredits,
+  PLAN_MONTHLY_CREDITS,
+  planCredits as planCreditsOn,
+  pricing,
+} from './pricing.ts';
+
+// Every grant below is on the list subscriptions sold before v2 keep, unless
+// a test says otherwise.
+const planCredits = (
+  tier: string | undefined,
+  period: 'MONTHLY' | 'YEARLY',
+  trial?: boolean
+) => planCreditsOn('legacy', tier, period, trial);
 
 // The backend and the orchestrator pin it (see their main.ts); months are
 // counted in it.
@@ -101,8 +115,20 @@ const period = (
   from: number,
   to: number,
   ref: string,
-  extra: { trial?: boolean; prorate?: boolean } = {}
-) => ({ tier, period: kind, start: days(from), end: days(to), ref, ...extra });
+  extra: {
+    trial?: boolean;
+    prorate?: boolean;
+    creditPricing?: 'legacy' | 'v2';
+  } = {}
+) => ({
+  creditPricing: 'legacy' as const,
+  tier,
+  period: kind,
+  start: days(from),
+  end: days(to),
+  ref,
+  ...extra,
+});
 const hundredths = (monthly: number) => monthly * CREDIT_UNIT;
 
 const KEYS = ['STRIPE_PUBLISHABLE_KEY', 'STRIPE_SECRET_KEY'];
@@ -125,22 +151,46 @@ afterEach(() => {
 
 describe('planCredits', () => {
   it('is the monthly amount, twelve for a year, one month for any trial', () => {
-    assert.equal(planCredits('PRO', 'MONTHLY'), hundredths(pricing.PRO.monthly_credits));
-    assert.equal(planCredits('PRO', 'YEARLY'), 12 * hundredths(pricing.PRO.monthly_credits));
-    assert.equal(planCredits('PRO', 'YEARLY', true), hundredths(pricing.PRO.monthly_credits));
-    assert.equal(planCredits('AGENCY', 'MONTHLY'), planCredits('ULTIMATE', 'MONTHLY'));
-    assert.equal(planCredits('FREE', 'MONTHLY'), 0);
-    assert.equal(planCredits(undefined, 'MONTHLY'), 0);
+    for (const cp of ['legacy', 'v2'] as const) {
+      const pro = hundredths(monthlyCredits(cp, 'PRO'));
+      assert.equal(planCreditsOn(cp, 'PRO', 'MONTHLY'), pro);
+      assert.equal(planCreditsOn(cp, 'PRO', 'YEARLY'), 12 * pro);
+      assert.equal(planCreditsOn(cp, 'PRO', 'YEARLY', true), pro);
+      assert.equal(
+        planCreditsOn(cp, 'AGENCY', 'MONTHLY'),
+        planCreditsOn(cp, 'ULTIMATE', 'MONTHLY')
+      );
+      assert.equal(planCreditsOn(cp, 'FREE', 'MONTHLY'), 0);
+      assert.equal(planCreditsOn(cp, undefined, 'MONTHLY'), 0);
+    }
   });
 
-  it('gives every paid tier, retired ones too, a monthly amount', () => {
-    for (const [tier, plan] of Object.entries(pricing)) {
-      if (tier === 'FREE') continue;
-      assert.ok(plan.monthly_credits > 0, tier);
+  it('keeps what was sold before v2, and gives v2 its own ladder', () => {
+    assert.deepEqual(
+      ['CREATOR', 'GROWTH', 'PRO', 'ULTIMATE'].map((t) =>
+        monthlyCredits('legacy', t)
+      ),
+      [150, 300, 500, 1000]
+    );
+    assert.deepEqual(
+      ['CREATOR', 'GROWTH', 'PRO', 'ULTIMATE'].map((t) =>
+        monthlyCredits('v2', t)
+      ),
+      [60, 200, 600, 1200]
+    );
+  });
+
+  it('gives every paid tier, retired ones too, a monthly amount on each list', () => {
+    for (const cp of ['legacy', 'v2'] as const) {
+      for (const [tier, plan] of Object.entries(pricing)) {
+        if (tier === 'FREE') continue;
+        assert.ok(monthlyCredits(cp, tier) > 0, `${cp} ${tier} ${plan.label}`);
+      }
+      const list = PLAN_MONTHLY_CREDITS[cp];
+      assert.equal(list.STANDARD, list.CREATOR);
+      assert.equal(list.TEAM, list.GROWTH);
+      assert.equal(list.LEGACY_ULTIMATE, list.ULTIMATE);
     }
-    assert.equal(pricing.STANDARD.monthly_credits, pricing.CREATOR.monthly_credits);
-    assert.equal(pricing.TEAM.monthly_credits, pricing.GROWTH.monthly_credits);
-    assert.equal(pricing.LEGACY_ULTIMATE.monthly_credits, pricing.ULTIMATE.monthly_credits);
   });
 });
 
@@ -221,6 +271,25 @@ describe('grantPlanPeriod', () => {
     assert.equal(grants[1].amount, planCredits('GROWTH', 'MONTHLY'));
   });
 
+  it("gives a subscription sold on v2 its list's month, and tops it up on that list", async () => {
+    const s = service();
+    await s.grantPlanPeriod(
+      'org',
+      period('CREATOR', 'MONTHLY', -15, 15, 'in_1', { creditPricing: 'v2' })
+    );
+    assert.equal(grants[0].amount, planCreditsOn('v2', 'CREATOR', 'MONTHLY'));
+    assert.equal(grants[0].amount, 60 * CREDIT_UNIT);
+    await s.grantPlanPeriod(
+      'org',
+      period('PRO', 'MONTHLY', -15, 15, 'in_2', { creditPricing: 'v2' })
+    );
+    const half =
+      (planCreditsOn('v2', 'PRO', 'MONTHLY') -
+        planCreditsOn('v2', 'CREATOR', 'MONTHLY')) /
+      2;
+    assert.ok(Math.abs(grants[1].amount - half) <= 1, String(grants[1].amount));
+  });
+
   it('grants nothing for a plan with no credits', async () => {
     const s = service();
     assert.equal(await s.grantPlanPeriod('org', period('FREE', 'MONTHLY', 0, 30, 'x')), false);
@@ -248,6 +317,7 @@ describe('A yearly plan a month at a time', () => {
     ref: string,
     extra: { prorate?: boolean } = {}
   ) => ({
+    creditPricing: 'legacy' as const,
     tier,
     period: 'YEARLY' as const,
     ...YEAR,
@@ -325,7 +395,7 @@ describe('A yearly plan a month at a time', () => {
   it('leaves a year granted whole in force, and tops an upgrade on it up as before', async () => {
     const s = service();
     // granted up front, before the plan moved to monthly credits
-    await s.grantPlanPeriod('org', { tier: 'CREATOR', period: 'YEARLY', ...YEAR, ref: 'in_1' });
+    await s.grantPlanPeriod('org', { creditPricing: 'legacy', tier: 'CREATOR', period: 'YEARLY', ...YEAR, ref: 'in_1' });
     assert.equal(grants[0].amount, planCredits('CREATOR', 'YEARLY'));
     at('2027-07-31T12:00:00Z');
     // no month on top of it
@@ -348,6 +418,7 @@ describe('A yearly plan a month at a time', () => {
     const s = service();
     at('2027-01-25T12:00:00Z');
     await s.grantPlanPeriod('org', {
+      creditPricing: 'legacy',
       tier: 'PRO',
       period: 'YEARLY',
       start: new Date('2027-01-24T12:00:00Z'),

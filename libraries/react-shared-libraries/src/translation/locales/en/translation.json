@@ -1374,5 +1374,16 @@
   "analytics_refresh_hint": "Some channels update their post numbers only when you refresh.",
   "analytics_refresh_nothing": "No new numbers to read",
   "analytics_refresh_failed": "Could not refresh the numbers. Try again later.",
-  "analytics_manual_refresh_empty": "No numbers for this channel yet. Choose Refresh below to read the latest."
+  "analytics_manual_refresh_empty": "No numbers for this channel yet. Choose Refresh below to read the latest.",
+  "plan_ai_credits_month": "{{amount}} AI credits a month",
+  "plan_credits_images": "≈ {{amount}} AI images",
+  "plan_credits_videos": "≈ {{amount}} AI videos",
+  "plan_credits_x_posts": "≈ {{amount}} X posts",
+  "plan_credits_about": "About AI credits",
+  "plan_credits_note": "One balance for AI images, videos, Copilot and X posts. Counts are for the default image quality and video length.",
+  "plan_x_posts_use_credits": "X posts use credits",
+  "analytics_refresh_credits": "· ~{{amount}} credits",
+  "analytics_refresh_confirm_title": "Refresh post numbers?",
+  "analytics_refresh_confirm": "This reads your latest post numbers and uses about {{amount}} credits. Refreshing again today is free.",
+  "analytics_refresh_short": "Not enough credits."
 }

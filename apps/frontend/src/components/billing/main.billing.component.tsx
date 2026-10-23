@@ -23,6 +23,7 @@ import {
   TRIAL_DAYS,
   tierLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import { PlanCreditsBlock } from '@gitroom/frontend/components/billing/plan.credits.block';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billing-period-toggle';
 import { useSWRConfig } from 'swr';
@@ -131,19 +132,19 @@ export const Prorate: FC<{
 export const Features: FC<{
   pack: AnyTier;
   /**
-   * A yearly plan's credits are counted for the year. Whether they come at
-   * once or a month at a time depends on when the subscription was sold, so
-   * the cards do not say.
+   * The period on the toggle. The cards read the same either way: credits
+   * are shown a month at a time, and a yearly plan sold now adds them so.
    */
   period?: 'MONTHLY' | 'YEARLY';
 }> = (props) => {
-  const { pack, period } = props;
+  const { pack } = props;
   const t = useT();
   const { clippingEnabled } = useVariables();
   const features = useMemo(() => {
     const currentPricing = pricing[pack];
     const channelsOr = currentPricing.channel;
-    const list: Array<{ label: string; unlim?: boolean }> = [];
+    const list: Array<{ label: string; unlim?: boolean; note?: string }> =
+      [];
 
     // The same "a very large number means unlimited" reading the posts line has
     // always used. ULTIMATE's channel count joined it when unlimited was decided,
@@ -170,6 +171,8 @@ export const Features: FC<{
           : t('plan_n_posts', '{{count}} posts per month', {
               count: currentPricing.posts_per_month,
             }),
+      // A post to X is paid for from the credits balance.
+      note: t('plan_x_posts_use_credits', 'X posts use credits'),
     });
     if (currentPricing.team_members) {
       list.push({ label: t('plan_unlimited_team', 'Unlimited team members') });
@@ -182,19 +185,6 @@ export const Features: FC<{
       list.push({ label: t('plan_ai_copilots', 'AI copilots') });
     }
     list.push({ label: t('plan_picture_editor', 'Advanced Picture Editor') });
-    // One balance pays for AI images, videos and the rest, by what each costs.
-    if (currentPricing?.monthly_credits) {
-      list.push({
-        label:
-          period === 'YEARLY'
-            ? t('plan_n_credits_year', '{{count}} credits a year', {
-                count: currentPricing.monthly_credits * 12,
-              })
-            : t('plan_n_credits_month', '{{count}} credits a month', {
-                count: currentPricing.monthly_credits,
-              }),
-      });
-    }
     // Off until a clipping processor is configured: no plan advertises
     // minutes nobody can spend
     if (clippingEnabled && currentPricing?.clipping_minutes) {
@@ -207,11 +197,15 @@ export const Features: FC<{
       });
     }
     return list;
-  }, [pack, period, t, clippingEnabled]);
+  }, [pack, t, clippingEnabled]);
   return (
     <div className="flex flex-col gap-[9px]">
-      {features.map((feature) => (
-        <FeatureRow key={feature.label} {...feature} />
+      {/* The plan's credits, and what they buy, lead the list: a month's,
+          whatever the period, since a yearly plan sold now adds them a
+          month at a time. */}
+      <PlanCreditsBlock tier={pack} size="card" />
+      {features.map((feature, index) => (
+        <FeatureRow key={index} {...feature} />
       ))}
     </div>
   );

@@ -1,5 +1,7 @@
 'use client';
 
+import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
+import { monthlyCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   createContext,
   FC,
@@ -1596,6 +1598,11 @@ const ComposeAiUnconfigured: FC<{
 export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
   const t = useT();
   const user = useUser();
+  // The plan's credits on the organization's list, once that is known.
+  const creditPricing = useCreditPricing();
+  const planMonthlyCredits = creditPricing
+    ? monthlyCredits(creditPricing, user?.tier?.current)
+    : 0;
   const aiOk = useAiAvailable();
   const trialLocked =
     !!user?.isTrailing || !!user?.lifetimePaymentPending;
@@ -1665,10 +1672,10 @@ export const ComposeAiRail: FC<{ docked?: boolean }> = ({ docked = false }) => {
               'ai_lock_perk_chat',
               'Copilot chat that drafts and schedules for you'
             ),
-            ...(user?.tier?.monthly_credits
+            ...(planMonthlyCredits
               ? [
                   t('plan_n_credits_month', '{{count}} credits a month', {
-                    count: user.tier.monthly_credits,
+                    count: planMonthlyCredits,
                   }),
                 ]
               : []),

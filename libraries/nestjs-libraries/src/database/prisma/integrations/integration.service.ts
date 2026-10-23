@@ -1436,11 +1436,14 @@ export class IntegrationService implements OnModuleInit {
 
     // Paid before it acts, once per channel and post. A balance that cannot
     // pay skips it and says so.
-    const cost = getSocialIntegration?.creditCost?.({
-      type: 'plug-trigger',
-      plug: getAllInternalPlugs.methodName,
-      fields: {},
-    });
+    const cost = getSocialIntegration?.creditCost?.(
+      {
+        type: 'plug-trigger',
+        plug: getAllInternalPlugs.methodName,
+        fields: {},
+      },
+      await this._creditsService.creditPricing(data.orgId)
+    );
     if (cost) {
       try {
         await this._creditsService.spend(data.orgId, {
@@ -1481,6 +1484,21 @@ export class IntegrationService implements OnModuleInit {
     );
   }
 
+  /** Every network's plugs, priced on the organization's list. */
+  async getAllPlugs(orgId: string) {
+    return this._integrationManager.getAllPlugs(
+      await this._creditsService.creditPricing(orgId)
+    );
+  }
+
+  /** A network's internal plugs, priced on the organization's list. */
+  async getInternalPlugs(orgId: string, identifier: string) {
+    return this._integrationManager.getInternalPlugs(
+      identifier,
+      await this._creditsService.creditPricing(orgId)
+    );
+  }
+
   /**
    * A provider method the app calls by name, for a network that bills the
    * call: answered from the day's copy when there is one (the network bills
@@ -1495,10 +1513,17 @@ export class IntegrationService implements OnModuleInit {
     data: unknown,
     run: () => Promise<T>
   ): Promise<T | undefined> {
-    const cost = this._integrationManager
-      .getSocialIntegration(integration.providerIdentifier)
-      ?.creditCost?.({ type: 'function', name });
-    if (!cost || !isBillingEnabled()) {
+    const provider = this._integrationManager.getSocialIntegration(
+      integration.providerIdentifier
+    );
+    const cost =
+      provider?.creditCost && isBillingEnabled()
+        ? provider.creditCost(
+            { type: 'function', name },
+            await this._creditsService.creditPricing(orgId)
+          )
+        : 0;
+    if (!cost) {
       return run();
     }
 
@@ -1577,9 +1602,15 @@ export class IntegrationService implements OnModuleInit {
     // fires unpaid; one that cannot is ended, with a notice.
     const orgId = getPlugById.organizationId;
     const plug = getPlugById.plugFunction;
-    const check = integration.creditCost?.({ type: 'plug-check', plug }) || 0;
+    const creditPricing = await this._creditsService.creditPricing(orgId);
+    const check =
+      integration.creditCost?.({ type: 'plug-check', plug }, creditPricing) ||
+      0;
     const trigger =
-      integration.creditCost?.({ type: 'plug-trigger', plug, fields }) || 0;
+      integration.creditCost?.(
+        { type: 'plug-trigger', plug, fields },
+        creditPricing
+      ) || 0;
     if (check || trigger) {
       try {
         await this._creditsService.assertAvailable(orgId, check + trigger);

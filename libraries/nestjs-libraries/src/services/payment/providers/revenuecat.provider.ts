@@ -128,6 +128,11 @@ export class RevenueCatProvider extends PaymentProviderAbstract {
       active.subscription.expires_date
     ) {
       await this._subscriptionService.grantPlanPeriod(organizationId, {
+        // The row just written carries the list: the one it was created
+        // with, or today's for a new subscription.
+        creditPricing: await this._subscriptionService.creditPricing(
+          organizationId
+        ),
         tier: billing,
         period,
         start: new Date(active.subscription.purchase_date),

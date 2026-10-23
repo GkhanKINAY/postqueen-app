@@ -106,6 +106,10 @@ const service = (autopost = rule) =>
       },
     },
     {
+      // The list subscriptions sold before v2 keep.
+      async creditPricing() {
+        return 'legacy';
+      },
       async assertAvailable(_org: string, amount: number) {
         if (amount > balance) {
           throw insufficientCredits(amount, balance);
@@ -163,8 +167,8 @@ describe('Autopost and credits', { skip: !canLoadService }, () => {
     assert.deepEqual(
       first.map((s) => s.amount),
       [
-        AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText,
-        AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture,
+        AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.autopostText,
+        AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.autopostPicture,
       ]
     );
     assert.match(first[0].key, /^autopost:rule-1:[0-9a-f]{24}:text$/);
@@ -220,7 +224,7 @@ describe('Autopost and credits', { skip: !canLoadService }, () => {
       url: 'https://example.com/post-2',
       description: 'The feed item',
     });
-    balance = AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText;
+    balance = AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.autopostText;
     await autoposts.startAutopost('rule-1');
     assert.deepEqual(
       spends.map((s) => s.key.split(':').pop()),
@@ -235,8 +239,8 @@ describe('Autopost and credits', { skip: !canLoadService }, () => {
     // claimed the item, leaves too little for the retry to pay again. The
     // retry hands that back first, so it is not taken for a short balance.
     const price =
-      AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostText +
-      AI_FIXED_CREDIT_COSTS_PROPOSAL.autopostPicture;
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.autopostText +
+      AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.autopostPicture;
     balance = price + 10;
     await run();
     assert.equal(balance, 10);

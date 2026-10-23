@@ -331,12 +331,16 @@ export class AgentGraphService {
 
     const content = state.content || [];
     try {
+      const creditPricing = await this._creditsService.creditPricing(
+        state.orgId
+      );
       const newContent = await this._creditsService.withCredits(
         state.orgId,
         {
           key: `${state.creditKey}:pictures`,
           amount:
-            content.length * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
+            content.length *
+            AI_FIXED_CREDIT_COSTS_PROPOSAL[creditPricing].generatorPicture,
           action: 'generator_image',
           meta: { count: content.length },
         },
@@ -431,16 +435,19 @@ export class AgentGraphService {
    * request that is cancelled still runs to the end. The text and the fewest
    * pictures the format can have (a thread has at least two posts).
    */
-  assertCredits(orgId: string, body: GeneratorDto) {
+  async assertCredits(orgId: string, body: GeneratorDto) {
     const pictures = !body.isPicture
       ? 0
       : body.format === 'one_short' || body.format === 'one_long'
       ? 1
       : 2;
+    const costs =
+      AI_FIXED_CREDIT_COSTS_PROPOSAL[
+        await this._creditsService.creditPricing(orgId)
+      ];
     return this._creditsService.assertAvailable(
       orgId,
-      AI_FIXED_CREDIT_COSTS_PROPOSAL.generator +
-        pictures * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture
+      costs.generator + pictures * costs.generatorPicture
     );
   }
 
@@ -454,7 +461,10 @@ export class AgentGraphService {
     const creditKey = `generator:${makeId(20)}`;
     await this._creditsService.spend(orgId, {
       key: creditKey,
-      amount: AI_FIXED_CREDIT_COSTS_PROPOSAL.generator,
+      amount:
+        AI_FIXED_CREDIT_COSTS_PROPOSAL[
+          await this._creditsService.creditPricing(orgId)
+        ].generator,
       action: 'generator',
       meta: { format: body.format, isPicture: body.isPicture },
     });

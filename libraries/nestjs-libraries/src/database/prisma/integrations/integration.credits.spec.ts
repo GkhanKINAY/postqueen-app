@@ -60,6 +60,10 @@ let balance: number;
 let fires: boolean;
 
 const credits = {
+  // The list subscriptions sold before v2 keep.
+  async creditPricing() {
+    return 'legacy';
+  },
   async assertAvailable(_org: string, amount: number) {
     if (amount > balance) {
       throw insufficientCredits(amount, balance);
@@ -322,19 +326,29 @@ describe('What the plug screens are told', { skip: !canLoadService }, () => {
       '../../../integrations/integration.manager.ts'
     );
     const manager = new IntegrationManager();
-    const x = manager
-      .getAllPlugs()
-      .find((provider: any) => provider.identifier === 'x');
-    const credits = Object.fromEntries(
-      (x?.plugs || []).map((plug: any) => [plug.methodName, plug.credits])
-    );
-    assert.deepEqual(credits.autoRepostPost, { check: 0.13, trigger: 0.4 });
-    assert.deepEqual(credits.autoPlugPost, {
+    const priced = (creditPricing: 'legacy' | 'v2') =>
+      Object.fromEntries(
+        (
+          manager
+            .getAllPlugs(creditPricing)
+            .find((provider: any) => provider.identifier === 'x')?.plugs || []
+        ).map((plug: any) => [plug.methodName, plug.credits])
+      );
+    const legacy = priced('legacy');
+    assert.deepEqual(legacy.autoRepostPost, { check: 0.13, trigger: 0.4 });
+    assert.deepEqual(legacy.autoPlugPost, {
       check: 0.13,
       trigger: 0.4,
       withLink: 5,
     });
-    const [reposters] = manager.getInternalPlugs('x').internalPlugs;
+    const v2 = priced('v2');
+    assert.deepEqual(v2.autoRepostPost, { check: 0.25, trigger: 1 });
+    assert.deepEqual(v2.autoPlugPost, { check: 0.25, trigger: 1, withLink: 10 });
+    // Without a list, today's: what a screen shows somebody with no plan.
+    assert.deepEqual(manager.getAllPlugs(), manager.getAllPlugs('v2'));
+    const [reposters] = manager.getInternalPlugs('x', 'legacy').internalPlugs;
     assert.deepEqual(reposters.credits, { check: 0, trigger: 0.4 });
+    const [v2Reposters] = manager.getInternalPlugs('x', 'v2').internalPlugs;
+    assert.deepEqual(v2Reposters.credits, { check: 0, trigger: 1 });
   });
 });

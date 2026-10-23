@@ -43,6 +43,10 @@ let balance: number;
 let calls: unknown[][];
 
 const credits = {
+  // The list subscriptions sold before v2 keep.
+  async creditPricing() {
+    return 'legacy';
+  },
   async assertAvailable(org: string, amount: number) {
     calls.push(['assert', org, amount]);
     if (amount > balance) {
@@ -84,7 +88,7 @@ beforeEach(() => {
 
 describe('The AI post generator and credits', { skip: !canLoadService }, () => {
   it('is refused up front for the text and the fewest pictures its format can have', async () => {
-    const { generator, generatorPicture } = AI_FIXED_CREDIT_COSTS_PROPOSAL;
+    const { generator, generatorPicture } = AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy;
     await service().assertCredits('org-1', body('one_long', false));
     await service().assertCredits('org-1', body('one_short', true));
     await service().assertCredits('org-1', body('thread_long', true));
@@ -125,7 +129,7 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
     const [spend, ...refunds] = calls;
     assert.equal(spend[0], 'spend');
     assert.match(spend[2] as string, /^generator:/);
-    assert.equal(spend[3], AI_FIXED_CREDIT_COSTS_PROPOSAL.generator);
+    assert.equal(spend[3], AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.generator);
     assert.deepEqual(refunds, [
       ['refund', 'org-1', spend[2]],
       ['refund', 'org-1', `${spend[2]}:pictures`],
@@ -188,7 +192,7 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
         'spend',
         'org-1',
         'generator:abc:pictures',
-        3 * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture,
+        3 * AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.generatorPicture,
       ],
     ]);
 
@@ -203,7 +207,7 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
   it('finishes without pictures when the balance cannot pay for them all', async () => {
     // The text is written and paid for; a balance spent elsewhere meanwhile
     // costs the run its pictures, not the run.
-    balance = 2 * AI_FIXED_CREDIT_COSTS_PROPOSAL.generatorPicture;
+    balance = 2 * AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.generatorPicture;
     const state = {
       orgId: 'org-1',
       creditKey: 'generator:abc',

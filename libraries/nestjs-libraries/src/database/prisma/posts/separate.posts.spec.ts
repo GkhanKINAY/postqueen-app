@@ -55,6 +55,9 @@ const service = () =>
     {},
     {},
     {
+      async creditPricing() {
+        return 'legacy';
+      },
       async withCredits(org: string, spend: any, work: () => Promise<unknown>) {
         if (spend.amount > balance) {
           throw insufficientCredits(spend.amount, balance);
@@ -89,7 +92,7 @@ describe('Separating a post into a thread', { skip: !canLoadService }, () => {
         'spend',
         'org-1',
         'separate',
-        AI_FIXED_CREDIT_COSTS_PROPOSAL.separatePosts,
+        AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.separatePosts,
         'separate_posts',
       ],
       ['model', 'A long post', 280],
@@ -97,7 +100,7 @@ describe('Separating a post into a thread', { skip: !canLoadService }, () => {
   });
 
   it('is refused with a 402 when the balance is short, and the model never runs', async () => {
-    balance = AI_FIXED_CREDIT_COSTS_PROPOSAL.separatePosts - 1;
+    balance = AI_FIXED_CREDIT_COSTS_PROPOSAL.legacy.separatePosts - 1;
     await assert.rejects(
       service().separatePosts('org-1', 'A long post', 280),
       (err) => err instanceof HttpException && err.getStatus() === 402

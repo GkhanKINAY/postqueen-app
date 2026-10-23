@@ -227,6 +227,16 @@ export class PostMetricsRepository {
     });
   }
 
+  /** A channel's posts that already have a snapshot for this UTC day. */
+  async postIdsCapturedOn(integrationId: string, capturedDay: Date) {
+    return (
+      await this._snapshot.model.postMetricSnapshot.findMany({
+        where: { integrationId, capturedDay },
+        select: { postId: true },
+      })
+    ).map((row) => row.postId);
+  }
+
   lastSnapshotAt(integrationIds: string[]) {
     return this._snapshot.model.postMetricSnapshot.groupBy({
       by: ['integrationId'],
