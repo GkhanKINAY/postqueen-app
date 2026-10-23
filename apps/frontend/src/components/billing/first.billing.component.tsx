@@ -1570,7 +1570,7 @@ export const BillingFeatures: FC<{
                 {!!feature.note && (
                   <span
                     className={clsx(
-                      'font-[500]',
+                      'whitespace-nowrap font-[500]',
                       tone === 'lifetime' ? 'text-pqLtText' : 'text-pqMuted'
                     )}
                   >

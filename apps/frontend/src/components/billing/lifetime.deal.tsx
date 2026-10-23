@@ -57,7 +57,10 @@ export const FeatureRow: FC<{
     </span>
     <span>
       {label}
-      {!!note && <span className="text-pqMuted"> · {note}</span>}
+      {/* Wraps as a whole, never between its words */}
+      {!!note && (
+        <span className="whitespace-nowrap text-pqMuted"> · {note}</span>
+      )}
     </span>
   </div>
 );
