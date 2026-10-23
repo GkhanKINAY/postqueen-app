@@ -144,11 +144,15 @@ analytics_never_refreshed
 analytics_posts_load_failed
 analytics_posts_load_failed_hint
 analytics_refresh
+analytics_refresh_confirm
+analytics_refresh_confirm_title
 analytics_refresh_cooldown
+analytics_refresh_credits
 analytics_refresh_done
 analytics_refresh_failed
 analytics_refresh_hint
 analytics_refresh_nothing
+analytics_refresh_short
 analytics_refreshed_at
 analytics_summary_range
 and
@@ -2199,6 +2203,12 @@ picture
 pin_sidebar
 plan_ai_autocomplete
 plan_ai_copilots
+plan_ai_credits_month
+plan_credits_about
+plan_credits_images
+plan_credits_note
+plan_credits_videos
+plan_credits_x_posts
 plan_lifetime_note
 plan_meta_access_until
 plan_meta_current
@@ -2208,7 +2218,6 @@ plan_meta_trial
 plan_n_channels
 plan_n_clipping_minutes
 plan_n_credits_month
-plan_n_credits_year
 plan_n_posts
 plan_one_channel
 plan_picture_editor
@@ -2218,6 +2227,7 @@ plan_unlimited_posts
 plan_unlimited_team
 plan_with_copilot
 plan_with_copilot_sub
+plan_x_posts_use_credits
 plans
 platform_options
 play

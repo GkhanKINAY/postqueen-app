@@ -29,10 +29,12 @@ import { BillingPortalRow } from './billing.portal.row';
  * convention). One recipe for the plan cards and the founding-member surface,
  * so the tick cannot drift between surfaces.
  */
-export const FeatureRow: FC<{ label: string; unlim?: boolean }> = ({
-  label,
-  unlim,
-}) => (
+export const FeatureRow: FC<{
+  label: string;
+  unlim?: boolean;
+  /** A qualifier after the label, quieter than it. */
+  note?: string;
+}> = ({ label, unlim, note }) => (
   <div
     data-plan-feature="1"
     className={clsx(
@@ -53,7 +55,10 @@ export const FeatureRow: FC<{ label: string; unlim?: boolean }> = ({
         />
       </svg>
     </span>
-    <span>{label}</span>
+    <span>
+      {label}
+      {!!note && <span className="text-pqMuted"> · {note}</span>}
+    </span>
   </div>
 );
 /**

@@ -13,6 +13,7 @@ import {
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
   CreditPackId,
+  creditEstimates,
   CURRENT_CREDIT_PRICING,
   monthlyCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -82,7 +83,7 @@ const CreditsPacksGhost: FC = () => (
       {CREDIT_PACKS.map((pack) => (
         <Skeleton
           key={pack.id}
-          className="h-[146px] !rounded-[14px] mobile:h-[82px]"
+          className="h-[166px] !rounded-[14px] mobile:h-[100px]"
         />
       ))}
     </div>
@@ -297,6 +298,27 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
                   <span className="text-[12.5px] text-pqSoft">
                     {t('credits_per_credit', '${{price}} a credit', {
                       price: perCredit.toFixed(2),
+                    })}
+                  </span>
+                </div>
+                {/* Roughly what the pack buys on the organization's list,
+                    each on its own; two lines where the row is narrow. */}
+                <div className="flex text-[12.5px] leading-[1.45] text-pqMuted mobile:flex-col">
+                  <span>
+                    {t('plan_credits_images', '≈ {{amount}} AI images', {
+                      amount: new Intl.NumberFormat().format(
+                        creditEstimates(creditPricing, pack.credits).images
+                      ),
+                    })}
+                  </span>
+                  <span aria-hidden="true" className="px-[5px] mobile:hidden">
+                    ·
+                  </span>
+                  <span>
+                    {t('plan_credits_videos', '≈ {{amount}} AI videos', {
+                      amount: new Intl.NumberFormat().format(
+                        creditEstimates(creditPricing, pack.credits).videos
+                      ),
                     })}
                   </span>
                 </div>

@@ -7,6 +7,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 export type AnalyticsRefreshStatus = {
   integrations: number;
   lastSyncedAt: string | null;
+  /** About what pressing Refresh takes from the credits balance now. */
+  credits?: number;
 };
 
 // Channels whose post metrics are only read on request: how many there are

@@ -26,6 +26,12 @@ import {
 } from '@gitroom/frontend/components/platform-analytics/use.analytics.posts';
 import { useAnalyticsSummary } from '@gitroom/frontend/components/platform-analytics/use.analytics.summary';
 import { useAnalyticsRefreshStatus } from '@gitroom/frontend/components/platform-analytics/use.analytics.refresh';
+import {
+  formatCredits,
+  useCreditsBalance,
+} from '@gitroom/frontend/components/billing/use.credits.balance';
+import { CreditsShortNote } from '@gitroom/frontend/components/billing/credits.amount';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 
 const formatCount = (value: number | null) => {
   if (value == null) {
@@ -455,14 +461,44 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
   const [busy, setBusy] = useState(false);
   const { mutate } = useSWRConfig();
   const status = useAnalyticsRefreshStatus(integrationId);
+  const { data: balance } = useCreditsBalance();
+  // What pressing it would take from the credits balance, on a network that
+  // bills its reads; nothing otherwise.
+  const credits = status.data?.credits || 0;
+  const short =
+    credits > 0 &&
+    !!balance &&
+    !balance.unlimited &&
+    (balance.balance ?? 0) < credits;
 
   const refresh = useCallback(async () => {
+    if (
+      credits > 0 &&
+      !(await deleteDialog(
+        t(
+          'analytics_refresh_confirm',
+          'This reads your latest post numbers and uses about {{amount}} credits. Refreshing again today is free.',
+          { amount: formatCredits(credits) },
+        ),
+        t('analytics_refresh', 'Refresh'),
+        t('analytics_refresh_confirm_title', 'Refresh post numbers?'),
+        t('cancel', 'Cancel'),
+        false,
+      ))
+    ) {
+      return;
+    }
     setBusy(true);
     try {
       const response = await fetch('/analytics/refresh', {
         method: 'POST',
         body: JSON.stringify(integrationId ? { integrationId } : {}),
       });
+      // A short balance (402) is answered by the app's Payment Required
+      // dialog, and its "Move to billing" comes back as 499.
+      if (response.status === 402 || response.status === 499) {
+        return;
+      }
       if (!response.ok) {
         toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
         return;
@@ -490,10 +526,11 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
       );
       // Revalidates in place, without clearing what is on screen
       await mutate(isAnalyticsKey);
+      await mutate('credits-balance');
     } finally {
       setBusy(false);
     }
-  }, [fetch, integrationId, mutate, t, toaster]);
+  }, [credits, fetch, integrationId, mutate, t, toaster]);
 
   if (status.error || (status.data && !status.data.integrations)) {
     return null;
@@ -502,32 +539,58 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
   const lastSyncedAt = status.data?.lastSyncedAt;
 
   return (
-    <div className="flex shrink-0 items-center gap-[10px]">
-      {!!status.data && (
-        <span className="text-[12.5px] text-pqMuted">
-          {lastSyncedAt
-            ? t('analytics_refreshed_at', 'Updated {{time}}', {
-                time: formatDateTime(lastSyncedAt),
-              })
-            : t('analytics_never_refreshed', 'Not refreshed yet')}
-        </span>
+    <div
+      className={clsx(
+        'flex shrink-0 flex-col items-end gap-[6px]',
+        // On a phone the row takes a line of its own: the longer label
+        // would otherwise squeeze the title beside it.
+        mobile && 'w-full',
       )}
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={busy || !status.data}
-        title={t(
-          'analytics_refresh_hint',
-          'Some channels update their post numbers only when you refresh.',
-        )}
+    >
+      <div
         className={clsx(
-          'inline-flex h-[32px] items-center gap-[6px] rounded-pqSm px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50',
-          mobile && 'h-[44px] min-h-[44px]',
+          'flex shrink-0 items-center gap-[10px]',
+          mobile && 'w-full justify-between',
         )}
       >
-        {busy && <Spinner width={14} height={14} />}
-        {t('analytics_refresh', 'Refresh')}
-      </button>
+        {!!status.data && (
+          <span className="text-[12.5px] text-pqMuted">
+            {lastSyncedAt
+              ? t('analytics_refreshed_at', 'Updated {{time}}', {
+                  time: formatDateTime(lastSyncedAt),
+                })
+              : t('analytics_never_refreshed', 'Not refreshed yet')}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={busy || !status.data || short}
+          title={t(
+            'analytics_refresh_hint',
+            'Some channels update their post numbers only when you refresh.',
+          )}
+          className={clsx(
+            'inline-flex h-[32px] items-center gap-[6px] rounded-pqSm px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50',
+            mobile && 'h-[44px] min-h-[44px]',
+          )}
+        >
+          {busy && <Spinner width={14} height={14} />}
+          {t('analytics_refresh', 'Refresh')}
+          {credits > 0 && (
+            <span className="font-[500] text-pqMuted">
+              {t('analytics_refresh_credits', '· ~{{amount}} credits', {
+                amount: formatCredits(credits),
+              })}
+            </span>
+          )}
+        </button>
+      </div>
+      {short && (
+        <CreditsShortNote
+          message={t('analytics_refresh_short', 'Not enough credits.')}
+        />
+      )}
     </div>
   );
 };
