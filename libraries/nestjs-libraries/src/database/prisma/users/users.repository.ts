@@ -250,6 +250,19 @@ export class UsersRepository {
     });
   }
 
+  markOnline(id: string, staleBefore: Date) {
+    return this._user.model.user.updateMany({
+      where: {
+        id,
+        deletedAt: null,
+        lastOnline: { lt: staleBefore },
+      },
+      data: {
+        lastOnline: new Date(),
+      },
+    });
+  }
+
   getIdentities(userId: string) {
     return this._userIdentity.model.userIdentity.findMany({
       where: { userId },

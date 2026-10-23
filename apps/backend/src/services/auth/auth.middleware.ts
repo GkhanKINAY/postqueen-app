@@ -150,6 +150,11 @@ export class AuthMiddleware implements NestMiddleware {
         isTrailing: effectiveIsTrailing(setOrg),
       };
 
+      // Not on the impersonation path above: support opening an account is
+      // not its owner coming back. Not awaited, so a failed write never turns
+      // into a 403.
+      this._userService.markOnline(user).catch(() => {});
+
       setSentryUserContext({
         userId: user.id,
         email: user.email,

@@ -209,6 +209,22 @@ export class UsersService {
     return this._usersRepository.activateUser(id);
   }
 
+  /**
+   * `lastOnline` had no writer since upstream removed the marketplace
+   * messages, so every account showed its signup time as its last visit.
+   * Every authenticated request reaches here; one write per five minutes is
+   * plenty for "when was this person last in the app". A page load sends
+   * several requests at once, all holding the same stale value, so the write
+   * is conditional and only one of them lands.
+   */
+  async markOnline(user: { id: string; lastOnline: Date }) {
+    const staleBefore = dayjs().subtract(5, 'minute').toDate();
+    if (dayjs(user.lastOnline).isAfter(staleBefore)) {
+      return;
+    }
+    await this._usersRepository.markOnline(user.id, staleBefore);
+  }
+
   updatePassword(id: string, password: string) {
     return this._usersRepository.updatePassword(id, password);
   }
