@@ -1420,9 +1420,14 @@ export const FirstBillingComponent = () => {
 type FeatureItem = {
   key: string;
   defaultValue: string;
-  prefix?: string | number;
-  /** A qualifier after the line, quieter than it. */
+  count?: number;
+  /** A qualifier under the line, quieter than it. */
   note?: { key: string; defaultValue: string };
+  /** The plan does not include this. An X, not a check. */
+  missing?: boolean;
+  /** Short pill after the label, such as Soon. */
+  badge?: { key: string; defaultValue: string };
+  unlim?: boolean;
 };
 
 export const BillingFeatures: FC<{
@@ -1445,79 +1450,94 @@ export const BillingFeatures: FC<{
     const channelsOr = currentPricing.channel;
     const list: FeatureItem[] = [];
 
-    // ULTIMATE carries 1,000,000 channels, which is how "unlimited" is stored.
-    // The Billing screen already reads it that way; this list did not, so the
-    // checkout offered "1000000 channels" — the one number on the screen that
-    // makes the product look broken. Same key as the other screen, so the two
-    // cannot drift apart again.
-    if (channelsOr > 10000) {
-      list.push({
-        key: 'plan_unlimited_channels',
-        defaultValue: 'Unlimited channels',
-      });
-    } else {
-      list.push({
-        key: channelsOr === 1 ? 'billing_channel' : 'billing_channels',
-        defaultValue: channelsOr === 1 ? 'channel' : 'channels',
-        prefix: channelsOr,
-      });
-    }
-
+    // Same order and the same keys as the plan cards in main billing, so
+    // checkout and the cards cannot drift. A very large channel count is
+    // unlimited; ULTIMATE stores 1,000,000.
+    list.push(
+      channelsOr > 10000
+        ? {
+            key: 'plan_unlimited_social_accounts',
+            defaultValue: 'Unlimited social accounts',
+            unlim: true,
+          }
+        : channelsOr === 1
+        ? { key: 'plan_one_social_account', defaultValue: '1 social account' }
+        : {
+            key: 'plan_n_social_accounts',
+            defaultValue: '{{count}} social accounts',
+            count: channelsOr,
+          }
+    );
     list.push({
-      key: 'billing_posts_per_month',
-      defaultValue: 'posts per month',
-      prefix:
+      key:
         currentPricing.posts_per_month > 10000
-          ? 'unlimited'
-          : currentPricing.posts_per_month,
-      // A post to X is paid for from the credits balance.
+          ? 'plan_unlimited_posts_line'
+          : 'plan_n_posts',
+      defaultValue:
+        currentPricing.posts_per_month > 10000
+          ? 'Unlimited posts'
+          : '{{count}} posts per month',
+      ...(currentPricing.posts_per_month > 10000
+        ? {}
+        : { count: currentPricing.posts_per_month }),
       note: { key: 'plan_x_posts_use_credits', defaultValue: 'X posts use credits' },
     });
-
-    if (currentPricing.team_members) {
+    list.push(
+      currentPricing.team_members
+        ? { key: 'plan_unlimited_team', defaultValue: 'Unlimited team members' }
+        : {
+            key: 'plan_no_team_members',
+            defaultValue: 'No team members',
+            missing: true,
+          }
+    );
+    if (currentPricing.clipping_minutes) {
       list.push({
-        key: 'billing_unlimited_team_members',
-        defaultValue: 'Unlimited team members',
+        key: 'plan_n_clipping_short',
+        defaultValue: '{{count}} min video clipping',
+        count: currentPricing.clipping_minutes,
+        badge: clippingEnabled
+          ? undefined
+          : { key: 'soon', defaultValue: 'Soon' },
+      });
+    }
+    if (currentPricing.webhooks) {
+      list.push(
+        currentPricing.webhooks >= 10000
+          ? {
+              key: 'plan_unlimited_webhooks',
+              defaultValue: 'Unlimited webhook endpoints',
+            }
+          : {
+              key: 'plan_n_webhooks',
+              defaultValue: '{{count}} webhook endpoints',
+              count: currentPricing.webhooks,
+            }
+      );
+    }
+    if (currentPricing.public_api) {
+      list.push({
+        key: 'plan_mcp_agent',
+        defaultValue: 'AI agent connection over MCP',
       });
     }
     if (currentPricing?.ai) {
       list.push({
-        key: 'billing_ai_auto_complete',
-        defaultValue: 'AI auto-complete',
+        key: 'plan_ai_copilot_in_app',
+        defaultValue: 'AI Copilot in the app',
       });
-      list.push({ key: 'billing_ai_copilots', defaultValue: 'AI copilots' });
-      // `billing_ai_autocomplete` — "AI Autocomplete" — used to be pushed here,
-      // one line below "AI auto-complete". The same feature spelled twice, on
-      // the checkout screen, in every plan. Its twin in main.billing.component
-      // was removed with it; the key stays in the catalogues, unused, because
-      // deleting a translation key is not this migration's business.
     }
     list.push({
-      key: 'billing_advanced_picture_editor',
-      defaultValue: 'Advanced Picture Editor',
+      key: 'plan_design_editor',
+      defaultValue: 'Design editor',
     });
-    // Off until a clipping processor is configured: no plan advertises
-    // minutes nobody can spend
-    if (clippingEnabled && currentPricing?.clipping_minutes) {
-      list.push({
-        key: 'billing_clipping_minutes_per_month',
-        defaultValue: 'minutes of AI video clipping per month',
-        prefix: currentPricing?.clipping_minutes,
-      });
-    }
     return list;
   }, [tier, clippingEnabled]);
 
-  const renderFeature = (feature: FeatureItem) => {
-    const translatedText = t(feature.key, feature.defaultValue);
-    if (feature.prefix === 'unlimited') {
-      return `${t('billing_unlimited', 'Unlimited')} ${translatedText}`;
-    }
-    if (feature.prefix !== undefined) {
-      return `${feature.prefix} ${translatedText}`;
-    }
-    return translatedText;
-  };
+  const renderFeature = (feature: FeatureItem) =>
+    feature.count !== undefined
+      ? t(feature.key, feature.defaultValue, { count: feature.count })
+      : t(feature.key, feature.defaultValue);
 
   return (
     <div className="flex flex-col gap-[12px]">
@@ -1528,24 +1548,39 @@ export const BillingFeatures: FC<{
         {features.map((feature) => {
           // The one row the design lets glow — carrying `pq-loop` so
           // prefers-reduced-motion can switch the loop off (see global.css).
-          const unlimited = feature.key === 'plan_unlimited_channels';
           return (
             <div
-              key={feature.key}
+              key={feature.key + (feature.missing ? '-x' : '')}
               className={clsx(
-                'flex min-w-0 items-center gap-[9px] font-[600]',
-                tone === 'lifetime'
+                'flex min-w-0 items-start gap-[9px] font-[600]',
+                feature.missing
+                  ? 'text-pqSoft'
+                  : tone === 'lifetime'
                   ? 'text-[13.5px] text-pqLtText'
                   : 'text-[14px] text-pqText',
-                unlimited && 'animate-pqUnlim pq-loop'
+                feature.unlim && 'animate-pqUnlim pq-loop'
               )}
             >
               <span
                 className={clsx(
-                  'grid size-[17px] shrink-0 place-items-center rounded-[5px]',
-                  tone === 'lifetime' ? 'bg-pqLtTick' : 'bg-pqBrand'
+                  'mt-[1px] grid size-[17px] shrink-0 place-items-center rounded-[5px]',
+                  feature.missing
+                    ? 'bg-pqSettings text-pqSoft'
+                    : tone === 'lifetime'
+                    ? 'bg-pqLtTick'
+                    : 'bg-pqBrand'
                 )}
               >
+                {feature.missing ? (
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" aria-hidden="true">
+                    <path
+                      d="M7 7l10 10M17 7 7 17"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
                 <svg
                   viewBox="0 0 24 24"
                   width="12"
@@ -1564,21 +1599,28 @@ export const BillingFeatures: FC<{
                     strokeLinejoin="round"
                   />
                 </svg>
+                )}
               </span>
-              <div>
-                {renderFeature(feature)}
+              <span className="min-w-0">
+                <span className="block">
+                  {renderFeature(feature)}
+                  {!!feature.badge && (
+                    <span className="ms-[6px] inline-flex h-[16px] items-center rounded-full bg-pqSettings px-[6px] text-[10px] font-[700] uppercase tracking-[0.04em] text-pqSoft">
+                      {t(feature.badge.key, feature.badge.defaultValue)}
+                    </span>
+                  )}
+                </span>
                 {!!feature.note && (
                   <span
                     className={clsx(
-                      'whitespace-nowrap font-[500]',
-                      tone === 'lifetime' ? 'text-pqLtText' : 'text-pqMuted'
+                      'block text-[12px] font-[500] leading-[1.35]',
+                      tone === 'lifetime' ? 'text-pqLtText' : 'text-pqSoft'
                     )}
                   >
-                    {' · '}
                     {t(feature.note.key, feature.note.defaultValue)}
                   </span>
                 )}
-              </div>
+              </span>
             </div>
           );
         })}

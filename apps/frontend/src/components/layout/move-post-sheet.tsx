@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useMemo, useState } from 'react';
+import { FC, ReactNode, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { Button } from '@gitroom/react/form/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -67,25 +67,79 @@ export const MovePostSheet: FC<{
   );
 };
 
+type MovablePost = {
+  id: string;
+  publishDate: string | Date;
+  state?: string;
+};
+
 /**
- * Phone and tablet Move control for calendar / queue cards. Reuses the same PUT
- * string as HTML5 drop (`/posts/${item.id}/date`) so the API baseline stays,
- * and the same `action`: without it the server defaults to `update`, which
- * only rewrites `publishDate` and leaves the publish workflow sleeping until
- * the old time. Callers only render this for posts that are not published.
+ * Same PUT as HTML5 drop (`/posts/${id}/date`), including `action`. Without
+ * it the server defaults to `update`, which only rewrites `publishDate` and
+ * leaves the publish workflow sleeping until the old time.
  */
-export const CalendarMoveButton: FC<{
-  post: { id: string; publishDate: string | Date; state?: string };
-  className?: string;
-}> = ({ post, className }) => {
+const useReschedule = (post: MovablePost) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const { touch } = useViewport();
   const { changeDate, reloadCalendarView } = useCalendar();
   const [open, setOpen] = useState(false);
-  if (!touch) return null;
-  const item = post;
+  const current = dayjs.utc(post.publishDate).local();
+  const confirm = async (next: dayjs.Dayjs) => {
+    const item = post;
+    changeDate(item.id, next);
+    const { status } = await fetch(`/posts/${item.id}/date`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        date: next.utc().format('YYYY-MM-DDTHH:mm:ss'),
+        action: dateChangeActionForDrop(item.state),
+      }),
+    });
+    if (status < 200 || status >= 300) {
+      toaster.show(
+        t('post_move_failed', 'Could not move this post, please try again'),
+        'warning'
+      );
+      reloadCalendarView();
+    }
+  };
+  return { open, setOpen, current, confirm };
+};
+
+/**
+ * Move for a pointer that cannot hover. The date sheet stays mounted beside
+ * the trigger so closing an actions sheet does not unmount it mid-open.
+ */
+export const MovePostControl: FC<{
+  post: MovablePost;
+  children: (openMove: () => void) => ReactNode;
+}> = ({ post, children }) => {
+  const { open, setOpen, current, confirm } = useReschedule(post);
+  return (
+    <>
+      {children(() => setOpen(true))}
+      <MovePostSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        current={current}
+        onConfirm={confirm}
+      />
+    </>
+  );
+};
+
+/**
+ * Icon-bar Move. Hidden when the pointer can hover — those cards drag.
+ * Callers only render this for posts that are not published.
+ */
+export const CalendarMoveButton: FC<{
+  post: MovablePost;
+  className?: string;
+}> = ({ post, className }) => {
+  const t = useT();
+  const { canHover } = useViewport();
+  const { open, setOpen, current, confirm } = useReschedule(post);
+  if (canHover) return null;
   return (
     <>
       <button
@@ -99,27 +153,8 @@ export const CalendarMoveButton: FC<{
       <MovePostSheet
         open={open}
         onClose={() => setOpen(false)}
-        current={dayjs.utc(item.publishDate).local()}
-        onConfirm={async (next) => {
-          changeDate(item.id, next);
-          const { status } = await fetch(`/posts/${item.id}/date`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              date: next.utc().format('YYYY-MM-DDTHH:mm:ss'),
-              action: dateChangeActionForDrop(item.state),
-            }),
-          });
-          if (status < 200 || status >= 300) {
-            toaster.show(
-              t(
-                'post_move_failed',
-                'Could not move this post, please try again'
-              ),
-              'warning'
-            );
-            reloadCalendarView();
-          }
-        }}
+        current={current}
+        onConfirm={confirm}
       />
     </>
   );

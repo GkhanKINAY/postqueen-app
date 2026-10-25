@@ -68,20 +68,29 @@ export class AnalyticsController {
     @Param('postId') postId: string,
     @Query('date') date: string
   ) {
+    const days = +date;
     const live = await this._postsService.checkPostAnalytics(
       org.id,
       postId,
-      +date
+      days
     );
-    if (!Array.isArray(live) || live.length === 0) {
-      return live;
+    if (Array.isArray(live) && live.length > 0) {
+      return this._postMetricsService.postStatisticsSeries(
+        org.id,
+        postId,
+        days,
+        live
+      );
     }
-    return this._postMetricsService.postStatisticsSeries(
+    const stored = await this._postMetricsService.snapshotChart(
       org.id,
       postId,
-      +date,
-      live
+      days
     );
+    if (stored.length > 0) {
+      return stored;
+    }
+    return live;
   }
 
   @Get('/:integration')

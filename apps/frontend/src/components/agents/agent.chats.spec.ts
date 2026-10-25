@@ -33,6 +33,21 @@ describe('Copilot chats list', () => {
 });
 
 describe('Copilot channels live in the message box', () => {
+  it('opens the channel list as a sheet unless the pointer can hover', () => {
+    assert.match(agent, /pickerOpen && hoverPicker/);
+    assert.match(agent, /\{!hoverPicker && \(\s*<MobileSheet/);
+    assert.match(chat, /if \(!fresh \|\| pickerOpen\)/);
+    assert.match(chat, /!messages\.length && !pickerOpen/);
+  });
+
+  it('keeps the post preview menu out of the card’s overflow', () => {
+    const card = read('agent.draft.card.tsx');
+    assert.match(card, /useAnchoredPopover/);
+    assert.match(card, /placement: 'bottom-end'/);
+    assert.match(card, /createPortal\(/);
+    assert.doesNotMatch(card, /top-\[calc\(100%\+6px\)\]/);
+  });
+
   it('both boxes carry the Posting to pill, and the old column is gone', () => {
     assert.match(input, /<ChannelPickerButton \/>/);
     assert.match(chat, /<ChannelPickerButton \/>/);

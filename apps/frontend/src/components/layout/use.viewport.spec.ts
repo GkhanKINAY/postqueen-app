@@ -15,6 +15,9 @@ describe('ViewportProvider', () => {
     assert.match(source, /sameBucket/);
     assert.match(source, /splitComposer/);
     assert.match(source, /PQ_COMPOSER_SPLIT_MIN/);
+    assert.match(source, /canHover/);
+    assert.match(source, /canHoverMedia/);
+    assert.match(source, /\(hover: hover\) and \(pointer: fine\)/);
     assert.doesNotMatch(source, /addEventListener\('resize'/);
     assert.doesNotMatch(source, /setWidth\(window\.innerWidth\)/);
   });

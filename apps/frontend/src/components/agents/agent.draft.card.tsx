@@ -1,6 +1,7 @@
 'use client';
 
-import { FC, useContext, useMemo, useState } from 'react';
+import { FC, useContext, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -20,6 +21,7 @@ import { Providers } from '@gitroom/frontend/components/new-launch/providers/sho
 import { getProviderSettingsMeta } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { GeneralPreviewComponent } from '@gitroom/frontend/components/launches/general.preview.component';
 import { ChevronDownIcon } from '@gitroom/frontend/components/ui/icons';
+import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 
 dayjs.extend(utc);
 
@@ -365,6 +367,12 @@ const GroupActions: FC<{
 }) => {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const { referenceRef, floatingRef } = useAnchoredPopover<
+    HTMLButtonElement,
+    HTMLDivElement
+  >(open, 'end', { placement: 'bottom-end', offsetPx: 6 });
   return (
     <div className="flex flex-wrap items-center gap-[8px]">
       <div className="relative flex items-stretch">
@@ -380,6 +388,7 @@ const GroupActions: FC<{
           {existing ? t('save_changes', 'Save changes') : scheduleLabel}
         </Button>
         <button
+          ref={referenceRef}
           type="button"
           aria-label={t('more_options', 'More options')}
           aria-expanded={open}
@@ -390,10 +399,13 @@ const GroupActions: FC<{
         >
           <ChevronDownIcon size={14} />
         </button>
-        {open && (
+        {open &&
+          mounted &&
+          createPortal(
           <div
+            ref={floatingRef}
             role="menu"
-            className="absolute end-0 top-[calc(100%+6px)] z-[3] flex min-w-[180px] flex-col gap-[2px] rounded-[10px] bg-pqPop p-[6px] shadow-pqE2 shadow-[inset_0_0_0_1px_var(--border)]"
+            className="z-[80] flex min-w-[180px] flex-col gap-[2px] rounded-[10px] bg-pqPop p-[6px] shadow-pqE2 shadow-[inset_0_0_0_1px_var(--border)]"
           >
             {existing && (
               <button
@@ -477,7 +489,8 @@ const GroupActions: FC<{
                 {t('delete_post', 'Delete post')}
               </button>
             )}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       <Button

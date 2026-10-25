@@ -11,6 +11,7 @@ import {
   mapSnapshotRow,
   matchesAnalyticsQuery,
   overlaySnapshotSeries,
+  seriesFromSnapshots,
   postsWithMetrics,
   sortAnalyticsPosts,
   summarizeAnalyticsPosts,
@@ -795,5 +796,15 @@ export class PostMetricsService {
       rangeStart: from,
       rangeEnd: to,
     });
+  }
+
+  async snapshotChart(organizationId: string, postId: string, days: number) {
+    const { from, to } = analyticsPublishDateRange(days);
+    const snapshots = await this.snapshotsForPost(
+      organizationId,
+      postId,
+      days,
+    );
+    return seriesFromSnapshots(snapshots, { rangeStart: from, rangeEnd: to });
   }
 }

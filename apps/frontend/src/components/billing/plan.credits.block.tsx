@@ -47,7 +47,7 @@ const InfoIcon = () => (
  *
  * `card` is the Billing page's plan card (13px muted rows), `checkout` the
  * first checkout's "Included in" list (14px rows). The note on what counts
- * opens from the info button on a pointer, and is a line of its own on touch.
+ * opens from the info button. A pointer hovers it; a touch toggles it.
  */
 export const PlanCreditsBlock: FC<{
   tier: string;
@@ -107,16 +107,25 @@ export const PlanCreditsBlock: FC<{
             amount: amount(credits),
           })}
         </span>
-        {!touch && (
-          <span className="relative flex shrink-0">
+        <span className="relative flex shrink-0">
             <button
               type="button"
               aria-label={t('plan_credits_about', 'About AI credits')}
               aria-describedby={open ? `plan-credits-${tier}` : undefined}
-              onMouseEnter={() => setOpen(true)}
-              onMouseLeave={() => setOpen(false)}
+              aria-expanded={open}
+              onMouseEnter={() => {
+                if (!touch) setOpen(true);
+              }}
+              onMouseLeave={() => {
+                if (!touch) setOpen(false);
+              }}
               onFocus={() => setOpen(true)}
               onBlur={() => setOpen(false)}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen((current) => !current);
+              }}
               className={clsx(
                 'mt-[1px] grid size-[18px] place-items-center rounded-[5px] text-pqSoft',
                 open && 'bg-pqHover text-pqText'
@@ -137,8 +146,7 @@ export const PlanCreditsBlock: FC<{
                 />
               </span>
             )}
-          </span>
-        )}
+        </span>
       </div>
       <div
         className={clsx(
@@ -164,7 +172,6 @@ export const PlanCreditsBlock: FC<{
             amount: amount(xPosts),
           })}
         </span>
-        {touch && <span className="mt-[4px] text-pqSoft">{note}</span>}
       </div>
     </div>
   );

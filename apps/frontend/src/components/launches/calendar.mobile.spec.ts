@@ -198,7 +198,28 @@ describe('phone calendar and composer', () => {
       ),
       'utf8',
     );
-    assert.match(move, /if \(!touch\) return null;/);
+    assert.match(move, /if \(canHover\) return null;/);
+  });
+
+  it('puts card actions in a sheet when the pointer cannot hover', () => {
+    const actions = readFileSync(
+      fileURLToPath(new URL('./post.card.actions.tsx', import.meta.url)),
+      'utf8',
+    );
+    const css = readFileSync(
+      fileURLToPath(new URL('../../app/global.css', import.meta.url)),
+      'utf8',
+    );
+    assert.match(actions, /const \{ canHover, touch \} = useViewport\(\)/);
+    assert.match(actions, /const hoverIcons = canHover && !touch/);
+    assert.match(actions, /data-pq="post-actions"/);
+    assert.match(actions, /<MobileSheet/);
+    assert.match(calendar, /<PostCardActions/);
+    assert.match(posts, /<PostCardActions/);
+    assert.match(calendar, /data-cal-sticky-head/);
+    assert.match(calendar, /sticky top-0 z-\[20\]/);
+    assert.doesNotMatch(css, /\[data-ci-actions\] button/);
+    assert.doesNotMatch(css, /min-width: 44px !important/);
   });
 });
 

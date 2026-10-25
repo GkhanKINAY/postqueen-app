@@ -519,7 +519,10 @@ export const startMcp = async (app: INestApplication) => {
     // never added
     const sessionId = sseServer.getSseTransport()?.sessionId;
     if (url.pathname === ssePath && sessionId && !res.destroyed) {
-      sseSessions.set(sessionId, { id: req.params.id, server: sseServer });
+      sseSessions.set(sessionId, {
+        id: String(req.params.id),
+        server: sseServer,
+      });
       res.on('close', () => sseSessions.delete(sessionId));
     }
   });

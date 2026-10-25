@@ -12,9 +12,9 @@ import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 /**
- * Phone bottom sheet. Portals to `document.body` so it sits above chrome,
- * drawers and route overlays. Desktop callers should not render this — gate
- * on `useViewport().mobile` at the call site.
+ * Bottom sheet for a pointer that cannot hover. Portals to `document.body`
+ * so it sits above chrome, drawers and route overlays. Callers gate on
+ * `!useViewport().canHover` (phone, tablet, and a wide touch iPad).
  */
 export const MobileSheet: FC<{
   open: boolean;

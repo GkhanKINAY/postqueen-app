@@ -457,6 +457,50 @@ export function overlaySnapshotSeries<
   }));
 }
 
+const SNAPSHOT_CHART_SERIES = [
+  ['Impressions', 'impressions'],
+  ['Reactions', 'reactions'],
+  ['Comments', 'comments'],
+  ['Shares', 'shares'],
+] as const;
+
+/**
+ * Chart series from stored snapshots alone. Used when the live network read
+ * returns nothing, so a post that already has numbers still draws a line.
+ */
+export function seriesFromSnapshots(
+  snapshots: SnapshotSeriesPoint[],
+  options?: { rangeStart?: Date | string; rangeEnd?: Date | string },
+) {
+  return SNAPSHOT_CHART_SERIES.flatMap(([label, field]) => {
+    const points = snapshots
+      .map((snapshot) => {
+        const total = snapshot[field];
+        if (total == null) {
+          return null;
+        }
+        return { total: String(total), date: dayKey(snapshot.capturedDay) };
+      })
+      .filter(
+        (point): point is { total: string; date: string } => point != null,
+      );
+    if (!points.length) {
+      return [];
+    }
+    const first = Number(points[0].total);
+    const last = Number(points[points.length - 1].total);
+    const percentageChange =
+      first > 0 ? Math.round(((last - first) / first) * 100) : 0;
+    return [
+      {
+        label,
+        percentageChange,
+        data: toDailySeries(points, options?.rangeStart, options?.rangeEnd),
+      },
+    ];
+  });
+}
+
 function snapshotEngagementRate(
   impressions: number | null,
   reactions: number | null,

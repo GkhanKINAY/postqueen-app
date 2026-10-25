@@ -29,6 +29,11 @@ import {
 } from '@gitroom/frontend/components/onboarding/tour';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { CalendarMoveButton } from '@gitroom/frontend/components/layout/move-post-sheet';
+import {
+  PostActionRow,
+  PostCardActions,
+  postActionRowClass,
+} from '@gitroom/frontend/components/launches/post.card.actions';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
@@ -386,7 +391,7 @@ const QueueCard: FC<{
   deletePost: () => void;
 }> = ({ post, editPost, duplicatePost, deletePost }) => {
   const t = useT();
-  const { touch } = useViewport();
+  const { canHover, touch } = useViewport();
   const { formatShortWeekdayTime } = useDateFormat();
   const demo = isClientDemoPost(post.id);
   const { explain: explainDemo, demoTooltip } = useDemoPostAction();
@@ -441,7 +446,7 @@ const QueueCard: FC<{
       data-posts-item={post.id}
       onClick={onEdit}
       style={{ opacity }}
-      className="group relative cursor-pointer rounded-pqMd border border-pqBorder bg-pqBg p-[10px] transition-colors hover:border-pqBrand"
+      className="group isolate relative cursor-pointer rounded-pqMd border border-pqBorder bg-pqBg p-[10px] transition-colors hover:border-pqBrand"
     >
       <div className="mb-[7px] flex min-w-0 items-center gap-[7px]">
         {/* Platform + avatar side-by-side (calendar card pattern) — corner
@@ -505,10 +510,68 @@ const QueueCard: FC<{
           ))}
         </div>
       )}
-      <div
-        data-ci-actions="1"
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-[8px] end-[8px] z-[5] flex gap-[2px] opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+      <PostCardActions
+        clusterClassName="absolute bottom-[8px] end-[8px] z-[5] flex gap-[2px] opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+        triggerClassName={
+          !canHover || touch
+            ? 'relative z-[5] shrink-0 self-start'
+            : 'absolute bottom-[8px] end-[8px] z-[5]'
+        }
+        movePost={post.state !== 'PUBLISHED' && !demo ? post : undefined}
+        sheet={(api) => (
+          <>
+            {post.state !== 'PUBLISHED' && (
+              <PostActionRow
+                onClick={() => {
+                  api.close();
+                  onEdit();
+                }}
+              >
+                {t('edit_post', 'Edit')}
+              </PostActionRow>
+            )}
+            {post.state !== 'PUBLISHED' && !demo && (
+              <PostActionRow
+                onClick={() => {
+                  api.close();
+                  api.openMove();
+                }}
+              >
+                {t('move', 'Move')}
+              </PostActionRow>
+            )}
+            <PostActionRow
+              onClick={() => {
+                api.close();
+                onDuplicate();
+              }}
+            >
+              {t('duplicate_post', 'Duplicate Post')}
+            </PostActionRow>
+            {!!post.releaseURL && (
+              <div onClick={api.close}>
+                <GoToLivePostButton
+                  postId={post.id}
+                  releaseURL={post.releaseURL}
+                  className={clsx(postActionRowClass, 'text-pqText')}
+                  label={t('go_to_post', 'Go to post')}
+                  demo={demo}
+                  demoTooltip={demoTooltip}
+                  onDemo={explainDemo}
+                />
+              </div>
+            )}
+            <PostActionRow
+              danger
+              onClick={() => {
+                api.close();
+                onDelete();
+              }}
+            >
+              {t('delete_post', 'Delete Post')}
+            </PostActionRow>
+          </>
+        )}
       >
         {post.state !== 'PUBLISHED' && !demo && (
           <CalendarMoveButton
@@ -542,7 +605,7 @@ const QueueCard: FC<{
         >
           <DeletePost tooltip={demo ? demoTooltip : undefined} />
         </button>
-      </div>
+      </PostCardActions>
     </div>
   );
 };

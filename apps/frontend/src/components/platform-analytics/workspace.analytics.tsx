@@ -33,15 +33,37 @@ import {
 import { CreditsShortNote } from '@gitroom/frontend/components/billing/credits.amount';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 
+const formatScaled = (scaled: number, suffix: string, sign: string) => {
+  const text =
+    scaled >= 100
+      ? String(Math.round(scaled))
+      : scaled.toFixed(1).replace(/\.0$/, '');
+  return `${sign}${text}${suffix}`;
+};
+
 const formatCount = (value: number | null) => {
   if (value == null) {
     return '';
   }
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  }
-  if (Math.abs(value) >= 1_000) {
-    return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  const tiers = [
+    { div: 1_000_000_000, suffix: 'B' },
+    { div: 1_000_000, suffix: 'M' },
+    { div: 1_000, suffix: 'k' },
+  ] as const;
+  for (let i = 0; i < tiers.length; i++) {
+    const { div, suffix } = tiers[i];
+    if (abs < div) {
+      continue;
+    }
+    const scaled = abs / div;
+    // 999.999M would print "1000M" and spill its column. Step up a unit.
+    if (scaled >= 999.95 && i > 0) {
+      const up = tiers[i - 1];
+      return formatScaled(abs / up.div, up.suffix, sign);
+    }
+    return formatScaled(scaled, suffix, sign);
   }
   return new Intl.NumberFormat().format(value);
 };
@@ -145,7 +167,7 @@ const ChannelMix: FC<{ rows: ChannelSummary[] }> = ({ rows }) => {
                   <span className="shrink-0 tabular-nums text-pqMuted">
                     {row.posts}
                   </span>
-                  <span className="w-[48px] shrink-0 text-end tabular-nums text-pqText">
+                  <span className="shrink-0 text-end tabular-nums text-pqText">
                     {amount > 0 ? formatCount(row.impressions) : ''}
                   </span>
                 </div>
@@ -373,18 +395,18 @@ export const WorkspaceAnalyticsGhost = () => (
   <div className="flex flex-col gap-[18px]">
     <div className="rounded-pqMd bg-pqPop p-[16px] shadow-[inset_0_0_0_1px_var(--border)]">
       <Skeleton className="mb-[12px] h-[14px] w-[92px]" />
-      <div className="flex gap-[10px] overflow-hidden min-[1100px]:grid min-[1100px]:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[10px]">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="flex w-[min(220px,72vw)] shrink-0 items-center gap-[12px] rounded-[10px] bg-pqInner p-[12px] shadow-[inset_0_0_0_1px_var(--border)] min-[1100px]:w-auto"
+            className="flex min-w-0 flex-col gap-[10px] rounded-[10px] bg-pqInner p-[12px] shadow-[inset_0_0_0_1px_var(--border)]"
           >
-            <div className="min-w-0 flex-1 space-y-[8px]">
-              <Skeleton className="h-[10px] w-[28%]" />
-              <Skeleton className="h-[12px] w-[86%]" />
-              <Skeleton className="h-[12px] w-[54%]" />
+            <div className="flex items-start justify-between">
+              <Skeleton className="h-[10px] w-[28px]" />
+              <Skeleton className="size-[40px] shrink-0 rounded-[8px]" />
             </div>
-            <Skeleton className="size-[56px] shrink-0 rounded-[8px]" />
+            <Skeleton className="h-[12px] w-[86%]" />
+            <Skeleton className="h-[12px] w-[54%]" />
           </div>
         ))}
       </div>
@@ -456,7 +478,7 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const { mobile } = useViewport();
+  const { touch } = useViewport();
   const { formatDateTime } = useDateFormat();
   const [busy, setBusy] = useState(false);
   const { mutate } = useSWRConfig();
@@ -544,13 +566,13 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
         'flex shrink-0 flex-col items-end gap-[6px]',
         // On a phone the row takes a line of its own: the longer label
         // would otherwise squeeze the title beside it.
-        mobile && 'w-full',
+        touch && 'w-full',
       )}
     >
       <div
         className={clsx(
           'flex shrink-0 items-center gap-[10px]',
-          mobile && 'w-full justify-between',
+          touch && 'w-full justify-between',
         )}
       >
         {!!status.data && (
@@ -558,6 +580,7 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
             {lastSyncedAt
               ? t('analytics_refreshed_at', 'Updated {{time}}', {
                   time: formatDateTime(lastSyncedAt),
+                  interpolation: { escapeValue: false },
                 })
               : t('analytics_never_refreshed', 'Not refreshed yet')}
           </span>
@@ -572,7 +595,7 @@ const PostMetricsRefresh: FC<{ integrationId?: string }> = ({
           )}
           className={clsx(
             'inline-flex h-[32px] items-center gap-[6px] rounded-pqSm px-[12px] text-[12.5px] font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)] transition-colors hover:bg-pqHover disabled:cursor-not-allowed disabled:opacity-50',
-            mobile && 'h-[44px] min-h-[44px]',
+            touch && 'h-[44px] min-h-[44px]',
           )}
         >
           {busy && <Spinner width={14} height={14} />}
@@ -602,7 +625,7 @@ export const WorkspaceAnalytics: FC<{
 }> = ({ date, integrationIds, manualRefresh }) => {
   const t = useT();
   const modal = useModals();
-  const { mobile } = useViewport();
+  const { touch } = useViewport();
   const [sort, setSort] = useState<
     'reactions' | 'comments' | 'impressions' | 'engagement' | 'published'
   >('reactions');
@@ -748,7 +771,7 @@ export const WorkspaceAnalytics: FC<{
                   onClick={() => setTopMetric(key)}
                   className={clsx(
                     'h-[32px] min-h-[32px] rounded-[8px] px-[15px] text-[13.5px] transition-colors',
-                    mobile && 'min-h-[44px] px-[14px]',
+                    touch && 'min-h-[44px] px-[14px]',
                     (rankingByComments ? 'comments' : 'reactions') === key
                       ? 'bg-pqInner font-[600] text-pqText shadow-[inset_0_0_0_1px_var(--border)]'
                       : 'font-[500] text-pqMuted hover:text-pqText',
@@ -761,12 +784,7 @@ export const WorkspaceAnalytics: FC<{
           )}
         </div>
         {topPosts.length ? (
-          <div
-            className="flex snap-x snap-mandatory gap-[10px] overflow-x-auto min-[1100px]:grid min-[1100px]:overflow-visible"
-            style={{
-              gridTemplateColumns: `repeat(${topPosts.length}, minmax(0, 1fr))`,
-            }}
-          >
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[10px]">
             {topPosts.map((post, index) => {
               const metric = rankingByComments
                 ? post.comments
@@ -775,16 +793,16 @@ export const WorkspaceAnalytics: FC<{
                 <div
                   key={post.id}
                   className={clsx(
-                    'flex w-[min(220px,72vw)] shrink-0 snap-start items-center gap-[8px] rounded-[10px] bg-pqInner p-[12px] shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow] hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)] min-[1100px]:w-auto min-[1100px]:min-w-0',
+                    'flex min-w-0 snap-start flex-col gap-[10px] rounded-[10px] bg-pqInner p-[12px] shadow-[inset_0_0_0_1px_var(--border)] transition-[box-shadow] hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
                     index === 0 && 'shadow-[inset_0_0_0_1px_var(--ring)]',
                   )}
                 >
                   <button
                     type="button"
                     onClick={() => openStatistics(post.id)}
-                    className="flex min-w-0 flex-1 items-center gap-[12px] text-start"
+                    className="flex min-w-0 flex-col gap-[8px] text-start"
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-[8px]">
                       <div
                         className={clsx(
                           'text-[11px] font-[700] tabular-nums',
@@ -793,27 +811,32 @@ export const WorkspaceAnalytics: FC<{
                       >
                         #{index + 1}
                       </div>
-                      <div className="mt-[2px] line-clamp-2 text-[13.5px] text-pqText">
-                        {previewText(post.content) ||
-                          t('untitled_post', 'Untitled post')}
-                      </div>
-                      <div className="mt-[3px] truncate text-[12px] text-pqMuted">
-                        {post.channelName} · {formatDate(post.publishDate)}
-                      </div>
-                      {metric != null && (
-                        <div className="mt-[8px] text-[18px] font-[600] tabular-nums text-pqText">
-                          {formatCount(metric)}
-                          <span className="ms-[6px] text-[12px] font-[500] text-pqMuted">
-                            {rankingByComments
-                              ? t('comments', 'Comments')
-                              : t('reactions', 'Reactions')}
-                          </span>
-                        </div>
-                      )}
+                      <PostThumb
+                        post={post}
+                        className="ms-auto size-[40px] shrink-0"
+                      />
                     </div>
-                    <PostThumb post={post} className="size-[56px]" />
+                    <div className="line-clamp-2 min-h-[2.7em] text-[13.5px] leading-[1.35] text-pqText">
+                      {previewText(post.content) ||
+                        t('untitled_post', 'Untitled post')}
+                    </div>
+                    <div className="truncate text-[12px] text-pqMuted">
+                      {post.channelName} · {formatDate(post.publishDate)}
+                    </div>
                   </button>
-                  <AnalyticsPostMenu post={post} />
+                  <div className="mt-auto flex items-center gap-[4px]">
+                    {metric != null && (
+                      <div className="min-w-0 flex-1 truncate text-[18px] font-[600] tabular-nums text-pqText">
+                        {formatCount(metric)}
+                        <span className="ms-[6px] text-[12px] font-[500] text-pqMuted">
+                          {rankingByComments
+                            ? t('comments', 'Comments')
+                            : t('reactions', 'Reactions')}
+                        </span>
+                      </div>
+                    )}
+                    <AnalyticsPostMenu post={post} className="ms-auto" />
+                  </div>
                 </div>
               );
             })}
@@ -855,7 +878,7 @@ export const WorkspaceAnalytics: FC<{
             <PostMetricsRefresh integrationId={integrationIds} />
           )}
         </div>
-        {mobile ? (
+        {touch ? (
           <div className="flex flex-col gap-[10px]">
             {list?.posts?.length ? (
               list.posts.map((post, index) => (
@@ -922,7 +945,7 @@ export const WorkspaceAnalytics: FC<{
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
+          <div className="min-w-0 overflow-x-auto rounded-pqMd bg-pqPop shadow-[inset_0_0_0_1px_var(--border)]">
             <div className="min-w-[720px]">
               <div
                 className="grid items-center gap-[8px] bg-pqTableHeader px-[16px] py-[10px] text-[11px] font-[700] uppercase tracking-[0.06em] text-pqMuted"
@@ -1038,7 +1061,7 @@ export const WorkspaceAnalytics: FC<{
           </div>
         )}
         {(list?.total || 0) > (list?.limit || 20) &&
-          (mobile ? (
+          (touch ? (
             <div className="mt-[10px] flex items-center gap-[8px]">
               <button
                 type="button"
