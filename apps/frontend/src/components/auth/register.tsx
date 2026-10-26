@@ -10,7 +10,6 @@ import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import clsx from 'clsx';
-import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
@@ -99,7 +98,6 @@ export function RegisterAfter({
   const { walletLogin, legalUrl, productNewsEnabled } = useVariables();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const fireEvents = useFireEvents();
   const track = useTrack();
   const [datafast_visitor_id] = useCookie('datafast_visitor_id');
   const isAfterProvider = useMemo(() => {
@@ -140,7 +138,6 @@ export function RegisterAfter({
       .then(async (response) => {
         setLoading(false);
         if (response.status === 200) {
-          fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
             // Only the activation branch navigates from here. The other one
             // carries `onboarding`, which the fetch wrapper has already acted

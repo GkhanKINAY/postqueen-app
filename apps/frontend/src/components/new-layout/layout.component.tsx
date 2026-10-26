@@ -26,7 +26,6 @@ import { Toaster } from '@gitroom/react/toaster/toaster';
 import { NotificationsLiveBridge } from '@gitroom/frontend/components/notifications/live.bridge';
 import { NetworkErrorBridge } from '@gitroom/frontend/components/layout/network-error.bridge';
 import { ShowPostSelector } from '@gitroom/frontend/components/post-url-selector/post.url.selector';
-import { NewSubscription } from '@gitroom/frontend/components/layout/new.subscription';
 import { ContinueProvider } from '@gitroom/frontend/components/layout/continue.provider';
 import {
   aiAvailable,
@@ -403,7 +402,6 @@ const LayoutBody = ({
         <MediaSettingsLayout />
         <ShowPostSelector />
         <PreConditionComponent />
-        <NewSubscription />
         <ContinueProvider />
         {/* h-dvh + overflow-hidden: chrome (and the rail footer) stay
             viewport-tall. min-h-screen alone lets flex-1 grow with page

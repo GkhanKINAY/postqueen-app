@@ -32,7 +32,6 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
@@ -287,7 +286,6 @@ const BillingCancelDialog: FC<{
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const events = useFireEvents();
   const [step, setStep] = useState<CancelStep>('confirm');
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
@@ -359,9 +357,8 @@ const BillingCancelDialog: FC<{
 
   const submitCancel = useCallback(() => {
     if (feedback.length < 20) return;
-    events('cancel_subscription');
     onDone({ action: 'canceled', feedback });
-  }, [events, feedback, onDone]);
+  }, [feedback, onDone]);
 
   const title =
     step === 'confirm'
