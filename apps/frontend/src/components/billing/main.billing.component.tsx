@@ -460,8 +460,8 @@ const BillingCancelDialog: FC<{
           </svg>
           <div className="text-[12.5px] leading-[1.55] text-pqText">
             {t(
-              'team_members_will_be_removed',
-              'Your team members will be removed from your organization.'
+              'team_members_will_be_disabled',
+              'Your team members will be disabled and lose access to your organization until you choose a plan that includes team members again.'
             )}
           </div>
         </div>
@@ -820,14 +820,36 @@ export const MainBillingComponent: FC<{
           return;
         }
 
-        const messages = [];
+        // Moving to a plan without team members disables them (the webhook
+        // does, and a plan with members enables them again), so the warning
+        // is for an organization that has someone besides this user. When the
+        // team cannot be read it stays.
+        const messages: string[] = [];
         if (
           !pricing[billing].team_members &&
           pricing[subscription?.subscriptionTier!]?.team_members
         ) {
-          messages.push(
-            `Your team members will be removed from your organization`
-          );
+          let hasMembers = true;
+          try {
+            const response = await fetch('/settings/team');
+            const team = response.ok ? await response.json() : null;
+            hasMembers =
+              !Array.isArray(team?.users) ||
+              team.users.some(
+                (member: { user: { id: string } }) =>
+                  member.user.id !== user?.id
+              );
+          } catch (err) {
+            // keep the warning when the team cannot be loaded
+          }
+          if (hasMembers) {
+            messages.push(
+              t(
+                'team_members_will_be_disabled',
+                'Your team members will be disabled and lose access to your organization until you choose a plan that includes team members again.'
+              )
+            );
+          }
         }
         if (billing === 'FREE') {
           // Already scheduled to cancel — keep the old reactivation path above;

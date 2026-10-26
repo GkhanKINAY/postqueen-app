@@ -1405,5 +1405,6 @@
   "finish_trial_confirmation": "Ending the trial charges your plan's first payment today instead of at the end of the trial. Nothing extra is added.",
   "finish_trial_charge_me_now": "End trial and pay now",
   "trial_feature_locked_end_trial": "This feature is not available during the trial. You can end the trial now: your plan's first payment is charged today instead of at the end of the trial.",
-  "precondition_channel_used_trial": "This social channel was previously connected to another PostQueen account.\nTo connect it during your trial, you can end the trial now: your plan's first payment is charged today instead of at the end of the trial, and nothing extra is added."
+  "precondition_channel_used_trial": "This social channel was previously connected to another PostQueen account.\nTo connect it during your trial, you can end the trial now: your plan's first payment is charged today instead of at the end of the trial, and nothing extra is added.",
+  "team_members_will_be_disabled": "Your team members will be disabled and lose access to your organization until you choose a plan that includes team members again."
 }

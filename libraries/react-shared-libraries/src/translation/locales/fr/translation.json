@@ -924,5 +924,6 @@
   "finish_trial_confirmation": "Mettre fin à l'essai prélève aujourd'hui le premier paiement de votre forfait, au lieu de la fin de l'essai. Rien de plus n'est ajouté.",
   "finish_trial_charge_me_now": "Mettre fin à l'essai et payer maintenant",
   "trial_feature_locked_end_trial": "Cette fonctionnalité n'est pas disponible pendant l'essai. Vous pouvez mettre fin à l'essai maintenant : le premier paiement de votre forfait est alors prélevé aujourd'hui au lieu de la fin de l'essai.",
-  "precondition_channel_used_trial": "Ce canal social a déjà été connecté à un autre compte PostQueen.\nPour le connecter pendant votre essai, vous pouvez mettre fin à l'essai maintenant : le premier paiement de votre forfait est alors prélevé aujourd'hui au lieu de la fin de l'essai, et rien de plus n'est ajouté."
+  "precondition_channel_used_trial": "Ce canal social a déjà été connecté à un autre compte PostQueen.\nPour le connecter pendant votre essai, vous pouvez mettre fin à l'essai maintenant : le premier paiement de votre forfait est alors prélevé aujourd'hui au lieu de la fin de l'essai, et rien de plus n'est ajouté.",
+  "team_members_will_be_disabled": "Les membres de votre équipe seront désactivés et perdront l'accès à votre organisation jusqu'à ce que vous choisissiez de nouveau un forfait incluant des membres d'équipe."
 }

@@ -924,5 +924,6 @@
   "finish_trial_confirmation": "Encerrar o teste cobra hoje o primeiro pagamento do seu plano, em vez de no fim do teste. Nada extra é adicionado.",
   "finish_trial_charge_me_now": "Encerrar o teste e pagar agora",
   "trial_feature_locked_end_trial": "Este recurso não está disponível durante o teste. Você pode encerrar o teste agora: o primeiro pagamento do seu plano é cobrado hoje, em vez de no fim do teste.",
-  "precondition_channel_used_trial": "Este canal social já foi conectado a outra conta do PostQueen.\nPara conectá-lo durante o teste, você pode encerrar o teste agora: o primeiro pagamento do seu plano é cobrado hoje, em vez de no fim do teste, e nada extra é adicionado."
+  "precondition_channel_used_trial": "Este canal social já foi conectado a outra conta do PostQueen.\nPara conectá-lo durante o teste, você pode encerrar o teste agora: o primeiro pagamento do seu plano é cobrado hoje, em vez de no fim do teste, e nada extra é adicionado.",
+  "team_members_will_be_disabled": "Os membros da sua equipe serão desativados e perderão o acesso à sua organização até que você escolha novamente um plano que inclua membros de equipe."
 }

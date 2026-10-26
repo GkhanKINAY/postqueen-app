@@ -924,5 +924,6 @@
   "finish_trial_confirmation": "Al terminar la prueba, se cobra hoy el primer pago de tu plan en lugar de al final de la prueba. No se añade nada extra.",
   "finish_trial_charge_me_now": "Terminar la prueba y pagar ahora",
   "trial_feature_locked_end_trial": "Esta función no está disponible durante la prueba. Puedes terminar la prueba ahora: el primer pago de tu plan se cobra hoy en lugar de al final de la prueba.",
-  "precondition_channel_used_trial": "Este canal social ya estuvo conectado a otra cuenta de PostQueen.\nPara conectarlo durante tu prueba, puedes terminar la prueba ahora: el primer pago de tu plan se cobra hoy en lugar de al final de la prueba, y no se añade nada extra."
+  "precondition_channel_used_trial": "Este canal social ya estuvo conectado a otra cuenta de PostQueen.\nPara conectarlo durante tu prueba, puedes terminar la prueba ahora: el primer pago de tu plan se cobra hoy en lugar de al final de la prueba, y no se añade nada extra.",
+  "team_members_will_be_disabled": "Los miembros de tu equipo se desactivarán y perderán el acceso a tu organización hasta que vuelvas a elegir un plan que incluya miembros del equipo."
 }

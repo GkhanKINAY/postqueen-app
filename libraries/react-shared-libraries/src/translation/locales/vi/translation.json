@@ -924,5 +924,6 @@
   "finish_trial_confirmation": "Kết thúc dùng thử sẽ tính khoản thanh toán đầu tiên của gói hôm nay thay vì vào cuối thời gian dùng thử. Không có khoản phí nào thêm.",
   "finish_trial_charge_me_now": "Kết thúc dùng thử và thanh toán ngay",
   "trial_feature_locked_end_trial": "Tính năng này không khả dụng trong thời gian dùng thử. Bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử.",
-  "precondition_channel_used_trial": "Kênh mạng xã hội này trước đây đã được kết nối với một tài khoản PostQueen khác.\nĐể kết nối kênh trong thời gian dùng thử, bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử, và không có khoản phí nào thêm."
+  "precondition_channel_used_trial": "Kênh mạng xã hội này trước đây đã được kết nối với một tài khoản PostQueen khác.\nĐể kết nối kênh trong thời gian dùng thử, bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử, và không có khoản phí nào thêm.",
+  "team_members_will_be_disabled": "Các thành viên trong nhóm của bạn sẽ bị vô hiệu hóa và mất quyền truy cập vào tổ chức cho đến khi bạn chọn lại một gói có thành viên nhóm."
 }

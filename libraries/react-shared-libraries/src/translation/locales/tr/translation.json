@@ -942,5 +942,6 @@
   "finish_trial_confirmation": "Denemeyi bitirmek, planınızın ilk ödemesini deneme sonunda değil bugün tahsil eder. Ek bir ücret eklenmez.",
   "finish_trial_charge_me_now": "Denemeyi bitir ve şimdi öde",
   "trial_feature_locked_end_trial": "Bu özellik deneme süresince kullanılamaz. Denemeyi şimdi bitirebilirsiniz: planınızın ilk ödemesi deneme sonunda değil bugün tahsil edilir.",
-  "precondition_channel_used_trial": "Bu sosyal kanal daha önce başka bir PostQueen hesabına bağlanmıştı.\nDeneme süresince bağlamak için denemeyi şimdi bitirebilirsiniz: planınızın ilk ödemesi deneme sonunda değil bugün tahsil edilir ve ek bir ücret eklenmez."
+  "precondition_channel_used_trial": "Bu sosyal kanal daha önce başka bir PostQueen hesabına bağlanmıştı.\nDeneme süresince bağlamak için denemeyi şimdi bitirebilirsiniz: planınızın ilk ödemesi deneme sonunda değil bugün tahsil edilir ve ek bir ücret eklenmez.",
+  "team_members_will_be_disabled": "Ekip üyeleriniz devre dışı bırakılır ve siz yeniden ekip üyelerini içeren bir plan seçene kadar organizasyonunuza erişemez."
 }
