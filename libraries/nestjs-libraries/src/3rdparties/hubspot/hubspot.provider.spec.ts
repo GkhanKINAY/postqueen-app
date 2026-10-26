@@ -30,9 +30,7 @@ before(async () => {
     await import('./hubspot.provider.ts');
     await import('../heygen/heygen.provider.ts');
     ({ ThirdPartyManager } = await import('../thirdparty.manager.ts'));
-    ({ hubspotInstallUrl } = await import(
-      '../../database/prisma/oauth/oauth.service.ts'
-    ));
+    ({ hubspotInstallUrl } = await import('../../chat/oauth-types.ts'));
   }
 });
 

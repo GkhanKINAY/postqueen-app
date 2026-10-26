@@ -1,16 +1,16 @@
 'use client';
 
 import { FC, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
 // /oauth/hubspot/callback sends people here after they install the PostQueen
 // app in HubSpot, and the calendar alone doesn't say what just happened
 export const HubspotInstalled: FC = () => {
-  const installed = useSearchParams().get('hubspot') === 'installed';
+  const searchParams = useSearchParams();
+  const installed = searchParams.get('hubspot') === 'installed';
   const modal = useDecisionModal();
-  const router = useRouter();
   const t = useT();
   const shown = useRef(false);
 
@@ -29,11 +29,20 @@ export const HubspotInstalled: FC = () => {
           'Connect the channels you want to post to here in PostQueen. Then, in HubSpot, open Agent Hub > Agent Builder, add a tool, pick PostQueen under MCP Servers and click Connect and add.'
         ),
       });
-      // drop the param once closed, so a reload of the calendar doesn't show
-      // it again
-      router.replace('/launches');
+      // drop the params once closed, so a reload of the calendar doesn't
+      // show it again; the calendar's own ones stay (calendar.context's
+      // `now` cleanup does the same)
+      const cleaned = new URLSearchParams(window.location.search);
+      cleaned.delete('hubspot');
+      cleaned.delete('returnUrl');
+      const q = cleaned.toString();
+      window.history.replaceState(
+        null,
+        '',
+        q ? `/launches?${q}` : '/launches'
+      );
     })();
-  }, [installed, modal, router, t]);
+  }, [installed, modal, t]);
 
   return null;
 };

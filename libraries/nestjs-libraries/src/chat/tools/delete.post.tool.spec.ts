@@ -18,7 +18,8 @@ const context = () => {
 };
 
 const tool = (
-  posts: { id: string; group: string; parentPostId: string | null }[]
+  posts: { id: string; group: string; parentPostId: string | null }[],
+  answer?: Record<string, unknown>
 ) => {
   const deleted: string[] = [];
   const looked: unknown[][] = [];
@@ -29,7 +30,7 @@ const tool = (
     },
     deletePost: async (orgId: string, group: string) => {
       deleted.push(`${orgId} ${group}`);
-      return { id: posts[0]?.id };
+      return answer ?? { id: posts[0]?.id };
     },
   } as any);
   return { run: instance.run() as any, deleted, looked };
@@ -64,6 +65,17 @@ describe('deletePostTool', () => {
     const result = await run.execute({ id: 'comment-1' }, context());
     assert.match(result.output.errors, /belongs to a comment/);
     assert.deepEqual(deleted, []);
+  });
+
+  // the group went between the lookup and the delete
+  it('says so when the delete finds nothing', async () => {
+    const { run } = tool(
+      [{ id: 'post-1', group: 'group-1', parentPostId: null }],
+      { error: true }
+    );
+    assert.deepEqual(await run.execute({ id: 'post-1' }, context()), {
+      output: { errors: 'Post not found' },
+    });
   });
 
   it('is marked destructive and says a published post stays on the network', () => {

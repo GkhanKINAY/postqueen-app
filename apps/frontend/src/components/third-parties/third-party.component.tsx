@@ -193,25 +193,25 @@ export const ThirdPartyComponent = () => {
                   </div>
                   {/* An app installed on the other platform is never
                       connected here, so it has no status to show */}
-                  <div
-                    className={`${
-                      provider.installUrl ? 'hidden' : 'flex'
-                    } items-center gap-[5px] text-[11.5px] font-[600] ${
-                      isConnected ? 'text-pqOk' : 'text-pqSoft'
-                    }`}
-                  >
-                    {isConnected ? (
-                      <span className="size-[5px] shrink-0 rounded-full bg-pqOk" />
-                    ) : null}
-                    {/* Not `connected` — that key is a *label* and carries its
-                        own punctuation in every locale (`Connected:`,
-                        `Connecté :`, `接続済み：`), which is right for
-                        github.component's "Connected: {login}" and leaves a
-                        dangling colon here. */}
-                    {isConnected
-                      ? t('third_party_status_connected', 'Connected')
-                      : t('not_connected', 'Not connected')}
-                  </div>
+                  {provider.installUrl ? null : (
+                    <div
+                      className={`flex items-center gap-[5px] text-[11.5px] font-[600] ${
+                        isConnected ? 'text-pqOk' : 'text-pqSoft'
+                      }`}
+                    >
+                      {isConnected ? (
+                        <span className="size-[5px] shrink-0 rounded-full bg-pqOk" />
+                      ) : null}
+                      {/* Not `connected` — that key is a *label* and carries its
+                          own punctuation in every locale (`Connected:`,
+                          `Connecté :`, `接続済み：`), which is right for
+                          github.component's "Connected: {login}" and leaves a
+                          dangling colon here. */}
+                      {isConnected
+                        ? t('third_party_status_connected', 'Connected')
+                        : t('not_connected', 'Not connected')}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="line-clamp-2 whitespace-pre-wrap text-start text-[13px] leading-[1.6] text-pqMuted text-balance">

@@ -9,7 +9,9 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import {
   extractBearerToken,
-  hubspotOAuthClientId,
+  hubspotAppCredentials,
+  hubspotInstallRedirectUri,
+  isHubspotOAuthApp,
 } from '@gitroom/nestjs-libraries/chat/oauth-types';
 import { createHash } from 'crypto';
 import { OAuthApp } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
@@ -22,30 +24,6 @@ const enableOidcEmailClaims = () => Boolean(openAiOAuthClientId());
 // PostQueen access tokens never expire, but HubSpot wants an expires_in: ten
 // years (a hundred would not fit in a 32-bit integer)
 const hubspotTokenExpiresIn = 10 * 365 * 24 * 60 * 60;
-
-// The HubSpot app itself (HubSpot project > app > Auth tab), not the
-// PostQueen OAuth app above: its redirect URL finishes the install, see
-// completeHubspotInstall
-const hubspotAppClientId = () => process.env.HUBSPOT_APP_CLIENT_ID?.trim();
-const hubspotAppClientSecret = () =>
-  process.env.HUBSPOT_APP_CLIENT_SECRET?.trim();
-const hubspotInstallRedirectUri = () =>
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/hubspot/callback`;
-
-// The link that installs the HubSpot app in a HubSpot account (listed under
-// Settings > Integrations), undefined when the install can't be completed here
-export const hubspotInstallUrl = () => {
-  const clientId = hubspotAppClientId();
-  if (!clientId || !hubspotAppClientSecret()) {
-    return undefined;
-  }
-
-  const url = new URL('https://app.hubspot.com/oauth/authorize');
-  url.searchParams.set('client_id', clientId);
-  url.searchParams.set('redirect_uri', hubspotInstallRedirectUri());
-  url.searchParams.set('scope', 'oauth');
-  return url.toString();
-};
 
 // Verified-domain match: exact host or a subdomain of it (spoof-safe, the
 // leading dot means evilclaude.ai and claude.ai.evil.com are both rejected)
@@ -378,8 +356,7 @@ export class OAuthService {
     if (app.dynamic) {
       return app.tokenEndpointAuthMethod === 'none';
     }
-    const hubspot = hubspotOAuthClientId();
-    return !!hubspot && app.clientId === hubspot;
+    return isHubspotOAuthApp(app);
   }
 
   // What an authorization code is bound to: a dynamic client's PKCE challenge
@@ -558,8 +535,7 @@ export class OAuthService {
   // new consent that replaced it, or a member who left). A separate refresh
   // token would need a column of its own. No other client gets these fields
   private refreshFields(app: Pick<OAuthApp, 'clientId' | 'dynamic'>, token: string) {
-    const hubspot = hubspotOAuthClientId();
-    if (app.dynamic || !hubspot || app.clientId !== hubspot) {
+    if (!isHubspotOAuthApp(app)) {
       return {};
     }
 
@@ -576,8 +552,7 @@ export class OAuthService {
     refreshToken?: string,
     clientSecret?: string
   ) {
-    const hubspot = hubspotOAuthClientId();
-    if (!hubspot || !clientId || clientId !== hubspot) {
+    if (!clientId || !isHubspotOAuthApp({ clientId })) {
       throw new HttpException(
         { error: 'unsupported_grant_type' },
         HttpStatus.BAD_REQUEST
@@ -585,7 +560,7 @@ export class OAuthService {
     }
 
     const app = await this._oauthRepository.getAppByClientId(clientId);
-    if (!app || app.dynamic) {
+    if (!app || !isHubspotOAuthApp(app)) {
       throw new HttpException(
         { error: 'invalid_client' },
         HttpStatus.UNAUTHORIZED
@@ -624,11 +599,11 @@ export class OAuthService {
   // HubSpot only counts an install of the HubSpot app once its code is
   // exchanged. PostQueen makes no HubSpot API calls, so the tokens are not kept
   async completeHubspotInstall(code: string) {
-    const clientId = hubspotAppClientId();
-    const clientSecret = hubspotAppClientSecret();
-    if (!clientId || !clientSecret) {
+    const credentials = hubspotAppCredentials();
+    if (!credentials) {
       throw new HttpException('Not found', HttpStatus.NOT_FOUND);
     }
+    const { clientId, clientSecret } = credentials;
 
     let response: Response;
     try {

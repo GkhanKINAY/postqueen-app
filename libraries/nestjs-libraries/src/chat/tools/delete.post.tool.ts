@@ -68,7 +68,19 @@ If the post cannot be deleted, the result contains output.errors explaining why.
           };
         }
 
-        await this._postsService.deletePost(organizationId, post.group);
+        try {
+          const deleted = await this._postsService.deletePost(
+            organizationId,
+            post.group
+          );
+          if ('error' in deleted) {
+            return { output: { errors: 'Post not found' } };
+          }
+        } catch (err: any) {
+          return {
+            output: { errors: err?.message || 'Failed to delete the post' },
+          };
+        }
 
         return { output: { postId: post.id } };
       },

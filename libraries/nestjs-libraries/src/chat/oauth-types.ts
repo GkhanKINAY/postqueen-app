@@ -162,6 +162,49 @@ export function hubspotOAuthClientId(): string | undefined {
   return process.env.HUBSPOT_OAUTH_CLIENT_ID?.trim() || undefined;
 }
 
+/** Whether an OAuth app is the static one HubSpot agents connect with. */
+export function isHubspotOAuthApp(app: {
+  dynamic?: boolean;
+  clientId?: string | null;
+}): boolean {
+  const hubspot = hubspotOAuthClientId();
+  return !app.dynamic && !!hubspot && app.clientId === hubspot;
+}
+
+/**
+ * The HubSpot app itself (HubSpot project > app > Auth tab), not the
+ * PostQueen OAuth app above. Its redirect URL finishes the install
+ * (OAuthService.completeHubspotInstall).
+ */
+export function hubspotAppCredentials():
+  | { clientId: string; clientSecret: string }
+  | undefined {
+  const clientId = process.env.HUBSPOT_APP_CLIENT_ID?.trim();
+  const clientSecret = process.env.HUBSPOT_APP_CLIENT_SECRET?.trim();
+  return clientId && clientSecret ? { clientId, clientSecret } : undefined;
+}
+
+export function hubspotInstallRedirectUri(): string {
+  return `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/hubspot/callback`;
+}
+
+/**
+ * The link that installs the HubSpot app in a HubSpot account (listed under
+ * Settings > Integrations), undefined when the install can't be completed here.
+ */
+export function hubspotInstallUrl(): string | undefined {
+  const credentials = hubspotAppCredentials();
+  if (!credentials) {
+    return undefined;
+  }
+
+  const url = new URL('https://app.hubspot.com/oauth/authorize');
+  url.searchParams.set('client_id', credentials.clientId);
+  url.searchParams.set('redirect_uri', hubspotInstallRedirectUri());
+  url.searchParams.set('scope', 'oauth');
+  return url.toString();
+}
+
 /**
  * HubSpot agents follow the 2025-03-26 MCP authorization spec: they drop the
  * path of the MCP url and read /.well-known/oauth-authorization-server at its
@@ -185,12 +228,7 @@ export function oauthAppIssuer(app: {
   clientId?: string;
 }): string {
   const rootIssuer = rootAuthorizationServerIssuer();
-  if (
-    !app.dynamic &&
-    rootIssuer &&
-    app.clientId &&
-    app.clientId === hubspotOAuthClientId()
-  ) {
+  if (rootIssuer && isHubspotOAuthApp(app)) {
     return rootIssuer;
   }
 

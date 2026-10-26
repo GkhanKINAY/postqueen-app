@@ -271,12 +271,16 @@ ${renderArray(
     );
     // In the app a started video job is a card in the chat that polls the
     // status route itself; the model gets no status tool there, so it cannot
-    // sit in a polling loop for the minutes a provider takes. A post is
+    // sit in a polling loop for the minutes a provider takes, and the same
+    // goes for an upload still being converted (mediaStatusTool). A post is
     // deleted there by the user, from its card (showPostCard) and behind a
-    // confirmation, never by the model. MCP keeps both tools.
+    // confirmation, never by the model. MCP keeps all three tools.
     const uiTools = Object.fromEntries(
       Object.entries(tools).filter(
-        ([name]) => !['videoStatusTool', 'deletePostTool'].includes(name)
+        ([name]) =>
+          !['videoStatusTool', 'mediaStatusTool', 'deletePostTool'].includes(
+            name
+          )
       )
     );
     return new Agent({

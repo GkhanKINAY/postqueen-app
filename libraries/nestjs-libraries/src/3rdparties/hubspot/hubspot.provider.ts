@@ -2,13 +2,13 @@ import {
   ThirdParty,
   ThirdPartyAbstract,
 } from '@gitroom/nestjs-libraries/3rdparties/thirdparty.interface';
-import { hubspotInstallUrl } from '@gitroom/nestjs-libraries/database/prisma/oauth/oauth.service';
+import { hubspotInstallUrl } from '@gitroom/nestjs-libraries/chat/oauth-types';
 
 @ThirdParty({
   identifier: 'hubspot',
   title: 'HubSpot',
   description:
-    'Let HubSpot agents in Agent Builder write your posts and hand them to PostQueen, which schedules and publishes them.',
+    'HubSpot agents write your posts, and PostQueen schedules and publishes them.',
   fields: [],
   installUrl: hubspotInstallUrl,
 })
