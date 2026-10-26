@@ -44,6 +44,7 @@
 /billing/portal
 /billing/prorate
 /billing/refund-charges
+/billing/renewal
 /billing/subscribe
 /comments
 /comments/${comment.id}
@@ -169,6 +170,7 @@
 /user/approved-apps/${app.id}
 /user/change-org
 /user/delete-account
+/user/delete-account-info
 /user/email-notifications
 /user/email/confirm
 /user/email/request
@@ -184,6 +186,7 @@
 /user/personal
 /user/product-news
 /user/self
+/user/subscription
 /user/switch
 /webhooks
 /webhooks/${row.id}
