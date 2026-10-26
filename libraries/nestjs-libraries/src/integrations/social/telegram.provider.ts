@@ -270,7 +270,7 @@ export class TelegramProvider extends SocialAbstract implements SocialProvider {
       }
       // node-telegram-bot-api uploads any local path that exists, so anything
       // that is not a URL has to be a file of the upload directory
-      if (mediaUrl.indexOf('http') !== 0) {
+      if (!/^https?:\/\//.test(mediaUrl)) {
         mediaUrl = this.localMediaPath(mediaUrl, 'telegram-error');
       }
       //get mime type to pass contentType to telegram api.

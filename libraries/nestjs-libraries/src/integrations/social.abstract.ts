@@ -7,7 +7,6 @@ import {
 import { ApplicationFailure } from '@temporalio/activity';
 import { analyticsFetchNeedsReconnect } from '@gitroom/nestjs-libraries/integrations/analytics-fetch.errors';
 import {
-  insideUploads,
   isReadTimeout,
   MEDIA_READ_TIMEOUT,
   readOrFetch,
@@ -19,6 +18,7 @@ import {
 } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import sharp from 'sharp';
 import { createReadStream, statSync } from 'fs';
+import { resolve, sep } from 'path';
 import { Readable } from 'stream';
 
 export const stripQuery = (url: string) => {
@@ -472,7 +472,9 @@ export abstract class SocialAbstract {
   // the same answer, and its 401 is not the network asking for a reconnect.
   protected async readOrFetch(path: string): Promise<Buffer> {
     try {
-      return await readOrFetch(path);
+      return await readOrFetch(
+        path.indexOf('http') === 0 ? path : this.localMediaPath(path)
+      );
     } catch (err: any) {
       const status = Number(err?.response?.status);
       if (status >= 400 && status < 500) {
@@ -528,11 +530,16 @@ export abstract class SocialAbstract {
 
   // Media that is not a remote URL is read from this worker's disk. The stored
   // path is user-influenced, so only a file inside UPLOAD_DIRECTORY is ever
-  // opened, the same confinement readOrFetch applies. A path outside it fails
-  // the post for good: reading it again would be refused again.
+  // opened. The path is the one updateMedia built, UPLOAD_DIRECTORY in front,
+  // so it is resolved the way it is opened, from the working directory;
+  // resolve() collapses any `..` first. A path outside the directory fails the
+  // post for good: reading it again would be refused again.
   protected localMediaPath(path: string, identifier = '') {
-    const file = insideUploads(path);
-    if (!file) {
+    const base = process.env.UPLOAD_DIRECTORY
+      ? resolve(process.env.UPLOAD_DIRECTORY)
+      : '';
+    const file = resolve(path);
+    if (!base || !file.startsWith(base + sep)) {
       throw new BadBody(
         identifier,
         JSON.stringify({ path: stripQuery(path) }),

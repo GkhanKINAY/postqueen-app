@@ -18,7 +18,7 @@ export const isReadTimeout = (err: any) =>
 
 // A path under UPLOAD_DIRECTORY, or null. resolve() collapses any `..`, the same
 // confinement the frontend's /uploads route applies.
-export const insideUploads = (path: string) => {
+const insideUploads = (path: string) => {
   if (!process.env.UPLOAD_DIRECTORY) {
     return null;
   }
