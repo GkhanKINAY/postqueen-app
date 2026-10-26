@@ -107,7 +107,7 @@ describe('calendar published label', () => {
     const headerChip = weekBlock.indexOf('data-published-at="header"');
     const titleChip = weekBlock.indexOf('data-published-at="title"');
     const title = weekBlock.indexOf(
-      "'min-w-0 flex-1 break-words text-start text-[11px] leading-[1.3] text-pqText'",
+      "'w-full min-w-0 break-words text-start text-[11px] leading-[1.3] text-pqText'",
     );
     assert.ok(headerChip >= 0, 'header placement exists');
     assert.ok(titleChip > headerChip, 'title-row fallback follows the header chip');

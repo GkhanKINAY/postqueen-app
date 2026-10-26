@@ -60,10 +60,10 @@ describe('All channels layout', () => {
     assert.doesNotMatch(workspace, /md:col-span-4/);
   });
 
-  it('snap-scrolls Top 5 below 1100px and uses equal desktop cards', () => {
-    assert.match(workspace, /snap-x snap-mandatory/);
-    assert.match(workspace, /min-\[1100px\]:grid/);
-    assert.match(workspace, /repeat\(\$\{topPosts\.length\}/);
+  it('wraps Top 5 into equal cards that stay inside the page', () => {
+    assert.match(workspace, /grid-cols-\[repeat\(auto-fit,minmax\(220px,1fr\)\)\]/);
+    assert.match(workspace, /min-w-0 snap-start flex-col/);
+    assert.doesNotMatch(workspace, /w-\[min\(220px,72vw\)\]/);
   });
 
   it('names the Top N heading after the number of cards shown on All channels only', () => {

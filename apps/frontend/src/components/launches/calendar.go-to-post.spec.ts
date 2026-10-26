@@ -34,8 +34,9 @@ describe('Go to post on published calendar cards', () => {
     assert.match(calendar, /if \(!releaseURL\) return null/);
   });
 
-  it('is on day, week, list cards and the posts panel, not only Preview', () => {
-    assert.equal((calendar.match(/<GoToLivePostButton/g) || []).length, 3);
+  it('is on day, week, list cards, their action sheets, and the posts panel', () => {
+    // Day, week, and list icon rows, plus the two touch sheets that replace them.
+    assert.equal((calendar.match(/<GoToLivePostButton/g) || []).length, 5);
     assert.match(panel, /<GoToLivePostButton/);
     assert.match(calendar, /<Preview /);
   });
