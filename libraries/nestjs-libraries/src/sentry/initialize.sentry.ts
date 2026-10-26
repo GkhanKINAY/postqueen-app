@@ -97,10 +97,20 @@ export const initializeSentry = (appName: string, allowLogs = false) => {
         if (method === 'GET' && /^(https?:\/\/[^/]+)?\/mcp(\/|-oauth|\?|$)/.test(path)) {
           return 0;
         }
+        if (name?.startsWith('prisma:')) {
+          return 0;
+        }
         return inheritOrSampleWith(
           path.includes('/public/v1/analytics/') ? 0.01 : 0.1
         );
       },
+      // Prisma's engine steps, transaction statements and Express middleware
+      // are noise inside every trace. A Prisma operation and its SQL stay.
+      ignoreSpans: [
+        /^prisma:(client:serialize|engine:(query|serialize|response_json_serialization|connection))$/,
+        { op: 'db', name: /^(BEGIN|COMMIT|DEALLOCATE ALL)$/ },
+        { op: 'middleware.express' },
+      ],
       enableLogs: true,
       // Access tokens in URLs, session cookies and API keys; see sentry.scrub.
       beforeBreadcrumb: consoleWarningsAndErrorsOnly,

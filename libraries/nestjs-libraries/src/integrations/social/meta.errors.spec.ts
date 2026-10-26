@@ -198,11 +198,28 @@ describe('Instagram error mapping', () => {
     );
   });
 
-  it('keeps a failed download as a plain error', () => {
+  it('retries a failed media download (2207052)', () => {
     assert.deepEqual(handle(graph({ message: 'x', code: -1, error_subcode: 2207052 })), {
-      type: 'bad-body',
+      type: 'retry',
       value:
         'Instagram could not download the media file. Please try again. If it keeps failing, upload the file again.',
+    });
+  });
+
+  it('says a refused comment left the post itself published', () => {
+    assert.deepEqual(handle(graph({ message: 'x', code: 100, error_subcode: 1772107 })), {
+      type: 'bad-body',
+      value:
+        'Instagram did not add the comment, the post itself was published. Please try again with different comment text',
+    });
+    assert.equal(handle(graph({ message: 'x', code: 100 }, { id: '17721070' })), undefined);
+  });
+
+  it('names a collaborator Instagram refuses to tag (2207018)', () => {
+    assert.deepEqual(handle(graph({ message: 'x', code: 100, error_subcode: 2207018 })), {
+      type: 'bad-body',
+      value:
+        'One of the collaborators could not be tagged, please check the username is correct, the account is public, and that it allows collaborator invites',
     });
   });
 

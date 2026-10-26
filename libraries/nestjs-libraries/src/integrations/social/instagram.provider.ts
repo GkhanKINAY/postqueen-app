@@ -298,13 +298,16 @@ export class InstagramProvider
     if (/\b2207053\b/.test(body)) {
       return {
         type: 'bad-body' as const,
-        value: 'Unknown upload error, please try again',
+        value:
+          "Instagram failed to upload the video. If it exceeds Instagram's limits (300MB, 1920px width, 25Mbps bitrate), export a smaller version and try again",
       };
     }
 
+    // Instagram failed to fetch the file from our storage. That is usually a
+    // passing problem on one side or the other, so the request is sent again.
     if (/\b2207052\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value:
           'Instagram could not download the media file. Please try again. If it keeps failing, upload the file again.',
       };
@@ -482,6 +485,14 @@ export class InstagramProvider
       };
     }
 
+    if (/\b1772107\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Instagram did not add the comment, the post itself was published. Please try again with different comment text',
+      };
+    }
+
     if (/\b2207082\b/.test(body)) {
       return {
         type: 'retry' as const,
@@ -519,6 +530,16 @@ export class InstagramProvider
         type: 'retry' as const,
         value:
           'Instagram is still processing the media. Please try again in a minute.',
+      };
+    }
+
+    // stripHandle already drops a leading @, so what is left is a handle
+    // Instagram itself refuses.
+    if (/\b2207018\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'One of the collaborators could not be tagged, please check the username is correct, the account is public, and that it allows collaborator invites',
       };
     }
 
@@ -804,7 +825,9 @@ export class InstagramProvider
         this.identifier,
         JSON.stringify({ status_code, status }),
         '{}',
-        handleError?.value || status || 'Instagram could not process the media'
+        handleError?.value ||
+          (status !== status_code && status) ||
+          'Instagram could not process the media'
       );
     }
 

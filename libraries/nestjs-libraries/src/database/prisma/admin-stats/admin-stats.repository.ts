@@ -435,15 +435,14 @@ export class AdminStatsRepository {
   async getOrgActivity(
     params: OrgActivityParams
   ): Promise<OrgActivityResponse> {
-    const [errors, posts, connectedInRange, channels, postsByState, activity] =
-      await Promise.all([
-        this.errorStats(params),
-        this.postStats(params),
-        this.connectedStats(params),
-        this.currentChannelStats(params.organizationId),
-        this.postStateStats(params),
-        this.activityRange(params.organizationId),
-      ]);
+    // One group at a time: on a wide range each aggregate over Post takes
+    // tens of seconds, and all of them at once held the whole Prisma pool.
+    const errors = await this.errorStats(params);
+    const posts = await this.postStats(params);
+    const connectedInRange = await this.connectedStats(params);
+    const channels = await this.currentChannelStats(params.organizationId);
+    const postsByState = await this.postStateStats(params);
+    const activity = await this.activityRange(params.organizationId);
 
     return {
       from: params.from.toISOString(),
@@ -459,21 +458,13 @@ export class AdminStatsRepository {
   }
 
   async getStats(params: StatsParams): Promise<StatsResponse> {
-    const [
-      errors,
-      posts,
-      accounts,
-      connected,
-      activeOrgsBySource,
-      connectedClients,
-    ] = await Promise.all([
-      this.errorStats(params),
-      this.postStats(params),
-      this.accountStats(params),
-      this.connectedStats(params),
-      this.sourceStats(params),
-      this.clientStats(params),
-    ]);
+    // Sequential for the same reason as getOrgActivity.
+    const errors = await this.errorStats(params);
+    const posts = await this.postStats(params);
+    const accounts = await this.accountStats(params);
+    const connected = await this.connectedStats(params);
+    const activeOrgsBySource = await this.sourceStats(params);
+    const connectedClients = await this.clientStats(params);
 
     return {
       from: params.from.toISOString(),

@@ -317,7 +317,7 @@ export const PostContentClient: FC<{ postId: string; html: string }> = ({
     <div className="relative">
       <div
         ref={ref}
-        className="preview-comment-cursor whitespace-pre-wrap text-[14px] leading-[1.5] text-pqText"
+        className="preview-comment-cursor whitespace-pre-wrap text-[14px] leading-[1.5] text-pqText [&_p]:min-h-[1.5em]"
         onTouchStart={() => (touchSelecting.current = true)}
         onMouseDown={() => (touchSelecting.current = false)}
         onMouseUp={readSelection}

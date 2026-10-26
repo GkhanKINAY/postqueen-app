@@ -20,7 +20,17 @@ export const setSentryUser = (
   }
 };
 
-export const initializeSentryClient = (environment: string, dsn: string) =>
+// The browser client our own init created. A remounted layout must not set
+// Sentry up a second time, but only this client counts: one created anywhere
+// else would not go through scrubForSentry, so it must not stop ours.
+let ownClient: ReturnType<typeof Sentry.getClient>;
+
+export const initializeSentryClient = (environment: string, dsn: string) => {
+  const before = Sentry.getClient();
+  if (ownClient && before === ownClient) {
+    return;
+  }
+
   initializeSentryBasic(environment, dsn, {
     integrations: [
       // Add default integrations back
@@ -40,3 +50,9 @@ export const initializeSentryClient = (environment: string, dsn: string) =>
 
     profilesSampleRate: environment === 'development' ? 1.0 : 0.60,
   });
+
+  const after = Sentry.getClient();
+  if (after && after !== before) {
+    ownClient = after;
+  }
+};

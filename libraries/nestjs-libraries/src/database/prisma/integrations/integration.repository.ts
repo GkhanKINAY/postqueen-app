@@ -339,7 +339,9 @@ export class IntegrationRepository {
           internalId: page.internalId,
           providerIdentifier: template.providerIdentifier,
           type: template.type,
-          ...(existing.deletedAt ? { rootInternalId } : {}),
+          // A live row takes this login's tokens above, so it takes the
+          // login too: refresh reconnects as `rootInternalId`.
+          rootInternalId,
         },
       });
     }
@@ -1370,8 +1372,8 @@ export class IntegrationRepository {
   // of its users can mean. New rows carry platformUserId. A personal account
   // is its own internalId, whoever connected it. A page or business account
   // connected before platformUserId existed keeps the person only in
-  // rootInternalId, which a later reconnect by someone else does not update,
-  // so that is read only while platformUserId is empty.
+  // rootInternalId. A reconnect does not move it (picking the page again in
+  // Configure Channel does), so it is read only while platformUserId is empty.
   // Soft-deleted rows are included, since they still hold the profile.
   getIntegrationsByPlatformUser(providers: string[], platformUserId: string) {
     return this._integration.model.integration.findMany({
