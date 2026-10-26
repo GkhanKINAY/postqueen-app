@@ -555,6 +555,13 @@ export class UsersController {
     response.status(200).send();
   }
 
+  // What deleting the account also does, for the confirmation: the
+  // subscription it cancels and the team members it removes.
+  @Get('/delete-account-info')
+  getDeleteAccountInfo(@GetUserFromRequest() user: User) {
+    return this._userService.getDeleteAccountInfo(user.id);
+  }
+
   @Post('/delete-account')
   @UseGuards(SameOriginGuard)
   async deleteAccount(

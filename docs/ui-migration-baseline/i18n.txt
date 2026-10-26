@@ -1578,6 +1578,9 @@ delay_undone
 delete
 delete_account
 delete_account_confirm
+delete_account_confirm_members
+delete_account_confirm_subscription
+delete_account_confirm_subscription_members
 delete_account_description
 delete_account_password_hint
 delete_account_warning
@@ -1740,6 +1743,8 @@ feedback_placeholder_better
 feedback_thanks
 fill_in_the_details_for_your_oauth_application
 finish
+finish_trial_charge_me_now
+finish_trial_confirmation
 finishing_trial_charging
 finishing_your_trial
 first_comment
@@ -1752,9 +1757,12 @@ format
 founding_member
 four_days
 frequently_asked_questions
+ft_action_body
+ft_action_title
 ft_body_charged
 ft_body_founding
 ft_charged_today
+ft_declined_body
 ft_failed_body
 ft_failed_title
 ft_next_renewal
@@ -2214,7 +2222,9 @@ plan_meta_access_until
 plan_meta_current
 plan_meta_founding_trial
 plan_meta_free
+plan_meta_renews
 plan_meta_trial
+plan_meta_trial_until
 plan_n_channels
 plan_n_clipping_short
 plan_n_credits_month
@@ -2309,6 +2319,7 @@ posted
 posting_days
 posting_days_hint
 posts
+precondition_channel_used_trial
 preview
 preview_click_to_open_comment
 preview_comment_delete_confirm
@@ -2581,7 +2592,7 @@ take_a_tour
 team_action_failed
 team_invite_failed
 team_members
-team_members_will_be_removed
+team_members_will_be_disabled
 teams
 telegram_unavailable
 terms
@@ -2678,7 +2689,9 @@ transfer
 transfer_ownership
 transfer_ownership_confirm
 trial_banner_active
+trial_banner_active_until
 trial_banner_founding
+trial_feature_locked_end_trial
 trial_reel
 try_again
 turn_off

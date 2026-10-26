@@ -916,5 +916,21 @@
   "analytics_refresh_hint": "Một số kênh chỉ cập nhật số liệu bài đăng khi bạn làm mới.",
   "analytics_refresh_nothing": "Không có số liệu mới để đọc",
   "analytics_refresh_failed": "Không thể làm mới số liệu. Hãy thử lại sau.",
-  "analytics_manual_refresh_empty": "Kênh này chưa có số liệu. Chọn Làm mới bên dưới để đọc số liệu mới nhất."
+  "analytics_manual_refresh_empty": "Kênh này chưa có số liệu. Chọn Làm mới bên dưới để đọc số liệu mới nhất.",
+  "ft_action_title": "Xác nhận thanh toán với ngân hàng của bạn",
+  "ft_action_body": "Ngân hàng của bạn yêu cầu xác nhận khoản thanh toán này. Hãy hoàn tất bước xác minh trong cửa sổ vừa mở.",
+  "ft_declined_body": "Thời gian dùng thử của bạn đã kết thúc, nhưng khoản thanh toán đầu tiên không thành công. Hãy thanh toán hóa đơn còn mở bằng một thẻ hợp lệ để tiếp tục dùng PostQueen.",
+  "end_free_trial": "Kết thúc dùng thử miễn phí",
+  "finish_trial_confirmation": "Kết thúc dùng thử sẽ tính khoản thanh toán đầu tiên của gói hôm nay thay vì vào cuối thời gian dùng thử. Không có khoản phí nào thêm.",
+  "finish_trial_charge_me_now": "Kết thúc dùng thử và thanh toán ngay",
+  "trial_feature_locked_end_trial": "Tính năng này không khả dụng trong thời gian dùng thử. Bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử.",
+  "precondition_channel_used_trial": "Kênh mạng xã hội này trước đây đã được kết nối với một tài khoản PostQueen khác.\nĐể kết nối kênh trong thời gian dùng thử, bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử, và không có khoản phí nào thêm.",
+  "team_members_will_be_disabled": "Các thành viên trong nhóm của bạn sẽ bị vô hiệu hóa và mất quyền truy cập vào tổ chức cho đến khi bạn chọn lại một gói có thành viên nhóm.",
+  "delete_account_confirm_subscription_members": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa, gói đăng ký sẽ bị hủy ngay và các thành viên khác trong nhóm sẽ bị xóa khỏi tổ chức của bạn. Không thể hoàn tác thao tác này.",
+  "delete_account_confirm_subscription": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa và gói đăng ký sẽ bị hủy ngay. Không thể hoàn tác thao tác này.",
+  "delete_account_confirm_members": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa và các thành viên khác trong nhóm sẽ bị xóa khỏi tổ chức của bạn. Không thể hoàn tác thao tác này.",
+  "plan_meta_renews": "PostQueen {{tier}} · gia hạn vào {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · dùng thử miễn phí đến {{date}}",
+  "trial_banner_active_until": "Thời gian dùng thử miễn phí của bạn kéo dài đến {{date}}. Sau đó, khoản thanh toán đầu tiên ${{price}} sẽ được tính.",
+  "billing_pending_payment_cta": "Cập nhật thẻ và thanh toán"
 }

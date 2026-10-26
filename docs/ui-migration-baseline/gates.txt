@@ -10,4 +10,4 @@ tier.team_members 2
 tier.webhooks 3
 tier.year_price 3
 trialLocked 8
-user.isLifetime 24
+user.isLifetime 25

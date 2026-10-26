@@ -4,9 +4,11 @@ import { ReactNode, useCallback } from 'react';
 import { MantineProvider } from '@mantine/core';
 import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import i18next from '@gitroom/react/translation/i18next';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { markTourPending } from '@gitroom/frontend/components/onboarding/tour';
+import { markFinishTrialConfirmed } from '@gitroom/frontend/components/billing/finish.trial';
 export default function LayoutContext(params: { children: ReactNode }) {
   if (params?.children) {
     // eslint-disable-next-line react/no-children-prop
@@ -112,14 +114,21 @@ function LayoutContextInner(params: { children: ReactNode }) {
         if (!billingEnabled) {
           return false;
         }
+        // This dialog is the confirmation: the billing page it opens ends
+        // the trial straight away (`?finishTrial`).
         if (
           await deleteDialog(
-            'You are currently on trial, in order to use the feature you must finish the trial',
-            'Finish the trial, charge me now',
-            'Trial',
-
+            i18next.t(
+              'trial_feature_locked_end_trial',
+              "This feature is not available during the trial. You can end the trial now: your plan's first payment is charged today instead of at the end of the trial."
+            ),
+            i18next.t('finish_trial_charge_me_now', 'End trial and pay now'),
+            i18next.t('end_free_trial', 'End free trial'),
+            i18next.t('cancel', 'Cancel'),
+            false
           )
         ) {
+          markFinishTrialConfirmed();
           window.open('/billing?finishTrial=true', '_blank');
           return false;
         }

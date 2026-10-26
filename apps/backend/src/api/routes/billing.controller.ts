@@ -153,12 +153,37 @@ export class BillingController {
     // The error is still swallowed, as before, so a Stripe outage cannot leave
     // somebody stuck in a dialog. But `ended: false` is not an error, and only
     // that specific answer clears the flag locally.
+    //
+    // Two answers stop here instead. `declined`: the trial ended in Stripe and
+    // its first charge failed, so nothing is cleared and the caller says so
+    // (the subscription webhook locks the account, as for any failed first
+    // payment). `requiresAction`: the bank wants the customer to confirm, so
+    // the caller completes it in the browser before it polls.
     const provider = await this.provider(org);
     let captureBlocked = false;
     let error: string | undefined;
     let status: string | undefined;
+    let action:
+      | { requiresAction: true; clientSecret: string; invoiceUrl?: string }
+      | undefined;
     try {
-      const { ended } = await provider.finishTrial(org);
+      const { ended, declined, requiresAction, clientSecret, invoiceUrl } =
+        await provider.finishTrial(org);
+      if (declined) {
+        return {
+          finish: false,
+          declined: true,
+          captureBlocked: false,
+          ...(invoiceUrl ? { invoiceUrl } : {}),
+        };
+      }
+      if (requiresAction && clientSecret) {
+        action = {
+          requiresAction: true,
+          clientSecret,
+          ...(invoiceUrl ? { invoiceUrl } : {}),
+        };
+      }
       const capture = await this._stripeService.captureFoundingLifetimeIfDue(
         org.id,
         {
@@ -178,6 +203,7 @@ export class BillingController {
     return {
       finish: true,
       captureBlocked,
+      ...(action || {}),
       ...(error ? { error } : {}),
       ...(status ? { status } : {}),
     };
@@ -344,6 +370,19 @@ export class BillingController {
       return [];
     }
     return this._stripeService.getInvoices(org.id);
+  }
+
+  // When the plan charges next, for the plan line and the trial banner.
+  // Null with billing off, like `/`, and for a plan no web provider charges
+  // (a `manual` grant, an app store subscription), whose lookup throws.
+  @Get('/renewal')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async getRenewal(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return null;
+    }
+    const provider = await this.provider(org).catch((): null => null);
+    return provider ? provider.getRenewalDate(org.id) : null;
   }
 
   @Get('/')

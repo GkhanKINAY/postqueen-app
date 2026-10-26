@@ -916,5 +916,21 @@
   "analytics_refresh_hint": "部分频道仅在你刷新时才更新帖子数据。",
   "analytics_refresh_nothing": "没有可读取的新数据",
   "analytics_refresh_failed": "无法刷新数据。请稍后再试。",
-  "analytics_manual_refresh_empty": "此频道还没有数据。选择下方的“刷新”以读取最新数据。"
+  "analytics_manual_refresh_empty": "此频道还没有数据。选择下方的“刷新”以读取最新数据。",
+  "ft_action_title": "请向您的银行确认这笔付款",
+  "ft_action_body": "您的银行要求您确认这笔付款。请在已打开的窗口中完成验证。",
+  "ft_declined_body": "您的试用已结束，但首次付款未能完成。请使用可用的银行卡支付未结发票，以继续使用 PostQueen。",
+  "end_free_trial": "结束免费试用",
+  "finish_trial_confirmation": "结束试用后，您套餐的首次付款将在今天扣取，而不是在试用结束时。不会额外收取任何费用。",
+  "finish_trial_charge_me_now": "结束试用并立即付款",
+  "trial_feature_locked_end_trial": "试用期间无法使用此功能。您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时。",
+  "precondition_channel_used_trial": "此社交渠道之前已连接到另一个 PostQueen 账户。\n如需在试用期间连接它，您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时，且不会额外收费。",
+  "team_members_will_be_disabled": "您的团队成员将被停用，在您重新选择包含团队成员的套餐之前，他们将无法访问您的组织。",
+  "delete_account_confirm_subscription_members": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消，其他团队成员将从您的组织中移除。此操作无法撤销。",
+  "delete_account_confirm_subscription": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消。此操作无法撤销。",
+  "delete_account_confirm_members": "您的账户、组织、渠道和帖子将被删除，其他团队成员将从您的组织中移除。此操作无法撤销。",
+  "plan_meta_renews": "PostQueen {{tier}} · {{date}} 续订",
+  "plan_meta_trial_until": "PostQueen {{tier}} · 免费试用至 {{date}}",
+  "trial_banner_active_until": "您的免费试用持续到 {{date}}。之后将扣取首次付款 ${{price}}。",
+  "billing_pending_payment_cta": "更新银行卡并付款"
 }

@@ -916,5 +916,21 @@
   "analytics_refresh_hint": "一部のチャンネルは、更新したときだけ投稿の数値が更新されます。",
   "analytics_refresh_nothing": "読み込める新しい数値はありません",
   "analytics_refresh_failed": "数値を更新できませんでした。しばらくしてからもう一度お試しください。",
-  "analytics_manual_refresh_empty": "このチャンネルにはまだ数値がありません。下の「更新」を選ぶと最新の数値を読み込みます。"
+  "analytics_manual_refresh_empty": "このチャンネルにはまだ数値がありません。下の「更新」を選ぶと最新の数値を読み込みます。",
+  "ft_action_title": "銀行でお支払いを確認してください",
+  "ft_action_body": "銀行がこのお支払いの確認を求めています。開いたウィンドウで確認を完了してください。",
+  "ft_declined_body": "トライアルは終了しましたが、最初のお支払いが完了しませんでした。PostQueen を引き続きご利用いただくには、有効なカードで未払いの請求書をお支払いください。",
+  "end_free_trial": "無料トライアルを終了",
+  "finish_trial_confirmation": "トライアルを終了すると、プランの初回のお支払いがトライアル終了時ではなく本日請求されます。追加料金はかかりません。",
+  "finish_trial_charge_me_now": "トライアルを終了して今すぐ支払う",
+  "trial_feature_locked_end_trial": "この機能はトライアル中はご利用いただけません。今すぐトライアルを終了できます。その場合、プランの初回のお支払いはトライアル終了時ではなく本日請求されます。",
+  "precondition_channel_used_trial": "このソーシャルチャンネルは以前、別の PostQueen アカウントに接続されていました。\nトライアル中に接続するには、今すぐトライアルを終了できます。その場合、プランの初回のお支払いはトライアル終了時ではなく本日請求され、追加料金はかかりません。",
+  "team_members_will_be_disabled": "チームメンバーは無効になり、チームメンバーを含むプランを再び選択するまで、組織にアクセスできなくなります。",
+  "delete_account_confirm_subscription_members": "アカウント、組織、チャンネル、投稿が削除され、サブスクリプションは直ちに解約されます。また、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。",
+  "delete_account_confirm_subscription": "アカウント、組織、チャンネル、投稿が削除され、サブスクリプションは直ちに解約されます。この操作は元に戻せません。",
+  "delete_account_confirm_members": "アカウント、組織、チャンネル、投稿が削除され、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。",
+  "plan_meta_renews": "PostQueen {{tier}} · {{date}} に更新",
+  "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} まで無料トライアル",
+  "trial_banner_active_until": "無料トライアルは {{date}} までです。その後、初回のお支払い ${{price}} が請求されます。",
+  "billing_pending_payment_cta": "カードを更新して支払う"
 }

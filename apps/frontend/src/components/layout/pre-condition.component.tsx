@@ -4,23 +4,32 @@ import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/m
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Button } from '@gitroom/react/form/button';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
+import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import { markFinishTrialConfirmed } from '@gitroom/frontend/components/billing/finish.trial';
 
 export const PreConditionComponentModal: FC = () => {
   const modal = useModals();
+  const t = useT();
   return (
     <div className="flex flex-col gap-[16px]">
       <div className="whitespace-pre-line">
-        This social channel was connected previously to another PostQueen account.
-        {'\n'}
-        To continue, please fast-track your trial for an immediate charge.
+        {t(
+          'precondition_channel_used_trial',
+          "This social channel was previously connected to another PostQueen account.\nTo connect it during your trial, you can end the trial now: your plan's first payment is charged today instead of at the end of the trial, and nothing extra is added."
+        )}
       </div>
       <div className="flex gap-[2px] justify-center">
         <Button
-          onClick={() => (window.location.href = '/billing?finishTrial=true')}
+          onClick={() => {
+            markFinishTrialConfirmed();
+            window.location.href = '/billing?finishTrial=true';
+          }}
         >
-          Fast track - Charge me now
+          {t('finish_trial_charge_me_now', 'End trial and pay now')}
         </Button>
-        <Button onClick={modal.closeCurrent} secondary={true}>Cancel</Button>
+        <Button onClick={modal.closeCurrent} secondary={true}>
+          {t('cancel', 'Cancel')}
+        </Button>
       </div>
     </div>
   );

@@ -2021,3 +2021,252 @@ describe('yearly credits, a month at a time', () => {
     assert.deepEqual(inForce(), [latest()]);
   });
 });
+
+describe('ending a trial early', () => {
+  const invoiceMethods = Object.getPrototypeOf(probe.invoices);
+  const saved = {
+    retrieve: invoiceMethods.retrieve,
+    pay: invoiceMethods.pay,
+    list: invoiceMethods.list,
+  };
+  let latest: Partial<Stripe.Invoice> | undefined;
+  // Subscriptions that have taken money (`hasPaidInvoice`).
+  let paidBefore: string[];
+  before(() => {
+    invoiceMethods.retrieve = record('invoices.retrieve', (id) =>
+      latest?.id === id ? latest : undefined,
+    );
+    invoiceMethods.pay = record('invoices.pay', () => ({}));
+    invoiceMethods.list = record('invoices.list', ({ subscription }) => ({
+      data: paidBefore.includes(subscription)
+        ? [{ id: 'in_paid', status: 'paid', total: 4900 }]
+        : [],
+    }));
+  });
+  after(() => {
+    Object.assign(invoiceMethods, saved);
+  });
+  beforeEach(() => {
+    latest = undefined;
+    paidBefore = [];
+  });
+
+  const org = { paymentId: 'cus_1' } as any;
+  const trialing = () =>
+    sub('sub_trial', 100, { status: 'trialing', latest_invoice: 'in_1' as any });
+  const invoice = (
+    status: Stripe.Invoice.Status,
+    intent?: Partial<Stripe.PaymentIntent>,
+  ) =>
+    ({
+      id: 'in_1',
+      status,
+      hosted_invoice_url: 'https://invoice.stripe.test/in_1',
+      payments: {
+        data: intent ? [{ payment: { payment_intent: intent } }] : [],
+      },
+    }) as unknown as Partial<Stripe.Invoice>;
+
+  it('ends it in Stripe and reports a first payment that went through', async () => {
+    subs = [trialing()];
+    latest = invoice('paid', { status: 'succeeded', client_secret: 'pi_s' });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, { ended: true });
+    assert.deepEqual(called('subscriptions.update'), [
+      ['sub_trial', { trial_end: 'now' }],
+    ]);
+    assert.deepEqual(called('invoices.retrieve'), [
+      ['in_1', { expand: ['payments.data.payment.payment_intent'] }],
+    ]);
+  });
+
+  it('hands a bank check to the browser, with the client secret', async () => {
+    subs = [trialing()];
+    latest = invoice('open', {
+      status: 'requires_action',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: true,
+      requiresAction: true,
+      clientSecret: 'pi_secret',
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+  });
+
+  it('says declined, never ended, when the card is refused', async () => {
+    subs = [trialing()];
+    latest = invoice('open', {
+      status: 'requires_payment_method',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: false,
+      declined: true,
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+  });
+
+  it('reports a payment nobody confirmed as not gone through, not as a bank check', async () => {
+    subs = [trialing()];
+    latest = invoice('open', {
+      status: 'requires_confirmation',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: false,
+      declined: true,
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+  });
+
+  it('answers declined again when asked after the decline, and pays nothing', async () => {
+    subs = [
+      sub('sub_trial', 100, {
+        status: 'past_due',
+        latest_invoice: 'in_1' as any,
+      }),
+    ];
+    latest = invoice('open', { status: 'requires_payment_method' });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: false,
+      declined: true,
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+    assert.equal(called('subscriptions.update').length, 0);
+    assert.equal(called('invoices.pay').length, 0);
+  });
+
+  it('hands the bank check over again when asked before it was done', async () => {
+    subs = [
+      sub('sub_trial', 100, {
+        status: 'past_due',
+        latest_invoice: 'in_1' as any,
+      }),
+    ];
+    latest = invoice('open', {
+      status: 'requires_action',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.equal((result as any).requiresAction, true);
+    assert.equal((result as any).clientSecret, 'pi_secret');
+    assert.equal(called('subscriptions.update').length, 0);
+    assert.equal(called('invoices.pay').length, 0);
+  });
+
+  it('leaves a past-due renewal alone: it is not a trial', async () => {
+    paidBefore = ['sub_due'];
+    subs = [
+      sub('sub_due', 100, {
+        status: 'past_due',
+        latest_invoice: 'in_1' as any,
+      }),
+    ];
+    latest = invoice('open', { status: 'requires_payment_method' });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, { ended: false });
+    assert.equal(called('subscriptions.update').length, 0);
+    assert.equal(called('invoices.pay').length, 0);
+    assert.equal(called('invoices.retrieve').length, 0);
+  });
+
+  it('has nothing to end for an organization with no Stripe customer', async () => {
+    const result = await service().finishTrial({ paymentId: null } as any);
+
+    assert.deepEqual(result, { ended: false });
+    assert.equal(calls.length, 0);
+  });
+});
+
+describe('the next charge', () => {
+  const period = (end: number) =>
+    ({ data: [{ price: proPrice, current_period_end: end }] }) as any;
+
+  it('is the end of the period of a paid plan', async () => {
+    subs = [sub('sub_paid', 100, { items: period(5_000) })];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 5_000,
+      trialing: false,
+    });
+  });
+
+  it('is the end of the trial while trialing', async () => {
+    subs = [
+      sub('sub_trial', 100, {
+        status: 'trialing',
+        trial_end: 3_000,
+        items: period(9_000),
+      }),
+    ];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 3_000,
+      trialing: true,
+    });
+  });
+
+  it('is read from the subscription a duplicate is cancelled in favour of', async () => {
+    subs = [
+      sub('sub_trial', 200, {
+        status: 'trialing',
+        trial_end: 3_000,
+        items: period(9_000),
+      }),
+      sub('sub_paid', 300, { items: period(5_000) }),
+      sub('sub_old_paid', 100, { items: period(7_000) }),
+    ];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 7_000,
+      trialing: false,
+    });
+  });
+
+  it('is unknown for a plan set to end', async () => {
+    subs = [
+      sub('sub_ending', 100, {
+        cancel_at_period_end: true,
+        items: period(5_000),
+      }),
+    ];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+
+    subs = [sub('sub_cancel_at', 100, { cancel_at: 5_000, items: period(5_000) })];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+  });
+
+  it('is unknown for a payment that failed, and for no customer', async () => {
+    subs = [sub('sub_due', 100, { status: 'past_due', items: period(5_000) })];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+
+    orgCustomer = '';
+    calls = [];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+    assert.equal(called('subscriptions.list').length, 0);
+  });
+});

@@ -17,6 +17,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
 import dayjs from 'dayjs';
 import {
   canCompleteSetPasswordWithToken,
@@ -151,23 +152,69 @@ export class UsersService {
     return { kept, switched };
   }
 
+  /**
+   * The organizations deleting this account deletes: the ones it owns, unless
+   * another owner (SUPERADMIN) is in it too. Such an organization is left as
+   * it is, and the account only leaves it. Only a live owner counts, the way
+   * `countSuperAdmins` counts them: a disabled membership or a deleted user
+   * would otherwise keep an organization nobody can reach, and its
+   * subscription, which is cancelled only for the organizations deleted.
+   *
+   * Other members no longer block the deletion. A plan without team members
+   * only disables them, so the owner of a lapsed organization could not even
+   * reach the team settings to remove them, and could never delete the
+   * account. They are removed with the organization instead, and the
+   * confirmation says so (`getDeleteAccountInfo`).
+   */
   async getOrgsToDeleteForAccount(userId: string) {
     const orgs = await this._organizationRepository.getOrgsByUserId(userId);
     const ownedOrgs = orgs.filter(
       (org) => org.users[0].role === Role.SUPERADMIN
     );
+    const members = await Promise.all(
+      ownedOrgs.map((org) => this._organizationRepository.getAllUsersOrgs(org.id))
+    );
 
-    for (const org of ownedOrgs) {
-      const team = await this._organizationRepository.getTeam(org.id);
-      if (team?.users?.some((member) => member.user.id !== userId)) {
-        throw new HttpException(
-          'Please remove your team members before deleting your account',
-          400
-        );
-      }
-    }
+    return ownedOrgs.filter(
+      (org, index) =>
+        !members[index]?.users?.some(
+          (member) =>
+            member.user.id !== userId &&
+            member.role === Role.SUPERADMIN &&
+            !member.disabled &&
+            !member.user.deletedAt
+        )
+    );
+  }
 
-    return ownedOrgs;
+  /**
+   * What deleting this account does besides deleting it, for the
+   * confirmation: a subscription that is cancelled now, and members, disabled
+   * ones included, who are removed from the organizations it deletes.
+   */
+  async getDeleteAccountInfo(userId: string) {
+    const ownedOrgs = await this.getOrgsToDeleteForAccount(userId);
+    const members = await Promise.all(
+      ownedOrgs.map((org) => this._organizationRepository.getAllUsersOrgs(org.id))
+    );
+
+    return {
+      // Only a plan this deletion really cancels: a Stripe one. A lifetime row
+      // or a `manual` grant is a local entitlement, and an app store plan is
+      // cancelled in the store, not here.
+      hasSubscription: ownedOrgs.some(
+        ({ subscription }) =>
+          !!subscription &&
+          !subscription.deletedAt &&
+          !subscription.isLifetime &&
+          (subscription.provider ?? STRIPE_PROVIDER) === STRIPE_PROVIDER
+      ),
+      hasAdditionalMembers: members.some((team) =>
+        team?.users?.some(
+          (member) => member.user.id !== userId && !member.user.deletedAt
+        )
+      ),
+    };
   }
 
   async deleteAccount(userId: string) {
@@ -176,7 +223,21 @@ export class UsersService {
     const orgs = await this._organizationRepository.getOrgsByUserId(userId);
 
     for (const org of orgs) {
-      if (org.users[0].role === Role.SUPERADMIN) {
+      if (deletedOrgs.some((deletedOrg) => deletedOrg.id === org.id)) {
+        // Everyone else goes with the organization, so nobody is left a
+        // member of a deleted one (and the purge, which waits for no active
+        // member, can run).
+        const team = await this._organizationRepository.getAllUsersOrgs(
+          org.id
+        );
+        for (const member of team?.users || []) {
+          if (member.user.id !== userId) {
+            await this._organizationRepository.deleteTeamMember(
+              org.id,
+              member.user.id
+            );
+          }
+        }
         // Cancelling billing switches these off on the way to the free tier,
         // but a lifetime plan is never cancelled, and its rules would keep
         // polling feeds for a workspace that no longer exists.

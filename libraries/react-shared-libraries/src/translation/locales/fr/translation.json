@@ -916,5 +916,21 @@
   "analytics_refresh_hint": "Certains canaux ne mettent à jour les chiffres de leurs publications que lorsque vous actualisez.",
   "analytics_refresh_nothing": "Aucun nouveau chiffre à lire",
   "analytics_refresh_failed": "Impossible d'actualiser les chiffres. Réessayez plus tard.",
-  "analytics_manual_refresh_empty": "Pas encore de chiffres pour ce canal. Choisissez Actualiser ci-dessous pour lire les plus récents."
+  "analytics_manual_refresh_empty": "Pas encore de chiffres pour ce canal. Choisissez Actualiser ci-dessous pour lire les plus récents.",
+  "ft_action_title": "Confirmez le paiement auprès de votre banque",
+  "ft_action_body": "Votre banque vous demande de confirmer ce paiement. Terminez la vérification dans la fenêtre qui s'est ouverte.",
+  "ft_declined_body": "Votre essai est terminé, mais son premier paiement n'a pas abouti. Réglez la facture en attente avec une carte valide pour continuer à utiliser PostQueen.",
+  "end_free_trial": "Mettre fin à l'essai gratuit",
+  "finish_trial_confirmation": "Mettre fin à l'essai prélève aujourd'hui le premier paiement de votre forfait, au lieu de la fin de l'essai. Rien de plus n'est ajouté.",
+  "finish_trial_charge_me_now": "Mettre fin à l'essai et payer maintenant",
+  "trial_feature_locked_end_trial": "Cette fonctionnalité n'est pas disponible pendant l'essai. Vous pouvez mettre fin à l'essai maintenant : le premier paiement de votre forfait est alors prélevé aujourd'hui au lieu de la fin de l'essai.",
+  "precondition_channel_used_trial": "Ce canal social a déjà été connecté à un autre compte PostQueen.\nPour le connecter pendant votre essai, vous pouvez mettre fin à l'essai maintenant : le premier paiement de votre forfait est alors prélevé aujourd'hui au lieu de la fin de l'essai, et rien de plus n'est ajouté.",
+  "team_members_will_be_disabled": "Les membres de votre équipe seront désactivés et perdront l'accès à votre organisation jusqu'à ce que vous choisissiez de nouveau un forfait incluant des membres d'équipe.",
+  "delete_account_confirm_subscription_members": "Votre compte, vos organisations, canaux et publications seront supprimés, votre abonnement sera annulé immédiatement et les autres membres de l'équipe seront retirés de votre organisation. Cette action est irréversible.",
+  "delete_account_confirm_subscription": "Votre compte, vos organisations, canaux et publications seront supprimés et votre abonnement sera annulé immédiatement. Cette action est irréversible.",
+  "delete_account_confirm_members": "Votre compte, vos organisations, canaux et publications seront supprimés et les autres membres de l'équipe seront retirés de votre organisation. Cette action est irréversible.",
+  "plan_meta_renews": "PostQueen {{tier}} · renouvellement le {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · essai gratuit jusqu'au {{date}}",
+  "trial_banner_active_until": "Votre essai gratuit dure jusqu'au {{date}}. Votre premier paiement de ${{price}} est ensuite prélevé.",
+  "billing_pending_payment_cta": "Mettre à jour la carte et payer"
 }

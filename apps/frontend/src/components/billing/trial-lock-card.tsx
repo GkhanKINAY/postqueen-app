@@ -3,7 +3,10 @@
 import { FC, useState } from 'react';
 import Link from 'next/link';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
+import {
+  FinishTrial,
+  useConfirmFinishTrial,
+} from '@gitroom/frontend/components/billing/finish.trial';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -39,6 +42,7 @@ export const TrialLockCard: FC<TrialLockCardProps> = ({
   const t = useT();
   const user = useUser();
   const [finishTrial, setFinishTrial] = useState(false);
+  const confirmFinishTrial = useConfirmFinishTrial();
   const { shortDatePattern } = useDateFormat();
 
   const endsAt =
@@ -143,7 +147,11 @@ export const TrialLockCard: FC<TrialLockCardProps> = ({
         />
         <button
           type="button"
-          onClick={() => setFinishTrial(true)}
+          onClick={async () => {
+            if (await confirmFinishTrial()) {
+              setFinishTrial(true);
+            }
+          }}
           className="pq-loop relative h-[44px] w-full overflow-hidden rounded-[12px] bg-pqBrand text-[14px] font-[600] text-pqOnBrand animate-pqBtnGlow transition-[filter] hover:brightness-110"
         >
           <span

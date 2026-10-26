@@ -114,6 +114,15 @@ export abstract class PaymentProviderAbstract {
     return this.notSupported();
   }
 
+  // When the plan charges next, in unix seconds: the end of the trial while
+  // trialing, else the end of the current period. Null when the provider
+  // cannot tell (an app store renews on its own schedule).
+  async getRenewalDate(
+    organizationId: string
+  ): Promise<{ renewsAt: number | null; trialing: boolean }> {
+    return { renewsAt: null, trialing: false };
+  }
+
   // Post-checkout poll: is this subscription id active for the org
   async checkSubscription(
     organizationId: string,

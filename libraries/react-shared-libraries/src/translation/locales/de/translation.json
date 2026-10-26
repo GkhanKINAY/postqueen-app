@@ -916,5 +916,21 @@
   "analytics_refresh_hint": "Manche Kanäle aktualisieren ihre Beitragszahlen nur, wenn du aktualisierst.",
   "analytics_refresh_nothing": "Keine neuen Zahlen zum Abrufen",
   "analytics_refresh_failed": "Die Zahlen konnten nicht aktualisiert werden. Versuche es später noch einmal.",
-  "analytics_manual_refresh_empty": "Für diesen Kanal gibt es noch keine Zahlen. Wähle unten Aktualisieren, um die neuesten abzurufen."
+  "analytics_manual_refresh_empty": "Für diesen Kanal gibt es noch keine Zahlen. Wähle unten Aktualisieren, um die neuesten abzurufen.",
+  "ft_action_title": "Bestätigen Sie die Zahlung bei Ihrer Bank",
+  "ft_action_body": "Ihre Bank möchte, dass Sie diese Zahlung bestätigen. Schließen Sie die Prüfung im geöffneten Fenster ab.",
+  "ft_declined_body": "Ihr Testzeitraum ist beendet, aber die erste Zahlung ist nicht durchgegangen. Bezahlen Sie die offene Rechnung mit einer funktionierenden Karte, um PostQueen weiter zu nutzen.",
+  "end_free_trial": "Kostenlosen Testzeitraum beenden",
+  "finish_trial_confirmation": "Wenn Sie den Testzeitraum beenden, wird die erste Zahlung Ihres Tarifs heute statt am Ende des Testzeitraums abgebucht. Es kommt nichts extra hinzu.",
+  "finish_trial_charge_me_now": "Testzeitraum beenden und jetzt bezahlen",
+  "trial_feature_locked_end_trial": "Diese Funktion ist im Testzeitraum nicht verfügbar. Sie können den Testzeitraum jetzt beenden: Die erste Zahlung Ihres Tarifs wird dann heute statt am Ende des Testzeitraums abgebucht.",
+  "precondition_channel_used_trial": "Dieser Social-Media-Kanal war bereits mit einem anderen PostQueen-Konto verbunden.\nUm ihn während Ihres Testzeitraums zu verbinden, können Sie den Testzeitraum jetzt beenden: Die erste Zahlung Ihres Tarifs wird dann heute statt am Ende des Testzeitraums abgebucht, und es kommt nichts extra hinzu.",
+  "team_members_will_be_disabled": "Ihre Teammitglieder werden deaktiviert und verlieren den Zugriff auf Ihre Organisation, bis Sie wieder einen Tarif wählen, der Teammitglieder enthält.",
+  "delete_account_confirm_subscription_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht, Ihr Abonnement wird sofort gekündigt und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden.",
+  "delete_account_confirm_subscription": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und Ihr Abonnement wird sofort gekündigt. Dies kann nicht rückgängig gemacht werden.",
+  "delete_account_confirm_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden.",
+  "plan_meta_renews": "PostQueen {{tier}} · verlängert sich am {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · kostenloser Testzeitraum bis {{date}}",
+  "trial_banner_active_until": "Ihr kostenloser Testzeitraum läuft bis {{date}}. Danach wird Ihre erste Zahlung von ${{price}} abgebucht.",
+  "billing_pending_payment_cta": "Karte aktualisieren und bezahlen"
 }

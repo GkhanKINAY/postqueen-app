@@ -255,6 +255,8 @@ export class OrganizationRepository {
                 isLifetime: true,
                 createdAt: true,
                 cancelAt: true,
+                provider: true,
+                deletedAt: true,
               },
             },
           },
@@ -412,6 +414,8 @@ export class OrganizationRepository {
             isLifetime: true,
             createdAt: true,
             cancelAt: true,
+            provider: true,
+            deletedAt: true,
           },
         },
       },
@@ -749,10 +753,13 @@ export class OrganizationRepository {
       select: {
         users: {
           select: {
+            role: true,
+            disabled: true,
             user: {
               select: {
                 email: true,
                 id: true,
+                deletedAt: true,
                 sendSuccessEmails: true,
                 sendFailureEmails: true,
               },

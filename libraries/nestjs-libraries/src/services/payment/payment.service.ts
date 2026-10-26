@@ -135,18 +135,23 @@ export class PaymentService {
   }
 
   // Account deletion: the provider owning the org's subscription, or - when
-  // there is no row (missed webhook, cleaned up) - every provider, so nothing
-  // keeps charging a deleted account. Providers no-op when they own nothing.
+  // there is no row (missed webhook, cleaned up) or the row is a grant no
+  // provider owns (`manual`: founding members, admin grants) - every provider,
+  // so nothing keeps charging a deleted account. Providers no-op when they own
+  // nothing.
   async cancelAllSubscriptions(organizationId: string) {
     const subscription =
       await this._subscriptionService.getSubscriptionByOrganizationId(
         organizationId
       );
 
-    if (subscription) {
-      return this._paymentProviderManager
-        .getProvider(subscription.provider)
-        .cancelAllSubscriptions(organizationId);
+    const owner = subscription
+      ? this._paymentProviderManager
+          .getProviders()
+          .find((p) => p.name === subscription.provider)
+      : undefined;
+    if (owner) {
+      return owner.provider.cancelAllSubscriptions(organizationId);
     }
 
     for (const { provider } of this._paymentProviderManager.getProviders()) {

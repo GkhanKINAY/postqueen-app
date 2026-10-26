@@ -58,6 +58,7 @@ import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billin
 import { PurchaseTerms } from '@gitroom/frontend/components/billing/credits.packs';
 import { CouponChrome } from '@gitroom/frontend/components/billing/coupon-chrome';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { BillingHistory } from '@gitroom/frontend/components/billing/billing.history';
 
 const ModeComponent = dynamic(
   () => import('@gitroom/frontend/components/layout/mode.component'),
@@ -735,6 +736,50 @@ const PendingPaymentNotice: FC<{ hostedInvoiceUrl: string }> = ({
   );
 };
 
+/**
+ * Billing history from the paywall. A lapsed plan replaces the whole app with
+ * this screen, Settings and Billing included, so this is where past invoices
+ * are reached. Only with a Stripe customer to list, and only for admins, like
+ * `GET /billing/invoices` behind it.
+ */
+const PaywallBillingHistory: FC = () => {
+  const t = useT();
+  const user = useUser();
+  const modals = useModals();
+  if (
+    !user?.hasBillingCustomer ||
+    !['ADMIN', 'SUPERADMIN'].includes(user?.role!)
+  ) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      aria-label={t('billing_history', 'Billing history')}
+      data-tooltip-id="tooltip"
+      data-tooltip-content={t('billing_history', 'Billing history')}
+      onClick={() =>
+        modals.openModal({
+          title: t('billing_history', 'Billing history'),
+          size: 720,
+          children: <BillingHistory modal={true} />,
+        })
+      }
+      className="grid h-[36px] w-[36px] place-items-center rounded-[10px] transition-colors hover:bg-pqHover hover:text-pqText"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden>
+        <path
+          d="M6 3.5h12a1 1 0 0 1 1 1v16l-2.5-1.5-2.5 1.5-2-1.5-2 1.5-2.5-1.5L5 20.5v-16a1 1 0 0 1 1-1ZM8.5 8h7M8.5 11.5h7M8.5 15h4"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+};
+
 export const FirstBillingComponent = () => {
   const { stripeClient, onboardingVideoUrl } = useVariables();
   const user = useUser();
@@ -1118,6 +1163,7 @@ export const FirstBillingComponent = () => {
             <DeveloperIconComponent />
           </div>
           <div className="mx-[8px] h-[20px] w-[1px] shrink-0 bg-pqLine mobile:hidden" />
+          <PaywallBillingHistory />
           <div className="flex h-[36px] items-center rounded-[10px] px-[8px] transition-colors hover:bg-pqHover">
             <LanguageComponent />
           </div>

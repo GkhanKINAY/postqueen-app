@@ -128,7 +128,9 @@ export class AccountPurgeRepository {
       select: {
         deletedAt: true,
         purgedAt: true,
-        subscription: { select: { isLifetime: true, deletedAt: true } },
+        subscription: {
+          select: { isLifetime: true, provider: true, deletedAt: true },
+        },
         _count: {
           select: {
             users: {
@@ -147,7 +149,10 @@ export class AccountPurgeRepository {
       activeMembers: org._count.users,
       subscription:
         org.subscription && !org.subscription.deletedAt
-          ? { isLifetime: org.subscription.isLifetime }
+          ? {
+              isLifetime: org.subscription.isLifetime,
+              provider: org.subscription.provider,
+            }
           : null,
     };
   }

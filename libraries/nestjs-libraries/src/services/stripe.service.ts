@@ -2003,14 +2003,12 @@ export class StripeService extends PaymentProviderAbstract {
       return;
     }
 
-    const subscriptions = await stripe.subscriptions.list({
-      customer: org.paymentId,
-      status: 'all',
-      limit: 100,
-    });
-
-    for (const subscription of subscriptions.data.filter(
-      (f) => f.status !== 'canceled'
+    // Only a Stripe customer (a leftover id would answer "No such customer"),
+    // and only what can still charge: incomplete_expired is already over and
+    // Stripe refuses to cancel it.
+    for (const subscription of await this.billableSubscriptions(
+      org.paymentId,
+      true
     )) {
       await stripe.subscriptions.cancel(subscription.id);
     }
@@ -2453,6 +2451,38 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * When the plan charges next: the trial's end while it is trialing, else
+   * the end of the period it is in. Read from the subscription the
+   * organization is on, the one a duplicate is cancelled in favour of
+   * (`keepsOver`). A subscription whose payment failed has no next charge to
+   * show (the paywall's pending payment is about it), and nor does an
+   * organization with no Stripe customer, like a founding member's local row,
+   * or a subscription set to end: it will not charge again, whatever the
+   * local `cancelAt` says.
+   */
+  override async getRenewalDate(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    const [subscription] = (await this.billableSubscriptions(customer || ''))
+      .filter((s) => s.status === 'active' || s.status === 'trialing')
+      .sort((a, b) => (keepsOver(a, b) ? -1 : keepsOver(b, a) ? 1 : 0));
+    if (
+      !subscription ||
+      subscription.cancel_at_period_end ||
+      subscription.cancel_at
+    ) {
+      return { renewsAt: null, trialing: false };
+    }
+    const trialing = subscription.status === 'trialing';
+    return {
+      renewsAt:
+        (trialing
+          ? subscription.trial_end
+          : subscription.items.data[0]?.current_period_end) || null,
+      trialing,
+    };
+  }
+
+  /**
    * Ends a Stripe trial early, and says whether there was one.
    *
    * It used to index `list[0].id` unconditionally, which throws when the
@@ -2466,19 +2496,55 @@ export class StripeService extends PaymentProviderAbstract {
    * the caller needs in order to finish the job locally. An actual error still
    * throws, because "the API call failed" and "there was no trial" must not
    * look the same to whoever decides to clear somebody's trial flag.
+   *
+   * Ending the trial charges the card off-session, and the update succeeds
+   * whatever the bank answers, so the first invoice is read back
+   * (`getRequiredActionFromSubscription`). A bank that asks for 3D Secure
+   * leaves the payment waiting: `requiresAction` with its client secret, which
+   * the browser completes. A declined card is `declined`, never `ended`: the
+   * trial is over in Stripe and its first charge failed, which the
+   * subscription webhook treats like any failed first payment. It used to
+   * answer `ended: true` either way, and the dialog said the card had been
+   * charged before the account landed on the paywall.
+   *
+   * Asked again after that (a second click before the webhook has locked the
+   * account, or a reload of `?finishTrial`), there is no trial left, but the
+   * answer must not become "no trial": the route would clear the trial flag
+   * itself and the dialog would thank for a charge that never happened. So a
+   * past-due subscription that has never been paid, a trial whose first
+   * payment is still open, gets the same answer as the first time. Nothing
+   * is charged from here: the open invoice is reported, never paid.
    */
   async finishTrial(organization: Organization) {
     if (!organization?.paymentId) {
       return { ended: false };
     }
 
-    const list = (
+    const all = (
       await stripe.subscriptions.list({
         customer: organization.paymentId,
       })
-    ).data.filter((f) => f.status === 'trialing');
+    ).data;
+    const list = all.filter((f) => f.status === 'trialing');
 
     if (!list.length) {
+      for (const unpaid of all.filter((f) => f.status === 'past_due')) {
+        if (await this.hasPaidInvoice(unpaid.id)) {
+          continue;
+        }
+        const open = await this.getRequiredActionFromSubscription(unpaid.id);
+        if (open.declined) {
+          return { ended: false, declined: true, invoiceUrl: open.invoiceUrl };
+        }
+        if (open.requiresAction) {
+          return {
+            ended: true,
+            requiresAction: true,
+            clientSecret: open.clientSecret,
+            invoiceUrl: open.invoiceUrl,
+          };
+        }
+      }
       return { ended: false };
     }
 
@@ -2486,7 +2552,78 @@ export class StripeService extends PaymentProviderAbstract {
       trial_end: 'now',
     });
 
+    const payment = await this.getRequiredActionFromSubscription(list[0].id);
+    if (payment.declined) {
+      return { ended: false, declined: true, invoiceUrl: payment.invoiceUrl };
+    }
+    if (payment.requiresAction) {
+      return {
+        ended: true,
+        requiresAction: true,
+        clientSecret: payment.clientSecret,
+        invoiceUrl: payment.invoiceUrl,
+      };
+    }
     return { ended: true };
+  }
+
+  /**
+   * Where the payment of a subscription's latest invoice stands, after a
+   * change that charged it off-session. Only an open invoice is waiting on
+   * anything: `requires_action` is a bank asking the customer to confirm,
+   * which Stripe.js can complete in the browser (`handleNextAction` handles
+   * nothing else). `requires_payment_method` is a card that was declined, or
+   * a check that failed, and `requires_confirmation` a payment nobody
+   * confirmed: either way the first payment did not go through, and the open
+   * invoice is how to pay it.
+   *
+   * The client secret goes to the paying customer's own browser, which is
+   * what it is for:
+   * https://docs.stripe.com/api/payment_intents/object#payment_intent_object-client_secret
+   * The hosted invoice is where the open invoice can be paid with another
+   * card, as the paywall's pending payment does.
+   */
+  private async getRequiredActionFromSubscription(subscriptionId: string) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const invoiceId =
+      typeof subscription.latest_invoice === 'string'
+        ? subscription.latest_invoice
+        : subscription.latest_invoice?.id;
+    const invoice = invoiceId
+      ? await stripe.invoices.retrieve(invoiceId, {
+          expand: ['payments.data.payment.payment_intent'],
+        })
+      : null;
+    const paymentIntent = invoice?.payments?.data
+      .map((p) => p.payment.payment_intent)
+      .find((p): p is Stripe.PaymentIntent => typeof p === 'object' && !!p);
+
+    const nothing = {
+      requiresAction: false,
+      declined: false,
+      clientSecret: null as string | null,
+      invoiceUrl: null as string | null,
+    };
+    if (invoice?.status !== 'open' || !paymentIntent) {
+      return nothing;
+    }
+    const invoiceUrl = invoice.hosted_invoice_url || null;
+    if (paymentIntent.status === 'requires_action' && paymentIntent.client_secret) {
+      return {
+        ...nothing,
+        requiresAction: true,
+        clientSecret: paymentIntent.client_secret,
+        invoiceUrl,
+      };
+    }
+    if (
+      paymentIntent.status === 'requires_action' ||
+      paymentIntent.status === 'requires_payment_method' ||
+      paymentIntent.status === 'requires_confirmation'
+    ) {
+      return { ...nothing, declined: true, invoiceUrl };
+    }
+    return nothing;
   }
 
   /**
