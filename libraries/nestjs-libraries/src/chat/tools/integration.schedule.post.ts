@@ -27,6 +27,31 @@ const attachmentUrl = z
     message: validUrlExtension.defaultMessage({} as any),
   });
 
+// Attachments are either a plain URL string or { path, alt?, thumbnail?,
+// thumbnailTimestamp? }, the same per-media fields as the public API. The
+// thumbnail goes through the same upload-domain check as the path.
+const attachment = z.union([
+  attachmentUrl,
+  z.object({
+    path: attachmentUrl,
+    alt: z.string().optional(),
+    thumbnail: attachmentUrl.optional(),
+    thumbnailTimestamp: z.number().int().min(0).optional(),
+  }),
+]);
+
+type Attachment = z.infer<typeof attachment>;
+
+const toMedia = (a: Attachment) =>
+  typeof a === 'string'
+    ? { path: a }
+    : {
+        path: a.path,
+        alt: a.alt,
+        thumbnail: a.thumbnail,
+        thumbnailTimestamp: a.thumbnailTimestamp,
+      };
+
 @Injectable()
 export class IntegrationSchedulePostTool implements AgentToolInterface {
   constructor(
@@ -95,8 +120,10 @@ If validation fails, the result contains output.errors describing what to fix; t
                         "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
                       ),
                     attachments: z
-                      .array(attachmentUrl)
-                      .describe('The image of the post (URLS)'),
+                      .array(attachment)
+                      .describe(
+                        'The media of the post: either an uploaded media URL string, or { path, alt?, thumbnail?, thumbnailTimestamp? } where path is the uploaded media URL, alt is its alt text, thumbnail is the path of an uploaded jpeg or png (returned by uploadFromUrlTool) used as the video thumbnail or cover, and thumbnailTimestamp is the video frame to use as the cover, in milliseconds'
+                      ),
                     delay: z
                       .number()
                       .int()
@@ -195,9 +222,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                 settings,
                 value: platform.postsAndComments.map((p: any) => ({
                   content: p.content,
-                  image: (p.attachments || []).map((path: string) => ({
-                    path,
-                  })),
+                  image: (p.attachments || []).map(toMedia),
                 })),
               },
             ]
@@ -290,9 +315,9 @@ If validation fails, the result contains output.errors describing what to fix; t
                   // The first item is the post itself; a delay only means
                   // something for the comments after it.
                   delay: index > 0 ? Number(p.delay) || 0 : 0,
-                  image: p.attachments.map((p: any) => ({
+                  image: (p.attachments || []).map((a: Attachment) => ({
                     id: makeId(10),
-                    path: p,
+                    ...toMedia(a),
                   })),
                 })),
               },
