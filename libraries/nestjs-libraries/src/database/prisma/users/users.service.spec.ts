@@ -231,4 +231,24 @@ describe('deleting an account', () => {
       'delete me',
     ]);
   });
+
+  it('only warns about a plan the deletion cancels', async () => {
+    const own = (subscription: Record<string, unknown>) => [
+      {
+        id: 'own',
+        subscription: { subscriptionTier: 'PRO', ...subscription },
+        members: [{ id: 'me', role: 'SUPERADMIN' }],
+      },
+    ];
+    const warns = async (subscription: Record<string, unknown>) => {
+      orgs = own(subscription);
+      return (await deletingService().getDeleteAccountInfo('me')).hasSubscription;
+    };
+
+    assert.equal(await warns({ provider: 'stripe' }), true);
+    assert.equal(await warns({ provider: 'stripe', isLifetime: true }), false);
+    assert.equal(await warns({ provider: 'manual' }), false);
+    assert.equal(await warns({ provider: 'revenuecat' }), false);
+    assert.equal(await warns({ provider: 'stripe', deletedAt: new Date() }), false);
+  });
 });

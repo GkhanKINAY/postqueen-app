@@ -2235,6 +2235,25 @@ describe('the next charge', () => {
     });
   });
 
+  it('is unknown for a plan set to end', async () => {
+    subs = [
+      sub('sub_ending', 100, {
+        cancel_at_period_end: true,
+        items: period(5_000),
+      }),
+    ];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+
+    subs = [sub('sub_cancel_at', 100, { cancel_at: 5_000, items: period(5_000) })];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+  });
+
   it('is unknown for a payment that failed, and for no customer', async () => {
     subs = [sub('sub_due', 100, { status: 'past_due', items: period(5_000) })];
     assert.deepEqual(await service().getRenewalDate('org1'), {

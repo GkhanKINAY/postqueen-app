@@ -129,4 +129,22 @@ describe('the next charge, from Billing', () => {
 
     assert.deepEqual(result, { renewsAt: 3_000, trialing: true });
   });
+
+  it('is null for a plan no web provider charges, instead of a 400', async () => {
+    const controller = new BillingController(
+      {},
+      {},
+      {},
+      {},
+      {
+        getProviderForOrganization: async () => {
+          throw new Error('Payment provider manual not found');
+        },
+      },
+      {},
+      {}
+    );
+
+    assert.equal(await controller.getRenewal(org), null);
+  });
 });

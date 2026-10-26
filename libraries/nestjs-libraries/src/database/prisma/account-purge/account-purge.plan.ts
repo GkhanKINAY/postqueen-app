@@ -135,7 +135,7 @@ export type OrganizationGuardState = {
   deletedAt: Date | null;
   purgedAt: Date | null;
   activeMembers: number;
-  subscription: { isLifetime: boolean } | null;
+  subscription: { isLifetime: boolean; provider?: string } | null;
 };
 
 /**
@@ -143,9 +143,11 @@ export type OrganizationGuardState = {
  * account deletion removes every other member of an organization it deletes
  * (one that has another owner is not deleted at all), so activeMembers is 0
  * and the organization is purged once PURGE_GRACE_DAYS have passed. A member
- * showing up means something restored it. A subscription row that is
- * not a local lifetime entitlement means the cancel at deletion did not
- * finish, and the Stripe link has to stay until it does.
+ * showing up means something restored it. A subscription row that is not a
+ * local entitlement means the cancel at deletion did not finish, and the
+ * Stripe link has to stay until it does. Local entitlements are lifetime rows
+ * and `manual` grants (founding members, admin grants): no provider owns
+ * them, so no cancel will ever remove them.
  */
 export const organizationSkipReason = (
   org: OrganizationGuardState | null,
@@ -176,7 +178,8 @@ export const organizationSkipReason = (
   if (
     options.billingEnabled &&
     org.subscription &&
-    !org.subscription.isLifetime
+    !org.subscription.isLifetime &&
+    org.subscription.provider !== 'manual'
   ) {
     return 'subscription';
   }

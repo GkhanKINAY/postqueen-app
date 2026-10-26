@@ -17,6 +17,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { isWalletLoginEnabled } from '@gitroom/helpers/utils/wallet.login';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { STRIPE_PROVIDER } from '@gitroom/nestjs-libraries/services/payment/payment.providers';
 import dayjs from 'dayjs';
 import {
   canCompleteSetPasswordWithToken,
@@ -198,7 +199,16 @@ export class UsersService {
     );
 
     return {
-      hasSubscription: ownedOrgs.some((org) => !!org.subscription),
+      // Only a plan this deletion really cancels: a Stripe one. A lifetime row
+      // or a `manual` grant is a local entitlement, and an app store plan is
+      // cancelled in the store, not here.
+      hasSubscription: ownedOrgs.some(
+        ({ subscription }) =>
+          !!subscription &&
+          !subscription.deletedAt &&
+          !subscription.isLifetime &&
+          (subscription.provider ?? STRIPE_PROVIDER) === STRIPE_PROVIDER
+      ),
       hasAdditionalMembers: members.some((team) =>
         team?.users?.some(
           (member) => member.user.id !== userId && !member.user.deletedAt

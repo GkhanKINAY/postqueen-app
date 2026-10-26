@@ -2003,14 +2003,12 @@ export class StripeService extends PaymentProviderAbstract {
       return;
     }
 
-    const subscriptions = await stripe.subscriptions.list({
-      customer: org.paymentId,
-      status: 'all',
-      limit: 100,
-    });
-
-    for (const subscription of subscriptions.data.filter(
-      (f) => f.status !== 'canceled'
+    // Only a Stripe customer (a leftover id would answer "No such customer"),
+    // and only what can still charge: incomplete_expired is already over and
+    // Stripe refuses to cancel it.
+    for (const subscription of await this.billableSubscriptions(
+      org.paymentId,
+      true
     )) {
       await stripe.subscriptions.cancel(subscription.id);
     }
@@ -2458,14 +2456,20 @@ export class StripeService extends PaymentProviderAbstract {
    * organization is on, the one a duplicate is cancelled in favour of
    * (`keepsOver`). A subscription whose payment failed has no next charge to
    * show (the paywall's pending payment is about it), and nor does an
-   * organization with no Stripe customer, like a founding member's local row.
+   * organization with no Stripe customer, like a founding member's local row,
+   * or a subscription set to end: it will not charge again, whatever the
+   * local `cancelAt` says.
    */
   override async getRenewalDate(organizationId: string) {
     const customer = await this.getCustomerByOrganizationId(organizationId);
     const [subscription] = (await this.billableSubscriptions(customer || ''))
       .filter((s) => s.status === 'active' || s.status === 'trialing')
       .sort((a, b) => (keepsOver(a, b) ? -1 : keepsOver(b, a) ? 1 : 0));
-    if (!subscription) {
+    if (
+      !subscription ||
+      subscription.cancel_at_period_end ||
+      subscription.cancel_at
+    ) {
       return { renewsAt: null, trialing: false };
     }
     const trialing = subscription.status === 'trialing';

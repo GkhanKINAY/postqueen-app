@@ -373,13 +373,27 @@ describe('Guards', () => {
     );
   });
 
-  it('waits on a subscription the cancel did not remove, but not on lifetime', () => {
+  it('waits on a subscription the cancel did not remove, but not on lifetime or a manual grant', () => {
     assert.equal(
       organizationSkipReason(
         { ...org, subscription: { isLifetime: false } },
         options
       ),
       'subscription'
+    );
+    assert.equal(
+      organizationSkipReason(
+        { ...org, subscription: { isLifetime: false, provider: 'stripe' } },
+        options
+      ),
+      'subscription'
+    );
+    assert.equal(
+      organizationSkipReason(
+        { ...org, subscription: { isLifetime: false, provider: 'manual' } },
+        options
+      ),
+      null
     );
     assert.equal(
       organizationSkipReason(

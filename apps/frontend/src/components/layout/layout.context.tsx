@@ -8,6 +8,7 @@ import i18next from '@gitroom/react/translation/i18next';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { markTourPending } from '@gitroom/frontend/components/onboarding/tour';
+import { markFinishTrialConfirmed } from '@gitroom/frontend/components/billing/finish.trial';
 export default function LayoutContext(params: { children: ReactNode }) {
   if (params?.children) {
     // eslint-disable-next-line react/no-children-prop
@@ -127,6 +128,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
             false
           )
         ) {
+          markFinishTrialConfirmed();
           window.open('/billing?finishTrial=true', '_blank');
           return false;
         }

@@ -29,7 +29,7 @@ import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billin
 import useSWR, { useSWRConfig } from 'swr';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
@@ -39,6 +39,7 @@ import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import {
   FinishTrial,
+  takeFinishTrialConfirmed,
   useConfirmFinishTrial,
 } from '@gitroom/frontend/components/billing/finish.trial';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
@@ -610,10 +611,24 @@ export const MainBillingComponent: FC<{
   const track = useTrack();
   const t = useT();
   const queryParams = useSearchParams();
-  const [finishTrial, setFinishTrial] = useState(
-    !!queryParams.get('finishTrial')
-  );
+  const router = useRouter();
+  const [finishTrial, setFinishTrial] = useState(false);
   const confirmFinishTrial = useConfirmFinishTrial();
+
+  // `?finishTrial` charges the card, so it only goes ahead after one of the
+  // dialogs that ask about it, or after asking here. The parameter is dropped
+  // at once, so a reload does not end the trial again.
+  useEffect(() => {
+    if (!queryParams.get('finishTrial')) {
+      return;
+    }
+    router.replace('/billing', { scroll: false });
+    (async () => {
+      if (takeFinishTrialConfirmed() || (await confirmFinishTrial())) {
+        setFinishTrial(true);
+      }
+    })();
+  }, []);
 
   const [subscription, setSubscription] = useState<SubscriptionWithPlatform | undefined>(
     sub

@@ -57,6 +57,29 @@ export const useConfirmFinishTrial = () => {
   );
 };
 
+// `/billing?finishTrial=true` ends the trial as soon as Billing opens, so a
+// link to it alone must not charge the card. The two dialogs that already
+// asked (the trial 406 and the channel precondition) leave a short-lived mark
+// here; anything else gets the question first.
+const FINISH_TRIAL_CONFIRMED = 'finishTrialConfirmedAt';
+const FINISH_TRIAL_CONFIRMED_TTL = 2 * 60 * 1000;
+
+export const markFinishTrialConfirmed = () => {
+  try {
+    localStorage.setItem(FINISH_TRIAL_CONFIRMED, String(Date.now()));
+  } catch {}
+};
+
+export const takeFinishTrialConfirmed = () => {
+  try {
+    const at = Number(localStorage.getItem(FINISH_TRIAL_CONFIRMED));
+    localStorage.removeItem(FINISH_TRIAL_CONFIRMED);
+    return !!at && Date.now() - at < FINISH_TRIAL_CONFIRMED_TTL;
+  } catch {
+    return false;
+  }
+};
+
 /** ~60 seconds at the 2s poll interval. */
 const MAX_POLL_ATTEMPTS = 30;
 

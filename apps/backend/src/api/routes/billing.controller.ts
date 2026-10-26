@@ -373,14 +373,16 @@ export class BillingController {
   }
 
   // When the plan charges next, for the plan line and the trial banner.
-  // Null with billing off, like `/`.
+  // Null with billing off, like `/`, and for a plan no web provider charges
+  // (a `manual` grant, an app store subscription), whose lookup throws.
   @Get('/renewal')
   @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async getRenewal(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {
       return null;
     }
-    return (await this.provider(org)).getRenewalDate(org.id);
+    const provider = await this.provider(org).catch((): null => null);
+    return provider ? provider.getRenewalDate(org.id) : null;
   }
 
   @Get('/')
