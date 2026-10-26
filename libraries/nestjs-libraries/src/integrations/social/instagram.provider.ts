@@ -303,9 +303,11 @@ export class InstagramProvider
       };
     }
 
+    // Instagram failed to fetch the file from our storage. That is usually a
+    // passing problem on one side or the other, so the request is sent again.
     if (/\b2207052\b/.test(body)) {
       return {
-        type: 'bad-body' as const,
+        type: 'retry' as const,
         value:
           'Instagram could not download the media file. Please try again. If it keeps failing, upload the file again.',
       };

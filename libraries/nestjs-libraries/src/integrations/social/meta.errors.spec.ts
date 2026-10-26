@@ -198,9 +198,9 @@ describe('Instagram error mapping', () => {
     );
   });
 
-  it('keeps a failed download as a plain error', () => {
+  it('retries a failed media download (2207052)', () => {
     assert.deepEqual(handle(graph({ message: 'x', code: -1, error_subcode: 2207052 })), {
-      type: 'bad-body',
+      type: 'retry',
       value:
         'Instagram could not download the media file. Please try again. If it keeps failing, upload the file again.',
     });
