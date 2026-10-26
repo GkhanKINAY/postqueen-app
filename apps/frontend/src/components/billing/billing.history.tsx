@@ -141,8 +141,11 @@ const HistoryGhost: FC = () => (
  * Billing history: every invoice of the organization, with the hosted invoice
  * and its PDF. The billing portal row above stays the place to change the
  * card; this only lists what was billed.
+ *
+ * `modal` drops the card and its heading, for the paywall's billing history
+ * button, where the modal's own title names it.
  */
-export const BillingHistory: FC = () => {
+export const BillingHistory: FC<{ modal?: boolean }> = ({ modal }) => {
   const t = useT();
   const isOrgAdmin = useIsOrgAdmin();
   const { data, error, isLoading } = useInvoices();
@@ -188,11 +191,17 @@ export const BillingHistory: FC = () => {
   return (
     <div
       data-pq="billing-history"
-      className="flex flex-col gap-[14px] rounded-[16px] bg-pqInner p-[20px_22px] outline outline-1 -outline-offset-1 outline-pqBorder"
+      className={clsx(
+        'flex flex-col gap-[14px]',
+        !modal &&
+          'rounded-[16px] bg-pqInner p-[20px_22px] outline outline-1 -outline-offset-1 outline-pqBorder',
+      )}
     >
-      <div className="text-[18px] font-[600] -tracking-[0.01em] text-pqText">
-        {t('billing_history', 'Billing history')}
-      </div>
+      {!modal && (
+        <div className="text-[18px] font-[600] -tracking-[0.01em] text-pqText">
+          {t('billing_history', 'Billing history')}
+        </div>
+      )}
 
       {isLoading && !data ? (
         <HistoryGhost />
