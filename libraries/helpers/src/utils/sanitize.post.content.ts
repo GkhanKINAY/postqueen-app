@@ -46,9 +46,22 @@ export const sanitizePostContent = (value: unknown): string => {
     return '';
   }
 
+  // A block tag the editor doesn't know would be dropped with its text kept,
+  // gluing its line to the next one, so it becomes a paragraph the way the
+  // editor writes one. Only a block with no block inside it is rewritten: a
+  // paragraph cannot hold another, so rewriting `<div><p>a</p></div>` would
+  // leave empty paragraphs (blank lines) around `a`. An outer block is left
+  // for DOMPurify to unwrap, as before, once its inner ones are paragraphs.
+  // Every scan stops at the next block tag (`[^<>]` in the opening tag, the
+  // lookahead in the body), so hostile markup stays linear.
+  const paragraphs = value.replace(
+    /<(div|section|article|blockquote|pre|h[4-6])\b[^<>]*>((?:(?!<\/?(?:div|section|article|blockquote|pre|h[1-6]|p|ul|ol|li)\b)[\s\S])*?)<\/\1\s*>/gi,
+    '<p dir="auto">$2</p>'
+  );
+
   DOMPurify.addHook('uponSanitizeElement', dropImageWithoutUrl);
   try {
-    return DOMPurify.sanitize(value, {
+    return DOMPurify.sanitize(paragraphs, {
       ALLOWED_TAGS,
       ALLOWED_ATTR,
       ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
