@@ -45,9 +45,10 @@ describe('Video clipping without a processor', () => {
     }
     assert.match(loadTools, /\.filter\(\(p\) => !p\.available \|\| p\.available\(\)\)/);
     assert.match(startMcp, /\.\.\.\(clippingEnabled\n\s+\? \{\n\s+\[CLIPPING_WIDGET_URI\]/);
-    // no plan advertises minutes nobody can spend
+    // minutes stay on the card, and carry Soon while nobody can spend them
     for (const source of billing) {
-      assert.match(source, /if \(clippingEnabled && currentPricing\?\.clipping_minutes\) \{/);
+      assert.match(source, /if \(currentPricing\.clipping_minutes\) \{/);
+      assert.match(source, /clippingEnabled[\s\S]{0,120}soon/);
     }
   });
 

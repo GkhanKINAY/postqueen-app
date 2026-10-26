@@ -338,9 +338,11 @@ const EmptyStateHero: FC = () => {
  * only exist in the DOM as far as this component is concerned.
  */
 const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
+  const { pickerOpen } = useContext(PropertiesContext);
   // Existing threads start empty while their history connects — without the
-  // route gate the hero flashes over every old conversation.
-  if (!fresh) {
+  // route gate the hero flashes over every old conversation. While the
+  // channel picker is open the hero would sit under the menu.
+  if (!fresh || pickerOpen) {
     return null;
   }
   return (
@@ -363,7 +365,7 @@ const EmptyState: FC<{ fresh: boolean }> = ({ fresh }) => {
  */
 const UnconfiguredAgentShell: FC = () => {
   const t = useT();
-  const { composerSeed } = useContext(PropertiesContext);
+  const { composerSeed, pickerOpen } = useContext(PropertiesContext);
   const [messages, setMessages] = useState<{ id: string; content: string }[]>(
     []
   );
@@ -437,7 +439,7 @@ const UnconfiguredAgentShell: FC = () => {
     <div className="trz agent bg-pqInner flex flex-col transition-all flex-1 relative min-w-0">
       <div className="absolute inset-0 flex flex-col">
         <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto">
-          {!messages.length ? (
+          {!messages.length && !pickerOpen ? (
             <div
               data-copilot-empty="1"
               className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col items-center gap-[24px] px-[16px] pt-[28px] pb-[30px] text-center sm:px-[40px] sm:pt-[64px]"

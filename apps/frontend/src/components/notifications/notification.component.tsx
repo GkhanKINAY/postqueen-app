@@ -165,6 +165,7 @@ export const ShowNotification: FC<{
       <NotificationKindIcon kind={kind} unread={unread} />
       <div className="min-w-0 flex-1 overflow-hidden">
         <div
+          dir="auto"
           className={clsx(
             'break-words text-[13.5px] leading-[1.5] text-pqText [overflow-wrap:anywhere]',
             unread ? 'font-[600]' : 'font-[400]'
@@ -197,6 +198,7 @@ export const ShowNotification: FC<{
           )
         )}
         <div
+          dir="auto"
           className="mt-[4px] text-[11.5px] font-normal text-pqSoft"
           title={isWithin24h ? fullDate : undefined}
         >

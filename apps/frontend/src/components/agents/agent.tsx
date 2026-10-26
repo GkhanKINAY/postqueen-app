@@ -11,6 +11,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import useCookie from 'react-use-cookie';
 import useSWR from 'swr';
@@ -35,7 +36,6 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
-import { useClickOutside } from '@mantine/hooks';
 import { CopilotCreditsChip } from '@gitroom/frontend/components/agents/agent.credits';
 import { useCreditPricing } from '@gitroom/frontend/components/billing/use.credits.balance';
 import { monthlyCredits } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
@@ -381,22 +381,38 @@ const PlusGlyph: FC<{ size?: number }> = ({ size = 15 }) => (
 
 /**
  * "Posting to" in the message box: the selected channels at a glance, and
- * the way in to change them. Desktop opens the picker above the pill; a
- * phone gets it as a sheet. `openChannels` from the context opens the same
- * picker (an empty-state button, a card asking for a channel).
+ * the way in to change them. A pointer that can hover opens the picker above
+ * the pill. Phone, tablet and a wide touch iPad get it as a sheet.
+ * `openChannels` from the context opens the same picker (an empty-state
+ * button, a card asking for a channel).
  */
 export const ChannelPickerButton: FC = () => {
   const t = useT();
-  const { mobile } = useViewport();
+  const { canHover, touch } = useViewport();
+  const hoverPicker = canHover && !touch;
   const { properties, onChannelsChange, pickerOpen, setPickerOpen } =
     useContext(PropertiesContext);
   const { referenceRef, floatingRef } = useAnchoredPopover<
     HTMLButtonElement,
     HTMLDivElement
-  >(pickerOpen && !mobile, 'start', { placement: 'top-start', offsetPx: 8 });
-  const wrapRef = useClickOutside(() => {
-    if (!mobile) setPickerOpen(false);
-  });
+  >(pickerOpen && hoverPicker, 'start', { placement: 'top-start', offsetPx: 8 });
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // The chat column has a transform, so a fixed menu inside it is clipped and
+  // positioned against the column. The menu is portaled; outside clicks still
+  // close it, and clicks on the menu itself do not.
+  useEffect(() => {
+    if (!pickerOpen || !hoverPicker) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      if (floatingRef.current?.contains(target)) return;
+      setPickerOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [pickerOpen, hoverPicker, setPickerOpen, floatingRef]);
   const count = properties.length;
   const label = !count
     ? t('choose_channels', 'Choose channels')
@@ -455,17 +471,19 @@ export const ChannelPickerButton: FC = () => {
           </svg>
         )}
       </button>
-      {pickerOpen && !mobile && (
-        <div
-          ref={floatingRef}
-          role="dialog"
-          aria-label={t('choose_channels', 'Choose channels')}
-          className="z-[80] flex max-h-[min(460px,70vh)] w-[340px] flex-col overflow-hidden rounded-[16px] border border-pqBorder bg-pqPop shadow-menu"
-        >
-          <AgentList selected={properties} onChange={onChannelsChange} />
-        </div>
-      )}
-      {mobile && (
+      {pickerOpen && hoverPicker && mounted &&
+        createPortal(
+          <div
+            ref={floatingRef}
+            role="dialog"
+            aria-label={t('choose_channels', 'Choose channels')}
+            className="z-[80] flex max-h-[min(460px,70vh)] w-[340px] flex-col overflow-hidden rounded-[16px] border border-pqBorder bg-pqPop shadow-menu"
+          >
+            <AgentList selected={properties} onChange={onChannelsChange} />
+          </div>,
+          document.body
+        )}
+      {!hoverPicker && (
         <MobileSheet
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}

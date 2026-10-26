@@ -78,6 +78,11 @@ import { useTour } from '@gitroom/frontend/components/onboarding/tour';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { CalendarMoveButton } from '@gitroom/frontend/components/layout/move-post-sheet';
+import {
+  PostActionRow,
+  PostCardActions,
+  postActionRowClass,
+} from '@gitroom/frontend/components/launches/post.card.actions';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 
@@ -1974,7 +1979,7 @@ const CalendarItem: FC<{
 }> = memo((props) => {
   const t = useT();
   const postErrorTooltip = usePostErrorText();
-  const { touch } = useViewport();
+  const { touch, canHover } = useViewport();
   const { timePattern } = useDateFormat();
   const {
     editPost,
@@ -2038,6 +2043,78 @@ const CalendarItem: FC<{
     }
     deletePost();
   }, [demo, deletePost, explainDemo]);
+  const noHoverSheet = (api: { close: () => void; openMove: () => void }) => (
+    <>
+      {copyDebugJson && !demo && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            copyDebugJson();
+          }}
+        >
+          {t('copy_debug_json_admin', 'Copy debug JSON (admin)')}
+        </PostActionRow>
+      )}
+      {canEdit && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            onEdit();
+          }}
+        >
+          {t('edit_post', 'Edit')}
+        </PostActionRow>
+      )}
+      {canEdit && !demo && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            api.openMove();
+          }}
+        >
+          {t('move', 'Move')}
+        </PostActionRow>
+      )}
+      <PostActionRow
+        onClick={() => {
+          api.close();
+          onDuplicate();
+        }}
+      >
+        {t('duplicate_post', 'Duplicate Post')}
+      </PostActionRow>
+      {!!post.releaseURL && (
+        <div onClick={api.close}>
+          <GoToLivePostButton
+            postId={post.id}
+            releaseURL={post.releaseURL}
+            className={clsx(postActionRowClass, 'text-pqText')}
+            label={t('go_to_post', 'Go to post')}
+            demo={demo}
+            demoTooltip={demoTooltip}
+            onDemo={explainDemo}
+          />
+        </div>
+      )}
+      <PostActionRow
+        onClick={() => {
+          api.close();
+          preview();
+        }}
+      >
+        {t('preview_post', 'Preview Post')}
+      </PostActionRow>
+      <PostActionRow
+        danger
+        onClick={() => {
+          api.close();
+          onDelete();
+        }}
+      >
+        {t('delete_post', 'Delete Post')}
+      </PostActionRow>
+    </>
+  );
   const [{ opacity }, dragRef] = useDrag(
     () => ({
       type: 'post',
@@ -2167,7 +2244,7 @@ const CalendarItem: FC<{
         data-post-id={post.id}
         onClick={onEdit}
         className={clsx(
-          'group relative z-[2] flex w-full max-w-[560px] min-w-0 shrink-0 cursor-pointer overflow-hidden rounded-[9px] bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border),var(--e1)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
+          'group isolate relative z-[2] flex w-full max-w-[560px] min-w-0 shrink-0 cursor-pointer overflow-hidden rounded-[9px] bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border),var(--e1)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
           state === 'ERROR' && 'ring-2 ring-pqDanger',
           state === 'PUBLISHED' &&
             'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ok)_40%,var(--border)),var(--e1)]'
@@ -2277,10 +2354,11 @@ const CalendarItem: FC<{
           </div>
         </div>
         <CalendarMediaThumb image={post.image} size="day" />
-        <div
-          data-ci-actions="1"
-          onClick={(e) => e.stopPropagation()}
-          className="absolute end-[7px] top-[7px] z-[5] flex gap-[1px] rounded-[7px] bg-pqSettings p-[2px] opacity-0 shadow-[inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+        <PostCardActions
+          clusterClassName="absolute end-[7px] top-[7px] z-[5] flex gap-[1px] rounded-[7px] bg-pqSettings p-[2px] opacity-0 shadow-[inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+          triggerClassName="absolute end-[7px] top-[7px] z-[5]"
+          movePost={canEdit && !demo ? post : undefined}
+          sheet={noHoverSheet}
         >
           {copyDebugJson && !demo && (
             <button
@@ -2320,7 +2398,7 @@ const CalendarItem: FC<{
           >
             <DeletePost tooltip={demo ? demoTooltip : undefined} />
           </button>
-        </div>
+        </PostCardActions>
       </div>
     );
   }
@@ -2334,7 +2412,8 @@ const CalendarItem: FC<{
       onClick={onEdit}
       className={clsx(
         // z-[2]: stay above empty-slot past label / hatch stacking if both ever coexist.
-        'group relative z-[2] flex w-full min-w-0 shrink-0 cursor-pointer overflow-hidden rounded-[7px] bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:z-[3] hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
+        'group isolate relative z-[2] flex w-full min-w-0 shrink-0 cursor-pointer overflow-hidden rounded-[7px] bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:z-[3] hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]',
+        (!canHover || touch) && 'min-h-[52px]',
         state === 'ERROR' && 'ring-2 ring-red-500',
         state === 'PUBLISHED' &&
           'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ok)_40%,var(--border))]'
@@ -2376,7 +2455,10 @@ const CalendarItem: FC<{
       >
         <div
           ref={headerRef}
-          className="flex min-w-0 items-center gap-[5px]"
+          className={clsx(
+            'flex min-w-0 items-center gap-[5px]',
+            (!canHover || touch) && 'pe-[30px]',
+          )}
         >
           <div
             ref={leadRef}
@@ -2433,7 +2515,7 @@ const CalendarItem: FC<{
             className={!publishedOnHeader ? 'ms-auto' : undefined}
           />
         </div>
-        <div className="flex min-w-0 items-start gap-[4px]">
+        <div className="flex min-w-0 flex-col items-start gap-[2px]">
           {state === 'PUBLISHED' && !publishedOnHeader && (
             <span
               data-published-at="title"
@@ -2461,8 +2543,8 @@ const CalendarItem: FC<{
           )}
           <div
             className={clsx(
-              'min-w-0 flex-1 break-words text-start text-[11px] leading-[1.3] text-pqText',
-              lineClamp === 1 ? 'line-clamp-1' : 'line-clamp-2'
+              'w-full min-w-0 break-words text-start text-[11px] leading-[1.3] text-pqText',
+              lineClamp === 1 ? 'line-clamp-1' : 'line-clamp-2',
             )}
           >
             {contentPreview}
@@ -2471,10 +2553,14 @@ const CalendarItem: FC<{
       </div>
       {/* Open (live URL) / Duplicate / Preview / Delete — no Statistics on
           calendar cells. Controls appear over the card on hover. */}
-      <div
-        data-ci-actions="1"
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-[3px] end-[3px] z-[5] flex gap-[1px] rounded-[6px] bg-pqSettings p-[2px] opacity-0 shadow-[inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+      <PostCardActions
+        clusterClassName="absolute bottom-[3px] end-[3px] z-[5] flex gap-[1px] rounded-[6px] bg-pqSettings p-[2px] opacity-0 shadow-[inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+        triggerClassName="absolute top-[2px] end-[2px] z-[5]"
+        triggerButtonClassName={
+          !canHover || touch ? 'size-[28px] rounded-[8px]' : undefined
+        }
+        movePost={canEdit && !demo ? post : undefined}
+        sheet={noHoverSheet}
       >
         {copyDebugJson && !demo && (
           <button
@@ -2514,7 +2600,7 @@ const CalendarItem: FC<{
         >
           <DeletePost tooltip={demo ? demoTooltip : undefined} />
         </button>
-      </div>
+      </PostCardActions>
     </div>
   );
 });
@@ -2564,6 +2650,9 @@ const ListItem: FC<{
   const canEdit = post.state !== 'PUBLISHED';
   const demo = isClientDemoPost(post.id);
   const { explain: explainDemo, demoTooltip } = useDemoPostAction();
+  const { canHover, touch } = useViewport();
+  // The sheet button sits on the caption. Leave it a clear strip.
+  const sheetTrigger = !canHover || touch;
   // Design list cards always show the soft method pill (WEB/API/CLI/MCP).
   const showCreationMethodBadge =
     !!post.creationMethod && post.creationMethod !== 'UNKNOWN';
@@ -2595,6 +2684,96 @@ const ListItem: FC<{
     }
     deletePost();
   }, [demo, deletePost, explainDemo]);
+  const onStatistics =
+    demo ||
+    (post.integration.providerIdentifier === 'x' && disableXAnalytics) ||
+    !post.releaseId
+      ? undefined
+      : post.releaseId === 'missing'
+        ? missingRelease
+        : statistics;
+  const listSheet = (api: { close: () => void; openMove: () => void }) => (
+    <>
+      {copyDebugJson && !demo && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            copyDebugJson();
+          }}
+        >
+          {t('copy_debug_json_admin', 'Copy debug JSON (admin)')}
+        </PostActionRow>
+      )}
+      {canEdit && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            onEdit();
+          }}
+        >
+          {t('edit_post', 'Edit')}
+        </PostActionRow>
+      )}
+      {canEdit && !demo && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            api.openMove();
+          }}
+        >
+          {t('move', 'Move')}
+        </PostActionRow>
+      )}
+      <PostActionRow
+        onClick={() => {
+          api.close();
+          onDuplicate();
+        }}
+      >
+        {t('duplicate_post', 'Duplicate Post')}
+      </PostActionRow>
+      {!!post.releaseURL && (
+        <div onClick={api.close}>
+          <GoToLivePostButton
+            postId={post.id}
+            releaseURL={post.releaseURL}
+            className={clsx(postActionRowClass, 'text-pqText')}
+            label={t('go_to_post', 'Go to post')}
+            demo={demo}
+            demoTooltip={demoTooltip}
+            onDemo={explainDemo}
+          />
+        </div>
+      )}
+      <PostActionRow
+        onClick={() => {
+          api.close();
+          preview();
+        }}
+      >
+        {t('preview_post', 'Preview Post')}
+      </PostActionRow>
+      {onStatistics && (
+        <PostActionRow
+          onClick={() => {
+            api.close();
+            onStatistics?.();
+          }}
+        >
+          {t('post_statistics', 'Post Statistics')}
+        </PostActionRow>
+      )}
+      <PostActionRow
+        danger
+        onClick={() => {
+          api.close();
+          onDelete();
+        }}
+      >
+        {t('delete_post', 'Delete Post')}
+      </PostActionRow>
+    </>
+  );
   // Status, not tag: the list row shows its tags as chips below the content,
   // so the stripe is free to say published / draft / scheduled.
   const accent =
@@ -2611,7 +2790,7 @@ const ListItem: FC<{
     <div
       data-ci="1"
       onClick={onEdit}
-      className="group relative flex w-full min-w-0 cursor-pointer overflow-hidden rounded-pqMd bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]"
+      className="group isolate relative flex w-full min-w-0 cursor-pointer overflow-hidden rounded-pqMd bg-pqPop text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand),var(--e2)]"
     >
       {state === 'PUBLISHED' && (
         <span
@@ -2755,10 +2934,15 @@ const ListItem: FC<{
         )}
       </div>
       <CalendarMediaThumb image={post.image} size="day" />
-      <div
-        data-ci-actions="1"
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-[9px] end-[9px] z-[5] flex gap-[1px] rounded-[8px] bg-pqInner p-[2px] opacity-0 shadow-[var(--e2),inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+      <PostCardActions
+        clusterClassName="absolute bottom-[9px] end-[9px] z-[5] flex gap-[1px] rounded-[8px] bg-pqInner p-[2px] opacity-0 shadow-[var(--e2),inset_0_0_0_1px_var(--border)] transition-opacity focus-within:opacity-100 group-hover:opacity-100"
+        triggerClassName={
+          sheetTrigger
+            ? 'relative z-[5] me-[8px] mt-[8px] shrink-0 self-start'
+            : 'absolute bottom-[9px] end-[9px] z-[5]'
+        }
+        movePost={canEdit && !demo ? post : undefined}
+        sheet={listSheet}
       >
         {copyDebugJson && !demo && (
           <button
@@ -2817,7 +3001,7 @@ const ListItem: FC<{
         >
           <DeletePost tooltip={demo ? demoTooltip : undefined} />
         </button>
-      </div>
+      </PostCardActions>
     </div>
   );
 });
@@ -3254,7 +3438,7 @@ const MobileWeekAgenda = () => {
       >
         <div
           data-cal-sticky-head="1"
-          className="sticky top-0 z-[2] flex gap-[4px] border-b border-pqLine bg-pqInner px-[4px] pb-[10px] pt-[2px] shadow-[0_10px_0_0_var(--inner)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="sticky top-0 z-[20] flex gap-[4px] border-b border-pqLine bg-pqInner px-[4px] pb-[10px] pt-[2px] shadow-[0_10px_0_0_var(--inner)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {days.map((day) => {
             const key = day.format('YYYY-MM-DD');
@@ -3559,10 +3743,12 @@ export const GoToLivePostButton: FC<{
   postId: string;
   releaseURL?: string | null;
   className: string;
+  /** Sheet row text. The hover bar keeps the icon. */
+  label?: string;
   demo?: boolean;
   demoTooltip?: string;
   onDemo?: () => void;
-}> = ({ postId, releaseURL, className, demo, demoTooltip, onDemo }) => {
+}> = ({ postId, releaseURL, className, label, demo, demoTooltip, onDemo }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const t = useT();
@@ -3648,7 +3834,7 @@ export const GoToLivePostButton: FC<{
       className={className}
       onClick={go}
     >
-      <GoToPost tooltip={demo ? demoTooltip : undefined} />
+      {label ?? <GoToPost tooltip={demo ? demoTooltip : undefined} />}
     </button>
   );
 };

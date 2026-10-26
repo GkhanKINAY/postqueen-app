@@ -1547,22 +1547,27 @@ const ComposeAiUnconfigured: FC<{
       />
       <form className="copilotKitInputContainer" onSubmit={onSubmit}>
         <div className="copilotKitInput flex items-center gap-[8px]">
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                send();
-              }
-            }}
-            placeholder={t(
-              'composer_ai_placeholder',
-              'Ask for a change, like "make it shorter"'
-            )}
-            rows={1}
-            className="min-h-[36px] flex-1 resize-none"
-          />
+          {/* min-w-0: rail CSS sets textarea { width: 100% }. A flex item's
+              min-width is auto, so in RTL the field keeps the whole row and
+              the send button is pushed off the inline-start edge. */}
+          <div className="min-w-0 flex-1">
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  send();
+                }
+              }}
+              placeholder={t(
+                'composer_ai_placeholder',
+                'Ask for a change, like "make it shorter"'
+              )}
+              rows={1}
+              className="min-h-[36px] w-full resize-none"
+            />
+          </div>
           <button
             type="submit"
             data-pq="composer-ai-send"

@@ -32,34 +32,64 @@ import { BillingPortalRow } from './billing.portal.row';
 export const FeatureRow: FC<{
   label: string;
   unlim?: boolean;
-  /** A qualifier after the label, quieter than it. */
-  note?: string;
-}> = ({ label, unlim, note }) => (
+  /** A quieter line under the label, the way the pricing page sets off X. */
+  detail?: string;
+  /** The plan does not include this. An X, not a check. */
+  missing?: boolean;
+  /** Short pill after the label, such as Soon. */
+  badge?: string;
+}> = ({ label, unlim, detail, missing, badge }) => (
   <div
     data-plan-feature="1"
     className={clsx(
       'flex items-start gap-[9px] text-[13px] leading-[1.5]',
-      unlim
+      missing
+        ? 'text-pqSoft'
+        : unlim
         ? 'pq-loop animate-pqUnlim font-[600] text-pqFocused'
         : 'text-pqMuted'
     )}
   >
-    <span className="mt-[1px] grid size-[17px] shrink-0 place-items-center rounded-[5px] bg-pqBrand text-pqOnBrand">
-      <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
-        <path
-          d="m5 12.5 4.5 4.5L19 7.5"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+    <span
+      className={clsx(
+        'mt-[1px] grid size-[17px] shrink-0 place-items-center rounded-[5px]',
+        missing ? 'bg-pqSettings text-pqSoft' : 'bg-pqBrand text-pqOnBrand'
+      )}
+    >
+      {missing ? (
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" aria-hidden="true">
+          <path
+            d="M7 7l10 10M17 7 7 17"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true">
+          <path
+            d="m5 12.5 4.5 4.5L19 7.5"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
     </span>
-    <span>
-      {label}
-      {/* Wraps as a whole, never between its words */}
-      {!!note && (
-        <span className="whitespace-nowrap text-pqMuted"> · {note}</span>
+    <span className="min-w-0">
+      <span className="inline-flex flex-wrap items-center gap-x-[6px] gap-y-[2px]">
+        <span>{label}</span>
+        {!!badge && (
+          <span className="inline-flex h-[16px] items-center rounded-full bg-pqSettings px-[6px] text-[9px] font-[700] uppercase tracking-[0.04em] text-pqSoft">
+            {badge}
+          </span>
+        )}
+      </span>
+      {!!detail && (
+        <span className="block text-[12px] leading-[1.35] text-pqSoft">
+          {detail}
+        </span>
       )}
     </span>
   </div>
@@ -453,23 +483,26 @@ export const LifetimeDeal = () => {
     lifetimePaid ? '/user/subscription' : null,
     load
   );
+  // FREE accounts see the founding-member purchase window. Trialing paid tiers
+  // can still convert to lifetime (Plans upsell) — do not bounce them back to
+  // /billing. With the offer off sale, only founding members stay here.
+  // The redirect cannot run during render: Next records that as an error and
+  // the dev overlay covers the billing page the person just landed on.
+  const bounce =
+    !!user?.id &&
+    !user?.isLifetime &&
+    (!LIFETIME_ON_SALE ||
+      (user?.tier?.current !== 'FREE' && !user?.isTrailing));
+  useEffect(() => {
+    if (bounce) {
+      router.replace('/billing');
+    }
+  }, [bounce, router]);
   // Billing off: no founding offer to show, and no founding state to be in.
   if (!billingEnabled) {
     return <BillingNotConfigured />;
   }
-  if (!user?.tier) {
-    return null;
-  }
-  // FREE accounts see the founding-member purchase window. Trialing paid tiers
-  // can still convert to lifetime (Plans upsell) — do not bounce them back to
-  // /billing. With the offer off sale, only founding members stay here.
-  if (
-    user?.id &&
-    !user?.isLifetime &&
-    (!LIFETIME_ON_SALE ||
-      (user?.tier?.current !== 'FREE' && !user?.isTrailing))
-  ) {
-    router.replace('/billing');
+  if (!user?.tier || bounce) {
     return null;
   }
   if (lifetimePaid) {

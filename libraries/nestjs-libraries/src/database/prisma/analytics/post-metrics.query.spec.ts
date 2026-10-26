@@ -7,6 +7,7 @@ import {
   matchesAnalyticsQuery,
   previewText,
   overlaySnapshotSeries,
+  seriesFromSnapshots,
   lifetimeToDailyRange,
   postsWithMetrics,
   sortAnalyticsPosts,
@@ -499,6 +500,40 @@ describe('overlaySnapshotSeries', () => {
     assert.deepEqual(
       out[2].data.map((point) => point.total),
       ['0', '0', '0', '0', '0', '0', '0'],
+    );
+  });
+});
+
+describe('seriesFromSnapshots', () => {
+  it('draws a line from stored days when the live read returned nothing', () => {
+    const out = seriesFromSnapshots(
+      [
+        {
+          capturedDay: '2026-10-17',
+          impressions: 1,
+          reactions: 0,
+          comments: null,
+          shares: 0,
+          raw: null,
+        },
+        {
+          capturedDay: '2026-10-23',
+          impressions: 1000000,
+          reactions: 12,
+          comments: null,
+          shares: 0,
+          raw: null,
+        },
+      ],
+      { rangeStart: '2026-10-17', rangeEnd: '2026-10-23' },
+    );
+    const impressions = out.find((series) => series.label === 'Impressions');
+    const comments = out.find((series) => series.label === 'Comments');
+    assert.ok(impressions);
+    assert.equal(comments, undefined);
+    assert.equal(
+      impressions.data.reduce((sum, point) => sum + Number(point.total), 0),
+      1000000,
     );
   });
 });

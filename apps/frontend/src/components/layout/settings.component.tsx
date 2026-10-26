@@ -254,6 +254,12 @@ export const SettingsPopup: FC<{
       ? requestedTab
       : 'global_settings'
   );
+  // Phone back returns to the tab list. The URL write below does not go
+  // through the Next router, so this flag is what actually hides the pane.
+  // Phone starts on the tab list unless a link already named a tab.
+  // Later tab changes stay in this flag: the address bar is updated without
+  // a Next navigation, so the search params do not move on their own.
+  const [indexOpen, setIndexOpen] = useState(() => !requestedTab);
   // Connections / billing are their own pages. Settings is `@modal/(.)settings`
   // — leave via hard assign so the scrim clears and the destination loads.
   const redirectRouter = useRouter();
@@ -271,26 +277,38 @@ export const SettingsPopup: FC<{
     }
   }, [requestedTab, redirectRouter]);
 
+  // `router.replace` here is a real navigation. Settings is both the
+  // intercepted modal and the `/settings` page, so that navigation mounts a
+  // second copy on top of the one already open and clicks land on the wrong
+  // one. The address bar still has to change so a refresh keeps the tab.
+  const writeSettingsSearch = useCallback((tabKey: string | null) => {
+    const params = new URLSearchParams(window.location.search);
+    if (tabKey) {
+      params.set('tab', tabKey);
+    } else {
+      params.delete('tab');
+    }
+    const q = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      q ? `/settings?${q}` : '/settings',
+    );
+  }, []);
+
   const selectTab = useCallback(
     (tabKey: string) => {
+      setIndexOpen(false);
       setTab(tabKey);
-      const params = new URLSearchParams(url.toString());
-      params.set('tab', tabKey);
-      redirectRouter.replace(`/settings?${params.toString()}`, {
-        scroll: false,
-      });
+      writeSettingsSearch(tabKey);
     },
-    [url, redirectRouter]
+    [writeSettingsSearch]
   );
 
   const closeMobilePane = useCallback(() => {
-    const params = new URLSearchParams(url.toString());
-    params.delete('tab');
-    const q = params.toString();
-    redirectRouter.replace(q ? `/settings?${q}` : '/settings', {
-      scroll: false,
-    });
-  }, [url, redirectRouter]);
+    setIndexOpen(true);
+    writeSettingsSearch(null);
+  }, [writeSettingsSearch]);
 
   const t = useT();
   // Teams and Developers call ADMIN-gated endpoints as soon as they mount.
@@ -550,7 +568,7 @@ export const SettingsPopup: FC<{
     'flex items-center gap-[9px] rounded-pqSm px-[9px] text-start text-[13px] transition-[box-shadow,color,background-color] hover:text-pqText hover:shadow-[inset_0_0_0_999px_rgba(124,58,237,.10)]',
     mobile ? 'h-[44px]' : 'h-[34px]'
   );
-  const showIndex = mobile && !url.get('tab');
+  const showIndex = mobile && indexOpen;
 
   // Prototype: width/height min(1040×680, 100%) of the scrim — fixed for every
   // tab. Content scrolls inside; the card never shrinks to the active section.

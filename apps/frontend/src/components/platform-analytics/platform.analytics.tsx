@@ -435,7 +435,7 @@ export const PlatformAnalytics = () => {
 
   if (mobile) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col bg-pqInner">
+      <div className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col bg-pqInner">
         <div className="flex shrink-0 flex-col gap-[10px] border-b border-pqLine px-[14px] py-[12px]">
           <button
             type="button"
@@ -487,7 +487,7 @@ export const PlatformAnalytics = () => {
         </div>
         <div
           ref={paneRef}
-          className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[14px] py-[16px] pb-[48px]"
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-[18px] overflow-x-hidden overflow-y-auto px-[14px] py-[16px] pb-[48px]"
         >
           {analyticsBody}
         </div>

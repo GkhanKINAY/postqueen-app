@@ -70,10 +70,27 @@ const RailOrgChrome: FC<{
           : 'font-[500] text-pqMuted hover:text-pqText hover:shadow-[inset_0_0_0_999px_var(--navRowHover)]'
       )}
     >
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        fill="none"
+        aria-hidden="true"
+        className="shrink-0 text-pqMuted"
+      >
+        <path
+          d="M4 20V7.5A2.5 2.5 0 0 1 6.5 5H11v15M11 9h6.5A2.5 2.5 0 0 1 20 11.5V20M4 20h16M7.5 9h.01M7.5 13h.01M7.5 17h.01"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
       <span data-sbl="1" className="min-w-0 flex-1 truncate">
         {name}
       </span>
       <svg
+        data-sbl="1"
         viewBox="0 0 24 24"
         width="13"
         height="13"

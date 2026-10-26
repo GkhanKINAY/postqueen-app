@@ -44,23 +44,38 @@ export interface Viewport {
   touch: boolean;
   /** Editor + preview side by side (iPad landscape and up). */
   splitComposer: boolean;
+  /**
+   * The primary pointer can hover. False on a phone, a tablet, and a wide
+   * iPad whose primary input is touch — those get sheets, not hover icon
+   * bars. Independent of width: a 1366px iPad is `desktop` and still
+   * `canHover: false`.
+   */
+  canHover: boolean;
 }
 
-export const measureViewport = (width: number): Viewport => ({
+export const measureViewport = (
+  width: number,
+  canHover = true
+): Viewport => ({
   width,
   mobile: width < PQ_MOBILE_MAX,
   tablet: width >= PQ_MOBILE_MAX && width < PQ_TABLET_MAX,
   desktop: width >= PQ_TABLET_MAX,
   touch: width < PQ_TABLET_MAX,
   splitComposer: width >= PQ_COMPOSER_SPLIT_MIN,
+  canHover,
 });
+
+/** Primary input can hover and is a fine pointer (mouse, trackpad). */
+export const canHoverMedia = '(hover: hover) and (pointer: fine)';
 
 const sameBucket = (a: Viewport, b: Viewport) =>
   a.mobile === b.mobile &&
   a.tablet === b.tablet &&
   a.desktop === b.desktop &&
   a.touch === b.touch &&
-  a.splitComposer === b.splitComposer;
+  a.splitComposer === b.splitComposer &&
+  a.canHover === b.canHover;
 
 // The server has no width. The design's own fallback is 1440, and desktop is
 // the layout that degrades most gracefully if the first client measurement
@@ -92,8 +107,9 @@ export const ViewportProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [viewport, setViewport] = useState(() => measureViewport(SSR_WIDTH));
 
   useIsomorphicLayoutEffect(() => {
+    const hoverMq = window.matchMedia(canHoverMedia);
     const apply = () => {
-      const next = measureViewport(window.innerWidth);
+      const next = measureViewport(window.innerWidth, hoverMq.matches);
       setViewport((prev) => (sameBucket(prev, next) ? prev : next));
     };
     const mobileMq = window.matchMedia(
@@ -109,10 +125,12 @@ export const ViewportProvider: FC<{ children: ReactNode }> = ({ children }) => {
     mobileMq.addEventListener('change', apply);
     tabletMq.addEventListener('change', apply);
     composerMq.addEventListener('change', apply);
+    hoverMq.addEventListener('change', apply);
     return () => {
       mobileMq.removeEventListener('change', apply);
       tabletMq.removeEventListener('change', apply);
       composerMq.removeEventListener('change', apply);
+      hoverMq.removeEventListener('change', apply);
     };
   }, []);
 

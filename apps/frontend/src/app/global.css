@@ -95,6 +95,14 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The shell is h-dvh and does not scroll. A fling that escapes a pane only
+   rubber-bands the window, so keep it in the pane that started it. */
+.h-dvh .overflow-y-auto,
+.h-dvh .overflow-auto,
+.h-dvh .overflow-y-scroll {
+  overscroll-behavior: contain;
+}
+
 /* Phone native chrome: notch / home indicator. Used by sheets, sticky
    composer/pay bars, and the settings stack. Harmless on desktop. */
 .pt-safe {
@@ -294,8 +302,10 @@ body *::-webkit-scrollbar-corner {
   transition: opacity 0.1s ease;
 }
 
-/* Prototype: calendar / list / queue action clusters stay reachable without
-   hover on touch and phone widths. */
+/* Hover icon bars. Calendar cards do not render this attribute unless the
+   pointer can hover — a phone gets one button and a sheet. Media-library
+   menus still share the attribute, so a touch screen keeps them visible.
+   Do not force 44px on every button: that bar covered the post. */
 [data-ci-actions] {
   transition: opacity 0.15s ease;
 }
@@ -306,11 +316,6 @@ body *::-webkit-scrollbar-corner {
 
 [data-mobile='1'] [data-ci-actions] {
   opacity: 1 !important;
-}
-
-[data-mobile='1'] [data-ci-actions] button {
-  min-width: 44px !important;
-  min-height: 44px !important;
 }
 
 @media (hover: none) {

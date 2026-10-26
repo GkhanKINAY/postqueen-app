@@ -143,8 +143,13 @@ export const Features: FC<{
   const features = useMemo(() => {
     const currentPricing = pricing[pack];
     const channelsOr = currentPricing.channel;
-    const list: Array<{ label: string; unlim?: boolean; note?: string }> =
-      [];
+    const list: Array<{
+      label: string;
+      unlim?: boolean;
+      detail?: string;
+      missing?: boolean;
+      badge?: string;
+    }> = [];
 
     // The same "a very large number means unlimited" reading the posts line has
     // always used. ULTIMATE's channel count joined it when unlimited was decided,
@@ -153,13 +158,13 @@ export const Features: FC<{
     list.push(
       channelsOr > 10000
         ? {
-            label: t('plan_unlimited_channels', 'Unlimited channels'),
+            label: t('plan_unlimited_social_accounts', 'Unlimited social accounts'),
             unlim: true,
           }
         : channelsOr === 1
-        ? { label: t('plan_one_channel', '1 channel') }
+        ? { label: t('plan_one_social_account', '1 social account') }
         : {
-            label: t('plan_n_channels', '{{count}} channels', {
+            label: t('plan_n_social_accounts', '{{count}} social accounts', {
               count: channelsOr,
             }),
           }
@@ -167,35 +172,51 @@ export const Features: FC<{
     list.push({
       label:
         currentPricing.posts_per_month > 10000
-          ? t('plan_unlimited_posts', 'Unlimited posts per month')
+          ? t('plan_unlimited_posts_line', 'Unlimited posts')
           : t('plan_n_posts', '{{count}} posts per month', {
               count: currentPricing.posts_per_month,
             }),
-      // A post to X is paid for from the credits balance.
-      note: t('plan_x_posts_use_credits', 'X posts use credits'),
+      // Sits under the line, the way the pricing page does, so the title
+      // stays one row and the X caveat does not sit beside it.
+      detail: t('plan_x_posts_use_credits', 'X posts use credits'),
     });
-    if (currentPricing.team_members) {
-      list.push({ label: t('plan_unlimited_team', 'Unlimited team members') });
-    }
-    if (currentPricing?.ai) {
-      // `AI Autocomplete` used to be pushed here too, one line below
-      // `AI auto-complete` — the same feature spelled twice, and every card
-      // listed it twice.
-      list.push({ label: t('plan_ai_autocomplete', 'AI auto-complete') });
-      list.push({ label: t('plan_ai_copilots', 'AI copilots') });
-    }
-    list.push({ label: t('plan_picture_editor', 'Advanced Picture Editor') });
-    // Off until a clipping processor is configured: no plan advertises
-    // minutes nobody can spend
-    if (clippingEnabled && currentPricing?.clipping_minutes) {
+    list.push(
+      currentPricing.team_members
+        ? { label: t('plan_unlimited_team', 'Unlimited team members') }
+        : {
+            label: t('plan_no_team_members', 'No team members'),
+            missing: true,
+          }
+    );
+    if (currentPricing.clipping_minutes) {
       list.push({
-        label: t(
-          'plan_n_clipping_minutes',
-          '{{count}} minutes of AI video clipping per month',
-          { count: currentPricing?.clipping_minutes }
-        ),
+        label: t('plan_n_clipping_short', '{{count}} min video clipping', {
+          count: currentPricing.clipping_minutes,
+        }),
+        badge: clippingEnabled ? undefined : t('soon', 'Soon'),
       });
     }
+    if (currentPricing.webhooks) {
+      list.push({
+        label:
+          currentPricing.webhooks >= 10000
+            ? t('plan_unlimited_webhooks', 'Unlimited webhook endpoints')
+            : t('plan_n_webhooks', '{{count}} webhook endpoints', {
+                count: currentPricing.webhooks,
+              }),
+      });
+    }
+    if (currentPricing.public_api) {
+      list.push({
+        label: t('plan_mcp_agent', 'AI agent connection over MCP'),
+      });
+    }
+    if (currentPricing?.ai) {
+      list.push({ label: t('plan_ai_copilot_in_app', 'AI Copilot in the app') });
+    }
+    list.push({
+      label: t('plan_design_editor', 'Design editor'),
+    });
     return list;
   }, [pack, t, clippingEnabled]);
   return (

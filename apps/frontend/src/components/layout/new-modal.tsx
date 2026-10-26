@@ -388,7 +388,10 @@ export const ModalManagerInner: FC = () => {
           isLast={modalManager.length - 1 === index}
           key={modal.id}
           modal={modal}
-          zIndex={200 + index}
+          // Settings shell is z-[220]. A modal opened from it (social set,
+          // signature, autopost) has to sit above that shell and under the
+          // portaled menus at z-[300].
+          zIndex={240 + index}
           closeModal={closeModal}
         />
       ))}

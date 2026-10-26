@@ -76,8 +76,8 @@ export const YoutubePreview: FC<{
           />
         )}
       </div>
-      <div className="flex items-center">
-        <div className="flex flex-1 gap-[17px] items-center">
+      <div className="flex flex-wrap items-center gap-x-[17px] gap-y-[8px]">
+        <div className="flex min-w-[220px] max-w-full flex-1 items-center gap-[17px]">
           <div>
             <ChannelAvatar
               integration={

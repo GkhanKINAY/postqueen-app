@@ -74,22 +74,43 @@ export function useAnchoredPopover<
             padding,
             apply({
               availableWidth,
+              availableHeight,
               rects,
               elements,
             }: {
               availableWidth: number;
+              availableHeight: number;
               rects: { reference: { width: number } };
               elements: { floating: HTMLElement };
             }) {
+              const el = elements.floating;
               if (matchWidth) {
-                elements.floating.style.width = `${Math.round(
-                  rects.reference.width
-                )}px`;
+                el.style.width = `${Math.round(rects.reference.width)}px`;
               }
-              elements.floating.style.maxWidth = `${Math.max(
-                0,
-                availableWidth
-              )}px`;
+              el.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+              // Cap to the space left after flip, without raising a menu
+              // that already chose a shorter max-height. The class value is
+              // read once, before the inline cap replaces it.
+              if (el.dataset.pqCap !== '1') {
+                const computed = getComputedStyle(el);
+                if (computed.maxHeight.endsWith('px')) {
+                  el.dataset.pqMaxPx = String(
+                    Math.round(parseFloat(computed.maxHeight))
+                  );
+                }
+                if (computed.overflowY === 'visible') {
+                  el.dataset.pqScroll = '1';
+                }
+                el.dataset.pqCap = '1';
+              }
+              const room = Math.max(0, Math.floor(availableHeight));
+              const own = el.dataset.pqMaxPx
+                ? Number(el.dataset.pqMaxPx)
+                : room;
+              el.style.maxHeight = `${Math.min(room, own)}px`;
+              if (el.dataset.pqScroll === '1') {
+                el.style.overflowY = 'auto';
+              }
             },
           }),
         ],
