@@ -1150,8 +1150,11 @@ export class PostsService {
       await this.terminatePostWorkflows(post.id);
       // What was set aside to publish it goes back.
       await this.syncAfterSave(orgId, post.id);
+
+      return { id: post.id };
     }
 
+    // a group that matches no post of this organization
     return { error: true };
   }
 
