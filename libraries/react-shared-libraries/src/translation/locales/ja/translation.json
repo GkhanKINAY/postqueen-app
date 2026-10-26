@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "カードを更新して支払う",
   "thumbnail": "サムネイル",
   "select_frame": "フレームを選択",
-  "from_gallery": "ギャラリーから"
+  "from_gallery": "ギャラリーから",
+  "hubspot_installed": "PostQueen を HubSpot にインストールしました",
+  "hubspot_installed_description": "投稿したいチャンネルをここ PostQueen で接続してください。次に HubSpot で Agent Hub > Agent Builder を開き、ツールを追加して、MCP Servers から PostQueen を選び、Connect and add をクリックします。",
+  "install_in_app": "{{name}} にインストール"
 }

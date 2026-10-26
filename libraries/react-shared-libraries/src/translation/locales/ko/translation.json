@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "카드 업데이트 후 결제",
   "thumbnail": "썸네일",
   "select_frame": "프레임 선택",
-  "from_gallery": "갤러리에서"
+  "from_gallery": "갤러리에서",
+  "hubspot_installed": "PostQueen이 HubSpot에 설치되었습니다",
+  "hubspot_installed_description": "게시할 채널을 여기 PostQueen에서 연결하세요. 그런 다음 HubSpot에서 Agent Hub > Agent Builder를 열고 도구를 추가한 뒤, MCP Servers에서 PostQueen을 선택하고 Connect and add를 클릭하세요.",
+  "install_in_app": "{{name}}에 설치"
 }

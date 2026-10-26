@@ -23,6 +23,30 @@ const enableOidcEmailClaims = () => Boolean(openAiOAuthClientId());
 // years (a hundred would not fit in a 32-bit integer)
 const hubspotTokenExpiresIn = 10 * 365 * 24 * 60 * 60;
 
+// The HubSpot app itself (HubSpot project > app > Auth tab), not the
+// PostQueen OAuth app above: its redirect URL finishes the install, see
+// completeHubspotInstall
+const hubspotAppClientId = () => process.env.HUBSPOT_APP_CLIENT_ID?.trim();
+const hubspotAppClientSecret = () =>
+  process.env.HUBSPOT_APP_CLIENT_SECRET?.trim();
+const hubspotInstallRedirectUri = () =>
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/hubspot/callback`;
+
+// The link that installs the HubSpot app in a HubSpot account (listed under
+// Settings > Integrations), undefined when the install can't be completed here
+export const hubspotInstallUrl = () => {
+  const clientId = hubspotAppClientId();
+  if (!clientId || !hubspotAppClientSecret()) {
+    return undefined;
+  }
+
+  const url = new URL('https://app.hubspot.com/oauth/authorize');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', hubspotInstallRedirectUri());
+  url.searchParams.set('scope', 'oauth');
+  return url.toString();
+};
+
 // Verified-domain match: exact host or a subdomain of it (spoof-safe, the
 // leading dot means evilclaude.ai and claude.ai.evil.com are both rejected)
 const isVerifiedHost = (host: string, verifiedDomains: string[]) =>
@@ -595,6 +619,51 @@ export class OAuthService {
       scope: this.grantedScope(app),
       ...this.refreshFields(app, refreshToken),
     };
+  }
+
+  // HubSpot only counts an install of the HubSpot app once its code is
+  // exchanged. PostQueen makes no HubSpot API calls, so the tokens are not kept
+  async completeHubspotInstall(code: string) {
+    const clientId = hubspotAppClientId();
+    const clientSecret = hubspotAppClientSecret();
+    if (!clientId || !clientSecret) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+    }
+
+    let response: Response;
+    try {
+      response = await fetch('https://api.hubapi.com/oauth/v3/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: hubspotInstallRedirectUri(),
+          code,
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+    } catch (err) {
+      // timeout or network failure, fetch rejects instead of answering
+      throw new HttpException(
+        'Could not reach HubSpot to finish installing PostQueen, please try again',
+        HttpStatus.BAD_GATEWAY,
+        { cause: err }
+      );
+    }
+
+    if (!response.ok) {
+      const value = await response.json().catch(() => null);
+      throw new HttpException(
+        `Could not finish installing PostQueen in HubSpot${
+          value?.message ? `: ${value.message}` : ''
+        }`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    await response.body?.cancel();
   }
 
   async getOrgByOAuthToken(token: string) {

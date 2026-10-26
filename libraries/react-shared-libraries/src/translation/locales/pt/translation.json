@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "Atualizar o cartão e pagar",
   "thumbnail": "Miniatura",
   "select_frame": "Escolher quadro",
-  "from_gallery": "Da galeria"
+  "from_gallery": "Da galeria",
+  "hubspot_installed": "O PostQueen foi instalado no HubSpot",
+  "hubspot_installed_description": "Conecte aqui no PostQueen os canais em que você quer publicar. Depois, no HubSpot, abra Agent Hub > Agent Builder, adicione uma ferramenta, escolha PostQueen em MCP Servers e clique em Connect and add.",
+  "install_in_app": "Instalar no {{name}}"
 }

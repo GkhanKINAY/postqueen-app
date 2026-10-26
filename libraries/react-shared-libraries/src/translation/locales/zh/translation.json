@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "更新银行卡并付款",
   "thumbnail": "缩略图",
   "select_frame": "选择画面",
-  "from_gallery": "从图库选择"
+  "from_gallery": "从图库选择",
+  "hubspot_installed": "PostQueen 已安装到 HubSpot",
+  "hubspot_installed_description": "请先在 PostQueen 中连接你要发布的频道。然后在 HubSpot 中打开 Agent Hub > Agent Builder，添加一个工具，在 MCP Servers 下选择 PostQueen，并点击 Connect and add。",
+  "install_in_app": "安装到 {{name}}"
 }

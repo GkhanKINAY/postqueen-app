@@ -934,5 +934,8 @@
   "billing_pending_payment_cta": "কার্ড আপডেট করে পেমেন্ট করুন",
   "thumbnail": "থাম্বনেইল",
   "select_frame": "ফ্রেম বেছে নিন",
-  "from_gallery": "গ্যালারি থেকে"
+  "from_gallery": "গ্যালারি থেকে",
+  "hubspot_installed": "PostQueen HubSpot-এ ইনস্টল হয়েছে",
+  "hubspot_installed_description": "যে চ্যানেলগুলোতে পোস্ট করতে চান সেগুলো এখানে PostQueen-এ সংযুক্ত করুন। তারপর HubSpot-এ Agent Hub > Agent Builder খুলুন, একটি টুল যোগ করুন, MCP Servers-এর নিচে PostQueen বেছে নিন এবং Connect and add-এ ক্লিক করুন।",
+  "install_in_app": "{{name}}-এ ইনস্টল করুন"
 }

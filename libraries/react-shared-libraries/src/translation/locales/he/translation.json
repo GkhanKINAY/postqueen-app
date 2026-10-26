@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "עדכן כרטיס ושלם",
   "thumbnail": "תמונה ממוזערת",
   "select_frame": "בחירת פריים",
-  "from_gallery": "מהגלריה"
+  "from_gallery": "מהגלריה",
+  "hubspot_installed": "PostQueen הותקן ב-HubSpot",
+  "hubspot_installed_description": "חברו כאן ב-PostQueen את הערוצים שבהם תרצו לפרסם. לאחר מכן, ב-HubSpot, פתחו את Agent Hub > Agent Builder, הוסיפו כלי, בחרו ב-PostQueen תחת MCP Servers ולחצו על Connect and add.",
+  "install_in_app": "התקנה ב-{{name}}"
 }

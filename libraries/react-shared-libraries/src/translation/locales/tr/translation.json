@@ -953,5 +953,8 @@
   "billing_pending_payment_cta": "Kartı güncelle ve öde",
   "thumbnail": "Küçük resim",
   "select_frame": "Kare seç",
-  "from_gallery": "Galeriden"
+  "from_gallery": "Galeriden",
+  "hubspot_installed": "PostQueen, HubSpot'a yüklendi",
+  "hubspot_installed_description": "Paylaşım yapmak istediğiniz kanalları burada, PostQueen'de bağlayın. Ardından HubSpot'ta Agent Hub > Agent Builder'ı açın, bir araç ekleyin, MCP Servers altında PostQueen'i seçin ve Connect and add'e tıklayın.",
+  "install_in_app": "{{name}} için yükle"
 }

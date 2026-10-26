@@ -935,5 +935,8 @@
   "billing_pending_payment_cta": "تحديث البطاقة والدفع",
   "thumbnail": "الصورة المصغّرة",
   "select_frame": "اختيار إطار",
-  "from_gallery": "من المعرض"
+  "from_gallery": "من المعرض",
+  "hubspot_installed": "تم تثبيت PostQueen في HubSpot",
+  "hubspot_installed_description": "اربط القنوات التي تريد النشر عليها هنا في PostQueen. ثم افتح في HubSpot ‏Agent Hub > Agent Builder، وأضف أداة، واختر PostQueen ضمن MCP Servers، ثم انقر على Connect and add.",
+  "install_in_app": "التثبيت في {{name}}"
 }

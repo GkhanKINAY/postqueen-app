@@ -641,5 +641,8 @@
   "billing_pending_payment_cta": "ბარათის განახლება და გადახდა",
   "thumbnail": "მინიატურა",
   "select_frame": "კადრის არჩევა",
-  "from_gallery": "გალერეიდან"
+  "from_gallery": "გალერეიდან",
+  "hubspot_installed": "PostQueen დაინსტალირდა HubSpot-ში",
+  "hubspot_installed_description": "დააკავშირეთ აქ, PostQueen-ში, არხები, რომლებზეც გსურთ გამოქვეყნება. შემდეგ HubSpot-ში გახსენით Agent Hub > Agent Builder, დაამატეთ ინსტრუმენტი, MCP Servers-ში აირჩიეთ PostQueen და დააწკაპუნეთ Connect and add-ზე.",
+  "install_in_app": "{{name}}-ში ინსტალაცია"
 }
