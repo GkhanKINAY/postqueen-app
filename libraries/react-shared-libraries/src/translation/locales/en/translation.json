@@ -1400,5 +1400,10 @@
   "analytics_refresh_short": "Not enough credits.",
   "ft_action_title": "Confirm the payment with your bank",
   "ft_action_body": "Your bank asks you to confirm this payment. Finish the check in the window that opened.",
-  "ft_declined_body": "Your trial has ended, but its first payment did not go through. Pay the open invoice with a working card to keep using PostQueen."
+  "ft_declined_body": "Your trial has ended, but its first payment did not go through. Pay the open invoice with a working card to keep using PostQueen.",
+  "end_free_trial": "End free trial",
+  "finish_trial_confirmation": "Ending the trial charges your plan's first payment today instead of at the end of the trial. Nothing extra is added.",
+  "finish_trial_charge_me_now": "End trial and pay now",
+  "trial_feature_locked_end_trial": "This feature is not available during the trial. You can end the trial now: your plan's first payment is charged today instead of at the end of the trial.",
+  "precondition_channel_used_trial": "This social channel was previously connected to another PostQueen account.\nTo connect it during your trial, you can end the trial now: your plan's first payment is charged today instead of at the end of the trial, and nothing extra is added."
 }

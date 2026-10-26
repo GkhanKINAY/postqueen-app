@@ -919,5 +919,10 @@
   "analytics_manual_refresh_empty": "이 채널에는 아직 수치가 없습니다. 아래의 새로 고침을 선택하면 최신 수치를 불러옵니다.",
   "ft_action_title": "은행에서 결제를 확인하세요",
   "ft_action_body": "은행에서 이 결제의 확인을 요청했습니다. 열린 창에서 확인을 완료하세요.",
-  "ft_declined_body": "체험 기간이 끝났지만 첫 결제가 완료되지 않았습니다. PostQueen을 계속 사용하려면 사용 가능한 카드로 미결제 인보이스를 결제하세요."
+  "ft_declined_body": "체험 기간이 끝났지만 첫 결제가 완료되지 않았습니다. PostQueen을 계속 사용하려면 사용 가능한 카드로 미결제 인보이스를 결제하세요.",
+  "end_free_trial": "무료 체험 종료",
+  "finish_trial_confirmation": "체험을 종료하면 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구됩니다. 추가 요금은 없습니다.",
+  "finish_trial_charge_me_now": "체험 종료하고 지금 결제",
+  "trial_feature_locked_end_trial": "이 기능은 체험 기간에는 사용할 수 없습니다. 지금 체험을 종료할 수 있으며, 이 경우 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구됩니다.",
+  "precondition_channel_used_trial": "이 소셜 채널은 이전에 다른 PostQueen 계정에 연결된 적이 있습니다.\n체험 기간 중에 연결하려면 지금 체험을 종료할 수 있습니다. 이 경우 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구되며, 추가 요금은 없습니다."
 }

@@ -12,6 +12,7 @@ import {
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import clsx from 'clsx';
 import { usePaymentAction } from '@gitroom/frontend/components/billing/use.payment.action';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 
 /** Load period/tier when lock-card opens FinishTrial without billing props. */
 const useFinishTrialSubscription = (enabled: boolean) => {
@@ -30,6 +31,31 @@ type FinishPhase =
   | 'failed'
   | 'declined'
   | 'stalled';
+
+/**
+ * The question asked before a button ends the trial. Ending it charges the
+ * card at once, so it is asked first, and says what is charged: the plan's
+ * own first payment, earlier, and nothing on top. Not asked when the trial is
+ * ended from a dialog that already said so (the trial 406 and the channel
+ * precondition, through `?finishTrial`).
+ */
+export const useConfirmFinishTrial = () => {
+  const t = useT();
+  return useCallback(
+    () =>
+      deleteDialog(
+        t(
+          'finish_trial_confirmation',
+          "Ending the trial charges your plan's first payment today instead of at the end of the trial. Nothing extra is added."
+        ),
+        t('finish_trial_charge_me_now', 'End trial and pay now'),
+        t('end_free_trial', 'End free trial'),
+        t('cancel', 'Cancel'),
+        false
+      ),
+    [t]
+  );
+};
 
 /** ~60 seconds at the 2s poll interval. */
 const MAX_POLL_ATTEMPTS = 30;

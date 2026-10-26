@@ -919,5 +919,10 @@
   "analytics_manual_refresh_empty": "Ainda não há números para este canal. Escolha Atualizar abaixo para ler os mais recentes.",
   "ft_action_title": "Confirme o pagamento com seu banco",
   "ft_action_body": "Seu banco pede que você confirme este pagamento. Conclua a verificação na janela que foi aberta.",
-  "ft_declined_body": "Seu teste terminou, mas o primeiro pagamento não foi concluído. Pague a fatura em aberto com um cartão válido para continuar usando o PostQueen."
+  "ft_declined_body": "Seu teste terminou, mas o primeiro pagamento não foi concluído. Pague a fatura em aberto com um cartão válido para continuar usando o PostQueen.",
+  "end_free_trial": "Encerrar o teste gratuito",
+  "finish_trial_confirmation": "Encerrar o teste cobra hoje o primeiro pagamento do seu plano, em vez de no fim do teste. Nada extra é adicionado.",
+  "finish_trial_charge_me_now": "Encerrar o teste e pagar agora",
+  "trial_feature_locked_end_trial": "Este recurso não está disponível durante o teste. Você pode encerrar o teste agora: o primeiro pagamento do seu plano é cobrado hoje, em vez de no fim do teste.",
+  "precondition_channel_used_trial": "Este canal social já foi conectado a outra conta do PostQueen.\nPara conectá-lo durante o teste, você pode encerrar o teste agora: o primeiro pagamento do seu plano é cobrado hoje, em vez de no fim do teste, e nada extra é adicionado."
 }

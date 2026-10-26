@@ -919,5 +919,10 @@
   "analytics_manual_refresh_empty": "此频道还没有数据。选择下方的“刷新”以读取最新数据。",
   "ft_action_title": "请向您的银行确认这笔付款",
   "ft_action_body": "您的银行要求您确认这笔付款。请在已打开的窗口中完成验证。",
-  "ft_declined_body": "您的试用已结束，但首次付款未能完成。请使用可用的银行卡支付未结发票，以继续使用 PostQueen。"
+  "ft_declined_body": "您的试用已结束，但首次付款未能完成。请使用可用的银行卡支付未结发票，以继续使用 PostQueen。",
+  "end_free_trial": "结束免费试用",
+  "finish_trial_confirmation": "结束试用后，您套餐的首次付款将在今天扣取，而不是在试用结束时。不会额外收取任何费用。",
+  "finish_trial_charge_me_now": "结束试用并立即付款",
+  "trial_feature_locked_end_trial": "试用期间无法使用此功能。您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时。",
+  "precondition_channel_used_trial": "此社交渠道之前已连接到另一个 PostQueen 账户。\n如需在试用期间连接它，您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时，且不会额外收费。"
 }

@@ -919,5 +919,10 @@
   "analytics_manual_refresh_empty": "Ancora nessun numero per questo canale. Scegli Aggiorna qui sotto per leggere i più recenti.",
   "ft_action_title": "Conferma il pagamento con la tua banca",
   "ft_action_body": "La tua banca ti chiede di confermare questo pagamento. Completa la verifica nella finestra che si è aperta.",
-  "ft_declined_body": "La tua prova è terminata, ma il primo pagamento non è andato a buon fine. Paga la fattura aperta con una carta valida per continuare a usare PostQueen."
+  "ft_declined_body": "La tua prova è terminata, ma il primo pagamento non è andato a buon fine. Paga la fattura aperta con una carta valida per continuare a usare PostQueen.",
+  "end_free_trial": "Termina la prova gratuita",
+  "finish_trial_confirmation": "Terminando la prova, il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova. Non viene aggiunto nulla in più.",
+  "finish_trial_charge_me_now": "Termina la prova e paga ora",
+  "trial_feature_locked_end_trial": "Questa funzione non è disponibile durante la prova. Puoi terminare la prova ora: il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova.",
+  "precondition_channel_used_trial": "Questo canale social era già collegato a un altro account PostQueen.\nPer collegarlo durante la prova, puoi terminare la prova ora: il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova, e non viene aggiunto nulla in più."
 }

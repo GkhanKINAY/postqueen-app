@@ -919,5 +919,10 @@
   "analytics_manual_refresh_empty": "Kênh này chưa có số liệu. Chọn Làm mới bên dưới để đọc số liệu mới nhất.",
   "ft_action_title": "Xác nhận thanh toán với ngân hàng của bạn",
   "ft_action_body": "Ngân hàng của bạn yêu cầu xác nhận khoản thanh toán này. Hãy hoàn tất bước xác minh trong cửa sổ vừa mở.",
-  "ft_declined_body": "Thời gian dùng thử của bạn đã kết thúc, nhưng khoản thanh toán đầu tiên không thành công. Hãy thanh toán hóa đơn còn mở bằng một thẻ hợp lệ để tiếp tục dùng PostQueen."
+  "ft_declined_body": "Thời gian dùng thử của bạn đã kết thúc, nhưng khoản thanh toán đầu tiên không thành công. Hãy thanh toán hóa đơn còn mở bằng một thẻ hợp lệ để tiếp tục dùng PostQueen.",
+  "end_free_trial": "Kết thúc dùng thử miễn phí",
+  "finish_trial_confirmation": "Kết thúc dùng thử sẽ tính khoản thanh toán đầu tiên của gói hôm nay thay vì vào cuối thời gian dùng thử. Không có khoản phí nào thêm.",
+  "finish_trial_charge_me_now": "Kết thúc dùng thử và thanh toán ngay",
+  "trial_feature_locked_end_trial": "Tính năng này không khả dụng trong thời gian dùng thử. Bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử.",
+  "precondition_channel_used_trial": "Kênh mạng xã hội này trước đây đã được kết nối với một tài khoản PostQueen khác.\nĐể kết nối kênh trong thời gian dùng thử, bạn có thể kết thúc dùng thử ngay: khoản thanh toán đầu tiên của gói sẽ được tính hôm nay thay vì vào cuối thời gian dùng thử, và không có khoản phí nào thêm."
 }

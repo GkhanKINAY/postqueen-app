@@ -36,7 +36,10 @@ import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { FinishTrial } from '@gitroom/frontend/components/billing/finish.trial';
+import {
+  FinishTrial,
+  useConfirmFinishTrial,
+} from '@gitroom/frontend/components/billing/finish.trial';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import {
@@ -585,6 +588,7 @@ export const MainBillingComponent: FC<{
   const [finishTrial, setFinishTrial] = useState(
     !!queryParams.get('finishTrial')
   );
+  const confirmFinishTrial = useConfirmFinishTrial();
 
   const [subscription, setSubscription] = useState<SubscriptionWithPlatform | undefined>(
     sub
@@ -1216,7 +1220,11 @@ export const MainBillingComponent: FC<{
             </div>
             <button
               type="button"
-              onClick={() => setFinishTrial(true)}
+              onClick={async () => {
+                if (await confirmFinishTrial()) {
+                  setFinishTrial(true);
+                }
+              }}
               className={clsx(
                 'h-[32px] rounded-[9px] px-[14px] text-[12.5px] font-[600] transition-all hover:brightness-110',
                 user?.isLifetime
