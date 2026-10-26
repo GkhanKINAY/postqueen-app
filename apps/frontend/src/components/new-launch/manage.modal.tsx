@@ -988,9 +988,29 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         // handler and left `loading` true forever — every submit button is
         // disabled on it, so the user's unsaved post was sealed inside a modal
         // with no close button.
-        const checkAllValid = validResponse.ok
-          ? await validResponse.json().catch((): null => null)
-          : null;
+        if (!validResponse.ok) {
+          setLoading(false);
+          // A billing dialog has already answered: 402 when Payment Required
+          // was dismissed, 499 when a dialog was cancelled or sent the person
+          // to Billing. Anything else says why when the server did.
+          if (validResponse.status !== 402 && validResponse.status !== 499) {
+            const body = await validResponse.json().catch((): null => null);
+            toaster.show(
+              typeof body?.message === 'string' && body.message
+                ? body.message
+                : t(
+                    'post_validation_failed',
+                    'Could not check the post, please try again'
+                  ),
+              'warning'
+            );
+          }
+          return;
+        }
+
+        const checkAllValid = await validResponse
+          .json()
+          .catch((): null => null);
 
         if (!Array.isArray(checkAllValid)) {
           setLoading(false);
