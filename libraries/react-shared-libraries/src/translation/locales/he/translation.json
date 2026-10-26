@@ -938,5 +938,9 @@
   "from_gallery": "מהגלריה",
   "hubspot_installed": "PostQueen הותקן ב-HubSpot",
   "hubspot_installed_description": "חברו כאן ב-PostQueen את הערוצים שבהם תרצו לפרסם. לאחר מכן, ב-HubSpot, פתחו את Agent Hub > Agent Builder, הוסיפו כלי, בחרו ב-PostQueen תחת MCP Servers ולחצו על Connect and add.",
-  "install_in_app": "התקנה ב-{{name}}"
+  "install_in_app": "התקנה ב-{{name}}",
+  "thumbnails_and_alt_text": "תמונות ממוזערות וטקסט חלופי",
+  "media_settings_section_description": "לחצו על פריט מדיה כדי להגדיר את הטקסט החלופי שלו, או את התמונה הממוזערת אם זה סרטון.",
+  "media_settings_section_tooltip": "תמונות ממוזערות חלות על סרטונים בפוסט הראשי ונשלחות לכל ערוץ שתומך בהן. YouTube עשוי להתעלם מהן בסרטונים שהוא מתייחס אליהם כ-Shorts (אנכיים, עד 3 דקות) בלי שהפרסום ייכשל, ודורש ערוץ מאומת בטלפון לתמונות ממוזערות מותאמות. אם YouTube דוחה את התמונה הממוזערת, הסרטון מתפרסם בכל זאת.",
+  "youtube_thumbnail_overrides_media": "לפוסט הזה יש תמונה ממוזערת ייעודית ל-YouTube, שגוברת על התמונה הממוזערת שהוגדרה בהגדרות המדיה."
 }

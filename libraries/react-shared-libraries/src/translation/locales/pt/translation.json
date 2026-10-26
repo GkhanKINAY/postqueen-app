@@ -938,5 +938,9 @@
   "from_gallery": "Da galeria",
   "hubspot_installed": "O PostQueen foi instalado no HubSpot",
   "hubspot_installed_description": "Conecte aqui no PostQueen os canais em que você quer publicar. Depois, no HubSpot, abra Agent Hub > Agent Builder, adicione uma ferramenta, escolha PostQueen em MCP Servers e clique em Connect and add.",
-  "install_in_app": "Instalar no {{name}}"
+  "install_in_app": "Instalar no {{name}}",
+  "thumbnails_and_alt_text": "Miniaturas e texto alternativo",
+  "media_settings_section_description": "Clique em uma mídia para definir o texto alternativo, ou a miniatura se for um vídeo.",
+  "media_settings_section_tooltip": "As miniaturas se aplicam aos vídeos da publicação principal e são enviadas para cada canal que as aceita. O YouTube pode ignorá-las em vídeos que trata como Shorts (verticais, de até 3 minutos) sem que a publicação falhe, e exige um canal verificado por telefone para miniaturas personalizadas. Se o YouTube recusar a miniatura, o vídeo é publicado mesmo assim.",
+  "youtube_thumbnail_overrides_media": "Esta publicação tem uma miniatura própria do YouTube, que substitui a miniatura definida nas configurações da mídia."
 }

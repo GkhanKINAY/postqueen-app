@@ -938,5 +938,9 @@
   "from_gallery": "Aus der Galerie",
   "hubspot_installed": "PostQueen ist in HubSpot installiert",
   "hubspot_installed_description": "Verbinde hier in PostQueen die Kanäle, auf denen du posten möchtest. Öffne dann in HubSpot Agent Hub > Agent Builder, füge ein Tool hinzu, wähle PostQueen unter MCP Servers und klicke auf Connect and add.",
-  "install_in_app": "In {{name}} installieren"
+  "install_in_app": "In {{name}} installieren",
+  "thumbnails_and_alt_text": "Vorschaubilder & Alt-Text",
+  "media_settings_section_description": "Klicke auf ein Medium, um seinen Alt-Text festzulegen, oder bei einem Video sein Vorschaubild.",
+  "media_settings_section_tooltip": "Vorschaubilder gelten für Videos im Hauptpost und werden an jeden Kanal gesendet, der sie unterstützt. YouTube kann sie bei Videos, die es als Shorts behandelt (Hochformat, bis zu 3 Minuten), ignorieren, ohne dass die Veröffentlichung fehlschlägt, und verlangt für eigene Vorschaubilder einen per Telefon bestätigten Kanal. Lehnt YouTube das Vorschaubild ab, wird das Video trotzdem veröffentlicht.",
+  "youtube_thumbnail_overrides_media": "Dieser Post hat ein eigenes YouTube-Vorschaubild, das das Vorschaubild aus den Medieneinstellungen ersetzt."
 }

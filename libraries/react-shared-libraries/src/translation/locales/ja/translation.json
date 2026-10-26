@@ -938,5 +938,9 @@
   "from_gallery": "ギャラリーから",
   "hubspot_installed": "PostQueen を HubSpot にインストールしました",
   "hubspot_installed_description": "投稿したいチャンネルをここ PostQueen で接続してください。次に HubSpot で Agent Hub > Agent Builder を開き、ツールを追加して、MCP Servers から PostQueen を選び、Connect and add をクリックします。",
-  "install_in_app": "{{name}} にインストール"
+  "install_in_app": "{{name}} にインストール",
+  "thumbnails_and_alt_text": "サムネイルと代替テキスト",
+  "media_settings_section_description": "メディアをクリックすると代替テキストを設定できます。動画の場合はサムネイルも設定できます。",
+  "media_settings_section_tooltip": "サムネイルはメイン投稿の動画に適用され、対応するすべてのチャンネルに送信されます。YouTube はショート（縦向き、3 分以内）として扱う動画ではサムネイルを無視することがありますが、投稿は失敗しません。また、カスタムサムネイルには電話番号で確認済みのチャンネルが必要です。YouTube がサムネイルを拒否しても、動画は公開されます。",
+  "youtube_thumbnail_overrides_media": "この投稿には YouTube 専用のサムネイルがあり、メディア設定のサムネイルより優先されます。"
 }

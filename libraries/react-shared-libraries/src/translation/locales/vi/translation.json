@@ -938,5 +938,9 @@
   "from_gallery": "Từ thư viện",
   "hubspot_installed": "PostQueen đã được cài đặt trong HubSpot",
   "hubspot_installed_description": "Kết nối các kênh bạn muốn đăng bài ngay tại đây trong PostQueen. Sau đó, trong HubSpot, mở Agent Hub > Agent Builder, thêm một công cụ, chọn PostQueen trong MCP Servers và nhấp Connect and add.",
-  "install_in_app": "Cài đặt trong {{name}}"
+  "install_in_app": "Cài đặt trong {{name}}",
+  "thumbnails_and_alt_text": "Ảnh thu nhỏ và văn bản thay thế",
+  "media_settings_section_description": "Nhấp vào một tệp phương tiện để đặt văn bản thay thế, hoặc ảnh thu nhỏ nếu đó là video.",
+  "media_settings_section_tooltip": "Ảnh thu nhỏ áp dụng cho video trong bài đăng chính và được gửi đến mọi kênh hỗ trợ. YouTube có thể bỏ qua chúng ở những video mà YouTube coi là Shorts (dọc, tối đa 3 phút) mà không làm việc đăng bài thất bại, và yêu cầu kênh đã xác minh bằng số điện thoại để dùng ảnh thu nhỏ tùy chỉnh. Nếu YouTube từ chối ảnh thu nhỏ, video vẫn được đăng.",
+  "youtube_thumbnail_overrides_media": "Bài đăng này có ảnh thu nhỏ riêng cho YouTube, ảnh này sẽ thay thế ảnh thu nhỏ đặt trong cài đặt phương tiện."
 }
