@@ -206,6 +206,15 @@ describe('Instagram error mapping', () => {
     });
   });
 
+  it('says a refused comment left the post itself published', () => {
+    assert.deepEqual(handle(graph({ message: 'x', code: 100, error_subcode: 1772107 })), {
+      type: 'bad-body',
+      value:
+        'Instagram did not add the comment, the post itself was published. Please try again with different comment text',
+    });
+    assert.equal(handle(graph({ message: 'x', code: 100 }, { id: '17721070' })), undefined);
+  });
+
   it('reads a subcode from a failed container status too', () => {
     assert.equal(
       handle('Error: Media upload has failed with error code 2207026', 200)?.value,
