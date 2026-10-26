@@ -26,7 +26,8 @@ import {
 import { PlanCreditsBlock } from '@gitroom/frontend/components/billing/plan.credits.block';
 import { FAQComponent } from '@gitroom/frontend/components/billing/faq.component';
 import { BillingPeriodToggle } from '@gitroom/frontend/components/billing/billing-period-toggle';
-import { useSWRConfig } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
+import { timer } from '@gitroom/helpers/utils/timer';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -57,6 +58,30 @@ import { BillingFeatures } from '@gitroom/frontend/components/billing/first.bill
 
 type SubscriptionWithPlatform = Subscription & {
   platform?: 'web' | 'mobile';
+};
+
+/**
+ * When the plan charges next (`GET /billing/renewal`): the trial's end while
+ * trialing, else the end of the period. Unix seconds, or null when the
+ * provider cannot tell. Only asked for a plan that renews.
+ */
+const useRenewal = (enabled: boolean) => {
+  const fetch = useFetch();
+  const load = useCallback(async (): Promise<{
+    renewsAt: number | null;
+    trialing: boolean;
+  } | null> => {
+    // customFetch resolves a 4xx/5xx; a failed read shows no date, never a
+    // wrong one.
+    const response = await fetch('/billing/renewal');
+    if (!response.ok) {
+      throw new Error('Could not load the renewal date');
+    }
+    return response.json();
+  }, [fetch]);
+  return useSWR(enabled ? 'billing-renewal' : null, load, {
+    revalidateOnFocus: false,
+  });
 };
 
 export const Prorate: FC<{
@@ -638,6 +663,39 @@ export const MainBillingComponent: FC<{
 
     window.location.href = portal;
   }, [fetch, toast, t]);
+  // An immediate plan change (an upgrade, monthly to yearly) is stored by
+  // Stripe's webhook a moment after the request answers. Wait until the
+  // stored plan and period are the new ones (the webhook writes them, and
+  // cancelAt, together), then refresh what follows from them at once: the
+  // plan card, the credits the change granted, the new invoice and the next
+  // charge. A webhook slower than ten seconds, or a failed read, leaves
+  // things as they are.
+  const showConfirmedPlan = useCallback(
+    async (billing: string, nextPeriod: 'MONTHLY' | 'YEARLY') => {
+      try {
+        for (let attempt = 0; attempt < 10; attempt++) {
+          if (attempt) {
+            await timer(1000);
+          }
+          const response = await fetch('/user/subscription');
+          const current = response.ok ? await response.json() : null;
+          if (
+            current?.subscription?.subscriptionTier === billing &&
+            current?.subscription?.period === nextPeriod
+          ) {
+            mutate('/user/subscription', current, { revalidate: false });
+            mutate('credits-balance');
+            mutate('billing-invoices');
+            mutate('billing-renewal');
+            return;
+          }
+        }
+      } catch (err) {
+        // the optimistic card stays until the next visit
+      }
+    },
+    [fetch, mutate]
+  );
   const currentPackage = useMemo(() => {
     if (!subscription) {
       return 'FREE';
@@ -683,9 +741,18 @@ export const MainBillingComponent: FC<{
       ? tier.year_price
       : tier.month_price;
   }, [subscription]);
-  // The design's plan-meta line. Renewal and trial-end dates live in Stripe
-  // and are not in this state, so those variants render without a date rather
-  // than inventing one; `cancelAt` is local and keeps its date.
+  // The next charge, from Stripe. Not for a plan that is ending (the line
+  // gives its last day) nor a founding member, whose plan never renews.
+  const { data: renewal } = useRenewal(
+    !!subscription?.id && !subscription?.cancelAt && !user?.isLifetime
+  );
+  const renewsOn = renewal?.renewsAt
+    ? newDayjs(renewal.renewsAt * 1000).local().format('D MMM, YYYY')
+    : null;
+  // The design's plan-meta line. The trial's end and the renewal come from
+  // Stripe (`renewsOn`); until they have, or when Stripe has none, the line
+  // goes without a date rather than inventing one. `cancelAt` is local and
+  // keeps its date.
   const planMeta = useMemo(() => {
     if (!subscription?.id) {
       return t('plan_meta_free', 'PostQueen FREE · no active subscription');
@@ -710,12 +777,25 @@ export const MainBillingComponent: FC<{
       );
     }
     if (user?.isTrailing) {
+      if (renewsOn && renewal?.trialing) {
+        return t(
+          'plan_meta_trial_until',
+          'PostQueen {{tier}} · free trial until {{date}}',
+          { tier: tierName, date: renewsOn }
+        );
+      }
       return t('plan_meta_trial', 'PostQueen {{tier}} · free trial', {
         tier: tierName,
       });
     }
+    if (renewsOn && !renewal?.trialing) {
+      return t('plan_meta_renews', 'PostQueen {{tier}} · renews on {{date}}', {
+        tier: tierName,
+        date: renewsOn,
+      });
+    }
     return t('plan_meta_current', 'PostQueen {{tier}}', { tier: tierName });
-  }, [subscription, user, t]);
+  }, [subscription, user, t, renewsOn, renewal]);
   // Prototype `pagesVals().plans` CTA matrix (~L8056): Current plan · Switch
   // to yearly/monthly · Upgrade/Downgrade to {label} · trial/Purchase for FREE.
   // Handlers stay on `moveToCheckout`; this only picks the visible label.
@@ -1036,11 +1116,27 @@ export const MainBillingComponent: FC<{
               revalidate: true,
             }
           );
+          showConfirmedPlan(
+            billing,
+            monthlyOrYearly === 'on' ? 'YEARLY' : 'MONTHLY'
+          );
           toast.show('Subscription updated successfully');
         }
         setLoading(false);
       },
-    [monthlyOrYearly, subscription, user, modal, mutate, fetch, toast, t, dub, track]
+    [
+      monthlyOrYearly,
+      subscription,
+      user,
+      modal,
+      mutate,
+      fetch,
+      toast,
+      t,
+      dub,
+      track,
+      showConfirmedPlan,
+    ]
   );
   // An organization subscribed through the mobile app's store is managed
   // there: nothing on this page can change it, so say where to go instead.
@@ -1194,9 +1290,9 @@ export const MainBillingComponent: FC<{
         </div>
       )}
 
-      {/* The running trial. The end date lives in Stripe, so the line names the
-          charge — which this state does know — and not a day. The CTA opens the
-          same FinishTrial flow the ?finishTrial query param does. */}
+      {/* The running trial: the charge, and the day it comes once Stripe has
+          said (`renewsOn`). The CTA asks, then opens the same FinishTrial
+          flow the ?finishTrial query param does. */}
       {user?.isTrailing &&
         !!subscription?.id &&
         !subscription?.cancelAt &&
@@ -1233,6 +1329,12 @@ export const MainBillingComponent: FC<{
                     'trial_banner_founding',
                     'Your {{days}}-day founding-member trial is running — you will be charged ${{price}} once, and never again.',
                     { days: TRIAL_DAYS, price: LIFETIME_PRICE }
+                  )
+                : renewsOn && renewal?.trialing
+                ? t(
+                    'trial_banner_active_until',
+                    'Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged.',
+                    { date: renewsOn, price: trialPrice }
                   )
                 : t(
                     'trial_banner_active',

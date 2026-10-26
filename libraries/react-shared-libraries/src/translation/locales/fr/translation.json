@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "Les membres de votre équipe seront désactivés et perdront l'accès à votre organisation jusqu'à ce que vous choisissiez de nouveau un forfait incluant des membres d'équipe.",
   "delete_account_confirm_subscription_members": "Votre compte, vos organisations, canaux et publications seront supprimés, votre abonnement sera annulé immédiatement et les autres membres de l'équipe seront retirés de votre organisation. Cette action est irréversible.",
   "delete_account_confirm_subscription": "Votre compte, vos organisations, canaux et publications seront supprimés et votre abonnement sera annulé immédiatement. Cette action est irréversible.",
-  "delete_account_confirm_members": "Votre compte, vos organisations, canaux et publications seront supprimés et les autres membres de l'équipe seront retirés de votre organisation. Cette action est irréversible."
+  "delete_account_confirm_members": "Votre compte, vos organisations, canaux et publications seront supprimés et les autres membres de l'équipe seront retirés de votre organisation. Cette action est irréversible.",
+  "plan_meta_renews": "PostQueen {{tier}} · renouvellement le {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · essai gratuit jusqu'au {{date}}",
+  "trial_banner_active_until": "Votre essai gratuit dure jusqu'au {{date}}. Votre premier paiement de ${{price}} est ensuite prélevé."
 }

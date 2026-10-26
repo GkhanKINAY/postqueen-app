@@ -1409,5 +1409,8 @@
   "team_members_will_be_disabled": "Your team members will be disabled and lose access to your organization until you choose a plan that includes team members again.",
   "delete_account_confirm_subscription_members": "Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.",
   "delete_account_confirm_subscription": "Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.",
-  "delete_account_confirm_members": "Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone."
+  "delete_account_confirm_members": "Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.",
+  "plan_meta_renews": "PostQueen {{tier}} · renews on {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · free trial until {{date}}",
+  "trial_banner_active_until": "Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged."
 }

@@ -192,9 +192,14 @@ export const FinishTrial: FC<{
 
   // Revalidate on the way out — not while open — so a trial-locked parent
   // (X panel / AI lock) does not unmount this dialog before the thank-you is read.
+  // The plan, the first invoice, the next charge and the credits all moved.
   const close = useCallback(() => {
     props.close();
     mutate('/user/self');
+    mutate('/user/subscription');
+    mutate('billing-invoices');
+    mutate('billing-renewal');
+    mutate('credits-balance');
   }, [props.close]);
 
   const backToBilling = useCallback(() => {

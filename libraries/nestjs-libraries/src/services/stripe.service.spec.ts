@@ -2123,3 +2123,65 @@ describe('ending a trial early', () => {
     assert.equal(calls.length, 0);
   });
 });
+
+describe('the next charge', () => {
+  const period = (end: number) =>
+    ({ data: [{ price: proPrice, current_period_end: end }] }) as any;
+
+  it('is the end of the period of a paid plan', async () => {
+    subs = [sub('sub_paid', 100, { items: period(5_000) })];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 5_000,
+      trialing: false,
+    });
+  });
+
+  it('is the end of the trial while trialing', async () => {
+    subs = [
+      sub('sub_trial', 100, {
+        status: 'trialing',
+        trial_end: 3_000,
+        items: period(9_000),
+      }),
+    ];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 3_000,
+      trialing: true,
+    });
+  });
+
+  it('is read from the subscription a duplicate is cancelled in favour of', async () => {
+    subs = [
+      sub('sub_trial', 200, {
+        status: 'trialing',
+        trial_end: 3_000,
+        items: period(9_000),
+      }),
+      sub('sub_paid', 300, { items: period(5_000) }),
+      sub('sub_old_paid', 100, { items: period(7_000) }),
+    ];
+
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: 7_000,
+      trialing: false,
+    });
+  });
+
+  it('is unknown for a payment that failed, and for no customer', async () => {
+    subs = [sub('sub_due', 100, { status: 'past_due', items: period(5_000) })];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+
+    orgCustomer = '';
+    calls = [];
+    assert.deepEqual(await service().getRenewalDate('org1'), {
+      renewsAt: null,
+      trialing: false,
+    });
+    assert.equal(called('subscriptions.list').length, 0);
+  });
+});

@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "Các thành viên trong nhóm của bạn sẽ bị vô hiệu hóa và mất quyền truy cập vào tổ chức cho đến khi bạn chọn lại một gói có thành viên nhóm.",
   "delete_account_confirm_subscription_members": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa, gói đăng ký sẽ bị hủy ngay và các thành viên khác trong nhóm sẽ bị xóa khỏi tổ chức của bạn. Không thể hoàn tác thao tác này.",
   "delete_account_confirm_subscription": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa và gói đăng ký sẽ bị hủy ngay. Không thể hoàn tác thao tác này.",
-  "delete_account_confirm_members": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa và các thành viên khác trong nhóm sẽ bị xóa khỏi tổ chức của bạn. Không thể hoàn tác thao tác này."
+  "delete_account_confirm_members": "Tài khoản, tổ chức, kênh và bài đăng của bạn sẽ bị xóa và các thành viên khác trong nhóm sẽ bị xóa khỏi tổ chức của bạn. Không thể hoàn tác thao tác này.",
+  "plan_meta_renews": "PostQueen {{tier}} · gia hạn vào {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · dùng thử miễn phí đến {{date}}",
+  "trial_banner_active_until": "Thời gian dùng thử miễn phí của bạn kéo dài đến {{date}}. Sau đó, khoản thanh toán đầu tiên ${{price}} sẽ được tính."
 }

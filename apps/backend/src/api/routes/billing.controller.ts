@@ -372,6 +372,17 @@ export class BillingController {
     return this._stripeService.getInvoices(org.id);
   }
 
+  // When the plan charges next, for the plan line and the trial banner.
+  // Null with billing off, like `/`.
+  @Get('/renewal')
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
+  async getRenewal(@GetOrgFromRequest() org: Organization) {
+    if (!isBillingEnabled()) {
+      return null;
+    }
+    return (await this.provider(org)).getRenewalDate(org.id);
+  }
+
   @Get('/')
   getCurrentBilling(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {

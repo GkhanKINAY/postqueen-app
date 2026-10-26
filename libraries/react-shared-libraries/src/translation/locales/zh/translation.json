@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "您的团队成员将被停用，在您重新选择包含团队成员的套餐之前，他们将无法访问您的组织。",
   "delete_account_confirm_subscription_members": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消，其他团队成员将从您的组织中移除。此操作无法撤销。",
   "delete_account_confirm_subscription": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消。此操作无法撤销。",
-  "delete_account_confirm_members": "您的账户、组织、渠道和帖子将被删除，其他团队成员将从您的组织中移除。此操作无法撤销。"
+  "delete_account_confirm_members": "您的账户、组织、渠道和帖子将被删除，其他团队成员将从您的组织中移除。此操作无法撤销。",
+  "plan_meta_renews": "PostQueen {{tier}} · {{date}} 续订",
+  "plan_meta_trial_until": "PostQueen {{tier}} · 免费试用至 {{date}}",
+  "trial_banner_active_until": "您的免费试用持续到 {{date}}。之后将扣取首次付款 ${{price}}。"
 }

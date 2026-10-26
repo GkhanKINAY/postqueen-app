@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "Os membros da sua equipe serão desativados e perderão o acesso à sua organização até que você escolha novamente um plano que inclua membros de equipe.",
   "delete_account_confirm_subscription_members": "Sua conta, organizações, canais e posts serão excluídos, sua assinatura será cancelada agora e os outros membros da equipe serão removidos da sua organização. Isso não pode ser desfeito.",
   "delete_account_confirm_subscription": "Sua conta, organizações, canais e posts serão excluídos e sua assinatura será cancelada agora. Isso não pode ser desfeito.",
-  "delete_account_confirm_members": "Sua conta, organizações, canais e posts serão excluídos e os outros membros da equipe serão removidos da sua organização. Isso não pode ser desfeito."
+  "delete_account_confirm_members": "Sua conta, organizações, canais e posts serão excluídos e os outros membros da equipe serão removidos da sua organização. Isso não pode ser desfeito.",
+  "plan_meta_renews": "PostQueen {{tier}} · renova em {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · teste gratuito até {{date}}",
+  "trial_banner_active_until": "Seu teste gratuito vai até {{date}}. Depois, seu primeiro pagamento de ${{price}} é cobrado."
 }

@@ -106,3 +106,27 @@ describe('ending a trial from Billing', () => {
     assert.deepEqual(cleared, ['org-1']);
   });
 });
+
+describe('the next charge, from Billing', () => {
+  it('is null with billing off, without asking a provider', async () => {
+    delete process.env.STRIPE_SECRET_KEY;
+    const result = await make({
+      getRenewalDate: async () => {
+        throw new Error('no provider is asked');
+      },
+    }).getRenewal(org);
+
+    assert.equal(result, null);
+  });
+
+  it("is the organization's provider's answer", async () => {
+    const result = await make({
+      getRenewalDate: async (id: string) => ({
+        renewsAt: id === 'org-1' ? 3_000 : null,
+        trialing: true,
+      }),
+    }).getRenewal(org);
+
+    assert.deepEqual(result, { renewsAt: 3_000, trialing: true });
+  });
+});

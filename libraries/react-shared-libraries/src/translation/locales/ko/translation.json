@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "팀원은 비활성화되며, 팀원이 포함된 요금제를 다시 선택할 때까지 조직에 접근할 수 없습니다.",
   "delete_account_confirm_subscription_members": "계정, 조직, 채널, 게시물이 삭제되고, 구독은 즉시 해지되며, 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
   "delete_account_confirm_subscription": "계정, 조직, 채널, 게시물이 삭제되고 구독은 즉시 해지됩니다. 이 작업은 되돌릴 수 없습니다.",
-  "delete_account_confirm_members": "계정, 조직, 채널, 게시물이 삭제되고 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다."
+  "delete_account_confirm_members": "계정, 조직, 채널, 게시물이 삭제되고 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
+  "plan_meta_renews": "PostQueen {{tier}} · {{date}}에 갱신",
+  "plan_meta_trial_until": "PostQueen {{tier}} · {{date}}까지 무료 체험",
+  "trial_banner_active_until": "무료 체험은 {{date}}까지입니다. 이후 첫 결제 ${{price}}가 청구됩니다."
 }

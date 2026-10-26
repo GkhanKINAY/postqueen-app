@@ -2453,6 +2453,32 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * When the plan charges next: the trial's end while it is trialing, else
+   * the end of the period it is in. Read from the subscription the
+   * organization is on, the one a duplicate is cancelled in favour of
+   * (`keepsOver`). A subscription whose payment failed has no next charge to
+   * show (the paywall's pending payment is about it), and nor does an
+   * organization with no Stripe customer, like a founding member's local row.
+   */
+  override async getRenewalDate(organizationId: string) {
+    const customer = await this.getCustomerByOrganizationId(organizationId);
+    const [subscription] = (await this.billableSubscriptions(customer || ''))
+      .filter((s) => s.status === 'active' || s.status === 'trialing')
+      .sort((a, b) => (keepsOver(a, b) ? -1 : keepsOver(b, a) ? 1 : 0));
+    if (!subscription) {
+      return { renewsAt: null, trialing: false };
+    }
+    const trialing = subscription.status === 'trialing';
+    return {
+      renewsAt:
+        (trialing
+          ? subscription.trial_end
+          : subscription.items.data[0]?.current_period_end) || null,
+      trialing,
+    };
+  }
+
+  /**
    * Ends a Stripe trial early, and says whether there was one.
    *
    * It used to index `list[0].id` unconditionally, which throws when the

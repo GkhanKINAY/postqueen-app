@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "チームメンバーは無効になり、チームメンバーを含むプランを再び選択するまで、組織にアクセスできなくなります。",
   "delete_account_confirm_subscription_members": "アカウント、組織、チャンネル、投稿が削除され、サブスクリプションは直ちに解約されます。また、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。",
   "delete_account_confirm_subscription": "アカウント、組織、チャンネル、投稿が削除され、サブスクリプションは直ちに解約されます。この操作は元に戻せません。",
-  "delete_account_confirm_members": "アカウント、組織、チャンネル、投稿が削除され、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。"
+  "delete_account_confirm_members": "アカウント、組織、チャンネル、投稿が削除され、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。",
+  "plan_meta_renews": "PostQueen {{tier}} · {{date}} に更新",
+  "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} まで無料トライアル",
+  "trial_banner_active_until": "無料トライアルは {{date}} までです。その後、初回のお支払い ${{price}} が請求されます。"
 }

@@ -928,5 +928,8 @@
   "team_members_will_be_disabled": "Ihre Teammitglieder werden deaktiviert und verlieren den Zugriff auf Ihre Organisation, bis Sie wieder einen Tarif wählen, der Teammitglieder enthält.",
   "delete_account_confirm_subscription_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht, Ihr Abonnement wird sofort gekündigt und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden.",
   "delete_account_confirm_subscription": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und Ihr Abonnement wird sofort gekündigt. Dies kann nicht rückgängig gemacht werden.",
-  "delete_account_confirm_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden."
+  "delete_account_confirm_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden.",
+  "plan_meta_renews": "PostQueen {{tier}} · verlängert sich am {{date}}",
+  "plan_meta_trial_until": "PostQueen {{tier}} · kostenloser Testzeitraum bis {{date}}",
+  "trial_banner_active_until": "Ihr kostenloser Testzeitraum läuft bis {{date}}. Danach wird Ihre erste Zahlung von ${{price}} abgebucht."
 }
