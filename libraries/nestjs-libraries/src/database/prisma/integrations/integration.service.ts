@@ -1174,9 +1174,14 @@ export class IntegrationService implements OnModuleInit {
             token: page.access_token,
             // An earlier row for the same page may hold old or erased
             // credentials, so the ones just signed in with go with it, as
-            // they do to extra pages.
+            // they do to extra pages. The login they belong to goes too:
+            // refresh reconnects as `rootInternalId`, and the old login may
+            // not see this page.
             ...(getIntegration.refreshToken
               ? { refreshToken: getIntegration.refreshToken }
+              : {}),
+            ...(getIntegration.rootInternalId
+              ? { rootInternalId: getIntegration.rootInternalId }
               : {}),
             tokenExpiration: getIntegration.tokenExpiration,
             profile: page.username,
