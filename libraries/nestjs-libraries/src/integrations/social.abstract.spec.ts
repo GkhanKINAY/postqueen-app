@@ -1,5 +1,8 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import {
   BadBody,
@@ -310,6 +313,58 @@ describe('fetch', () => {
     assert.equal(
       (failure as BadBody).message,
       'API rate limit exceeded.'
+    );
+  });
+});
+
+describe('local media reads', () => {
+  const uploadDirectory = process.env.UPLOAD_DIRECTORY;
+  const dir = mkdtempSync(join(tmpdir(), 'pq-uploads-'));
+  writeFileSync(join(dir, 'a.mp4'), 'twelve bytes');
+  writeFileSync(join(tmpdir(), 'pq-outside.txt'), 'secret');
+
+  afterEach(() => {
+    process.env.UPLOAD_DIRECTORY = uploadDirectory;
+  });
+
+  const read = (network: any, method: string, path: string) =>
+    method === 'mediaChunk'
+      ? network.mediaChunk(path, 0, 3, 'network')
+      : network[method](path, 'network');
+
+  for (const method of ['mediaSize', 'mediaChunk', 'mediaStream']) {
+    it(`${method} opens a file of the upload directory`, async () => {
+      process.env.UPLOAD_DIRECTORY = dir;
+      const value = await read(new Network(), method, join(dir, 'a.mp4'));
+      if (method === 'mediaSize') {
+        assert.equal(value, 12);
+      } else if (method === 'mediaStream') {
+        value.destroy();
+      } else {
+        assert.equal(value.toString(), 'twel');
+      }
+    });
+
+    it(`${method} refuses a file outside it, as a post failure`, async () => {
+      process.env.UPLOAD_DIRECTORY = dir;
+      for (const path of [
+        join(tmpdir(), 'pq-outside.txt'),
+        join(dir, '..', 'pq-outside.txt'),
+        '/etc/passwd',
+      ]) {
+        await assert.rejects(read(new Network(), method, path), (err) => {
+          assert.ok(err instanceof BadBody);
+          return true;
+        });
+      }
+    });
+  }
+
+  it('refuses every local read when no upload directory is set', async () => {
+    delete process.env.UPLOAD_DIRECTORY;
+    await assert.rejects(
+      new Network().mediaSize(join(dir, 'a.mp4'), 'network'),
+      BadBody
     );
   });
 });

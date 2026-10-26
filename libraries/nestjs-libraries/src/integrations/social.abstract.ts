@@ -7,6 +7,7 @@ import {
 import { ApplicationFailure } from '@temporalio/activity';
 import { analyticsFetchNeedsReconnect } from '@gitroom/nestjs-libraries/integrations/analytics-fetch.errors';
 import {
+  insideUploads,
   isReadTimeout,
   MEDIA_READ_TIMEOUT,
   readOrFetch,
@@ -522,7 +523,24 @@ export abstract class SocialAbstract {
       return length;
     }
 
-    return statSync(path).size;
+    return statSync(this.localMediaPath(path, identifier)).size;
+  }
+
+  // Media that is not a remote URL is read from this worker's disk. The stored
+  // path is user-influenced, so only a file inside UPLOAD_DIRECTORY is ever
+  // opened, the same confinement readOrFetch applies. A path outside it fails
+  // the post for good: reading it again would be refused again.
+  protected localMediaPath(path: string, identifier = '') {
+    const file = insideUploads(path);
+    if (!file) {
+      throw new BadBody(
+        identifier,
+        JSON.stringify({ path: stripQuery(path) }),
+        Buffer.from('{}'),
+        MEDIA_READ_FAILED
+      );
+    }
+    return file;
   }
 
   // Reads a single [start, end] byte range into memory. Used by providers whose
@@ -586,9 +604,10 @@ export abstract class SocialAbstract {
       }
     }
 
+    const file = this.localMediaPath(path, identifier);
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
-      createReadStream(path, { start, end })
+      createReadStream(file, { start, end })
         .on('data', (chunk) => chunks.push(chunk as Buffer))
         .on('end', () => resolve(Buffer.concat(chunks)))
         .on('error', reject);
@@ -603,7 +622,7 @@ export abstract class SocialAbstract {
     identifier = ''
   ): Promise<Readable> {
     if (path.indexOf('http') !== 0) {
-      return createReadStream(path);
+      return createReadStream(this.localMediaPath(path, identifier));
     }
 
     // identity encoding so the streamed byte count matches the size mediaSize
