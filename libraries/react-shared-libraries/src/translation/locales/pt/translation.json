@@ -916,5 +916,8 @@
   "analytics_refresh_hint": "Alguns canais só atualizam os números das publicações quando você atualiza.",
   "analytics_refresh_nothing": "Não há números novos para ler",
   "analytics_refresh_failed": "Não foi possível atualizar os números. Tente novamente mais tarde.",
-  "analytics_manual_refresh_empty": "Ainda não há números para este canal. Escolha Atualizar abaixo para ler os mais recentes."
+  "analytics_manual_refresh_empty": "Ainda não há números para este canal. Escolha Atualizar abaixo para ler os mais recentes.",
+  "ft_action_title": "Confirme o pagamento com seu banco",
+  "ft_action_body": "Seu banco pede que você confirme este pagamento. Conclua a verificação na janela que foi aberta.",
+  "ft_declined_body": "Seu teste terminou, mas o primeiro pagamento não foi concluído. Pague a fatura em aberto com um cartão válido para continuar usando o PostQueen."
 }

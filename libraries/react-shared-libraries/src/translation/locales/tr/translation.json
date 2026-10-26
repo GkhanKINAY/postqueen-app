@@ -934,5 +934,8 @@
   "analytics_refresh_hint": "Bazı kanallar gönderi sayılarını yalnızca siz yenilediğinizde günceller.",
   "analytics_refresh_nothing": "Okunacak yeni sayı yok",
   "analytics_refresh_failed": "Sayılar yenilenemedi. Daha sonra tekrar deneyin.",
-  "analytics_manual_refresh_empty": "Bu kanal için henüz sayı yok. En güncel sayıları okumak için aşağıdaki Yenile'yi seçin."
+  "analytics_manual_refresh_empty": "Bu kanal için henüz sayı yok. En güncel sayıları okumak için aşağıdaki Yenile'yi seçin.",
+  "ft_action_title": "Ödemeyi bankanızla onaylayın",
+  "ft_action_body": "Bankanız bu ödemeyi onaylamanızı istiyor. Açılan pencerede doğrulamayı tamamlayın.",
+  "ft_declined_body": "Deneme süreniz sona erdi ancak ilk ödeme gerçekleşmedi. PostQueen'i kullanmaya devam etmek için açık faturayı geçerli bir kartla ödeyin."
 }

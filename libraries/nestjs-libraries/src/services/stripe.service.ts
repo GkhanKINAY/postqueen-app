@@ -2466,6 +2466,16 @@ export class StripeService extends PaymentProviderAbstract {
    * the caller needs in order to finish the job locally. An actual error still
    * throws, because "the API call failed" and "there was no trial" must not
    * look the same to whoever decides to clear somebody's trial flag.
+   *
+   * Ending the trial charges the card off-session, and the update succeeds
+   * whatever the bank answers, so the first invoice is read back
+   * (`getRequiredActionFromSubscription`). A bank that asks for 3D Secure
+   * leaves the payment waiting: `requiresAction` with its client secret, which
+   * the browser completes. A declined card is `declined`, never `ended`: the
+   * trial is over in Stripe and its first charge failed, which the
+   * subscription webhook treats like any failed first payment. It used to
+   * answer `ended: true` either way, and the dialog said the card had been
+   * charged before the account landed on the paywall.
    */
   async finishTrial(organization: Organization) {
     if (!organization?.paymentId) {
@@ -2486,7 +2496,74 @@ export class StripeService extends PaymentProviderAbstract {
       trial_end: 'now',
     });
 
+    const payment = await this.getRequiredActionFromSubscription(list[0].id);
+    if (payment.declined) {
+      return { ended: false, declined: true, invoiceUrl: payment.invoiceUrl };
+    }
+    if (payment.requiresAction) {
+      return {
+        ended: true,
+        requiresAction: true,
+        clientSecret: payment.clientSecret,
+        invoiceUrl: payment.invoiceUrl,
+      };
+    }
     return { ended: true };
+  }
+
+  /**
+   * Where the payment of a subscription's latest invoice stands, after a
+   * change that charged it off-session. Only an open invoice is waiting on
+   * anything: `requires_action` (or `requires_confirmation`) is a bank asking
+   * the customer to confirm, `requires_payment_method` is a card that was
+   * declined, or a challenge that failed.
+   *
+   * The client secret goes to the paying customer's own browser, which is
+   * what it is for:
+   * https://docs.stripe.com/api/payment_intents/object#payment_intent_object-client_secret
+   * The hosted invoice is where the open invoice can be paid with another
+   * card, as the paywall's pending payment does.
+   */
+  private async getRequiredActionFromSubscription(subscriptionId: string) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const invoiceId =
+      typeof subscription.latest_invoice === 'string'
+        ? subscription.latest_invoice
+        : subscription.latest_invoice?.id;
+    const invoice = invoiceId
+      ? await stripe.invoices.retrieve(invoiceId, {
+          expand: ['payments.data.payment.payment_intent'],
+        })
+      : null;
+    const paymentIntent = invoice?.payments?.data
+      .map((p) => p.payment.payment_intent)
+      .find((p): p is Stripe.PaymentIntent => typeof p === 'object' && !!p);
+
+    const nothing = {
+      requiresAction: false,
+      declined: false,
+      clientSecret: null as string | null,
+      invoiceUrl: null as string | null,
+    };
+    if (invoice?.status !== 'open' || !paymentIntent) {
+      return nothing;
+    }
+    const invoiceUrl = invoice.hosted_invoice_url || null;
+    if (
+      paymentIntent.status === 'requires_action' ||
+      paymentIntent.status === 'requires_confirmation'
+    ) {
+      return {
+        ...nothing,
+        requiresAction: !!paymentIntent.client_secret,
+        clientSecret: paymentIntent.client_secret,
+        invoiceUrl,
+      };
+    }
+    if (paymentIntent.status === 'requires_payment_method') {
+      return { ...nothing, declined: true, invoiceUrl };
+    }
+    return nothing;
   }
 
   /**

@@ -11,6 +11,7 @@ import {
   tierLabel,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import clsx from 'clsx';
+import { usePaymentAction } from '@gitroom/frontend/components/billing/use.payment.action';
 
 /** Load period/tier when lock-card opens FinishTrial without billing props. */
 const useFinishTrialSubscription = (enabled: boolean) => {
@@ -21,7 +22,14 @@ const useFinishTrialSubscription = (enabled: boolean) => {
   return useSWR(enabled ? '/user/subscription' : null, load);
 };
 
-type FinishPhase = 'pending' | 'charged' | 'founder' | 'failed' | 'stalled';
+type FinishPhase =
+  | 'pending'
+  | 'action'
+  | 'charged'
+  | 'founder'
+  | 'failed'
+  | 'declined'
+  | 'stalled';
 
 /** ~60 seconds at the 2s poll interval. */
 const MAX_POLL_ATTEMPTS = 30;
@@ -37,6 +45,11 @@ const MAX_POLL_ATTEMPTS = 30;
  *
  * Capture failure (dead card / incomplete PI) stops polling and shows the
  * payment-failed strip tone + portal CTA — never a false thank-you.
+ *
+ * A bank that asks for 3D Secure gets its challenge here (`action`), before
+ * the poll. A declined card, or a challenge that failed, is `declined`: the
+ * trial is over in Stripe and its first invoice is open, so the way on is
+ * paying that invoice, not a trial that is still running.
  */
 export const FinishTrial: FC<{
   close: () => void;
@@ -45,6 +58,10 @@ export const FinishTrial: FC<{
   period?: 'MONTHLY' | 'YEARLY';
 }> = (props) => {
   const [phase, setPhase] = useState<FinishPhase>('pending');
+  // The open invoice of a declined first payment, and Stripe's own reason.
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState<string | null>(null);
+  const paymentAction = usePaymentAction();
   const fetch = useFetch();
   const user = useUser();
   const t = useT();
@@ -128,8 +145,24 @@ export const FinishTrial: FC<{
       setPhase('failed');
       return;
     }
+    if (body?.declined) {
+      setInvoiceUrl(body.invoiceUrl || null);
+      setPhase('declined');
+      return;
+    }
+    if (body?.requiresAction && body?.clientSecret) {
+      setInvoiceUrl(body.invoiceUrl || null);
+      setPhase('action');
+      const { failed, message } = await paymentAction(body.clientSecret);
+      if (failed) {
+        setDeclineReason(message || null);
+        setPhase('declined');
+        return;
+      }
+      setPhase('pending');
+    }
     checkFinished();
-  }, [fetch, checkFinished]);
+  }, [fetch, checkFinished, paymentAction]);
 
   // Revalidate on the way out — not while open — so a trial-locked parent
   // (X panel / AI lock) does not unmount this dialog before the thank-you is read.
@@ -142,6 +175,17 @@ export const FinishTrial: FC<{
     close();
     router.push('/billing');
   }, [close, router]);
+
+  // The hosted invoice takes another card and runs the bank's check itself,
+  // like the paywall's pending payment. Billing shows the same invoice once
+  // the webhook has caught up.
+  const payInvoice = useCallback(() => {
+    if (invoiceUrl) {
+      window.open(invoiceUrl, '_blank', 'noopener');
+      return;
+    }
+    backToBilling();
+  }, [invoiceUrl, backToBilling]);
 
   const openPortal = useCallback(async () => {
     try {
@@ -173,7 +217,8 @@ export const FinishTrial: FC<{
   }, []);
 
   const finished = phase === 'charged' || phase === 'founder';
-  const failed = phase === 'failed';
+  const failed = phase === 'failed' || phase === 'declined';
+  const declined = phase === 'declined';
 
   return (
     <div
@@ -214,6 +259,29 @@ export const FinishTrial: FC<{
                 {t(
                   'finishing_trial_charging',
                   'Charging your card and activating the paid plan — this takes a few seconds.'
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {phase === 'action' && (
+          <div
+            data-finish-trial="action"
+            className="flex flex-col items-center gap-[18px] py-[8px]"
+          >
+            <div className="relative size-[64px]">
+              <div className="absolute inset-0 rounded-full border-[3px] border-pqBorder" />
+              <div className="pq-loop absolute inset-0 animate-[pqspin_0.9s_linear_infinite] rounded-full border-[3px] border-transparent border-t-pqBrand" />
+            </div>
+            <div className="flex flex-col gap-[5px]">
+              <h3 className="m-0 font-display text-[19px] font-[600] -tracking-[0.015em] text-pqText">
+                {t('ft_action_title', 'Confirm the payment with your bank')}
+              </h3>
+              <div className="text-[13.5px] leading-[1.6] text-pqMuted">
+                {t(
+                  'ft_action_body',
+                  'Your bank asks you to confirm this payment. Finish the check in the window that opened.'
                 )}
               </div>
             </div>
@@ -267,7 +335,7 @@ export const FinishTrial: FC<{
         )}
         {failed && (
           <div
-            data-finish-trial="failed"
+            data-finish-trial={phase}
             className="flex w-full flex-col items-center gap-[18px] py-[8px]"
           >
             <span className="grid size-[56px] place-items-center rounded-full bg-pqDangerSoft text-pqDanger">
@@ -289,19 +357,31 @@ export const FinishTrial: FC<{
                 )}
               </h3>
               <div className="text-[13.5px] leading-[1.6] text-pqMuted">
-                {t(
-                  'ft_failed_body',
-                  'Update your payment method and try again. Your trial stays active until payment succeeds.'
-                )}
+                {declined
+                  ? t(
+                      'ft_declined_body',
+                      'Your trial has ended, but its first payment did not go through. Pay the open invoice with a working card to keep using PostQueen.'
+                    )
+                  : t(
+                      'ft_failed_body',
+                      'Update your payment method and try again. Your trial stays active until payment succeeds.'
+                    )}
               </div>
+              {declined && !!declineReason && (
+                <div className="text-[12.5px] leading-[1.5] text-pqSoft">
+                  {declineReason}
+                </div>
+              )}
             </div>
             <div className="flex w-full gap-[9px]">
               <button
                 type="button"
-                onClick={openPortal}
+                onClick={declined ? payInvoice : openPortal}
                 className="h-[42px] flex-1 rounded-[10px] bg-pqDanger text-[13.5px] font-[600] text-pqOnBrand transition-[filter] hover:brightness-110"
               >
-                {t('update_payment_method', 'Update payment method')}
+                {declined
+                  ? t('billing_pending_payment_cta', 'Update card and pay')
+                  : t('update_payment_method', 'Update payment method')}
               </button>
               <button
                 type="button"

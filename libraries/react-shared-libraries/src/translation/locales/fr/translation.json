@@ -916,5 +916,8 @@
   "analytics_refresh_hint": "Certains canaux ne mettent à jour les chiffres de leurs publications que lorsque vous actualisez.",
   "analytics_refresh_nothing": "Aucun nouveau chiffre à lire",
   "analytics_refresh_failed": "Impossible d'actualiser les chiffres. Réessayez plus tard.",
-  "analytics_manual_refresh_empty": "Pas encore de chiffres pour ce canal. Choisissez Actualiser ci-dessous pour lire les plus récents."
+  "analytics_manual_refresh_empty": "Pas encore de chiffres pour ce canal. Choisissez Actualiser ci-dessous pour lire les plus récents.",
+  "ft_action_title": "Confirmez le paiement auprès de votre banque",
+  "ft_action_body": "Votre banque vous demande de confirmer ce paiement. Terminez la vérification dans la fenêtre qui s'est ouverte.",
+  "ft_declined_body": "Votre essai est terminé, mais son premier paiement n'a pas abouti. Réglez la facture en attente avec une carte valide pour continuer à utiliser PostQueen."
 }

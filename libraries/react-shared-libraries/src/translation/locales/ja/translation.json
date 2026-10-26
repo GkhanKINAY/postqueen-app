@@ -916,5 +916,8 @@
   "analytics_refresh_hint": "一部のチャンネルは、更新したときだけ投稿の数値が更新されます。",
   "analytics_refresh_nothing": "読み込める新しい数値はありません",
   "analytics_refresh_failed": "数値を更新できませんでした。しばらくしてからもう一度お試しください。",
-  "analytics_manual_refresh_empty": "このチャンネルにはまだ数値がありません。下の「更新」を選ぶと最新の数値を読み込みます。"
+  "analytics_manual_refresh_empty": "このチャンネルにはまだ数値がありません。下の「更新」を選ぶと最新の数値を読み込みます。",
+  "ft_action_title": "銀行でお支払いを確認してください",
+  "ft_action_body": "銀行がこのお支払いの確認を求めています。開いたウィンドウで確認を完了してください。",
+  "ft_declined_body": "トライアルは終了しましたが、最初のお支払いが完了しませんでした。PostQueen を引き続きご利用いただくには、有効なカードで未払いの請求書をお支払いください。"
 }

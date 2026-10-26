@@ -1397,5 +1397,8 @@
   "analytics_refresh_credits": "· ~{{amount}} credits",
   "analytics_refresh_confirm_title": "Refresh post numbers?",
   "analytics_refresh_confirm": "This reads your latest post numbers and uses about {{amount}} credits. Refreshing again today is free.",
-  "analytics_refresh_short": "Not enough credits."
+  "analytics_refresh_short": "Not enough credits.",
+  "ft_action_title": "Confirm the payment with your bank",
+  "ft_action_body": "Your bank asks you to confirm this payment. Finish the check in the window that opened.",
+  "ft_declined_body": "Your trial has ended, but its first payment did not go through. Pay the open invoice with a working card to keep using PostQueen."
 }

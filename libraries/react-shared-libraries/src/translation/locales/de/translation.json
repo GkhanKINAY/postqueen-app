@@ -916,5 +916,8 @@
   "analytics_refresh_hint": "Manche Kanäle aktualisieren ihre Beitragszahlen nur, wenn du aktualisierst.",
   "analytics_refresh_nothing": "Keine neuen Zahlen zum Abrufen",
   "analytics_refresh_failed": "Die Zahlen konnten nicht aktualisiert werden. Versuche es später noch einmal.",
-  "analytics_manual_refresh_empty": "Für diesen Kanal gibt es noch keine Zahlen. Wähle unten Aktualisieren, um die neuesten abzurufen."
+  "analytics_manual_refresh_empty": "Für diesen Kanal gibt es noch keine Zahlen. Wähle unten Aktualisieren, um die neuesten abzurufen.",
+  "ft_action_title": "Bestätigen Sie die Zahlung bei Ihrer Bank",
+  "ft_action_body": "Ihre Bank möchte, dass Sie diese Zahlung bestätigen. Schließen Sie die Prüfung im geöffneten Fenster ab.",
+  "ft_declined_body": "Ihr Testzeitraum ist beendet, aber die erste Zahlung ist nicht durchgegangen. Bezahlen Sie die offene Rechnung mit einer funktionierenden Karte, um PostQueen weiter zu nutzen."
 }

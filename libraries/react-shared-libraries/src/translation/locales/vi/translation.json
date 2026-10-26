@@ -916,5 +916,8 @@
   "analytics_refresh_hint": "Một số kênh chỉ cập nhật số liệu bài đăng khi bạn làm mới.",
   "analytics_refresh_nothing": "Không có số liệu mới để đọc",
   "analytics_refresh_failed": "Không thể làm mới số liệu. Hãy thử lại sau.",
-  "analytics_manual_refresh_empty": "Kênh này chưa có số liệu. Chọn Làm mới bên dưới để đọc số liệu mới nhất."
+  "analytics_manual_refresh_empty": "Kênh này chưa có số liệu. Chọn Làm mới bên dưới để đọc số liệu mới nhất.",
+  "ft_action_title": "Xác nhận thanh toán với ngân hàng của bạn",
+  "ft_action_body": "Ngân hàng của bạn yêu cầu xác nhận khoản thanh toán này. Hãy hoàn tất bước xác minh trong cửa sổ vừa mở.",
+  "ft_declined_body": "Thời gian dùng thử của bạn đã kết thúc, nhưng khoản thanh toán đầu tiên không thành công. Hãy thanh toán hóa đơn còn mở bằng một thẻ hợp lệ để tiếp tục dùng PostQueen."
 }

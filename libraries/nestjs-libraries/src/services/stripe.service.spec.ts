@@ -2021,3 +2021,105 @@ describe('yearly credits, a month at a time', () => {
     assert.deepEqual(inForce(), [latest()]);
   });
 });
+
+describe('ending a trial early', () => {
+  const invoiceMethods = Object.getPrototypeOf(probe.invoices);
+  const saved = { retrieve: invoiceMethods.retrieve, pay: invoiceMethods.pay };
+  let latest: Partial<Stripe.Invoice> | undefined;
+  before(() => {
+    invoiceMethods.retrieve = record('invoices.retrieve', (id) =>
+      latest?.id === id ? latest : undefined,
+    );
+    invoiceMethods.pay = record('invoices.pay', () => ({}));
+  });
+  after(() => {
+    Object.assign(invoiceMethods, saved);
+  });
+  beforeEach(() => {
+    latest = undefined;
+  });
+
+  const org = { paymentId: 'cus_1' } as any;
+  const trialing = () =>
+    sub('sub_trial', 100, { status: 'trialing', latest_invoice: 'in_1' as any });
+  const invoice = (
+    status: Stripe.Invoice.Status,
+    intent?: Partial<Stripe.PaymentIntent>,
+  ) =>
+    ({
+      id: 'in_1',
+      status,
+      hosted_invoice_url: 'https://invoice.stripe.test/in_1',
+      payments: {
+        data: intent ? [{ payment: { payment_intent: intent } }] : [],
+      },
+    }) as unknown as Partial<Stripe.Invoice>;
+
+  it('ends it in Stripe and reports a first payment that went through', async () => {
+    subs = [trialing()];
+    latest = invoice('paid', { status: 'succeeded', client_secret: 'pi_s' });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, { ended: true });
+    assert.deepEqual(called('subscriptions.update'), [
+      ['sub_trial', { trial_end: 'now' }],
+    ]);
+    assert.deepEqual(called('invoices.retrieve'), [
+      ['in_1', { expand: ['payments.data.payment.payment_intent'] }],
+    ]);
+  });
+
+  it('hands a bank check to the browser, with the client secret', async () => {
+    subs = [trialing()];
+    latest = invoice('open', {
+      status: 'requires_action',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: true,
+      requiresAction: true,
+      clientSecret: 'pi_secret',
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+  });
+
+  it('says declined, never ended, when the card is refused', async () => {
+    subs = [trialing()];
+    latest = invoice('open', {
+      status: 'requires_payment_method',
+      client_secret: 'pi_secret',
+    });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, {
+      ended: false,
+      declined: true,
+      invoiceUrl: 'https://invoice.stripe.test/in_1',
+    });
+  });
+
+  it('touches nothing when there is no trial, even with an invoice open', async () => {
+    subs = [
+      sub('sub_due', 100, {
+        status: 'past_due',
+        latest_invoice: 'in_1' as any,
+      }),
+    ];
+    latest = invoice('open', { status: 'requires_payment_method' });
+    const result = await service().finishTrial(org);
+
+    assert.deepEqual(result, { ended: false });
+    assert.equal(called('subscriptions.update').length, 0);
+    assert.equal(called('invoices.pay').length, 0);
+    assert.equal(called('invoices.retrieve').length, 0);
+  });
+
+  it('has nothing to end for an organization with no Stripe customer', async () => {
+    const result = await service().finishTrial({ paymentId: null } as any);
+
+    assert.deepEqual(result, { ended: false });
+    assert.equal(calls.length, 0);
+  });
+});
