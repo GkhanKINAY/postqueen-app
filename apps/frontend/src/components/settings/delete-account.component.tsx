@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FC, useCallback, useState } from 'react';
+import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { Button } from '@gitroom/react/form/button';
@@ -14,6 +15,31 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter } from 'next/navigation';
 import { modalFieldClass } from '@gitroom/frontend/components/layout/new-modal';
 
+interface DeleteAccountInfo {
+  hasSubscription: boolean;
+  hasAdditionalMembers: boolean;
+}
+
+// What deleting the account also does: the subscription it cancels and the
+// team members it removes. Read when the section mounts, so the warning is
+// right by the time the form opens, and again when Delete is pressed.
+const useDeleteAccountInfo = (enabled: boolean) => {
+  const fetch = useFetch();
+  const load = useCallback(async (): Promise<DeleteAccountInfo> => {
+    // customFetch resolves a 4xx/5xx; a failed read must not look like an
+    // account with nothing else to lose.
+    const response = await fetch('/user/delete-account-info');
+    if (!response.ok) {
+      throw new Error('Could not load what deleting the account does');
+    }
+    return response.json();
+  }, [fetch]);
+  return useSWR(enabled ? 'delete-account-info' : null, load, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+};
+
 const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   const t = useT();
   const fetch = useFetch();
@@ -25,6 +51,30 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { data: info, mutate: reloadInfo } = useDeleteAccountInfo(!isLink);
+
+  // The subscription is cancelled now and the other members are removed;
+  // nothing is said about money, since refunds go by request.
+  const effects = useCallback(
+    (current?: DeleteAccountInfo) =>
+      current?.hasSubscription && current?.hasAdditionalMembers
+        ? t(
+            'delete_account_confirm_subscription_members',
+            'Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.'
+          )
+        : current?.hasSubscription
+        ? t(
+            'delete_account_confirm_subscription',
+            'Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.'
+          )
+        : current?.hasAdditionalMembers
+        ? t(
+            'delete_account_confirm_members',
+            'Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.'
+          )
+        : null,
+    [t]
+  );
 
   const goToAccount = useCallback(() => {
     router.push('/settings?tab=account');
@@ -37,12 +87,16 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   }, []);
 
   const deleteAccount = useCallback(async () => {
+    // Read again at the click: a subscription or a member may have come or
+    // gone since the section loaded.
+    const current = await reloadInfo().catch((): undefined => undefined);
     if (
       !(await deleteDialog(
-        t(
-          'delete_account_confirm',
-          'Your account, organizations, channels and posts will be deleted. This action cannot be undone, are you sure?'
-        ),
+        effects(current) ||
+          t(
+            'delete_account_confirm',
+            'Your account, organizations, channels and posts will be deleted. This action cannot be undone, are you sure?'
+          ),
         t('yes_delete_my_account', 'Yes, delete my account')
       ))
     ) {
@@ -78,7 +132,7 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetch, isSecured, t, toaster, email, password]);
+  }, [fetch, isSecured, t, toaster, email, password, reloadInfo, effects]);
 
   const loadingOverlay = loading && (
     <div className="fixed inset-0 z-[500] flex flex-col items-center justify-center gap-[16px] bg-pqBg/90">
@@ -154,10 +208,11 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
             role="alert"
             className="rounded-[10px] bg-pqDangerChip px-[12px] py-[10px] text-[12.5px] leading-[1.5] text-pqDanger"
           >
-            {t(
-              'delete_account_warning',
-              'This permanently deletes your account, organizations, channels and posts. This cannot be undone.'
-            )}
+            {effects(info) ||
+              t(
+                'delete_account_warning',
+                'This permanently deletes your account, organizations, channels and posts. This cannot be undone.'
+              )}
           </div>
           <input
             type="email"

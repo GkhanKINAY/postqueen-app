@@ -925,5 +925,8 @@
   "finish_trial_charge_me_now": "Termina la prova e paga ora",
   "trial_feature_locked_end_trial": "Questa funzione non è disponibile durante la prova. Puoi terminare la prova ora: il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova.",
   "precondition_channel_used_trial": "Questo canale social era già collegato a un altro account PostQueen.\nPer collegarlo durante la prova, puoi terminare la prova ora: il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova, e non viene aggiunto nulla in più.",
-  "team_members_will_be_disabled": "I membri del tuo team verranno disattivati e perderanno l'accesso alla tua organizzazione finché non sceglierai di nuovo un piano che includa i membri del team."
+  "team_members_will_be_disabled": "I membri del tuo team verranno disattivati e perderanno l'accesso alla tua organizzazione finché non sceglierai di nuovo un piano che includa i membri del team.",
+  "delete_account_confirm_subscription_members": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati, il tuo abbonamento verrà annullato subito e gli altri membri del team verranno rimossi dalla tua organizzazione. L'operazione non può essere annullata.",
+  "delete_account_confirm_subscription": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati e il tuo abbonamento verrà annullato subito. L'operazione non può essere annullata.",
+  "delete_account_confirm_members": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati e gli altri membri del team verranno rimossi dalla tua organizzazione. L'operazione non può essere annullata."
 }

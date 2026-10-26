@@ -925,5 +925,8 @@
   "finish_trial_charge_me_now": "结束试用并立即付款",
   "trial_feature_locked_end_trial": "试用期间无法使用此功能。您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时。",
   "precondition_channel_used_trial": "此社交渠道之前已连接到另一个 PostQueen 账户。\n如需在试用期间连接它，您可以现在结束试用：您套餐的首次付款将在今天扣取，而不是在试用结束时，且不会额外收费。",
-  "team_members_will_be_disabled": "您的团队成员将被停用，在您重新选择包含团队成员的套餐之前，他们将无法访问您的组织。"
+  "team_members_will_be_disabled": "您的团队成员将被停用，在您重新选择包含团队成员的套餐之前，他们将无法访问您的组织。",
+  "delete_account_confirm_subscription_members": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消，其他团队成员将从您的组织中移除。此操作无法撤销。",
+  "delete_account_confirm_subscription": "您的账户、组织、渠道和帖子将被删除，您的订阅将立即取消。此操作无法撤销。",
+  "delete_account_confirm_members": "您的账户、组织、渠道和帖子将被删除，其他团队成员将从您的组织中移除。此操作无法撤销。"
 }

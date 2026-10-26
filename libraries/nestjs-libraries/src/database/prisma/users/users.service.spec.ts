@@ -55,3 +55,151 @@ describe('UsersService.markOnline', () => {
     assert.equal(writes.length, 1);
   });
 });
+
+type Role = 'SUPERADMIN' | 'ADMIN' | 'USER';
+type Org = {
+  id: string;
+  subscription: object | null;
+  members: { id: string; role: Role }[];
+};
+
+// The account being deleted is `me`. Each organization lists its members,
+// disabled ones included, the way getAllUsersOrgs reads them.
+let orgs: Org[];
+let calls: string[];
+
+const memberOf = (org: Org) => org.members.find((m) => m.id === 'me')!;
+const organizationRepository = {
+  getOrgsByUserId: async () =>
+    orgs
+      .filter((org) => org.members.some((m) => m.id === 'me'))
+      .map((org) => ({
+        id: org.id,
+        subscription: org.subscription,
+        users: [{ role: memberOf(org).role, disabled: false }],
+      })),
+  getAllUsersOrgs: async (id: string) => ({
+    users: orgs
+      .find((org) => org.id === id)!
+      .members.map((m) => ({ role: m.role, user: { id: m.id } })),
+  }),
+  deleteTeamMember: async (org: string, user: string) => {
+    calls.push(`remove ${user} from ${org}`);
+  },
+  deleteOrganization: async (org: string) => {
+    calls.push(`delete ${org}`);
+  },
+};
+
+const deletingService = () =>
+  new UsersService(
+    {
+      getUserById: async () => null,
+      deleteAccount: async () => {
+        calls.push('delete me');
+      },
+    } as any,
+    organizationRepository as any,
+    {
+      deleteIntegrationsForAccount: async (org: string) => {
+        calls.push(`channels of ${org}`);
+      },
+    } as any,
+    {} as any,
+    {
+      changeActiveCron: async (org: string) => {
+        calls.push(`autoposts of ${org}`);
+      },
+      revokeAccessForAccount: async (org: string) => {
+        calls.push(`revoke ${org}`);
+      },
+    } as any
+  );
+
+describe('deleting an account', () => {
+  beforeEach(() => {
+    calls = [];
+    orgs = [];
+  });
+
+  it('no longer refuses an owner whose organization has members', async () => {
+    orgs = [
+      {
+        id: 'own',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [
+          { id: 'me', role: 'SUPERADMIN' },
+          { id: 'teammate', role: 'USER' },
+        ],
+      },
+    ];
+
+    assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
+      hasSubscription: true,
+      hasAdditionalMembers: true,
+    });
+    await deletingService().deleteAccount('me');
+    assert.deepEqual(calls, [
+      'remove teammate from own',
+      'autoposts of own',
+      'revoke own',
+      'channels of own',
+      'delete own',
+      'delete me',
+    ]);
+  });
+
+  it('leaves an organization that has another owner, and only leaves it', async () => {
+    orgs = [
+      {
+        id: 'shared',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [
+          { id: 'me', role: 'SUPERADMIN' },
+          { id: 'cofounder', role: 'SUPERADMIN' },
+          { id: 'teammate', role: 'USER' },
+        ],
+      },
+    ];
+
+    assert.deepEqual(await deletingService().getOrgsToDeleteForAccount('me'), []);
+    assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
+      hasSubscription: false,
+      hasAdditionalMembers: false,
+    });
+    await deletingService().deleteAccount('me');
+    assert.deepEqual(calls, ['remove me from shared', 'delete me']);
+  });
+
+  it('only leaves an organization where the account is a member', async () => {
+    orgs = [
+      {
+        id: 'theirs',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [
+          { id: 'owner', role: 'SUPERADMIN' },
+          { id: 'me', role: 'ADMIN' },
+        ],
+      },
+      {
+        id: 'own',
+        subscription: null,
+        members: [{ id: 'me', role: 'SUPERADMIN' }],
+      },
+    ];
+
+    assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
+      hasSubscription: false,
+      hasAdditionalMembers: false,
+    });
+    await deletingService().deleteAccount('me');
+    assert.deepEqual(calls, [
+      'remove me from theirs',
+      'autoposts of own',
+      'revoke own',
+      'channels of own',
+      'delete own',
+      'delete me',
+    ]);
+  });
+});

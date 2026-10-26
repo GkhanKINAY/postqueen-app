@@ -925,5 +925,8 @@
   "finish_trial_charge_me_now": "체험 종료하고 지금 결제",
   "trial_feature_locked_end_trial": "이 기능은 체험 기간에는 사용할 수 없습니다. 지금 체험을 종료할 수 있으며, 이 경우 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구됩니다.",
   "precondition_channel_used_trial": "이 소셜 채널은 이전에 다른 PostQueen 계정에 연결된 적이 있습니다.\n체험 기간 중에 연결하려면 지금 체험을 종료할 수 있습니다. 이 경우 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구되며, 추가 요금은 없습니다.",
-  "team_members_will_be_disabled": "팀원은 비활성화되며, 팀원이 포함된 요금제를 다시 선택할 때까지 조직에 접근할 수 없습니다."
+  "team_members_will_be_disabled": "팀원은 비활성화되며, 팀원이 포함된 요금제를 다시 선택할 때까지 조직에 접근할 수 없습니다.",
+  "delete_account_confirm_subscription_members": "계정, 조직, 채널, 게시물이 삭제되고, 구독은 즉시 해지되며, 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
+  "delete_account_confirm_subscription": "계정, 조직, 채널, 게시물이 삭제되고 구독은 즉시 해지됩니다. 이 작업은 되돌릴 수 없습니다.",
+  "delete_account_confirm_members": "계정, 조직, 채널, 게시물이 삭제되고 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다."
 }

@@ -925,5 +925,8 @@
   "finish_trial_charge_me_now": "Testzeitraum beenden und jetzt bezahlen",
   "trial_feature_locked_end_trial": "Diese Funktion ist im Testzeitraum nicht verfügbar. Sie können den Testzeitraum jetzt beenden: Die erste Zahlung Ihres Tarifs wird dann heute statt am Ende des Testzeitraums abgebucht.",
   "precondition_channel_used_trial": "Dieser Social-Media-Kanal war bereits mit einem anderen PostQueen-Konto verbunden.\nUm ihn während Ihres Testzeitraums zu verbinden, können Sie den Testzeitraum jetzt beenden: Die erste Zahlung Ihres Tarifs wird dann heute statt am Ende des Testzeitraums abgebucht, und es kommt nichts extra hinzu.",
-  "team_members_will_be_disabled": "Ihre Teammitglieder werden deaktiviert und verlieren den Zugriff auf Ihre Organisation, bis Sie wieder einen Tarif wählen, der Teammitglieder enthält."
+  "team_members_will_be_disabled": "Ihre Teammitglieder werden deaktiviert und verlieren den Zugriff auf Ihre Organisation, bis Sie wieder einen Tarif wählen, der Teammitglieder enthält.",
+  "delete_account_confirm_subscription_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht, Ihr Abonnement wird sofort gekündigt und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden.",
+  "delete_account_confirm_subscription": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und Ihr Abonnement wird sofort gekündigt. Dies kann nicht rückgängig gemacht werden.",
+  "delete_account_confirm_members": "Ihr Konto, Ihre Organisationen, Kanäle und Beiträge werden gelöscht und die anderen Teammitglieder werden aus Ihrer Organisation entfernt. Dies kann nicht rückgängig gemacht werden."
 }

@@ -140,8 +140,10 @@ export type OrganizationGuardState = {
 
 /**
  * Why an organization must not be touched, or null. Re-read on every call:
- * account deletion only removes an organization with no other active member,
- * so one showing up means something restored it. A subscription row that is
+ * account deletion removes every other member of an organization it deletes
+ * (one that has another owner is not deleted at all), so activeMembers is 0
+ * and the organization is purged once PURGE_GRACE_DAYS have passed. A member
+ * showing up means something restored it. A subscription row that is
  * not a local lifetime entitlement means the cancel at deletion did not
  * finish, and the Stripe link has to stay until it does.
  */
