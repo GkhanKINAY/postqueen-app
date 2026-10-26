@@ -418,6 +418,44 @@ export class MediaService {
   }
 
   /**
+   * What MCP callers see. A failed conversion of a file the platforms take
+   * as it is (an mp4) is not a failed upload: the original stays in place
+   * and is what gets published. Anything else that failed was removed.
+   */
+  toUploadStatus(media: {
+    id: string;
+    name: string;
+    path: string;
+    status: string;
+    processingError?: string | null;
+  }) {
+    if (media.status !== 'failed') {
+      return { id: media.id, path: media.path, status: media.status };
+    }
+
+    return USABLE_AS_IS.has(extname(media.name).toLowerCase())
+      ? {
+          id: media.id,
+          path: media.path,
+          status: 'ready',
+          warning:
+            'Converting it for the platforms failed, the original file was kept and will be used for publishing',
+        }
+      : {
+          id: media.id,
+          path: media.path,
+          status: 'failed',
+          error:
+            media.processingError ||
+            'Processing failed and the original file cannot be used',
+        };
+  }
+
+  async getMediaUploadStatus(org: string, id: string) {
+    return this.toUploadStatus(await this.getMediaStatus(org, id));
+  }
+
+  /**
    * The body of the `normalizeMedia` activity. Reads the upload back out of
    * storage, brings it to the rules, cuts a poster, and writes the result on
    * the row. Idempotent: a row that is no longer `processing` was finished by
