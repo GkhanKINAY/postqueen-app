@@ -41,3 +41,25 @@ describe('MCP over SSE', () => {
     );
   });
 });
+
+describe('MCP over streamable HTTP', () => {
+  // Mastra's dual-era mode serves 2026-07-28 clients natively and 2025-era
+  // ones through the SDK's stateless fallback; it refuses response-mode
+  // options, so enableJsonResponse has to stay out
+  it('runs the three streamable servers in dual-era mode', () => {
+    assert.equal(startMcp.match(/protocolVersion: '2026-07-28'/g)?.length, 3);
+    assert.doesNotMatch(startMcp, /enableJsonResponse/);
+  });
+
+  it('leaves the SSE server on the 2025 era', () => {
+    assert.match(startMcp, /sseServer = new MCPServer\(serverConfig\)/);
+    assert.doesNotMatch(
+      startMcp,
+      /const serverConfig = \{[^}]*protocolVersion/,
+    );
+  });
+
+  it('ends a subscriptions/listen stream instead of holding it open', () => {
+    assert.equal(startMcp.match(/endListenStream\(req, res\);/g)?.length, 3);
+  });
+});

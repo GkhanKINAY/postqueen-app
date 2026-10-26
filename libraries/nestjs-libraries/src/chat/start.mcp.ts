@@ -32,6 +32,18 @@ const fixAcceptHeader = (req: Request) => {
   }
 };
 
+// 2026-07-28 clients hold a subscriptions/listen stream open for the whole
+// session, and the tool list never changes: the stream ends once the
+// subscription had time to be acknowledged
+const endListenStream = (req: Request, res: Response) => {
+  if (req.headers['mcp-method'] !== 'subscriptions/listen') {
+    return;
+  }
+
+  const timer = setTimeout(() => res.end(), 10000);
+  res.on('close', () => clearTimeout(timer));
+};
+
 const openAiOAuthClientId = process.env.OPENAI_OAUTH_CLIENT_ID?.trim();
 const enableOidcEmailClaims = Boolean(openAiOAuthClientId);
 const oauthScopes = [
@@ -149,7 +161,14 @@ export const startMcp = async (app: INestApplication) => {
     appResources,
   };
 
-  const server = new MCPServer(serverConfig);
+  // The streamable endpoints run in Mastra's dual-era mode: 2026-07-28
+  // clients are served natively and 2025-era clients through the SDK's
+  // stateless fallback on the same URL. The SSE endpoint below keeps
+  // serverConfig as it is, since that transport only exists in the 2025 era
+  const server = new MCPServer({
+    ...serverConfig,
+    protocolVersion: '2026-07-28',
+  });
 
   // The directory-facing servers don't register the agent - it would be
   // exposed as an annotation-less catch-all ask_postqueen tool, which the
@@ -157,6 +176,7 @@ export const startMcp = async (app: INestApplication) => {
   const oauthServer = new MCPServer({
     name: 'PostQueen MCP',
     version: '1.0.0',
+    protocolVersion: '2026-07-28',
     tools,
     appResources,
   });
@@ -164,6 +184,7 @@ export const startMcp = async (app: INestApplication) => {
   const claudeOauthServer = new MCPServer({
     name: 'PostQueen MCP',
     version: '1.0.0',
+    protocolVersion: '2026-07-28',
     tools: claudeTools,
     appResources: claudeAppResources,
   });
@@ -338,6 +359,7 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     await runWithContext({ requestId: token!, auth }, async () => {
       await mcpServer.startHTTP({
@@ -345,7 +367,6 @@ export const startMcp = async (app: INestApplication) => {
         httpPath: url.pathname,
         options: {
           serverless: true,
-          enableJsonResponse: true,
         },
         req,
         res,
@@ -387,6 +408,7 @@ export const startMcp = async (app: INestApplication) => {
 
     const url = new URL('/mcp', process.env.NEXT_PUBLIC_BACKEND_URL);
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     // @ts-ignore
     await runWithContext({ requestId: token, auth: req.auth }, async () => {
@@ -395,7 +417,6 @@ export const startMcp = async (app: INestApplication) => {
         httpPath: url.pathname,
         options: {
           serverless: true,
-          enableJsonResponse: true,
         },
         req,
         res,
@@ -428,6 +449,7 @@ export const startMcp = async (app: INestApplication) => {
       process.env.NEXT_PUBLIC_BACKEND_URL
     );
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     await runWithContext(
       // @ts-ignore
@@ -438,7 +460,6 @@ export const startMcp = async (app: INestApplication) => {
           httpPath: url.pathname,
           options: {
             serverless: true,
-            enableJsonResponse: true,
           },
           req,
           res,
