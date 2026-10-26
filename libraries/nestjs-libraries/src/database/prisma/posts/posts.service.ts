@@ -38,6 +38,7 @@ import { readOrFetch } from '@gitroom/nestjs-libraries/integrations/read.or.fetc
 import sharp from 'sharp';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { Readable } from 'stream';
+import { resolve, sep } from 'path';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 dayjs.extend(utc);
 import * as Sentry from '@sentry/nestjs';
@@ -721,6 +722,7 @@ export class PostsService {
             })
           )
         )
+          .filter((m) => this.isAllowedMediaPath(m?.path))
           .map((m) => {
             return {
               ...m,
@@ -832,8 +834,27 @@ export class PostsService {
 
       return getImageList;
     } catch (err: any) {
-      return imagesList;
+      return (imagesList || []).filter((m) => this.isAllowedMediaPath(m?.path));
     }
+  }
+
+  // A media path that is not a remote URL is read straight from the worker's
+  // disk once UPLOAD_DIRECTORY is put in front of it, so it has to resolve
+  // inside that directory.
+  private isAllowedMediaPath(path: unknown) {
+    if (typeof path !== 'string' || /^https?:\/\//.test(path)) {
+      return true;
+    }
+
+    // containing "http" anywhere skips the UPLOAD_DIRECTORY prefix, and the
+    // providers would then read it relative to the working directory
+    if (path.indexOf('http') > -1) {
+      return false;
+    }
+
+    const base = resolve(String(process.env.UPLOAD_DIRECTORY));
+    const filePath = resolve(process.env.UPLOAD_DIRECTORY + path);
+    return filePath.startsWith(base + sep);
   }
 
   async getPostGroupDebugExport(orgId: string, group: string) {
@@ -995,15 +1016,26 @@ export class PostsService {
       e.replace('(post:', '').replace(')', '')
     );
     const urls = await this._postRepository.getPostUrls(orgId, ids);
-    const newPlainText = ids.reduce((acc, value) => {
-      const findUrl = urls?.find?.((u) => u.id === value)?.releaseURL || '';
-      return acc.replace(
-        new RegExp(`\\(post:${value}\\)`, 'g'),
-        findUrl.split(',')[0]
-      );
-    }, plainText);
+    const replaceTags = (text: string, escape = (url: string) => url) =>
+      ids.reduce((acc, value) => {
+        const findUrl = urls?.find?.((u) => u.id === value)?.releaseURL || '';
+        return acc.replace(new RegExp(`\\(post:${value}\\)`, 'g'), () =>
+          escape(findUrl.split(',')[0])
+        );
+      }, text);
 
-    return this.updateTags(orgId, JSON.parse(newPlainText) as Post[]);
+    // The release URL is whatever the platform answered, and some of those
+    // platforms run on a server the user picks (Lemmy, ListMonk). So it only
+    // goes where a tag is written, the content and the settings (escaped for
+    // their JSON), and never into the media list, which was validated before
+    // this runs.
+    return post.map((p) => ({
+      ...p,
+      content: p.content && replaceTags(p.content),
+      settings:
+        p.settings &&
+        replaceTags(p.settings, (url) => JSON.stringify(url).slice(1, -1)),
+    }));
   }
 
   public async checkInternalPlug(

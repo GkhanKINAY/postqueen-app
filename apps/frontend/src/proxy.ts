@@ -127,9 +127,10 @@ export async function proxy(request: NextRequest) {
     // The OAuth consent page (MCP connectors, the postqueen CLI) has to come
     // back once the person has signed in, and the login page keeps only the
     // query. Hand it over as returnUrl, which ReturnUrlComponent stores and the
-    // login opens.
+    // login opens. A path, not FRONTEND_URL: it is only followed on the origin
+    // the browser is on, and the two need not be spelled the same.
     if (nextUrl.pathname === '/oauth/authorize') {
-      const returnUrl = `${process.env.FRONTEND_URL}/oauth/authorize${url}`;
+      const returnUrl = `/oauth/authorize${url}`;
       return NextResponse.redirect(
         new URL(
           `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`,

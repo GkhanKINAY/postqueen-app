@@ -14,6 +14,7 @@ import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated
 import { MeweDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/mewe.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
+import mime from 'mime-types';
 
 export class MeweProvider extends SocialAbstract implements SocialProvider {
   identifier = 'mewe';
@@ -227,9 +228,13 @@ export class MeweProvider extends SocialAbstract implements SocialProvider {
     accessToken: string,
     mediaPath: string
   ): Promise<string> {
-    const mediaResponse = await fetch(mediaPath);
-    const blob = await mediaResponse.blob();
+    // The media path is user-influenced, so it is read the way every other
+    // provider reads it: remote URLs through the SSRF-safe client, local
+    // paths only inside UPLOAD_DIRECTORY.
     const fileName = mediaPath.split('/').pop() || 'photo.jpg';
+    const blob = new Blob([new Uint8Array(await this.readOrFetch(mediaPath))], {
+      type: mime.lookup(fileName) || 'image/jpeg',
+    });
 
     const form = new FormData();
     form.append('file', blob, fileName);

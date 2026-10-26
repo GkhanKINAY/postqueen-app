@@ -416,7 +416,11 @@ export class NoAuthIntegrationsController {
     }
 
     const { integrationId, organizationId, internalId, provider } = payload;
-    if (!integrationId || !organizationId || !internalId || !provider) {
+    if (
+      [integrationId, organizationId, internalId, provider].some(
+        (value) => !value || typeof value !== 'string'
+      )
+    ) {
       throw new HttpException('Invalid token payload', 400);
     }
 
@@ -429,7 +433,8 @@ export class NoAuthIntegrationsController {
     if (
       !integration ||
       integration.deletedAt ||
-      integration.internalId !== internalId
+      integration.internalId !== internalId ||
+      integration.providerIdentifier !== provider
     ) {
       throw new HttpException('Integration not found', 404);
     }

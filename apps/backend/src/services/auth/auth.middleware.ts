@@ -62,7 +62,12 @@ export class AuthMiddleware implements NestMiddleware {
       // carry `expires`), and both used to pass here as a session that never
       // expired — found in browser history or a mail scanner's log, pasted
       // into the cookie.
-      if (!payload?.id || payload.purpose || payload.expires) {
+      if (
+        !payload?.id ||
+        typeof payload.id !== 'string' ||
+        payload.purpose ||
+        payload.expires
+      ) {
         throw new HttpForbiddenException();
       }
 

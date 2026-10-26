@@ -18,6 +18,7 @@ import {
 } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import sharp from 'sharp';
 import { createReadStream, statSync } from 'fs';
+import { resolve, sep } from 'path';
 import { Readable } from 'stream';
 
 export const stripQuery = (url: string) => {
@@ -471,7 +472,9 @@ export abstract class SocialAbstract {
   // the same answer, and its 401 is not the network asking for a reconnect.
   protected async readOrFetch(path: string): Promise<Buffer> {
     try {
-      return await readOrFetch(path);
+      return await readOrFetch(
+        path.indexOf('http') === 0 ? path : this.localMediaPath(path)
+      );
     } catch (err: any) {
       const status = Number(err?.response?.status);
       if (status >= 400 && status < 500) {
@@ -522,7 +525,29 @@ export abstract class SocialAbstract {
       return length;
     }
 
-    return statSync(path).size;
+    return statSync(this.localMediaPath(path, identifier)).size;
+  }
+
+  // Media that is not a remote URL is read from this worker's disk. The stored
+  // path is user-influenced, so only a file inside UPLOAD_DIRECTORY is ever
+  // opened. The path is the one updateMedia built, UPLOAD_DIRECTORY in front,
+  // so it is resolved the way it is opened, from the working directory;
+  // resolve() collapses any `..` first. A path outside the directory fails the
+  // post for good: reading it again would be refused again.
+  protected localMediaPath(path: string, identifier = '') {
+    const base = process.env.UPLOAD_DIRECTORY
+      ? resolve(process.env.UPLOAD_DIRECTORY)
+      : '';
+    const file = resolve(path);
+    if (!base || !file.startsWith(base + sep)) {
+      throw new BadBody(
+        identifier,
+        JSON.stringify({ path: stripQuery(path) }),
+        Buffer.from('{}'),
+        MEDIA_READ_FAILED
+      );
+    }
+    return file;
   }
 
   // Reads a single [start, end] byte range into memory. Used by providers whose
@@ -586,9 +611,10 @@ export abstract class SocialAbstract {
       }
     }
 
+    const file = this.localMediaPath(path, identifier);
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
-      createReadStream(path, { start, end })
+      createReadStream(file, { start, end })
         .on('data', (chunk) => chunks.push(chunk as Buffer))
         .on('end', () => resolve(Buffer.concat(chunks)))
         .on('error', reject);
@@ -603,7 +629,7 @@ export abstract class SocialAbstract {
     identifier = ''
   ): Promise<Readable> {
     if (path.indexOf('http') !== 0) {
-      return createReadStream(path);
+      return createReadStream(this.localMediaPath(path, identifier));
     }
 
     // identity encoding so the streamed byte count matches the size mediaSize

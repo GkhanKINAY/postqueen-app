@@ -348,6 +348,15 @@ export class AuthService {
       if (!getOrg?.orgId || !getOrg?.timeLimit) {
         return false;
       }
+      // Only what inviteTeamMember signs: string ids and a role a member can
+      // be given, never whatever else a token might carry.
+      if (
+        typeof getOrg.orgId !== 'string' ||
+        typeof getOrg.id !== 'string' ||
+        !['USER', 'ADMIN'].includes(getOrg.role)
+      ) {
+        return false;
+      }
       if (dayjs(getOrg.timeLimit).isBefore(dayjs())) {
         return false;
       }
@@ -528,7 +537,7 @@ export class AuthService {
     // `auth` response header under NOT_SECURED) it could be replayed here as a
     // password reset, forever. The token being signed is not the same as the
     // token being a reset token.
-    if (!user?.id || !user.expires) {
+    if (!user?.id || typeof user.id !== 'string' || !user.expires) {
       return false;
     }
 

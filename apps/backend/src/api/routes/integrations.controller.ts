@@ -342,7 +342,11 @@ export class IntegrationsController {
 
     let newList: any[] | { none: true } = [];
     try {
-      newList = (await this.functionIntegration(org, body)) || [];
+      // Always the mention lookup: what comes back is cached for every
+      // organization on that platform, so no other allowed method may fill it
+      newList =
+        (await this.functionIntegration(org, { ...body, name: 'mention' })) ||
+        [];
     } catch (err) {
       console.log(err);
     }

@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { afterEach, describe, it } from 'node:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, afterEach, describe, it } from 'node:test';
 import {
   BadBody,
   platformMessage,
@@ -310,6 +313,71 @@ describe('fetch', () => {
     assert.equal(
       (failure as BadBody).message,
       'API rate limit exceeded.'
+    );
+  });
+});
+
+describe('local media reads', () => {
+  const uploadDirectory = process.env.UPLOAD_DIRECTORY;
+  const root = mkdtempSync(join(tmpdir(), 'pq-media-'));
+  const dir = join(root, 'uploads');
+  const outside = join(root, 'outside.txt');
+  mkdirSync(dir);
+  writeFileSync(join(dir, 'a.mp4'), 'twelve bytes');
+  writeFileSync(outside, 'secret');
+
+  afterEach(() => {
+    process.env.UPLOAD_DIRECTORY = uploadDirectory;
+  });
+  after(() => rmSync(root, { recursive: true, force: true }));
+
+  const read = (network: any, method: string, path: string) =>
+    method === 'mediaChunk'
+      ? network.mediaChunk(path, 0, 3, 'network')
+      : network[method](path, 'network');
+
+  for (const method of ['mediaSize', 'mediaChunk', 'mediaStream']) {
+    it(`${method} opens a file of the upload directory`, async () => {
+      process.env.UPLOAD_DIRECTORY = dir;
+      const value = await read(new Network(), method, join(dir, 'a.mp4'));
+      if (method === 'mediaSize') {
+        assert.equal(value, 12);
+      } else if (method === 'mediaStream') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of value) {
+          chunks.push(chunk);
+        }
+        assert.equal(Buffer.concat(chunks).toString(), 'twelve bytes');
+      } else {
+        assert.equal(value.toString(), 'twel');
+      }
+    });
+
+    it(`${method} refuses a file outside it, as a post failure`, async () => {
+      process.env.UPLOAD_DIRECTORY = dir;
+      for (const path of [outside, join(dir, '..', 'outside.txt'), '/etc/passwd']) {
+        await assert.rejects(read(new Network(), method, path), (err) => {
+          assert.ok(err instanceof BadBody);
+          return true;
+        });
+      }
+    });
+  }
+
+  it('refuses a local whole-file read outside it, as a post failure', async () => {
+    process.env.UPLOAD_DIRECTORY = dir;
+    await assert.rejects((new Network() as any).readOrFetch(outside), BadBody);
+    assert.equal(
+      (await (new Network() as any).readOrFetch(join(dir, 'a.mp4'))).toString(),
+      'twelve bytes'
+    );
+  });
+
+  it('refuses every local read when no upload directory is set', async () => {
+    delete process.env.UPLOAD_DIRECTORY;
+    await assert.rejects(
+      new Network().mediaSize(join(dir, 'a.mp4'), 'network'),
+      BadBody
     );
   });
 });
