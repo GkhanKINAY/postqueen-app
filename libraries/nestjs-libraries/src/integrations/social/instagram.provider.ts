@@ -531,6 +531,16 @@ export class InstagramProvider
       };
     }
 
+    // stripHandle already drops a leading @, so what is left is a handle
+    // Instagram itself refuses.
+    if (/\b2207018\b/.test(body)) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'One of the collaborators could not be tagged, please check the username is correct, the account is public, and that it allows collaborator invites',
+      };
+    }
+
     if (body.indexOf('param collaborators is not allowed') > -1) {
       return {
         type: 'bad-body' as const,

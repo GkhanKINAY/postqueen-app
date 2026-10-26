@@ -215,6 +215,14 @@ describe('Instagram error mapping', () => {
     assert.equal(handle(graph({ message: 'x', code: 100 }, { id: '17721070' })), undefined);
   });
 
+  it('names a collaborator Instagram refuses to tag (2207018)', () => {
+    assert.deepEqual(handle(graph({ message: 'x', code: 100, error_subcode: 2207018 })), {
+      type: 'bad-body',
+      value:
+        'One of the collaborators could not be tagged, please check the username is correct, the account is public, and that it allows collaborator invites',
+    });
+  });
+
   it('reads a subcode from a failed container status too', () => {
     assert.equal(
       handle('Error: Media upload has failed with error code 2207026', 200)?.value,
