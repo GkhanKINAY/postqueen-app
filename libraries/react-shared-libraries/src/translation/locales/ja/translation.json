@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} に更新",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} まで無料トライアル",
   "trial_banner_active_until": "無料トライアルは {{date}} までです。その後、初回のお支払い ${{price}} が請求されます。",
-  "billing_pending_payment_cta": "カードを更新して支払う"
+  "billing_pending_payment_cta": "カードを更新して支払う",
+  "thumbnail": "サムネイル",
+  "select_frame": "フレームを選択",
+  "from_gallery": "ギャラリーから"
 }

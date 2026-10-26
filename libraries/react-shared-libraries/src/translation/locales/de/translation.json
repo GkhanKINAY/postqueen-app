@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · verlängert sich am {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · kostenloser Testzeitraum bis {{date}}",
   "trial_banner_active_until": "Ihr kostenloser Testzeitraum läuft bis {{date}}. Danach wird Ihre erste Zahlung von ${{price}} abgebucht.",
-  "billing_pending_payment_cta": "Karte aktualisieren und bezahlen"
+  "billing_pending_payment_cta": "Karte aktualisieren und bezahlen",
+  "thumbnail": "Vorschaubild",
+  "select_frame": "Frame wählen",
+  "from_gallery": "Aus der Galerie"
 }

@@ -950,5 +950,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} tarihinde yenilenir",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} tarihine kadar ücretsiz deneme",
   "trial_banner_active_until": "Ücretsiz denemeniz {{date}} tarihine kadar sürer. Ardından ${{price}} tutarındaki ilk ödemeniz tahsil edilir.",
-  "billing_pending_payment_cta": "Kartı güncelle ve öde"
+  "billing_pending_payment_cta": "Kartı güncelle ve öde",
+  "thumbnail": "Küçük resim",
+  "select_frame": "Kare seç",
+  "from_gallery": "Galeriden"
 }

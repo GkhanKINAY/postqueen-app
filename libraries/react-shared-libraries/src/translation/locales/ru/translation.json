@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · продление {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · бесплатный пробный период до {{date}}",
   "trial_banner_active_until": "Ваш бесплатный пробный период действует до {{date}}. После этого будет списан первый платёж ${{price}}.",
-  "billing_pending_payment_cta": "Обновить карту и оплатить"
+  "billing_pending_payment_cta": "Обновить карту и оплатить",
+  "thumbnail": "Обложка",
+  "select_frame": "Выбрать кадр",
+  "from_gallery": "Из галереи"
 }

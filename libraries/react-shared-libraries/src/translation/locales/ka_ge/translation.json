@@ -638,5 +638,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · განახლდება {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · უფასო საცდელი პერიოდი {{date}}-მდე",
   "trial_banner_active_until": "თქვენი უფასო საცდელი პერიოდი გრძელდება {{date}}-მდე. ამის შემდეგ ჩამოიჭრება თქვენი პირველი გადახდა ${{price}}.",
-  "billing_pending_payment_cta": "ბარათის განახლება და გადახდა"
+  "billing_pending_payment_cta": "ბარათის განახლება და გადახდა",
+  "thumbnail": "მინიატურა",
+  "select_frame": "კადრის არჩევა",
+  "from_gallery": "გალერეიდან"
 }

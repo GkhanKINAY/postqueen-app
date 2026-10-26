@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · מתחדש ב-{{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · תקופת ניסיון חינם עד {{date}}",
   "trial_banner_active_until": "תקופת הניסיון החינמית שלך נמשכת עד {{date}}. לאחר מכן ייגבה התשלום הראשון שלך בסך ${{price}}.",
-  "billing_pending_payment_cta": "עדכן כרטיס ושלם"
+  "billing_pending_payment_cta": "עדכן כרטיס ושלם",
+  "thumbnail": "תמונה ממוזערת",
+  "select_frame": "בחירת פריים",
+  "from_gallery": "מהגלריה"
 }

@@ -10,7 +10,13 @@ import {
   ModalFormActions,
   modalLabelClass,
   modalTextareaClass,
+  useModals,
 } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  MediaBox,
+  MEDIA_LIBRARY_PICKER_HEIGHT,
+} from '@gitroom/frontend/components/media/media.box';
+import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -320,6 +326,8 @@ export const MediaComponentInner: FC<{
   const toaster = useToaster();
   const setActivateExitButton = useLaunchStore((e) => e.setActivateExitButton);
   const newFetch = useFetch();
+  const modals = useModals();
+  const { touch } = useViewport();
   const [newThumbnail, setNewThumbnail] = useState<string | null>(null);
   const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
   const [altText, setAltText] = useState<string>(media?.alt || '');
@@ -372,6 +380,33 @@ export const MediaComponentInner: FC<{
     onClose();
   }, [altText, newThumbnail, thumbnail, thumbnailTimestamp]);
 
+  // A cover from the library instead of a frame of the video. Only jpeg and
+  // png, the formats every platform takes as a thumbnail.
+  const pickFromGallery = useCallback(() => {
+    modals.openModal({
+      title: t('media_library', 'Media Library'),
+      askClose: false,
+      closeOnEscape: true,
+      size: 'min(1200px, calc(100vw - 64px))',
+      maxSize: 'min(1200px, calc(100vw - 64px))',
+      height: touch ? '100%' : MEDIA_LIBRARY_PICKER_HEIGHT,
+      children: (close) => (
+        <MediaBox
+          type="image-static"
+          closeModal={close}
+          setMedia={(picked) => {
+            const [first] = picked || [];
+            if (first) {
+              setNewThumbnail(null);
+              setThumbnail(first.path);
+              setThumbnailTimestamp(null);
+            }
+          }}
+        />
+      ),
+    });
+  }, [modals, t, touch]);
+
   return (
     <div className="mt-[4px] flex flex-col gap-[16px]">
       <p className="text-[13.5px] leading-[1.55] text-pqMuted">
@@ -397,30 +432,34 @@ export const MediaComponentInner: FC<{
           <div>
             {!isEditingThumbnail ? (
               <div className="flex flex-col">
-                {/* Show existing thumbnail if it exists */}
-                {(newThumbnail || thumbnail) && (
-                  <div className="flex flex-col space-y-2">
-                    <span className="text-sm text-pqMuted">
-                      Current Thumbnail:
-                    </span>
+                <div className="flex flex-col gap-[8px]">
+                  <span className={modalLabelClass}>
+                    {t('thumbnail', 'Thumbnail')}
+                  </span>
+                  {(newThumbnail || thumbnail) && (
                     <img
                       src={newThumbnail || thumbnail}
-                      alt="Current thumbnail"
+                      alt={t('thumbnail', 'Thumbnail')}
                       className="max-w-full max-h-[500px] object-contain rounded-lg border border-pqBorder"
                     />
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-2">
+                <div className="mt-[12px] flex flex-wrap gap-[8px]">
                   <button
                     disabled={loading}
                     onClick={() => setIsEditingThumbnail(true)}
-                    className="flex-1 rounded-pqSm border border-pqBorder bg-pqSettings px-[24px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
+                    className="flex-1 whitespace-nowrap rounded-pqSm border border-pqBorder bg-pqSettings px-[16px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
                   >
-                    {media.thumbnail || newThumbnail
-                      ? 'Edit Thumbnail'
-                      : 'Create Thumbnail'}
+                    {t('select_frame', 'Select frame')}
+                  </button>
+                  <button
+                    disabled={loading}
+                    onClick={pickFromGallery}
+                    className="flex-1 whitespace-nowrap rounded-pqSm border border-pqBorder bg-pqSettings px-[16px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
+                  >
+                    {t('from_gallery', 'From gallery')}
                   </button>
                   {(thumbnail || newThumbnail) && (
                     <button
@@ -429,9 +468,9 @@ export const MediaComponentInner: FC<{
                         setNewThumbnail(null);
                         setThumbnail(null);
                       }}
-                      className="flex-1 rounded-pqSm border border-pqDangerLine bg-pqDangerSoft px-[24px] py-[8px] text-pqDanger transition-colors hover:bg-pqDangerChip"
+                      className="flex-1 whitespace-nowrap rounded-pqSm border border-pqDangerLine bg-pqDangerSoft px-[16px] py-[8px] text-pqDanger transition-colors hover:bg-pqDangerChip"
                     >
-                      Clear Thumbnail
+                      {t('clear', 'Clear')}
                     </button>
                   )}
                 </div>

@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · يتجدد في {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · فترة تجريبية مجانية حتى {{date}}",
   "trial_banner_active_until": "تستمر فترتك التجريبية المجانية حتى {{date}}. بعد ذلك تُخصم دفعتك الأولى البالغة ${{price}}.",
-  "billing_pending_payment_cta": "تحديث البطاقة والدفع"
+  "billing_pending_payment_cta": "تحديث البطاقة والدفع",
+  "thumbnail": "الصورة المصغّرة",
+  "select_frame": "اختيار إطار",
+  "from_gallery": "من المعرض"
 }

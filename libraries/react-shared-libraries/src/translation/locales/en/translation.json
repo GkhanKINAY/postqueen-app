@@ -1413,5 +1413,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · renews on {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · free trial until {{date}}",
   "trial_banner_active_until": "Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged.",
-  "billing_pending_payment_cta": "Update card and pay"
+  "billing_pending_payment_cta": "Update card and pay",
+  "thumbnail": "Thumbnail",
+  "select_frame": "Select frame",
+  "from_gallery": "From gallery"
 }

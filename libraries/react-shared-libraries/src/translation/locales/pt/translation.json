@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · renova em {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · teste gratuito até {{date}}",
   "trial_banner_active_until": "Seu teste gratuito vai até {{date}}. Depois, seu primeiro pagamento de ${{price}} é cobrado.",
-  "billing_pending_payment_cta": "Atualizar o cartão e pagar"
+  "billing_pending_payment_cta": "Atualizar o cartão e pagar",
+  "thumbnail": "Miniatura",
+  "select_frame": "Escolher quadro",
+  "from_gallery": "Da galeria"
 }

@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · gia hạn vào {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · dùng thử miễn phí đến {{date}}",
   "trial_banner_active_until": "Thời gian dùng thử miễn phí của bạn kéo dài đến {{date}}. Sau đó, khoản thanh toán đầu tiên ${{price}} sẽ được tính.",
-  "billing_pending_payment_cta": "Cập nhật thẻ và thanh toán"
+  "billing_pending_payment_cta": "Cập nhật thẻ và thanh toán",
+  "thumbnail": "Ảnh thu nhỏ",
+  "select_frame": "Chọn khung hình",
+  "from_gallery": "Từ thư viện"
 }

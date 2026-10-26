@@ -932,5 +932,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} 续订",
   "plan_meta_trial_until": "PostQueen {{tier}} · 免费试用至 {{date}}",
   "trial_banner_active_until": "您的免费试用持续到 {{date}}。之后将扣取首次付款 ${{price}}。",
-  "billing_pending_payment_cta": "更新银行卡并付款"
+  "billing_pending_payment_cta": "更新银行卡并付款",
+  "thumbnail": "缩略图",
+  "select_frame": "选择画面",
+  "from_gallery": "从图库选择"
 }

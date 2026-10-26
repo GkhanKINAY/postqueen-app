@@ -931,5 +931,8 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} তারিখে নবায়ন হবে",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} পর্যন্ত ফ্রি ট্রায়াল",
   "trial_banner_active_until": "আপনার ফ্রি ট্রায়াল {{date}} পর্যন্ত চলবে। এরপর আপনার প্রথম পেমেন্ট ${{price}} কেটে নেওয়া হবে।",
-  "billing_pending_payment_cta": "কার্ড আপডেট করে পেমেন্ট করুন"
+  "billing_pending_payment_cta": "কার্ড আপডেট করে পেমেন্ট করুন",
+  "thumbnail": "থাম্বনেইল",
+  "select_frame": "ফ্রেম বেছে নিন",
+  "from_gallery": "গ্যালারি থেকে"
 }
