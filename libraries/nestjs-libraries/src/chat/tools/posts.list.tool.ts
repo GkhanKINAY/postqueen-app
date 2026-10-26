@@ -41,7 +41,7 @@ Returns every post in the window whatever its state (scheduled, draft, published
 "startDate" and "endDate" are required (UTC) - to list all upcoming posts, pass a wide window (for example from now to a year ahead).
 Each item has an "id", its publish date, state, error (for errored posts), content, channel and current provider settings.
 To read one post in full (thread items with their ids, media, delays) use postReadTool with its id.
-Nothing here deletes a post. In the PostQueen app, showPostCard puts the post on a card and the user deletes it from there; over MCP, tell the user to delete it in the app.
+This tool deletes nothing. Over MCP, deletePostTool deletes a post by its id; in the PostQueen app, showPostCard puts the post on a card and the user deletes it from there.
 `,
       inputSchema: z.object({
         startDate: z
