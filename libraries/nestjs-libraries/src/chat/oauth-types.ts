@@ -155,12 +155,45 @@ export function authorizationServerIssuer(
 }
 
 /**
+ * The client id of the static OAuth app (Settings > Developers) that HubSpot
+ * agents connect with. Unset, nothing HubSpot-specific is served.
+ */
+export function hubspotOAuthClientId(): string | undefined {
+  return process.env.HUBSPOT_OAUTH_CLIENT_ID?.trim() || undefined;
+}
+
+/**
+ * HubSpot agents follow the 2025-03-26 MCP authorization spec: they drop the
+ * path of the MCP url and read /.well-known/oauth-authorization-server at its
+ * domain root. That only reaches the backend when the MCP base is served at a
+ * domain root (production's api.postqueen.ai); behind a path such as
+ * https://host/api the root belongs to the web app, so there is no root issuer.
+ */
+export function rootAuthorizationServerIssuer(): string | undefined {
+  const base = new URL(mcpOAuthBaseUrl());
+  return base.pathname.replace(/\/+$/, '') === '' ? base.origin : undefined;
+}
+
+/**
  * The issuer an OAuth app's authorization responses name in the RFC 9207
- * `iss` parameter. Both issuers share one authorization endpoint, so the app
+ * `iss` parameter. The issuers share one authorization endpoint, so the app
  * decides which one its client discovered. Built by the same function as the
  * metadata `issuer`, so the two are equal byte for byte.
  */
-export function oauthAppIssuer(app: { dynamic: boolean }): string {
+export function oauthAppIssuer(app: {
+  dynamic: boolean;
+  clientId?: string;
+}): string {
+  const rootIssuer = rootAuthorizationServerIssuer();
+  if (
+    !app.dynamic &&
+    rootIssuer &&
+    app.clientId &&
+    app.clientId === hubspotOAuthClientId()
+  ) {
+    return rootIssuer;
+  }
+
   return authorizationServerIssuer(
     app.dynamic ? '/mcp-oauth-dynamic' : '/mcp-oauth-chatgpt',
   );

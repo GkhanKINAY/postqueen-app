@@ -9,8 +9,10 @@ import { runWithContext } from './async.storage';
 import { createOAuthMiddleware } from './oauth-middleware';
 import {
   authorizationServerIssuer,
+  hubspotOAuthClientId,
   joinBaseUrl,
   mcpOAuthBaseUrl,
+  rootAuthorizationServerIssuer,
 } from './oauth-types';
 import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/upload.widget';
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
@@ -196,19 +198,39 @@ export const startMcp = async (app: INestApplication) => {
   // OpenAI kept serving its cached copy of the old /mcp-oauth metadata).
   // /mcp-oauth-dynamic keeps DCR for Claude, Cursor and every other
   // self-registering client. The authorization response names the same
-  // issuer in `iss` (RFC 9207, oauthAppIssuer in oauth-types.ts)
-  const authorizationServers: Record<string, { issuer: string; registration: boolean }> = {
+  // issuer in `iss` (RFC 9207, oauthAppIssuer in oauth-types.ts).
+  // HubSpot agents follow the 2025-03-26 MCP authorization spec: they read the
+  // metadata at the domain root of the MCP url (no path issuer), connect with
+  // a pre-registered app instead of DCR and require the refresh_token grant,
+  // so the root is answered only when that app is configured
+  // (HUBSPOT_OAUTH_CLIENT_ID) and the MCP base sits at a domain root
+  const rootIssuer = hubspotOAuthClientId()
+    ? rootAuthorizationServerIssuer()
+    : undefined;
+  const authorizationServers: Record<
+    string,
+    { issuer: string; registration: boolean; refresh: boolean }
+  > = {
     '/mcp-oauth-chatgpt': {
       issuer: authorizationServerIssuer('/mcp-oauth-chatgpt'),
       registration: false,
+      refresh: false,
     },
     '/mcp-oauth-dynamic': {
       issuer: authorizationServerIssuer('/mcp-oauth-dynamic'),
       registration: true,
+      refresh: false,
     },
+    ...(rootIssuer
+      ? { '/': { issuer: rootIssuer, registration: false, refresh: true } }
+      : {}),
   };
 
-  const authorizationServerMetadata = (server: { issuer: string; registration: boolean }) => ({
+  const authorizationServerMetadata = (server: {
+    issuer: string;
+    registration: boolean;
+    refresh: boolean;
+  }) => ({
     // RFC 8414: metadata served at /.well-known/oauth-authorization-server/<path>
     // belongs to the path-based issuer <backend>/<path>
     issuer: server.issuer,
@@ -221,7 +243,9 @@ export const startMcp = async (app: INestApplication) => {
       userinfo_endpoint: `${mcpBackendUrl}/oauth/userinfo`,
     }),
     response_types_supported: ['code'],
-    grant_types_supported: ['authorization_code'],
+    grant_types_supported: server.refresh
+      ? ['authorization_code', 'refresh_token']
+      : ['authorization_code'],
     token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
     code_challenge_methods_supported: ['S256'],
     scopes_supported: oauthScopes,
@@ -316,7 +340,8 @@ export const startMcp = async (app: INestApplication) => {
 
   app.use('/.well-known/openid-configuration', async (req: Request, res: Response, next: () => void) => {
     const server = authorizationServers[req.path];
-    if (!server || !enableOidcEmailClaims) {
+    // the root issuer is HubSpot's, which never gets email claims
+    if (!server || !enableOidcEmailClaims || req.path === '/') {
       next();
       return;
     }
