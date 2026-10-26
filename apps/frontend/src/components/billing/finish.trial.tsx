@@ -156,6 +156,31 @@ export const FinishTrial: FC<{
     [fetch, lifetime]
   );
 
+  /**
+   * After the bank's check, the plan itself. A trial whose first payment
+   * waited on the bank went past due in Stripe, and the webhook took the plan
+   * away and cleared the trial flag, so the flag alone would read as finished
+   * before the paid plan is back. Wait until a subscription is stored again
+   * (the webhook of the paid invoice writes it) and Stripe no longer reports
+   * the payment as failed, then poll as usual. The same ceiling as the poll;
+   * past it, the same stalled screen.
+   */
+  const waitForPlan = useCallback(async () => {
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+      try {
+        const response = await fetch('/user/subscription');
+        const body = response.ok ? await response.json() : null;
+        if (body?.subscription && !body?.paymentFailed) {
+          return true;
+        }
+      } catch (e) {
+        // asked again below
+      }
+      await timer(2000);
+    }
+    return false;
+  }, [fetch]);
+
   const finishSubscription = useCallback(async () => {
     let body: any;
     try {
@@ -186,9 +211,13 @@ export const FinishTrial: FC<{
         return;
       }
       setPhase('pending');
+      if (!(await waitForPlan())) {
+        setPhase('stalled');
+        return;
+      }
     }
     checkFinished();
-  }, [fetch, checkFinished, paymentAction]);
+  }, [fetch, checkFinished, paymentAction, waitForPlan]);
 
   // Revalidate on the way out — not while open — so a trial-locked parent
   // (X panel / AI lock) does not unmount this dialog before the thank-you is read.

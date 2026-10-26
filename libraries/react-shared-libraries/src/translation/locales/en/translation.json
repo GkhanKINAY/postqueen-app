@@ -1412,5 +1412,6 @@
   "delete_account_confirm_members": "Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.",
   "plan_meta_renews": "PostQueen {{tier}} · renews on {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · free trial until {{date}}",
-  "trial_banner_active_until": "Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged."
+  "trial_banner_active_until": "Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged.",
+  "billing_pending_payment_cta": "Update card and pay"
 }

@@ -931,5 +931,6 @@
   "delete_account_confirm_members": "계정, 조직, 채널, 게시물이 삭제되고 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
   "plan_meta_renews": "PostQueen {{tier}} · {{date}}에 갱신",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}}까지 무료 체험",
-  "trial_banner_active_until": "무료 체험은 {{date}}까지입니다. 이후 첫 결제 ${{price}}가 청구됩니다."
+  "trial_banner_active_until": "무료 체험은 {{date}}까지입니다. 이후 첫 결제 ${{price}}가 청구됩니다.",
+  "billing_pending_payment_cta": "카드 업데이트 후 결제"
 }

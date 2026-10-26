@@ -154,7 +154,10 @@ export class UsersService {
   /**
    * The organizations deleting this account deletes: the ones it owns, unless
    * another owner (SUPERADMIN) is in it too. Such an organization is left as
-   * it is, and the account only leaves it.
+   * it is, and the account only leaves it. Only a live owner counts, the way
+   * `countSuperAdmins` counts them: a disabled membership or a deleted user
+   * would otherwise keep an organization nobody can reach, and its
+   * subscription, which is cancelled only for the organizations deleted.
    *
    * Other members no longer block the deletion. A plan without team members
    * only disables them, so the owner of a lapsed organization could not even
@@ -175,7 +178,10 @@ export class UsersService {
       (org, index) =>
         !members[index]?.users?.some(
           (member) =>
-            member.user.id !== userId && member.role === Role.SUPERADMIN
+            member.user.id !== userId &&
+            member.role === Role.SUPERADMIN &&
+            !member.disabled &&
+            !member.user.deletedAt
         )
     );
   }
@@ -194,7 +200,9 @@ export class UsersService {
     return {
       hasSubscription: ownedOrgs.some((org) => !!org.subscription),
       hasAdditionalMembers: members.some((team) =>
-        team?.users?.some((member) => member.user.id !== userId)
+        team?.users?.some(
+          (member) => member.user.id !== userId && !member.user.deletedAt
+        )
       ),
     };
   }

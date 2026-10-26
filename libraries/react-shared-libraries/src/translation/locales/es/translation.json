@@ -931,5 +931,6 @@
   "delete_account_confirm_members": "Se eliminarán tu cuenta, tus organizaciones, canales y publicaciones, y los demás miembros del equipo se quitarán de tu organización. No se puede deshacer.",
   "plan_meta_renews": "PostQueen {{tier}} · se renueva el {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · prueba gratuita hasta el {{date}}",
-  "trial_banner_active_until": "Tu prueba gratuita dura hasta el {{date}}. Después se cobra tu primer pago de ${{price}}."
+  "trial_banner_active_until": "Tu prueba gratuita dura hasta el {{date}}. Después se cobra tu primer pago de ${{price}}.",
+  "billing_pending_payment_cta": "Actualizar la tarjeta y pagar"
 }

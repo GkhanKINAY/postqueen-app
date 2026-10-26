@@ -2502,19 +2502,45 @@ export class StripeService extends PaymentProviderAbstract {
    * subscription webhook treats like any failed first payment. It used to
    * answer `ended: true` either way, and the dialog said the card had been
    * charged before the account landed on the paywall.
+   *
+   * Asked again after that (a second click before the webhook has locked the
+   * account, or a reload of `?finishTrial`), there is no trial left, but the
+   * answer must not become "no trial": the route would clear the trial flag
+   * itself and the dialog would thank for a charge that never happened. So a
+   * past-due subscription that has never been paid, a trial whose first
+   * payment is still open, gets the same answer as the first time. Nothing
+   * is charged from here: the open invoice is reported, never paid.
    */
   async finishTrial(organization: Organization) {
     if (!organization?.paymentId) {
       return { ended: false };
     }
 
-    const list = (
+    const all = (
       await stripe.subscriptions.list({
         customer: organization.paymentId,
       })
-    ).data.filter((f) => f.status === 'trialing');
+    ).data;
+    const list = all.filter((f) => f.status === 'trialing');
 
     if (!list.length) {
+      for (const unpaid of all.filter((f) => f.status === 'past_due')) {
+        if (await this.hasPaidInvoice(unpaid.id)) {
+          continue;
+        }
+        const open = await this.getRequiredActionFromSubscription(unpaid.id);
+        if (open.declined) {
+          return { ended: false, declined: true, invoiceUrl: open.invoiceUrl };
+        }
+        if (open.requiresAction) {
+          return {
+            ended: true,
+            requiresAction: true,
+            clientSecret: open.clientSecret,
+            invoiceUrl: open.invoiceUrl,
+          };
+        }
+      }
       return { ended: false };
     }
 
@@ -2540,9 +2566,12 @@ export class StripeService extends PaymentProviderAbstract {
   /**
    * Where the payment of a subscription's latest invoice stands, after a
    * change that charged it off-session. Only an open invoice is waiting on
-   * anything: `requires_action` (or `requires_confirmation`) is a bank asking
-   * the customer to confirm, `requires_payment_method` is a card that was
-   * declined, or a challenge that failed.
+   * anything: `requires_action` is a bank asking the customer to confirm,
+   * which Stripe.js can complete in the browser (`handleNextAction` handles
+   * nothing else). `requires_payment_method` is a card that was declined, or
+   * a check that failed, and `requires_confirmation` a payment nobody
+   * confirmed: either way the first payment did not go through, and the open
+   * invoice is how to pay it.
    *
    * The client secret goes to the paying customer's own browser, which is
    * what it is for:
@@ -2575,18 +2604,19 @@ export class StripeService extends PaymentProviderAbstract {
       return nothing;
     }
     const invoiceUrl = invoice.hosted_invoice_url || null;
-    if (
-      paymentIntent.status === 'requires_action' ||
-      paymentIntent.status === 'requires_confirmation'
-    ) {
+    if (paymentIntent.status === 'requires_action' && paymentIntent.client_secret) {
       return {
         ...nothing,
-        requiresAction: !!paymentIntent.client_secret,
+        requiresAction: true,
         clientSecret: paymentIntent.client_secret,
         invoiceUrl,
       };
     }
-    if (paymentIntent.status === 'requires_payment_method') {
+    if (
+      paymentIntent.status === 'requires_action' ||
+      paymentIntent.status === 'requires_payment_method' ||
+      paymentIntent.status === 'requires_confirmation'
+    ) {
       return { ...nothing, declined: true, invoiceUrl };
     }
     return nothing;

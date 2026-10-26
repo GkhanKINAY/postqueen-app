@@ -60,7 +60,7 @@ type Role = 'SUPERADMIN' | 'ADMIN' | 'USER';
 type Org = {
   id: string;
   subscription: object | null;
-  members: { id: string; role: Role }[];
+  members: { id: string; role: Role; disabled?: boolean; deleted?: boolean }[];
 };
 
 // The account being deleted is `me`. Each organization lists its members,
@@ -81,7 +81,11 @@ const organizationRepository = {
   getAllUsersOrgs: async (id: string) => ({
     users: orgs
       .find((org) => org.id === id)!
-      .members.map((m) => ({ role: m.role, user: { id: m.id } })),
+      .members.map((m) => ({
+        role: m.role,
+        disabled: !!m.disabled,
+        user: { id: m.id, deletedAt: m.deleted ? new Date() : null },
+      })),
   }),
   deleteTeamMember: async (org: string, user: string) => {
     calls.push(`remove ${user} from ${org}`);
@@ -169,6 +173,31 @@ describe('deleting an account', () => {
     });
     await deletingService().deleteAccount('me');
     assert.deepEqual(calls, ['remove me from shared', 'delete me']);
+  });
+
+  it('is not stopped by an owner who is disabled or deleted', async () => {
+    orgs = [
+      {
+        id: 'own',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [
+          { id: 'me', role: 'SUPERADMIN' },
+          { id: 'gone', role: 'SUPERADMIN', deleted: true },
+          { id: 'off', role: 'SUPERADMIN', disabled: true },
+        ],
+      },
+    ];
+
+    assert.deepEqual(
+      (await deletingService().getOrgsToDeleteForAccount('me')).map(
+        (org) => org.id
+      ),
+      ['own']
+    );
+    assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
+      hasSubscription: true,
+      hasAdditionalMembers: true,
+    });
   });
 
   it('only leaves an organization where the account is a member', async () => {

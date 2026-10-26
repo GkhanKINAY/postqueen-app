@@ -123,7 +123,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
             ),
             i18next.t('finish_trial_charge_me_now', 'End trial and pay now'),
             i18next.t('end_free_trial', 'End free trial'),
-            undefined,
+            i18next.t('cancel', 'Cancel'),
             false
           )
         ) {

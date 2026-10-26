@@ -931,5 +931,6 @@
   "delete_account_confirm_members": "您的账户、组织、渠道和帖子将被删除，其他团队成员将从您的组织中移除。此操作无法撤销。",
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} 续订",
   "plan_meta_trial_until": "PostQueen {{tier}} · 免费试用至 {{date}}",
-  "trial_banner_active_until": "您的免费试用持续到 {{date}}。之后将扣取首次付款 ${{price}}。"
+  "trial_banner_active_until": "您的免费试用持续到 {{date}}。之后将扣取首次付款 ${{price}}。",
+  "billing_pending_payment_cta": "更新银行卡并付款"
 }

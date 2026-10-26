@@ -931,5 +931,6 @@
   "delete_account_confirm_members": "アカウント、組織、チャンネル、投稿が削除され、ほかのチームメンバーは組織から削除されます。この操作は元に戻せません。",
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} に更新",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} まで無料トライアル",
-  "trial_banner_active_until": "無料トライアルは {{date}} までです。その後、初回のお支払い ${{price}} が請求されます。"
+  "trial_banner_active_until": "無料トライアルは {{date}} までです。その後、初回のお支払い ${{price}} が請求されます。",
+  "billing_pending_payment_cta": "カードを更新して支払う"
 }
