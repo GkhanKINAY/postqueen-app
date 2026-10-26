@@ -255,6 +255,8 @@ export class OrganizationRepository {
                 isLifetime: true,
                 createdAt: true,
                 cancelAt: true,
+                provider: true,
+                deletedAt: true,
               },
             },
           },
