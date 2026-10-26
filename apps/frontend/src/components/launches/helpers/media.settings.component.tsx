@@ -440,7 +440,7 @@ export const MediaComponentInner: FC<{
                     <img
                       src={newThumbnail || thumbnail}
                       alt={t('thumbnail', 'Thumbnail')}
-                      className="max-w-full max-h-[500px] object-contain rounded-lg border border-pqBorder"
+                      className="max-h-[240px] w-auto max-w-full self-start rounded-[10px] border border-pqBorder object-contain"
                     />
                   )}
                 </div>
