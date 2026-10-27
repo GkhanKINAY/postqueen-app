@@ -195,12 +195,22 @@ async function startVideoUpload(
   return jobStatus;
 }
 
+// What every Bluesky agent below fetches with. The service is the one the
+// user typed, and after login the agent moves to whatever PDS that server
+// names, so the address is checked on every connection by the SSRF-safe
+// dispatcher, not only once when the channel is connected.
+export const guardedFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, dispatcher: getSsrfSafeDispatcher() } as RequestInit);
+
 // Single read of the processing job - the endpoint is public (no login), so
 // status checks never spend Bluesky's strict createSession rate limits.
 async function getVideoJobStatus(
   jobId: string
 ): Promise<AppBskyVideoDefs.JobStatus> {
-  const videoAgent = new AtpAgent({ service: 'https://video.bsky.app' });
+  const videoAgent = new AtpAgent({
+    service: 'https://video.bsky.app',
+    fetch: guardedFetch,
+  });
   const { data: status } = await videoAgent.app.bsky.video.getJobStatus({
     jobId,
   });
@@ -361,10 +371,10 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-    // Bluesky talks to a user-supplied service URL via BskyAgent (not our
-    // `this.fetch`), so the undici SSRF dispatcher can't intercept it. Validate
-    // the URL here — the connection chokepoint — so an internal/private address
-    // can never be saved as an integration. Opt-out matches the dispatcher env.
+    // The agents below fetch through the SSRF-safe dispatcher (guardedFetch),
+    // which checks every connection. This check refuses an internal or private
+    // service URL up front, so one is never saved as a channel. Opt-out matches
+    // the dispatcher env.
     if (
       process.env.DISABLE_SSRF_PROTECTION !== 'true' &&
       !(await isSafePublicHttpsUrl(body.service))
@@ -375,6 +385,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     try {
       const agent = new BskyAgent({
         service: body.service,
+        fetch: guardedFetch,
       });
 
       const {
@@ -409,6 +420,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     try {
@@ -898,6 +910,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
@@ -960,6 +973,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
@@ -1017,6 +1031,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
