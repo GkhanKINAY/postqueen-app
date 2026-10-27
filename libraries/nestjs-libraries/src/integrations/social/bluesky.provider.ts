@@ -195,12 +195,22 @@ async function startVideoUpload(
   return jobStatus;
 }
 
+// What every Bluesky agent below fetches with. The service is the one the
+// user typed, and after login the agent moves to whatever PDS that server
+// names, so the address is checked on every connection by the SSRF-safe
+// dispatcher, not only once when the channel is connected.
+export const guardedFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, dispatcher: getSsrfSafeDispatcher() } as RequestInit);
+
 // Single read of the processing job - the endpoint is public (no login), so
 // status checks never spend Bluesky's strict createSession rate limits.
 async function getVideoJobStatus(
   jobId: string
 ): Promise<AppBskyVideoDefs.JobStatus> {
-  const videoAgent = new AtpAgent({ service: 'https://video.bsky.app' });
+  const videoAgent = new AtpAgent({
+    service: 'https://video.bsky.app',
+    fetch: guardedFetch,
+  });
   const { data: status } = await videoAgent.app.bsky.video.getJobStatus({
     jobId,
   });
@@ -375,6 +385,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     try {
       const agent = new BskyAgent({
         service: body.service,
+        fetch: guardedFetch,
       });
 
       const {
@@ -409,6 +420,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     try {
@@ -898,6 +910,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
@@ -960,6 +973,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     );
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
@@ -1017,6 +1031,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
     const agent = new BskyAgent({
       service: body.service,
+      fetch: guardedFetch,
     });
 
     await agent.login({
