@@ -932,5 +932,16 @@
   "plan_meta_renews": "PostQueen {{tier}} · se renueva el {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · prueba gratuita hasta el {{date}}",
   "trial_banner_active_until": "Tu prueba gratuita dura hasta el {{date}}. Después se cobra tu primer pago de ${{price}}.",
-  "billing_pending_payment_cta": "Actualizar la tarjeta y pagar"
+  "billing_pending_payment_cta": "Actualizar la tarjeta y pagar",
+  "thumbnail": "Miniatura",
+  "select_frame": "Elegir fotograma",
+  "from_gallery": "De la galería",
+  "hubspot_installed": "PostQueen está instalado en HubSpot",
+  "hubspot_installed_description": "Conecta aquí en PostQueen los canales en los que quieres publicar. Después, en HubSpot, abre Agent Hub > Agent Builder, añade una herramienta, elige PostQueen en MCP Servers y haz clic en Connect and add.",
+  "install_in_app": "Instalar en {{name}}",
+  "thumbnails_and_alt_text": "Miniaturas y texto alternativo",
+  "media_settings_section_description": "Haz clic en un archivo multimedia para definir su texto alternativo, o su miniatura si es un vídeo.",
+  "media_settings_section_tooltip": "Las miniaturas se aplican a los vídeos de la publicación principal y se envían a cada canal que las admite. YouTube puede ignorarlas en los vídeos que trata como Shorts (verticales, de hasta 3 minutos) sin que falle la publicación, y exige un canal verificado por teléfono para las miniaturas personalizadas. Si YouTube rechaza la miniatura, el vídeo se publica igualmente.",
+  "youtube_thumbnail_overrides_media": "Esta publicación tiene una miniatura propia de YouTube, que sustituye a la miniatura definida en los ajustes del medio.",
+  "media_settings_saved_on_post": "Guardado en esta publicación. El archivo no está en tu biblioteca multimedia."
 }

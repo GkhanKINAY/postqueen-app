@@ -101,7 +101,7 @@ describe('Video generation as a job', () => {
     // reaches OpenAI as additionalProperties:false).
     assert.match(composer, /name: 'customParams',\s*type: 'string'/);
     assert.match(chat, /name === 'generateVideoTool' \? \(\s*<AgentVideoCard/);
-    assert.match(service, /name !== 'videoStatusTool'/);
+    assert.match(service, /!\['videoStatusTool', 'mediaStatusTool', 'deletePostTool'\]\.includes\(\s*name\s*\)/);
     assert.match(service, /'generateVideoOptions',\s*'videoFunctionTool',\s*\]\.includes\(name\)/);
     assert.match(service, /requestContext\.get\('ui' as never\) === 'true'\s*\? uiTools/);
     assert.match(service, /Never poll and never call it twice for one request/);

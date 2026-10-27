@@ -98,7 +98,7 @@ export class LoadToolsService {
    * The system prompt, built per request. Sections: who the agent is, what
    * the app knows right now, how to talk, how to write, the platform
    * playbook, the content format, media, the standing rules (schema, posts,
-   * analytics, no delete), and the workflow for the surface in use.
+   * analytics, deleting), and the workflow for the surface in use.
    */
   instructions(requestContext: { get: (key: never) => unknown }) {
     // 'true' from the app's Copilot controller; MCP callers set it to the
@@ -246,7 +246,7 @@ ${renderArray(
   - Facebook comments are unknown. Pinterest likes and comments are unknown. Google Business has no per-post metrics. X is omitted when DISABLE_X_ANALYTICS is set.
 - To change the provider settings of an existing post that was not published yet (scheduled or draft), first find it with postsListTool, then use postSettingsTool with the post's id. It only updates the settings - the content and the publish date stay as they are - and only the keys you pass are changed (get them with the integrationSchema tool). Show the user which post and which settings will change and get their confirmation first.
 - A comment or thread item can wait after the previous one: its delay is in minutes (0 for right after). Set it when the user asks ("the comment five minutes later").
-- Nothing you call deletes a post. In the PostQueen app, showPostCard puts the post on a card and the user deletes it from there. Over MCP or an API client, tell the user to delete it in the app.
+- In the PostQueen app nothing you call deletes a post: showPostCard puts the post on a card and the user deletes it from there. Over MCP or an API client, deletePostTool deletes one: find it with postsListTool first, then pass the post's id. It deletes the post on that one channel with its comments; when the same post was made for several channels, ask which channels and call it once per post id. A repeating post is listed once per repetition with the same id, and deleting it deletes every repetition. Deleting a published post only removes it from PostQueen: it stays live on the social network. Deletion cannot be undone, so show the user which post will be deleted (channel, date and text), say the two cases above when they apply, and wait for an explicit yes.
 - Between tools, we will reference things like: [output:name] and [input:name] to set the information right.
 
 `;
@@ -271,9 +271,17 @@ ${renderArray(
     );
     // In the app a started video job is a card in the chat that polls the
     // status route itself; the model gets no status tool there, so it cannot
-    // sit in a polling loop for the minutes a provider takes. MCP keeps it.
+    // sit in a polling loop for the minutes a provider takes, and the same
+    // goes for an upload still being converted (mediaStatusTool). A post is
+    // deleted there by the user, from its card (showPostCard) and behind a
+    // confirmation, never by the model. MCP keeps all three tools.
     const uiTools = Object.fromEntries(
-      Object.entries(tools).filter(([name]) => name !== 'videoStatusTool')
+      Object.entries(tools).filter(
+        ([name]) =>
+          !['videoStatusTool', 'mediaStatusTool', 'deletePostTool'].includes(
+            name
+          )
+      )
     );
     return new Agent({
       id: 'postqueen',

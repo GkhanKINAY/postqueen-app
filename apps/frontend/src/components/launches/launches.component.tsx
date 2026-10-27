@@ -25,6 +25,7 @@ import { DNDProvider } from '@gitroom/frontend/components/launches/helpers/dnd.p
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import { formatChannelHandle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { HubspotInstalled } from '@gitroom/frontend/components/launches/hubspot.installed';
 
 /**
  * Ghost for this page while the channel list resolves.
@@ -525,6 +526,7 @@ export const LaunchesComponent = () => {
   // @ts-ignore
   return (
     <DNDProvider>
+      <HubspotInstalled />
       {/* The skeleton renders *inside* the provider, not instead of it.
           `CalendarWeekProvider`'s mount is what starts `/posts`,
           `/posts/list` and `/signatures/default`, so returning early held that

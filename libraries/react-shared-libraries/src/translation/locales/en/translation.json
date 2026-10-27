@@ -1413,5 +1413,16 @@
   "plan_meta_renews": "PostQueen {{tier}} · renews on {{date}}",
   "plan_meta_trial_until": "PostQueen {{tier}} · free trial until {{date}}",
   "trial_banner_active_until": "Your free trial runs until {{date}}. Then your first payment of ${{price}} is charged.",
-  "billing_pending_payment_cta": "Update card and pay"
+  "billing_pending_payment_cta": "Update card and pay",
+  "thumbnail": "Thumbnail",
+  "select_frame": "Select frame",
+  "from_gallery": "From gallery",
+  "hubspot_installed": "PostQueen is installed in HubSpot",
+  "hubspot_installed_description": "Connect the channels you want to post to here in PostQueen. Then, in HubSpot, open Agent Hub > Agent Builder, add a tool, pick PostQueen under MCP Servers and click Connect and add.",
+  "install_in_app": "Install in {{name}}",
+  "thumbnails_and_alt_text": "Thumbnails & alt text",
+  "media_settings_section_description": "Click a media item to set its alt text, or its thumbnail if it is a video.",
+  "media_settings_section_tooltip": "Thumbnails apply to videos in the main post and are sent to every channel that supports them. YouTube may ignore them on videos it treats as Shorts (vertical, up to 3 minutes) without failing the publish, and requires a phone-verified channel for custom thumbnails. If YouTube rejects the thumbnail, the video is still published.",
+  "youtube_thumbnail_overrides_media": "This post has a YouTube-specific thumbnail, which overrides the thumbnail set in the media settings.",
+  "media_settings_saved_on_post": "Saved on this post. The file is not in your media library."
 }

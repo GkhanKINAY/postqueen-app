@@ -155,12 +155,83 @@ export function authorizationServerIssuer(
 }
 
 /**
+ * The client id of the static OAuth app (Settings > Developers) that HubSpot
+ * agents connect with. Unset, nothing HubSpot-specific is served.
+ */
+export function hubspotOAuthClientId(): string | undefined {
+  return process.env.HUBSPOT_OAUTH_CLIENT_ID?.trim() || undefined;
+}
+
+/** Whether an OAuth app is the static one HubSpot agents connect with. */
+export function isHubspotOAuthApp(app: {
+  dynamic?: boolean;
+  clientId?: string | null;
+}): boolean {
+  const hubspot = hubspotOAuthClientId();
+  return !app.dynamic && !!hubspot && app.clientId === hubspot;
+}
+
+/**
+ * The HubSpot app itself (HubSpot project > app > Auth tab), not the
+ * PostQueen OAuth app above. Its redirect URL finishes the install
+ * (OAuthService.completeHubspotInstall).
+ */
+export function hubspotAppCredentials():
+  | { clientId: string; clientSecret: string }
+  | undefined {
+  const clientId = process.env.HUBSPOT_APP_CLIENT_ID?.trim();
+  const clientSecret = process.env.HUBSPOT_APP_CLIENT_SECRET?.trim();
+  return clientId && clientSecret ? { clientId, clientSecret } : undefined;
+}
+
+export function hubspotInstallRedirectUri(): string {
+  return `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth/hubspot/callback`;
+}
+
+/**
+ * The link that installs the HubSpot app in a HubSpot account (listed under
+ * Settings > Integrations), undefined when the install can't be completed here.
+ */
+export function hubspotInstallUrl(): string | undefined {
+  const credentials = hubspotAppCredentials();
+  if (!credentials) {
+    return undefined;
+  }
+
+  const url = new URL('https://app.hubspot.com/oauth/authorize');
+  url.searchParams.set('client_id', credentials.clientId);
+  url.searchParams.set('redirect_uri', hubspotInstallRedirectUri());
+  url.searchParams.set('scope', 'oauth');
+  return url.toString();
+}
+
+/**
+ * HubSpot agents follow the 2025-03-26 MCP authorization spec: they drop the
+ * path of the MCP url and read /.well-known/oauth-authorization-server at its
+ * domain root. That only reaches the backend when the MCP base is served at a
+ * domain root (production's api.postqueen.ai); behind a path such as
+ * https://host/api the root belongs to the web app, so there is no root issuer.
+ */
+export function rootAuthorizationServerIssuer(): string | undefined {
+  const base = new URL(mcpOAuthBaseUrl());
+  return base.pathname.replace(/\/+$/, '') === '' ? base.origin : undefined;
+}
+
+/**
  * The issuer an OAuth app's authorization responses name in the RFC 9207
- * `iss` parameter. Both issuers share one authorization endpoint, so the app
+ * `iss` parameter. The issuers share one authorization endpoint, so the app
  * decides which one its client discovered. Built by the same function as the
  * metadata `issuer`, so the two are equal byte for byte.
  */
-export function oauthAppIssuer(app: { dynamic: boolean }): string {
+export function oauthAppIssuer(app: {
+  dynamic: boolean;
+  clientId?: string;
+}): string {
+  const rootIssuer = rootAuthorizationServerIssuer();
+  if (rootIssuer && isHubspotOAuthApp(app)) {
+    return rootIssuer;
+  }
+
   return authorizationServerIssuer(
     app.dynamic ? '/mcp-oauth-dynamic' : '/mcp-oauth-chatgpt',
   );

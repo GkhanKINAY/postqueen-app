@@ -23,7 +23,8 @@ export class AuthorizeOAuthQueryDto {
   code_challenge?: string;
 
   // Not validated with IsIn: static clients may send arbitrary values that
-  // were always ignored; only dynamic clients get S256 enforced (in the service)
+  // were always ignored; only dynamic clients and HubSpot's app get S256
+  // enforced (in the service)
   @IsString()
   @IsOptional()
   code_challenge_method?: string;
@@ -56,7 +57,8 @@ export class ApproveOAuthDto {
   code_challenge?: string;
 
   // Not validated with IsIn: static clients may send arbitrary values that
-  // were always ignored; only dynamic clients get S256 enforced (in the service)
+  // were always ignored; only dynamic clients and HubSpot's app get S256
+  // enforced (in the service)
   @IsString()
   @IsOptional()
   code_challenge_method?: string;

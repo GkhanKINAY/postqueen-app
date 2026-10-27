@@ -10,7 +10,13 @@ import {
   ModalFormActions,
   modalLabelClass,
   modalTextareaClass,
+  useModals,
 } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  MediaBox,
+  MEDIA_LIBRARY_PICKER_HEIGHT,
+} from '@gitroom/frontend/components/media/media.box';
+import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Button } from '@gitroom/react/form/button';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -24,7 +30,7 @@ export const MediaSettingsLayout = () => {
       id: string;
       name: string;
       path: string;
-      thumbnail: string;
+      thumbnail?: string;
       alt: string;
     }) => void;
     // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -33,7 +39,7 @@ export const MediaSettingsLayout = () => {
       id: string;
       name: string;
       path: string;
-      thumbnail: string;
+      thumbnail?: string;
       alt: string;
     }) => {},
   } as any);
@@ -46,7 +52,7 @@ export const MediaSettingsLayout = () => {
           id: string;
           name: string;
           path: string;
-          thumbnail: string;
+          thumbnail?: string;
           alt: string;
         }) => void;
       }) => {
@@ -301,8 +307,9 @@ export const MediaComponentInner: FC<{
     id: string;
     name: string;
     path: string;
-    thumbnail: string;
+    thumbnail?: string;
     alt: string;
+    thumbnailTimestamp?: number;
   }) => void;
   media:
     | {
@@ -320,6 +327,8 @@ export const MediaComponentInner: FC<{
   const toaster = useToaster();
   const setActivateExitButton = useLaunchStore((e) => e.setActivateExitButton);
   const newFetch = useFetch();
+  const modals = useModals();
+  const { touch } = useViewport();
   const [newThumbnail, setNewThumbnail] = useState<string | null>(null);
   const [isEditingThumbnail, setIsEditingThumbnail] = useState(false);
   const [altText, setAltText] = useState<string>(media?.alt || '');
@@ -338,6 +347,11 @@ export const MediaComponentInner: FC<{
     };
   }, []);
 
+  const failed = useCallback(() => {
+    setLoading(false);
+    toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+  }, [t, toaster]);
+
   const save = useCallback(async () => {
     setLoading(true);
     let path = thumbnail || '';
@@ -346,31 +360,84 @@ export const MediaComponentInner: FC<{
       const formData = new FormData();
       formData.append('file', blob, 'media.jpg');
       formData.append('preventSave', 'true');
-      const data = await (
-        await newFetch('/media/upload-simple', {
-          method: 'POST',
-          body: formData,
-        })
-      ).json();
-      path = data.path;
+      const uploaded = await newFetch('/media/upload-simple', {
+        method: 'POST',
+        body: formData,
+      });
+      // customFetch resolves on 4xx/5xx, so the answer has to be checked
+      if (!uploaded.ok) {
+        failed();
+        return;
+      }
+      path = (await uploaded.json()).path;
     }
 
-    const media = await (
-      await newFetch('/media/information', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: props.media.id,
-          alt: altText,
-          thumbnail: path,
-          thumbnailTimestamp: thumbnailTimestamp,
-        }),
-      })
-    ).json();
+    const response = await newFetch('/media/information', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: props.media.id,
+        alt: altText,
+        thumbnail: path,
+        thumbnailTimestamp: thumbnailTimestamp,
+      }),
+    });
 
-    onSelect(media);
-    toaster.show(t('alt_text_saved', 'Alt text saved'));
-    onClose();
-  }, [altText, newThumbnail, thumbnail, thumbnailTimestamp]);
+    if (response.ok) {
+      onSelect(await response.json());
+      toaster.show(t('alt_text_saved', 'Alt text saved'));
+      onClose();
+      return;
+    }
+
+    // An attachment an agent or the public API added by its URL carries an
+    // id of its own, not a media library row's. Its settings still belong on
+    // the post, so they are set there, and the toast says that is all.
+    if (response.status === 404) {
+      onSelect({
+        ...props.media,
+        alt: altText,
+        thumbnail: path || undefined,
+        thumbnailTimestamp: thumbnailTimestamp ?? undefined,
+      });
+      toaster.show(
+        t(
+          'media_settings_saved_on_post',
+          'Saved on this post. The file is not in your media library.'
+        )
+      );
+      onClose();
+      return;
+    }
+
+    failed();
+  }, [altText, newThumbnail, thumbnail, thumbnailTimestamp, failed]);
+
+  // A cover from the library instead of a frame of the video. Only jpeg and
+  // png, the formats every platform takes as a thumbnail.
+  const pickFromGallery = useCallback(() => {
+    modals.openModal({
+      title: t('media_library', 'Media Library'),
+      askClose: false,
+      closeOnEscape: true,
+      size: 'min(1200px, calc(100vw - 64px))',
+      maxSize: 'min(1200px, calc(100vw - 64px))',
+      height: touch ? '100%' : MEDIA_LIBRARY_PICKER_HEIGHT,
+      children: (close) => (
+        <MediaBox
+          type="image-static"
+          closeModal={close}
+          setMedia={(picked) => {
+            const [first] = picked || [];
+            if (first) {
+              setNewThumbnail(null);
+              setThumbnail(first.path);
+              setThumbnailTimestamp(null);
+            }
+          }}
+        />
+      ),
+    });
+  }, [modals, t, touch]);
 
   return (
     <div className="mt-[4px] flex flex-col gap-[16px]">
@@ -389,6 +456,7 @@ export const MediaComponentInner: FC<{
           onChange={(e) => setAltText(e.target.value)}
           className={modalTextareaClass}
           rows={4}
+          maxLength={1000}
         />
       </div>
       {hasExtension(media?.path, 'mp4') && (
@@ -397,30 +465,34 @@ export const MediaComponentInner: FC<{
           <div>
             {!isEditingThumbnail ? (
               <div className="flex flex-col">
-                {/* Show existing thumbnail if it exists */}
-                {(newThumbnail || thumbnail) && (
-                  <div className="flex flex-col space-y-2">
-                    <span className="text-sm text-pqMuted">
-                      Current Thumbnail:
-                    </span>
+                <div className="flex flex-col gap-[8px]">
+                  <span className={modalLabelClass}>
+                    {t('thumbnail', 'Thumbnail')}
+                  </span>
+                  {(newThumbnail || thumbnail) && (
                     <img
                       src={newThumbnail || thumbnail}
-                      alt="Current thumbnail"
-                      className="max-w-full max-h-[500px] object-contain rounded-lg border border-pqBorder"
+                      alt={t('thumbnail', 'Thumbnail')}
+                      className="max-h-[240px] w-auto max-w-full self-start rounded-[10px] border border-pqBorder object-contain"
                     />
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-2">
+                <div className="mt-[12px] flex flex-wrap gap-[8px]">
                   <button
                     disabled={loading}
                     onClick={() => setIsEditingThumbnail(true)}
-                    className="flex-1 rounded-pqSm border border-pqBorder bg-pqSettings px-[24px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
+                    className="flex-1 whitespace-nowrap rounded-pqSm border border-pqBorder bg-pqSettings px-[16px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
                   >
-                    {media.thumbnail || newThumbnail
-                      ? 'Edit Thumbnail'
-                      : 'Create Thumbnail'}
+                    {t('select_frame', 'Select frame')}
+                  </button>
+                  <button
+                    disabled={loading}
+                    onClick={pickFromGallery}
+                    className="flex-1 whitespace-nowrap rounded-pqSm border border-pqBorder bg-pqSettings px-[16px] py-[8px] text-pqText transition-colors hover:bg-pqHover"
+                  >
+                    {t('from_gallery', 'From gallery')}
                   </button>
                   {(thumbnail || newThumbnail) && (
                     <button
@@ -429,9 +501,9 @@ export const MediaComponentInner: FC<{
                         setNewThumbnail(null);
                         setThumbnail(null);
                       }}
-                      className="flex-1 rounded-pqSm border border-pqDangerLine bg-pqDangerSoft px-[24px] py-[8px] text-pqDanger transition-colors hover:bg-pqDangerChip"
+                      className="flex-1 whitespace-nowrap rounded-pqSm border border-pqDangerLine bg-pqDangerSoft px-[16px] py-[8px] text-pqDanger transition-colors hover:bg-pqDangerChip"
                     >
-                      Clear Thumbnail
+                      {t('clear', 'Clear')}
                     </button>
                   )}
                 </div>
@@ -459,7 +531,7 @@ export const MediaComponentInner: FC<{
                         strokeLinejoin="round"
                       />
                     </svg>
-                    <span>Back</span>
+                    <span>{t('back', 'Back')}</span>
                   </button>
                 </div>
 

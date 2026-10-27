@@ -931,5 +931,16 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} তারিখে নবায়ন হবে",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} পর্যন্ত ফ্রি ট্রায়াল",
   "trial_banner_active_until": "আপনার ফ্রি ট্রায়াল {{date}} পর্যন্ত চলবে। এরপর আপনার প্রথম পেমেন্ট ${{price}} কেটে নেওয়া হবে।",
-  "billing_pending_payment_cta": "কার্ড আপডেট করে পেমেন্ট করুন"
+  "billing_pending_payment_cta": "কার্ড আপডেট করে পেমেন্ট করুন",
+  "thumbnail": "থাম্বনেইল",
+  "select_frame": "ফ্রেম বেছে নিন",
+  "from_gallery": "গ্যালারি থেকে",
+  "hubspot_installed": "PostQueen HubSpot-এ ইনস্টল হয়েছে",
+  "hubspot_installed_description": "যে চ্যানেলগুলোতে পোস্ট করতে চান সেগুলো এখানে PostQueen-এ সংযুক্ত করুন। তারপর HubSpot-এ Agent Hub > Agent Builder খুলুন, একটি টুল যোগ করুন, MCP Servers-এর নিচে PostQueen বেছে নিন এবং Connect and add-এ ক্লিক করুন।",
+  "install_in_app": "{{name}}-এ ইনস্টল করুন",
+  "thumbnails_and_alt_text": "থাম্বনেইল ও বিকল্প টেক্সট",
+  "media_settings_section_description": "কোনো মিডিয়ার বিকল্প টেক্সট, বা ভিডিও হলে তার থাম্বনেইল সেট করতে সেটিতে ক্লিক করুন।",
+  "media_settings_section_tooltip": "থাম্বনেইল মূল পোস্টের ভিডিওতে প্রযোজ্য এবং যে সব চ্যানেল এটি সমর্থন করে সেগুলোতে পাঠানো হয়। YouTube যে ভিডিওগুলোকে Shorts (উল্লম্ব, ৩ মিনিট পর্যন্ত) হিসেবে ধরে, সেগুলোতে প্রকাশ ব্যর্থ না করেই থাম্বনেইল উপেক্ষা করতে পারে, এবং কাস্টম থাম্বনেইলের জন্য ফোন-যাচাইকৃত চ্যানেল প্রয়োজন। YouTube থাম্বনেইল প্রত্যাখ্যান করলেও ভিডিওটি প্রকাশিত হয়।",
+  "youtube_thumbnail_overrides_media": "এই পোস্টে YouTube-এর জন্য আলাদা একটি থাম্বনেইল আছে, যা মিডিয়া সেটিংসে সেট করা থাম্বনেইলের বদলে ব্যবহৃত হয়।",
+  "media_settings_saved_on_post": "এই পোস্টে সংরক্ষিত হয়েছে। ফাইলটি আপনার মিডিয়া লাইব্রেরিতে নেই।"
 }

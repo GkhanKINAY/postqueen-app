@@ -236,11 +236,14 @@ export const MediaBox: FC<{
   /** Already on the post — shown selected; cannot be re-added. */
   attachedMedia?: Array<{ id: string; path: string }>;
   standalone?: boolean;
-  type?: 'image' | 'video';
+  // image-static: jpeg and png only, what a video thumbnail can be
+  type?: 'image' | 'image-static' | 'video';
   closeModal: () => void;
 }> = ({ type, standalone, setMedia, attachedMedia, closeModal }) => {
   const [page, setPage] = useState(0);
-  const [tab, setTab] = useState<'all' | 'image' | 'video'>(type ?? 'all');
+  const [tab, setTab] = useState<'all' | 'image' | 'video'>(
+    type === 'image-static' ? 'image' : type ?? 'all'
+  );
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [lightbox, setLightbox] = useState<MediaRow | null>(null);
   const [menuMedia, setMenuMedia] = useState<MediaRow | null>(null);
@@ -299,6 +302,13 @@ export const MediaBox: FC<{
       const video = isVideoMedia(f);
       if (activeType === 'video' && !video) return false;
       if (activeType === 'image' && video) return false;
+      // an allow-list: older webp or bmp files would fail as a thumbnail
+      if (
+        activeType === 'image-static' &&
+        !['jpg', 'jpeg', 'png'].some((ext) => hasExtension(f.path, ext))
+      ) {
+        return false;
+      }
       return true;
     });
   }, [sourceRows, activeType]);
@@ -307,6 +317,8 @@ export const MediaBox: FC<{
     allowedFileTypes:
       type == 'image'
         ? 'image/*'
+        : type == 'image-static'
+        ? 'image/jpeg,image/png'
         : type == 'video'
         ? 'video/mp4'
         : 'image/*,video/mp4',
@@ -756,6 +768,8 @@ export const MediaBox: FC<{
       accept={
         type == 'image'
           ? 'image/*'
+          : type == 'image-static'
+          ? 'image/jpeg,image/png'
           : type == 'video'
           ? 'video/mp4,video/quicktime,.mov'
           : 'image/*,video/mp4,video/quicktime,.mov'

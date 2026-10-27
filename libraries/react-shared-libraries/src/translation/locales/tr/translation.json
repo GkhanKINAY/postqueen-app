@@ -950,5 +950,16 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}} tarihinde yenilenir",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}} tarihine kadar ücretsiz deneme",
   "trial_banner_active_until": "Ücretsiz denemeniz {{date}} tarihine kadar sürer. Ardından ${{price}} tutarındaki ilk ödemeniz tahsil edilir.",
-  "billing_pending_payment_cta": "Kartı güncelle ve öde"
+  "billing_pending_payment_cta": "Kartı güncelle ve öde",
+  "thumbnail": "Küçük resim",
+  "select_frame": "Kare seç",
+  "from_gallery": "Galeriden",
+  "hubspot_installed": "PostQueen, HubSpot'a yüklendi",
+  "hubspot_installed_description": "Paylaşım yapmak istediğiniz kanalları burada, PostQueen'de bağlayın. Ardından HubSpot'ta Agent Hub > Agent Builder'ı açın, bir araç ekleyin, MCP Servers altında PostQueen'i seçin ve Connect and add'e tıklayın.",
+  "install_in_app": "{{name}} için yükle",
+  "thumbnails_and_alt_text": "Küçük resimler ve alternatif metin",
+  "media_settings_section_description": "Alternatif metnini ya da video ise küçük resmini ayarlamak için bir medyaya tıklayın.",
+  "media_settings_section_tooltip": "Küçük resimler ana gönderideki videolara uygulanır ve bunları destekleyen her kanala gönderilir. YouTube, Shorts olarak değerlendirdiği videolarda (dikey, en fazla 3 dakika) yayını başarısız saymadan bunları yok sayabilir ve özel küçük resimler için telefonla doğrulanmış bir kanal ister. YouTube küçük resmi reddederse video yine de yayınlanır.",
+  "youtube_thumbnail_overrides_media": "Bu gönderinin YouTube'a özel bir küçük resmi var ve bu, medya ayarlarında belirlenen küçük resmin yerine geçer.",
+  "media_settings_saved_on_post": "Bu gönderiye kaydedildi. Dosya medya kütüphanenizde değil."
 }

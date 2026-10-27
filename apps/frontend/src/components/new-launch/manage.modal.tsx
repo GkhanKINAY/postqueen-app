@@ -79,6 +79,7 @@ import { useClickOutside } from '@mantine/hooks';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import { MediaSettingsSection } from '@gitroom/frontend/components/new-launch/media.settings.section';
 
 /** Side-by-side editor + preview once the viewport can hold a 420px preview. */
 export const COMPOSER_SPLIT_MIN = PQ_COMPOSER_SPLIT_MIN;
@@ -1603,6 +1604,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                     >
                       {t('settings', 'Settings')}
                     </div>
+                    <MediaSettingsSection />
                     <div
                       id="composer-quick-settings"
                       data-pq="composer-quick-settings"

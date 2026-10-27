@@ -21,6 +21,8 @@ type ThirdPartyCatalogItem = {
   identifier: string;
   title: string;
   description: string;
+  // installed on the other platform rather than connected here with a key
+  installUrl?: string;
 };
 
 /**
@@ -135,6 +137,11 @@ export const ThirdPartyComponent = () => {
     setEditing({ title: provider.title, identifier: provider.identifier });
   }, []);
 
+  // noopener: the calendar the install ends on closes a tab that has an opener
+  const install = useCallback((installUrl: string) => {
+    window.open(installUrl, '_blank', 'noopener,noreferrer');
+  }, []);
+
   if (editing) {
     return (
       <SettingsPaneEditor
@@ -184,42 +191,58 @@ export const ThirdPartyComponent = () => {
                   <div className="text-start text-[14.5px] font-[600] tracking-[-0.01em] text-pqText">
                     {provider.title}
                   </div>
-                  <div
-                    className={`flex items-center gap-[5px] text-[11.5px] font-[600] ${
-                      isConnected ? 'text-pqOk' : 'text-pqSoft'
-                    }`}
-                  >
-                    {isConnected ? (
-                      <span className="size-[5px] shrink-0 rounded-full bg-pqOk" />
-                    ) : null}
-                    {/* Not `connected` — that key is a *label* and carries its
-                        own punctuation in every locale (`Connected:`,
-                        `Connecté :`, `接続済み：`), which is right for
-                        github.component's "Connected: {login}" and leaves a
-                        dangling colon here. */}
-                    {isConnected
-                      ? t('third_party_status_connected', 'Connected')
-                      : t('not_connected', 'Not connected')}
-                  </div>
+                  {/* An app installed on the other platform is never
+                      connected here, so it has no status to show */}
+                  {provider.installUrl ? null : (
+                    <div
+                      className={`flex items-center gap-[5px] text-[11.5px] font-[600] ${
+                        isConnected ? 'text-pqOk' : 'text-pqSoft'
+                      }`}
+                    >
+                      {isConnected ? (
+                        <span className="size-[5px] shrink-0 rounded-full bg-pqOk" />
+                      ) : null}
+                      {/* Not `connected` — that key is a *label* and carries its
+                          own punctuation in every locale (`Connected:`,
+                          `Connecté :`, `接続済み：`), which is right for
+                          github.component's "Connected: {login}" and leaves a
+                          dangling colon here. */}
+                      {isConnected
+                        ? t('third_party_status_connected', 'Connected')
+                        : t('not_connected', 'Not connected')}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="line-clamp-2 whitespace-pre-wrap text-start text-[13px] leading-[1.6] text-pqMuted text-balance">
                 {provider.description}
               </div>
               <div className="mt-auto flex items-center gap-[8px] border-t border-pqLine pt-[13px]">
-                <button
-                  type="button"
-                  onClick={() => openEditor(provider)}
-                  className={
-                    isConnected
-                      ? 'flex h-[31px] items-center rounded-[9px] bg-pqSettings px-[13px] text-[12.5px] font-[600] text-pqText transition-colors hover:bg-pqBrandSoft'
-                      : 'flex h-[31px] items-center rounded-[9px] bg-pqBrand px-[13px] text-[12.5px] font-[600] text-white transition-[filter] hover:bg-pqBrandHover'
-                  }
-                >
-                  {isConnected
-                    ? t('update_key', 'Update key')
-                    : t('add_api_key', 'Add API key')}
-                </button>
+                {provider.installUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => install(provider.installUrl!)}
+                    className="flex h-[31px] items-center rounded-[9px] bg-pqBrand px-[13px] text-[12.5px] font-[600] text-white transition-[filter] hover:bg-pqBrandHover"
+                  >
+                    {t('install_in_app', 'Install in {{name}}', {
+                      name: provider.title,
+                    })}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openEditor(provider)}
+                    className={
+                      isConnected
+                        ? 'flex h-[31px] items-center rounded-[9px] bg-pqSettings px-[13px] text-[12.5px] font-[600] text-pqText transition-colors hover:bg-pqBrandSoft'
+                        : 'flex h-[31px] items-center rounded-[9px] bg-pqBrand px-[13px] text-[12.5px] font-[600] text-white transition-[filter] hover:bg-pqBrandHover'
+                    }
+                  >
+                    {isConnected
+                      ? t('update_key', 'Update key')
+                      : t('add_api_key', 'Add API key')}
+                  </button>
+                )}
                 {isConnected && connection ? (
                   <button
                     type="button"

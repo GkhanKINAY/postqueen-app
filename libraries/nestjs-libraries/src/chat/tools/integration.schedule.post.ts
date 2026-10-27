@@ -27,6 +27,43 @@ const attachmentUrl = z
     message: validUrlExtension.defaultMessage({} as any),
   });
 
+// A video cover: the same upload-domain check, but only the formats every
+// platform takes as a thumbnail. A gif, webp or video passed the attachment
+// check and then failed at publish time.
+const thumbnailUrl = z
+  .string()
+  .refine((url) => validUrlPath.validate(url, {} as any), {
+    message: validUrlPath.defaultMessage({} as any),
+  })
+  .refine((url) => /\.(jpe?g|png)$/i.test(url.split('?')[0]), {
+    message: 'The thumbnail must be a .jpg, .jpeg or .png file',
+  });
+
+// Attachments are either a plain URL string or { path, alt?, thumbnail?,
+// thumbnailTimestamp? }, the same per-media fields as the public API (alt
+// has MediaDto's 1000 character limit).
+const attachment = z.union([
+  attachmentUrl,
+  z.object({
+    path: attachmentUrl,
+    alt: z.string().max(1000).optional(),
+    thumbnail: thumbnailUrl.optional(),
+    thumbnailTimestamp: z.number().int().min(0).optional(),
+  }),
+]);
+
+type Attachment = z.infer<typeof attachment>;
+
+const toMedia = (a: Attachment) =>
+  typeof a === 'string'
+    ? { path: a }
+    : {
+        path: a.path,
+        alt: a.alt,
+        thumbnail: a.thumbnail,
+        thumbnailTimestamp: a.thumbnailTimestamp,
+      };
+
 @Injectable()
 export class IntegrationSchedulePostTool implements AgentToolInterface {
   constructor(
@@ -95,8 +132,10 @@ If validation fails, the result contains output.errors describing what to fix; t
                         "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
                       ),
                     attachments: z
-                      .array(attachmentUrl)
-                      .describe('The image of the post (URLS)'),
+                      .array(attachment)
+                      .describe(
+                        'The media of the post: either an uploaded media URL string, or { path, alt?, thumbnail?, thumbnailTimestamp? } where path is the uploaded media URL, alt is its alt text (up to 1000 characters), thumbnail is the path of an uploaded jpeg or png (returned by uploadFromUrlTool) used as the video thumbnail or cover, and thumbnailTimestamp is the video frame to use as the cover, in milliseconds'
+                      ),
                     delay: z
                       .number()
                       .int()
@@ -195,9 +234,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                 settings,
                 value: platform.postsAndComments.map((p: any) => ({
                   content: p.content,
-                  image: (p.attachments || []).map((path: string) => ({
-                    path,
-                  })),
+                  image: (p.attachments || []).map(toMedia),
                 })),
               },
             ]
@@ -290,9 +327,9 @@ If validation fails, the result contains output.errors describing what to fix; t
                   // The first item is the post itself; a delay only means
                   // something for the comments after it.
                   delay: index > 0 ? Number(p.delay) || 0 : 0,
-                  image: p.attachments.map((p: any) => ({
+                  image: (p.attachments || []).map((a: Attachment) => ({
                     id: makeId(10),
-                    path: p,
+                    ...toMedia(a),
                   })),
                 })),
               },

@@ -1757,6 +1757,7 @@ format
 founding_member
 four_days
 frequently_asked_questions
+from_gallery
 ft_action_body
 ft_action_title
 ft_body_charged
@@ -1898,6 +1899,8 @@ hide_channels
 hide_chats
 hide_posts
 hour
+hubspot_installed
+hubspot_installed_description
 i_understand_continue
 image_quality
 image_quality_high
@@ -1924,6 +1927,7 @@ instagram_original_sound
 instagram_search_audio
 instagram_video_volume
 install_extension
+install_in_app
 integration_added_successfully
 integration_deleted_successfully
 integrations
@@ -2035,6 +2039,10 @@ media_imported_successfully
 media_library
 media_n_deleted
 media_n_selected
+media_settings
+media_settings_saved_on_post
+media_settings_section_description
+media_settings_section_tooltip
 media_upload_complete
 media_upload_complete_one
 media_upload_failed
@@ -2466,6 +2474,7 @@ select_channels
 select_customer_label
 select_customer_tooltip
 select_flair
+select_frame
 select_local_integration
 select_matching_content
 select_media_to_import
@@ -2612,6 +2621,8 @@ this_video_will_be_classified_branded_content
 this_week
 thread_finisher_placeholder
 three_days
+thumbnail
+thumbnails_and_alt_text
 tiktok_add_location
 tiktok_add_music
 tiktok_branded_cannot_be_private
@@ -2831,3 +2842,4 @@ your_post_should_have_at_least_one_character_or_one_image
 your_video_will_be_labeled_paid_partnership
 your_video_will_be_labeled_promotional
 youre_all_set
+youtube_thumbnail_overrides_media

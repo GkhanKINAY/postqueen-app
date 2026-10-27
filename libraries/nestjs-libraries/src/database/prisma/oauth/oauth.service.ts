@@ -7,7 +7,12 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
-import { extractBearerToken } from '@gitroom/nestjs-libraries/chat/oauth-types';
+import {
+  extractBearerToken,
+  hubspotAppCredentials,
+  hubspotInstallRedirectUri,
+  isHubspotOAuthApp,
+} from '@gitroom/nestjs-libraries/chat/oauth-types';
 import { createHash } from 'crypto';
 import { OAuthApp } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 
@@ -15,6 +20,10 @@ const openAiOAuthClientId = () =>
   process.env.OPENAI_OAUTH_CLIENT_ID?.trim();
 
 const enableOidcEmailClaims = () => Boolean(openAiOAuthClientId());
+
+// PostQueen access tokens never expire, but HubSpot wants an expires_in: ten
+// years (a hundred would not fit in a 32-bit integer)
+const hubspotTokenExpiresIn = 10 * 365 * 24 * 60 * 60;
 
 // Verified-domain match: exact host or a subdomain of it (spoof-safe, the
 // leading dot means evilclaude.ai and claude.ai.evil.com are both rejected)
@@ -306,13 +315,18 @@ export class OAuthService {
     }
 
     // Dynamically registered clients must use their registered redirect_uris
-    // and PKCE; statically registered apps keep the existing lenient flow
+    // and PKCE; statically registered apps keep the existing lenient flow,
+    // except a public one (HubSpot's), which needs PKCE too
     if (app.dynamic) {
       const registered: string[] = JSON.parse(app.redirectUris || '[]');
       if (!options?.redirectUri || !registered.includes(options.redirectUri)) {
         throw new HttpException('Invalid redirect_uri', HttpStatus.BAD_REQUEST);
       }
-      if (app.tokenEndpointAuthMethod === 'none' && !options?.codeChallenge) {
+    }
+
+    const isPublicClient = this.isPublicClient(app);
+    if (app.dynamic || isPublicClient) {
+      if (isPublicClient && !options?.codeChallenge) {
         throw new HttpException(
           'code_challenge is required for this client',
           HttpStatus.BAD_REQUEST
@@ -331,6 +345,72 @@ export class OAuthService {
     }
 
     return app;
+  }
+
+  // Clients that may authenticate with PKCE instead of a client secret:
+  // dynamic registrations with token_endpoint_auth_method=none, and the
+  // static app HubSpot agents connect with, whose connector sends no secret
+  private isPublicClient(
+    app: Pick<OAuthApp, 'clientId' | 'dynamic' | 'tokenEndpointAuthMethod'>
+  ) {
+    if (app.dynamic) {
+      return app.tokenEndpointAuthMethod === 'none';
+    }
+    return isHubspotOAuthApp(app);
+  }
+
+  // What an authorization code is bound to: a dynamic client's PKCE challenge
+  // and redirect_uri, a public static app's PKCE challenge only (static apps
+  // always redirect to their stored redirectUrl). Other static apps keep the
+  // lenient flow and bind nothing
+  pkceBinding(
+    app: Pick<OAuthApp, 'clientId' | 'dynamic' | 'tokenEndpointAuthMethod'>,
+    request: {
+      codeChallenge?: string;
+      codeChallengeMethod?: string;
+      redirectUri?: string;
+    }
+  ) {
+    if (app.dynamic) {
+      return request;
+    }
+    if (this.isPublicClient(app)) {
+      return {
+        codeChallenge: request.codeChallenge,
+        codeChallengeMethod: request.codeChallengeMethod,
+      };
+    }
+    return undefined;
+  }
+
+  // A client secret, when the app has one and the request sends one, always
+  // has to match: only a public client is let through without it. Answers
+  // whether the client proved itself with its secret
+  private assertClientSecret(
+    app: Pick<
+      OAuthApp,
+      'clientId' | 'clientSecret' | 'dynamic' | 'tokenEndpointAuthMethod'
+    >,
+    clientSecret?: string
+  ) {
+    if (this.isPublicClient(app) && !(clientSecret && app.clientSecret)) {
+      return false;
+    }
+
+    if (
+      !clientSecret ||
+      !app.clientSecret ||
+      !AuthService.safeEqual(
+        app.clientSecret,
+        AuthService.fixedEncryption(clientSecret)
+      )
+    ) {
+      throw new HttpException(
+        { error: 'invalid_client' },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+    return true;
   }
 
   async createAuthorizationCode(
@@ -376,30 +456,24 @@ export class OAuthService {
       );
     }
 
-    // Public clients (dynamic registration with token_endpoint_auth_method=none)
-    // authenticate with PKCE instead of a client secret
-    const isPublicClient = app.dynamic && app.tokenEndpointAuthMethod === 'none';
-    if (!isPublicClient) {
-      if (
-        !clientSecret ||
-        !app.clientSecret ||
-        !AuthService.safeEqual(
-          app.clientSecret,
-          AuthService.fixedEncryption(clientSecret)
-        )
-      ) {
-        throw new HttpException(
-          { error: 'invalid_client' },
-          HttpStatus.UNAUTHORIZED
-        );
-      }
-    }
+    // Public clients (dynamic registration with token_endpoint_auth_method=none,
+    // HubSpot's app) authenticate with PKCE instead of a client secret
+    const bySecret = this.assertClientSecret(app, clientSecret);
 
     const encryptedCode = AuthService.fixedEncryption(code);
     const auth = await this._oauthRepository.findByCode(encryptedCode);
     if (!auth || auth.oauthAppId !== app.id) {
       throw new HttpException(
         { error: 'invalid_grant' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // Without a secret the PKCE challenge is the client's only proof, so a
+    // code that was issued without one cannot be exchanged that way
+    if (!bySecret && !auth.codeChallenge) {
+      throw new HttpException(
+        { error: 'invalid_grant', error_description: 'code_verifier is required' },
         HttpStatus.BAD_REQUEST
       );
     }
@@ -450,7 +524,121 @@ export class OAuthService {
       access_token: token,
       token_type: 'bearer',
       scope: this.grantedScope(app),
+      ...this.refreshFields(app, token),
     };
+  }
+
+  // HubSpot refuses a token response without a refresh token. PostQueen
+  // access tokens never expire, so the refresh token is the access token
+  // itself: refreshing hands it back unchanged, and it stops working exactly
+  // when the access token does (a revoked authorization, a removed app, a
+  // new consent that replaced it, or a member who left). A separate refresh
+  // token would need a column of its own. No other client gets these fields
+  private refreshFields(app: Pick<OAuthApp, 'clientId' | 'dynamic'>, token: string) {
+    if (!isHubspotOAuthApp(app)) {
+      return {};
+    }
+
+    return {
+      refresh_token: token,
+      expires_in: hubspotTokenExpiresIn,
+    };
+  }
+
+  // The refresh_token grant, HubSpot's app only (see refreshFields). Every
+  // other client is answered unsupported_grant_type, as before
+  async refreshAccessToken(
+    clientId?: string,
+    refreshToken?: string,
+    clientSecret?: string
+  ) {
+    if (!clientId || !isHubspotOAuthApp({ clientId })) {
+      throw new HttpException(
+        { error: 'unsupported_grant_type' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const app = await this._oauthRepository.getAppByClientId(clientId);
+    if (!app || !isHubspotOAuthApp(app)) {
+      throw new HttpException(
+        { error: 'invalid_client' },
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+    this.assertClientSecret(app, clientSecret);
+
+    if (!refreshToken) {
+      throw new HttpException(
+        {
+          error: 'invalid_request',
+          error_description: 'refresh_token is required',
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // The same lookup as the MCP endpoints: a revoked or replaced
+    // authorization, or a member no longer in the workspace, refreshes nothing
+    const authorization = await this.getOrgByOAuthToken(refreshToken);
+    if (!authorization || authorization.oauthAppId !== app.id) {
+      throw new HttpException(
+        { error: 'invalid_grant' },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return {
+      access_token: refreshToken,
+      token_type: 'bearer',
+      scope: this.grantedScope(app),
+      ...this.refreshFields(app, refreshToken),
+    };
+  }
+
+  // HubSpot only counts an install of the HubSpot app once its code is
+  // exchanged. PostQueen makes no HubSpot API calls, so the tokens are not kept
+  async completeHubspotInstall(code: string) {
+    const credentials = hubspotAppCredentials();
+    if (!credentials) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+    }
+    const { clientId, clientSecret } = credentials;
+
+    let response: Response;
+    try {
+      response = await fetch('https://api.hubapi.com/oauth/v3/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: hubspotInstallRedirectUri(),
+          code,
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+    } catch (err) {
+      // timeout or network failure, fetch rejects instead of answering
+      throw new HttpException(
+        'Could not reach HubSpot to finish installing PostQueen, please try again',
+        HttpStatus.BAD_GATEWAY,
+        { cause: err }
+      );
+    }
+
+    if (!response.ok) {
+      const value = await response.json().catch(() => null);
+      throw new HttpException(
+        `Could not finish installing PostQueen in HubSpot${
+          value?.message ? `: ${value.message}` : ''
+        }`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    await response.body?.cancel();
   }
 
   async getOrgByOAuthToken(token: string) {

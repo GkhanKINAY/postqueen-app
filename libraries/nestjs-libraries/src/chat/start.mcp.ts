@@ -9,8 +9,10 @@ import { runWithContext } from './async.storage';
 import { createOAuthMiddleware } from './oauth-middleware';
 import {
   authorizationServerIssuer,
+  hubspotOAuthClientId,
   joinBaseUrl,
   mcpOAuthBaseUrl,
+  rootAuthorizationServerIssuer,
 } from './oauth-types';
 import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/upload.widget';
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
@@ -30,6 +32,18 @@ const fixAcceptHeader = (req: Request) => {
   } else {
     req.rawHeaders.push('Accept', value);
   }
+};
+
+// 2026-07-28 clients hold a subscriptions/listen stream open for the whole
+// session, and the tool list never changes: the stream ends once the
+// subscription had time to be acknowledged
+const endListenStream = (req: Request, res: Response) => {
+  if (req.headers['mcp-method'] !== 'subscriptions/listen') {
+    return;
+  }
+
+  const timer = setTimeout(() => res.end(), 10000);
+  res.on('close', () => clearTimeout(timer));
 };
 
 const openAiOAuthClientId = process.env.OPENAI_OAUTH_CLIENT_ID?.trim();
@@ -149,7 +163,14 @@ export const startMcp = async (app: INestApplication) => {
     appResources,
   };
 
-  const server = new MCPServer(serverConfig);
+  // The streamable endpoints run in Mastra's dual-era mode: 2026-07-28
+  // clients are served natively and 2025-era clients through the SDK's
+  // stateless fallback on the same URL. The SSE endpoint below keeps
+  // serverConfig as it is, since that transport only exists in the 2025 era
+  const server = new MCPServer({
+    ...serverConfig,
+    protocolVersion: '2026-07-28',
+  });
 
   // The directory-facing servers don't register the agent - it would be
   // exposed as an annotation-less catch-all ask_postqueen tool, which the
@@ -157,6 +178,7 @@ export const startMcp = async (app: INestApplication) => {
   const oauthServer = new MCPServer({
     name: 'PostQueen MCP',
     version: '1.0.0',
+    protocolVersion: '2026-07-28',
     tools,
     appResources,
   });
@@ -164,6 +186,7 @@ export const startMcp = async (app: INestApplication) => {
   const claudeOauthServer = new MCPServer({
     name: 'PostQueen MCP',
     version: '1.0.0',
+    protocolVersion: '2026-07-28',
     tools: claudeTools,
     appResources: claudeAppResources,
   });
@@ -175,19 +198,39 @@ export const startMcp = async (app: INestApplication) => {
   // OpenAI kept serving its cached copy of the old /mcp-oauth metadata).
   // /mcp-oauth-dynamic keeps DCR for Claude, Cursor and every other
   // self-registering client. The authorization response names the same
-  // issuer in `iss` (RFC 9207, oauthAppIssuer in oauth-types.ts)
-  const authorizationServers: Record<string, { issuer: string; registration: boolean }> = {
+  // issuer in `iss` (RFC 9207, oauthAppIssuer in oauth-types.ts).
+  // HubSpot agents follow the 2025-03-26 MCP authorization spec: they read the
+  // metadata at the domain root of the MCP url (no path issuer), connect with
+  // a pre-registered app instead of DCR and require the refresh_token grant,
+  // so the root is answered only when that app is configured
+  // (HUBSPOT_OAUTH_CLIENT_ID) and the MCP base sits at a domain root
+  const rootIssuer = hubspotOAuthClientId()
+    ? rootAuthorizationServerIssuer()
+    : undefined;
+  const authorizationServers: Record<
+    string,
+    { issuer: string; registration: boolean; refresh: boolean }
+  > = {
     '/mcp-oauth-chatgpt': {
       issuer: authorizationServerIssuer('/mcp-oauth-chatgpt'),
       registration: false,
+      refresh: false,
     },
     '/mcp-oauth-dynamic': {
       issuer: authorizationServerIssuer('/mcp-oauth-dynamic'),
       registration: true,
+      refresh: false,
     },
+    ...(rootIssuer
+      ? { '/': { issuer: rootIssuer, registration: false, refresh: true } }
+      : {}),
   };
 
-  const authorizationServerMetadata = (server: { issuer: string; registration: boolean }) => ({
+  const authorizationServerMetadata = (server: {
+    issuer: string;
+    registration: boolean;
+    refresh: boolean;
+  }) => ({
     // RFC 8414: metadata served at /.well-known/oauth-authorization-server/<path>
     // belongs to the path-based issuer <backend>/<path>
     issuer: server.issuer,
@@ -200,7 +243,9 @@ export const startMcp = async (app: INestApplication) => {
       userinfo_endpoint: `${mcpBackendUrl}/oauth/userinfo`,
     }),
     response_types_supported: ['code'],
-    grant_types_supported: ['authorization_code'],
+    grant_types_supported: server.refresh
+      ? ['authorization_code', 'refresh_token']
+      : ['authorization_code'],
     token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'none'],
     code_challenge_methods_supported: ['S256'],
     scopes_supported: oauthScopes,
@@ -295,7 +340,8 @@ export const startMcp = async (app: INestApplication) => {
 
   app.use('/.well-known/openid-configuration', async (req: Request, res: Response, next: () => void) => {
     const server = authorizationServers[req.path];
-    if (!server || !enableOidcEmailClaims) {
+    // the root issuer is HubSpot's, which never gets email claims
+    if (!server || !enableOidcEmailClaims || req.path === '/') {
       next();
       return;
     }
@@ -338,6 +384,7 @@ export const startMcp = async (app: INestApplication) => {
       return;
     }
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     await runWithContext({ requestId: token!, auth }, async () => {
       await mcpServer.startHTTP({
@@ -345,7 +392,6 @@ export const startMcp = async (app: INestApplication) => {
         httpPath: url.pathname,
         options: {
           serverless: true,
-          enableJsonResponse: true,
         },
         req,
         res,
@@ -387,6 +433,7 @@ export const startMcp = async (app: INestApplication) => {
 
     const url = new URL('/mcp', process.env.NEXT_PUBLIC_BACKEND_URL);
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     // @ts-ignore
     await runWithContext({ requestId: token, auth: req.auth }, async () => {
@@ -395,7 +442,6 @@ export const startMcp = async (app: INestApplication) => {
         httpPath: url.pathname,
         options: {
           serverless: true,
-          enableJsonResponse: true,
         },
         req,
         res,
@@ -428,6 +474,7 @@ export const startMcp = async (app: INestApplication) => {
       process.env.NEXT_PUBLIC_BACKEND_URL
     );
 
+    endListenStream(req, res);
     fixAcceptHeader(req);
     await runWithContext(
       // @ts-ignore
@@ -438,7 +485,6 @@ export const startMcp = async (app: INestApplication) => {
           httpPath: url.pathname,
           options: {
             serverless: true,
-            enableJsonResponse: true,
           },
           req,
           res,

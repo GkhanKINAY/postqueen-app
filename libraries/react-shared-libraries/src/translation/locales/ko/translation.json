@@ -932,5 +932,16 @@
   "plan_meta_renews": "PostQueen {{tier}} · {{date}}에 갱신",
   "plan_meta_trial_until": "PostQueen {{tier}} · {{date}}까지 무료 체험",
   "trial_banner_active_until": "무료 체험은 {{date}}까지입니다. 이후 첫 결제 ${{price}}가 청구됩니다.",
-  "billing_pending_payment_cta": "카드 업데이트 후 결제"
+  "billing_pending_payment_cta": "카드 업데이트 후 결제",
+  "thumbnail": "썸네일",
+  "select_frame": "프레임 선택",
+  "from_gallery": "갤러리에서",
+  "hubspot_installed": "PostQueen이 HubSpot에 설치되었습니다",
+  "hubspot_installed_description": "게시할 채널을 여기 PostQueen에서 연결하세요. 그런 다음 HubSpot에서 Agent Hub > Agent Builder를 열고 도구를 추가한 뒤, MCP Servers에서 PostQueen을 선택하고 Connect and add를 클릭하세요.",
+  "install_in_app": "{{name}}에 설치",
+  "thumbnails_and_alt_text": "썸네일 및 대체 텍스트",
+  "media_settings_section_description": "미디어를 클릭하면 대체 텍스트를 설정할 수 있고, 동영상이면 썸네일도 설정할 수 있습니다.",
+  "media_settings_section_tooltip": "썸네일은 메인 게시물의 동영상에 적용되며 이를 지원하는 모든 채널로 전송됩니다. YouTube는 Shorts(세로형, 최대 3분)로 처리하는 동영상에서는 게시를 실패시키지 않고 썸네일을 무시할 수 있으며, 맞춤 썸네일에는 전화번호로 인증된 채널이 필요합니다. YouTube가 썸네일을 거부해도 동영상은 게시됩니다.",
+  "youtube_thumbnail_overrides_media": "이 게시물에는 YouTube 전용 썸네일이 있으며, 미디어 설정의 썸네일보다 우선 적용됩니다.",
+  "media_settings_saved_on_post": "이 게시물에 저장했습니다. 이 파일은 미디어 라이브러리에 없습니다."
 }

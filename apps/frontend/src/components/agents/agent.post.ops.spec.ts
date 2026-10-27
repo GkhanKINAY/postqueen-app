@@ -80,7 +80,9 @@ describe('Post operations from the Copilot', () => {
     assert.match(chat, /name: 'showPostCard'/);
     assert.match(chat, /never say you deleted anything/);
     assert.match(tools, /Deleting is only ever done by the user from that card/);
-    assert.match(tools, /Nothing you call deletes a post/);
+    assert.match(tools, /In the PostQueen app nothing you call deletes a post/);
+    // deletePostTool is for MCP and API clients; the in-app agent never gets it
+    assert.match(tools, /\['videoStatusTool', 'mediaStatusTool', 'deletePostTool'\]\.includes\(\s*name\s*\)/);
     assert.doesNotMatch(tools, /modal with populated content/);
     assert.doesNotMatch(listTool, /never offer to delete a post/);
   });
