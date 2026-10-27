@@ -103,9 +103,8 @@ stream-json GHSA-mjw6-4jj6-33hc
 # @langchain/classic; the advisory needs a caller-supplied buffer, which none of
 # them pass. Our own code uses uuid 14.
 uuid GHSA-w5hq-g745-h8pq
-# The fix exists only in zod 4.6.6. The zod 3 copies (the AI SDK, AG-UI,
-# Microsoft agents, the wallet adapters) have none. Our own zod 4.4.3 is pinned
-# with the Mastra and CopilotKit graph and validates MCP and agent tool input,
-# which only signed-in callers reach; moving it to 4.6 is its own change, with a
-# boot and an agent run.
+# Fixed only in zod 4.6.6. Our own zod, the one that validates MCP and agent
+# tool input, is on 4.6.7 since 2026-10-27; what is left are the zod 3 copies
+# the AI SDK, AG-UI, Microsoft's agents and the wallet adapters pin, and zod 3
+# has no fixed release. They validate model and SDK data, not request input.
 zod GHSA-mrhx-c7xc-m3w5
