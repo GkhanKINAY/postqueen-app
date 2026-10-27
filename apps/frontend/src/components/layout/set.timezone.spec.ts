@@ -168,3 +168,26 @@ describe('set.timezone with America/New_York chosen', () => {
     assert.equal(tz.getTimezone(), 'Europe/Istanbul');
   });
 });
+
+describe('the zone /user/self brings', () => {
+  let reloads = 0;
+  before(() => {
+    (globalThis as any).window = { location: { reload: () => reloads++ } };
+  });
+
+  it('is applied by the first answer and kept by the same one again', () => {
+    tz.applyUserTimezone('America/New_York');
+    assert.equal(tz.getTimezone(), 'America/New_York');
+    tz.applyUserTimezone('America/New_York');
+    assert.equal(reloads, 0);
+  });
+
+  it('reloads the page into a zone picked in another tab', () => {
+    tz.applyUserTimezone('Asia/Tokyo');
+    assert.equal(reloads, 1);
+    assert.equal(tz.getTimezone(), 'Asia/Tokyo');
+    tz.applyUserTimezone(null);
+    assert.equal(reloads, 2);
+    assert.equal(tz.getTimezone(), 'Europe/Istanbul');
+  });
+});

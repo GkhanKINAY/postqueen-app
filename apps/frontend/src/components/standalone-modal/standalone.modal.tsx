@@ -11,9 +11,13 @@ import {
   newDayjs,
 } from '@gitroom/frontend/components/layout/set.timezone';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 export const StandaloneModal: FC = () => {
   const fetch = useFetch();
   const params = useParams<{ platform: string }>();
+  // PreviewWrapper loads the user and applies their timezone on the way in;
+  // the composer's date is only made once it has.
+  const user = useUser();
 
   const loadDate = useCallback(async () => {
     if (params.platform === 'all') {
@@ -30,7 +34,7 @@ export const StandaloneModal: FC = () => {
   const { isLoading: isLoading2, data } = useSWR('/posts/find-slot', loadDate, {
     fallbackData: [],
   });
-  if (isLoading || isLoading2) {
+  if (isLoading || isLoading2 || !user?.id) {
     return null;
   }
   return (

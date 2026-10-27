@@ -310,6 +310,26 @@ export const setUserTimezone = (timezone?: string | null) => {
   } catch (err) {}
 };
 
+// The zone of the user as /user/self gives it. The first answer sets the zone
+// the page is rendered in. Later answers (billing, API keys and finish trial
+// revalidate the user) can bring a zone picked in another tab since; switching
+// to it under dates already on screen would mix the two, so the page reloads
+// into it instead.
+let loadedTimezone: string | null | undefined;
+export const applyUserTimezone = (timezone?: string | null) => {
+  const next = timezone || null;
+  if (loadedTimezone === undefined) {
+    loadedTimezone = next;
+    setUserTimezone(next);
+    return;
+  }
+  if (next !== loadedTimezone) {
+    loadedTimezone = next;
+    setUserTimezone(next);
+    window.location.reload();
+  }
+};
+
 // dayjs' local string format, anything else (Z, offsets, Dates) is an instant
 const LOCAL_STRING =
   /^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/;

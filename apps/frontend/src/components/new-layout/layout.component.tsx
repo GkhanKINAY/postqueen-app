@@ -44,7 +44,7 @@ import { BillingAdminRequiredComponent } from '@gitroom/frontend/components/bill
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { BrandMark } from '@gitroom/frontend/components/ui/logo.component';
 import { setSentryUser } from '@gitroom/react/sentry/initialize.sentry.client';
-import { setUserTimezone } from '@gitroom/frontend/components/layout/set.timezone';
+import { applyUserTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 import { UserMenu } from '@gitroom/frontend/components/new-layout/user.menu';
 import { HelpMenu } from '@gitroom/frontend/components/new-layout/help.menu';
 import { Rail } from '@gitroom/frontend/components/new-layout/rail';
@@ -473,7 +473,7 @@ export const LayoutComponent = ({
     // body (no id) leaves the last known zone alone.
     onSuccess: (data) => {
       if (data?.id) {
-        setUserTimezone(data.timezoneName);
+        applyUserTimezone(data.timezoneName);
       }
     },
     revalidateOnFocus: false,
