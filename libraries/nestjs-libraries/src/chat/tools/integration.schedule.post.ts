@@ -1,4 +1,5 @@
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
+import { MAX_POST_CONTENT_LENGTH } from '@gitroom/helpers/utils/sanitize.post.content';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { HttpException, Injectable } from '@nestjs/common';
@@ -128,6 +129,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                   z.object({
                     content: z
                       .string()
+                      .max(MAX_POST_CONTENT_LENGTH)
                       .describe(
                         "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
                       ),

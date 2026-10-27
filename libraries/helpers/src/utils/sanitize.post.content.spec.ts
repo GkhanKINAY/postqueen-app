@@ -93,6 +93,18 @@ describe('sanitizePostContent', () => {
     }
   });
 
+  it('stays fast on a very large post, and cuts what is longer than any post', () => {
+    const many = '<p dir="auto">x <strong>y</strong></p>'.repeat(30_000);
+    let started = Date.now();
+    sanitizePostContent(many);
+    assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+
+    started = Date.now();
+    const out = sanitizePostContent('a'.repeat(5_000_000));
+    assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+    assert.equal(out.length, 1_000_000);
+  });
+
   it('keeps the markup the editor writes', () => {
     const html =
       '<p dir="auto">Hi <strong>you</strong></p><ul><li><p dir="auto">one</p></li></ul>';

@@ -21,7 +21,11 @@ import {
   EmptySettings,
 } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { ValidContent } from '@gitroom/helpers/utils/valid.images';
-import { sanitizePostContent } from '@gitroom/helpers/utils/sanitize.post.content';
+import {
+  MAX_POST_CONTENT_LENGTH,
+  sanitizePostContent,
+} from '@gitroom/helpers/utils/sanitize.post.content';
+import { BadRequestException } from '@nestjs/common';
 
 export class Integration {
   @IsDefined()
@@ -33,7 +37,14 @@ export class PostContent {
   @IsDefined()
   @IsString()
   @Validate(ValidContent)
-  @Transform(({ value }) => sanitizePostContent(value))
+  // Refused before it is parsed: the body may be up to 50 MB, and parsing
+  // costs about a second per megabyte of markup.
+  @Transform(({ value }) => {
+    if (typeof value === 'string' && value.length > MAX_POST_CONTENT_LENGTH) {
+      throw new BadRequestException('The post content is too long.');
+    }
+    return sanitizePostContent(value);
+  })
   content: string;
 
   @IsOptional()

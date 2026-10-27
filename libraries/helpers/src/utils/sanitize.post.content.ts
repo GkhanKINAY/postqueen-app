@@ -44,28 +44,59 @@ const dropImageWithoutUrl = (node: Node, data: { tagName: string }) => {
 // Tags that never take a closing tag, so they never nest.
 const VOID_TAGS = new Set(['br', 'img', 'hr', 'input', 'meta', 'link', 'wbr']);
 // The editor's output nests a handful of levels (a list item, a mention inside
-// bold inside a paragraph). jsdom's cost grows with the square of the nesting
-// and its recursion overflows the stack past a few thousand levels: `a<b>`
-// 2,000 times took two seconds, 5,000 times threw. The public preview
-// sanitizes stored content on every view, so that cost could be paid again by
-// anyone opening the link.
+// bold inside a paragraph) and always closes what it opens. jsdom's cost grows
+// with the square of two shapes it is not written for: deep nesting (`a<b>`
+// 2,000 times took two seconds, 5,000 times overflowed the stack) and close
+// tags that do not end the innermost element, which its misnesting repair
+// redoes for every one (`<b><i></b></i>` 5,000 times took six seconds). The
+// public preview sanitizes stored content on every view, so that cost could
+// be paid again by anyone opening the link.
 const MAX_NESTING = 100;
+const MAX_MISNESTED = 100;
+// Balanced markup is parsed in linear time, but at about a second per 40,000
+// elements; no post comes near this many.
+const MAX_TAGS = 20_000;
+// What a post's content may be at most, in characters, before it is parsed.
+// The longest a network takes is ListMonk's newsletter body, and a real one is
+// a fraction of this.
+export const MAX_POST_CONTENT_LENGTH = 1_000_000;
 
-// How deep the markup nests, counted in one pass. An unclosed tag counts as
-// open, which is exactly the shape that makes the parser slow.
-const nestingDepth = (html: string) => {
-  let depth = 0;
-  let deepest = 0;
-  for (const [, closing, name, selfClosing] of html.matchAll(
+// Whether the markup has any of these shapes, read in one pass. The stack never grows
+// past MAX_NESTING, so each tag costs at most that much.
+const tooTangled = (html: string) => {
+  const open: string[] = [];
+  let misnested = 0;
+  let tags = 0;
+  for (const [, closing, tag, selfClosing] of html.matchAll(
     /<(\/?)([a-zA-Z][\w-]*)[^<>]*?(\/?)>/g
   )) {
-    if (VOID_TAGS.has(name.toLowerCase()) || selfClosing) {
+    if (++tags > MAX_TAGS) {
+      return true;
+    }
+    const name = tag.toLowerCase();
+    if (VOID_TAGS.has(name) || selfClosing) {
       continue;
     }
-    depth = closing ? Math.max(0, depth - 1) : depth + 1;
-    deepest = Math.max(deepest, depth);
+    if (!closing) {
+      open.push(name);
+      if (open.length > MAX_NESTING) {
+        return true;
+      }
+      continue;
+    }
+    if (open[open.length - 1] === name) {
+      open.pop();
+      continue;
+    }
+    if (++misnested > MAX_MISNESTED) {
+      return true;
+    }
+    const at = open.lastIndexOf(name);
+    if (at !== -1) {
+      open.length = at;
+    }
   }
-  return deepest;
+  return false;
 };
 
 export const sanitizePostContent = (value: unknown): string => {
@@ -73,10 +104,13 @@ export const sanitizePostContent = (value: unknown): string => {
     return '';
   }
 
-  // Past the limit the tags go and the text stays, so the parser below only
-  // ever sees flat markup.
-  const markup =
-    nestingDepth(value) > MAX_NESTING ? value.replace(/<[^<>]*>/g, ' ') : value;
+  // Past any limit the tags go and the text stays, so the parser below only
+  // ever sees markup it handles quickly. Content longer than any post is cut
+  // first: callers that take content from a request refuse it before this.
+  const bounded = value.slice(0, MAX_POST_CONTENT_LENGTH);
+  const markup = tooTangled(bounded)
+    ? bounded.replace(/<[^<>]*>/g, ' ')
+    : bounded;
 
   // A block tag the editor doesn't know would be dropped with its text kept,
   // gluing its line to the next one, so it becomes a paragraph the way the
