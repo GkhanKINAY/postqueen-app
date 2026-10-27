@@ -22,9 +22,14 @@ afterEach(() => {
 });
 
 describe('the visitor cookies of /t', () => {
-  it('sets only the track cookie while the pixel is off', () => {
+  it('sets only the cookies it always set while the pixel is off', () => {
     delete process.env.FACEBOOK_PIXEL_ACCESS_TOKEN;
     delete process.env.NEXT_PUBLIC_FACEBOOK_PIXEL;
+    applyTrackCookies(req(), res, 'abc');
+    assert.deepEqual(Object.keys(set).sort(), ['fbclid', 'track']);
+    assert.equal(set.fbclid.value, 'abc');
+    assert.equal(set.fbclid.options.httpOnly, true);
+    set = {};
     const ids = applyTrackCookies(req({ fbclid: 'old' }), res, 'abc');
     assert.deepEqual(Object.keys(set), ['track']);
     assert.equal(set.track.options.httpOnly, true);

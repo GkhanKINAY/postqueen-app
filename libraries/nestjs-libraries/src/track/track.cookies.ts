@@ -27,8 +27,8 @@ const cookieOptions = (expiresInDays: number, httpOnly: boolean) => ({
 // create them, and the server events would lose the ad click and the browser
 // id. They are not httpOnly because the pixel (when it loads) reuses them and
 // the billing page reads them for the Stripe metadata. They are only written
-// while the pixel is on (isMetaPixelEnabled); while it is off this sets the
-// track cookie and nothing else, as before.
+// while the pixel is on (isMetaPixelEnabled); while it is off this keeps the
+// cookies the endpoint always set (track, and the ad click as fbclid).
 export const applyTrackCookies = (
   req: Request,
   res: Response,
@@ -41,6 +41,9 @@ export const applyTrackCookies = (
 
   const currentFbc = req?.cookies?._fbc;
   if (!isMetaPixelEnabled()) {
+    if (fbclid && !req?.cookies?.fbclid) {
+      res.cookie('fbclid', fbclid, cookieOptions(365, true));
+    }
     return {
       uniqueId,
       // the fbclid cookie was set by older versions of this endpoint

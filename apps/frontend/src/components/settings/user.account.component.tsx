@@ -82,16 +82,21 @@ const providerLabel = (
   }
 };
 
-// Every IANA zone the browser knows, with its offset right now. The saved one
-// is kept even when this browser does not list it, so the select can show it.
+// Every IANA zone the browser knows, with its offset right now. Chrome's list
+// has no UTC, so it is added. The saved one is kept even when this browser
+// does not list it, so the select can show it.
 const timezoneOptions = (saved: string) => {
   const intl = Intl as typeof Intl & {
     supportedValuesOf?: (key: 'timeZone') => string[];
   };
-  const zones = intl.supportedValuesOf?.('timeZone') || [];
-  const all = saved && !zones.includes(saved) ? [saved, ...zones] : zones;
+  const listed = intl.supportedValuesOf?.('timeZone') || [];
+  const zones = listed.includes('UTC') ? listed : ['UTC', ...listed];
+  const all =
+    saved && !zones.includes(saved) && isTimezone(saved)
+      ? [saved, ...zones]
+      : zones;
   const now = Date.now();
-  return all.filter(isTimezone).map((zone) => {
+  return all.map((zone) => {
     const offset = new Intl.DateTimeFormat('en-US', {
       timeZone: zone,
       timeZoneName: 'shortOffset',
@@ -132,8 +137,8 @@ export const UserAccountComponent = () => {
   const router = useRouter();
   const search = useSearchParams();
   const detectedTz = useMemo(() => browserTimezone(), []);
-  const [timezoneName, setTimezoneName] = useState(user?.timezoneName || '');
-  const [savingTimezone, setSavingTimezone] = useState(false);
+  // The zone being saved; the select shows the stored one otherwise.
+  const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
   const zones = useMemo(
     () => timezoneOptions(user?.timezoneName || ''),
     [user?.timezoneName]
@@ -155,10 +160,6 @@ export const UserAccountComponent = () => {
   useEffect(() => {
     setName(user?.name || '');
   }, [user?.name]);
-
-  useEffect(() => {
-    setTimezoneName(user?.timezoneName || '');
-  }, [user?.timezoneName]);
 
   useEffect(() => {
     const confirmEmail = search.get('confirmEmail');
@@ -255,15 +256,13 @@ export const UserAccountComponent = () => {
 
   const saveTimezone = useCallback(
     async (value: string) => {
-      setTimezoneName(value);
-      setSavingTimezone(true);
+      setPendingTimezone(value);
       const res = await fetch('/user/timezone', {
         method: 'POST',
         body: JSON.stringify({ timezoneName: value || null }),
-      });
-      if (!res.ok) {
-        setSavingTimezone(false);
-        setTimezoneName(user?.timezoneName || '');
+      }).catch((): null => null);
+      if (!res?.ok) {
+        setPendingTimezone(null);
         toaster.show(
           t('could_not_save_timezone', 'Could not save the timezone'),
           'warning'
@@ -275,7 +274,7 @@ export const UserAccountComponent = () => {
       setUserTimezone(value || null);
       window.location.reload();
     },
-    [fetch, toaster, t, user?.timezoneName]
+    [fetch, toaster, t]
   );
 
   const requestEmail = useCallback(async () => {
@@ -768,13 +767,13 @@ export const UserAccountComponent = () => {
         <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
           {t(
             'timezone_display_description',
-            'How dates and times are shown, notifications included. Posting times already set for a channel stay at the same moment.'
+            'How dates and times are shown in the app. Posting times already set for a channel stay at the same moment.'
           )}
         </div>
         <select
           aria-label={t('timezone', 'Timezone')}
-          value={timezoneName}
-          disabled={savingTimezone}
+          value={pendingTimezone ?? (user?.timezoneName || '')}
+          disabled={pendingTimezone !== null}
           onChange={(event) => void saveTimezone(event.target.value)}
           className={clsx(modalFieldClass, 'mt-[12px] disabled:opacity-60')}
         >
@@ -784,8 +783,9 @@ export const UserAccountComponent = () => {
               interpolation: { escapeValue: false },
             })}
           </option>
+          {/* A zone name and its offset read left to right in he/ar too. */}
           {zones.map(({ zone, label }) => (
-            <option key={zone} value={zone}>
+            <option key={zone} value={zone} dir="ltr">
               {label}
             </option>
           ))}
