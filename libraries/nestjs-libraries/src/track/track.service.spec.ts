@@ -69,4 +69,15 @@ describe('the Meta Conversions API', () => {
       new TrackService().track('e1', '1.1.1.1', 'UA', TrackEnum.Purchase, {})
     );
   });
+
+  it('takes only the events a browser sees from /t', async () => {
+    const service = new TrackService();
+    for (const tt of [TrackEnum.StartTrial, TrackEnum.Purchase]) {
+      await service.trackBrowserEvent('e1', '1.1.1.1', 'UA', tt, { value: 999 });
+    }
+    assert.equal(sent.length, 0);
+
+    await service.trackBrowserEvent('e2', '1.1.1.1', 'UA', TrackEnum.InitiateCheckout, {});
+    assert.equal(sent.length, 1);
+  });
 });

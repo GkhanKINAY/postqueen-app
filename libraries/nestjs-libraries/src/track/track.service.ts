@@ -1,8 +1,22 @@
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { User } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { META_GRAPH_API_VERSION } from '@gitroom/nestjs-libraries/integrations/social/facebook.provider';
+
+// Both the pixel and its token: without them nothing is tracked, and callers
+// skip the lookups they would do for it.
+export const isMetaPixelEnabled = () =>
+  !!process.env.FACEBOOK_PIXEL_ACCESS_TOKEN &&
+  !!process.env.NEXT_PUBLIC_FACEBOOK_PIXEL;
+
+// What a browser may report through /t. StartTrial and Purchase are sent only
+// by the Stripe webhooks, so a request cannot invent a sale.
+const BROWSER_EVENTS = [
+  TrackEnum.ViewContent,
+  TrackEnum.CompleteRegistration,
+  TrackEnum.InitiateCheckout,
+];
 
 // The Conversions API is called directly instead of through
 // facebook-nodejs-business-sdk: the SDK registers a process wide
@@ -23,6 +37,23 @@ export class TrackService {
     return fbc.startsWith('fb.') ? fbc : `fb.1.${Date.now()}.${fbc}`;
   }
 
+  // An event the browser reports, through /t: only the ones a browser sees.
+  trackBrowserEvent(
+    uniqueId: string,
+    ip: string,
+    agent: string,
+    tt: TrackEnum,
+    additional: Record<string, any>,
+    fbc?: string,
+    user?: User,
+    fbp?: string
+  ) {
+    if (!BROWSER_EVENTS.includes(Number(tt))) {
+      return Promise.resolve();
+    }
+    return this.track(uniqueId, ip, agent, tt, additional, fbc, user, fbp);
+  }
+
   // Never throws and never rejects: a pixel failure (bad token, Meta outage,
   // timeout) must not break the request or the webhook that fired it, so
   // callers fire it in the background.
@@ -40,7 +71,7 @@ export class TrackService {
     const pixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL;
     const userAgent = agent || user?.agent;
     // website events are rejected without a user agent
-    if (!accessToken || !pixelId || !userAgent) {
+    if (!isMetaPixelEnabled() || !userAgent) {
       return;
     }
 
@@ -87,16 +118,24 @@ export class TrackService {
       );
 
       if (!response.ok) {
-        console.error(
-          `Facebook pixel rejected ${TrackEnum[tt]}:`,
-          await response.text()
+        // Only Meta's error codes: its message can describe the user data it
+        // refused, and error lines go to Sentry.
+        const { error } = await response.json().catch(() => ({}) as any);
+        Logger.warn(
+          `[pixel] Meta refused ${TrackEnum[tt]}: ${response.status} ${JSON.stringify({
+            code: error?.code,
+            subcode: error?.error_subcode,
+            trace: error?.fbtrace_id,
+          })}`
         );
         return;
       }
 
       await response.body?.cancel();
-    } catch (err) {
-      console.error(`Facebook pixel failed to send ${TrackEnum[tt]}:`, err);
+    } catch (err: any) {
+      Logger.warn(
+        `[pixel] could not send ${TrackEnum[tt]}: ${String(err?.name || err)}`
+      );
     }
   }
 }

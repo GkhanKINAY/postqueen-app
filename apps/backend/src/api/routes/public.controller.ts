@@ -181,7 +181,7 @@ export class PublicController {
     const uniqueId = req?.cookies?.track || makeId(10);
     const fbc = req?.cookies?._fbc || req?.cookies?.fbclid || body.fbclid;
     this._trackService
-      .track(
+      .trackBrowserEvent(
         uniqueId,
         ip,
         userAgent,

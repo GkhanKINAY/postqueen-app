@@ -26,7 +26,10 @@ import {
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
-import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
+import {
+  isMetaPixelEnabled,
+  TrackService,
+} from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
@@ -3311,6 +3314,9 @@ export class StripeService extends PaymentProviderAbstract {
     invoice: Stripe.Invoice,
     subscription: Stripe.Subscription
   ) {
+    if (!isMetaPixelEnabled()) {
+      return;
+    }
     try {
       // Invoices of the other services sharing the Stripe account stop here.
       if (
@@ -3346,11 +3352,9 @@ export class StripeService extends PaymentProviderAbstract {
           currency: invoice.currency,
         }
       );
-    } catch (err) {
-      console.error(
-        'stripe_pixel_conversion_failed',
-        { stripe_invoice_id: invoice.id },
-        err
+    } catch (err: any) {
+      Logger.warn(
+        `[stripe] pixel conversion for ${invoice.id} not sent: ${err?.message}`
       );
     }
   }
@@ -3364,6 +3368,9 @@ export class StripeService extends PaymentProviderAbstract {
     tt: TrackEnum,
     additional: Record<string, any>
   ) {
+    if (!isMetaPixelEnabled()) {
+      return;
+    }
     try {
       const { userId, fbc, fbp } = metadata || {};
       if (!userId) {
@@ -3385,11 +3392,9 @@ export class StripeService extends PaymentProviderAbstract {
         user,
         fbp
       );
-    } catch (err) {
-      console.error(
-        'stripe_pixel_event_failed',
-        { stripe_object_id: eventId, event: TrackEnum[tt] },
-        err
+    } catch (err: any) {
+      Logger.warn(
+        `[stripe] pixel ${TrackEnum[tt]} for ${eventId} not sent: ${err?.message}`
       );
     }
   }

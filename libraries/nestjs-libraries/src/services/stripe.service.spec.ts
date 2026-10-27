@@ -2307,6 +2307,24 @@ describe('the Meta pixel conversion', () => {
 
   beforeEach(() => {
     tracked = [];
+    process.env.FACEBOOK_PIXEL_ACCESS_TOKEN = 'token';
+    process.env.NEXT_PUBLIC_FACEBOOK_PIXEL = '123';
+  });
+  afterEach(() => {
+    delete process.env.FACEBOOK_PIXEL_ACCESS_TOKEN;
+    delete process.env.NEXT_PUBLIC_FACEBOOK_PIXEL;
+  });
+
+  it('asks Stripe and the database nothing while the pixel is off', async () => {
+    delete process.env.FACEBOOK_PIXEL_ACCESS_TOKEN;
+    subscriptionInvoices = [invoice('in_first', 4900)];
+    await tracking().trackConversion(
+      invoice('in_first', 4900),
+      subscription({ service: 'postqueen' }),
+    );
+
+    assert.equal(called('invoices.list').length, 0);
+    assert.equal(tracked.length, 0);
   });
 
   it('is sent for the first paid invoice, with the checkout cookies', async () => {
