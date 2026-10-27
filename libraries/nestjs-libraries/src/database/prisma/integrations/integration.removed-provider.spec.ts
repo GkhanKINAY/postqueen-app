@@ -73,8 +73,6 @@ const service = (repository: Record<string, unknown>) =>
     {}
   );
 
-const settle = () => new Promise((resolve) => setImmediate(resolve));
-
 describe(
   'Channels of a provider the build no longer has',
   { skip: !canLoadService },
@@ -89,19 +87,6 @@ describe(
       );
     });
 
-    it('are switched off at boot when their network is retired', async () => {
-      const asked: string[][] = [];
-      service({
-        disableChannelsOfProviders: async (providers: string[]) => {
-          asked.push(providers);
-          return 1;
-        },
-        syncStoredTokenEncryption: async () => 0,
-      }).onModuleInit();
-      await settle();
-      assert.deepEqual(asked, [RETIRED_PROVIDERS]);
-    });
-
     it('never retire a provider the build still has', () => {
       // A provider merely unknown to a build (an older one, after a rollback)
       // is never written: only the retired list is.
@@ -113,25 +98,26 @@ describe(
       );
     });
 
-    it('never fail the boot when the switch-off fails', async () => {
-      service({
-        disableChannelsOfProviders: async () => {
-          throw new Error('database unreachable');
+    it('are looked up by the retired list at boot', async () => {
+      const asked: string[][] = [];
+      await service({
+        getLiveChannelsOfProviders: async (providers: string[]) => {
+          asked.push(providers);
+          return [];
         },
-        syncStoredTokenEncryption: async () => 0,
-      }).onModuleInit();
-      await settle();
+      }).getRetiredChannels();
+      assert.deepEqual(asked, [RETIRED_PROVIDERS]);
     });
 
-    it('are switched off only while live and on', async () => {
+    it('are found while live, whether on or off', async () => {
       const calls: any[] = [];
       const repository = new IntegrationRepository(
         {
           model: {
             integration: {
-              updateMany: async (args: unknown) => {
+              findMany: async (args: unknown) => {
                 calls.push(args);
-                return { count: 2 };
+                return [{ id: 'b', organizationId: 'org' }];
               },
             },
           },
@@ -146,15 +132,18 @@ describe(
         {},
         {}
       );
-      assert.equal(await repository.disableChannelsOfProviders(['gone']), 2);
+      assert.deepEqual(await repository.getLiveChannelsOfProviders(['gone']), [
+        { id: 'b', organizationId: 'org' },
+      ]);
+      // No `disabled` filter: a channel a downgrade switched off keeps its
+      // autoDisabledAt and would come back on with an upgrade.
       assert.deepEqual(calls, [
         {
           where: {
             providerIdentifier: { in: ['gone'] },
             deletedAt: null,
-            disabled: false,
           },
-          data: { disabled: true },
+          select: { id: true, organizationId: true },
         },
       ]);
     });

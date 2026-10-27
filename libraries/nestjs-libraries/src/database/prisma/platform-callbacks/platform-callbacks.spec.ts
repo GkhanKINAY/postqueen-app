@@ -25,6 +25,8 @@ let calls: unknown[][];
 let stored: Record<string, unknown>[];
 let channels: Record<string, unknown>[];
 let failOn: string | undefined;
+let retired: Record<string, unknown>[];
+let deleteFailsOn: string | undefined;
 
 const service = () =>
   new PlatformCallbacksService(
@@ -50,6 +52,10 @@ const service = () =>
       getPlatformCallbackProviders: async () => ['app', 'app-sibling'],
     } as any,
     {
+      getRetiredChannels: async () => {
+        calls.push(['findRetired']);
+        return retired;
+      },
       getIntegrationsByPlatformUser: async (providers: string[], id: string) => {
         calls.push(['find', providers, id]);
         return channels;
@@ -57,8 +63,12 @@ const service = () =>
       getPostsForChannel: async (org: string, id: string) => [
         { group: `group-${id}` },
       ],
-      deleteChannel: async (org: string, id: string) =>
-        calls.push(['deleteChannel', org, id]),
+      deleteChannel: async (org: string, id: string) => {
+        if (id === deleteFailsOn) {
+          throw new Error('database went away');
+        }
+        calls.push(['deleteChannel', org, id]);
+      },
       eraseChannelData: async (org: string, id: string) => {
         if (id === failOn) {
           throw new Error('database went away');
@@ -82,6 +92,8 @@ beforeEach(() => {
   calls = [];
   stored = [];
   failOn = undefined;
+  retired = [];
+  deleteFailsOn = undefined;
   channels = [
     { id: 'live', organizationId: 'org-1', deletedAt: null },
     { id: 'removed', organizationId: 'org-2', deletedAt: new Date() },
@@ -182,5 +194,45 @@ describe('platform deauthorize', () => {
   it('turns a request the app did not sign away with 400', async () => {
     await assert.rejects(service().deauthorize('app', 'x.y'), rejectsWith(400));
     assert.deepEqual(calls, []);
+  });
+});
+
+describe('channels of a retired network', () => {
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+  it('are removed at boot the way a platform removal does', async () => {
+    retired = [
+      { id: 'old-1', organizationId: 'org-1' },
+      { id: 'old-2', organizationId: 'org-2' },
+    ];
+    service().onModuleInit();
+    await settle();
+
+    assert.deepEqual(calls, [
+      ['findRetired'],
+      ['deletePosts', 'org-1', ['group-old-1']],
+      ['deleteChannel', 'org-1', 'old-1'],
+      ['deletePosts', 'org-2', ['group-old-2']],
+      ['deleteChannel', 'org-2', 'old-2'],
+    ]);
+  });
+
+  it('carry on past a channel that fails, and never fail the boot', async () => {
+    retired = [
+      { id: 'old-1', organizationId: 'org-1' },
+      { id: 'old-2', organizationId: 'org-2' },
+    ];
+    deleteFailsOn = 'old-1';
+    service().onModuleInit();
+    await settle();
+
+    assert.deepEqual(calls.slice(-1), [['deleteChannel', 'org-2', 'old-2']]);
+  });
+
+  it('do nothing where none is left', async () => {
+    service().onModuleInit();
+    await settle();
+
+    assert.deepEqual(calls, [['findRetired']]);
   });
 });

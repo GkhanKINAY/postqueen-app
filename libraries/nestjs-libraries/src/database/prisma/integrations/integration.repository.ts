@@ -1449,17 +1449,18 @@ export class IntegrationRepository {
     return createHash('md5').update(value).digest('hex');
   }
 
-  /** Switches off the live channels of the given providers. Returns how many. */
-  async disableChannelsOfProviders(providers: string[]) {
-    const { count } = await this._integration.model.integration.updateMany({
+  /** The channels of the given providers a workspace has not removed, on or off. */
+  getLiveChannelsOfProviders(providers: string[]) {
+    return this._integration.model.integration.findMany({
       where: {
         providerIdentifier: { in: providers },
         deletedAt: null,
-        disabled: false,
       },
-      data: { disabled: true },
+      select: {
+        id: true,
+        organizationId: true,
+      },
     });
-    return count;
   }
 
   /**

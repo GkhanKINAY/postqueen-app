@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { createHash } from 'crypto';
 import { PlatformCallbacksRepository } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.repository';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
@@ -13,13 +19,58 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
  * (`verifyPlatformCallback`); everything here works on the channels it names.
  */
 @Injectable()
-export class PlatformCallbacksService {
+export class PlatformCallbacksService implements OnModuleInit {
   constructor(
     private _platformCallbacksRepository: PlatformCallbacksRepository,
     private _integrationManager: IntegrationManager,
     private _integrationService: IntegrationService,
     private _postsService: PostsService
   ) {}
+
+  /**
+   * A network removed from the code (RETIRED_PROVIDERS) can leave channels
+   * behind in a database that had it. Nothing can publish to them any more,
+   * so they go the way a platform's own removal does: their posts first, which
+   * also ends the workflows still waiting on a task queue no worker serves,
+   * then the channel and its credentials. Once removed, a channel is out of
+   * every list, refresh and notice. Not awaited, so boot never waits on it; a
+   * channel that fails is left for the next boot, and where no such channel
+   * exists it does nothing.
+   */
+  onModuleInit() {
+    this.removeRetiredChannels().catch((err) =>
+      Logger.error(
+        `Could not remove the channels of retired networks: ${err?.message}`,
+        'PlatformCallbacksService'
+      )
+    );
+  }
+
+  private async removeRetiredChannels() {
+    const channels = await this._integrationService.getRetiredChannels();
+
+    let removed = 0;
+    for (const channel of channels) {
+      try {
+        await this.removeChannel(channel.organizationId, channel.id);
+        removed++;
+      } catch (err) {
+        Logger.warn(
+          `Could not remove channel ${channel.id} of a retired network: ${
+            (err as Error)?.message
+          }`,
+          'PlatformCallbacksService'
+        );
+      }
+    }
+
+    if (removed) {
+      Logger.log(
+        `Removed ${removed} channel(s) of a retired network`,
+        'PlatformCallbacksService'
+      );
+    }
+  }
 
   // Removes every channel the user connected, the way removing it in the app
   // does, then erases what the channel arrived with. Channels a workspace had

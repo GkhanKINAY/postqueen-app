@@ -108,8 +108,6 @@ export class IntegrationService implements OnModuleInit {
    * never waits on it; a failure is logged and the next boot tries again.
    */
   onModuleInit() {
-    this.disableRetiredProviders();
-
     const encrypt = isIntegrationTokenEncryptionEnabled();
     this._integrationRepository
       .syncStoredTokenEncryption(encrypt)
@@ -124,33 +122,6 @@ export class IntegrationService implements OnModuleInit {
       .catch((err) =>
         Logger.error(
           `Could not sync stored channel token encryption: ${err?.message}`,
-          'IntegrationService'
-        )
-      );
-  }
-
-  /**
-   * A network removed from the code (RETIRED_PROVIDERS) can leave channels
-   * behind in a database that had it. Nothing can publish to them any more, so
-   * they are switched off: every post workflow checks `disabled` before it
-   * reaches a provider, and a post still waiting on one of them ends as
-   * "Channel disabled" instead of waiting on a task queue no worker serves. Not
-   * awaited, like the token sync, and a no-op where no such channel exists.
-   */
-  private disableRetiredProviders() {
-    this._integrationRepository
-      .disableChannelsOfProviders(RETIRED_PROVIDERS)
-      .then((count) => {
-        if (count) {
-          Logger.log(
-            `Switched off ${count} channel(s) of a retired network`,
-            'IntegrationService'
-          );
-        }
-      })
-      .catch((err) =>
-        Logger.error(
-          `Could not switch off the channels of retired networks: ${err?.message}`,
           'IntegrationService'
         )
       );
@@ -972,6 +943,14 @@ export class IntegrationService implements OnModuleInit {
 
   async getPostsForChannel(org: string, id: string) {
     return this._integrationRepository.getPostsForChannel(org, id);
+  }
+
+  // The channels of networks removed from the code (RETIRED_PROVIDERS) that a
+  // workspace has not removed itself.
+  getRetiredChannels() {
+    return this._integrationRepository.getLiveChannelsOfProviders(
+      RETIRED_PROVIDERS
+    );
   }
 
   // Removing a channel also gives up PostQueen's access at the platform, for
