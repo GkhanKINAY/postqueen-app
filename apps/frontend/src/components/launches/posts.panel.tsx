@@ -2,7 +2,6 @@
 
 import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import clsx from 'clsx';
-import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
@@ -38,6 +37,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 /**
  * The posts panel — the design's permanent column beside the calendar.
@@ -425,7 +425,7 @@ const QueueCard: FC<{
       item: {
         id: post.id,
         interval: !!post.intervalInDays,
-        date: dayjs.utc(post.publishDate).local(),
+        date: fromUtc(post.publishDate),
         state: post.state,
         source: 'list' as const,
       },
@@ -465,7 +465,7 @@ const QueueCard: FC<{
           className="size-[20px] shrink-0 rounded-full object-cover"
         />
         <span className="min-w-0 flex-1 truncate text-[11.5px] text-pqMuted">
-          {formatShortWeekdayTime(dayjs.utc(post.publishDate).local())}
+          {formatShortWeekdayTime(fromUtc(post.publishDate))}
         </span>
         <span
           className={clsx(

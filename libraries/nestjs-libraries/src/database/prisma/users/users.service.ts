@@ -8,6 +8,7 @@ import { UsersRepository } from '@gitroom/nestjs-libraries/database/prisma/users
 import { Provider, Role } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 import { ProductNewsDto } from '@gitroom/nestjs-libraries/dtos/users/product-news.dto';
 import { ChangePasswordDto } from '@gitroom/nestjs-libraries/dtos/users/change.password.dto';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
@@ -304,6 +305,10 @@ export class UsersService {
 
   updateEmailNotifications(userId: string, body: EmailNotificationsDto) {
     return this._usersRepository.updateEmailNotifications(userId, body);
+  }
+
+  updateTimezone(userId: string, body: TimezoneDto) {
+    return this._usersRepository.updateTimezone(userId, body);
   }
 
   async getProductNews(email: string) {

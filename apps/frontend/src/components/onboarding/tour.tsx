@@ -38,6 +38,7 @@ import {
   tourIsHuge,
   type TourRect,
 } from './tour.layout';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 export { STEPS, TOUR_COPY, type StepMeta } from './tour.steps';
 
@@ -89,7 +90,7 @@ const PENDING_KEY = 'pq-tour-pending';
  * onto dayjs by the calendar, and this module can load first.
  */
 const demoWeekRange = () => {
-  const next = dayjs().add(1, 'week');
+  const next = newDayjs().add(1, 'week');
   const monday = next.subtract((next.day() + 6) % 7, 'day');
   return `startDate=${monday.format('YYYY-MM-DD')}&endDate=${monday
     .add(6, 'day')

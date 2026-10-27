@@ -17,7 +17,7 @@ import {
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useRouter } from 'next/navigation';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { BillingNotConfigured } from './billing.not.configured';
 import { BillingPortalRow } from './billing.portal.row';
@@ -321,7 +321,7 @@ export const FoundingMember: FC<{
   if (memberSince) {
     facts.push([
       t('lt_member_since', 'MEMBER SINCE'),
-      newDayjs(memberSince).local().format('D MMM YYYY'),
+      fromUtc(memberSince).format('D MMM YYYY'),
       false,
     ]);
   }

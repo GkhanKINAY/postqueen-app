@@ -8,7 +8,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import {
   CREDIT_PACK_MONTHS,
   CREDIT_PACKS,
@@ -242,9 +242,7 @@ export const CreditsPacksCard: FC<{ tier?: string; period?: string }> = ({
                   '{{amount}} of them expire on {{date}}',
                   {
                     amount: formatCredits(data.expiring.amount),
-                    date: newDayjs(data.expiring.at)
-                      .local()
-                      .format('D MMM, YYYY'),
+                    date: fromUtc(data.expiring.at).format('D MMM, YYYY'),
                   },
                 )}
               </div>

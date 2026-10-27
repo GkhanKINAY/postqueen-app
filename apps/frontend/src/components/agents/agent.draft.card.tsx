@@ -3,8 +3,6 @@
 import { FC, useContext, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import clsx from 'clsx';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
 import { FormProvider, useForm } from 'react-hook-form';
 import { PropertiesContext } from '@gitroom/frontend/components/agents/agent';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
@@ -22,8 +20,10 @@ import { getProviderSettingsMeta } from '@gitroom/frontend/components/new-launch
 import { GeneralPreviewComponent } from '@gitroom/frontend/components/launches/general.preview.component';
 import { ChevronDownIcon } from '@gitroom/frontend/components/ui/icons';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
-
-dayjs.extend(utc);
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 
 /** One row of the `manualPosting` tool call: one channel, one date. */
 export type AgentDraftItem = {
@@ -243,7 +243,7 @@ const AgentPostPreview: FC<{
   });
   const contextValue = useMemo(
     () => ({
-      date: group.date ? dayjs.utc(group.date).local() : dayjs(),
+      date: group.date ? fromUtc(group.date) : newDayjs(),
       integration: channel,
       allIntegrations,
       value: group.posts.map((post, index) => ({
@@ -544,7 +544,7 @@ const DraftGroupView: FC<{
   const { formatDateTime } = useDateFormat();
   const when = (date?: string) =>
     date
-      ? formatDateTime(dayjs.utc(date).local())
+      ? formatDateTime(fromUtc(date))
       : t('next_free_slot', 'Next free slot');
   const known = channels.filter(Boolean);
   const text = previewText(group.posts[0]?.content);

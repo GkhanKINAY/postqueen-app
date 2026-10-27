@@ -10,7 +10,7 @@ import {
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { trialWindow } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
-import dayjs from 'dayjs';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 export type TrialLockCardProps = {
   /** Short name for titles/CTAs — e.g. "X", "AI Copilot". */
@@ -55,7 +55,7 @@ export const TrialLockCard: FC<TrialLockCardProps> = ({
     const d = typeof endsAt === 'string' ? new Date(endsAt) : endsAt;
     const formatted = Number.isNaN(d.getTime())
       ? null
-      : dayjs(d).format(shortDatePattern());
+      : newDayjs(d).format(shortDatePattern());
     foot = formatted
       ? t(
           'or_wait_unlocks_on_date',

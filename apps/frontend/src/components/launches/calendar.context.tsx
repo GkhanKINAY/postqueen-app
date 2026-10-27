@@ -26,7 +26,10 @@ import isoWeek from 'dayjs/plugin/isoWeek';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import { extend } from 'dayjs';
 import useCookie from 'react-use-cookie';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
 import {
@@ -43,7 +46,7 @@ extend(isoWeek);
 extend(weekOfYear);
 
 function localDayKey(publishDate: string | Date) {
-  return dayjs.utc(publishDate).local().format('YYYY-MM-DD');
+  return fromUtc(publishDate).format('YYYY-MM-DD');
 }
 
 // A post the platform has been handed but has not confirmed yet: QUEUE with its
@@ -160,7 +163,7 @@ function postInListRange(
   range: ListRangeFilter,
   weekStart: dayjs.Dayjs
 ) {
-  const d = dayjs.utc(publishDate).local().startOf('day');
+  const d = fromUtc(publishDate).startOf('day');
   const today = newDayjs().startOf('day');
   if (range === 'all') return true;
   if (range.startsWith('day:')) {
@@ -230,6 +233,9 @@ export const CalendarContext = createContext({
       }[];
     }
   >,
+  // the publish date of each post, in the user's timezone. Keyed by the post
+  // itself, the occurrences of a recurring post share the same id
+  postDates: new Map<object, dayjs.Dayjs>(),
   reloadCalendarView: () => {
     /** empty **/
   },
@@ -1031,6 +1037,16 @@ export const CalendarWeekProvider: FC<{
     return base.filter((p) => matchChannel(p));
   }, [calendarIsLoading, internalData, matchChannel]);
 
+  // every calendar cell looks for its posts in the whole list, so the dates
+  // are parsed once here instead of in each cell
+  const postDates = useMemo(
+    () =>
+      new Map<object, dayjs.Dayjs>(
+        internalData.map((post: Post) => [post, fromUtc(post.publishDate)])
+      ),
+    [internalData]
+  );
+
   return (
     <CalendarContext.Provider
       value={{
@@ -1039,6 +1055,7 @@ export const CalendarWeekProvider: FC<{
         dropPostGroupFromView,
         ...filters,
         posts: calendarPosts,
+        postDates,
         loading,
         integrations,
         setFilters: setFiltersWrapper,

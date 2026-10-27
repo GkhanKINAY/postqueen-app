@@ -8,7 +8,6 @@ import React, {
 import dynamic from 'next/dynamic';
 import { useSWRConfig } from 'swr';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import dayjs from 'dayjs';
 import { isPostsSwrKey } from '@gitroom/frontend/components/launches/posts-swr';
 import { CalendarWeekProvider } from '@gitroom/frontend/components/launches/calendar.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -31,6 +30,7 @@ import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anch
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 /**
  * The generator and the set picker are heavy and this control now renders on
@@ -401,7 +401,7 @@ export const NewPost = () => {
           mutate={reloadCalendarView}
           integrations={list}
           when="next"
-          date={dayjs.utc(date).local()}
+          date={fromUtc(date)}
         />
       ),
       size: '80%',

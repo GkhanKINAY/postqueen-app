@@ -230,6 +230,7 @@ auto_plug
 auto_plugs
 auto_plugs_supported_channels
 auto_post
+automatic_timezone
 automations
 autopost
 autopost_added_successfully
@@ -514,7 +515,6 @@ client_secret
 close
 code_sent_to
 collapse
-coming_soon
 comment
 comment_delay_after
 comment_delete_failed
@@ -1505,6 +1505,7 @@ could_not_delete_account
 could_not_optimize_file
 could_not_save
 could_not_save_group
+could_not_save_timezone
 could_not_use_rss_feed
 create
 create_a_new_account
@@ -2652,7 +2653,6 @@ tiktok_video_volume
 time_slots_required
 time_table_slots
 timezone
-timezone_detected
 timezone_display_description
 title
 to_manage_all_your_social_media_channels

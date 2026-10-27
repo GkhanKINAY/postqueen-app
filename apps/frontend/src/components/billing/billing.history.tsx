@@ -7,7 +7,7 @@ import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 import { tierLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 
 /** One row of `GET /billing/invoices` (`PaymentInvoice` on the server). */
@@ -71,10 +71,7 @@ const formatAmount = (amount: number, currency: string) => {
   );
 };
 
-const formatDate = (unix: number) =>
-  newDayjs(unix * 1000)
-    .local()
-    .format('D MMM, YYYY');
+const formatDate = (unix: number) => fromUtc(unix * 1000).format('D MMM, YYYY');
 
 const InvoiceLink: FC<{ href: string; label: string; download?: boolean }> = ({
   href,

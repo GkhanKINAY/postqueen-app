@@ -943,5 +943,8 @@
   "media_settings_section_description": "Clique em uma mídia para definir o texto alternativo, ou a miniatura se for um vídeo.",
   "media_settings_section_tooltip": "As miniaturas se aplicam aos vídeos da publicação principal e são enviadas para cada canal que as aceita. O YouTube pode ignorá-las em vídeos que trata como Shorts (verticais, de até 3 minutos) sem que a publicação falhe, e exige um canal verificado por telefone para miniaturas personalizadas. Se o YouTube recusar a miniatura, o vídeo é publicado mesmo assim.",
   "youtube_thumbnail_overrides_media": "Esta publicação tem uma miniatura própria do YouTube, que substitui a miniatura definida nas configurações da mídia.",
-  "media_settings_saved_on_post": "Salvo nesta publicação. O arquivo não está na sua biblioteca de mídia."
+  "media_settings_saved_on_post": "Salvo nesta publicação. O arquivo não está na sua biblioteca de mídia.",
+  "timezone": "Fuso horário",
+  "automatic_timezone": "Automático ({{timezone}})",
+  "could_not_save_timezone": "Não foi possível salvar o fuso horário"
 }

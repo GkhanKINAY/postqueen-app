@@ -12,7 +12,6 @@ import {
 } from 'react';
 import Link from 'next/link';
 import clsx from 'clsx';
-import dayjs from 'dayjs';
 import { useClickAway } from '@uidotdev/usehooks';
 import ReactLoading from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -26,6 +25,7 @@ import {
 } from '@gitroom/frontend/components/notifications/notification.look';
 import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 const NotificationKindIcon: FC<{ kind: NotificationKind; unread: boolean }> = ({
   kind,
@@ -143,8 +143,8 @@ export const ShowNotification: FC<{
   const unread =
     !forceRead &&
     new Date(notification.createdAt) > new Date(unreadCutoff);
-  const createdAt = dayjs(notification.createdAt);
-  const isWithin24h = dayjs().diff(createdAt, 'hour') < 24;
+  const createdAt = newDayjs(notification.createdAt);
+  const isWithin24h = newDayjs().diff(createdAt, 'hour') < 24;
   const { mediumDateTimePattern } = useDateFormat();
   const t = useT();
   const fullDate = createdAt.format(mediumDateTimePattern());

@@ -16,7 +16,6 @@ import {
 import { modeEmitter } from '@gitroom/frontend/components/layout/mode.component';
 import useCookie from 'react-use-cookie';
 import { Button } from '@gitroom/react/form/button';
-import dayjs from 'dayjs';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { TRIAL_DAYS, pricing, tierLabel } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
@@ -27,6 +26,7 @@ import { CouponChrome } from '@gitroom/frontend/components/billing/coupon-chrome
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { Spinner } from '@gitroom/react/ui/spinner';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 export const EmbeddedBilling: FC<{
   stripe: Promise<Stripe>;
@@ -715,7 +715,7 @@ const PriceBreakdown: FC<{ coupon?: ReactNode }> = ({ coupon }) => {
   const taxAmount = checkout?.total?.taxExclusive?.amount || '$0.00';
   const nextBillingTotal = recurring?.dueNext?.total?.amount;
   const nextBillingDate = recurring?.trial?.trialEnd
-    ? dayjs(recurring.trial.trialEnd * 1000).format(longDateNoWeekdayPattern())
+    ? newDayjs(recurring.trial.trialEnd * 1000).format(longDateNoWeekdayPattern())
     : null;
   const billingInterval =
     recurring?.interval === 'month'
@@ -908,11 +908,11 @@ const AppliedCouponDisplay: FC<{
 
     if (expiresAt && typeof expiresAt === 'number') {
       const date = new Date(expiresAt * 1000);
-      return dayjs(date).format(longDateNoWeekdayPattern());
+      return newDayjs(date).format(longDateNoWeekdayPattern());
     }
 
     if (expiresAt && typeof expiresAt === 'string') {
-      return dayjs(expiresAt).format(longDateNoWeekdayPattern());
+      return newDayjs(expiresAt).format(longDateNoWeekdayPattern());
     }
 
     return null;
@@ -1196,7 +1196,7 @@ const SubmitBar: FC<{ loading: boolean }> = ({ loading }) => {
               {t('billing_your_7_day_trial_is', 'Your 7-day trial is')}{' '}
               {t('billing_100_percent_free', '100% free')}{' '}
               {t('billing_ending', 'ending')}{' '}
-              {dayjs(checkout.recurring!.trial!.trialEnd! * 1000).format(
+              {newDayjs(checkout.recurring!.trial!.trialEnd! * 1000).format(
                 'D MMM, YYYY'
               )}
             </div>
