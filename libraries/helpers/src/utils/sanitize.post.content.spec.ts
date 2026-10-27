@@ -79,6 +79,26 @@ describe('sanitizePostContent', () => {
     }
   });
 
+  it('stays fast and keeps the text on deeply nested markup', () => {
+    for (const input of [
+      'a<b>'.repeat(5_000),
+      'a<span>'.repeat(5_000),
+      '<li>x'.repeat(5_000),
+    ]) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+      assert.ok(!/<(b|span|li)>/.test(out));
+      assert.match(out, /a|x/);
+    }
+  });
+
+  it('keeps the markup the editor writes', () => {
+    const html =
+      '<p dir="auto">Hi <strong>you</strong></p><ul><li><p dir="auto">one</p></li></ul>';
+    assert.equal(sanitizePostContent(html), html);
+  });
+
   it('does not leave its picture rule on the shared instance', () => {
     sanitizePostContent('<img src="data:image/png;base64,AAAA">');
     // DOMPurify's defaults keep a data: picture; the post rule must not leak

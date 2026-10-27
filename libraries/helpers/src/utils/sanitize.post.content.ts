@@ -41,10 +41,42 @@ const dropImageWithoutUrl = (node: Node, data: { tagName: string }) => {
   }
 };
 
+// Tags that never take a closing tag, so they never nest.
+const VOID_TAGS = new Set(['br', 'img', 'hr', 'input', 'meta', 'link', 'wbr']);
+// The editor's output nests a handful of levels (a list item, a mention inside
+// bold inside a paragraph). jsdom's cost grows with the square of the nesting
+// and its recursion overflows the stack past a few thousand levels: `a<b>`
+// 2,000 times took two seconds, 5,000 times threw. The public preview
+// sanitizes stored content on every view, so that cost could be paid again by
+// anyone opening the link.
+const MAX_NESTING = 100;
+
+// How deep the markup nests, counted in one pass. An unclosed tag counts as
+// open, which is exactly the shape that makes the parser slow.
+const nestingDepth = (html: string) => {
+  let depth = 0;
+  let deepest = 0;
+  for (const [, closing, name, selfClosing] of html.matchAll(
+    /<(\/?)([a-zA-Z][\w-]*)[^<>]*?(\/?)>/g
+  )) {
+    if (VOID_TAGS.has(name.toLowerCase()) || selfClosing) {
+      continue;
+    }
+    depth = closing ? Math.max(0, depth - 1) : depth + 1;
+    deepest = Math.max(deepest, depth);
+  }
+  return deepest;
+};
+
 export const sanitizePostContent = (value: unknown): string => {
   if (typeof value !== 'string' || !value) {
     return '';
   }
+
+  // Past the limit the tags go and the text stays, so the parser below only
+  // ever sees flat markup.
+  const markup =
+    nestingDepth(value) > MAX_NESTING ? value.replace(/<[^<>]*>/g, ' ') : value;
 
   // A block tag the editor doesn't know would be dropped with its text kept,
   // gluing its line to the next one, so it becomes a paragraph the way the
@@ -54,7 +86,7 @@ export const sanitizePostContent = (value: unknown): string => {
   // for DOMPurify to unwrap, as before, once its inner ones are paragraphs.
   // Every scan stops at the next block tag (`[^<>]` in the opening tag, the
   // lookahead in the body), so hostile markup stays linear.
-  const paragraphs = value.replace(
+  const paragraphs = markup.replace(
     /<(div|section|article|blockquote|pre|h[4-6])\b[^<>]*>((?:(?!<\/?(?:div|section|article|blockquote|pre|h[1-6]|p|ul|ol|li)\b)[\s\S])*?)<\/\1\s*>/gi,
     '<p dir="auto">$2</p>'
   );
