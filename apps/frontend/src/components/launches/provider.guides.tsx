@@ -138,13 +138,6 @@ export const useProviderGuides = (): {
           'You must be an admin of the page.'
         ),
       },
-      reddit: {
-        summary: t('guide_reddit', 'Connects your Reddit account.'),
-        requirement: t(
-          'guide_reddit_req',
-          'Each subreddit has its own posting rules and flair requirements — those are chosen per post, not here.'
-        ),
-      },
       mastodon: {
         summary: t(
           'guide_mastodon',

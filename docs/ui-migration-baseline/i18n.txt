@@ -55,7 +55,6 @@ add_post
 add_provider_title
 add_selected_media
 add_signature
-add_subreddit
 add_tags
 add_team_member
 add_time_slot
@@ -216,7 +215,6 @@ are_you_sure_you_want_to_delete_the_image
 are_you_sure_you_want_to_delete_this_community
 are_you_sure_you_want_to_delete_this_farcaster_channel
 are_you_sure_you_want_to_delete_this_slot
-are_you_sure_you_want_to_delete_this_subreddit
 are_you_sure_you_want_to_logout
 assign_this_channel_to_a_customer
 attachments
@@ -1855,8 +1853,6 @@ guide_nostr_f_key
 guide_nostr_req
 guide_pinterest
 guide_pinterest_req
-guide_reddit
-guide_reddit_req
 guide_skool
 guide_skool_req
 guide_slack
@@ -1986,7 +1982,6 @@ lifetime_retention_charge_failed
 lifetime_retention_unlocked
 lifetime_window_closed
 lifetime_window_left
-link
 link_copied_to_clipboard
 linked
 links_will_be_removed_from
@@ -2259,7 +2254,6 @@ please_add
 please_add_at_least
 please_add_at_least_n_chars
 please_add_at_least_one_community
-please_add_at_least_one_subreddit
 please_add_the_following_command_in_your_chat
 please_check_your_email_to_activate_your_account
 please_fill_all_required_fields
@@ -2475,7 +2469,6 @@ select_all
 select_channels
 select_customer_label
 select_customer_tooltip
-select_flair
 select_frame
 select_local_integration
 select_matching_content

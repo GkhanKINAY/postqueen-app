@@ -7,7 +7,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useWatch } from 'react-hook-form';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { FormSection } from '@gitroom/react/form/form.section';
-export const Subreddit: FC<{
+export const LemmyCommunity: FC<{
   onChange: (event: {
     target: {
       name: string;

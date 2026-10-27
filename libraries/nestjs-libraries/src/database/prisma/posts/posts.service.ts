@@ -2665,7 +2665,7 @@ export class PostsService {
   async generatePostsDraft(orgId: string, body: CreateGeneratedPostsDto) {
     const getAllIntegrations = (
       await this._integrationService.getIntegrationsList(orgId)
-    ).filter((f) => !f.disabled && f.providerIdentifier !== 'reddit');
+    ).filter((f) => !f.disabled);
 
     // const posts = chunk(body.posts, getAllIntegrations.length);
     const allDates = dayjs()

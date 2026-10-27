@@ -178,7 +178,7 @@ statistics read `summary_metrics`, `8f92a37e`; Farcaster login and connect
 through Neynar managed signers, `2c2f788e` and four follow-ups), plus Facebook
 video/reel analytics, curated `(#200)` messages on Facebook and Instagram, a
 reconnect flag for Facebook channels holding a user token, TikTok's image-size
-check, Reddit's post type and subreddit names, Bluesky disconnecting only on a
+check, Bluesky disconnecting only on a
 4xx, Threads counted in UTF-8 bytes, Instagram collaborators on the carousel
 container, email claims for DCR clients on verified domains,
 `client_secret_basic` on the token endpoint, Sentry sampling, admin stats per
@@ -239,8 +239,8 @@ the video normalizer apply to it); and the superadmin debug endpoints
 From the 21: Facebook page analytics throws on a Graph error instead of
 caching an empty result, Facebook reels get statistics, Google Business posts
 link to Google's `searchUrl`, Slack's `ok: false` answers fail the post
-instead of marking it published, Reddit resolves a pasted `r/name` or URL,
-Sentry stops tracing MCP stream GETs and samples at 0.1, clipping asks for
+instead of marking it published, Sentry stops tracing MCP stream GETs and
+samples at 0.1, clipping asks for
 the fit before it starts and gets public API endpoints, and a multipart
 `.mov` or `.mp4` is accepted in either ISO brand.
 
@@ -295,7 +295,7 @@ opened before publishing with the MCP preview link that needs it (#265).
 What landed: platform errors mapped to readable reasons or the right outcome
 (Instagram checkpoints and container errors, five Facebook Graph rejections
 and a page without a page token, six X rejections plus Unauthorized media
-uploads, Threads container retries, Reddit RATELIMIT resubmits, Pinterest
+uploads, Threads container retries, Pinterest
 board ids, Lemmy, VK, Telegram and Dribbble); tag deletion cleaning up its
 post assignments; a deleted post group answering 404; the uploader not
 calling `clear()` mid-upload; three third-party errors kept away from
@@ -605,6 +605,21 @@ issues no new integration tokens, so the channel was removed whole:
 its guide, icons and i18n keys. Upstream still has it, so a commit of theirs
 that touches any of those files is a modify/delete conflict: drop it, do not
 restore the provider.
+
+**Reddit is gone from this fork (2026-10-27).** Reddit takes no new API access
+requests after 2026-10-31 and closes its public API in March 2027, and the
+hosted service never had its keys, so the channel was removed whole:
+`reddit.provider.ts`, `reddit.dto.ts`, the composer's `reddit/` folder, its
+guide, icon and i18n keys, and the `REDDIT_*` variables. Upstream still has it,
+so a commit of theirs that touches those files is a modify/delete conflict:
+drop it, do not restore the provider. Their edits to the shared files
+(`integration.manager.ts`, `all.providers.settings.ts`, `show.all.providers.tsx`,
+`sort.integrations.ts`, `channel-picture.ts`, `notification.look.ts`, the locale
+files, `.env.example`, `docker-compose.yaml`) are taken without its lines. Its
+identifier stays in `RETIRED_PROVIDERS` (`integration.manager.ts`), so channels
+a self-hosted database still has are switched off at boot. Lemmy and Farcaster
+keep the `subreddit` settings field and the `subreddits` tool: those names are
+stored post settings and public API, not the channel.
 
 **Clipping is taken without its processor (2026-09-19; `fc14ff16` and
 `dac36eda` on 2026-09-22).** `9aad99cd`, `f5d83b19` and `c7405ff9` (YouTube video to captioned vertical

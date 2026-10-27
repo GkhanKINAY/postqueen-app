@@ -223,10 +223,7 @@ checksums:
     music_usage_confirmation: 1cc8c2fcf278fa51e07ae031cbf65c52
     branded_content_policy: 154dfc786d23b49d5d27778dbc9de43e
     select_1: 85fef63f6a787f487438dbdc1ea61e27
-    select_flair: 5e76be533959a691fdf28f0eec9221c6
     link: 60f0aa33e70ca6df3b6659802b16f433
-    add_subreddit: 07cd3941d0509b92b56e9b77d4821f87
-    please_add_at_least_one_subreddit: e142943a891554b60b4ed454bcacea3e
     add_community: c99eed390de61bf1f2461ee6dc908aad
     select_post_type: 76bdff7f68f2ad4ae103b5486bdb2212
     we_couldn_t_find_any_business_connected_to_your_linkedin_page: ab9c8aefab51eafd55f7e176670a33d8
@@ -410,10 +407,7 @@ checksums:
     label_disclose_video_content: bb8d25e6abe604a08c2782ff3a7fd22e
     label_your_brand: 3a49f029f7f7a62ca218239d40d399f6
     label_branded_content: 794d5681b2fbd2b7a210bc6e241d0135
-    label_subreddit: 7eb0309838f4e21b602278d2fa573858
-    label_flair: edabd25885fcb4f80d1263313986fe4e
     label_media: f1cc01bf9a5ec0eb41ba765d4f3d7487
-    label_search_subreddit: 7e96075d0378d617867f8b0428aa4e3b
     label_delay: 1f5555aa1c03494d035b6a15df6989c8
     label_post_type: ce0cc8bdc8765a3a3ce919b78374d5ac
     label_collaborators: 1579997a43c473cb2aceb2d8b3a22dc8
@@ -475,7 +469,6 @@ checksums:
     are_you_sure_you_want_to_logout: 7ef05b0e3fd62c195b022f7edd544b9f
     yes_logout: 6136704196b69e1c5d59177bf43541b8
     are_you_sure_you_want_to_delete_this_slot: 0da1aee27e96055995f26b00a2ee960a
-    are_you_sure_you_want_to_delete_this_subreddit: 9fb7866737c669b42882293f2374b1de
     are_you_sure_you_want_to_close_the_window: dc500496d3b0d79d2967924735d92d87
     yes_close: a857be538f30d34bc5483b89de60907e
     link_copied_to_clipboard: db71229faeca1d479c346c40030f4061

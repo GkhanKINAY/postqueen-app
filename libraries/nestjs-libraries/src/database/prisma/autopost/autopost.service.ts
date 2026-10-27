@@ -535,7 +535,7 @@ export class AutopostService {
     // The composer never reaches createPost without validatePosts first
     // (posts.controller.ts refuses anything non-draft that fails), but this
     // path calls createPost directly. The settings above are the draft stub —
-    // reddit wants a subreddit, youtube a title and privacy, pinterest a board.
+    // lemmy wants a community, youtube a title and privacy, pinterest a board.
     // Publishing that unattended fails at the provider, so only channels that
     // actually validate get queued; the rest still become drafts the user can
     // finish by hand.

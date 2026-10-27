@@ -35,7 +35,7 @@ const CHANNELS = [
   'facebook',
   'threads',
   'pinterest',
-  'reddit',
+  'bluesky',
   'discord',
 ];
 

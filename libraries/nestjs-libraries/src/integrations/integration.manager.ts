@@ -9,7 +9,6 @@ import {
   toCredits,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
-import { RedditProvider } from '@gitroom/nestjs-libraries/integrations/social/reddit.provider';
 import { DevToProvider } from '@gitroom/nestjs-libraries/integrations/social/dev.to.provider';
 import { HashnodeProvider } from '@gitroom/nestjs-libraries/integrations/social/hashnode.provider';
 import { FacebookProvider } from '@gitroom/nestjs-libraries/integrations/social/facebook.provider';
@@ -47,7 +46,6 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
   new XProvider(),
   new LinkedinProvider(),
   new LinkedinPageProvider(),
-  new RedditProvider(),
   new InstagramProvider(),
   new InstagramStandaloneProvider(),
   new FacebookProvider(),
@@ -86,7 +84,7 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
 // these are ever written: a provider a build merely does not know, as when an
 // older build boots after a rollback, is left alone. Never list one that is
 // still in socialIntegrationList.
-export const RETIRED_PROVIDERS = ['medium'];
+export const RETIRED_PROVIDERS = ['medium', 'reddit'];
 
 @Injectable()
 export class IntegrationManager {

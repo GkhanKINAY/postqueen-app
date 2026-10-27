@@ -17,7 +17,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   linkedin: 'LinkedIn',
   'linkedin-page': 'LinkedIn',
   threads: 'Threads',
-  reddit: 'Reddit',
   pinterest: 'Pinterest',
   bluesky: 'Bluesky',
   mastodon: 'Mastodon',

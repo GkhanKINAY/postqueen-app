@@ -93,13 +93,13 @@ describe('composer channel settings controls', () => {
     assert.doesNotMatch(instagram, /name="post_type"[\s\S]{0,80}icon=/);
     assert.doesNotMatch(instagram, /icon="type"/);
     const plugs = read('../../launches/internal.channels.tsx');
-    const redditSub = read('./reddit/subreddit.tsx');
-    const reddit = read('./reddit/reddit.provider.tsx');
+    const community = read('./lemmy/community.tsx');
+    const lemmy = read('./lemmy/lemmy.provider.tsx');
     assert.match(plugs, /<FormSection>/);
     assert.doesNotMatch(plugs, /border-tableBorder/);
-    assert.match(redditSub, /<FormSection>/);
-    assert.doesNotMatch(redditSub, /bg-primary p-\[20px\]/);
-    assert.doesNotMatch(reddit, /bg-red-600/);
+    assert.match(community, /<FormSection>/);
+    assert.doesNotMatch(community, /bg-primary p-\[20px\]/);
+    assert.doesNotMatch(lemmy, /bg-red-600/);
   });
 
   it('keeps the same settings form after the editor when a channel is selected', () => {

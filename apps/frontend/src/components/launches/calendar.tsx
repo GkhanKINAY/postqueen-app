@@ -3808,7 +3808,7 @@ export const GoToLivePostButton: FC<{
       );
       return;
     }
-    // multi-target posts (several subreddits / communities / channels) join
+    // multi-target posts (several communities / channels) join
     // their URLs with commas: open the first one
     const url = (release.releaseURL || releaseURL).split(',')[0];
     if (!/^https?:\/\//i.test(url)) {

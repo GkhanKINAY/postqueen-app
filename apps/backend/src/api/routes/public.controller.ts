@@ -72,7 +72,7 @@ export class PublicController {
    * credential — so what it returns has to be chosen, not spread.
    *
    * It used to `...p` every scalar column on Post: `settings` (the per-provider
-   * JSON, which carries the subreddit, the board, the "post as" identity),
+   * JSON, which carries the community, the board, the "post as" identity),
    * `error`, `releaseId`, `organizationId`, `submittedForOrganizationId`. The
    * integration object right below was already picked field by field for
    * exactly this reason; the post itself was not.

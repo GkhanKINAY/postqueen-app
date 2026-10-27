@@ -9,7 +9,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { useFieldArray } from 'react-hook-form';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { Button } from '@gitroom/react/form/button';
-import { Subreddit } from './subreddit';
+import { FarcasterChannel } from './channel';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 const WrapcastProvider: FC = () => {
   const { register, control } = useSettings();
@@ -64,7 +64,7 @@ const WrapcastProvider: FC = () => {
                 />
               </svg>
             </button>
-            <Subreddit {...register(`subreddit.${index}.value`)} />
+            <FarcasterChannel {...register(`subreddit.${index}.value`)} />
           </div>
         ))}
       </div>
