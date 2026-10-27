@@ -3,7 +3,7 @@ import {
   HttpStatus,
   Injectable,
   Logger,
-  OnModuleInit,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { PlatformCallbacksRepository } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.repository';
@@ -17,9 +17,12 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
  * they asked for their data to be deleted, or that they removed the app.
  * Which platform, and how its request is signed, is the provider's business
  * (`verifyPlatformCallback`); everything here works on the channels it names.
+ * Channels of a network removed from the code are removed here at boot too,
+ * because removing a channel with its posts needs both IntegrationService and
+ * PostsService, which only this class holds together.
  */
 @Injectable()
-export class PlatformCallbacksService implements OnModuleInit {
+export class PlatformCallbacksService implements OnApplicationBootstrap {
   constructor(
     private _platformCallbacksRepository: PlatformCallbacksRepository,
     private _integrationManager: IntegrationManager,
@@ -33,11 +36,13 @@ export class PlatformCallbacksService implements OnModuleInit {
    * so they go the way a platform's own removal does: their posts first, which
    * also ends the workflows still waiting on a task queue no worker serves,
    * then the channel and its credentials. Once removed, a channel is out of
-   * every list, refresh and notice. Not awaited, so boot never waits on it; a
-   * channel that fails is left for the next boot, and where no such channel
-   * exists it does nothing.
+   * every list, refresh and notice. It waits for the application to bootstrap
+   * because ending a workflow needs the Temporal client, which is ready only
+   * after every module has initialised. Not awaited, so boot never waits on
+   * it; a channel that fails is left for the next boot, and where no such
+   * channel exists it does nothing.
    */
-  onModuleInit() {
+  onApplicationBootstrap() {
     this.removeRetiredChannels().catch((err) =>
       Logger.error(
         `Could not remove the channels of retired networks: ${err?.message}`,
@@ -184,10 +189,14 @@ export class PlatformCallbacksService implements OnModuleInit {
   private async removeChannel(org: string, id: string) {
     const posts = await this._integrationService.getPostsForChannel(org, id);
     if (posts.length) {
-      await this._postsService.deletePostsByGroups(
+      const results = await this._postsService.deletePostsByGroups(
         org,
         posts.map((post) => post.group)
       );
+      // A post left behind keeps the channel too, so the next try finds both.
+      if (results.some((result) => result.status === 'rejected')) {
+        throw new Error(`Could not delete every post of channel ${id}`);
+      }
     }
 
     await this._integrationService.deleteChannel(org, id);

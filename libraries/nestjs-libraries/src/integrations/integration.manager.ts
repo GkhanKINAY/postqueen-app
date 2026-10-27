@@ -80,10 +80,10 @@ export const socialIntegrationList: Array<SocialAbstract & SocialProvider> = [
 ];
 
 // Networks removed from the code. A database that had them (a self-hosted
-// install) can still hold their channels, which are switched off at boot. Only
-// these are ever written: a provider a build merely does not know, as when an
-// older build boots after a rollback, is left alone. Never list one that is
-// still in socialIntegrationList.
+// install) can still hold their channels, which are removed at boot with their
+// posts. Only these are ever touched: a provider a build merely does not know,
+// as when an older build boots after a rollback, is left alone. Never list one
+// that is still in socialIntegrationList.
 export const RETIRED_PROVIDERS = ['medium', 'reddit'];
 
 @Injectable()
