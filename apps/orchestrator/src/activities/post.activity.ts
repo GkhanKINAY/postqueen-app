@@ -344,7 +344,10 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
-    return !!getIntegration.comment;
+    // A provider removed from the code is undefined here. Its channels are
+    // switched off at boot, so a post normally ends before this as "Channel
+    // disabled"; one that got past that check must still not throw here.
+    return !!getIntegration?.comment;
   }
 
   @ActivityMethod()

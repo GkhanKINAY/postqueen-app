@@ -58,6 +58,11 @@ describe('validatePosts hands each entry its text', () => {
     assert.equal(stripHtmlValidation('normal', 'a > b', true), 'a &gt; b');
   });
 
+  it('refuses a channel whose provider the build no longer has', () => {
+    // Like a missing channel, instead of a 500 on `provider.editor`.
+    assert.match(validate, /if \(!integration \|\| !provider\) \{/);
+  });
+
   it('keeps the parameter optional so media-only providers are untouched', () => {
     assert.match(contract, /additionalSettings: any\[\],\s*texts\?: string\[\],/);
   });

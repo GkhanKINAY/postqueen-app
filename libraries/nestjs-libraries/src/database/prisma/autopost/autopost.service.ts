@@ -687,10 +687,10 @@ export class AutopostService {
       return;
     }
 
-    // Only in auto-publish mode. getIntegrationsList filters just deletedAt, so
-    // without this a broken or downgraded channel gets a post every hour that
-    // can never publish — the recovery sweepers in posts.repository skip
-    // exactly these.
+    // Only in auto-publish mode. getIntegrationsList filters only deleted rows
+    // and providers the build no longer has, so without this a broken or
+    // downgraded channel gets a post every hour that can never publish — the
+    // recovery sweepers in posts.repository skip exactly these.
     //
     // Draft mode is the opposite case: a draft on a channel that needs
     // reconnecting is precisely what the user wants waiting for them once they
