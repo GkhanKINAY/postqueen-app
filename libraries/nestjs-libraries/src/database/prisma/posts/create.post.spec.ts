@@ -4,6 +4,7 @@ import * as nodeModule from 'node:module';
 import { tmpdir } from 'node:os';
 import { afterEach, before, beforeEach, describe, it } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
+import { stripHtmlValidation } from '../../../../../helpers/src/utils/strip.html.validation.ts';
 
 // tsconfig maps `file-type` to its type declarations for tsc, and tsx follows
 // that mapping at run time, so the upload code the service imports would load
@@ -414,6 +415,61 @@ describe(
       assert.deepEqual(writes[0].value[0].image, [
         { id: 'made-up-id', path: UPLOADED },
       ]);
+    });
+  }
+);
+
+describe(
+  'the dashboard validates the content it saves',
+  {
+    skip: !canLoadService,
+  },
+  () => {
+    it('saves a thread finisher cleaned like every other part', async () => {
+      await service().createPost(
+        'org-1',
+        request({
+          posts: [
+            {
+              ...channel('first', [{ content: '<p>first</p>', image: [] }]),
+              settings: {
+                __type: 'bluesky',
+                active_thread_finisher: true,
+                thread_finisher:
+                  '<p>Follow <img src="x" onerror="alert(1)">us</p>',
+              },
+            },
+          ],
+        }),
+        'API'
+      );
+      const parts = writes[0].value;
+      assert.equal(parts.length, 2);
+      assert.equal(parts[1].content, '<p>Follow us</p>');
+    });
+
+    it('cleans each part of a raw request before it is validated', () => {
+      const [post] = service().withCleanContent([
+        channel('first', [
+          { content: '<p>a<script>alert(1)</script></p>', image: [] },
+          { content: 5 },
+        ]),
+      ]);
+      assert.equal(post.integration.id, 'first');
+      assert.deepEqual(
+        post.value.map((part: any) => part.content),
+        ['<p>a</p>', '']
+      );
+      assert.deepEqual(service().withCleanContent({ posts: 'none' }), []);
+    });
+
+    it('bounds the parse of a megabyte of short tags', () => {
+      const started = Date.now();
+      const [post] = service().withCleanContent([
+        channel('first', [{ content: '<p>'.repeat(350_000) }]),
+      ]);
+      stripHtmlValidation('normal', post.value[0].content, true);
+      assert.ok(Date.now() - started < 5_000, `took ${Date.now() - started} ms`);
     });
   }
 );

@@ -86,7 +86,10 @@ import {
   Sections,
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
-import { postContentPlainText } from '@gitroom/helpers/utils/sanitize.post.content';
+import {
+  postContentPlainText,
+  sanitizePostContent,
+} from '@gitroom/helpers/utils/sanitize.post.content';
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
 
 type PostWithConditionals = Post & {
@@ -1300,7 +1303,9 @@ export class PostsService {
    * switch is stored off so the next edit shows it as a normal part instead of
    * adding it again. validatePosts runs on the same result, so the part is
    * checked like any other. Finishers saved while the composer used a rich
-   * editor are HTML already; plain text becomes one paragraph per line.
+   * editor are HTML already; plain text becomes one paragraph per line. The
+   * part is added after CreatePostDto has cleaned the others, so it gets the
+   * same cleaning here.
    */
   private withThreadFinisher(post: { value?: any[]; settings?: any }) {
     const settings = post.settings || {};
@@ -1330,10 +1335,35 @@ export class PostsService {
     return {
       value: [
         ...(post.value || []),
-        { id: makeId(10), content: html, image: [], delay: 0 },
+        {
+          id: makeId(10),
+          content: sanitizePostContent(html),
+          image: [],
+          delay: 0,
+        },
       ],
       settings: { ...settings, active_thread_finisher: false },
     };
+  }
+
+  /**
+   * The posts of a dashboard request with each part's content cleaned the way
+   * CreatePostDto will store it. The dashboard validates the raw body (up to
+   * 50 MB) before the DTO runs, so that a failure comes back per channel.
+   * Cleaning first validates what will be saved, and it bounds the parse in
+   * validatePosts: parse5 takes about 40 s on a megabyte of short empty tags,
+   * which the sanitizer flattens. The MCP tool cleans the same way.
+   */
+  withCleanContent(posts: unknown): any[] {
+    return (Array.isArray(posts) ? posts : []).map((post) => ({
+      ...post,
+      value: Array.isArray(post?.value)
+        ? post.value.map((part: any) => ({
+            ...part,
+            content: sanitizePostContent(part?.content),
+          }))
+        : post?.value,
+    }));
   }
 
   async validatePosts(
