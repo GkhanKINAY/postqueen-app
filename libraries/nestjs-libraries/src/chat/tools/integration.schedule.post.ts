@@ -1,5 +1,8 @@
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
-import { MAX_POST_CONTENT_LENGTH } from '@gitroom/helpers/utils/sanitize.post.content';
+import {
+  MAX_POST_CONTENT_LENGTH,
+  sanitizePostContent,
+} from '@gitroom/helpers/utils/sanitize.post.content';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { HttpException, Injectable } from '@nestjs/common';
@@ -235,7 +238,10 @@ If validation fails, the result contains output.errors describing what to fix; t
                 integration: { id: platform.integrationId },
                 settings,
                 value: platform.postsAndComments.map((p: any) => ({
-                  content: p.content,
+                  // CreatePostDto cleans what the dashboard and the public
+                  // API send; an agent's content is stored and shown the
+                  // same way, so it gets the same cleaning.
+                  content: sanitizePostContent(p.content),
                   image: (p.attachments || []).map(toMedia),
                 })),
               },
@@ -324,7 +330,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                   } as AllProvidersSettings
                 ),
                 value: post.postsAndComments.map((p: any, index: number) => ({
-                  content: p.content,
+                  content: sanitizePostContent(p.content),
                   id: makeId(10),
                   // The first item is the post itself; a delay only means
                   // something for the comments after it.

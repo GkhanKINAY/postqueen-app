@@ -1043,10 +1043,20 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       q: d.query,
     });
 
+    // What comes back is cached for every organization on Bluesky. Only
+    // Bluesky's own servers are trusted with that: after login the agent talks
+    // to the server the account's identity names, and any other is the
+    // account's own choice and can answer anything, so its answers are only
+    // shown to that account.
+    const { protocol, hostname } = agent.dispatchUrl;
+    const blueskyServer =
+      protocol === 'https:' &&
+      (hostname === 'bsky.social' || hostname.endsWith('.bsky.network'));
     return list.data.actors.map((p) => ({
       label: p.displayName,
       id: p.handle,
       image: p.avatar,
+      doNotCache: !blueskyServer,
     }));
   }
 

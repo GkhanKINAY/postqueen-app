@@ -152,6 +152,148 @@ describe('sanitizePostContent', () => {
     assert.doesNotMatch(out, /<[a-z]/i);
   });
 
+  it('reads tag names and quoted values the way the parser does', () => {
+    // `<span.a>` is no <span> and `</span.b>` closes nothing, so these nest.
+    // Read as <span>, the nesting went uncounted: 4,000 took 3.5 seconds and
+    // threw.
+    for (const input of [
+      '<span.a>y</span.b>'.repeat(4_000),
+      '<u:x>y</u:y>'.repeat(4_000),
+    ]) {
+      const started = Date.now();
+      assert.match(sanitizePostContent(input), /y/);
+      assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+    }
+    // jsdom writes `<` and `>` inside attribute values as they are; saved
+    // content read again must not be flattened to text.
+    for (const html of [
+      '<p dir="auto">hi <span class="mention" data-mention-id="1" data-mention-label="</dev> Ana">@Ana</span></p>',
+      '<img src="https://cdn.example.com/a.png" alt="The <Button> component"><p>x</p>',
+    ]) {
+      assert.equal(sanitizePostContent(sanitizePostContent(html)), html);
+    }
+  });
+
+  it('counts pictures by the src the parser reads', () => {
+    // A src written inside another attribute is no src: the picture is
+    // removed, 9,000 removals took 45 seconds.
+    const started = Date.now();
+    const out = sanitizePostContent(
+      '<img alt=" src=https://e.example/x.png">z'.repeat(9_000)
+    );
+    assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+    assert.doesNotMatch(out, /<img/);
+    assert.match(out, /z/);
+  });
+
+  it('strips tables and the other tags that change how the parser reads', () => {
+    for (const [input, kept, gone] of [
+      // stray content in a table is moved out of it (1.8 seconds)
+      ['<table>' + '<p>x</p>'.repeat(9_000), /<p>x<\/p>/, /<table/],
+      // a `<!--` inside a <textarea> is text, so the comment is not one
+      [
+        '<textarea><!--</textarea>' + '<b>'.repeat(5_000) + '-->',
+        /^$/,
+        /<b>/,
+      ],
+      // attributes of every <body> go to the one element
+      [
+        Array.from(
+          { length: 450 },
+          (_, i) =>
+            '<body' +
+            Array.from({ length: 30 }, (_, j) => ` b${i}_${j}=1`).join('') +
+            '>'
+        ).join('') + 'x',
+        /x/,
+        /<body/,
+      ],
+      // what DOMPurify drops whole goes with its content
+      ['<p>a<script>alert(1)</script>b</p>', /^<p>ab<\/p>$/, /alert/],
+    ] as const) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, kept);
+      assert.doesNotMatch(out, gone);
+    }
+  });
+
+  it('flattens a tag with more attributes than the editor writes', () => {
+    const attributes = Array.from({ length: 100_000 }, (_, i) => ` a${i}=1`);
+    const started = Date.now();
+    const out = sanitizePostContent(`<p${attributes.join('')}>x</p>`);
+    // 102 seconds before: each attribute is checked against those before it
+    assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+    assert.doesNotMatch(out, /<p/);
+  });
+
+  it('keeps the formatting of a long newsletter', () => {
+    const html = Array.from(
+      { length: 3_000 },
+      (_, i) =>
+        `<p dir="auto">Part ${i} <strong>bold</strong> <u>u</u> <a href="https://e.example/${i}">link</a></p>`
+    ).join('');
+    assert.equal(sanitizePostContent(html), html);
+  });
+
+  it('keeps plain text that ends inside what looks like a tag', () => {
+    assert.equal(
+      sanitizePostContent('Use x <y as a rule'),
+      'Use x &lt;y as a rule'
+    );
+    // `</3` is a bogus comment to the parser, which would drop the rest
+    assert.equal(
+      sanitizePostContent('I </3 Mondays. Back to work tomorrow.'),
+      'I &lt;/3 Mondays. Back to work tomorrow.'
+    );
+  });
+
+  it('counts nesting a closing tag cannot end, as the parser does', () => {
+    // </span> does not close past a <ul>, and </b> past one moves the
+    // formatting instead: the lists stay open. Popped anyway, 100 of these
+    // hid a tree 3,000 levels deep that threw after a second.
+    for (const open of ['<span>', '<b>', '<li>']) {
+      const input =
+        (open + '<ul>'.repeat(30) + open.replace('<', '</')).repeat(100) + 'x';
+      const started = Date.now();
+      assert.match(sanitizePostContent(input), /x/);
+      assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+    }
+  });
+
+  it('counts formatting a block closes as still open, as the parser reopens it', () => {
+    // </div> pops the formatting inside it, but the parser keeps it in its
+    // list and opens it again at the next text: 40 of these built a tree
+    // 3,922 deep and took 32 seconds.
+    let input = '';
+    for (let group = 0; group < 40; group++) {
+      input +=
+        '<div>' +
+        Array.from(
+          { length: 98 },
+          (_, i) => `<${i % 2 ? 'strong' : 'u'} class="g${group}i${i}">`
+        ).join('') +
+        '</div>';
+    }
+    const started = Date.now();
+    assert.match(sanitizePostContent(input + 'x'), /x/);
+    assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+  });
+
+  it('drops what DOMPurify drops with its content when it strips', () => {
+    const many = '<font>f</font>'.repeat(600);
+    assert.match(
+      sanitizePostContent('<p>a <audio>aud</audio> b</p>' + many),
+      /^<p>a {2}b<\/p>f/
+    );
+    // <plaintext> never closes
+    assert.equal(
+      sanitizePostContent('<p>a<plaintext>b</plaintext>c</p>'),
+      '<p>a</p>'
+    );
+  });
+
   it('keeps the markup the editor writes', () => {
     const html =
       '<p dir="auto">Hi <strong>you</strong></p><ul><li><p dir="auto">one</p></li></ul>';
