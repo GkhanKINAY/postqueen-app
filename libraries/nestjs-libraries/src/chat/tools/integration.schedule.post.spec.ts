@@ -71,3 +71,49 @@ describe('MCP attachments', () => {
     assert.ok((await dto('a'.repeat(1001))).some((e) => e.property === 'alt'));
   });
 });
+
+describe('MCP post content', () => {
+  it('is cleaned the way CreatePostDto cleans the dashboard and API posts', async () => {
+    const created: any[] = [];
+    const validated: any[] = [];
+    const tool = new IntegrationSchedulePostTool(
+      {
+        validatePosts: async (_org: string, posts: any[]) => {
+          validated.push(...posts);
+          return [{ valid: true, errors: true }];
+        },
+        assertPostsQuota: async () => undefined,
+        assertPublishCredits: async () => undefined,
+        createPost: async (_org: string, request: any) => {
+          created.push(request);
+          return [{ postId: 'post-1', integration: 'int-1' }];
+        },
+      } as any,
+      {
+        getIntegrationByIdNotDeleted: async () => ({
+          id: 'int-1',
+          name: 'Channel',
+          providerIdentifier: 'bluesky',
+        }),
+      } as any
+    );
+    const values = new Map([
+      ['organization', JSON.stringify({ id: 'org-1' })],
+    ]);
+    const context = {
+      requestContext: {
+        get: (key: string) => values.get(key),
+        set: (key: string, value: string) => values.set(key, value),
+      },
+    };
+    const input = withAttachment(video);
+    input.socialPost[0].postsAndComments[0].content =
+      '<p>Hi<script>alert(1)</script> <a href="javascript:alert(1)">there</a></p>';
+
+    await (tool.run() as any).execute(input, context);
+
+    const clean = '<p>Hi <a>there</a></p>';
+    assert.equal(validated[0].value[0].content, clean);
+    assert.equal(created[0].posts[0].value[0].content, clean);
+  });
+});
