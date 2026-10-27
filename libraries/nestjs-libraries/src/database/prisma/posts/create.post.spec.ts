@@ -448,6 +448,26 @@ describe(
       assert.equal(parts[1].content, '<p>Follow us</p>');
     });
 
+    it('keeps a plain-text thread finisher as it was written', async () => {
+      await service().createPost(
+        'org-1',
+        request({
+          posts: [
+            {
+              ...channel('first', [{ content: '<p>first</p>', image: [] }]),
+              settings: {
+                __type: 'bluesky',
+                active_thread_finisher: true,
+                thread_finisher: 'Tom & Jerry <3',
+              },
+            },
+          ],
+        }),
+        'API'
+      );
+      assert.equal(writes[0].value[1].content, '<p>Tom &amp; Jerry &lt;3</p>');
+    });
+
     it('cleans each part of a raw request before it is validated', () => {
       const [post] = service().withCleanContent([
         channel('first', [
@@ -460,13 +480,27 @@ describe(
         post.value.map((part: any) => part.content),
         ['<p>a</p>', '']
       );
-      assert.deepEqual(service().withCleanContent({ posts: 'none' }), []);
+      assert.deepEqual(service().withCleanContent(undefined), []);
+      assert.deepEqual(service().withCleanContent('none'), []);
+    });
+
+    it('refuses a part longer than any post, as CreatePostDto does', () => {
+      assert.throws(
+        () =>
+          service().withCleanContent([
+            channel('first', [{ content: 'a'.repeat(1_000_001) }]),
+          ]),
+        (err: unknown) =>
+          err instanceof BadRequestException &&
+          err.message === 'The post content is too long.'
+      );
     });
 
     it('bounds the parse of a megabyte of short tags', () => {
       const started = Date.now();
       const [post] = service().withCleanContent([
-        channel('first', [{ content: '<p>'.repeat(350_000) }]),
+        // 999,000 characters, just under the length any post may have
+        channel('first', [{ content: '<p>'.repeat(333_000) }]),
       ]);
       stripHtmlValidation('normal', post.value[0].content, true);
       assert.ok(Date.now() - started < 5_000, `took ${Date.now() - started} ms`);

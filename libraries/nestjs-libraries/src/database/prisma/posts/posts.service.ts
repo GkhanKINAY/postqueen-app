@@ -87,6 +87,7 @@ import {
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
 import {
+  MAX_POST_CONTENT_LENGTH,
   postContentPlainText,
   sanitizePostContent,
 } from '@gitroom/helpers/utils/sanitize.post.content';
@@ -1290,22 +1291,14 @@ export class PostsService {
   }
 
   /**
-   * Server-side validation that used to live on the client (`checkValidity` +
-   * the manage modal loop). Runs the provider's settings DTO validation, the
-   * provider `checkValidity` (media rules) and the empty-content / too-long
-   * character checks. Returns one result per post so the frontend can show the
-   * same toasts it did before — and so `/posts` can refuse to create invalid
-   * posts.
-   */
-  /**
    * "Add a thread finisher" (X, Threads, Bluesky) was a setting nothing ever
    * published. When a post is saved it becomes the thread's last part, and the
    * switch is stored off so the next edit shows it as a normal part instead of
    * adding it again. validatePosts runs on the same result, so the part is
    * checked like any other. Finishers saved while the composer used a rich
    * editor are HTML already; plain text becomes one paragraph per line. The
-   * part is added after CreatePostDto has cleaned the others, so it gets the
-   * same cleaning here.
+   * request's own parts are cleaned before they get here, by CreatePostDto or
+   * withCleanContent; this one is built here, so it is cleaned here.
    */
   private withThreadFinisher(post: { value?: any[]; settings?: any }) {
     const settings = post.settings || {};
@@ -1352,20 +1345,35 @@ export class PostsService {
    * 50 MB) before the DTO runs, so that a failure comes back per channel.
    * Cleaning first validates what will be saved, and it bounds the parse in
    * validatePosts: parse5 takes about 40 s on a megabyte of short empty tags,
-   * which the sanitizer flattens. The MCP tool cleans the same way.
+   * which the sanitizer flattens. The MCP tool cleans the same way, and the
+   * credits quote prices what this returns.
    */
   withCleanContent(posts: unknown): any[] {
     return (Array.isArray(posts) ? posts : []).map((post) => ({
       ...post,
       value: Array.isArray(post?.value)
-        ? post.value.map((part: any) => ({
-            ...part,
-            content: sanitizePostContent(part?.content),
-          }))
+        ? post.value.map((part: any) => {
+            // Refused as the DTO refuses it, rather than cut short.
+            if (
+              typeof part?.content === 'string' &&
+              part.content.length > MAX_POST_CONTENT_LENGTH
+            ) {
+              throw new BadRequestException('The post content is too long.');
+            }
+            return { ...part, content: sanitizePostContent(part?.content) };
+          })
         : post?.value,
     }));
   }
 
+  /**
+   * Server-side validation that used to live on the client (`checkValidity` +
+   * the manage modal loop). Runs the provider's settings DTO validation, the
+   * provider `checkValidity` (media rules) and the empty-content / too-long
+   * character checks. Returns one result per post so the frontend can show the
+   * same toasts it did before — and so `/posts` can refuse to create invalid
+   * posts.
+   */
   async validatePosts(
     orgId: string,
     posts: Array<{

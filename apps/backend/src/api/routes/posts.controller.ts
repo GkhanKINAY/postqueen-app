@@ -245,7 +245,7 @@ export class PostsController {
     return this._postsService.quotePublishCredits(
       org.id,
       body.type,
-      body.posts
+      this._postsService.withCleanContent(body.posts)
     );
   }
 
