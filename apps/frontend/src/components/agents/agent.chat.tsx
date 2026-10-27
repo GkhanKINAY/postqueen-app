@@ -91,7 +91,10 @@ import {
   CopilotCreditsContext,
   useCopilotCreditsWatch,
 } from '@gitroom/frontend/components/agents/agent.credits';
-import { userMessageHtml } from '@gitroom/frontend/components/agents/user.message.html';
+import {
+  userMessageParts,
+  UserMessagePart,
+} from '@gitroom/frontend/components/agents/user.message.parts';
 
 type AgentIntegration = Integrations & {
   refreshNeeded?: boolean;
@@ -673,16 +676,49 @@ const contentToText = (
     .join('');
 };
 
+const MessagePart: FC<{ part: UserMessagePart }> = ({ part }) => {
+  switch (part.type) {
+    case 'text':
+      return <span className="whitespace-pre-wrap">{part.text}</span>;
+    case 'image':
+      return (
+        <img
+          src={part.src}
+          className="h-[150px] w-[150px] max-w-full rounded-[8px]"
+          alt=""
+        />
+      );
+    case 'video':
+      return (
+        <video
+          controls
+          className="h-[150px] w-[150px] rounded-[8px] mb-[10px]"
+        >
+          <source src={part.src} type="video/mp4" />
+        </video>
+      );
+    case 'media':
+      return (
+        <div className="flex justify-center mt-[20px]">
+          {part.parts.map((inner, index) => (
+            <MessagePart key={index} part={inner} />
+          ))}
+        </div>
+      );
+  }
+};
+
 const Message: FC<UserMessageProps> = (props) => {
-  const convertContentToImagesAndVideo = useMemo(
-    () => userMessageHtml(contentToText(props.message?.content)),
+  const parts = useMemo(
+    () => userMessageParts(contentToText(props.message?.content)),
     [props.message?.content]
   );
   return (
-    <div
-      className="copilotKitMessage copilotKitUserMessage"
-      dangerouslySetInnerHTML={{ __html: convertContentToImagesAndVideo }}
-    />
+    <div className="copilotKitMessage copilotKitUserMessage">
+      {parts.map((part, index) => (
+        <MessagePart key={index} part={part} />
+      ))}
+    </div>
   );
 };
 /**
