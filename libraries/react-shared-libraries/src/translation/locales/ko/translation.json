@@ -927,6 +927,7 @@
   "precondition_channel_used_trial": "이 소셜 채널은 이전에 다른 PostQueen 계정에 연결된 적이 있습니다.\n체험 기간 중에 연결하려면 지금 체험을 종료할 수 있습니다. 이 경우 요금제의 첫 결제가 체험 종료 시점이 아닌 오늘 청구되며, 추가 요금은 없습니다.",
   "team_members_will_be_disabled": "팀원은 비활성화되며, 팀원이 포함된 요금제를 다시 선택할 때까지 조직에 접근할 수 없습니다.",
   "delete_account_confirm_subscription_members": "계정, 조직, 채널, 게시물이 삭제되고, 구독은 즉시 해지되며, 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
+  "delete_account_shared_plan_renews": "다른 소유자와 함께 소유한 조직은 그 소유자에게 남으며, 해당 구독은 등록된 카드로 계속 갱신됩니다. 결제를 중단하려면 계정을 삭제하기 전에 결제 메뉴에서 해당 구독을 취소하세요.",
   "delete_account_confirm_subscription": "계정, 조직, 채널, 게시물이 삭제되고 구독은 즉시 해지됩니다. 이 작업은 되돌릴 수 없습니다.",
   "delete_account_confirm_members": "계정, 조직, 채널, 게시물이 삭제되고 다른 팀원은 조직에서 제거됩니다. 이 작업은 되돌릴 수 없습니다.",
   "plan_meta_renews": "PostQueen {{tier}} · {{date}}에 갱신",

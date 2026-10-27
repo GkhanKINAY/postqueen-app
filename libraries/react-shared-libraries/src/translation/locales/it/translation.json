@@ -927,6 +927,7 @@
   "precondition_channel_used_trial": "Questo canale social era già collegato a un altro account PostQueen.\nPer collegarlo durante la prova, puoi terminare la prova ora: il primo pagamento del tuo piano viene addebitato oggi invece che alla fine della prova, e non viene aggiunto nulla in più.",
   "team_members_will_be_disabled": "I membri del tuo team verranno disattivati e perderanno l'accesso alla tua organizzazione finché non sceglierai di nuovo un piano che includa i membri del team.",
   "delete_account_confirm_subscription_members": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati, il tuo abbonamento verrà annullato subito e gli altri membri del team verranno rimossi dalla tua organizzazione. L'operazione non può essere annullata.",
+  "delete_account_shared_plan_renews": "Un'organizzazione che possiedi insieme a un altro proprietario resta a lui, e il suo abbonamento continua a rinnovarsi sulla carta registrata. Per smettere di pagarlo, annulla quell'abbonamento in Fatturazione prima di eliminare il tuo account.",
   "delete_account_confirm_subscription": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati e il tuo abbonamento verrà annullato subito. L'operazione non può essere annullata.",
   "delete_account_confirm_members": "Il tuo account, le organizzazioni, i canali e i post verranno eliminati e gli altri membri del team verranno rimossi dalla tua organizzazione. L'operazione non può essere annullata.",
   "plan_meta_renews": "PostQueen {{tier}} · si rinnova il {{date}}",

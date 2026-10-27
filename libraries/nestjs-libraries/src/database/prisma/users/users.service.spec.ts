@@ -141,6 +141,7 @@ describe('deleting an account', () => {
     assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
       hasSubscription: true,
       hasAdditionalMembers: true,
+      sharedPlanRenews: false,
     });
     await deletingService().deleteAccount('me');
     assert.deepEqual(calls, [
@@ -167,9 +168,11 @@ describe('deleting an account', () => {
     ];
 
     assert.deepEqual(await deletingService().getOrgsToDeleteForAccount('me'), []);
+    // nothing is cancelled, and the plan goes on renewing for the cofounder
     assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
       hasSubscription: false,
       hasAdditionalMembers: false,
+      sharedPlanRenews: true,
     });
     await deletingService().deleteAccount('me');
     assert.deepEqual(calls, ['remove me from shared', 'delete me']);
@@ -197,6 +200,7 @@ describe('deleting an account', () => {
     assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
       hasSubscription: true,
       hasAdditionalMembers: true,
+      sharedPlanRenews: false,
     });
   });
 
@@ -220,6 +224,7 @@ describe('deleting an account', () => {
     assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
       hasSubscription: false,
       hasAdditionalMembers: false,
+      sharedPlanRenews: false,
     });
     await deletingService().deleteAccount('me');
     assert.deepEqual(calls, [
@@ -250,5 +255,29 @@ describe('deleting an account', () => {
     assert.equal(await warns({ provider: 'manual' }), false);
     assert.equal(await warns({ provider: 'revenuecat' }), false);
     assert.equal(await warns({ provider: 'stripe', deletedAt: new Date() }), false);
+  });
+
+  it('only says a shared plan renews when it is a Stripe plan the account owns with someone', async () => {
+    const shared = (subscription: Record<string, unknown>, role: Role) => [
+      {
+        id: 'shared',
+        subscription: { subscriptionTier: 'PRO', ...subscription },
+        members: [
+          { id: 'me', role },
+          { id: 'cofounder', role: 'SUPERADMIN' as Role },
+        ],
+      },
+    ];
+    const renews = async (subscription: Record<string, unknown>, role: Role = 'SUPERADMIN') => {
+      orgs = shared(subscription, role);
+      return (await deletingService().getDeleteAccountInfo('me')).sharedPlanRenews;
+    };
+
+    assert.equal(await renews({ provider: 'stripe' }), true);
+    assert.equal(await renews({ provider: 'stripe', isLifetime: true }), false);
+    assert.equal(await renews({ provider: 'manual' }), false);
+    assert.equal(await renews({ provider: 'stripe', deletedAt: new Date() }), false);
+    // a member who is not an owner only leaves; the plan was never theirs to run
+    assert.equal(await renews({ provider: 'stripe' }, 'ADMIN'), false);
   });
 });
