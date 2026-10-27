@@ -425,12 +425,84 @@ Lessons, in the order they cost time:
   compares against `.github/osv-known.txt`; advisories published since it was
   regenerated blocked every PR touching `package.json`.
 
+## October 2026 (second sync): what happened
+
+**85 commits past the watermark (`91c91f633..a5affe62c`, merges not counted):
+60 taken or adapted, 16 already here (six of them picked ahead of the sync),
+9 skipped.** Every commit was triaged against `origin/main` before anything
+was picked, by three read-only agents over consecutive ranges, and every PR
+was reviewed by an agent that did not write it before it merged:
+
+- #394 security, released on its own as v3.6.165: `returnUrl` held to this
+  app's origin (`9a8895983`, with #344's expiry kept), and a post's media and
+  `(post:id)` tags kept from reading files off the worker
+  (`5f18f1ca6` + `12db9bd2f`: tag URLs no longer round-trip the post through
+  JSON, every local media read is confined to `UPLOAD_DIRECTORY`). Both holes
+  were open here. Upstream's JWT bypass (`a5affe62c`) and `/integrations/function`
+  allow-list (`9383f5be4`, CVE-2026-115931) were already closed, more strictly;
+  only their defence-in-depth checks came in.
+- #398 fixes (Instagram, VK on vk.ru, Telegram, admin stats, Sentry noise
+  spans, the block-tag rewrite in the sanitizer, paste, the public preview's
+  blank lines, a re-added page keeping its login).
+- #396 billing: 3D Secure in the app when the trial ends early, a confirmation
+  before End free trial charges, the renewal date, the paywall's billing
+  history, the downgrade's team warning, and account deletion cancelling the
+  subscription and removing the other members.
+- #397 media, MCP and HubSpot: a video cover from the media library, cover and
+  alt text in the post settings, MCP attachment objects, `deletePostTool` and
+  `mediaStatusTool` (25 tools with a key, 24 with sign-in), dual-era MCP
+  serving, and HubSpot's MCP OAuth client and install flow, dormant until its
+  env is set.
+- #395 analytics and dependencies: PostHog removed, the Meta Conversions API
+  called without the business SDK (dormant until its env is set), and the
+  packages upstream moved past ours.
+- #403 a per-user timezone (`2f671180f`, migration
+  `20261027120000_user_timezone_name`, additive).
+
+Our own PRs from the same pass: #399 (the post sanitizer's cost bounded),
+#400 (a stored XSS in shared AI chats), #401 (Bluesky requests through the
+SSRF-safe dispatcher) and #402 (zod 4.6.7).
+
+Lessons, in the order they cost time:
+
+- **Check an upstream security fix against this tree before calling it
+  duplicated.** Two of upstream's five were already closed here and two were
+  wide open. Each was read on `origin/main`, and the ones taken came with a
+  spec that fails on the old code.
+- **Sweep upstream's published advisories every sync**
+  (`gh api repos/gitroomhq/postiz-app/security-advisories?state=published`).
+  All 19 were closed here, and the sweep found three holes of the same
+  classes that upstream still has: an AI chat bubble rendering a member's
+  text as HTML, Bluesky's agents fetching outside the SSRF guard after login,
+  and the post sanitizer's parse time.
+- **Fuzz a parser guard; reading it is not enough.** Two reviews of the
+  sanitizer bounds each found shapes that got past them, and generated tag
+  soup found two more (non-void `/>`, and nodes DOMPurify removes costing as
+  much as their siblings under jsdom). The worst case went from 25 s to
+  143 ms. The shapes are in `sanitize.post.content.spec.ts`.
+- **The dependency scan rots between syncs.** Ten advisories published since
+  the known set was last touched blocked the first PR that changed
+  `package.json`; same-major overrides closed eight and two were accepted with
+  their path.
+- **A peer range can move a whole library's zod.** Moving our zod to 4.6.7
+  also moved LangChain's peer from zod 3 to 4, which turned out to fix a
+  silent bug: LangChain's zod 3 path had been dropping every field
+  `description` from the schemas the AI post generator sends OpenAI. Check
+  structured output against a faked endpoint on both lockfiles.
+- **A tracker can be taken dormant.** The Meta Conversions API and HubSpot came
+  in switched off by their env. Before either is switched on: the Cookie and
+  Privacy policies have to name the server-side events, and HubSpot needs our
+  own app.
+- `integration.profile.spec.ts` fails twice on a European clock across a DST
+  change; run the suite with `TZ=UTC`, as CI does.
+
 ## Where the sync currently stands
 
-**Synced through `91c91f633` (2026-10-09), and merged.** Everything upstream had
+**Synced through `a5affe62c` (2026-10-24), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
 and `main` has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `374fb202` (2026-09-25),
+"Next time"). The previous watermarks were `91c91f633` (2026-10-09),
+`374fb202` (2026-09-25),
 `60431b08` (the same day, before
 three late commits), `5ff9e0b2` (2026-09-22, the first one merged that way),
 `8b84b0dc` (the same day, before three README commits), `6f107801`
@@ -470,7 +542,14 @@ Skipped, deliberately:
 | `0cf459623` `277d3620a` `fa4722990` `3b36d5ed2` | Tags that only steer Sentry's report dialog, which this fork does not show, and a toast key the adapted uploader fix does not use |
 | `273c7b504` | Streak checks by last publish date. Posts have no published-at column (`publishDate` is the scheduled time), so a late post could end a live streak; needs that column first |
 | `c8bf9d8f4` `e333f75bd` | Curating post errors at read time by parsing stored JSON; this fork stores the extracted text at write time, so parsing would hide every message |
-| `e5f6fff33` `3205ce10e` | An MCP video-cover attachment and its revert; net zero |
+| `e5f6fff33` `3205ce10e` | An MCP video-cover attachment and its revert; net zero. Upstream re-landed it as `b318a6a5a`, taken in October (#397) |
+| `791d42c48` | Renames a settings tab to "Agents / Dev"; this fork's nav keeps Developers |
+| `f1a24b5fa` `31eda4942` | A notifications restyle on hex colours; its behaviour fix (no `dangerouslySetInnerHTML`) was already here, and our list does not mark items read |
+| `4ea5af7d3` | Says autopost creates drafts; ours honours `onSlot` and asks draft or publish |
+| `cf9ed5afc` `2ffd05fc4` (in part) | Raised Sentry replay, trace and profiling rates: no replay here, and the rates are a quota call (the noise-span filter of `2ffd05fc4` was taken) |
+| `b53f41bdd` | Upstream's ChatGPT app submission file |
+| `5e62c6288` | An exact Node engines pin; we run 22.23.4 since #390, and the pin would refuse every other 22.x install |
+| `4cab87301` `08c8433e7` `ef0c907d8` (in part) | The opt-in "adjust to platform limits" flag; our ffmpeg path normalizes every upload, and the flag off would stop `.mov` normalizing (`mediaStatusTool` and the status mapping were taken) |
 | `5fb2f5368` `280080793` `f65de34e2` | An unused import, a formatting-only redeploy, an empty commit |
 | `c145f0c3b` (in part) `70911f869` | The post-checkout "channels re-enabled" notice. Its backend half was already here (`enableAutoDisabledIntegrations` with headroom), and its all-or-nothing copy does not fit our partial re-enable |
 | `3f848ccb6` | `db push` without `--accept-data-loss`. Taken in #330 and reverted: our schema since v3.6.89 (the `AGENCY` to `ULTIMATE` enum rename, then the `Credits` idempotency index in v3.6.107) carries changes Prisma flags as data loss even on an empty table, so every self-hosted install on `db push` older than v3.6.107 stopped booting. Those changes cannot actually drop rows (Postgres refuses the cast or the index instead). Self-hosters are pointed at `PRISMA_MIGRATE` with a full baseline in `.env.example` |
@@ -490,6 +569,15 @@ Already here, or empty once picked (second sync):
 | `9259cf24` (CVE-2026-94455) | `f95bd486` puts the enterprise routes behind their own `ENTERPRISE_SECRET`, so a session token is unusable there, not only rejected |
 | `4c835138` (CVE-2026-94456) | `22fae01e` made `makeId` itself a CSPRNG, which covers every caller, the frontend and the workflows included |
 | `f9e0d010` (fourth sync) | `4d46754e` already signs Nostr events with the key's bytes |
+| `a15f6ea30` (October, second) | #366 already checks TikTok Business photo sizes, stricter |
+| `b757cdf00` | #382 `vkCall` already checks both upload responses |
+| `2775f59ae` | `b9deca85c` moved the mention dropdown to theme tokens |
+| `a36eada0a` | The cancel dialog already says "Keep my plan" |
+| `b64b2c004` | #367 already dropped `total_video_impressions` |
+| `ea9c82016` | #269 already self-hosts the fonts |
+| `42bc85edc` `8d4b871ba` | `f789a93e9`: no replay at all, no prompts or PII |
+| `b08559568` `6d4737503` | sharp 0.35.5 and `billing_no_invoices` were already here |
+| `c0fee9eaa` `0b22d994b` `b2897ff7d` `23beddcd0` `18a312b6b` `30e1f83ce` | Picked ahead of the sync (LinkedIn mentions, YouTube thumbnail errors, Pinterest retry, YouTube quota) |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
 (`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing
