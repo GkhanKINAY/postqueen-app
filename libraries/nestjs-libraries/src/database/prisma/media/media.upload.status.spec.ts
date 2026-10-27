@@ -70,3 +70,38 @@ describe('What MCP callers see of an upload', { skip: !canLoadService }, () => {
     });
   });
 });
+
+describe('Saving media settings', { skip: !canLoadService }, () => {
+  const withRows = (owned: string[]) => {
+    const saved: string[] = [];
+    const instance = Object.create(Object.getPrototypeOf(service));
+    instance._mediaRepository = {
+      findOwnedMediaIds: async (_org: string, ids: string[]) =>
+        ids.filter((id) => owned.includes(id)).map((id) => ({ id })),
+      saveMediaInformation: async (_org: string, data: { id: string }) => {
+        saved.push(data.id);
+        return { id: data.id };
+      },
+    };
+    return { instance, saved };
+  };
+
+  it('saves a library row', async () => {
+    const { instance, saved } = withRows(['media-1']);
+    assert.deepEqual(
+      await instance.saveMediaInformation('org-1', { id: 'media-1', alt: 'A' }),
+      { id: 'media-1' }
+    );
+    assert.deepEqual(saved, ['media-1']);
+  });
+
+  // an agent or the public API attaches by URL with an id of its own
+  it('answers 404 for an id that is no library row of the organization', async () => {
+    const { instance, saved } = withRows([]);
+    await assert.rejects(
+      instance.saveMediaInformation('org-1', { id: 'AbCdEfGhIj', alt: 'A' }),
+      (err: any) => err.getStatus() === 404
+    );
+    assert.deepEqual(saved, []);
+  });
+});

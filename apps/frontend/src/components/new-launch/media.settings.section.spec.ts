@@ -54,3 +54,19 @@ describe('Video thumbnail from the library', () => {
     );
   });
 });
+
+describe('Saving the media settings', () => {
+  it('says saved only when the media library saved it', () => {
+    assert.match(
+      settingsDialog,
+      /if \(response\.ok\) \{\s*onSelect\(await response\.json\(\)\);\s*toaster\.show\(t\('alt_text_saved'/
+    );
+    // an attachment that is no library row is set on the post, and the toast
+    // says the file is not in the library
+    assert.match(settingsDialog, /if \(response\.status === 404\) \{\s*onSelect\(\{\s*\.\.\.props\.media,/);
+    assert.match(settingsDialog, /'media_settings_saved_on_post'/);
+    // a failed upload of the picked frame stops before anything is saved
+    assert.match(settingsDialog, /if \(!uploaded\.ok\) \{\s*failed\(\);\s*return;/);
+    assert.match(settingsDialog, /maxLength=\{1000\}/);
+  });
+});

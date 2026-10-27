@@ -942,5 +942,6 @@
   "thumbnails_and_alt_text": "缩略图和替代文本",
   "media_settings_section_description": "点击某个媒体可设置其替代文本；如果是视频，还可设置缩略图。",
   "media_settings_section_tooltip": "缩略图适用于主帖中的视频，并会发送到所有支持缩略图的频道。对于被 YouTube 视为 Shorts 的视频（竖屏，最长 3 分钟），YouTube 可能会忽略缩略图，但不会导致发布失败；自定义缩略图还要求频道已通过电话验证。如果 YouTube 拒绝缩略图，视频仍会发布。",
-  "youtube_thumbnail_overrides_media": "此帖子有 YouTube 专用缩略图，它会覆盖媒体设置中的缩略图。"
+  "youtube_thumbnail_overrides_media": "此帖子有 YouTube 专用缩略图，它会覆盖媒体设置中的缩略图。",
+  "media_settings_saved_on_post": "已保存到此帖子。该文件不在你的媒体库中。"
 }

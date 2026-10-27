@@ -606,7 +606,16 @@ export class MediaService {
     return this._mediaRepository.getMedia(org, page, search);
   }
 
-  saveMediaInformation(org: string, data: SaveMediaInformationDto) {
+  // An attachment an agent or the public API added by its URL has an id that
+  // is no media library row; that is a 404 the editor can tell apart from a
+  // failure, not Prisma's record-not-found
+  async saveMediaInformation(org: string, data: SaveMediaInformationDto) {
+    const [owned] = await this._mediaRepository.findOwnedMediaIds(org, [
+      data.id,
+    ]);
+    if (!owned) {
+      throw new HttpException('Media not found', 404);
+    }
     return this._mediaRepository.saveMediaInformation(org, data);
   }
 

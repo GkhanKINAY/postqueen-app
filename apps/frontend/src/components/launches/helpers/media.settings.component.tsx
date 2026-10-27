@@ -30,7 +30,7 @@ export const MediaSettingsLayout = () => {
       id: string;
       name: string;
       path: string;
-      thumbnail: string;
+      thumbnail?: string;
       alt: string;
     }) => void;
     // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -39,7 +39,7 @@ export const MediaSettingsLayout = () => {
       id: string;
       name: string;
       path: string;
-      thumbnail: string;
+      thumbnail?: string;
       alt: string;
     }) => {},
   } as any);
@@ -52,7 +52,7 @@ export const MediaSettingsLayout = () => {
           id: string;
           name: string;
           path: string;
-          thumbnail: string;
+          thumbnail?: string;
           alt: string;
         }) => void;
       }) => {
@@ -307,8 +307,9 @@ export const MediaComponentInner: FC<{
     id: string;
     name: string;
     path: string;
-    thumbnail: string;
+    thumbnail?: string;
     alt: string;
+    thumbnailTimestamp?: number;
   }) => void;
   media:
     | {
@@ -346,6 +347,11 @@ export const MediaComponentInner: FC<{
     };
   }, []);
 
+  const failed = useCallback(() => {
+    setLoading(false);
+    toaster.show(t('something_went_wrong', 'Something went wrong'), 'warning');
+  }, [t, toaster]);
+
   const save = useCallback(async () => {
     setLoading(true);
     let path = thumbnail || '';
@@ -354,31 +360,57 @@ export const MediaComponentInner: FC<{
       const formData = new FormData();
       formData.append('file', blob, 'media.jpg');
       formData.append('preventSave', 'true');
-      const data = await (
-        await newFetch('/media/upload-simple', {
-          method: 'POST',
-          body: formData,
-        })
-      ).json();
-      path = data.path;
+      const uploaded = await newFetch('/media/upload-simple', {
+        method: 'POST',
+        body: formData,
+      });
+      // customFetch resolves on 4xx/5xx, so the answer has to be checked
+      if (!uploaded.ok) {
+        failed();
+        return;
+      }
+      path = (await uploaded.json()).path;
     }
 
-    const media = await (
-      await newFetch('/media/information', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: props.media.id,
-          alt: altText,
-          thumbnail: path,
-          thumbnailTimestamp: thumbnailTimestamp,
-        }),
-      })
-    ).json();
+    const response = await newFetch('/media/information', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: props.media.id,
+        alt: altText,
+        thumbnail: path,
+        thumbnailTimestamp: thumbnailTimestamp,
+      }),
+    });
 
-    onSelect(media);
-    toaster.show(t('alt_text_saved', 'Alt text saved'));
-    onClose();
-  }, [altText, newThumbnail, thumbnail, thumbnailTimestamp]);
+    if (response.ok) {
+      onSelect(await response.json());
+      toaster.show(t('alt_text_saved', 'Alt text saved'));
+      onClose();
+      return;
+    }
+
+    // An attachment an agent or the public API added by its URL carries an
+    // id of its own, not a media library row's. Its settings still belong on
+    // the post, so they are set there, and the toast says that is all.
+    if (response.status === 404) {
+      onSelect({
+        ...props.media,
+        alt: altText,
+        thumbnail: path || undefined,
+        thumbnailTimestamp: thumbnailTimestamp ?? undefined,
+      });
+      toaster.show(
+        t(
+          'media_settings_saved_on_post',
+          'Saved on this post. The file is not in your media library.'
+        )
+      );
+      onClose();
+      return;
+    }
+
+    failed();
+  }, [altText, newThumbnail, thumbnail, thumbnailTimestamp, failed]);
 
   // A cover from the library instead of a frame of the video. Only jpeg and
   // png, the formats every platform takes as a thumbnail.
@@ -424,6 +456,7 @@ export const MediaComponentInner: FC<{
           onChange={(e) => setAltText(e.target.value)}
           className={modalTextareaClass}
           rows={4}
+          maxLength={1000}
         />
       </div>
       {hasExtension(media?.path, 'mp4') && (

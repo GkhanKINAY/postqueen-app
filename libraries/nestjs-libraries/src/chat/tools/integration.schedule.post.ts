@@ -27,15 +27,27 @@ const attachmentUrl = z
     message: validUrlExtension.defaultMessage({} as any),
   });
 
+// A video cover: the same upload-domain check, but only the formats every
+// platform takes as a thumbnail. A gif, webp or video passed the attachment
+// check and then failed at publish time.
+const thumbnailUrl = z
+  .string()
+  .refine((url) => validUrlPath.validate(url, {} as any), {
+    message: validUrlPath.defaultMessage({} as any),
+  })
+  .refine((url) => /\.(jpe?g|png)$/i.test(url.split('?')[0]), {
+    message: 'The thumbnail must be a .jpg, .jpeg or .png file',
+  });
+
 // Attachments are either a plain URL string or { path, alt?, thumbnail?,
-// thumbnailTimestamp? }, the same per-media fields as the public API. The
-// thumbnail goes through the same upload-domain check as the path.
+// thumbnailTimestamp? }, the same per-media fields as the public API (alt
+// has MediaDto's 1000 character limit).
 const attachment = z.union([
   attachmentUrl,
   z.object({
     path: attachmentUrl,
-    alt: z.string().optional(),
-    thumbnail: attachmentUrl.optional(),
+    alt: z.string().max(1000).optional(),
+    thumbnail: thumbnailUrl.optional(),
     thumbnailTimestamp: z.number().int().min(0).optional(),
   }),
 ]);
@@ -122,7 +134,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                     attachments: z
                       .array(attachment)
                       .describe(
-                        'The media of the post: either an uploaded media URL string, or { path, alt?, thumbnail?, thumbnailTimestamp? } where path is the uploaded media URL, alt is its alt text, thumbnail is the path of an uploaded jpeg or png (returned by uploadFromUrlTool) used as the video thumbnail or cover, and thumbnailTimestamp is the video frame to use as the cover, in milliseconds'
+                        'The media of the post: either an uploaded media URL string, or { path, alt?, thumbnail?, thumbnailTimestamp? } where path is the uploaded media URL, alt is its alt text (up to 1000 characters), thumbnail is the path of an uploaded jpeg or png (returned by uploadFromUrlTool) used as the video thumbnail or cover, and thumbnailTimestamp is the video frame to use as the cover, in milliseconds'
                       ),
                     delay: z
                       .number()

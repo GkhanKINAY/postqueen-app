@@ -942,5 +942,6 @@
   "thumbnails_and_alt_text": "サムネイルと代替テキスト",
   "media_settings_section_description": "メディアをクリックすると代替テキストを設定できます。動画の場合はサムネイルも設定できます。",
   "media_settings_section_tooltip": "サムネイルはメイン投稿の動画に適用され、対応するすべてのチャンネルに送信されます。YouTube はショート（縦向き、3 分以内）として扱う動画ではサムネイルを無視することがありますが、投稿は失敗しません。また、カスタムサムネイルには電話番号で確認済みのチャンネルが必要です。YouTube がサムネイルを拒否しても、動画は公開されます。",
-  "youtube_thumbnail_overrides_media": "この投稿には YouTube 専用のサムネイルがあり、メディア設定のサムネイルより優先されます。"
+  "youtube_thumbnail_overrides_media": "この投稿には YouTube 専用のサムネイルがあり、メディア設定のサムネイルより優先されます。",
+  "media_settings_saved_on_post": "この投稿に保存しました。このファイルはメディアライブラリにはありません。"
 }

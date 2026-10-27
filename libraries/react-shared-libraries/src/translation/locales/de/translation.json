@@ -942,5 +942,6 @@
   "thumbnails_and_alt_text": "Vorschaubilder & Alt-Text",
   "media_settings_section_description": "Klicke auf ein Medium, um seinen Alt-Text festzulegen, oder bei einem Video sein Vorschaubild.",
   "media_settings_section_tooltip": "Vorschaubilder gelten für Videos im Hauptpost und werden an jeden Kanal gesendet, der sie unterstützt. YouTube kann sie bei Videos, die es als Shorts behandelt (Hochformat, bis zu 3 Minuten), ignorieren, ohne dass die Veröffentlichung fehlschlägt, und verlangt für eigene Vorschaubilder einen per Telefon bestätigten Kanal. Lehnt YouTube das Vorschaubild ab, wird das Video trotzdem veröffentlicht.",
-  "youtube_thumbnail_overrides_media": "Dieser Post hat ein eigenes YouTube-Vorschaubild, das das Vorschaubild aus den Medieneinstellungen ersetzt."
+  "youtube_thumbnail_overrides_media": "Dieser Post hat ein eigenes YouTube-Vorschaubild, das das Vorschaubild aus den Medieneinstellungen ersetzt.",
+  "media_settings_saved_on_post": "Für diesen Post gespeichert. Die Datei ist nicht in deiner Mediathek."
 }

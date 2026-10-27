@@ -2040,6 +2040,7 @@ media_library
 media_n_deleted
 media_n_selected
 media_settings
+media_settings_saved_on_post
 media_settings_section_description
 media_settings_section_tooltip
 media_upload_complete

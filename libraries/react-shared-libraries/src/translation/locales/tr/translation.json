@@ -960,5 +960,6 @@
   "thumbnails_and_alt_text": "Küçük resimler ve alternatif metin",
   "media_settings_section_description": "Alternatif metnini ya da video ise küçük resmini ayarlamak için bir medyaya tıklayın.",
   "media_settings_section_tooltip": "Küçük resimler ana gönderideki videolara uygulanır ve bunları destekleyen her kanala gönderilir. YouTube, Shorts olarak değerlendirdiği videolarda (dikey, en fazla 3 dakika) yayını başarısız saymadan bunları yok sayabilir ve özel küçük resimler için telefonla doğrulanmış bir kanal ister. YouTube küçük resmi reddederse video yine de yayınlanır.",
-  "youtube_thumbnail_overrides_media": "Bu gönderinin YouTube'a özel bir küçük resmi var ve bu, medya ayarlarında belirlenen küçük resmin yerine geçer."
+  "youtube_thumbnail_overrides_media": "Bu gönderinin YouTube'a özel bir küçük resmi var ve bu, medya ayarlarında belirlenen küçük resmin yerine geçer.",
+  "media_settings_saved_on_post": "Bu gönderiye kaydedildi. Dosya medya kütüphanenizde değil."
 }
