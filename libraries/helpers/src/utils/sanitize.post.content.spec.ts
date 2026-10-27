@@ -79,6 +79,85 @@ describe('sanitizePostContent', () => {
     }
   });
 
+  it('stays fast and keeps the text on deeply nested markup', () => {
+    for (const input of [
+      'a<b>'.repeat(5_000),
+      'a<span>'.repeat(5_000),
+      '<li>x'.repeat(5_000),
+    ]) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+      assert.ok(!/<(b|span|li)>/.test(out));
+      assert.match(out, /a|x/);
+    }
+  });
+
+  it('stays fast on a very large post, and cuts what is longer than any post', () => {
+    const many = '<p dir="auto">x <strong>y</strong></p>'.repeat(30_000);
+    let started = Date.now();
+    sanitizePostContent(many);
+    assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+
+    started = Date.now();
+    const out = sanitizePostContent('a'.repeat(5_000_000));
+    assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+    assert.equal(out.length, 1_000_000);
+  });
+
+  it('flattens tags the one-pass count cannot see, and open formatting that multiplies', () => {
+    const formatting = ['b', 'i', 'u', 's', 'em', 'strong', 'code', 'small'];
+    for (const input of [
+      // a `<` inside a quoted attribute hides the tag from the pattern
+      '<b title="<">x'.repeat(5_000),
+      // formatting left open is re-opened at every paragraph after it
+      Array.from({ length: 98 }, (_, i) => `<${formatting[i % 8]} class="c${i}">`).join('') +
+        '<p>y</p>'.repeat(9_900),
+    ]) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, /x|y/);
+    }
+  });
+
+  it('stays fast on what it removes, keeping the text and the allowed tags', () => {
+    for (const [input, kept] of [
+      ['<font>x</font>'.repeat(4_000), /x/],
+      ['<img>y'.repeat(6_000), /y/],
+      ['<!--c-->y'.repeat(6_000), /y/],
+      ['<p dir="auto"><em>x</em> <strong>y</strong></p>'.repeat(2_000), /^(<p dir="auto">x <strong>y<\/strong><\/p>)+$/],
+      ['<code class="c"/>z'.repeat(5_000), /z/],
+    ] as const) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, kept);
+      assert.doesNotMatch(out, /<(font|em|code|!--)/);
+    }
+  });
+
+  it('keeps pictures with a web address when it strips', () => {
+    const out = sanitizePostContent(
+      '<font>x</font>'.repeat(600) + '<img src="https://cdn.example/a.png">'
+    );
+    assert.match(out, /<img src="https:\/\/cdn\.example\/a\.png">/);
+  });
+
+  it('cannot make new tags out of what flattening leaves', () => {
+    const out = sanitizePostContent(
+      'a<b>'.repeat(200) + '<<b>script>alert(1)<</b>/script>'
+    );
+    assert.doesNotMatch(out, /<script/i);
+    assert.doesNotMatch(out, /<[a-z]/i);
+  });
+
+  it('keeps the markup the editor writes', () => {
+    const html =
+      '<p dir="auto">Hi <strong>you</strong></p><ul><li><p dir="auto">one</p></li></ul>';
+    assert.equal(sanitizePostContent(html), html);
+  });
+
   it('does not leave its picture rule on the shared instance', () => {
     sanitizePostContent('<img src="data:image/png;base64,AAAA">');
     // DOMPurify's defaults keep a data: picture; the post rule must not leak
