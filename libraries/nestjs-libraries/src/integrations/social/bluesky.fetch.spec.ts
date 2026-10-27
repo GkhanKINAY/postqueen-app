@@ -130,5 +130,11 @@ describe('Bluesky mentions', () => {
         .doNotCache,
       true
     );
+    // a Bluesky name over plain HTTP is not Bluesky's server
+    assert.equal(
+      (await search('https://bsky.social', 'http://x.host.bsky.network'))[0]
+        .doNotCache,
+      true
+    );
   });
 });

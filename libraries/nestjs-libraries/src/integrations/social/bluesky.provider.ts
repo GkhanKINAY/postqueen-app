@@ -1048,9 +1048,10 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     // to the server the account's identity names, and any other is the
     // account's own choice and can answer anything, so its answers are only
     // shown to that account.
-    const { hostname } = agent.dispatchUrl;
+    const { protocol, hostname } = agent.dispatchUrl;
     const blueskyServer =
-      hostname === 'bsky.social' || hostname.endsWith('.bsky.network');
+      protocol === 'https:' &&
+      (hostname === 'bsky.social' || hostname.endsWith('.bsky.network'));
     return list.data.actors.map((p) => ({
       label: p.displayName,
       id: p.handle,
