@@ -91,6 +91,7 @@ import {
   CopilotCreditsContext,
   useCopilotCreditsWatch,
 } from '@gitroom/frontend/components/agents/agent.credits';
+import { userMessageHtml } from '@gitroom/frontend/components/agents/user.message.html';
 
 type AgentIntegration = Integrations & {
   refreshNeeded?: boolean;
@@ -673,26 +674,10 @@ const contentToText = (
 };
 
 const Message: FC<UserMessageProps> = (props) => {
-  const convertContentToImagesAndVideo = useMemo(() => {
-    return contentToText(props.message?.content)
-      // `[id:<media id>]` after the url is for the model (attachments need
-      // the id); the bubble shows the file.
-      .replace(/Video: (http\S*mp4)(?: \[id:[^\]]*\])?\n/g, (match: string, p1: string) => {
-        return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
-      })
-      .replace(/Image: (http\S*)(?: \[id:[^\]]*\])?\n/g, (match: string, p1: string) => {
-        return `<img src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full rounded-[8px]" />`;
-      })
-      .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match: string, p1: string) => {
-        return `<div class="flex justify-center mt-[20px]">${p1}</div>`;
-      })
-      .replace(
-        /(\[--integrations--\][\s\S]*?\[--integrations--\])/g,
-        (match: string, p1: string) => {
-          return ``;
-        }
-      );
-  }, [props.message?.content]);
+  const convertContentToImagesAndVideo = useMemo(
+    () => userMessageHtml(contentToText(props.message?.content)),
+    [props.message?.content]
+  );
   return (
     <div
       className="copilotKitMessage copilotKitUserMessage"
