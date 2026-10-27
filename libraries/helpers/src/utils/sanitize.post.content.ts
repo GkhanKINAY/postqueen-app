@@ -56,21 +56,29 @@ const MAX_MISNESTED = 100;
 // Balanced markup is parsed in linear time, but at about a second per 40,000
 // elements; no post comes near this many.
 const MAX_TAGS = 20_000;
+// The parser re-opens every formatting element still open at each new block,
+// so elements left open multiply the work of every tag after them. Summing the
+// open depth over all tags bounds that; the editor's output stays far below.
+const MAX_OPEN_WORK = 200_000;
 // What a post's content may be at most, in characters, before it is parsed.
 // The longest a network takes is ListMonk's newsletter body, and a real one is
 // a fraction of this.
 export const MAX_POST_CONTENT_LENGTH = 1_000_000;
 
-// Whether the markup has any of these shapes, read in one pass. The stack never grows
-// past MAX_NESTING, so each tag costs at most that much.
+// Whether the markup has any of these shapes, read in one pass. The stack never
+// grows past MAX_NESTING, so each tag costs at most that much.
 const tooTangled = (html: string) => {
+  // A tag with a `<` inside a quoted attribute is a tag to the parser but not
+  // to the pattern below; any tag start it cannot account for flattens.
+  const starts = html.match(/<[a-zA-Z/]/g)?.length || 0;
   const open: string[] = [];
   let misnested = 0;
   let tags = 0;
+  let work = 0;
   for (const [, closing, tag, selfClosing] of html.matchAll(
     /<(\/?)([a-zA-Z][\w-]*)[^<>]*?(\/?)>/g
   )) {
-    if (++tags > MAX_TAGS) {
+    if (++tags > MAX_TAGS || (work += open.length) > MAX_OPEN_WORK) {
       return true;
     }
     const name = tag.toLowerCase();
@@ -96,7 +104,7 @@ const tooTangled = (html: string) => {
       open.length = at;
     }
   }
-  return false;
+  return tags < starts;
 };
 
 export const sanitizePostContent = (value: unknown): string => {
@@ -108,8 +116,13 @@ export const sanitizePostContent = (value: unknown): string => {
   // ever sees markup it handles quickly. Content longer than any post is cut
   // first: callers that take content from a request refuse it before this.
   const bounded = value.slice(0, MAX_POST_CONTENT_LENGTH);
+  // Removing tags can join a stray `<` and `>` into a new one, so whatever is
+  // left of either is escaped: the parser then sees text only.
   const markup = tooTangled(bounded)
-    ? bounded.replace(/<[^<>]*>/g, ' ')
+    ? bounded
+        .replace(/<[^<>]*>/g, ' ')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
     : bounded;
 
   // A block tag the editor doesn't know would be dropped with its text kept,

@@ -105,6 +105,30 @@ describe('sanitizePostContent', () => {
     assert.equal(out.length, 1_000_000);
   });
 
+  it('flattens tags the one-pass count cannot see, and open formatting that multiplies', () => {
+    const formatting = ['b', 'i', 'u', 's', 'em', 'strong', 'code', 'small'];
+    for (const input of [
+      // a `<` inside a quoted attribute hides the tag from the pattern
+      '<b title="<">x'.repeat(5_000),
+      // formatting left open is re-opened at every paragraph after it
+      Array.from({ length: 98 }, (_, i) => `<${formatting[i % 8]} class="c${i}">`).join('') +
+        '<p>y</p>'.repeat(9_900),
+    ]) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, /x|y/);
+    }
+  });
+
+  it('cannot make new tags out of what flattening leaves', () => {
+    const out = sanitizePostContent(
+      'a<b>'.repeat(200) + '<<b>script>alert(1)<</b>/script>'
+    );
+    assert.doesNotMatch(out, /<script/i);
+    assert.doesNotMatch(out, /<[a-z]/i);
+  });
+
   it('keeps the markup the editor writes', () => {
     const html =
       '<p dir="auto">Hi <strong>you</strong></p><ul><li><p dir="auto">one</p></li></ul>';
