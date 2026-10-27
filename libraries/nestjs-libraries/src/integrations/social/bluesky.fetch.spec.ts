@@ -50,7 +50,7 @@ describe('Bluesky requests', () => {
 
 describe('Bluesky mentions', () => {
   // Login, then the search, answered by whatever server the account named
-  const search = async (service: string) => {
+  const search = async (service: string, accountServer?: string) => {
     process.env.JWT_SECRET ||= 'test-secret';
     globalThis.fetch = (async (input: any) => {
       const url = String(input?.url ?? input);
@@ -60,6 +60,21 @@ describe('Bluesky mentions', () => {
             handle: 'me.test',
             accessJwt: 'a',
             refreshJwt: 'r',
+            // the server the account's identity names, which the agent
+            // talks to from then on
+            ...(accountServer && {
+              didDoc: {
+                '@context': ['https://www.w3.org/ns/did/v1'],
+                id: 'did:plc:x',
+                service: [
+                  {
+                    id: '#atproto_pds',
+                    type: 'AtprotoPersonalDataServer',
+                    serviceEndpoint: accountServer,
+                  },
+                ],
+              },
+            }),
           }
         : {
             actors: [
@@ -98,8 +113,22 @@ describe('Bluesky mentions', () => {
         doNotCache: false,
       },
     ]);
+    assert.equal(
+      (
+        await search(
+          'https://bsky.social',
+          'https://puffball.us-east.host.bsky.network'
+        )
+      )[0].doNotCache,
+      false
+    );
     // an account's own server can answer anything; other organizations must
-    // not be shown it
+    // not be shown it, also when the login went through bsky.social
     assert.equal((await search('https://pds.example'))[0].doNotCache, true);
+    assert.equal(
+      (await search('https://bsky.social', 'https://pds.example'))[0]
+        .doNotCache,
+      true
+    );
   });
 });
