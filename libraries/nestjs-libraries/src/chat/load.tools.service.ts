@@ -210,7 +210,7 @@ ${renderArray(
 - Facebook: conversational, 1-3 short paragraphs, a question or clear CTA.
 - Threads, Bluesky, Mastodon: conversational, one thought per post.
 - TikTok, YouTube, Pinterest: title and description carry keywords; need media; follow required fields.
-- Reddit and communities: no marketing voice; the title is the hook.
+- Lemmy and other communities: no marketing voice; the title is the hook.
 - When scheduling a post, you can pass an array for list of posts for a social media platform, But it has different behavior depending on the platform.
   - For platforms like Threads, Bluesky and X (Twitter), each post in the array will be a separate post in the thread.
   - For platforms like LinkedIn and Facebook, second part of the array will be added as "comments" to the first post.

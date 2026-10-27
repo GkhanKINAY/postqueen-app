@@ -10,7 +10,6 @@ export const PROVIDER_DISPLAY_ORDER = [
   'x',
   'linkedin',
   'linkedin-page',
-  'reddit',
   'instagram',
   'instagram-standalone',
   'facebook',

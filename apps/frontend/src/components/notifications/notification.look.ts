@@ -35,7 +35,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   linkedin: 'LinkedIn',
   'linkedin-page': 'LinkedIn Page',
   threads: 'Threads',
-  reddit: 'Reddit',
   pinterest: 'Pinterest',
   bluesky: 'Bluesky',
   mastodon: 'Mastodon',

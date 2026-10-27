@@ -11,7 +11,10 @@ import {
 import { withChannelDisplayName } from '@gitroom/nestjs-libraries/database/prisma/integrations/channel.display.name';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/integration.token.encryption.enabled';
-import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
+import {
+  IntegrationManager,
+  RETIRED_PROVIDERS,
+} from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
   AnalyticsData,
   SocialProvider,
@@ -105,6 +108,8 @@ export class IntegrationService implements OnModuleInit {
    * never waits on it; a failure is logged and the next boot tries again.
    */
   onModuleInit() {
+    this.disableRetiredProviders();
+
     const encrypt = isIntegrationTokenEncryptionEnabled();
     this._integrationRepository
       .syncStoredTokenEncryption(encrypt)
@@ -119,6 +124,33 @@ export class IntegrationService implements OnModuleInit {
       .catch((err) =>
         Logger.error(
           `Could not sync stored channel token encryption: ${err?.message}`,
+          'IntegrationService'
+        )
+      );
+  }
+
+  /**
+   * A network removed from the code (RETIRED_PROVIDERS) can leave channels
+   * behind in a database that had it. Nothing can publish to them any more, so
+   * they are switched off: every post workflow checks `disabled` before it
+   * reaches a provider, and a post still waiting on one of them ends as
+   * "Channel disabled" instead of waiting on a task queue no worker serves. Not
+   * awaited, like the token sync, and a no-op where no such channel exists.
+   */
+  private disableRetiredProviders() {
+    this._integrationRepository
+      .disableChannelsOfProviders(RETIRED_PROVIDERS)
+      .then((count) => {
+        if (count) {
+          Logger.log(
+            `Switched off ${count} channel(s) of a retired network`,
+            'IntegrationService'
+          );
+        }
+      })
+      .catch((err) =>
+        Logger.error(
+          `Could not switch off the channels of retired networks: ${err?.message}`,
           'IntegrationService'
         )
       );
@@ -373,8 +405,17 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.updateCustomName(org, id, name);
   }
 
-  getIntegrationsList(org: string) {
-    return this._integrationRepository.getIntegrationsList(org);
+  /**
+   * The workspace's channels, without those of a provider this build no longer
+   * has. Every caller looks the provider up (the channel list reads its editor,
+   * the agent's list its settings, autopost and drafts publish through it), so
+   * one such row used to take the whole Channels page down with a 500.
+   */
+  async getIntegrationsList(org: string) {
+    const registered = this._integrationManager.getAllowedSocialsIntegrations();
+    return (await this._integrationRepository.getIntegrationsList(org)).filter(
+      (p) => registered.includes(p.providerIdentifier)
+    );
   }
 
   getChannelHealth(org: string) {

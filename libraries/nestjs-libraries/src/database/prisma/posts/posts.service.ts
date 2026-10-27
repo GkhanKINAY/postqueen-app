@@ -1396,15 +1396,19 @@ export class PostsService {
             post?.integration?.id
           );
 
-        if (!integration) {
+        // A channel of a network removed from the code has no provider to
+        // check it against and can never publish, so it is refused the same way.
+        const provider =
+          integration &&
+          this._integrationManager.getSocialIntegration(
+            integration.providerIdentifier
+          );
+
+        if (!integration || !provider) {
           throw new BadRequestException(
             `Integration with id ${post?.integration?.id} not found`
           );
         }
-
-        const provider = this._integrationManager.getSocialIntegration(
-          integration.providerIdentifier
-        );
 
         let additionalSettings: any[] = [];
         try {
@@ -2661,7 +2665,7 @@ export class PostsService {
   async generatePostsDraft(orgId: string, body: CreateGeneratedPostsDto) {
     const getAllIntegrations = (
       await this._integrationService.getIntegrationsList(orgId)
-    ).filter((f) => !f.disabled && f.providerIdentifier !== 'reddit');
+    ).filter((f) => !f.disabled);
 
     // const posts = chunk(body.posts, getAllIntegrations.length);
     const allDates = dayjs()

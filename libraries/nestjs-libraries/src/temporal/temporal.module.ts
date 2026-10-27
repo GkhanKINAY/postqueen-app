@@ -8,7 +8,7 @@ export const getTemporalModule = (
   activityClasses?: any[]
 ) => {
   // Queues this worker server should NOT run, comma-separated
-  // (e.g. EXCLUDE_QUEUE="reddit,x,twitch"). Use it to pin a queue to a single
+  // (e.g. EXCLUDE_QUEUE="x,twitch"). Use it to pin a queue to a single
   // server: exclude it on every server except the one that should own it.
   // Meant for the providers whose concurrency is too low to split (limit 1).
   const excludeQueues = (process.env.EXCLUDE_QUEUE || '')

@@ -6,7 +6,6 @@ import { XProvider } from './x.provider.ts';
 import { BlueskyProvider } from './bluesky.provider.ts';
 import { MastodonProvider } from './mastodon.provider.ts';
 import { MastodonCustomProvider } from './mastodon.custom.provider.ts';
-import { RedditProvider } from './reddit.provider.ts';
 import { TumblrProvider } from './tumblr.provider.ts';
 import { BadBody } from '../social.abstract.ts';
 
@@ -257,25 +256,7 @@ describe('Mastodon errors', () => {
   });
 });
 
-describe('Reddit and Tumblr wording', () => {
-  it('names a bare Reddit 403 instead of "Unknown Error"', () => {
-    assert.equal(
-      new RedditProvider().handleErrors('{"message":"Forbidden","error":403}', 403)
-        ?.type,
-      'bad-body'
-    );
-    assert.equal(new RedditProvider().handleErrors('{}', 500), undefined);
-  });
-
-  it('asks for exactly one file on a Reddit media post, in good English', async () => {
-    assert.equal(
-      await new RedditProvider().checkValidity([media('jpg', 'jpg')], {
-        subreddit: [{ value: { type: 'media' } }],
-      }),
-      'When posting a media post, you must attach exactly one media file.'
-    );
-  });
-
+describe('Tumblr wording', () => {
   it('asks to reconnect the Tumblr channel', () => {
     assert.deepEqual(new TumblrProvider().handleErrors('{}', 401), {
       type: 'refresh-token',

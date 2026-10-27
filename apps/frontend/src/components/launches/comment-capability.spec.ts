@@ -26,9 +26,9 @@ describe('comment capability has one source', () => {
     const activity = read(
       '../../../../orchestrator/src/activities/post.activity.ts'
     );
-    // `isCommentable` answers `!!getIntegration.comment`. If these two ever
+    // `isCommentable` answers `!!getIntegration?.comment`. If these two ever
     // disagree, the composer offers a part the workflow then drops.
-    assert.match(activity, /return !!getIntegration\.comment;/);
+    assert.match(activity, /return !!getIntegration\?\.comment;/);
   });
 
   it('overrides the per-provider declaration for the boolean case', () => {

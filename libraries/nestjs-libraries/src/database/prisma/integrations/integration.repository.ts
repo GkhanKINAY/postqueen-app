@@ -1449,6 +1449,19 @@ export class IntegrationRepository {
     return createHash('md5').update(value).digest('hex');
   }
 
+  /** Switches off the live channels of the given providers. Returns how many. */
+  async disableChannelsOfProviders(providers: string[]) {
+    const { count } = await this._integration.model.integration.updateMany({
+      where: {
+        providerIdentifier: { in: providers },
+        deletedAt: null,
+        disabled: false,
+      },
+      data: { disabled: true },
+    });
+    return count;
+  }
+
   /**
    * Rewrites the stored tokens that are not in the form asked for: the plain
    * ones while encryption is on (every row written before it existed), the

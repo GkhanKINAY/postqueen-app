@@ -9,7 +9,7 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { useFieldArray } from 'react-hook-form';
 import { Button } from '@gitroom/react/form/button';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
-import { Subreddit } from './subreddit';
+import { LemmyCommunity } from './community';
 import { LemmySettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/lemmy.dto';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 const LemmySettings: FC = () => {
@@ -65,7 +65,7 @@ const LemmySettings: FC = () => {
                 />
               </svg>
             </button>
-            <Subreddit {...register(`subreddit.${index}.value`)} />
+            <LemmyCommunity {...register(`subreddit.${index}.value`)} />
           </div>
         ))}
       </div>

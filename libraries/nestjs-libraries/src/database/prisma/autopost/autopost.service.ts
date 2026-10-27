@@ -535,7 +535,7 @@ export class AutopostService {
     // The composer never reaches createPost without validatePosts first
     // (posts.controller.ts refuses anything non-draft that fails), but this
     // path calls createPost directly. The settings above are the draft stub —
-    // reddit wants a subreddit, youtube a title and privacy, pinterest a board.
+    // lemmy wants a community, youtube a title and privacy, pinterest a board.
     // Publishing that unattended fails at the provider, so only channels that
     // actually validate get queued; the rest still become drafts the user can
     // finish by hand.
@@ -687,10 +687,10 @@ export class AutopostService {
       return;
     }
 
-    // Only in auto-publish mode. getIntegrationsList filters just deletedAt, so
-    // without this a broken or downgraded channel gets a post every hour that
-    // can never publish — the recovery sweepers in posts.repository skip
-    // exactly these.
+    // Only in auto-publish mode. getIntegrationsList filters only deleted rows
+    // and providers the build no longer has, so without this a broken or
+    // downgraded channel gets a post every hour that can never publish — the
+    // recovery sweepers in posts.repository skip exactly these.
     //
     // Draft mode is the opposite case: a draft on a channel that needs
     // reconnecting is precisely what the user wants waiting for them once they

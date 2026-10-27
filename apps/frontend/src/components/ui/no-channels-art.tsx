@@ -7,7 +7,7 @@ import { useThemeMode } from '@gitroom/frontend/components/layout/mode.component
 
 /**
  * Theme-aware empty illustration (`/no-channels.svg` dark,
- * `/no-channels-colors.svg` light). Brand-colored Reddit / Facebook /
+ * `/no-channels-colors.svg` light). Brand-colored YouTube / Facebook /
  * Instagram tiles on both themes. Used when a channel list or connect
  * surface has nothing yet — same art as the Channels empty state.
  */
