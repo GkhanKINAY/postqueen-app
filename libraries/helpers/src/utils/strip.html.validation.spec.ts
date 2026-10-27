@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { parseFragment } from 'parse5';
-import { stripHtmlValidation } from './strip.html.validation.ts';
+import { hasHtmlTag, stripHtmlValidation } from './strip.html.validation.ts';
 
 // Every element of a fragment with its attribute names, as a browser would
 // read the HTML a channel publishes.
@@ -216,3 +216,42 @@ describe('stripHtmlValidation html text', () => {
   });
 });
 
+describe('hasHtmlTag', () => {
+  // The pattern it replaces, kept to compare against.
+  const before = (text: string) => /<\/?[a-z][\s\S]*>/i.test(text);
+
+  it('answers what the pattern it replaces answered', () => {
+    for (const text of [
+      '',
+      'plain text',
+      'a > b',
+      'a < b',
+      '<p>x</p>',
+      '<P DIR="auto">x</P>',
+      'x </b',
+      'x </b>',
+      '<3 and >',
+      '</a',
+      'a <b',
+      '< b>',
+      '</>',
+      '<1>',
+      'x<a\n\ny>',
+      '> <a',
+      '<a<a>',
+      '<<a>',
+      '<//a>',
+      'Tom &amp; Jerry',
+      '&lt;p&gt;',
+    ]) {
+      assert.equal(hasHtmlTag(text), before(text), JSON.stringify(text));
+    }
+  });
+
+  it('stays linear on a long run of tag openers with no end', () => {
+    const started = Date.now();
+    assert.equal(hasHtmlTag('<a'.repeat(500_000)), false);
+    assert.equal(hasHtmlTag('</a'.repeat(300_000) + '>'), true);
+    assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+  });
+});

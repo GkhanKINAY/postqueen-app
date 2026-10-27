@@ -65,7 +65,10 @@ import {
 import { stripLinks } from '@gitroom/helpers/utils/strip.links';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import {
+  hasHtmlTag,
+  stripHtmlValidation,
+} from '@gitroom/helpers/utils/strip.html.validation';
 import { countLength } from '@gitroom/helpers/utils/count.length';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
@@ -1390,7 +1393,7 @@ export class PostsService {
             p.content || '',
             true,
             false,
-            !/<\/?[a-z][\s\S]*>/i.test(p.content || ''),
+            !hasHtmlTag(p.content || ''),
             provider.mentionFormat,
             !!provider.inlineImages?.(settings)
           )

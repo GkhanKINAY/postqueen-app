@@ -33,7 +33,10 @@ import dayjs from 'dayjs';
 import { chunk, uniqBy } from 'lodash';
 // @ts-ignore
 import twitter from 'twitter-text';
-import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import {
+  hasHtmlTag,
+  stripHtmlValidation,
+} from '@gitroom/helpers/utils/strip.html.validation';
 import {
   hasLinks,
   stripLinks as removeLinks,
@@ -207,7 +210,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     // Without a tag left it is either plain API text or HTML whose tags were
     // all stripped (a <br> or <span> only), which is still encoded text. Its
     // entities are decoded, &amp; last so nothing decodes twice.
-    if (!/<\/?[a-z][\s\S]*>/i.test(message)) {
+    if (!hasHtmlTag(message)) {
       return message
         .replace(/&lt;/gi, '<')
         .replace(/&gt;/gi, '>')

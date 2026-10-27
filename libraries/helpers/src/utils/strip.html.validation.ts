@@ -354,6 +354,17 @@ export const convertMention = (
   );
 };
 
+/**
+ * Whether the text holds an HTML tag, which `/<\/?[a-z][\s\S]*>/i` used to
+ * answer. That pattern backtracks for every "<a" with no ">" after it, so a
+ * long run of them took seconds (7 s at 100 KB). Only the first opener needs
+ * checking: a ">" after any later one is also after the first.
+ */
+export const hasHtmlTag = (text: string): boolean => {
+  const opener = /<\/?[a-z]/i.exec(text);
+  return !!opener && text.includes('>', opener.index + opener[0].length);
+};
+
 export const hasPlainContent = (html: string | undefined): boolean => {
   return stripHtmlValidation('normal', html || '', true).trim().length > 0;
 };
