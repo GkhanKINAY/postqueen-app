@@ -242,6 +242,37 @@ describe('sanitizePostContent', () => {
       sanitizePostContent('Use x <y as a rule'),
       'Use x &lt;y as a rule'
     );
+    // `</3` is a bogus comment to the parser, which would drop the rest
+    assert.equal(
+      sanitizePostContent('I </3 Mondays. Back to work tomorrow.'),
+      'I &lt;/3 Mondays. Back to work tomorrow.'
+    );
+  });
+
+  it('counts nesting a closing tag cannot end, as the parser does', () => {
+    // </span> does not close past a <ul>, and </b> past one moves the
+    // formatting instead: the lists stay open. Popped anyway, 100 of these
+    // hid a tree 3,000 levels deep that threw after a second.
+    for (const open of ['<span>', '<b>', '<li>']) {
+      const input =
+        (open + '<ul>'.repeat(30) + open.replace('<', '</')).repeat(100) + 'x';
+      const started = Date.now();
+      assert.match(sanitizePostContent(input), /x/);
+      assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+    }
+  });
+
+  it('drops what DOMPurify drops with its content when it strips', () => {
+    const many = '<font>f</font>'.repeat(600);
+    assert.match(
+      sanitizePostContent('<p>a <audio>aud</audio> b</p>' + many),
+      /^<p>a {2}b<\/p>f/
+    );
+    // <plaintext> never closes
+    assert.equal(
+      sanitizePostContent('<p>a<plaintext>b</plaintext>c</p>'),
+      '<p>a</p>'
+    );
   });
 
   it('keeps the markup the editor writes', () => {

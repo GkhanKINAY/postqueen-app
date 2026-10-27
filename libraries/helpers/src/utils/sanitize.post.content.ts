@@ -96,7 +96,7 @@ const RESHAPING_TAGS = new Set([
   'frameset',
   'frame',
 ]);
-// Of those, the ones DOMPurify drops with everything inside (FORBID_CONTENTS).
+// The tags DOMPurify drops with everything inside (FORBID_CONTENTS).
 // Stripping drops them the same way: up to their first closing tag, or to the
 // end for <plaintext>, which never closes.
 const DROPPED_WITH_CONTENT = new Set([
@@ -113,6 +113,64 @@ const DROPPED_WITH_CONTENT = new Set([
   'math',
   'template',
   'head',
+  'thead',
+  'colgroup',
+  'audio',
+  'video',
+]);
+// A closing tag that is not for the innermost element closes it only in some
+// cases (https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody).
+// These pop everything above their element unless one of SCOPE_LIMITS is in
+// between (and <button> for </p>, <ul> or <ol> for </li>); </h1> to </h6>
+// close the nearest heading of any level.
+const CLOSED_IN_SCOPE = new Set([
+  'address',
+  'applet',
+  'article',
+  'aside',
+  'blockquote',
+  'button',
+  'center',
+  'dd',
+  'details',
+  'dialog',
+  'dir',
+  'div',
+  'dl',
+  'dt',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'header',
+  'hgroup',
+  'li',
+  'listing',
+  'main',
+  'marquee',
+  'menu',
+  'nav',
+  'object',
+  'ol',
+  'p',
+  'pre',
+  'search',
+  'section',
+  'summary',
+  'ul',
+]);
+const HEADINGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+// The others that end the scope are among RESHAPING_TAGS, stripped first.
+const SCOPE_LIMITS = new Set(['applet', 'marquee', 'object']);
+// Any other closing tag (formatting, <span>, unknown names) pops up to its
+// element only when no element of this "special" category is in between;
+// otherwise the parser ignores it, or moves the formatting around, and the
+// nesting above stays.
+const SPECIAL = new Set([
+  ...CLOSED_IN_SCOPE,
+  ...HEADINGS,
+  ...RESHAPING_TAGS,
+  'form',
 ]);
 // The editor's output nests a handful of levels (a list item, a mention inside
 // bold inside a paragraph), always closes what it opens and holds only allowed
@@ -157,6 +215,7 @@ type Token = {
   end: number;
   comment: boolean;
   closing: boolean;
+  // A comment's is #comment, #bogus or #doctype.
   name: string;
   attributes: number;
   // The first src, the one the parser keeps.
@@ -274,7 +333,13 @@ const scanMarkup = (
         continue;
       }
       let end: number;
+      // A doctype is dropped with no node; any other `<!`, `<?` or `</` that
+      // is no tag is a bogus comment.
+      let name = /^<!doctype/i.test(html.slice(open, open + 9))
+        ? '#doctype'
+        : '#bogus';
       if (next === '!' && html.startsWith('--', open + 2)) {
+        name = '#comment';
         // `<!-->` and `<!--->` end there, any other comment at `-->` or `--!>`
         const body = open + 4;
         if (html[body] === '>') {
@@ -303,7 +368,7 @@ const scanMarkup = (
         end,
         comment: true,
         closing: false,
-        name: '',
+        name,
         attributes: 0,
         src: null,
       };
@@ -376,8 +441,34 @@ const markupShape = (html: string): 'ok' | 'strip' | 'flatten' => {
       shape = 'flatten';
       return false;
     }
-    const at = open.lastIndexOf(name);
-    if (at !== -1) {
+    // Only what the parser certainly closes leaves the stack: counting an
+    // element still open is safe, missing one is how nesting went unseen.
+    let at = open.length - 1;
+    while (
+      at >= 0 &&
+      !(HEADINGS.has(name) ? HEADINGS.has(open[at]) : open[at] === name)
+    ) {
+      at--;
+    }
+    if (at === -1) {
+      return;
+    }
+    if (name === 'form') {
+      // </form> takes the form off the stack and leaves what is above it
+      open.splice(at, 1);
+      return;
+    }
+    const between = open.slice(at + 1);
+    const closes =
+      CLOSED_IN_SCOPE.has(name) || HEADINGS.has(name)
+        ? !between.some(
+            (tag) =>
+              SCOPE_LIMITS.has(tag) ||
+              (name === 'p' && tag === 'button') ||
+              (name === 'li' && (tag === 'ul' || tag === 'ol'))
+          )
+        : !between.some((tag) => SPECIAL.has(tag));
+    if (closes) {
       open.length = at;
     }
   });
@@ -387,21 +478,29 @@ const markupShape = (html: string): 'ok' | 'strip' | 'flatten' => {
   return removed > MAX_REMOVED ? 'strip' : 'ok';
 };
 
-// A tag the input ends inside is dropped by the parser, with everything from
-// its `<`: plain text such as `use x <y as a rule` would lose its end. That
+// Plain text that only looks like markup loses words to the parser: a tag the
+// input ends inside is dropped with everything from its `<` (`use x <y as a
+// rule`), and so is a bogus comment up to its `>` (`I </3 Mondays`). Their
 // `<` is escaped instead, so the text stays.
-const keepUnclosedTail = (html: string) => {
-  let cut = -1;
+const keepStrayText = (html: string) => {
+  const stray: number[] = [];
   scanMarkup(html, (token) => {
     if (
-      token.end === -1 &&
-      !token.comment &&
-      token.attributes <= MAX_ATTRIBUTES
+      token.name === '#bogus' ||
+      (token.end === -1 &&
+        !token.comment &&
+        token.attributes <= MAX_ATTRIBUTES)
     ) {
-      cut = token.start;
+      stray.push(token.start);
     }
   });
-  return cut === -1 ? html : `${html.slice(0, cut)}&lt;${html.slice(cut + 1)}`;
+  let out = '';
+  let from = 0;
+  for (const at of stray) {
+    out += `${html.slice(from, at)}&lt;`;
+    from = at + 1;
+  }
+  return out + html.slice(from);
 };
 
 // What DOMPurify would remove, taken out in linear time first: comments and
@@ -423,7 +522,9 @@ const stripRemoved = (html: string) => {
     if (!token.closing && DROPPED_WITH_CONTENT.has(token.name)) {
       const closingTag = new RegExp(`</${token.name}[\\t\\n\\f\\r />]`, 'gi');
       closingTag.lastIndex = from;
-      from = closingTag.exec(html)?.index ?? html.length;
+      from =
+        (token.name !== 'plaintext' && closingTag.exec(html)?.index) ||
+        html.length;
       return from;
     }
   });
@@ -459,7 +560,7 @@ export const sanitizePostContent = (value: unknown): string => {
 
   // Past any limit the parser below would be slow on, the markup is stripped
   // to the tags it keeps or, failing that, flattened to text.
-  let markup = keepUnclosedTail(paragraphs);
+  let markup = keepStrayText(paragraphs);
   let shape = markupShape(markup);
   if (shape === 'strip') {
     markup = stripRemoved(markup);
