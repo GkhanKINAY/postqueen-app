@@ -106,3 +106,19 @@ describe('The older AI features and credits', () => {
     );
   });
 });
+
+describe('The dashboard routes read posts as they will be saved', () => {
+  it('cleans the raw body before validating it, on /valid and on create', () => {
+    const calls = controller.match(
+      /validatePosts\(\s*org\.id,\s*this\._postsService\.withCleanContent\(rawBody\?\.posts\)\s*\)/g
+    );
+    assert.equal(calls?.length, 2);
+  });
+
+  it('prices the credits quote on cleaned content too', () => {
+    assert.match(
+      controller,
+      /quotePublishCredits\(\s*org\.id,\s*body\.type,\s*this\._postsService\.withCleanContent\(body\.posts\)\s*\)/
+    );
+  });
+});

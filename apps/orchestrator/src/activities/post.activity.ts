@@ -10,7 +10,10 @@ import {
   NotificationType,
 } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { Integration, Post, State } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
-import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import {
+  hasHtmlTag,
+  stripHtmlValidation,
+} from '@gitroom/helpers/utils/strip.html.validation';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { AuthTokenDetails } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { RefreshIntegrationService } from '@gitroom/nestjs-libraries/integrations/refresh.integration.service';
@@ -381,7 +384,7 @@ export class PostActivity {
                 p.content,
                 true,
                 false,
-                !/<\/?[a-z][\s\S]*>/i.test(p.content),
+                !hasHtmlTag(p.content),
                 getIntegration.mentionFormat
               ),
               settings: JSON.parse(p.settings || '{}'),
@@ -561,7 +564,7 @@ export class PostActivity {
           p.content,
           true,
           false,
-          !/<\/?[a-z][\s\S]*>/i.test(p.content),
+          !hasHtmlTag(p.content),
           getIntegration.mentionFormat,
           !!getIntegration.inlineImages?.(JSON.parse(p.settings || '{}'))
         ),

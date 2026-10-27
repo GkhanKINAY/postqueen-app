@@ -229,7 +229,10 @@ export class PostsController {
     @GetOrgFromRequest() org: Organization,
     @Body() rawBody: any
   ) {
-    return this._postsService.validatePosts(org.id, rawBody?.posts || []);
+    return this._postsService.validatePosts(
+      org.id,
+      this._postsService.withCleanContent(rawBody?.posts)
+    );
   }
 
   // What the posts being written will cost from the credits balance, for the
@@ -242,7 +245,7 @@ export class PostsController {
     return this._postsService.quotePublishCredits(
       org.id,
       body.type,
-      body.posts
+      this._postsService.withCleanContent(body.posts)
     );
   }
 
@@ -255,7 +258,7 @@ export class PostsController {
     // Server-side validation — never trust the client to have validated.
     const validation = await this._postsService.validatePosts(
       org.id,
-      rawBody?.posts || []
+      this._postsService.withCleanContent(rawBody?.posts)
     );
 
     const fail = (item: (typeof validation)[number], error: string) => {
