@@ -41,54 +41,74 @@ const dropImageWithoutUrl = (node: Node, data: { tagName: string }) => {
   }
 };
 
-// Tags that never take a closing tag, so they never nest.
+// Tags that never take a closing tag, so they never nest. In HTML a `/>` on
+// any other tag is ignored: `<code/>` opens a `<code>` like `<code>` does.
 const VOID_TAGS = new Set(['br', 'img', 'hr', 'input', 'meta', 'link', 'wbr']);
 // The editor's output nests a handful of levels (a list item, a mention inside
-// bold inside a paragraph) and always closes what it opens. jsdom's cost grows
-// with the square of two shapes it is not written for: deep nesting (`a<b>`
-// 2,000 times took two seconds, 5,000 times overflowed the stack) and close
-// tags that do not end the innermost element, which its misnesting repair
-// redoes for every one (`<b><i></b></i>` 5,000 times took six seconds). The
-// public preview sanitizes stored content on every view, so that cost could
-// be paid again by anyone opening the link.
+// bold inside a paragraph), always closes what it opens and holds only allowed
+// tags. jsdom and DOMPurify take time that grows with the square of shapes the
+// editor never writes:
+// - deep nesting (`a<b>` 2,000 times took two seconds, 5,000 overflowed the
+//   stack);
+// - close tags that do not end the innermost element, whose misnesting repair
+//   is redone for every one (`<b><i></b></i>` 5,000 times took six seconds);
+// - formatting left open, which the parser re-opens at every block after it;
+// - nodes DOMPurify removes (tags it does not allow, comments, pictures with
+//   no URL): each removal costs as much as the nodes beside it (4,000 took
+//   three seconds).
+// The public preview sanitizes stored content on every view, so that cost
+// could be paid again by anyone opening the link.
 const MAX_NESTING = 100;
 const MAX_MISNESTED = 100;
 // Balanced markup is parsed in linear time, but at about a second per 40,000
 // elements; no post comes near this many.
 const MAX_TAGS = 20_000;
-// The parser re-opens every formatting element still open at each new block,
-// so elements left open multiply the work of every tag after them. Summing the
-// open depth over all tags bounds that; the editor's output stays far below.
+// Summing the open depth over all tags bounds the re-opened formatting.
 const MAX_OPEN_WORK = 200_000;
+// Removals cost about 0.2 s per thousand at this size.
+const MAX_REMOVED = 500;
 // What a post's content may be at most, in characters, before it is parsed.
 // The longest a network takes is ListMonk's newsletter body, and a real one is
 // a fraction of this.
 export const MAX_POST_CONTENT_LENGTH = 1_000_000;
 
-// Whether the markup has any of these shapes, read in one pass. The stack never
+const ALLOWED = new Set(ALLOWED_TAGS);
+// A picture DOMPurify keeps: one whose src is a web address (dropImageWithoutUrl).
+const KEPT_IMAGE = /^<img\b[^<>]*\ssrc\s*=\s*["']?https?:\/\//i;
+
+// How the markup must be handled, read in one pass: as it is, with what
+// DOMPurify would remove stripped first, or flattened to text. The stack never
 // grows past MAX_NESTING, so each tag costs at most that much.
-const tooTangled = (html: string) => {
+const markupShape = (html: string): 'ok' | 'strip' | 'flatten' => {
   // A tag with a `<` inside a quoted attribute is a tag to the parser but not
   // to the pattern below; any tag start it cannot account for flattens.
   const starts = html.match(/<[a-zA-Z/]/g)?.length || 0;
+  // Comments, CDATA and processing instructions are all removed.
+  let removed = html.match(/<[!?]/g)?.length || 0;
   const open: string[] = [];
   let misnested = 0;
   let tags = 0;
   let work = 0;
-  for (const [, closing, tag, selfClosing] of html.matchAll(
-    /<(\/?)([a-zA-Z][\w-]*)[^<>]*?(\/?)>/g
+  for (const [whole, closing, tag] of html.matchAll(
+    /<(\/?)([a-zA-Z][\w-]*)[^<>]*>/g
   )) {
     if (++tags > MAX_TAGS || (work += open.length) > MAX_OPEN_WORK) {
-      return true;
+      return 'flatten';
     }
     const name = tag.toLowerCase();
-    if (VOID_TAGS.has(name) || selfClosing) {
+    if (
+      !closing &&
+      (!ALLOWED.has(name) || (name === 'img' && !KEPT_IMAGE.test(whole)))
+    ) {
+      removed++;
+    }
+    if (VOID_TAGS.has(name)) {
       continue;
     }
     if (!closing) {
       open.push(name);
       if (open.length > MAX_NESTING) {
-        return true;
+        return 'flatten';
       }
       continue;
     }
@@ -97,33 +117,46 @@ const tooTangled = (html: string) => {
       continue;
     }
     if (++misnested > MAX_MISNESTED) {
-      return true;
+      return 'flatten';
     }
     const at = open.lastIndexOf(name);
     if (at !== -1) {
       open.length = at;
     }
   }
-  return tags < starts;
+  if (tags < starts) {
+    return 'flatten';
+  }
+  return removed > MAX_REMOVED ? 'strip' : 'ok';
 };
+
+// What DOMPurify would remove, taken out in linear time first: comments and
+// the like, pictures with no web address, and every tag that is not allowed
+// (its text stays).
+const stripRemoved = (html: string) =>
+  html
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
+    .replace(/<[!?][^>]*>?/g, '')
+    .replace(/<\/?[a-zA-Z][\w-]*[^<>]*>/g, (tag) => {
+      const name = tag.match(/^<\/?([a-zA-Z][\w-]*)/)![1].toLowerCase();
+      return ALLOWED.has(name) && (name !== 'img' || KEPT_IMAGE.test(tag))
+        ? tag
+        : '';
+    });
+
+// Removing tags can join a stray `<` and `>` into a new one, so whatever is
+// left of either is escaped: the parser then sees text only.
+const flatten = (html: string) =>
+  html.replace(/<[^<>]*>/g, ' ').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export const sanitizePostContent = (value: unknown): string => {
   if (typeof value !== 'string' || !value) {
     return '';
   }
 
-  // Past any limit the tags go and the text stays, so the parser below only
-  // ever sees markup it handles quickly. Content longer than any post is cut
-  // first: callers that take content from a request refuse it before this.
+  // Content longer than any post is cut first: callers that take content from
+  // a request refuse it before this.
   const bounded = value.slice(0, MAX_POST_CONTENT_LENGTH);
-  // Removing tags can join a stray `<` and `>` into a new one, so whatever is
-  // left of either is escaped: the parser then sees text only.
-  const markup = tooTangled(bounded)
-    ? bounded
-        .replace(/<[^<>]*>/g, ' ')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-    : bounded;
 
   // A block tag the editor doesn't know would be dropped with its text kept,
   // gluing its line to the next one, so it becomes a paragraph the way the
@@ -133,14 +166,26 @@ export const sanitizePostContent = (value: unknown): string => {
   // for DOMPurify to unwrap, as before, once its inner ones are paragraphs.
   // Every scan stops at the next block tag (`[^<>]` in the opening tag, the
   // lookahead in the body), so hostile markup stays linear.
-  const paragraphs = markup.replace(
+  const paragraphs = bounded.replace(
     /<(div|section|article|blockquote|pre|h[4-6])\b[^<>]*>((?:(?!<\/?(?:div|section|article|blockquote|pre|h[1-6]|p|ul|ol|li)\b)[\s\S])*?)<\/\1\s*>/gi,
     '<p dir="auto">$2</p>'
   );
 
+  // Past any limit the parser below would be slow on, the markup is stripped
+  // to the tags it keeps or, failing that, flattened to text.
+  let markup = paragraphs;
+  let shape = markupShape(markup);
+  if (shape === 'strip') {
+    markup = stripRemoved(markup);
+    shape = markupShape(markup);
+  }
+  if (shape !== 'ok') {
+    markup = flatten(markup);
+  }
+
   DOMPurify.addHook('uponSanitizeElement', dropImageWithoutUrl);
   try {
-    return DOMPurify.sanitize(paragraphs, {
+    return DOMPurify.sanitize(markup, {
       ALLOWED_TAGS,
       ALLOWED_ATTR,
       ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,

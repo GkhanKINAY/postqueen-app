@@ -121,6 +121,29 @@ describe('sanitizePostContent', () => {
     }
   });
 
+  it('stays fast on what it removes, keeping the text and the allowed tags', () => {
+    for (const [input, kept] of [
+      ['<font>x</font>'.repeat(4_000), /x/],
+      ['<img>y'.repeat(6_000), /y/],
+      ['<!--c-->y'.repeat(6_000), /y/],
+      ['<p dir="auto"><em>x</em> <strong>y</strong></p>'.repeat(2_000), /^(<p dir="auto">x <strong>y<\/strong><\/p>)+$/],
+      ['<code class="c"/>z'.repeat(5_000), /z/],
+    ] as const) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, kept);
+      assert.doesNotMatch(out, /<(font|em|code|!--)/);
+    }
+  });
+
+  it('keeps pictures with a web address when it strips', () => {
+    const out = sanitizePostContent(
+      '<font>x</font>'.repeat(600) + '<img src="https://cdn.example/a.png">'
+    );
+    assert.match(out, /<img src="https:\/\/cdn\.example\/a\.png">/);
+  });
+
   it('cannot make new tags out of what flattening leaves', () => {
     const out = sanitizePostContent(
       'a<b>'.repeat(200) + '<<b>script>alert(1)<</b>/script>'
