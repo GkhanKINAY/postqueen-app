@@ -160,6 +160,25 @@ const CLOSED_IN_SCOPE = new Set([
   'ul',
 ]);
 const HEADINGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+// Formatting a closing tag pops without closing it stays in the parser's list
+// of active formatting elements and is opened again at the next text, so it
+// stays on the stack here until its own closing tag.
+const FORMATTING = new Set([
+  'a',
+  'b',
+  'big',
+  'code',
+  'em',
+  'font',
+  'i',
+  'nobr',
+  's',
+  'small',
+  'strike',
+  'strong',
+  'tt',
+  'u',
+]);
 // The others that end the scope are among RESHAPING_TAGS, stripped first.
 const SCOPE_LIMITS = new Set(['applet', 'marquee', 'object']);
 // Any other closing tag (formatting, <span>, unknown names) pops up to its
@@ -470,6 +489,7 @@ const markupShape = (html: string): 'ok' | 'strip' | 'flatten' => {
         : !between.some((tag) => SPECIAL.has(tag));
     if (closes) {
       open.length = at;
+      open.push(...between.filter((tag) => FORMATTING.has(tag)));
     }
   });
   if (shape !== 'ok') {

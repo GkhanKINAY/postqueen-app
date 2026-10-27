@@ -262,6 +262,25 @@ describe('sanitizePostContent', () => {
     }
   });
 
+  it('counts formatting a block closes as still open, as the parser reopens it', () => {
+    // </div> pops the formatting inside it, but the parser keeps it in its
+    // list and opens it again at the next text: 40 of these built a tree
+    // 3,922 deep and took 32 seconds.
+    let input = '';
+    for (let group = 0; group < 40; group++) {
+      input +=
+        '<div>' +
+        Array.from(
+          { length: 98 },
+          (_, i) => `<${i % 2 ? 'strong' : 'u'} class="g${group}i${i}">`
+        ).join('') +
+        '</div>';
+    }
+    const started = Date.now();
+    assert.match(sanitizePostContent(input + 'x'), /x/);
+    assert.ok(Date.now() - started < 1_000, `took ${Date.now() - started} ms`);
+  });
+
   it('drops what DOMPurify drops with its content when it strips', () => {
     const many = '<font>f</font>'.repeat(600);
     assert.match(
