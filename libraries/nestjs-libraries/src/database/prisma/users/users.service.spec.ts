@@ -276,8 +276,35 @@ describe('deleting an account', () => {
     assert.equal(await renews({ provider: 'stripe' }), true);
     assert.equal(await renews({ provider: 'stripe', isLifetime: true }), false);
     assert.equal(await renews({ provider: 'manual' }), false);
+    assert.equal(await renews({ provider: 'revenuecat' }), false);
     assert.equal(await renews({ provider: 'stripe', deletedAt: new Date() }), false);
-    // a member who is not an owner only leaves; the plan was never theirs to run
+    // already set to end at its period end, so it does not renew
+    assert.equal(await renews({ provider: 'stripe', cancelAt: new Date() }), false);
+    // an admin only leaves and is not asked to cancel the team's plan
     assert.equal(await renews({ provider: 'stripe' }, 'ADMIN'), false);
+  });
+
+  it('cancels the plan it deletes and says the shared one renews, together', async () => {
+    orgs = [
+      {
+        id: 'own',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [{ id: 'me', role: 'SUPERADMIN' }],
+      },
+      {
+        id: 'shared',
+        subscription: { subscriptionTier: 'PRO' },
+        members: [
+          { id: 'me', role: 'SUPERADMIN' },
+          { id: 'cofounder', role: 'SUPERADMIN' },
+        ],
+      },
+    ];
+
+    assert.deepEqual(await deletingService().getDeleteAccountInfo('me'), {
+      hasSubscription: true,
+      hasAdditionalMembers: false,
+      sharedPlanRenews: true,
+    });
   });
 });

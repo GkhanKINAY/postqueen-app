@@ -202,14 +202,18 @@ export class UsersService {
       ownedOrgs.map((org) => this._organizationRepository.getAllUsersOrgs(org.id))
     );
     const deleted = new Set(ownedOrgs.map((org) => org.id));
+    // Only owners are told: an admin who was invited to the team should not
+    // be asked to cancel its plan. An owner who handed ownership on and stayed
+    // an admin is not told either, although the card may be theirs; Stripe's
+    // customer is not tied to a member, so that case cannot be told apart.
     const sharedOrgs = (
       await this._organizationRepository.getOrgsByUserId(userId)
     ).filter(
       (org) => org.users[0].role === Role.SUPERADMIN && !deleted.has(org.id)
     );
 
-    // Only a plan cancelling really ends: a Stripe one. A lifetime row or a
-    // `manual` grant is a local entitlement, and an app store plan is
+    // Only a plan that cancelling really ends: a Stripe one. A lifetime row or
+    // a `manual` grant is a local entitlement, and an app store plan is
     // cancelled in the store, not here.
     const isStripePlan = ({
       subscription,
@@ -226,7 +230,10 @@ export class UsersService {
           (member) => member.user.id !== userId && !member.user.deletedAt
         )
       ),
-      sharedPlanRenews: sharedOrgs.some(isStripePlan),
+      // A plan already set to end at its period end does not renew.
+      sharedPlanRenews: sharedOrgs.some(
+        (org) => isStripePlan(org) && !org.subscription?.cancelAt
+      ),
     };
   }
 

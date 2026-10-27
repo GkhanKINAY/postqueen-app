@@ -58,32 +58,32 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   // The subscription is cancelled now and the other members are removed;
   // nothing is said about refunds, which go by request. An organization owned
   // with someone else is left, not deleted, and its subscription keeps being
-  // charged, possibly to this person's card: that is said while it can still
-  // be cancelled.
+  // charged, possibly to this person's card: that is said first, while it can
+  // still be cancelled, so the text still ends on what cannot be undone.
   const effects = useCallback(
     (current: DeleteAccountInfo | undefined, otherwise: string) => {
       const deletes =
         current?.hasSubscription && current?.hasAdditionalMembers
-        ? t(
-            'delete_account_confirm_subscription_members',
-            'Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.'
-          )
-        : current?.hasSubscription
-        ? t(
-            'delete_account_confirm_subscription',
-            'Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.'
-          )
-        : current?.hasAdditionalMembers
-        ? t(
-            'delete_account_confirm_members',
-            'Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.'
-          )
-        : otherwise;
+          ? t(
+              'delete_account_confirm_subscription_members',
+              'Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.'
+            )
+          : current?.hasSubscription
+          ? t(
+              'delete_account_confirm_subscription',
+              'Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.'
+            )
+          : current?.hasAdditionalMembers
+          ? t(
+              'delete_account_confirm_members',
+              'Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.'
+            )
+          : otherwise;
       return current?.sharedPlanRenews
-        ? `${deletes} ${t(
+        ? `${t(
             'delete_account_shared_plan_renews',
-            'An organization you own together with another owner stays with them, and its subscription keeps renewing on the card on file. To stop paying for it, cancel that subscription in Billing before you delete your account.'
-          )}`
+            'An organization you own together with another owner stays with them, and its subscription keeps renewing on the card on file. If that is your card, cancel the subscription in Billing before you delete your account.'
+          )} ${deletes}`
         : deletes;
     },
     [t]
