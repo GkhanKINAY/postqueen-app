@@ -617,7 +617,7 @@ drop it, do not restore the provider. Their edits to the shared files
 `sort.integrations.ts`, `channel-picture.ts`, `notification.look.ts`, the locale
 files, `.env.example`, `docker-compose.yaml`) are taken without its lines. Its
 identifier stays in `RETIRED_PROVIDERS` (`integration.manager.ts`), so channels
-a self-hosted database still has are switched off at boot. Lemmy and Farcaster
+a self-hosted database still has are removed at boot with their posts. Lemmy and Farcaster
 keep the `subreddit` settings field and the `subreddits` tool: those names are
 stored post settings and public API, not the channel.
 

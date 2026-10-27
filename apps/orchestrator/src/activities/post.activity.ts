@@ -345,8 +345,8 @@ export class PostActivity {
     );
 
     // A provider removed from the code is undefined here. Its channels are
-    // switched off at boot, so a post normally ends before this as "Channel
-    // disabled"; one that got past that check must still not throw here.
+    // removed at boot with their posts, which ends their workflows; one that
+    // got here before that must still not throw.
     return !!getIntegration?.comment;
   }
 
