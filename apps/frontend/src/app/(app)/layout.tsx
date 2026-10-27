@@ -196,7 +196,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           language={language}
         >
           <SentryComponent>
-            {/*<SetTimezone />*/}
             <HtmlComponent />
             <DubAnalytics />
             <FacebookComponent />

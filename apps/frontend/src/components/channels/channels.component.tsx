@@ -3,7 +3,6 @@
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel-picture';
-import dayjs from 'dayjs';
 import copy from 'copy-to-clipboard';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
@@ -48,6 +47,7 @@ import {
   channelListSubtitle,
 } from '@gitroom/frontend/components/channels/channel-handle';
 import { selectAddedIntegration } from '@gitroom/frontend/components/channels/select-added-integration';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 /**
  * Channels page — design's list + detail (or inline Add Channel pane).
@@ -1069,7 +1069,7 @@ export const ChannelsComponent: FC = () => {
           mutate={() => mutate()}
           integrations={list}
           selectedChannels={[current.id]}
-          date={dayjs.utc(slot.date).local()}
+          date={fromUtc(slot.date)}
           reopenModal={() => {}}
         />
       ),

@@ -4,6 +4,7 @@ import { FC, useMemo } from 'react';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import clsx from 'clsx';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 const FLAME_PATH =
   'M22 15.9998C22 18.9172 20.8411 21.7151 18.7782 23.778C16.7153 25.8409 13.9174 26.9998 11 26.9998C8.08262 26.9998 5.28473 25.8409 3.22183 23.778C1.15893 21.7151 0 18.9172 0 15.9998C0 12.5098 1.375 8.94105 4.0825 5.39355C4.1682 5.28122 4.27674 5.18833 4.40095 5.12099C4.52516 5.05365 4.66223 5.01341 4.80313 5.00289C4.94403 4.99238 5.08556 5.01185 5.21838 5.06001C5.35121 5.10817 5.47233 5.18393 5.57375 5.2823L8.58875 8.20855L11.3388 0.657298C11.3937 0.50669 11.484 0.371499 11.6022 0.263121C11.7203 0.154743 11.8628 0.0763568 12.0175 0.0345691C12.1723 -0.00721869 12.3349 -0.0111825 12.4915 0.023012C12.6481 0.0572064 12.7942 0.128557 12.9175 0.231048C15.6512 2.4998 22 8.56855 22 15.9998Z';
@@ -42,31 +43,23 @@ export const StreakComponent: FC = () => {
     return diffDays + 1;
   }, [user?.streakSince]);
 
-  // Continuous streak → Mon–Sun cells for the current week (local). Days in
-  // [today-(N-1), today] are done; today gets the design ring. No per-day API.
+  // Continuous streak → Mon–Sun cells for the current week, in the user's
+  // timezone like the calendar. Days in [today-(N-1), today] are done; today
+  // gets the design ring. No per-day API.
   const streakWeek = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    // JS: Sun=0 … Sat=6 → Mon-first index 0…6
-    const mondayOffset = (today.getDay() + 6) % 7;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - mondayOffset);
+    const today = newDayjs().startOf('day');
+    // Sun=0 … Sat=6 → Mon-first index 0…6
+    const monday = today.subtract((today.day() + 6) % 7, 'day');
 
     const earliest =
-      streakDays > 0
-        ? new Date(today.getTime() - (streakDays - 1) * 86400000)
-        : null;
+      streakDays > 0 ? today.subtract(streakDays - 1, 'day') : null;
 
     return DOW.map((dow, i) => {
-      const day = new Date(monday);
-      day.setDate(monday.getDate() + i);
-      const isToday = day.getTime() === today.getTime();
-      const isFuture = day.getTime() > today.getTime();
+      const day = monday.add(i, 'day');
+      const isToday = day.isSame(today, 'day');
+      const isFuture = day.isAfter(today, 'day');
       const done =
-        !!earliest &&
-        !isFuture &&
-        day.getTime() >= earliest.getTime() &&
-        day.getTime() <= today.getTime();
+        !!earliest && !isFuture && !day.isBefore(earliest, 'day');
       return { dow, done, isToday };
     });
   }, [streakDays]);

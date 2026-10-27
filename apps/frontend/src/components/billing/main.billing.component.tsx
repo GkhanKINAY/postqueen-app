@@ -8,7 +8,6 @@ import { useDebouncedCallback } from 'use-debounce';
 import ReactLoading from '@gitroom/frontend/components/layout/loading';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import dayjs from 'dayjs';
 import clsx from 'clsx';
 import {
   AnyTier,
@@ -41,7 +40,10 @@ import {
   takeFinishTrialConfirmed,
   useConfirmFinishTrial,
 } from '@gitroom/frontend/components/billing/finish.trial';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import {
   BuyLifetime,
@@ -139,7 +141,7 @@ export const Prorate: FC<{
     return (
       <div className="flex min-h-[17px] text-[12.5px] font-[600] text-pqMuted">
         {t('billing_changes_on', 'Changes on {{date}}', {
-          date: dayjs(scheduledAt).format('D MMM, YYYY'),
+          date: newDayjs(scheduledAt).format('D MMM, YYYY'),
         })}
       </div>
     );
@@ -762,7 +764,7 @@ export const MainBillingComponent: FC<{
     !!subscription?.id && !subscription?.cancelAt && !user?.isLifetime
   );
   const renewsOn = renewal?.renewsAt
-    ? newDayjs(renewal.renewsAt * 1000).local().format('D MMM, YYYY')
+    ? fromUtc(renewal.renewsAt * 1000).format('D MMM, YYYY')
     : null;
   // The design's plan-meta line. The trial's end and the renewal come from
   // Stripe (`renewsOn`); until they have, or when Stripe has none, the line
@@ -780,7 +782,7 @@ export const MainBillingComponent: FC<{
         'PostQueen {{tier}} · access until {{date}}',
         {
           tier: tierName,
-          date: newDayjs(subscription.cancelAt).local().format('D MMM, YYYY'),
+          date: fromUtc(subscription.cancelAt).format('D MMM, YYYY'),
         }
       );
     }
@@ -833,7 +835,7 @@ export const MainBillingComponent: FC<{
       if (target === 'FREE') {
         if (subscription?.cancelAt) {
           return t('downgrade_on', 'Downgrade on {{date}}', {
-            date: dayjs.utc(subscription.cancelAt).local().format('D MMM, YYYY'),
+            date: fromUtc(subscription.cancelAt).format('D MMM, YYYY'),
           });
         }
         return t('cancel_subscription_1', 'Cancel subscription');
@@ -1067,7 +1069,7 @@ export const MainBillingComponent: FC<{
             t(
               'billing_plan_change_scheduled',
               'Your plan changes on {{date}}. You keep your current plan until then.',
-              { date: dayjs(scheduledAt).format('D MMM, YYYY') }
+              { date: newDayjs(scheduledAt).format('D MMM, YYYY') }
             )
           );
           return;
@@ -1409,9 +1411,7 @@ export const MainBillingComponent: FC<{
             <div className="mt-[3px] text-[12.5px] text-pqMuted">
               {discount.endsAt
                 ? t('discount_until', 'Applied to every invoice through {{date}}.', {
-                    date: dayjs
-                      .utc(discount.endsAt)
-                      .local()
+                    date: fromUtc(discount.endsAt)
                       .format('D MMM, YYYY'),
                   })
                 : t('discount_forever', 'Applied to every invoice from now on.')}
@@ -1459,9 +1459,7 @@ export const MainBillingComponent: FC<{
                 'cancel_notice_title',
                 'Your subscription will be canceled at {{date}}',
                 {
-                  date: newDayjs(subscription.cancelAt)
-                    .local()
-                    .format('D MMM, YYYY'),
+                  date: fromUtc(subscription.cancelAt).format('D MMM, YYYY'),
                 }
               )}
             </div>

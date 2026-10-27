@@ -17,6 +17,10 @@ import {
   AgentDraftGroup,
   AgentDraftOutcome,
 } from '@gitroom/frontend/components/agents/agent.draft.card';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 
 dayjs.extend(utc);
 
@@ -414,7 +418,7 @@ export const useDraftActions = () => {
           children: wrapExisting(
             existing,
             <AddEditModal
-              date={date ? dayjs.utc(date).local() : dayjs()}
+              date={date ? fromUtc(date) : newDayjs()}
               allIntegrations={channels}
               integrations={
                 existing

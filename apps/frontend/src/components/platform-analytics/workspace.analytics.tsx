@@ -32,6 +32,7 @@ import {
 } from '@gitroom/frontend/components/billing/use.credits.balance';
 import { CreditsShortNote } from '@gitroom/frontend/components/billing/credits.amount';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 
 const formatScaled = (scaled: number, suffix: string, sign: string) => {
   const text =
@@ -389,6 +390,7 @@ const formatDate = (iso: string) =>
   new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
+    timeZone: getTimezone(),
   }).format(new Date(iso));
 
 export const WorkspaceAnalyticsGhost = () => (

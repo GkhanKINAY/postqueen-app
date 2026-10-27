@@ -24,12 +24,12 @@ import {
   CalendarWeekProvider,
   useCalendar,
 } from '@gitroom/frontend/components/launches/calendar.context';
-import dayjs from 'dayjs';
 import { FormChoice } from '@gitroom/react/form/form.choice';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 /**
  * The generation graph's nodes, grouped into the steps a person reads. The
@@ -216,7 +216,7 @@ const FirstStep: FC = () => {
                 ...p,
               }))}
               mutate={reloadCalendarView}
-              date={dayjs.utc(load.date).local()}
+              date={fromUtc(load.date)}
               reopenModal={() => ({})}
               onlyValues={messages}
             />

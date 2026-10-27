@@ -28,10 +28,10 @@ import { useRouter } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
-import dayjs from 'dayjs';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
 import copy from 'copy-to-clipboard';
 import clsx from 'clsx';
+import { fromUtc } from '@gitroom/frontend/components/layout/set.timezone';
 
 /** Design MENU_ICONS — stroke paths, viewBox 0 0 24 24. */
 const MENU_ICONS = {
@@ -292,7 +292,7 @@ export const Menu: FC<{
             integrations={integrations}
             selectedChannels={[integration.id]}
             // focusedChannel={integration.id}
-            date={dayjs.utc(date).local()}
+            date={fromUtc(date)}
           />
         ),
         size: '80%',

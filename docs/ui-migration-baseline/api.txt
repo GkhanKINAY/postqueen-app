@@ -188,6 +188,7 @@
 /user/self
 /user/subscription
 /user/switch
+/user/timezone
 /webhooks
 /webhooks/${row.id}
 /webhooks/send

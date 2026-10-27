@@ -19,6 +19,7 @@ import {
   PreviewComment,
   usePreviewComments,
 } from '@gitroom/frontend/components/preview/preview.comments.context';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 const REVIEWER_NAME_KEY = 'preview-reviewer-name';
 
@@ -363,7 +364,7 @@ const CommentBody: FC<{
             {t('preview_comment_guest', 'Guest')}
           </span>
         )}
-        <span>· {dayjs(comment.createdAt).format('MMM D, YYYY HH:mm')}</span>
+        <span>· {newDayjs(comment.createdAt).format('MMM D, YYYY HH:mm')}</span>
         {!!onDelete && (
           <button
             type="button"

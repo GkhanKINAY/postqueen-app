@@ -32,6 +32,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { UserDetailDto } from '@gitroom/nestjs-libraries/dtos/users/user.details.dto';
 import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/email-notifications.dto';
+import { TimezoneDto } from '@gitroom/nestjs-libraries/dtos/users/timezone.dto';
 import { ProductNewsDto } from '@gitroom/nestjs-libraries/dtos/users/product-news.dto';
 import { ChangePasswordDto } from '@gitroom/nestjs-libraries/dtos/users/change.password.dto';
 import { RequestEmailChangeDto } from '@gitroom/nestjs-libraries/dtos/users/request.email.change.dto';
@@ -48,6 +49,7 @@ import { ClientIp } from '@gitroom/nestjs-libraries/user/client.ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
+import { applyTrackCookies } from '@gitroom/nestjs-libraries/track/track.cookies';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   AuthorizationActions,
@@ -441,6 +443,16 @@ export class UsersController {
     return this._userService.updateEmailNotifications(user.id, body);
   }
 
+  // Only the web app reads it, to show dates in this timezone
+  @Post('/timezone')
+  @UseGuards(SameOriginGuard)
+  async updateTimezone(
+    @GetUserFromRequest() user: User,
+    @Body() body: TimezoneDto
+  ) {
+    return this._userService.updateTimezone(user.id, body);
+  }
+
   @Get('/product-news')
   async getProductNews(@GetUserFromRequest() user: User) {
     return this._userService.getProductNews(user.email);
@@ -657,8 +669,7 @@ export class UsersController {
     @Body()
     body: { tt: TrackEnum; fbclid: string; additional: Record<string, any> }
   ) {
-    const uniqueId = req?.cookies?.track || makeId(10);
-    const fbc = req?.cookies?._fbc || req?.cookies?.fbclid || body.fbclid;
+    const { uniqueId, fbc, fbp } = applyTrackCookies(req, res, body.fbclid);
     this._trackService
       .trackBrowserEvent(
         uniqueId,
@@ -668,22 +679,9 @@ export class UsersController {
         body.additional,
         fbc,
         user,
-        req?.cookies?._fbp
+        fbp
       )
       .catch(() => {});
-    if (!req.cookies.track) {
-      res.cookie('track', uniqueId, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(areCookiesSecured()
-          ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
-          : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-      });
-    }
 
     res.status(200).json({
       track: uniqueId,

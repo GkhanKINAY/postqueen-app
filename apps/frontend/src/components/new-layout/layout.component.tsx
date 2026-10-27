@@ -44,6 +44,7 @@ import { BillingAdminRequiredComponent } from '@gitroom/frontend/components/bill
 import { TrialTracker } from '@gitroom/frontend/components/layout/gtm.component';
 import { BrandMark } from '@gitroom/frontend/components/ui/logo.component';
 import { setSentryUser } from '@gitroom/react/sentry/initialize.sentry.client';
+import { applyUserTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 import { UserMenu } from '@gitroom/frontend/components/new-layout/user.menu';
 import { HelpMenu } from '@gitroom/frontend/components/new-layout/help.menu';
 import { Rail } from '@gitroom/frontend/components/new-layout/rail';
@@ -468,6 +469,13 @@ export const LayoutComponent = ({
     return await (await fetch(path)).json();
   }, []);
   const { data: user, mutate } = useSWR('/user/self', load, {
+    // set before anything renders a date in the user's timezone. An error
+    // body (no id) leaves the last known zone alone.
+    onSuccess: (data) => {
+      if (data?.id) {
+        applyUserTimezone(data.timezoneName);
+      }
+    },
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,

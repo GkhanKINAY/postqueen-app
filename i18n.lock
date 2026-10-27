@@ -765,3 +765,6 @@ checksums:
     preview_comment_delete_reply_confirm: 239623516219231b081ec6fb8ef25e42
     preview_comment_delete_failed: 55c641890950893aa6bc9b5ff47ab07b
     captcha_unavailable: 6235e6d25755abb9e96e744448e6d48b
+    timezone: 370780b854bdbef55320f977a4fb9ddb
+    automatic_timezone: bb2d180231d5caccb2507ada3bb8329e
+    could_not_save_timezone: d0e1af80e2c1de9a40f748fd5198d7a5

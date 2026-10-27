@@ -67,7 +67,10 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import copy from 'copy-to-clipboard';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { usePostErrorText } from '@gitroom/frontend/components/launches/helpers/use.post.error.text';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
 import { NoChannelsArt } from '@gitroom/frontend/components/ui/no-channels-art';
@@ -401,7 +404,7 @@ export const usePostActions = (
         date = slot?.date ?? null;
       }
 
-      const publishDate = dayjs.utc(date || data.posts[0].publishDate).local();
+      const publishDate = fromUtc(date || data.posts[0].publishDate);
       const ExistingData = !isDuplicate
         ? ExistingDataContextProvider
         : Fragment;
@@ -1014,9 +1017,8 @@ export const MonthView = () => {
   const calendarDays = useMemo(() => {
     const monthStart = newDayjs(startDate);
     const currentMonth = monthStart.month();
-    const currentYear = monthStart.year();
 
-    const startOfMonth = newDayjs(new Date(currentYear, currentMonth, 1));
+    const startOfMonth = monthStart.startOf('month');
 
     // Calculate the day offset for Monday (isoWeekday() returns 1 for Monday)
     const startDayOfWeek = startOfMonth.isoWeekday(); // 1 for Monday, 7 for Sunday
@@ -1177,7 +1179,7 @@ export const ListView = () => {
           reopenModal={createPost}
           mutate={reloadCalendarView}
           integrations={integrations}
-          date={dayjs.utc(date).local()}
+          date={fromUtc(date)}
         />
       ),
       size: '80%',
@@ -1198,7 +1200,7 @@ export const ListView = () => {
   const groupedPosts = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
     listPosts.forEach((post) => {
-      const dateKey = newDayjs(post.publishDate).local().format('YYYY-MM-DD');
+      const dateKey = fromUtc(post.publishDate).format('YYYY-MM-DD');
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -1379,6 +1381,7 @@ export const CalendarColumn: FC<{
   const {
     integrations,
     posts,
+    postDates,
     changeDate,
     display,
     reloadCalendarView,
@@ -1400,18 +1403,19 @@ export const CalendarColumn: FC<{
     openMissingRelease,
   } = usePostActions();
   const postList = useMemo(() => {
-    return posts.filter((post) => {
-      const pList = dayjs.utc(post.publishDate).local();
-      // Day and week both bucket by hour — day used to match exact minute so it
-      // could sit on autopost publish times; the design day grid is hourly.
-      const check =
-        display === 'day' || display === 'week'
-          ? pList.isSameOrAfter(getDate.startOf('hour')) &&
-            pList.isBefore(getDate.endOf('hour'))
-          : pList.isSame(getDate, 'day');
-      return check;
-    });
-  }, [posts, display, getDate]);
+    // Day and week both bucket by hour — day used to match exact minute so it
+    // could sit on autopost publish times; the design day grid is hourly.
+    // Matched on the wall clock of the user's timezone, so the hour a DST
+    // change repeats keeps the posts of both of its passes.
+    const format =
+      display === 'day' || display === 'week' ? 'YYYY-MM-DD HH' : 'YYYY-MM-DD';
+    const cell = getDate.format(format);
+    return posts.filter(
+      (post) =>
+        (postDates.get(post) || fromUtc(post.publishDate)).format(format) ===
+        cell
+    );
+  }, [posts, postDates, display, getDate]);
   const showAllFunc = useCallback(() => {
     // Design: overflow opens the Posts list for that day — not in-cell expand.
     openPostsForDay(
@@ -2154,10 +2158,7 @@ const CalendarItem: FC<{
   const contentPreview =
     stripHtmlValidation('none', post.content, false, true, false) ||
     t('no_content', 'no content');
-  const timeLabel = dayjs
-    .utc(post.publishDate)
-    .local()
-    .format(timePattern());
+  const timeLabel = fromUtc(post.publishDate).format(timePattern());
 
   // Month view: compact 24px chips (prototype data-mpost), not full week cards.
   if (props.display === 'month') {
@@ -2478,7 +2479,7 @@ const CalendarItem: FC<{
               height={16}
             />
             <span className="min-w-0 truncate text-[10px] font-[700] -tracking-[0.1px] text-pqMuted">
-              {/* `dayjs.utc(...).local()`, the same reading the cell above uses to
+              {/* `fromUtc(...)`, the same reading the cell above uses to
                   decide which hour row this card belongs in. `newDayjs(x)` parses
                   the stored UTC string as local, so the card printed the UTC hour
                   while sitting in the local one — a post scheduled for 07:00 read
@@ -2844,10 +2845,7 @@ const ListItem: FC<{
               </span>
             )}
             <span className="shrink-0 text-[12.5px] font-[600] text-pqSoft">
-              {dayjs
-                .utc(post.publishDate)
-                .local()
-                .format(timePattern())}
+              {fromUtc(post.publishDate).format(timePattern())}
             </span>
           </div>
           <span className="min-w-0 flex-1" />
@@ -3023,6 +3021,7 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
     const {
       integrations,
       posts,
+      postDates,
       changeDate,
       reloadCalendarView,
       sets,
@@ -3041,15 +3040,16 @@ const DayHourSection: FC<{ hour: number; day: dayjs.Dayjs }> = memo(
     } = usePostActions();
     const addProvider = useAddProvider();
 
+    // On the wall clock, like the week cells: see CalendarColumn
     const postList = useMemo(() => {
-      return posts.filter((post) => {
-        const pList = dayjs.utc(post.publishDate).local();
-        return (
-          pList.isSameOrAfter(getDate.startOf('hour')) &&
-          pList.isBefore(getDate.endOf('hour'))
-        );
-      });
-    }, [posts, getDate]);
+      const cell = getDate.format('YYYY-MM-DD HH');
+      return posts.filter(
+        (post) =>
+          (postDates.get(post) || fromUtc(post.publishDate)).format(
+            'YYYY-MM-DD HH'
+          ) === cell
+      );
+    }, [posts, postDates, getDate]);
 
     // One clock for both the past/future split and the now marker below.
     const hourTick = useMinuteTick();
@@ -3477,7 +3477,7 @@ const MobileWeekAgenda = () => {
  * Phone month: compact 7-column date picker. Tap a day to open that day's posts.
  */
 const MobileMonthAgenda = () => {
-  const { startDate, posts, openPostsForDay } = useCalendar();
+  const { startDate, posts, postDates, openPostsForDay } = useCalendar();
   const localizedDays = useMemo(() => {
     const currentLanguage = i18next.resolvedLanguage || 'en';
     dayjs.locale(currentLanguage);
@@ -3490,7 +3490,7 @@ const MobileMonthAgenda = () => {
 
   const calendarDays = useMemo(() => {
     const monthStart = newDayjs(startDate);
-    const startOfMonth = newDayjs(new Date(monthStart.year(), monthStart.month(), 1));
+    const startOfMonth = monthStart.startOf('month');
     const daysBeforeMonth = startOfMonth.isoWeekday() - 1;
     const calendarStartDate = startOfMonth.subtract(daysBeforeMonth, 'day');
     const days = [];
@@ -3508,11 +3508,13 @@ const MobileMonthAgenda = () => {
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const post of posts) {
-      const key = dayjs.utc(post.publishDate).local().format('YYYY-MM-DD');
+      const key = (postDates.get(post) || fromUtc(post.publishDate)).format(
+        'YYYY-MM-DD'
+      );
       map.set(key, (map.get(key) || 0) + 1);
     }
     return map;
-  }, [posts]);
+  }, [posts, postDates]);
 
   const today = newDayjs();
 

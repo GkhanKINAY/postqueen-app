@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { getTimezone } from '@gitroom/frontend/components/layout/set.timezone';
-import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
-import utc from 'dayjs/plugin/utc';
+import {
+  browserTimezone,
+  isTimezone,
+  setUserTimezone,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useUser, useRevalidateIdentity } from '@gitroom/frontend/components/layout/user.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -44,9 +45,6 @@ const PencilIcon = () => (
   </svg>
 );
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
 type IdentityProvider = {
   provider: string;
   enabled: boolean;
@@ -84,6 +82,31 @@ const providerLabel = (
   }
 };
 
+// Every IANA zone the browser knows, with its offset right now. Chrome's list
+// has no UTC, so it is added. The saved one is kept even when this browser
+// does not list it, so the select can show it.
+const timezoneOptions = (saved: string) => {
+  const intl = Intl as typeof Intl & {
+    supportedValuesOf?: (key: 'timeZone') => string[];
+  };
+  const listed = intl.supportedValuesOf?.('timeZone') || [];
+  const zones = listed.includes('UTC') ? listed : ['UTC', ...listed];
+  const all =
+    saved && !zones.includes(saved) && isTimezone(saved)
+      ? [saved, ...zones]
+      : zones;
+  const now = Date.now();
+  return all.map((zone) => {
+    const offset = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      timeZoneName: 'shortOffset',
+    })
+      .formatToParts(now)
+      .find((part) => part.type === 'timeZoneName')?.value;
+    return { zone, label: offset ? `${zone} (${offset})` : zone };
+  });
+};
+
 const useIdentities = () => {
   const fetch = useFetch();
   const load = useCallback(async () => {
@@ -100,8 +123,8 @@ const useIdentities = () => {
 };
 
 /**
- * Personal account: name, email, password, connected accounts, delete.
- * Timezone change stays Coming soon (User.timezone Int vs IANA).
+ * Personal account: name, email, password, connected accounts, timezone,
+ * delete. The timezone is `User.timezoneName` (IANA); empty is the browser's.
  */
 export const UserAccountComponent = () => {
   const t = useT();
@@ -113,8 +136,13 @@ export const UserAccountComponent = () => {
   const { oauthDisplayName, isGeneral, genericOauth } = useVariables();
   const router = useRouter();
   const search = useSearchParams();
-  const currentTz = useMemo(() => getTimezone(), []);
-  const detectedTz = useMemo(() => dayjs.tz.guess(), []);
+  const detectedTz = useMemo(() => browserTimezone(), []);
+  // The zone being saved; the select shows the stored one otherwise.
+  const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
+  const zones = useMemo(
+    () => timezoneOptions(user?.timezoneName || ''),
+    [user?.timezoneName]
+  );
 
   const [name, setName] = useState(user?.name || '');
   const [nameOpen, setNameOpen] = useState(false);
@@ -225,6 +253,29 @@ export const UserAccountComponent = () => {
       setSavingName(false);
     }
   }, [name, user?.name, fetch, toaster, t, revalidateIdentity]);
+
+  const saveTimezone = useCallback(
+    async (value: string) => {
+      setPendingTimezone(value);
+      const res = await fetch('/user/timezone', {
+        method: 'POST',
+        body: JSON.stringify({ timezoneName: value || null }),
+      }).catch((): null => null);
+      if (!res?.ok) {
+        setPendingTimezone(null);
+        toaster.show(
+          t('could_not_save_timezone', 'Could not save the timezone'),
+          'warning'
+        );
+        return;
+      }
+      // Everything on screen was rendered in the previous timezone. Stored
+      // first, so the reload starts in the new one.
+      setUserTimezone(value || null);
+      window.location.reload();
+    },
+    [fetch, toaster, t]
+  );
 
   const requestEmail = useCallback(async () => {
     setSavingAuth(true);
@@ -706,31 +757,39 @@ export const UserAccountComponent = () => {
         </div>
       )}
 
-      <div className="rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]">
-        <div className="flex items-start justify-between gap-[14px]">
-          <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-[600] text-pqText">
-              {t('timezone', 'Timezone')}
-            </div>
-            <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
-              {t(
-                'timezone_display_description',
-                'Used for notifications and how times are shown. Channel post slots keep their own offsets.'
-              )}
-            </div>
-            <div className="mt-[10px] text-[13.5px] font-[600] text-pqText">
-              {currentTz}
-            </div>
-            {currentTz !== detectedTz && (
-              <div className="mt-[2px] text-[12px] text-pqSoft">
-                {t('timezone_detected', 'Detected')}: {detectedTz}
-              </div>
-            )}
-          </div>
-          <span className="shrink-0 rounded-[999px] bg-pqSettings px-[9px] py-[3px] text-[11px] font-[600] text-pqMuted">
-            {t('coming_soon', 'Coming soon')}
-          </span>
+      <div
+        data-pq="account-timezone"
+        className="rounded-pqMd bg-pqPop p-[15px_16px] shadow-[inset_0_0_0_1px_var(--border)]"
+      >
+        <div className="text-[13.5px] font-[600] text-pqText">
+          {t('timezone', 'Timezone')}
         </div>
+        <div className="mt-[2px] text-[12px] leading-[1.45] text-pqMuted">
+          {t(
+            'timezone_display_description',
+            'How dates and times are shown in the app. Posting times already set for a channel stay at the same moment.'
+          )}
+        </div>
+        <select
+          aria-label={t('timezone', 'Timezone')}
+          value={pendingTimezone ?? (user?.timezoneName || '')}
+          disabled={pendingTimezone !== null}
+          onChange={(event) => void saveTimezone(event.target.value)}
+          className={clsx(modalFieldClass, 'mt-[12px] disabled:opacity-60')}
+        >
+          <option value="">
+            {t('automatic_timezone', 'Automatic ({{timezone}})', {
+              timezone: detectedTz,
+              interpolation: { escapeValue: false },
+            })}
+          </option>
+          {/* A zone name and its offset read left to right in he/ar too. */}
+          {zones.map(({ zone, label }) => (
+            <option key={zone} value={zone} dir="ltr">
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <DeleteAccountComponent />

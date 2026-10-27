@@ -5,7 +5,10 @@ import dayjs from 'dayjs';
 import { Button } from '@gitroom/react/form/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useCalendar } from '@gitroom/frontend/components/launches/calendar.context';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -84,7 +87,7 @@ const useReschedule = (post: MovablePost) => {
   const toaster = useToaster();
   const { changeDate, reloadCalendarView } = useCalendar();
   const [open, setOpen] = useState(false);
-  const current = dayjs.utc(post.publishDate).local();
+  const current = fromUtc(post.publishDate);
   const confirm = async (next: dayjs.Dayjs) => {
     const item = post;
     changeDate(item.id, next);

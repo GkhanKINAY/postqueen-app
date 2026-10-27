@@ -80,6 +80,10 @@ import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anch
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { MediaSettingsSection } from '@gitroom/frontend/components/new-launch/media.settings.section';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 
 /** Side-by-side editor + preview once the viewport can hold a 420px preview. */
 export const COMPOSER_SPLIT_MIN = PQ_COMPOSER_SPLIT_MIN;
@@ -590,7 +594,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       compact: 460,
       children: (close) => (
         <PostAgainDialog
-          date={dayjs().add(1, 'hour').startOf('hour')}
+          date={newDayjs().add(1, 'hour').startOf('hour')}
           onClose={close}
           onConfirm={async (next) => {
             const item = existingData.posts[0];
@@ -1511,9 +1515,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                             "This post didn't go out on {{date}}.",
                             {
                               date: formatShortWeekdayTime(
-                                dayjs
-                                  .utc(existingData.posts[0].publishDate)
-                                  .local()
+                                fromUtc(existingData.posts[0].publishDate)
                               ),
                             }
                           )}

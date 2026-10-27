@@ -12,6 +12,7 @@ import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { CopilotKit } from '@copilotkit/react-core';
 import { ToolTip } from '@gitroom/frontend/components/layout/top.tip';
+import { applyUserTimezone } from '@gitroom/frontend/components/layout/set.timezone';
 export const PreviewWrapper = ({ children }: { children: ReactNode }) => {
   const fetch = useFetch();
   const { backendUrl, aiEnabled, billingEnabled } = useVariables();
@@ -19,6 +20,14 @@ export const PreviewWrapper = ({ children }: { children: ReactNode }) => {
     return await (await fetch(path)).json();
   }, []);
   const { data: user } = useSWR('/user/self', load, {
+    // The extension's composer runs here, in an iframe whose storage is
+    // partitioned, so the zone the app stored is not there: it comes from the
+    // user, before the composer renders (it waits for the user).
+    onSuccess: (data) => {
+      if (data?.id) {
+        applyUserTimezone(data.timezoneName);
+      }
+    },
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,

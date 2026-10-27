@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import dayjs, { Dayjs } from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 
 dayjs.extend(localizedFormat);
 
@@ -192,8 +193,10 @@ export const longDateTimePattern = (): string =>
 export const shortWeekdayTimePattern = (): string =>
   `ddd · ${timePattern()}`;
 
+// Everything formatted here is shown in the user's timezone: a Dayjs keeps
+// the zone it was made in, anything else is read the way newDayjs reads it.
 const asDayjs = (value: Dayjs | Date | string | number) =>
-  dayjs.isDayjs(value) ? value : dayjs(value);
+  dayjs.isDayjs(value) ? value : newDayjs(value);
 
 export const formatDate = (value: Dayjs | Date | string | number) =>
   asDayjs(value).format(datePattern());

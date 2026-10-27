@@ -7,7 +7,6 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { Select } from '@gitroom/react/form/select';
 import { Button } from '@gitroom/react/form/button';
 import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 // @ts-ignore
 import useKeypress from 'react-use-keypress';
@@ -19,7 +18,10 @@ import { sortBy } from 'lodash';
 import { usePreventWindowUnload } from '@gitroom/react/helpers/use.prevent.window.unload';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import {
+  fromUtc,
+  newDayjs,
+} from '@gitroom/frontend/components/layout/set.timezone';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import clsx from 'clsx';
 import {
@@ -29,7 +31,6 @@ import {
 } from '@gitroom/frontend/components/ui/icons';
 
 dayjs.extend(utc);
-dayjs.extend(timezone);
 
 const hours = [...Array(24).keys()].map((i) => ({
   value: i,
@@ -90,7 +91,7 @@ export const TimeTable: FC<{
         .add(hour, 'hours')
         .add(minute, 'minutes')
         .diff(newDayjs().utc().startOf('day'), 'minutes') -
-      dayjs.tz().utcOffset();
+      newDayjs().utcOffset();
     setCurrentTimes((prev) => [
       ...prev,
       {
@@ -103,12 +104,9 @@ export const TimeTable: FC<{
     return sortBy(
       currentTimes.map(({ time }) => ({
         value: time,
-        formatted: dayjs
-          .utc()
-          .startOf('day')
-          .add(time, 'minutes')
-          .local()
-          .format(timePattern()),
+        formatted: fromUtc(
+          dayjs.utc().startOf('day').add(time, 'minutes')
+        ).format(timePattern()),
       })),
       (p) => p.value
     );
