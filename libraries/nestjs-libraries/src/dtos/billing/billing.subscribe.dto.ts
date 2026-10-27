@@ -90,4 +90,19 @@ export class BillingSubscribeDto {
   @IsOptional()
   @IsBoolean()
   withdrawalWaiver?: boolean;
+
+  // The Meta pixel's cookies (_fbc / _fbp), saved on the subscription for the
+  // trial and purchase events the webhooks send. Dropped rather than cut when
+  // longer than a Stripe metadata value (500): a cut one would not match.
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.length <= 500 ? value : undefined
+  )
+  fbc?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.length <= 500 ? value : undefined
+  )
+  fbp?: string;
 }

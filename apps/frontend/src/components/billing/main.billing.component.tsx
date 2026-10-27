@@ -32,7 +32,6 @@ import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
-import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
 import { useTrack } from '@gitroom/react/helpers/use.track';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
@@ -56,6 +55,7 @@ import {
   PurchaseTerms,
 } from '@gitroom/frontend/components/billing/credits.packs';
 import { BillingFeatures } from '@gitroom/frontend/components/billing/first.billing.component';
+import useCookie from 'react-use-cookie';
 
 type SubscriptionWithPlatform = Subscription & {
   platform?: 'web' | 'mobile';
@@ -287,7 +287,6 @@ const BillingCancelDialog: FC<{
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
-  const events = useFireEvents();
   const [step, setStep] = useState<CancelStep>('confirm');
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
@@ -359,9 +358,8 @@ const BillingCancelDialog: FC<{
 
   const submitCancel = useCallback(() => {
     if (feedback.length < 20) return;
-    events('cancel_subscription');
     onDone({ action: 'canceled', feedback });
-  }, [events, feedback, onDone]);
+  }, [feedback, onDone]);
 
   const title =
     step === 'confirm'
@@ -607,6 +605,8 @@ export const MainBillingComponent: FC<{
   const toast = useToaster();
   const user = useUser();
   const dub = useDubClickId();
+  const [fbc] = useCookie('_fbc', '');
+  const [fbp] = useCookie('_fbp', '');
   const modal = useModals();
   const track = useTrack();
   const t = useT();
@@ -1033,6 +1033,8 @@ export const MainBillingComponent: FC<{
             ...readAttribution(),
             billing,
             ...(dub ? { dub } : {}),
+            ...(fbc ? { fbc } : {}),
+            ...(fbp ? { fbp } : {}),
           }),
         });
 
@@ -1088,6 +1090,7 @@ export const MainBillingComponent: FC<{
               pricing[billing][
                 monthlyOrYearly === 'on' ? 'year_price' : 'month_price'
               ],
+            currency: 'USD',
           });
           window.location.href = url;
           return;

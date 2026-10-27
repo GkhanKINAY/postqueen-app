@@ -26,7 +26,10 @@ import {
   trialWindow,
 } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
-import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
+import {
+  isMetaPixelEnabled,
+  TrackService,
+} from '@gitroom/nestjs-libraries/track/track.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { TrackEnum } from '@gitroom/nestjs-libraries/user/track.enum';
 import {
@@ -1336,6 +1339,21 @@ export class StripeService extends PaymentProviderAbstract {
       this.creditPricingOfSubscription(event.data.object)
     );
     await this.grantTrialCredits(event.data.object, saved);
+
+    // The Meta pixel's StartTrial, sent once Stripe has the trial and its card
+    // checks have passed. In the background: tracking never holds up or fails
+    // this webhook.
+    if (event.data.object.status === 'trialing') {
+      this.trackSubscription(
+        event.data.object.metadata,
+        event.data.object.id,
+        TrackEnum.StartTrial,
+        {
+          value:
+            pricing[billing][period === 'YEARLY' ? 'year_price' : 'month_price'],
+        }
+      ).catch(() => {});
+    }
     return saved;
   }
 
@@ -3282,15 +3300,103 @@ export class StripeService extends PaymentProviderAbstract {
       );
     }
 
-    const { userId, ud } = subscription.metadata;
-    const user = await this._userService.getUserById(userId);
-    if (user && user.ip && user.agent) {
-      this._trackService.track(ud, user.ip, user.agent, TrackEnum.Purchase, {
-        value: event.data.object.amount_paid / 100,
-      });
-    }
+    // The Meta pixel's Purchase, after the credits above. In the background:
+    // tracking never holds up or fails this webhook.
+    this.trackConversion(event.data.object, subscription).catch(() => {});
 
     return { ok: true };
+  }
+
+  // The first charge of a subscription is the conversion: a trial that turned
+  // into a paid plan, or a plan paid upfront. The $0 invoice that starts a
+  // trial and the renewals are not counted.
+  private async trackConversion(
+    invoice: Stripe.Invoice,
+    subscription: Stripe.Subscription
+  ) {
+    if (!isMetaPixelEnabled()) {
+      return;
+    }
+    try {
+      // Invoices of the other services sharing the Stripe account stop here.
+      if (
+        invoice.amount_paid <= 0 ||
+        subscription.metadata?.service !== SUBSCRIPTION_SERVICE_TAG ||
+        !subscription.metadata?.userId
+      ) {
+        return;
+      }
+
+      const paidInvoices = await stripe.invoices.list({
+        subscription: subscription.id,
+        status: 'paid',
+        limit: 100,
+      });
+      const paidBefore = paidInvoices.data.some(
+        (f) =>
+          f.id !== invoice.id &&
+          f.amount_paid > 0 &&
+          (f.created < invoice.created ||
+            (f.created === invoice.created && f.id! < invoice.id!))
+      );
+      if (paidBefore) {
+        return;
+      }
+
+      await this.trackSubscription(
+        subscription.metadata,
+        invoice.id!,
+        TrackEnum.Purchase,
+        {
+          value: invoice.amount_paid / 100,
+          currency: invoice.currency,
+        }
+      );
+    } catch (err: any) {
+      Logger.warn(
+        `[stripe] pixel conversion for ${invoice.id} not sent: ${err?.message}`
+      );
+    }
+  }
+
+  // A Meta pixel event for the user who checked the subscription out, with
+  // the _fbc / _fbp cookies the checkout saved on it. Never throws: tracking
+  // must not affect billing.
+  private async trackSubscription(
+    metadata: Stripe.Metadata,
+    eventId: string,
+    tt: TrackEnum,
+    additional: Record<string, any>
+  ) {
+    if (!isMetaPixelEnabled()) {
+      return;
+    }
+    try {
+      const { userId, fbc, fbp } = metadata || {};
+      if (!userId) {
+        return;
+      }
+
+      const user = await this._userService.getUserById(userId);
+      if (!user) {
+        return;
+      }
+
+      await this._trackService.track(
+        eventId,
+        user.ip,
+        user.agent,
+        tt,
+        additional,
+        fbc,
+        user,
+        fbp
+      );
+    } catch (err: any) {
+      Logger.warn(
+        `[stripe] pixel ${TrackEnum[tt]} for ${eventId} not sent: ${err?.message}`
+      );
+    }
   }
 
   /**

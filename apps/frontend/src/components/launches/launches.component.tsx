@@ -18,7 +18,6 @@ import { useSearchParams } from 'next/navigation';
 import type { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
 import { Calendar } from './calendar';
 import { useDrag, useDrop } from 'react-dnd';
 import { DNDProvider } from '@gitroom/frontend/components/launches/helpers/dnd.provider';
@@ -487,7 +486,6 @@ export const MenuComponent: FC<
 export const LaunchesComponent = () => {
   const search = useSearchParams();
   const toast = useToaster();
-  const fireEvents = useFireEvents();
   const t = useT();
   const { isLoading, data: integrations } = useIntegrationList();
 
@@ -510,7 +508,6 @@ export const LaunchesComponent = () => {
       );
     }
     if (search.get('added')) {
-      fireEvents('channel_added');
       window?.opener?.postMessage(
         {
           msg: t('channel_added', 'Channel added'),

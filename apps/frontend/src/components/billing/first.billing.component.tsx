@@ -803,6 +803,8 @@ export const FirstBillingComponent = () => {
   const stackCheckout = mobile || tablet;
   const [datafast_visitor_id] = useCookie('datafast_visitor_id', '');
   const [datafast_session_id] = useCookie('datafast_session_id', '');
+  const [fbc] = useCookie('_fbc', '');
+  const [fbp] = useCookie('_fbp', '');
 
   useEffect(() => {
     if (stripeClient) {
@@ -854,6 +856,8 @@ export const FirstBillingComponent = () => {
           ? { datafast_visitor_id, datafast_session_id }
           : {}),
         ...(dub ? { dub } : {}),
+        ...(fbc ? { fbc } : {}),
+        ...(fbp ? { fbp } : {}),
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -867,7 +871,7 @@ export const FirstBillingComponent = () => {
       throw new Error(message);
     }
     return json;
-  }, [tier, period, datafast_visitor_id, datafast_session_id, dub, fetch]);
+  }, [tier, period, datafast_visitor_id, datafast_session_id, dub, fbc, fbp, fetch]);
 
   const showYouTube = () => {
     modals.openModal({
