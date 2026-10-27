@@ -190,30 +190,49 @@ export class UsersService {
 
   /**
    * What deleting this account does besides deleting it, for the
-   * confirmation: a subscription that is cancelled now, and members, disabled
-   * ones included, who are removed from the organizations it deletes.
+   * confirmation: a subscription that is cancelled now, members, disabled
+   * ones included, who are removed from the organizations it deletes, and a
+   * plan that goes on renewing in an organization owned with someone else,
+   * which is left rather than deleted. That plan's card may well be the one of
+   * the person leaving, who could not cancel it afterwards.
    */
   async getDeleteAccountInfo(userId: string) {
     const ownedOrgs = await this.getOrgsToDeleteForAccount(userId);
     const members = await Promise.all(
       ownedOrgs.map((org) => this._organizationRepository.getAllUsersOrgs(org.id))
     );
+    const deleted = new Set(ownedOrgs.map((org) => org.id));
+    // Only owners are told: an admin who was invited to the team should not
+    // be asked to cancel its plan. An owner who handed ownership on and stayed
+    // an admin is not told either, although the card may be theirs; Stripe's
+    // customer is not tied to a member, so that case cannot be told apart.
+    const sharedOrgs = (
+      await this._organizationRepository.getOrgsByUserId(userId)
+    ).filter(
+      (org) => org.users[0].role === Role.SUPERADMIN && !deleted.has(org.id)
+    );
+
+    // Only a plan that cancelling really ends: a Stripe one. A lifetime row or
+    // a `manual` grant is a local entitlement, and an app store plan is
+    // cancelled in the store, not here.
+    const isStripePlan = ({
+      subscription,
+    }: (typeof ownedOrgs)[number]) =>
+      !!subscription &&
+      !subscription.deletedAt &&
+      !subscription.isLifetime &&
+      (subscription.provider ?? STRIPE_PROVIDER) === STRIPE_PROVIDER;
 
     return {
-      // Only a plan this deletion really cancels: a Stripe one. A lifetime row
-      // or a `manual` grant is a local entitlement, and an app store plan is
-      // cancelled in the store, not here.
-      hasSubscription: ownedOrgs.some(
-        ({ subscription }) =>
-          !!subscription &&
-          !subscription.deletedAt &&
-          !subscription.isLifetime &&
-          (subscription.provider ?? STRIPE_PROVIDER) === STRIPE_PROVIDER
-      ),
+      hasSubscription: ownedOrgs.some(isStripePlan),
       hasAdditionalMembers: members.some((team) =>
         team?.users?.some(
           (member) => member.user.id !== userId && !member.user.deletedAt
         )
+      ),
+      // A plan already set to end at its period end does not renew.
+      sharedPlanRenews: sharedOrgs.some(
+        (org) => isStripePlan(org) && !org.subscription?.cancelAt
       ),
     };
   }

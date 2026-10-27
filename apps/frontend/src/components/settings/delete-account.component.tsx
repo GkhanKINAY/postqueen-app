@@ -18,11 +18,13 @@ import { modalFieldClass } from '@gitroom/frontend/components/layout/new-modal';
 interface DeleteAccountInfo {
   hasSubscription: boolean;
   hasAdditionalMembers: boolean;
+  sharedPlanRenews: boolean;
 }
 
-// What deleting the account also does: the subscription it cancels and the
-// team members it removes. Read when the section mounts, so the warning is
-// right by the time the form opens, and again when Delete is pressed.
+// What deleting the account also does: the subscription it cancels, the team
+// members it removes and a subscription it leaves renewing. Read when the
+// section mounts, so the warning is right by the time the form opens, and again
+// when Delete is pressed.
 const useDeleteAccountInfo = (enabled: boolean) => {
   const fetch = useFetch();
   const load = useCallback(async (): Promise<DeleteAccountInfo> => {
@@ -54,25 +56,36 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
   const { data: info, mutate: reloadInfo } = useDeleteAccountInfo(!isLink);
 
   // The subscription is cancelled now and the other members are removed;
-  // nothing is said about money, since refunds go by request.
+  // nothing is said about refunds, which go by request. An organization owned
+  // with someone else is left, not deleted, and its subscription keeps being
+  // charged, possibly to this person's card: that is said first, while it can
+  // still be cancelled, so the text still ends on what cannot be undone.
   const effects = useCallback(
-    (current?: DeleteAccountInfo) =>
-      current?.hasSubscription && current?.hasAdditionalMembers
-        ? t(
-            'delete_account_confirm_subscription_members',
-            'Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.'
-          )
-        : current?.hasSubscription
-        ? t(
-            'delete_account_confirm_subscription',
-            'Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.'
-          )
-        : current?.hasAdditionalMembers
-        ? t(
-            'delete_account_confirm_members',
-            'Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.'
-          )
-        : null,
+    (current: DeleteAccountInfo | undefined, otherwise: string) => {
+      const deletes =
+        current?.hasSubscription && current?.hasAdditionalMembers
+          ? t(
+              'delete_account_confirm_subscription_members',
+              'Your account, organizations, channels and posts will be deleted, your subscription will be cancelled now and the other team members will be removed from your organization. This cannot be undone.'
+            )
+          : current?.hasSubscription
+          ? t(
+              'delete_account_confirm_subscription',
+              'Your account, organizations, channels and posts will be deleted and your subscription will be cancelled now. This cannot be undone.'
+            )
+          : current?.hasAdditionalMembers
+          ? t(
+              'delete_account_confirm_members',
+              'Your account, organizations, channels and posts will be deleted and the other team members will be removed from your organization. This cannot be undone.'
+            )
+          : otherwise;
+      return current?.sharedPlanRenews
+        ? `${t(
+            'delete_account_shared_plan_renews',
+            'An organization you own together with another owner stays with them, and its subscription keeps renewing on the card on file. If that is your card, cancel the subscription in Billing before you delete your account.'
+          )} ${deletes}`
+        : deletes;
+    },
     [t]
   );
 
@@ -92,11 +105,13 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
     const current = await reloadInfo().catch((): undefined => undefined);
     if (
       !(await deleteDialog(
-        effects(current) ||
+        effects(
+          current,
           t(
             'delete_account_confirm',
             'Your account, organizations, channels and posts will be deleted. This action cannot be undone, are you sure?'
-          ),
+          )
+        ),
         t('yes_delete_my_account', 'Yes, delete my account')
       ))
     ) {
@@ -208,11 +223,13 @@ const DeleteAccountComponent: FC<{ isLink?: boolean }> = ({ isLink }) => {
             role="alert"
             className="rounded-[10px] bg-pqDangerChip px-[12px] py-[10px] text-[12.5px] leading-[1.5] text-pqDanger"
           >
-            {effects(info) ||
+            {effects(
+              info,
               t(
                 'delete_account_warning',
                 'This permanently deletes your account, organizations, channels and posts. This cannot be undone.'
-              )}
+              )
+            )}
           </div>
           <input
             type="email"

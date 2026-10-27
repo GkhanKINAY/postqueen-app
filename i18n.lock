@@ -768,3 +768,6 @@ checksums:
     timezone: 370780b854bdbef55320f977a4fb9ddb
     automatic_timezone: bb2d180231d5caccb2507ada3bb8329e
     could_not_save_timezone: d0e1af80e2c1de9a40f748fd5198d7a5
+    delete_account_shared_plan_renews: 0a1c93fc54ecbef4147190ec7084be41
+    delete_account_warning: fe34b30062ffbe6c63d68cedbd70df37
+    delete_account_confirm: 5dacabcf442cc35dd25197427214c9c5

@@ -568,7 +568,8 @@ export class UsersController {
   }
 
   // What deleting the account also does, for the confirmation: the
-  // subscription it cancels and the team members it removes.
+  // subscription it cancels, the team members it removes and a plan it leaves
+  // renewing in an organization owned with someone else.
   @Get('/delete-account-info')
   getDeleteAccountInfo(@GetUserFromRequest() user: User) {
     return this._userService.getDeleteAccountInfo(user.id);
