@@ -371,10 +371,10 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
   }) {
     const body = JSON.parse(Buffer.from(params.code, 'base64').toString());
 
-    // Bluesky talks to a user-supplied service URL via BskyAgent (not our
-    // `this.fetch`), so the undici SSRF dispatcher can't intercept it. Validate
-    // the URL here — the connection chokepoint — so an internal/private address
-    // can never be saved as an integration. Opt-out matches the dispatcher env.
+    // The agents below fetch through the SSRF-safe dispatcher (guardedFetch),
+    // which checks every connection. This check refuses an internal or private
+    // service URL up front, so one is never saved as a channel. Opt-out matches
+    // the dispatcher env.
     if (
       process.env.DISABLE_SSRF_PROTECTION !== 'true' &&
       !(await isSafePublicHttpsUrl(body.service))
