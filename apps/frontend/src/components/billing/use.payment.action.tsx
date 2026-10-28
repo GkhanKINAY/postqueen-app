@@ -1,5 +1,9 @@
 import { useCallback } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+// `pure`: Stripe.js loads when a payment needs it, not on import. The root
+// layout reaches this hook, so the plain entry put Stripe's script and cookies
+// on every page, the login and public post previews included. The signed-in
+// shell still loads it through first.billing.component.
+import { loadStripe } from '@stripe/stripe-js/pure';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 
 /**
