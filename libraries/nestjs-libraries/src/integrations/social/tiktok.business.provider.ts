@@ -154,7 +154,9 @@ export class TiktokBusinessProvider
     // expired, 40104 empty, 40105 invalid or revoked.
     if (
       /"code":\s*(40102|40104|40105)\b/.test(body) ||
-      body.indexOf('Access token is incorrect') > -1
+      body.indexOf('Access token is incorrect') > -1 ||
+      // code 40000 wording seen on /business/video/publish/
+      body.indexOf('The access token is invalid') > -1
     ) {
       return {
         type: 'refresh-token' as const,

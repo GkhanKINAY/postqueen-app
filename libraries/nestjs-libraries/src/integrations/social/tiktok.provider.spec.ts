@@ -733,6 +733,22 @@ describe('TikTok error mapping', () => {
     }
   });
 
+  it('reads the TikTok Business publish wording of a bad token under code 40000', () => {
+    assert.equal(
+      new TiktokBusinessProvider().handleErrors(
+        business(40000, 'The access token is invalid.')
+      )?.type,
+      'refresh-token'
+    );
+  });
+
+  it('stops a TikTok Business connect that came back without an auth_code', async () => {
+    await assert.rejects(
+      new TiktokBusinessProvider().authenticate({ code: '', codeVerifier: '' }),
+      (err: any) => err instanceof BadBody && /authorization code/.test(err.message)
+    );
+  });
+
   it('reads the TikTok Business rate limit codes', () => {
     for (const code of [40016, 40100, 40133]) {
       const answer = new TiktokBusinessProvider().handleErrors(
