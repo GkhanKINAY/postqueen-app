@@ -172,8 +172,8 @@ export default async function Auth(
                     <ImageWithFallback
                       className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
                       alt={integration.name}
-                      src={integration.picture}
-                      fallbackSrc="/no-picture.jpg"
+                      src={integration.picture || '/no-picture.jpg'}
+                      fallbackSrc={`/icons/platforms/${integration.providerIdentifier}.png`}
                       width={50}
                       height={50}
                     />
