@@ -9,6 +9,7 @@ import { CommentsComponents } from '@gitroom/frontend/components/preview/comment
 import { PreviewCommentsProvider } from '@gitroom/frontend/components/preview/preview.comments.context';
 import { PostContentClient } from '@gitroom/frontend/components/preview/post.content.client';
 import { VideoOrImage } from '@gitroom/react/helpers/video.or.image';
+import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { CopyClient } from '@gitroom/frontend/components/preview/copy.client';
 import { getT } from '@gitroom/react/translation/get.translation.service.backend';
 import { RenderPreviewDateClient } from '@gitroom/frontend/components/preview/render.preview.date.client';
@@ -168,10 +169,13 @@ export default async function Auth(
               >
                 <div className="flex gap-[12px]">
                   <div className="relative h-[50px] w-[50px] shrink-0">
-                    <img
+                    <ImageWithFallback
                       className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
                       alt={integration.name}
-                      src={integration.picture}
+                      src={integration.picture || '/no-picture.jpg'}
+                      fallbackSrc={`/icons/platforms/${integration.providerIdentifier}.png`}
+                      width={50}
+                      height={50}
                     />
                     <div className="absolute -bottom-[4px] -end-[4px] h-[24px] w-[24px]">
                       <img
