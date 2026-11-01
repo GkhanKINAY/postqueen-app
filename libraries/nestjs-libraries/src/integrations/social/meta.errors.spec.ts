@@ -310,31 +310,28 @@ describe('Instagram error mapping', () => {
   });
 
   it('marks the channel for a reconnect when it loses the publish permission', () => {
-    // Measured 2026-10-31 on a channel whose account left its Page.
-    const body = graph({
-      message: '(#10) Requires instagram_content_publish permission to manage the object',
-      code: 10,
-    });
-    assert.deepEqual(instagram.handleErrors(body, 403), {
-      type: 'disconnect',
-      value:
-        'Instagram no longer lets this channel publish to the account. In Meta Business Suite, check that the Instagram account is still linked to its Facebook Page and that you have full access to it, then reconnect the channel.',
-    });
-    assert.deepEqual(
-      standalone.handleErrors(
-        graph({
-          message:
-            '(#10) Requires instagram_business_content_publish permission to manage the object',
-          code: 10,
-        }),
-        403
-      ),
-      {
-        type: 'disconnect',
-        value:
-          'Instagram no longer lets PostQueen publish to this account. Please reconnect the channel and allow all permissions.',
-      }
-    );
+    // Measured 2026-10-31 on a channel whose account left its Page; the
+    // Instagram-login tile's permission is instagram_business_content_publish.
+    for (const permission of [
+      'instagram_content_publish',
+      'instagram_business_content_publish',
+    ]) {
+      assert.deepEqual(
+        handle(
+          graph({
+            message: `(#10) Requires ${permission} permission to manage the object`,
+            code: 10,
+          }),
+          403
+        ),
+        {
+          type: 'disconnect',
+          value:
+            'Instagram no longer lets this channel publish to the account. If it is connected through a Facebook Page, check in Meta Business Suite that the Instagram account is still linked to that Page. Then reconnect the channel and allow all permissions.',
+        },
+        permission
+      );
+    }
   });
 
   it('leaves other code 10 refusals as they were', () => {
@@ -342,8 +339,7 @@ describe('Instagram error mapping', () => {
       message: '(#10) Requires instagram_manage_comments permission to manage the object',
       code: 10,
     });
-    assert.notEqual(instagram.handleErrors(body, 403)?.type, 'disconnect');
-    assert.notEqual(standalone.handleErrors(body, 403)?.type, 'disconnect');
+    assert.equal(handle(body, 403), undefined);
   });
 });
 

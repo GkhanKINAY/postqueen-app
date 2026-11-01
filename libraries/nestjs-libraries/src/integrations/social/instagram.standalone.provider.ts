@@ -109,15 +109,6 @@ export class InstagramStandaloneProvider
           'Instagram rejected the post because a permission is missing. Please reconnect the channel and allow all permissions.',
       };
     }
-    // The same for the publish permission, which only a reconnect restores,
-    // so the channel is marked for it rather than failing post by post.
-    if (body.indexOf('(#10)') > -1 && body.indexOf('_content_publish') > -1) {
-      return {
-        type: 'disconnect' as const,
-        value:
-          'Instagram no longer lets PostQueen publish to this account. Please reconnect the channel and allow all permissions.',
-      };
-    }
     return instagramProvider.handleErrors(body, status);
   }
 
