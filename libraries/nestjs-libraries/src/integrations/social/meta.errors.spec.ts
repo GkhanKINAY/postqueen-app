@@ -308,6 +308,43 @@ describe('Instagram error mapping', () => {
         'Instagram rejected the post because a permission is missing. Please reconnect the channel and allow all permissions.',
     });
   });
+
+  it('marks the channel for a reconnect when it loses the publish permission', () => {
+    // Measured 2026-10-31 on a channel whose account left its Page.
+    const body = graph({
+      message: '(#10) Requires instagram_content_publish permission to manage the object',
+      code: 10,
+    });
+    assert.deepEqual(instagram.handleErrors(body, 403), {
+      type: 'disconnect',
+      value:
+        'Instagram no longer lets this channel publish to the account. In Meta Business Suite, check that the Instagram account is still linked to its Facebook Page and that you have full access to it, then reconnect the channel.',
+    });
+    assert.deepEqual(
+      standalone.handleErrors(
+        graph({
+          message:
+            '(#10) Requires instagram_business_content_publish permission to manage the object',
+          code: 10,
+        }),
+        403
+      ),
+      {
+        type: 'disconnect',
+        value:
+          'Instagram no longer lets PostQueen publish to this account. Please reconnect the channel and allow all permissions.',
+      }
+    );
+  });
+
+  it('leaves other code 10 refusals as they were', () => {
+    const body = graph({
+      message: '(#10) Requires instagram_manage_comments permission to manage the object',
+      code: 10,
+    });
+    assert.notEqual(instagram.handleErrors(body, 403)?.type, 'disconnect');
+    assert.notEqual(standalone.handleErrors(body, 403)?.type, 'disconnect');
+  });
 });
 
 describe('Instagram carousel and photo shape, on both tiles', () => {

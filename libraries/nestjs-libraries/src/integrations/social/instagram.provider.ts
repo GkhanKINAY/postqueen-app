@@ -245,6 +245,20 @@ export class InstagramProvider
       };
     }
 
+    // Code 10 naming the publish permission: the token is still valid and
+    // still holds the permission, but no longer reaches this Instagram
+    // account, usually because it was unlinked from its Facebook Page or the
+    // person's access to it was removed in Meta Business Suite. A refresh
+    // cannot bring it back, and every post fails the same way until the
+    // account is linked again and the channel reconnected.
+    if (body.indexOf('(#10)') > -1 && body.indexOf('_content_publish') > -1) {
+      return {
+        type: 'disconnect' as const,
+        value:
+          'Instagram no longer lets this channel publish to the account. In Meta Business Suite, check that the Instagram account is still linked to its Facebook Page and that you have full access to it, then reconnect the channel.',
+      };
+    }
+
     if (
       body.toLowerCase().indexOf('the user is not an instagram business') > -1
     ) {
