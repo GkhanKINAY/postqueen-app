@@ -442,11 +442,12 @@ export class InstagramProvider
       };
     }
 
+    // Worded for both tiles, as the code 10 answer above is.
     if (body.indexOf('(#200)') > -1) {
       return {
         type: 'bad-body' as const,
         value:
-          'Facebook rejected the post due to missing permissions. Make sure your Facebook account has full content access to the Page linked to this Instagram account, then reconnect the channel.',
+          'A permission is missing for this account. If it is connected through a Facebook Page, make sure your Facebook account has full content access to that Page. Then reconnect the channel and allow all permissions.',
       };
     }
 
@@ -592,6 +593,15 @@ export class InstagramProvider
     const findPage = (await this.pages(accessToken)).find(
       (p) => p.id === requiredId
     );
+
+    // pages() lists an account only through the Page it is linked to. Without
+    // one there is no Page token to publish with, and going on would store
+    // "undefined" as the token and report the reconnect as done.
+    if (!findPage) {
+      throw new Error(
+        'This Instagram account is not linked to any of your Facebook Pages. Link it to its Page in Meta Business Suite, then reconnect the channel.'
+      );
+    }
 
     const information = await this.fetchPageInformation(accessToken, {
       id: requiredId,
