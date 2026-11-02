@@ -373,7 +373,7 @@ describe('Instagram reconnect', () => {
     await withPages([{ id: 'page1', name: 'Page' }], () =>
       assert.rejects(
         instagram.reConnect('user1', 'ig1', 'USER'),
-        /^Error: This Instagram account is not linked to any of your Facebook Pages\./
+        /^Error: PostQueen could not find this Instagram account through the Facebook Pages you allowed\./
       )
     );
   });

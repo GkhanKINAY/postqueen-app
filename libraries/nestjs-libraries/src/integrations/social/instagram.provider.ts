@@ -442,7 +442,7 @@ export class InstagramProvider
       };
     }
 
-    // Worded for both tiles, as the code 10 answer above is.
+    // Worded for both tiles, as the (#10) answer above is.
     if (body.indexOf('(#200)') > -1) {
       return {
         type: 'bad-body' as const,
@@ -594,18 +594,19 @@ export class InstagramProvider
       (p) => p.id === requiredId
     );
 
-    // pages() lists an account only through the Page it is linked to. Without
-    // one there is no Page token to publish with, and going on would store
-    // "undefined" as the token and report the reconnect as done.
+    // pages() lists an account only through a Page it is linked to and that
+    // the person allowed. Without one there is no Page token to publish with,
+    // and going on would store "undefined" as the token and report the
+    // reconnect as done.
     if (!findPage) {
       throw new Error(
-        'This Instagram account is not linked to any of your Facebook Pages. Link it to its Page in Meta Business Suite, then reconnect the channel.'
+        'PostQueen could not find this Instagram account through the Facebook Pages you allowed. Make sure it is linked to a Facebook Page in Meta Business Suite, then reconnect the channel and select that Page when Facebook asks.'
       );
     }
 
     const information = await this.fetchPageInformation(accessToken, {
       id: requiredId,
-      pageId: findPage?.pageId!,
+      pageId: findPage.pageId,
     });
 
     return {
