@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "יש לציין אם התוכן שלך מקדם אותך, צד שלישי או את שניהם.",
   "tiktok_branded_cannot_be_private": "לא ניתן להגדיר את הנראות של תוכן ממותג כפרטית.",
   "tiktok_cannot_post_now": "לפי TikTok, החשבון הזה לא יכול לפרסם כרגע. נסו שוב מאוחר יותר.",
+  "tiktok_daily_account_cap_reached": "TikTok מגבילה כמה חשבונות יכולים לפרסם דרך PostQueen בכל יום, והמגבלה מלאה כרגע. אין בעיה בחשבון שלכם. נסו שוב מאוחר יותר; המגבלה תתפנה תוך 24 שעות.",
   "tiktok_business_video_public": "פומבי לכולם. ב-TikTok Business אין בחירת פרטיות לסרטונים.",
   "tiktok_posting_to": "פרסום אל {{nickname}}",
   "this_cannot_be_changed_once_posted": "לא ניתן לשנות זאת לאחר שהווידאו פורסם.",

@@ -150,6 +150,15 @@ export interface IAuthenticator {
    * and with no posts is removed instead. Omit it to keep them.
    */
   disconnectedDataRetentionDays?: number;
+  /**
+   * How many different accounts the platform lets post through PostQueen's
+   * app in any 24 hours, for a platform that caps it per app: the next account
+   * is refused at publish time. A daily run counts this provider's channels
+   * that posted in the last 24 hours and, from half the cap, warns the alerts
+   * channel in Slack, while there is still time to ask for more. Omit it when
+   * the platform has no such cap.
+   */
+  dailyPostingAccountCap?: number;
   changeNickname?(
     id: string,
     accessToken: string,

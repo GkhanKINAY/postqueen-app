@@ -597,11 +597,24 @@ describe('TikTok error mapping', () => {
     withMigrate(undefined, () => {
       const answer = new TiktokProvider().handleErrors(body);
       assert.equal(answer?.type, 'bad-body');
-      assert.match(String(answer?.value), /Your channel is fine/);
+      assert.match(
+        String(answer?.value),
+        /through PostQueen each day.*Your account is fine and your post is saved/
+      );
     });
     withMigrate('linkedin:linkedin-page', () => {
       assert.equal(new TiktokProvider().handleErrors(body)?.type, 'bad-body');
     });
+  });
+
+  it('declares the daily cap on accounts posting through PostQueen, on its own tile only', () => {
+    // TikTok Business is a separate app with its own limits.
+    assert.equal(new TiktokProvider().dailyPostingAccountCap, 300);
+    assert.equal(
+      (new TiktokBusinessProvider() as { dailyPostingAccountCap?: number })
+        .dailyPostingAccountCap,
+      undefined
+    );
   });
 
   it('disconnects at the cap only when TikTok is being migrated', () => {

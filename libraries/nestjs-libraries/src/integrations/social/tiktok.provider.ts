@@ -71,6 +71,11 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     'user.info.stats',
   ];
   override maxConcurrentJob = 10000;
+  // TikTok caps how many creators may post through an app in 24 hours, from
+  // the usage estimate in its Content Posting API audit, which PostQueen's
+  // app passed on 2026-11-02. The portal shows no number, so this is the low
+  // end of what the audit asked for. Raise it when TikTok raises the cap.
+  dailyPostingAccountCap = 300;
   dto = TikTokDto;
   editor = 'normal' as const;
   maxLength() {
@@ -286,14 +291,17 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
         return {
           type: 'disconnect' as const,
           value:
-            "TikTok limits how many accounts can post through PostQueen's TikTok app each day, and that limit is reached. Reconnect the channel in Channels, then schedule the post again.",
+            'TikTok limits how many accounts can post through PostQueen each day, and that limit is full right now. Reconnect the channel in Channels, then schedule the post again.',
         };
       }
 
+      // This reaches the customer in the failure notice and email, for a limit
+      // that is PostQueen's and not theirs, so it says their account is fine
+      // and nothing is lost. dailyPostingAccountCap warns us long before.
       return {
         type: 'bad-body' as const,
         value:
-          "TikTok limits how many accounts can post through PostQueen's TikTok app each day, and that limit is reached. Your channel is fine. Try again in 24 hours.",
+          'TikTok limits how many accounts can post through PostQueen each day, and that limit is full right now. Your account is fine and your post is saved. Schedule it again later; the limit frees up within 24 hours.',
       };
     }
 

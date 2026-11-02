@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "عليك أن تحدد ما إذا كان محتواك يروّج لك أو لطرف ثالث أو لكليهما.",
   "tiktok_branded_cannot_be_private": "لا يمكن جعل ظهور المحتوى ذي العلامة التجارية خاصًا.",
   "tiktok_cannot_post_now": "تقول TikTok إن هذا الحساب لا يمكنه النشر الآن. حاول مرة أخرى لاحقًا.",
+  "tiktok_daily_account_cap_reached": "تحدّ TikTok من عدد الحسابات التي يمكنها النشر عبر PostQueen كل يوم، وقد امتلأ هذا الحد الآن. لا مشكلة في حسابك. حاول مرة أخرى لاحقًا، فالحد يُفتح من جديد خلال 24 ساعة.",
   "tiktok_business_video_public": "عام للجميع. لا يتيح TikTok Business اختيار الخصوصية لمقاطع الفيديو.",
   "tiktok_posting_to": "النشر على {{nickname}}",
   "this_cannot_be_changed_once_posted": "لا يمكن تغيير ذلك بعد نشر الفيديو الخاص بك.",

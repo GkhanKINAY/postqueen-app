@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "콘텐츠가 본인, 제3자 또는 둘 다를 홍보하는지 선택해야 합니다.",
   "tiktok_branded_cannot_be_private": "브랜디드 콘텐츠의 공개 범위는 비공개로 설정할 수 없습니다.",
   "tiktok_cannot_post_now": "TikTok에 따르면 이 계정은 지금 게시할 수 없습니다. 나중에 다시 시도하세요.",
+  "tiktok_daily_account_cap_reached": "TikTok은 PostQueen을 통해 하루에 게시할 수 있는 계정 수를 제한하며, 지금은 그 한도가 찼습니다. 계정에는 문제가 없습니다. 나중에 다시 시도하세요. 한도는 24시간 이내에 풀립니다.",
   "tiktok_business_video_public": "모두에게 공개. TikTok Business에서는 동영상의 공개 범위를 선택할 수 없습니다.",
   "tiktok_posting_to": "{{nickname}}에 게시",
   "this_cannot_be_changed_once_posted": "게시 후에는 변경할 수 없습니다.",

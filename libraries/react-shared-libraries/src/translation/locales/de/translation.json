@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "Geben Sie an, ob Ihr Inhalt Sie selbst, einen Dritten oder beides bewirbt.",
   "tiktok_branded_cannot_be_private": "Branded Content kann nicht auf privat gestellt werden.",
   "tiktok_cannot_post_now": "Laut TikTok kann dieses Konto gerade nicht posten. Versuchen Sie es später erneut.",
+  "tiktok_daily_account_cap_reached": "TikTok begrenzt, wie viele Konten pro Tag über PostQueen posten können, und dieses Limit ist gerade ausgeschöpft. Mit Ihrem Konto ist alles in Ordnung. Versuchen Sie es später erneut; das Limit wird innerhalb von 24 Stunden wieder frei.",
   "tiktok_business_video_public": "Öffentlich für alle. TikTok Business bietet für Videos keine Auswahl der Sichtbarkeit.",
   "tiktok_posting_to": "Wird auf {{nickname}} gepostet",
   "this_cannot_be_changed_once_posted": "Dies kann nicht mehr geändert werden, sobald Ihr Video gepostet wurde.",

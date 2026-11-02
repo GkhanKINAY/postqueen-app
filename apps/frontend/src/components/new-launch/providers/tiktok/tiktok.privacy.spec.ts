@@ -71,6 +71,14 @@ describe('TikTok privacy comes from creator_info', () => {
     assert.match(component, /tiktok_cannot_post_now/);
   });
 
+  it("says PostQueen's daily cap is not the creator's problem", () => {
+    // reached_active_user_cap is the app's cap, so it gets its own line.
+    assert.match(
+      component,
+      /creatorInfo\.cannotPost === 'reached_active_user_cap'[\s\S]*tiktok_daily_account_cap_reached/
+    );
+  });
+
   it("names the creator's TikTok nickname when the channel was renamed", () => {
     // Guideline 1a; the header above already shows the channel's own name.
     assert.match(component, /creatorInfo\.creatorNickname !== integration\?\.name/);

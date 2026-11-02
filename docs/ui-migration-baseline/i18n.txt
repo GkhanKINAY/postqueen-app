@@ -2623,6 +2623,7 @@ tiktok_add_music
 tiktok_branded_cannot_be_private
 tiktok_business_video_public
 tiktok_cannot_post_now
+tiktok_daily_account_cap_reached
 tiktok_disabled_on_account
 tiktok_disclose_choose_brand
 tiktok_location_label

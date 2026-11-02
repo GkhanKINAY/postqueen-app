@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "请说明您的内容是在推广您自己、第三方，还是两者。",
   "tiktok_branded_cannot_be_private": "品牌内容的可见范围不能设为私密。",
   "tiktok_cannot_post_now": "TikTok 表示此账号目前无法发布。请稍后再试。",
+  "tiktok_daily_account_cap_reached": "TikTok 限制每天可通过 PostQueen 发布的账号数量，目前已达到上限。你的账号没有问题。请稍后再试，上限会在 24 小时内释放。",
   "tiktok_business_video_public": "对所有人公开。TikTok Business 无法为视频选择可见范围。",
   "tiktok_posting_to": "发布到 {{nickname}}",
   "this_cannot_be_changed_once_posted": "视频发布后此项不可更改。",

@@ -225,6 +225,7 @@
   "tiktok_disclose_choose_brand": "You need to indicate if your content promotes yourself, a third party, or both.",
   "tiktok_branded_cannot_be_private": "Branded content visibility cannot be set to private.",
   "tiktok_cannot_post_now": "TikTok says this account cannot post right now. Try again later.",
+  "tiktok_daily_account_cap_reached": "TikTok limits how many accounts can post through PostQueen each day, and that limit is full right now. Your account is fine. Try again later; the limit frees up within 24 hours.",
   "tiktok_business_video_public": "Public to everyone. TikTok Business has no privacy choice for videos.",
   "tiktok_posting_to": "Posting to {{nickname}}",
   "this_cannot_be_changed_once_posted": "This cannot be changed once your video is posted.",
