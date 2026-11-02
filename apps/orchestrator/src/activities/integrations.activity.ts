@@ -17,6 +17,13 @@ export class IntegrationsActivity {
     return this._integrationService.getIntegrationById(orgId, id);
   }
 
+  // Warns the alerts channel when a platform's daily cap on accounts posting
+  // through PostQueen is half used (see `warnNearPostingAccountCaps`).
+  @ActivityMethod()
+  async warnNearPostingAccountCaps() {
+    return this._integrationService.warnNearPostingAccountCaps();
+  }
+
   async refreshToken(integration: Integration) {
     return this._refreshIntegrationService.refresh(integration);
   }

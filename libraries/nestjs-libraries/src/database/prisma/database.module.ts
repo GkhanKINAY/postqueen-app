@@ -33,6 +33,7 @@ import { AgenciesService } from '@gitroom/nestjs-libraries/database/prisma/agenc
 import { AgenciesRepository } from '@gitroom/nestjs-libraries/database/prisma/agencies/agencies.repository';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { SalesNotificationService } from '@gitroom/nestjs-libraries/track/sales.notification.service';
+import { OpsAlertService } from '@gitroom/nestjs-libraries/track/ops.alert.service';
 import { ShortLinkService } from '@gitroom/nestjs-libraries/short-linking/short.link.service';
 import { WebhooksRepository } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.repository';
 import { WebhooksService } from '@gitroom/nestjs-libraries/database/prisma/webhooks/webhooks.service';
@@ -114,6 +115,7 @@ import { NoticesService } from '@gitroom/nestjs-libraries/database/prisma/notice
     EmailService,
     TrackService,
     SalesNotificationService,
+    OpsAlertService,
     ShortLinkService,
     SetsService,
     SetsRepository,

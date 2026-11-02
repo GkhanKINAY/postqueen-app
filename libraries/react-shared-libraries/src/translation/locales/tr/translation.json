@@ -226,6 +226,7 @@
   "tiktok_disclose_choose_brand": "İçeriğinizin sizi mi, üçüncü bir tarafı mı yoksa ikisini birden mi tanıttığını belirtmelisiniz.",
   "tiktok_branded_cannot_be_private": "Markalı içeriğin görünürlüğü gizli olarak ayarlanamaz.",
   "tiktok_cannot_post_now": "TikTok bu hesabın şu anda paylaşım yapamayacağını bildiriyor. Daha sonra tekrar deneyin.",
+  "tiktok_daily_account_cap_reached": "TikTok, PostQueen üzerinden her gün kaç hesabın paylaşım yapabileceğini sınırlıyor ve bu sınır şu anda dolu. Hesabınızda bir sorun yok. Daha sonra tekrar deneyin; sınır 24 saat içinde açılır.",
   "tiktok_business_video_public": "Herkese açık. TikTok Business'ta videolar için gizlilik seçimi yok.",
   "tiktok_posting_to": "{{nickname}} hesabına paylaşılacak",
   "this_cannot_be_changed_once_posted": "Videonuz paylaşıldıktan sonra bu değiştirilemez.",

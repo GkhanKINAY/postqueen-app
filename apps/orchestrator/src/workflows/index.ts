@@ -40,5 +40,6 @@ export * from './founding.fee.workflow';
 export * from './billing.reconcile.workflow.v1';
 export * from './credit.grants.workflow.v1';
 export * from './analytics.sync.workflow.v1';
+export * from './posting.cap.workflow.v1';
 export * from './clipping.workflow';
 export * from './account.purge.workflow.v1';

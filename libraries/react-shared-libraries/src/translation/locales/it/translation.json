@@ -218,6 +218,7 @@
   "tiktok_disclose_choose_brand": "Indica se i tuoi contenuti promuovono te stesso, una terza parte o entrambi.",
   "tiktok_branded_cannot_be_private": "La visibilità dei contenuti brandizzati non può essere privata.",
   "tiktok_cannot_post_now": "Secondo TikTok, questo account non può pubblicare in questo momento. Riprova più tardi.",
+  "tiktok_daily_account_cap_reached": "TikTok limita il numero di account che possono pubblicare tramite PostQueen ogni giorno, e al momento il limite è raggiunto. Il tuo account non ha problemi. Riprova più tardi; il limite si libera entro 24 ore.",
   "tiktok_business_video_public": "Pubblico per tutti. TikTok Business non permette di scegliere la privacy dei video.",
   "tiktok_posting_to": "Pubblicazione su {{nickname}}",
   "this_cannot_be_changed_once_posted": "Questo non può essere modificato una volta che il video è stato pubblicato.",

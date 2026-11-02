@@ -492,10 +492,17 @@ const TikTokSettings: FC<{
                 {t('label_who_can_see_this_video', 'Who can see this video?')}
               </div>
               <div className="text-[12px] leading-[1.45] text-pqDanger text-balance">
-                {t(
-                  'tiktok_cannot_post_now',
-                  'TikTok says this account cannot post right now. Try again later.'
-                )}
+                {/* The daily cap on accounts posting through PostQueen is
+                    ours, not the creator's, so it says their account is fine. */}
+                {creatorInfo.cannotPost === 'reached_active_user_cap'
+                  ? t(
+                      'tiktok_daily_account_cap_reached',
+                      'TikTok limits how many accounts can post through PostQueen each day, and that limit is full right now. Your account is fine. Try again later; the limit frees up within 24 hours.'
+                    )
+                  : t(
+                      'tiktok_cannot_post_now',
+                      'TikTok says this account cannot post right now. Try again later.'
+                    )}
               </div>
               <button
                 type="button"

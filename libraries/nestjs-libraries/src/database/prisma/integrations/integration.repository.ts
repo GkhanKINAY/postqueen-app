@@ -718,6 +718,24 @@ export class IntegrationRepository {
     return { count: rows.length };
   }
 
+  // How many of a provider's channels published, or tried to, since a date:
+  // what a platform counts against its daily cap on accounts posting through
+  // PostQueen (see the provider's dailyPostingAccountCap). A failed post
+  // counts, since the platform may have counted the attempt, and so does a
+  // post deleted afterwards, which was still posted. Erring high is the safe
+  // side for a warning.
+  async countPostingChannels(providerIdentifier: string, since: Date) {
+    const channels = await this._posts.model.post.groupBy({
+      by: ['integrationId'],
+      where: {
+        integration: { providerIdentifier },
+        state: { in: ['PUBLISHED', 'ERROR'] },
+        publishDate: { gte: since, lte: new Date() },
+      },
+    });
+    return channels.length;
+  }
+
   // A provider's channels that started waiting for their person (a
   // reconnect, or a setup never finished) get the time it was first seen. A
   // repeat keeps it; fresh credentials clear it.

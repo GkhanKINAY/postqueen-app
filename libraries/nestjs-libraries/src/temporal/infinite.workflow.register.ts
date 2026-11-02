@@ -72,6 +72,19 @@ export class InfiniteWorkflowRegister implements OnModuleInit {
       } catch (err) {
         // Already running, as above.
       }
+
+      try {
+        // Warns the alerts channel when a platform's daily cap on accounts
+        // posting through PostQueen is half used, once a day.
+        await this._temporalService.client
+          ?.getRawClient()
+          ?.workflow?.start('postingCapWorkflowV1', {
+            workflowId: 'posting-cap-v1',
+            taskQueue: 'main',
+          });
+      } catch (err) {
+        // Already running, as above.
+      }
     }
 
     // Its own switch rather than RUN_CRON: turning RUN_CRON on also starts

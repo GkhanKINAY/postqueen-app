@@ -22,6 +22,7 @@ import {
 import { Integration, Organization } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
+import { OpsAlertService } from '@gitroom/nestjs-libraries/track/ops.alert.service';
 import dayjs from 'dayjs';
 import { createHash } from 'crypto';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -98,7 +99,8 @@ export class IntegrationService implements OnModuleInit {
     @Inject(forwardRef(() => RefreshIntegrationService))
     private _refreshIntegrationService: RefreshIntegrationService,
     private _temporalService: TemporalService,
-    private _creditsService: CreditsService
+    private _creditsService: CreditsService,
+    private _opsAlertService: OpsAlertService
   ) {}
 
   /**
@@ -515,6 +517,47 @@ export class IntegrationService implements OnModuleInit {
         );
       }
     }
+  }
+
+  // A provider with dailyPostingAccountCap lets only that many of its
+  // accounts post through PostQueen in any 24 hours, and refuses the next one
+  // at publish time. The daily run counts each such provider's channels that
+  // posted in the last 24 hours and, from half the cap, warns the alerts
+  // channel, so the cap is raised before a customer's post is refused. Every
+  // count is logged, under the cap or not.
+  async warnNearPostingAccountCaps() {
+    // 24 hours, not a calendar day, whatever the server's timezone.
+    const since = dayjs().subtract(24, 'hour').toDate();
+    const usage: { identifier: string; accounts: number; cap: number }[] = [];
+    for (const identifier of this._integrationManager.getAllowedSocialsIntegrations()) {
+      const cap =
+        this._integrationManager.getSocialIntegration(identifier)
+          ?.dailyPostingAccountCap;
+      if (!cap) {
+        continue;
+      }
+
+      const accounts = await this._integrationRepository.countPostingChannels(
+        identifier,
+        since
+      );
+      usage.push({ identifier, accounts, cap });
+      Logger.log(
+        `[posting-cap] provider=${identifier} accounts=${accounts} cap=${cap}`
+      );
+
+      if (accounts * 2 < cap) {
+        continue;
+      }
+
+      const name = this._integrationManager.getSocialIntegrationName(identifier);
+      await this._opsAlertService.alert(
+        `${name}: ${accounts} accounts posted through PostQueen in the last 24 hours, ${Math.round(
+          (accounts * 100) / cap
+        )}% of the ${cap} a day ${name} allows. Ask ${name} for a higher limit before it fills up.`
+      );
+    }
+    return usage;
   }
 
   // Gives up PostQueen's access at the platform, for a provider that can,
