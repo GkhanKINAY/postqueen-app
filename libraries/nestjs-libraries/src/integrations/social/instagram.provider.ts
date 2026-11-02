@@ -245,6 +245,17 @@ export class InstagramProvider
       };
     }
 
+    // Code 10 naming the publish permission: the token is valid but no longer
+    // reaches the account (seen when it lost its link to its Facebook Page),
+    // so a refresh cannot help. Both tiles publish through this provider.
+    if (/\(#10\) Requires \w*_content_publish/.test(body)) {
+      return {
+        type: 'disconnect' as const,
+        value:
+          'Instagram no longer lets this channel publish to the account. If it is connected through a Facebook Page, check in Meta Business Suite that the Instagram account is still linked to that Page. Then reconnect the channel and allow all permissions.',
+      };
+    }
+
     if (
       body.toLowerCase().indexOf('the user is not an instagram business') > -1
     ) {
@@ -431,11 +442,12 @@ export class InstagramProvider
       };
     }
 
+    // Worded for both tiles, as the (#10) answer above is.
     if (body.indexOf('(#200)') > -1) {
       return {
         type: 'bad-body' as const,
         value:
-          'Facebook rejected the post due to missing permissions. Make sure your Facebook account has full content access to the Page linked to this Instagram account, then reconnect the channel.',
+          'A permission is missing for this account. If it is connected through a Facebook Page, make sure your Facebook account has full content access to that Page. Then reconnect the channel and allow all permissions.',
       };
     }
 
@@ -582,9 +594,19 @@ export class InstagramProvider
       (p) => p.id === requiredId
     );
 
+    // pages() lists an account only through a Page it is linked to and that
+    // the person allowed. Without one there is no Page token to publish with,
+    // and going on would store "undefined" as the token and report the
+    // reconnect as done.
+    if (!findPage) {
+      throw new Error(
+        'PostQueen could not find this Instagram account through the Facebook Pages you allowed. Make sure it is linked to a Facebook Page in Meta Business Suite, then reconnect the channel and select that Page when Facebook asks.'
+      );
+    }
+
     const information = await this.fetchPageInformation(accessToken, {
       id: requiredId,
-      pageId: findPage?.pageId!,
+      pageId: findPage.pageId,
     });
 
     return {

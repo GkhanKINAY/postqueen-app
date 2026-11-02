@@ -100,15 +100,9 @@ export class InstagramStandaloneProvider
         value: string;
       }
     | undefined {
-    // This tile connects with Instagram login, so no Facebook Page is
-    // involved and the shared (#200) answer about Page access does not apply.
-    if (body.indexOf('(#200)') > -1) {
-      return {
-        type: 'bad-body' as const,
-        value:
-          'Instagram rejected the post because a permission is missing. Please reconnect the channel and allow all permissions.',
-      };
-    }
+    // Posting runs on instagramProvider, whose fetch reads its own
+    // handleErrors, so an answer for this tile alone would never be shown.
+    // The shared answers are worded for both tiles instead.
     return instagramProvider.handleErrors(body, status);
   }
 

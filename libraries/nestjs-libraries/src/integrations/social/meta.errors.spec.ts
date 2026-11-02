@@ -299,14 +299,92 @@ describe('Instagram error mapping', () => {
     assert.equal(handle(graph({ message: 'x', code: 40 })), undefined);
   });
 
-  it('points the standalone tile at its own permissions, not a Page', () => {
+  it('words a missing permission for both tiles', () => {
+    // The Instagram-login tile posts through InstagramProvider, so both read
+    // this one answer.
     const body = graph({ message: '(#200) Permissions error', code: 200 });
-    assert.match(String(instagram.handleErrors(body, 403)?.value), /Page linked to this Instagram account/);
-    assert.deepEqual(standalone.handleErrors(body, 403), {
-      type: 'bad-body',
-      value:
-        'Instagram rejected the post because a permission is missing. Please reconnect the channel and allow all permissions.',
+    for (const [name, provider] of igTiles) {
+      assert.deepEqual(
+        provider.handleErrors(body, 403),
+        {
+          type: 'bad-body',
+          value:
+            'A permission is missing for this account. If it is connected through a Facebook Page, make sure your Facebook account has full content access to that Page. Then reconnect the channel and allow all permissions.',
+        },
+        name
+      );
+    }
+  });
+
+  it('marks the channel for a reconnect when it loses the publish permission', () => {
+    // Measured 2026-10-31 on a channel whose account left its Page; the
+    // Instagram-login tile's permission is instagram_business_content_publish.
+    for (const permission of [
+      'instagram_content_publish',
+      'instagram_business_content_publish',
+    ]) {
+      assert.deepEqual(
+        handle(
+          graph({
+            message: `(#10) Requires ${permission} permission to manage the object`,
+            code: 10,
+          }),
+          403
+        ),
+        {
+          type: 'disconnect',
+          value:
+            'Instagram no longer lets this channel publish to the account. If it is connected through a Facebook Page, check in Meta Business Suite that the Instagram account is still linked to that Page. Then reconnect the channel and allow all permissions.',
+        },
+        permission
+      );
+    }
+  });
+
+  it('leaves other code 10 refusals as they were', () => {
+    const body = graph({
+      message: '(#10) Requires instagram_manage_comments permission to manage the object',
+      code: 10,
     });
+    assert.equal(handle(body, 403), undefined);
+  });
+});
+
+describe('Instagram reconnect', () => {
+  // Graph as the reconnect reads it: the person's Pages, no businesses, the
+  // Page's token, and the account's profile.
+  const withPages = async <T,>(pages: unknown[], run: () => Promise<T>) => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL) => {
+      const u = String(url);
+      if (u.includes('/me/accounts')) return Response.json({ data: pages });
+      if (u.includes('/me/businesses')) return Response.json({ data: [] });
+      if (u.includes('/page1?')) return Response.json({ access_token: 'PAGE', name: 'Page' });
+      return Response.json({ id: 'ig1', name: 'Account', username: 'account', profile_picture_url: 'p' });
+    }) as typeof fetch;
+    try {
+      return await run();
+    } finally {
+      globalThis.fetch = original;
+    }
+  };
+
+  it('refuses when the account is no longer linked to a Page', async () => {
+    await withPages([{ id: 'page1', name: 'Page' }], () =>
+      assert.rejects(
+        instagram.reConnect('user1', 'ig1', 'USER'),
+        /^Error: PostQueen could not find this Instagram account through the Facebook Pages you allowed\./
+      )
+    );
+  });
+
+  it('stores the Page token when the link is there', async () => {
+    const result = await withPages(
+      [{ id: 'page1', name: 'Page', instagram_business_account: { id: 'ig1' } }],
+      () => instagram.reConnect('user1', 'ig1', 'USER')
+    );
+    assert.equal(result.id, 'ig1');
+    assert.equal(result.accessToken, 'PAGE___USER');
   });
 });
 
