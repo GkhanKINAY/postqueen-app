@@ -32,6 +32,19 @@ describe('useOpenReconnectInChannels', () => {
     );
   });
 
+  it('is the reconnect of the analytics pane of a disconnected channel', () => {
+    const pane = readFileSync(
+      fileURLToPath(
+        new URL('../platform-analytics/render.analytics.tsx', import.meta.url)
+      ),
+      'utf8',
+    );
+    assert.match(pane, /openReconnectInChannels\(integration\.id\)/);
+    assert.match(pane, /'reconnect_channel'/);
+    assert.doesNotMatch(pane, /\/integrations\/social\//);
+    assert.doesNotMatch(pane, /'refresh_channel'/);
+  });
+
   it('is the reconnect path from Copilot, Automations and Analytics', () => {
     for (const source of [copilot, plugs, analytics]) {
       assert.match(source, /useOpenReconnectInChannels/);
