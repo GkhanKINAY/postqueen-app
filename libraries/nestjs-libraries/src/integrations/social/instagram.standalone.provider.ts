@@ -191,7 +191,18 @@ export class InstagramStandaloneProvider
       )
     ).json();
 
-    this.checkScopes(this.scopes, getAccessToken.permissions);
+    try {
+      this.checkScopes(this.scopes, getAccessToken.permissions);
+    } catch (err) {
+      console.error(
+        'Instagram standalone scope check failed:',
+        JSON.stringify({
+          user_id: getAccessToken.user_id,
+          permissions: getAccessToken.permissions,
+        })
+      );
+      throw err;
+    }
 
     // `user_id` is the professional account (the channel's internalId), `id`
     // the app-scoped id of the person who logged in.
