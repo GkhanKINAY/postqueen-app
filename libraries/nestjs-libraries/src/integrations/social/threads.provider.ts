@@ -71,7 +71,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
 
   // Each entry is its own Threads post (the first one, then each reply). The
   // 500 limit is not measured here: the generic too-long check already counts
-  // a Threads post in UTF-8 bytes (countLength), emoji included.
+  // a Threads post in characters (countLength), an emoji as one.
   override async checkValidity(
     posts: Array<ValidityMedia[]>,
     settings: any,
