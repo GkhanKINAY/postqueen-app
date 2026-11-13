@@ -76,6 +76,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   // most a year. The Page provider inherits it.
   analyticsRetentionDays = 365;
   refreshWait = true;
+  refreshRepeat = true;
   editor = 'normal' as const;
   dto = LinkedinDto;
   maxLength() {
