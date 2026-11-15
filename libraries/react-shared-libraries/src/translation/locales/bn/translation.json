@@ -953,5 +953,6 @@
   "media_settings_saved_on_post": "এই পোস্টে সংরক্ষিত হয়েছে। ফাইলটি আপনার মিডিয়া লাইব্রেরিতে নেই।",
   "timezone": "সময় অঞ্চল",
   "automatic_timezone": "স্বয়ংক্রিয় ({{timezone}})",
-  "could_not_save_timezone": "সময় অঞ্চল সংরক্ষণ করা যায়নি"
+  "could_not_save_timezone": "সময় অঞ্চল সংরক্ষণ করা যায়নি",
+  "instagram_original_sound_not_linked": "Instagram শুধু মিউজিকের ক্ষেত্রে একটি Reel-কে সাউন্ডের পেজের সাথে লিংক করে। অরিজিনাল সাউন্ড দিয়ে প্রকাশিত Reels আপনার অ্যাকাউন্টের নিচে \"অরিজিনাল অডিও\" হিসেবে লেবেল করা হয়।"
 }

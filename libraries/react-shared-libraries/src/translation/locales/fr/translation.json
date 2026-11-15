@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "Enregistré pour cette publication. Le fichier n'est pas dans votre médiathèque.",
   "timezone": "Fuseau horaire",
   "automatic_timezone": "Automatique ({{timezone}})",
-  "could_not_save_timezone": "Impossible d'enregistrer le fuseau horaire"
+  "could_not_save_timezone": "Impossible d'enregistrer le fuseau horaire",
+  "instagram_original_sound_not_linked": "Instagram ne relie un Reel à la page du son que pour la musique. Les Reels publiés avec un son original sont indiqués comme « Audio original » sous votre compte."
 }

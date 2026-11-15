@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "تم الحفظ في هذا المنشور. هذا الملف ليس في مكتبة الوسائط لديك.",
   "timezone": "المنطقة الزمنية",
   "automatic_timezone": "تلقائي ({{timezone}})",
-  "could_not_save_timezone": "تعذر حفظ المنطقة الزمنية"
+  "could_not_save_timezone": "تعذر حفظ المنطقة الزمنية",
+  "instagram_original_sound_not_linked": "يربط Instagram مقطع Reel بصفحة الصوت فقط عندما يكون موسيقى. تُصنَّف مقاطع Reels المنشورة بصوت أصلي باسم \"صوت أصلي\" أسفل حسابك."
 }

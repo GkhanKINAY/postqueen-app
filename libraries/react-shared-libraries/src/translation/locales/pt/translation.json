@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "Salvo nesta publicação. O arquivo não está na sua biblioteca de mídia.",
   "timezone": "Fuso horário",
   "automatic_timezone": "Automático ({{timezone}})",
-  "could_not_save_timezone": "Não foi possível salvar o fuso horário"
+  "could_not_save_timezone": "Não foi possível salvar o fuso horário",
+  "instagram_original_sound_not_linked": "O Instagram só vincula um Reel à página do som quando é música. Reels publicados com um som original aparecem como \"Áudio original\" abaixo da sua conta."
 }

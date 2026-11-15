@@ -972,5 +972,6 @@
   "media_settings_saved_on_post": "Bu gönderiye kaydedildi. Dosya medya kütüphanenizde değil.",
   "timezone": "Saat dilimi",
   "automatic_timezone": "Otomatik ({{timezone}})",
-  "could_not_save_timezone": "Saat dilimi kaydedilemedi"
+  "could_not_save_timezone": "Saat dilimi kaydedilemedi",
+  "instagram_original_sound_not_linked": "Instagram bir Reel'i sesin sayfasına yalnızca müzik için bağlar. Orijinal sesle yayınlanan Reel'ler hesabınızın altında \"Orijinal ses\" olarak etiketlenir."
 }

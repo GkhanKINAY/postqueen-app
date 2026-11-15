@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "Сохранено в этом посте. Этого файла нет в вашей медиатеке.",
   "timezone": "Часовой пояс",
   "automatic_timezone": "Автоматически ({{timezone}})",
-  "could_not_save_timezone": "Не удалось сохранить часовой пояс"
+  "could_not_save_timezone": "Не удалось сохранить часовой пояс",
+  "instagram_original_sound_not_linked": "Instagram связывает Reels со страницей звука только для музыки. Reels с оригинальным звуком помечаются как «Оригинальный звук» под вашим аккаунтом."
 }

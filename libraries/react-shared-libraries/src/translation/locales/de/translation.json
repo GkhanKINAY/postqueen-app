@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "Für diesen Post gespeichert. Die Datei ist nicht in deiner Mediathek.",
   "timezone": "Zeitzone",
   "automatic_timezone": "Automatisch ({{timezone}})",
-  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden"
+  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden",
+  "instagram_original_sound_not_linked": "Instagram verknüpft ein Reel nur bei Musik mit der Seite des Sounds. Reels mit einem Originalton werden unter Ihrem Konto als „Original-Audio“ gekennzeichnet."
 }

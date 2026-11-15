@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "נשמר בפוסט הזה. הקובץ לא נמצא בספריית המדיה שלכם.",
   "timezone": "אזור זמן",
   "automatic_timezone": "אוטומטי ({{timezone}})",
-  "could_not_save_timezone": "לא ניתן היה לשמור את אזור הזמן"
+  "could_not_save_timezone": "לא ניתן היה לשמור את אזור הזמן",
+  "instagram_original_sound_not_linked": "Instagram מקשר Reel לדף הסאונד רק כשמדובר במוזיקה. סרטוני Reels שפורסמו עם סאונד מקורי מסומנים כ\"אודיו מקורי\" מתחת לחשבון שלך."
 }

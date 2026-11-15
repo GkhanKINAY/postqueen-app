@@ -660,5 +660,6 @@
   "media_settings_saved_on_post": "შენახულია ამ პოსტში. ფაილი თქვენს მედიათეკაში არ არის.",
   "timezone": "დროის სარტყელი",
   "automatic_timezone": "ავტომატური ({{timezone}})",
-  "could_not_save_timezone": "დროის სარტყლის შენახვა ვერ მოხერხდა"
+  "could_not_save_timezone": "დროის სარტყლის შენახვა ვერ მოხერხდა",
+  "instagram_original_sound_not_linked": "Instagram Reel-ს ხმის გვერდთან მხოლოდ მუსიკის შემთხვევაში აკავშირებს. ორიგინალური ხმით გამოქვეყნებულ Reels-ს თქვენი ანგარიშის ქვეშ „ორიგინალური აუდიო“ ეწერება."
 }

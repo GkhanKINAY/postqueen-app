@@ -954,5 +954,6 @@
   "media_settings_saved_on_post": "この投稿に保存しました。このファイルはメディアライブラリにはありません。",
   "timezone": "タイムゾーン",
   "automatic_timezone": "自動 ({{timezone}})",
-  "could_not_save_timezone": "タイムゾーンを保存できませんでした"
+  "could_not_save_timezone": "タイムゾーンを保存できませんでした",
+  "instagram_original_sound_not_linked": "Instagramがリールを音源のページにリンクするのは音楽の場合のみです。オリジナル音源で公開されたリールには、アカウント名の下に「オリジナル音源」と表示されます。"
 }

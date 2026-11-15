@@ -1433,5 +1433,6 @@
   "media_settings_saved_on_post": "Saved on this post. The file is not in your media library.",
   "timezone": "Timezone",
   "automatic_timezone": "Automatic ({{timezone}})",
-  "could_not_save_timezone": "Could not save the timezone"
+  "could_not_save_timezone": "Could not save the timezone",
+  "instagram_original_sound_not_linked": "Instagram links a Reel to the sound's page only for music. Reels published with an original sound are labeled \"Original audio\" under your account."
 }
