@@ -35,6 +35,7 @@ export class LinkedinPageProvider
   category = 'social' as const;
   override name = 'LinkedIn Page';
   override isBetweenSteps = true;
+  pageRequiredToPost = true;
   override refreshWait = true;
   override maxConcurrentJob = 2; // LinkedIn Page has professional posting limits
   // LinkedIn's data storage requirements keep a connected Page's name and

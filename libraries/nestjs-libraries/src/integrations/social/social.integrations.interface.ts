@@ -434,6 +434,12 @@ export interface SocialProvider
   oneTimeToken?: boolean;
   isBetweenSteps: boolean;
   /**
+   * Whether a channel of this provider can publish only once a page (or
+   * account) was picked after the login. A channel that still holds the
+   * login's id is then stopped before it is charged or sent.
+   */
+  pageRequiredToPost?: boolean;
+  /**
    * Whether an id of this provider's channels is a page's id (not the id of
    * the login that picks the pages). Unset means the provider cannot tell.
    */
