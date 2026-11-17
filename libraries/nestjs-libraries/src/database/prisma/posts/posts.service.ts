@@ -102,6 +102,16 @@ type PostWithConditionals = Post & {
 // How long a platform may take to release a post's public link before the
 // open-post icon stops saying "try again in a minute".
 const RELEASE_PENDING_WINDOW_HOURS = 24;
+
+// What the post workflows store (markUnconfirmed) for a post that was sent
+// but never confirmed. The workflow files are frozen, so these stay as they
+// are written there.
+const UNCONFIRMED_POST_ERRORS = [
+  'Could not confirm the post status',
+  'Could not publish after several attempts',
+  'A previous publish attempt was interrupted',
+];
+
 @Injectable()
 export class PostsService {
   private storage = UploadFactory.createStorage();
@@ -675,13 +685,42 @@ export class PostsService {
     );
   }
 
+  // A failed post's error, as the calendar, the public API and the agent
+  // tools list it. The publish run stores fixed strings for a post it sent
+  // but could not confirm, which read as the notice the person was sent about
+  // it, naming the network and the channel.
+  private readablePostError<
+    P extends {
+      error?: string | null;
+      integration?: { providerIdentifier: string; name: string } | null;
+    }
+  >(post: P): P {
+    if (!UNCONFIRMED_POST_ERRORS.includes(post.error || '')) {
+      return post;
+    }
+
+    const network = post.integration
+      ? this._integrationManager.getSocialIntegrationName(
+          post.integration.providerIdentifier
+        )
+      : 'the network';
+    return {
+      ...post,
+      error: `Your post was sent to ${network}, but we couldn't confirm it was published. Please check your ${
+        post.integration?.name || network
+      } account before posting again to avoid duplicates.`,
+    };
+  }
+
   async getPosts(orgId: string, query: GetPostsDto) {
-    return this._postRepository.getPosts(orgId, query);
+    return (await this._postRepository.getPosts(orgId, query)).map((post) =>
+      this.readablePostError(post)
+    );
   }
 
   async getPostsMinified(orgId: string, query: GetPostsDto) {
     return minifyPosts({
-      posts: await this._postRepository.getPosts(orgId, query),
+      posts: await this.getPosts(orgId, query),
     });
   }
 
@@ -690,9 +729,11 @@ export class PostsService {
   }
 
   async getPostsList(orgId: string, query: GetPostsListDto) {
-    return minifyPostsList(
-      await this._postRepository.getPostsList(orgId, query)
-    );
+    const list = await this._postRepository.getPostsList(orgId, query);
+    return minifyPostsList({
+      ...list,
+      posts: list.posts.map((post) => this.readablePostError(post)),
+    });
   }
 
   async updateMedia(id: string, imagesList: any[], convertToJPEG = false) {
