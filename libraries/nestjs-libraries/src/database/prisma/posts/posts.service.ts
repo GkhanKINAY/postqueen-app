@@ -686,15 +686,22 @@ export class PostsService {
   }
 
   // A failed post's error, as the calendar, the public API and the agent
-  // tools list it. The publish run stores fixed strings for a post it sent
-  // but could not confirm, which read as the notice the person was sent about
-  // it, naming the network and the channel.
+  // tools list it. The stored error stays on the row after a retry succeeds,
+  // so only a post that is failed now carries one. The publish run stores
+  // fixed strings for a post it sent but could not confirm, which read as
+  // the notice the person was sent about it, naming the network and the
+  // channel.
   private readablePostError<
     P extends {
+      state?: string;
       error?: string | null;
       integration?: { providerIdentifier: string; name: string } | null;
     }
   >(post: P): P {
+    if (post.state !== 'ERROR') {
+      return { ...post, error: null };
+    }
+
     if (!UNCONFIRMED_POST_ERRORS.includes(post.error || '')) {
       return post;
     }

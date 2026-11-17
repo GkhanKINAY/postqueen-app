@@ -87,4 +87,17 @@ describe('A failed post as the lists read it', { skip: !canLoadService }, () => 
     ]).getPosts('org', {});
     assert.equal(post.error, 'Refresh channel needed');
   });
+
+  it('keeps an error only while the post is failed', async () => {
+    const rows = ['PUBLISHED', 'QUEUE', 'DRAFT'].map((state) =>
+      row(state, 'The network refused the post.')
+    );
+    for (const post of await service(rows).getPosts('org', {})) {
+      assert.equal(post.error, null);
+    }
+    const list = await service(rows).getPostsList('org', {});
+    for (const post of list.p) {
+      assert.ok(!post.error);
+    }
+  });
 });
