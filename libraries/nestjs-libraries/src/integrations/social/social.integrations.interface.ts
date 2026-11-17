@@ -436,7 +436,8 @@ export interface SocialProvider
   /**
    * Whether a channel of this provider can publish only once a page (or
    * account) was picked after the login. A channel that still holds the
-   * login's id is then stopped before it is charged or sent.
+   * login's id is then listed as unfinished, and its posts are stopped before
+   * they are charged or sent.
    */
   pageRequiredToPost?: boolean;
   /**
@@ -444,7 +445,6 @@ export interface SocialProvider
    * the login that picks the pages). Unset means the provider cannot tell.
    */
   isPageId?: (internalId: string) => boolean;
-  pageIdMayEqualRootId?: boolean;
   scopes: string[];
   externalUrl?: (
     url: string,

@@ -399,8 +399,10 @@ export class IntegrationService implements OnModuleInit {
     return this._integrationRepository.getChannelHealth(org);
   }
 
-  // A channel whose internalId still equals the account id never finished
-  // page selection, even if a token refresh flipped inBetweenSteps off
+  // The channel is still in between steps, which the post workflows fail a
+  // post on whatever the provider, or, only for providers that cannot post
+  // without a selected page, its internalId still equals the account id
+  // because a token refresh flipped inBetweenSteps off
   needsPageSelection(
     integration: Pick<
       Integration,
@@ -410,8 +412,7 @@ export class IntegrationService implements OnModuleInit {
   ) {
     return (
       integration.inBetweenSteps ||
-      (provider?.isBetweenSteps &&
-        !provider.pageIdMayEqualRootId &&
+      (!!provider?.pageRequiredToPost &&
         !!integration.rootInternalId &&
         integration.internalId === integration.rootInternalId)
     );

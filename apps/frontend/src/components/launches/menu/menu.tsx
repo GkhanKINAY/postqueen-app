@@ -414,16 +414,18 @@ export const Menu: FC<{
             onClick={(e) => e.stopPropagation()}
             className="z-[121] flex w-[252px] flex-col gap-[1px] rounded-pqMd border border-pqBorder bg-pqInner p-[6px] shadow-menu"
           >
-            {canDisable && !findIntegration?.refreshNeeded && (
-              <button
-                type="button"
-                className={rowClass}
-                onClick={createPost(findIntegration!)}
-              >
-                <MenuIcon d={MENU_ICONS.post} />
-                {t('create_new_post', 'Create a new post')}
-              </button>
-            )}
+            {canDisable &&
+              !findIntegration?.refreshNeeded &&
+              !findIntegration?.inBetweenSteps && (
+                <button
+                  type="button"
+                  className={rowClass}
+                  onClick={createPost(findIntegration!)}
+                >
+                  <MenuIcon d={MENU_ICONS.post} />
+                  {t('create_new_post', 'Create a new post')}
+                </button>
+              )}
             <button
               type="button"
               className={rowClass}
