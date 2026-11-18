@@ -422,7 +422,15 @@ export class IntegrationsController {
 
     // As checkAnalytics does: a token past its stored expiry is refreshed
     // first, or the page listing fails on it and the picker shows nothing.
-    if (this._refreshIntegrationService.isExpired(getIntegration)) {
+    // Only for a channel that still has to select its page: other channels
+    // post fine past the stored expiration, a failed refresh would flag them.
+    if (
+      this._integrationService.needsPageSelection(
+        getIntegration,
+        integrationProvider
+      ) &&
+      this._refreshIntegrationService.isExpired(getIntegration)
+    ) {
       const data = await this._refreshIntegrationService.refresh(
         getIntegration
       );
