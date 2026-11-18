@@ -287,6 +287,11 @@ export class LinkedinPageProvider
     };
   }
 
+  // Organization ids are numeric, the member id and its placeholder are not.
+  isPageId(internalId: string) {
+    return /^\d+$/.test(internalId);
+  }
+
   override async post(
     id: string,
     accessToken: string,

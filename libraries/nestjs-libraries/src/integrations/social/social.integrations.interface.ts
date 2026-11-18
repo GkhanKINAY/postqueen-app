@@ -433,6 +433,11 @@ export interface SocialProvider
   isNew?: boolean;
   oneTimeToken?: boolean;
   isBetweenSteps: boolean;
+  /**
+   * Whether an id of this provider's channels is a page's id (not the id of
+   * the login that picks the pages). Unset means the provider cannot tell.
+   */
+  isPageId?: (internalId: string) => boolean;
   scopes: string[];
   externalUrl?: (
     url: string,
