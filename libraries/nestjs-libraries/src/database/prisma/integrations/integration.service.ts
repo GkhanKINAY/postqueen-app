@@ -414,7 +414,8 @@ export class IntegrationService implements OnModuleInit {
       integration.inBetweenSteps ||
       (!!provider?.pageRequiredToPost &&
         !!integration.rootInternalId &&
-        integration.internalId === integration.rootInternalId)
+        integration.internalId === integration.rootInternalId &&
+        !provider.isPageId?.(integration.internalId))
     );
   }
 
