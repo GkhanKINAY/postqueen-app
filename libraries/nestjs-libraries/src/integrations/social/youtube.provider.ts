@@ -20,6 +20,7 @@ import {
 import {
   BadBody,
   Disconnect,
+  NotEnoughScopes,
   PublishedWithError,
   RefreshToken,
   SocialAbstract,
@@ -451,6 +452,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       });
 
       const channels = response.data.items || [];
+      if (!channels.length) {
+        throw new NotEnoughScopes(
+          'This Google account has no YouTube channel, please create one or connect the Google account that owns your channel'
+        );
+      }
 
       return channels.map((channel) => ({
         id: channel.id!,
@@ -465,7 +471,7 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       }));
     } catch (error) {
       console.error('Failed to fetch YouTube channels:', error);
-      return [];
+      throw error;
     }
   }
 
@@ -516,8 +522,8 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
     const { client, youtube } = clientAndYoutube();
     client.setCredentials({ access_token: accessToken });
 
-    // Not through pages(): it swallows the real Google error, and an empty
-    // list would be reported as a missing channel.
+    // Not through pages(): it reports an empty list as an account without a
+    // channel.
     const { data } = await youtube(client).channels.list({
       part: ['id'],
       mine: true,
