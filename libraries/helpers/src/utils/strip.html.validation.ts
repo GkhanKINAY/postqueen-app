@@ -429,7 +429,7 @@ export const dropEmptyFollowUps = <
 
 export const convertToAscii = (value: string): string => {
   return value
-    .replace(/<strong>(.+?)<\/strong>/gi, (match, p1) => {
+    .replace(/<strong>([\s\S]+?)<\/strong>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return bold?.[char] || char;
@@ -437,7 +437,7 @@ export const convertToAscii = (value: string): string => {
 
       return match.replace(p1, replacer.join(''));
     })
-    .replace(/<u>(.+?)<\/u>/gi, (match, p1) => {
+    .replace(/<u>([\s\S]+?)<\/u>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return underlineMap?.[char] || char;
