@@ -48,6 +48,7 @@ import Document from '@tiptap/extension-document';
 import Bold from '@tiptap/extension-bold';
 import Text from '@tiptap/extension-text';
 import Paragraph from '@tiptap/extension-paragraph';
+import HardBreak from '@tiptap/extension-hard-break';
 import Underline from '@tiptap/extension-underline';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { History } from '@tiptap/extension-history';
@@ -1346,6 +1347,7 @@ export const OnlyEditor = forwardRef<
         },
       }),
       Text,
+      HardBreak,
       Underline,
       Bold,
       InterceptBoldShortcut,
@@ -1534,11 +1536,16 @@ export const OnlyEditor = forwardRef<
           )
         );
       },
+      // A blank line copied from a code editor is a <br> between line divs
+      // (or a div holding only a <br>); it is kept as one empty paragraph.
       // A picture pasted or dropped as HTML from another page would be
       // published as a link to that page's file. Only pictures already in
       // this post are kept (moving or copying one within it); anything else
       // has to come in as a file, which is uploaded.
-      transformPastedHTML: (html, view) => {
+      transformPastedHTML: (pasted, view) => {
+        const html = pasted
+          .replace(/<div[^>]*>\s*<br\s*\/?>\s*<\/div>/gi, '<p></p>')
+          .replace(/(<\/div>)\s*<br\s*\/?>\s*(?=<div)/gi, '$1<p></p>');
         if (!inlineImages || !/<img\b/i.test(html)) {
           return html;
         }

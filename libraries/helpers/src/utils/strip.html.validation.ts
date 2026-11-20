@@ -1,5 +1,9 @@
 import striptags from 'striptags';
-import { parseFragment, serialize } from 'parse5';
+import {
+  parseFragment,
+  serialize,
+  type DefaultTreeAdapterTypes,
+} from 'parse5';
 import { isAllowedUploadPath } from '@gitroom/helpers/utils/valid.url.path';
 
 const bold = {
@@ -145,7 +149,11 @@ export const stripHtmlValidation = (
     return val;
   }
 
-  const value = serialize(parseFragment(val));
+  const fragment = parseFragment(val);
+  // An html channel keeps a soft line break as its <br>; every other type
+  // gets the text it stands for.
+  const breaks = type === 'html' ? 0 : breaksToText(fragment);
+  const value = serialize(fragment);
 
   if (type === 'none') {
     return striptags(value)
@@ -180,6 +188,7 @@ export const stripHtmlValidation = (
           'strong',
           'u',
           'a',
+          'br',
           ...(inlineImages ? ['img'] : []),
         ]
       )
@@ -228,7 +237,8 @@ export const stripHtmlValidation = (
       .replace(/&lt;/gi, '<');
   }
 
-  if (!/<p[\s>]/i.test(value) && !none) {
+  // A <br> marks the value as HTML the way a paragraph does.
+  if (!breaks && !/<p[\s>]/i.test(value) && !none) {
     return value;
   }
 
@@ -277,6 +287,35 @@ export const stripHtmlValidation = (
   return striptags(html, ['ul', 'li', 'h1', 'h2', 'h3'])
     .replace(/&gt;/gi, '>')
     .replace(/&lt;/gi, '<');
+};
+
+// A soft line break (Shift+Enter in the editor, or a pasted <br>) as the
+// text it stands for: a newline, or a space inside a list item, which the
+// plain text and markdown below flatten to one line. It is done on the parsed
+// tree rather than with a pattern over the markup, so it stays linear on any
+// input and leaves a "<br>" inside an attribute value alone. Returns how many
+// it replaced.
+const breaksToText = (fragment: DefaultTreeAdapterTypes.ParentNode) => {
+  let replaced = 0;
+  const stack = [{ node: fragment, inItem: false }];
+  while (stack.length) {
+    const { node, inItem } = stack.pop()!;
+    const children = node.childNodes;
+    for (let index = 0; index < children.length; index++) {
+      const child = children[index];
+      if (child.nodeName === 'br') {
+        children[index] = {
+          nodeName: '#text',
+          value: inItem ? ' ' : '\n',
+          parentNode: node,
+        };
+        replaced++;
+      } else if ('childNodes' in child) {
+        stack.push({ node: child, inItem: inItem || child.nodeName === 'li' });
+      }
+    }
+  }
+  return replaced;
 };
 
 // &nbsp; as a space, on the text between tags only. "&amp;nbsp;" (a typed

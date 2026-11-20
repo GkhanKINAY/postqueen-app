@@ -208,8 +208,10 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   // plain text X expects - same output the old 'normal' editor produced.
   private toTweetText(message: string) {
     // Without a tag left it is either plain API text or HTML whose tags were
-    // all stripped (a <br> or <span> only), which is still encoded text. Its
-    // entities are decoded, &amp; last so nothing decodes twice.
+    // all stripped (a <span> only), which is still encoded text. Its
+    // entities are decoded, &amp; last so nothing decodes twice. A <br> is
+    // kept by the html path, so its line break goes through the 'normal'
+    // path below.
     if (!hasHtmlTag(message)) {
       return message
         .replace(/&lt;/gi, '<')
@@ -1201,7 +1203,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   }
 
   // Converts the editor HTML (already sanitized by stripHtmlValidation's
-  // 'html' mode - only p, h1-h3, ul, li, strong, u, a and img survive) into
+  // 'html' mode - only p, h1-h3, ul, li, strong, u, a, br and img survive) into
   // the content_state the X Articles API expects. Pictures in the body become
   // atomic image blocks where they are, the post media is appended at the end
   // (the cover travels separately).
@@ -1223,6 +1225,13 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       for (const child of node.childNodes || []) {
         if (child.nodeName === '#text') {
           ctx.text += child.value || '';
+          continue;
+        }
+
+        // A soft line break (Shift+Enter) has no text of its own; it is the
+        // newline Draft.js keeps inside a block for one.
+        if (child.nodeName === 'br') {
+          ctx.text += '\n';
           continue;
         }
 
