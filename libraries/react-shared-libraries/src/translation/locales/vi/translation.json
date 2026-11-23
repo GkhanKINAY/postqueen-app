@@ -955,5 +955,8 @@
   "timezone": "Múi giờ",
   "automatic_timezone": "Tự động ({{timezone}})",
   "could_not_save_timezone": "Không thể lưu múi giờ",
-  "instagram_original_sound_not_linked": "Instagram chỉ liên kết Reel với trang âm thanh khi đó là nhạc. Reel đăng với âm thanh gốc sẽ được gắn nhãn \"Âm thanh gốc\" dưới tài khoản của bạn."
+  "instagram_original_sound_not_linked": "Instagram chỉ liên kết Reel với trang âm thanh khi đó là nhạc. Reel đăng với âm thanh gốc sẽ được gắn nhãn \"Âm thanh gốc\" dưới tài khoản của bạn.",
+  "back_to_postqueen": "Quay lại PostQueen",
+  "not_selectable_page_not_granted_to_postqueen": "Không thể chọn: PostQueen chưa được cấp quyền truy cập Trang này",
+  "you_did_not_grant_postqueen_access_to_this_page": "Bạn chưa cấp cho PostQueen quyền truy cập Trang này trong hộp thoại của Facebook.\nHãy kết nối lại kênh, nhấp vào Chỉnh sửa cài đặt trên màn hình Facebook, chọn tùy chọn chỉ cấp quyền cho các Trang hiện có, rồi đánh dấu chọn Trang này cùng với các Trang khác mà bạn đã kết nối."
 }

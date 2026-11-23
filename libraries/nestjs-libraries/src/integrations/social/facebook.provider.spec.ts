@@ -260,9 +260,57 @@ describe('Facebook page picker', () => {
         name: 'Brand',
         username: 'brand',
         picture: { data: { url: 'https://fb.test/brand.png' } },
+        disabledReason: undefined,
       },
     ]);
     assert.equal(JSON.stringify(pages).includes('page-token'), false);
+  });
+
+  // A page found through a business portfolio but left unticked in the
+  // Facebook dialog comes without a token: it cannot be saved, so the picker
+  // shows it as not selectable.
+  const business = (listings: Record<string, unknown[]>) => {
+    globalThis.fetch = (async (url: string) => {
+      const href = String(url);
+      const key = Object.keys(listings).find((part) => href.includes(part));
+      return new Response(
+        JSON.stringify(
+          href.includes('/me/businesses')
+            ? { data: [{ id: 'biz' }] }
+            : { data: key ? listings[key] : [] }
+        )
+      );
+    }) as typeof fetch;
+  };
+  const untokened = { ...page, id: '2002', access_token: undefined };
+
+  it('marks a page that was not granted, and sends no token either way', async () => {
+    business({ '/me/accounts': [page], '/owned_pages': [untokened] });
+
+    const pages = await new FacebookProvider().pages('user-token');
+
+    assert.deepEqual(
+      pages.map((p: any) => [p.id, p.disabledReason]),
+      [
+        ['1001', undefined],
+        ['2002', 'not_granted'],
+      ]
+    );
+    assert.equal(JSON.stringify(pages).includes('page-token'), false);
+  });
+
+  it('takes a listing with the token over an earlier one without', async () => {
+    business({
+      '/owned_pages': [{ ...page, access_token: undefined }],
+      '/client_pages': [page],
+    });
+
+    const pages = await new FacebookProvider().pages('user-token');
+
+    assert.deepEqual(
+      pages.map((p: any) => [p.id, p.disabledReason]),
+      [['1001', undefined]]
+    );
   });
 
   it('still saves the picked page with its token', async () => {

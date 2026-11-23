@@ -788,3 +788,6 @@ checksums:
     update_and_reschedule: c712dbb06262f5b4602d6a86179b4425
     update_and_post_now: 57a5bfc25bda041648b25176837094ef
     instagram_original_sound_not_linked: 4a272c39fee2eb394c9e8bb5795bc846
+    back_to_postqueen: 5a034d5158c8f0b362245414dbf239c2
+    not_selectable_page_not_granted_to_postqueen: c7637534409c13dca1ae71caddf156f5
+    you_did_not_grant_postqueen_access_to_this_page: 8a5bee167b22955758b38c4fe7fdb931

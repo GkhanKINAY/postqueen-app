@@ -661,5 +661,8 @@
   "timezone": "დროის სარტყელი",
   "automatic_timezone": "ავტომატური ({{timezone}})",
   "could_not_save_timezone": "დროის სარტყლის შენახვა ვერ მოხერხდა",
-  "instagram_original_sound_not_linked": "Instagram Reel-ს ხმის გვერდთან მხოლოდ მუსიკის შემთხვევაში აკავშირებს. ორიგინალური ხმით გამოქვეყნებულ Reels-ს თქვენი ანგარიშის ქვეშ „ორიგინალური აუდიო“ ეწერება."
+  "instagram_original_sound_not_linked": "Instagram Reel-ს ხმის გვერდთან მხოლოდ მუსიკის შემთხვევაში აკავშირებს. ორიგინალური ხმით გამოქვეყნებულ Reels-ს თქვენი ანგარიშის ქვეშ „ორიგინალური აუდიო“ ეწერება.",
+  "back_to_postqueen": "PostQueen-ზე დაბრუნება",
+  "not_selectable_page_not_granted_to_postqueen": "არჩევა შეუძლებელია: PostQueen-ს ამ გვერდზე წვდომა არ აქვს",
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebook-ის ფანჯარაში PostQueen-ს ამ გვერდზე წვდომა არ მიეცით.\nხელახლა დააკავშირეთ არხი, Facebook-ის ეკრანზე დააჭირეთ „პარამეტრების რედაქტირებას“, აირჩიეთ წვდომა მხოლოდ მიმდინარე გვერდებზე და მონიშნეთ ეს გვერდი თქვენს სხვა დაკავშირებულ გვერდებთან ერთად."
 }

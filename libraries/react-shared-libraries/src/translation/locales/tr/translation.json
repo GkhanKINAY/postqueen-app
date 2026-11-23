@@ -973,5 +973,8 @@
   "timezone": "Saat dilimi",
   "automatic_timezone": "Otomatik ({{timezone}})",
   "could_not_save_timezone": "Saat dilimi kaydedilemedi",
-  "instagram_original_sound_not_linked": "Instagram bir Reel'i sesin sayfasına yalnızca müzik için bağlar. Orijinal sesle yayınlanan Reel'ler hesabınızın altında \"Orijinal ses\" olarak etiketlenir."
+  "instagram_original_sound_not_linked": "Instagram bir Reel'i sesin sayfasına yalnızca müzik için bağlar. Orijinal sesle yayınlanan Reel'ler hesabınızın altında \"Orijinal ses\" olarak etiketlenir.",
+  "back_to_postqueen": "PostQueen’e dön",
+  "not_selectable_page_not_granted_to_postqueen": "Seçilemiyor: PostQueen’e bu Sayfaya erişim izni verilmedi",
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebook iletişim kutusunda PostQueen’e bu Sayfaya erişim izni vermediniz.\nKanalı yeniden bağlayın, Facebook ekranında “Ayarları düzenle”ye tıklayın, yalnızca mevcut Sayfalara erişim izni vermeyi seçin ve bu Sayfayı diğer bağlı Sayfalarınızla birlikte işaretleyin."
 }

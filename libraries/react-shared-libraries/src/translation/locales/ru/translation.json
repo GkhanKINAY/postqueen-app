@@ -955,5 +955,8 @@
   "timezone": "Часовой пояс",
   "automatic_timezone": "Автоматически ({{timezone}})",
   "could_not_save_timezone": "Не удалось сохранить часовой пояс",
-  "instagram_original_sound_not_linked": "Instagram связывает Reels со страницей звука только для музыки. Reels с оригинальным звуком помечаются как «Оригинальный звук» под вашим аккаунтом."
+  "instagram_original_sound_not_linked": "Instagram связывает Reels со страницей звука только для музыки. Reels с оригинальным звуком помечаются как «Оригинальный звук» под вашим аккаунтом.",
+  "back_to_postqueen": "Вернуться в PostQueen",
+  "not_selectable_page_not_granted_to_postqueen": "Страницу нельзя выбрать: у PostQueen нет к ней доступа",
+  "you_did_not_grant_postqueen_access_to_this_page": "В диалоговом окне Facebook вы не предоставили PostQueen доступ к этой Странице.\nПодключите канал заново, нажмите «Изменить настройки» на экране Facebook, выберите вариант «Только текущие Страницы» и отметьте эту Страницу вместе с остальными подключёнными Страницами."
 }

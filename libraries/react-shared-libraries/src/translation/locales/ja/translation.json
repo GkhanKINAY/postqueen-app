@@ -955,5 +955,8 @@
   "timezone": "タイムゾーン",
   "automatic_timezone": "自動 ({{timezone}})",
   "could_not_save_timezone": "タイムゾーンを保存できませんでした",
-  "instagram_original_sound_not_linked": "Instagramがリールを音源のページにリンクするのは音楽の場合のみです。オリジナル音源で公開されたリールには、アカウント名の下に「オリジナル音源」と表示されます。"
+  "instagram_original_sound_not_linked": "Instagramがリールを音源のページにリンクするのは音楽の場合のみです。オリジナル音源で公開されたリールには、アカウント名の下に「オリジナル音源」と表示されます。",
+  "back_to_postqueen": "PostQueenに戻る",
+  "not_selectable_page_not_granted_to_postqueen": "選択できません：PostQueenにこのページへのアクセスが許可されていません",
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebookのダイアログで、PostQueenにこのページへのアクセスを許可していません。\nチャンネルを再接続し、Facebookの画面で「設定を編集」をクリックしてください。現在のページのみを許可するオプションを選び、このページと、すでに接続されている他のページにチェックを入れてください。"
 }

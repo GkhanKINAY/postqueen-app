@@ -955,5 +955,8 @@
   "timezone": "Fuseau horaire",
   "automatic_timezone": "Automatique ({{timezone}})",
   "could_not_save_timezone": "Impossible d'enregistrer le fuseau horaire",
-  "instagram_original_sound_not_linked": "Instagram ne relie un Reel à la page du son que pour la musique. Les Reels publiés avec un son original sont indiqués comme « Audio original » sous votre compte."
+  "instagram_original_sound_not_linked": "Instagram ne relie un Reel à la page du son que pour la musique. Les Reels publiés avec un son original sont indiqués comme « Audio original » sous votre compte.",
+  "back_to_postqueen": "Retour à PostQueen",
+  "not_selectable_page_not_granted_to_postqueen": "Impossible de sélectionner cette Page : PostQueen n’y a pas accès",
+  "you_did_not_grant_postqueen_access_to_this_page": "Vous n’avez pas autorisé PostQueen à accéder à cette Page dans la boîte de dialogue Facebook.\nReconnectez le canal, cliquez sur « Modifier les paramètres » sur l’écran Facebook, choisissez de n’autoriser l’accès qu’aux Pages actuelles, puis cochez cette Page ainsi que vos autres Pages déjà connectées."
 }
