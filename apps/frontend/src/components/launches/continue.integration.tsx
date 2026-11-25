@@ -492,6 +492,17 @@ export const ContinueIntegration: FC<{
             existingId={[]}
             initialData={twoStepState.pages}
             isSaving={isSaving}
+            // The full-page landing has no dialog to close.
+            onBack={
+              logged || twoStepState.returnURL
+                ? () =>
+                    navigateOrShow(
+                      '/channels',
+                      twoStepState.returnURL,
+                      'Channel setup cancelled'
+                    )
+                : undefined
+            }
           />
         </IntegrationContext.Provider>
       </>

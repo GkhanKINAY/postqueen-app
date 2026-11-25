@@ -396,3 +396,55 @@ describe('X tweet text from the html editor', () => {
     assert.equal(tweet('a < b > c'), 'a < b > c');
   });
 });
+
+// Shift+Enter in the editor writes a <br> inside the paragraph, which the
+// html path keeps for X.
+describe('X soft line breaks', () => {
+  const tweet = (message: string) =>
+    (new XProvider() as any).toTweetText(message);
+  const article = (html: string) =>
+    (new XProvider() as any).articleContentState(html, []);
+
+  it('are newlines in a tweet', () => {
+    assert.equal(
+      tweet('<p dir="auto">one<br>two &amp; three</p><p dir="auto">four</p>'),
+      'one\ntwo & three\nfour',
+    );
+    assert.equal(tweet('one<br>two &amp; three'), 'one\ntwo & three');
+  });
+
+  it('are newlines inside an article block, not joined words', () => {
+    const { blocks } = article(
+      '<p dir="auto">one<br>two</p><ul><li><p dir="auto">a<br>b</p></li></ul>',
+    );
+    assert.deepEqual(
+      blocks.map((b: any) => [b.type, b.text]),
+      [
+        ['unstyled', 'one\ntwo'],
+        ['unordered-list-item', 'a\nb'],
+      ],
+    );
+  });
+
+  it('keep the bold and the link that span them', () => {
+    const { blocks, entities } = article(
+      '<p><strong>ab<br>cd</strong> <a href="https://e.example/">x<br>y</a></p>',
+    );
+    assert.equal(blocks[0].text, 'ab\ncd x\ny');
+    assert.deepEqual(blocks[0].inline_style_ranges, [
+      { offset: 0, length: 5, style: 'bold' },
+    ]);
+    assert.deepEqual(blocks[0].entity_ranges, [
+      { offset: 6, length: 3, key: 0 },
+    ]);
+    assert.equal(entities[0].value.data.url, 'https://e.example/');
+  });
+
+  it('make no block of their own', () => {
+    const { blocks } = article('<p>one</p><p><br></p><p>two</p>');
+    assert.deepEqual(
+      blocks.map((b: any) => b.text),
+      ['one', 'two'],
+    );
+  });
+});

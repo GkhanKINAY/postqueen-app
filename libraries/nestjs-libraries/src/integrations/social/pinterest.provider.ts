@@ -173,6 +173,13 @@ export class PinterestProvider
           'The connected Pinterest account cannot post to this board. Pick a board the account owns or can save pins to.',
       };
     }
+    if (body.indexOf('We blocked this link because it may lead to spam') > -1) {
+      return {
+        type: 'bad-body' as const,
+        value:
+          'Pinterest blocked the link of this pin because it may lead to spam. Please check the link, or contact Pinterest about your website.',
+      };
+    }
     if (body.indexOf('cover_image_url or cover_image_content_type') > -1) {
       return {
         type: 'bad-body' as const,

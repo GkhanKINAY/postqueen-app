@@ -84,8 +84,8 @@
 /integrations/social/${current.identifier}
 /integrations/social/${identifier}
 /integrations/social/${identifier}${params
+/integrations/social/${identifier}${query
 /integrations/social/${integration.identifier}
-/integrations/social/${integrationData.identifier}
 /integrations/telegram/updates
 /media
 /media/${id}

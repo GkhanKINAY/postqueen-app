@@ -440,6 +440,13 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
             if (!seenIds.has(page.id)) {
               seenIds.add(page.id);
               allPages.push(page);
+              continue;
+            }
+            // Another listing of the same page can carry the token the first
+            // one did not, as fetchPageInformation finds when it saves it.
+            const index = allPages.findIndex((p) => p.id === page.id);
+            if (!allPages[index].access_token && page.access_token) {
+              allPages[index] = page;
             }
           }
         }
@@ -488,12 +495,16 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
 
     // The list goes to the browser for the page picker, so it carries what
     // the picker shows and no page token: the picked page's token is read
-    // again on the server when it is saved (fetchPageInformation).
+    // again on the server when it is saved (fetchPageInformation). A page
+    // listed without a token was never granted to the app in the Facebook
+    // dialog, so no token can be issued for it: the picker shows it as not
+    // selectable.
     return allPages.map((page: any) => ({
       id: page.id,
       name: page.name,
       username: page.username,
       picture: page.picture,
+      disabledReason: !page.access_token ? ('not_granted' as const) : undefined,
     }));
   }
 

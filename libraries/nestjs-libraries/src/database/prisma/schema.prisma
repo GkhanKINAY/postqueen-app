@@ -164,6 +164,7 @@ model User {
   noticeDeliveries      NoticeDelivery[]
 
   @@unique([email, providerName])
+  @@index([providerId, providerName])
   @@index([lastReadNotifications])
   @@index([inviteId])
   @@index([account])
@@ -341,9 +342,11 @@ model Media {
   agencies           SocialMediaAgency[]
   userPicture        User[]
 
-  @@index([name])
-  @@index([organizationId])
-  @@index([type])
+  // The media library: the newest-first page is read in index order, and the
+  // count can skip the table for files on pages PostgreSQL has marked
+  // all-visible. With organizationId only, both read every file of the
+  // organization from the table.
+  @@index([organizationId, createdAt, deletedAt, status])
 }
 
 model SocialMediaAgency {
@@ -704,18 +707,21 @@ model Post {
 
   @@index([group])
   @@index([batchId])
-  @@index([deletedAt])
   @@index([publishDate])
+  @@index([publishDate, state, deletedAt, parentPostId, integrationId, organizationId, creationMethod])
   @@index([state])
   @@index([organizationId])
+  // deletedAt lets the calendar skip deleted posts inside the index. With
+  // state, the posts-per-period count can also skip the table for posts on
+  // pages PostgreSQL has marked all-visible; on a table that changes as much
+  // as this one, that is only part of them.
+  @@index([organizationId, publishDate, state, deletedAt])
+  @@index([organizationId, intervalInDays])
   @@index([parentPostId])
   @@index([submittedForOrderId])
   @@index([intervalInDays])
-  @@index([approvedSubmitForOrder])
-  @@index([creationMethod])
   @@index([lastMessageId])
   @@index([createdAt])
-  @@index([updatedAt])
   @@index([releaseURL])
   @@index([releaseId])
   @@index([integrationId])
@@ -760,7 +766,7 @@ model Notifications {
 
   @@index([createdAt])
   @@index([organizationId])
-  @@index([deletedAt])
+  @@index([organizationId, createdAt, deletedAt])
 }
 
 model MessagesGroup {
@@ -981,6 +987,7 @@ model Errors {
 
   @@index([organizationId])
   @@index([createdAt])
+  @@index([createdAt, platform])
 }
 
 model Mentions {

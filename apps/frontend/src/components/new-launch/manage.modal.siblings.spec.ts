@@ -24,31 +24,62 @@ describe('composer: a post saved with other channels', () => {
     assert.match(selectCurrent, /existingData\.siblings\?\.some\(\(sibling\) =>\s*selectedIntegrations\.some/);
   });
 
-  it('never republishes a sibling that already went out', () => {
+  it('lists the channels in the order of the editor', () => {
     assert.match(
       manage,
-      /if \(type === 'now' \|\| type === 'schedule'\) \{\s*for \(const p of others\) \{\s*if \(published\.includes\(p\)\) \{\s*saveAs\[p\.integration\] = 'update';/
+      /const existingPosts = sortBy\([\s\S]*?\(p\) => integrations\.findIndex\(\(i\) => i\.id === p\.integration\)\s*\);/
     );
   });
 
-  it('saves only the channel in view on "Only {name}"', () => {
-    assert.match(manage, /if \(whichChannels === 'only'\) \{\s*onlyChannel = true;/);
+  it('posts a sibling that already went out again only when it is ticked', () => {
+    assert.match(manage, /const out = published\.includes\(p\) && !waiting\(p\);/);
+    // A channel that went out starts unticked.
+    assert.match(manage, /checked:\s*same \|\|\s*\(!out &&/);
     assert.match(
       manage,
-      /const allValues = onlyChannel\s*\? editorValues\.filter\(\(post: any\) => post\.id === channel\.integration\)\s*: editorValues;/
+      /republish =\s*type !== 'draft' &&\s*published\.some\(\(p\) => ticked\.includes\(p\.integration\)\);/
     );
+    // The republish question is for a post on one channel only.
+    assert.match(manage, /const republishing = hasSiblings \? \[\] : published;/);
   });
 
-  it('offers deleting from the channel in view first', () => {
+  it('keeps the unticked channels in their state', () => {
+    assert.match(
+      manage,
+      /if \(!ticked\.includes\(p\.integration\)\) \{\s*saveAs\[p\.integration\] = asItIs\(p\);/
+    );
+    assert.match(manage, /'unticked_channels_saved_note'/);
+  });
+
+  it('starts the delete checklist with the channel in view only', () => {
     const dialog = manage.slice(
       manage.indexOf("id: 'delete-post-channels'"),
-      manage.indexOf("'delete_from_all_channels'")
+      manage.indexOf("'delete_from_channels'")
     );
-    const only = dialog.indexOf("'delete_only_from_channel'");
-    assert.ok(only > -1);
-    // The primary button comes first; the all-channels one is secondary.
-    assert.doesNotMatch(dialog.slice(dialog.lastIndexOf('<Button', only), only), /secondary/);
-    assert.match(dialog.slice(only), /secondary/);
-    assert.match(manage, /'delete_all_channels_cancels_scheduled'/);
+    assert.match(dialog, /<ChannelsChecklist/);
+    assert.match(dialog, /checked: p === channel,/);
+    assert.match(dialog, /needsChannel=\{true\}/);
+    assert.match(dialog, /danger=\{true\}/);
+  });
+
+  it('replaces the all-or-only dialogs with the channel checklist', () => {
+    for (const key of [
+      'delete_from_all_channels',
+      'delete_only_from_channel',
+      'only_channel_name',
+      'draft_all_channels',
+      'post_now_all_channels',
+      'schedule_all_channels',
+    ]) {
+      assert.doesNotMatch(manage, new RegExp(`'${key}'`));
+    }
+    assert.match(manage, /const ChannelsChecklist: FC</);
+    // Its rows are tickable buttons, never a form checkbox nested in a row.
+    assert.match(manage, /role="checkbox"\s*aria-checked=\{on\}/);
+  });
+
+  it('says a moved date posts now instead of "already published"', () => {
+    assert.match(manage, /const waits = republishing\.every\(waiting\);/);
+    assert.match(manage, /'post_date_passed_post_now_warning'/);
   });
 });

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { parseFragment } from 'parse5';
 import { hasHtmlTag, stripHtmlValidation } from './strip.html.validation.ts';
+import { countLength } from './count.length.ts';
+import { sanitizePostContent } from './sanitize.post.content.ts';
 
 // Every element of a fragment with its attribute names, as a browser would
 // read the HTML a channel publishes.
@@ -213,6 +215,155 @@ describe('stripHtmlValidation html text', () => {
       ),
       '<p>a &amp; b</p><img src="https://cdn.example.com/a.png" alt="Tom &amp; Jerry">'
     );
+  });
+});
+
+// Shift+Enter in the editor writes a <br> inside the paragraph: a line break
+// that is not a new paragraph.
+describe('stripHtmlValidation soft line breaks', () => {
+  const soft = '<p dir="auto">one<br>two</p><p dir="auto">three</p>';
+
+  it('is a newline in plain text, with or without unicode bold', () => {
+    assert.equal(stripHtmlValidation('normal', soft), 'one\ntwo\nthree');
+    assert.equal(stripHtmlValidation('normal', soft, true), 'one\ntwo\nthree');
+    assert.equal(
+      stripHtmlValidation('normal', soft, false, true),
+      'one\ntwo\nthree'
+    );
+    assert.equal(stripHtmlValidation('none', '<p>one<br>two</p>'), 'one\ntwo');
+  });
+
+  it('is a newline in markdown', () => {
+    assert.equal(stripHtmlValidation('markdown', soft), 'one\ntwo\nthree\n');
+  });
+
+  it('stays a <br> for a channel that takes HTML', () => {
+    assert.equal(stripHtmlValidation('html', soft), soft);
+    assert.equal(
+      stripHtmlValidation('html', '<p>one<br/>two<br />three</p>'),
+      '<p>one<br>two<br>three</p>'
+    );
+  });
+
+  it('reads every spelling of the tag, one newline each', () => {
+    for (const spelling of ['<br>', '<br/>', '<br />', '<BR>', '<br class="x">']) {
+      assert.equal(
+        stripHtmlValidation('normal', `<p>one${spelling}two</p>`, true),
+        'one\ntwo'
+      );
+    }
+    assert.equal(
+      stripHtmlValidation('normal', '<p>one<br><br><br>two</p>', true),
+      'one\n\n\ntwo'
+    );
+  });
+
+  it('is a space inside a list item, whose lines are joined', () => {
+    const list = '<ul><li><p dir="auto">one<br>two</p></li></ul>';
+    assert.equal(stripHtmlValidation('normal', list, true), '\n- one two\n');
+    assert.equal(stripHtmlValidation('markdown', list), '- one two\n');
+    assert.equal(stripHtmlValidation('none', list), 'one two');
+    // in an item that holds a nested list too
+    assert.match(
+      stripHtmlValidation(
+        'normal',
+        '<ul><li><p>a<br>b</p><ul><li><p>c</p></li></ul></li></ul>',
+        true
+      ),
+      /- a b/
+    );
+  });
+
+  it('keeps bold and underline that span it', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'normal',
+        '<p><strong>ab<br>cd</strong> <u>ef<br>gh</u></p>',
+        true
+      ),
+      '𝗮𝗯\n𝗰𝗱 e̲f̲\ng̲h̲'
+    );
+    assert.equal(
+      stripHtmlValidation('markdown', '<p><strong>ab<br>cd</strong></p>'),
+      '**ab\ncd**\n'
+    );
+  });
+
+  it('does not carry bold or underline from an empty tag into later text', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'normal',
+        '<p><strong></strong>x</p><p>y <strong>z</strong></p>',
+        true
+      ),
+      'x\ny 𝘇'
+    );
+    assert.equal(
+      stripHtmlValidation('normal', '<p><u></u>x</p><p>y <u>z</u></p>', true),
+      'x\ny z̲'
+    );
+  });
+
+  it('is a space inside a markdown heading, which covers one line', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'markdown',
+        '<h1 dir="auto">a<br>b</h1><h2>c<br>d</h2><h3>e<br>f</h3><p>g<br>h</p>'
+      ),
+      '# a b\n## c d\n### e f\ng\nh\n'
+    );
+    // plain text has no heading syntax to keep on one line
+    assert.equal(stripHtmlValidation('normal', '<h2>a<br>b</h2>', true), 'a\nb');
+  });
+
+  it('leaves a "<br>" inside an attribute value alone', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'normal',
+        '<p>hi <span class="mention" data-mention-id="1" data-mention-label="<br>">@Ana</span></p>',
+        true
+      ),
+      'hi @Ana'
+    );
+  });
+
+  it('reads HTML with a break and no paragraph as HTML', () => {
+    // API content; its entities were returned encoded before.
+    assert.equal(
+      stripHtmlValidation('normal', 'one<br>two &amp; three', true),
+      'one\ntwo & three'
+    );
+    assert.equal(stripHtmlValidation('normal', 'Just text'), 'Just text');
+  });
+
+  it('counts as one character', () => {
+    const text = stripHtmlValidation('normal', '<p>ab<br>cd</p>', true);
+    assert.equal(countLength('linkedin', text), 5);
+    assert.equal(countLength('x', text), 5);
+    assert.equal(countLength('threads', text), 5);
+  });
+
+  // Stored content went through sanitizePostContent, and the public preview
+  // reads it with the 'none' type on every view.
+  it('stays fast on list items and breaks in any shape a post can hold', () => {
+    for (const input of [
+      '<li>a<br>'.repeat(25_000),
+      '<p class="<li">x<br></p>'.repeat(10_000),
+      '<li class="<li<li<li">a<br>'.repeat(10_000),
+      '<li' + ' a'.repeat(150_000),
+      '<p>' + 'a<br>'.repeat(19_000) + '</p>',
+      '<ul>' + '<li><p>a<br>b</p></li>'.repeat(6_000) + '</ul>',
+    ]) {
+      const stored = sanitizePostContent(input);
+      for (const type of ['none', 'normal', 'markdown', 'html'] as const) {
+        const started = Date.now();
+        stripHtmlValidation(type, stored, true);
+        assert.ok(
+          Date.now() - started < 1_500,
+          `${type} took ${Date.now() - started} ms`
+        );
+      }
+    }
   });
 });
 

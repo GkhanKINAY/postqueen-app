@@ -31,11 +31,20 @@ export interface ContinueProviderProps {
   existingId: string[];
   initialData?: any[];
   isSaving?: boolean;
+  // A "Back to PostQueen" button for the full-page connect landing, which has
+  // no dialog to close: on the empty state, and beside Save when some option
+  // cannot be picked.
+  onBack?: () => void;
 }
 
 export interface EmptyStateMessage {
   key: string;
   text: string;
+}
+
+export interface DisabledItemMessage {
+  caption: EmptyStateMessage;
+  tooltip: EmptyStateMessage;
 }
 
 export interface ContinueProviderConfig<TItem, TSelection> {
@@ -44,6 +53,9 @@ export interface ContinueProviderConfig<TItem, TSelection> {
   titleKey: string;
   titleDefault: string;
   emptyStateMessages: EmptyStateMessage[];
+  // Why an option cannot be picked (shown muted, with a caption and a hint),
+  // or undefined when it can.
+  getDisabledMessage?: (item: TItem) => DisabledItemMessage | undefined;
   getSelectionValue: (item: TItem) => TSelection;
   transformSaveData: (selection: TSelection | TSelection[]) => any;
   renderItem: (item: TItem, isSelected: boolean) => ReactNode;
@@ -95,6 +107,7 @@ export function withContinueProvider<TItem, TSelection>(
     titleKey,
     titleDefault,
     emptyStateMessages,
+    getDisabledMessage,
     getSelectionValue,
     transformSaveData,
     renderItem,
@@ -103,7 +116,7 @@ export function withContinueProvider<TItem, TSelection>(
   } = config;
 
   return function ContinueProviderComponent(props: ContinueProviderProps) {
-    const { onSave, existingId, initialData, isSaving } = props;
+    const { onSave, existingId, initialData, isSaving, onBack } = props;
     const call = useCustomProviderFunction();
     const t = useT();
     const [selection, setSelection] = useState<TSelection | TSelection[] | null>(
@@ -148,6 +161,19 @@ export function withContinueProvider<TItem, TSelection>(
       );
     }, [resolvedData, existingId]);
 
+    // The options that can be picked: selecting, Select all and Save work on
+    // these, while every option is still shown.
+    const selectableData = useMemo(
+      () => filteredData.filter((item) => !getDisabledMessage?.(item)),
+      [filteredData]
+    );
+    const hasDisabled = selectableData.length < filteredData.length;
+    // The only option, when it can be picked.
+    const onlyOption =
+      filteredData.length === 1 && selectableData.length === 1
+        ? selectableData[0]
+        : undefined;
+
     const density = continuePickerDensity(filteredData.length);
     const multi = density !== 'confirm';
 
@@ -163,14 +189,17 @@ export function withContinueProvider<TItem, TSelection>(
     // One channel and a disabled Save looks like a selected card that does
     // nothing. Pre-select the only option so Save is actually armed.
     useEffect(() => {
-      if (selection || filteredData.length !== 1) {
+      if (selection || !onlyOption) {
         return;
       }
-      setSelection(getSelectionValue(filteredData[0]));
-    }, [filteredData, selection]);
+      setSelection(getSelectionValue(onlyOption));
+    }, [onlyOption, selection]);
 
     const handleSelect = useCallback(
       (item: TItem) => () => {
+        if (getDisabledMessage?.(item)) {
+          return;
+        }
         if (multi) {
           setSelection((current) =>
             toggleContinueSelection(current, item, getSelectionValue, isSelected)
@@ -184,23 +213,23 @@ export function withContinueProvider<TItem, TSelection>(
 
     const handleToggleAll = useCallback(() => {
       if (
-        filteredData.length > 0 &&
-        filteredData.every((item) =>
+        selectableData.length > 0 &&
+        selectableData.every((item) =>
           itemIsContinueSelected(item, selection, isSelected)
         )
       ) {
         setSelection([]);
         return;
       }
-      setSelection(filteredData.map((item) => getSelectionValue(item)));
-    }, [filteredData, selection]);
+      setSelection(selectableData.map((item) => getSelectionValue(item)));
+    }, [selectableData, selection]);
 
     const handleSave = useCallback(async () => {
       const picked =
         chosen.length > 0
           ? chosen
-          : filteredData.length === 1
-            ? [getSelectionValue(filteredData[0])]
+          : onlyOption
+            ? [getSelectionValue(onlyOption)]
             : [];
       if (!picked.length) {
         return;
@@ -208,15 +237,60 @@ export function withContinueProvider<TItem, TSelection>(
       await onSave(
         transformSaveData(picked.length === 1 ? picked[0] : picked)
       );
-    }, [onSave, chosen, filteredData]);
+    }, [onSave, chosen, onlyOption]);
 
-    const saveEnabled =
-      !isSaving && (chosen.length > 0 || filteredData.length === 1);
+    const saveEnabled = !isSaving && (chosen.length > 0 || !!onlyOption);
     const allVisibleSelected =
       filteredData.length > 1 &&
-      filteredData.every((item) =>
+      selectableData.length > 0 &&
+      selectableData.every((item) =>
         itemIsContinueSelected(item, selection, isSelected)
       );
+
+    const backButton = onBack ? (
+      <Button type="button" variant="outline" onClick={onBack}>
+        {t('back_to_postqueen', 'Back to PostQueen')}
+      </Button>
+    ) : null;
+
+    // Why an option cannot be picked: a caption, and how to fix it on hover.
+    const disabledNote = (item: TItem) => {
+      const disabled = getDisabledMessage?.(item);
+      if (!disabled) {
+        return null;
+      }
+      return (
+        <span className="flex items-center justify-center gap-[6px] text-[12px] text-pqMuted">
+          <span>{t(disabled.caption.key, disabled.caption.text)}</span>
+          <button
+            type="button"
+            aria-label={t(disabled.tooltip.key, disabled.tooltip.text)}
+            data-tooltip-id="tooltip"
+            data-tooltip-place="bottom"
+            data-tooltip-class-name="!max-w-[360px] whitespace-pre-line break-words"
+            data-tooltip-content={t(disabled.tooltip.key, disabled.tooltip.text)}
+            className="inline-flex shrink-0 cursor-help rounded-full text-pqSoft outline-none focus-visible:ring-2 focus-visible:ring-pqBrand"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </button>
+        </span>
+      );
+    };
 
     // A failed load is not an empty account. Both used to render the same
     // "nothing here" copy, which told someone whose options exist that they
@@ -255,6 +329,7 @@ export function withContinueProvider<TItem, TSelection>(
               )}
             </span>
           ))}
+          {backButton && <div className="mt-[24px]">{backButton}</div>}
         </div>
       );
     }
@@ -307,25 +382,33 @@ export function withContinueProvider<TItem, TSelection>(
 
         {density === 'confirm' && filteredData[0] && (
           <div className="flex flex-col items-center gap-[18px] rounded-pqLg bg-pqPop px-[24px] py-[28px] text-center shadow-[inset_0_0_0_1px_var(--border)]">
-            <span className="rounded-full bg-pqBrandSoft px-[10px] py-[3px] text-[11.5px] font-[600] text-pqFocused">
-              {t('ready_to_connect', 'Ready to connect')}
-            </span>
+            {onlyOption && (
+              <span className="rounded-full bg-pqBrandSoft px-[10px] py-[3px] text-[11.5px] font-[600] text-pqFocused">
+                {t('ready_to_connect', 'Ready to connect')}
+              </span>
+            )}
             <div
               className={clsx(
                 'flex flex-col items-center gap-[12px]',
                 confirmAvatarClass,
-                confirmAvatarBoxClass
+                confirmAvatarBoxClass,
+                !onlyOption && 'opacity-60'
               )}
             >
-              {renderItem(filteredData[0], true)}
+              {renderItem(filteredData[0], !!onlyOption)}
             </div>
-            <p className="max-w-[380px] text-pretty text-[13.5px] leading-[20px] text-pqMuted">
-              {t(
-                'only_option_to_connect',
-                'This is the only option on this account. Confirm to connect.'
-              )}
-            </p>
+            {onlyOption ? (
+              <p className="max-w-[380px] text-pretty text-[13.5px] leading-[20px] text-pqMuted">
+                {t(
+                  'only_option_to_connect',
+                  'This is the only option on this account. Confirm to connect.'
+                )}
+              </p>
+            ) : (
+              disabledNote(filteredData[0])
+            )}
             {saveButton}
+            {hasDisabled && backButton}
           </div>
         )}
 
@@ -342,6 +425,26 @@ export function withContinueProvider<TItem, TSelection>(
                   selection,
                   isSelected
                 );
+                if (getDisabledMessage?.(item)) {
+                  return (
+                    <div
+                      key={getItemId(item)}
+                      role="checkbox"
+                      aria-checked="false"
+                      aria-disabled="true"
+                      className={clsx(
+                        'relative flex min-h-[156px] cursor-not-allowed flex-col items-center justify-center gap-[10px] rounded-pqMd px-[14px] py-[18px] text-center shadow-[inset_0_0_0_1px_var(--border)]',
+                        gridAvatarClass,
+                        gridAvatarBoxClass
+                      )}
+                    >
+                      <span className="flex flex-col items-center gap-[10px] opacity-60">
+                        {renderItem(item, false)}
+                      </span>
+                      {disabledNote(item)}
+                    </div>
+                  );
+                }
                 return (
                   <button
                     type="button"
@@ -367,16 +470,19 @@ export function withContinueProvider<TItem, TSelection>(
               })}
             </div>
             <div className="flex flex-wrap items-center gap-[12px]">
-              <button
-                type="button"
-                onClick={handleToggleAll}
-                className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
-              >
-                {allVisibleSelected
-                  ? t('clear', 'Clear')
-                  : t('select_all', 'Select all')}
-              </button>
+              {selectableData.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAll}
+                  className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
+                >
+                  {allVisibleSelected
+                    ? t('clear', 'Clear')
+                    : t('select_all', 'Select all')}
+                </button>
+              )}
               {saveButton}
+              {hasDisabled && backButton}
             </div>
           </>
         )}
@@ -428,6 +534,29 @@ export function withContinueProvider<TItem, TSelection>(
                   selection,
                   isSelected
                 );
+                if (getDisabledMessage?.(item)) {
+                  return (
+                    <div
+                      key={getItemId(item)}
+                      role="checkbox"
+                      aria-checked="false"
+                      aria-disabled="true"
+                      className={clsx(
+                        'flex w-full cursor-not-allowed flex-wrap items-center gap-x-[12px] gap-y-[6px] rounded-pqMd px-[14px] py-[10px] text-start shadow-[inset_0_0_0_1px_var(--border)]',
+                        listAvatarClass,
+                        listAvatarBoxClass
+                      )}
+                    >
+                      <span className="flex min-w-0 flex-1 basis-[200px] items-center gap-[12px] opacity-60">
+                        {renderItem(item, false)}
+                      </span>
+                      {/* Beside the name when there is room, under it on a phone. */}
+                      <span className="ms-auto min-w-0 text-start">
+                        {disabledNote(item)}
+                      </span>
+                    </div>
+                  );
+                }
                 return (
                   <button
                     type="button"
@@ -453,16 +582,19 @@ export function withContinueProvider<TItem, TSelection>(
               })}
             </div>
             <div className="flex flex-wrap items-center gap-[12px]">
-              <button
-                type="button"
-                onClick={handleToggleAll}
-                className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
-              >
-                {allVisibleSelected
-                  ? t('clear', 'Clear')
-                  : t('select_all', 'Select all')}
-              </button>
+              {selectableData.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAll}
+                  className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
+                >
+                  {allVisibleSelected
+                    ? t('clear', 'Clear')
+                    : t('select_all', 'Select all')}
+                </button>
+              )}
               {saveButton}
+              {hasDisabled && backButton}
             </div>
           </>
         )}

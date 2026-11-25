@@ -1,21 +1,22 @@
 // @ts-ignore
 import twitter from 'twitter-text';
 
-// Threads counts its limit in UTF-8 bytes (see countLength), so the preview's
-// crop has to fall on the last whole character that fits in `maxBytes`, never
-// inside a multi-byte character or a surrogate pair.
-const utf8End = (text: string, maxBytes: number) => {
-  const encoder = new TextEncoder();
-  let bytes = 0;
+// Threads counts its limit in characters (Unicode code points, see
+// countLength), so the preview's crop has to fall after the last whole
+// character that fits in `maxChars`, never inside a surrogate pair.
+const codePointEnd = (text: string, maxChars: number) => {
+  let chars = 0;
   let index = 0;
   for (const char of text) {
-    bytes += encoder.encode(char).length;
-    if (bytes > maxBytes) {
+    chars += 1;
+    if (chars > maxChars) {
       return index;
     }
     index += char.length;
   }
-  return maxBytes;
+  // Everything fits. An emoji is one character but two UTF-16 units, so the
+  // limit alone can fall short of the text's end.
+  return Math.max(maxChars, index);
 };
 
 export const textSlicer = (
@@ -26,7 +27,7 @@ export const textSlicer = (
   if (integrationType === 'threads') {
     return {
       start: 0,
-      end: utf8End(text, end),
+      end: codePointEnd(text, end),
     };
   }
 
@@ -68,7 +69,7 @@ export const countLength = (integrationType: string, text: string): number => {
   }
 
   if (integrationType === 'threads') {
-    return new TextEncoder().encode(text).length;
+    return [...text].length;
   }
 
   return text.length;

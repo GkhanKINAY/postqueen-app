@@ -51,7 +51,7 @@ describe('Threads text', () => {
     );
   });
 
-  it('leaves the length, in bytes, to the generic too-long check', async () => {
+  it('leaves the length, in characters, to the generic too-long check', async () => {
     assert.equal(await text('a'.repeat(600)), true);
     assert.equal(await text('😀'.repeat(200)), true);
   });
