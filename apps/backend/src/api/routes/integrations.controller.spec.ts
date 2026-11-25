@@ -41,12 +41,16 @@ before(async () => {
 // expiry. Records the refreshes asked for and the token the provider got.
 const call = async (
   channel: Record<string, unknown>,
-  options: { callable?: boolean; refreshed?: boolean } = {}
+  options: {
+    callable?: boolean;
+    refreshed?: boolean;
+    pageRequiredToPost?: boolean;
+  } = {}
 ) => {
   const refreshes: string[] = [];
   const tokens: string[] = [];
   const provider = {
-    pageRequiredToPost: true,
+    pageRequiredToPost: options.pageRequiredToPost ?? true,
     pages: async (token: string) => {
       tokens.push(token);
       return [{ id: 'page-1' }];
@@ -95,12 +99,9 @@ const call = async (
 };
 
 describe('a provider function call on an expired token', { skip: !canLoad }, () => {
-  it('refreshes it first for a channel that still has to pick its page', async () => {
-    for (const channel of [
-      {},
-      { inBetweenSteps: true, internalId: 'page-0' },
-    ]) {
-      const { result, refreshes, tokens } = await call(channel);
+  it("refreshes it first for a channel that still holds its login's id", async () => {
+    for (const inBetweenSteps of [false, true]) {
+      const { result, refreshes, tokens } = await call({ inBetweenSteps });
 
       assert.deepEqual(refreshes, ['channel-1']);
       assert.deepEqual(tokens, ['fresh-token']);
@@ -114,6 +115,20 @@ describe('a provider function call on an expired token', { skip: !canLoad }, () 
     assert.deepEqual(refreshes, []);
     assert.deepEqual(tokens, ['stored-token']);
     assert.deepEqual(result, [{ id: 'page-1' }]);
+  });
+
+  // The renewal writes inBetweenSteps: false, so a channel that has only the
+  // flag would come out of it looking finished, its page never picked.
+  it('refreshes nothing for a channel that has only the flag', async () => {
+    for (const [channel, options] of [
+      [{ inBetweenSteps: true }, { pageRequiredToPost: false }],
+      [{ inBetweenSteps: true, internalId: 'page-0' }, {}],
+    ] as const) {
+      const { refreshes, tokens } = await call(channel, options);
+
+      assert.deepEqual(refreshes, []);
+      assert.deepEqual(tokens, ['stored-token']);
+    }
   });
 
   it('answers false without calling the provider when the refresh fails', async () => {

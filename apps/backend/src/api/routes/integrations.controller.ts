@@ -424,9 +424,13 @@ export class IntegrationsController {
     // first, or the page listing fails on it and the picker shows nothing.
     // Only for a channel that still has to select its page: other channels
     // post fine past the stored expiration, a failed refresh would flag them.
+    // And only when it still has to once the renewal has written
+    // inBetweenSteps: false (the login's id in place of a page's): a channel
+    // that has only the flag would come out of it looking finished, its
+    // page never picked.
     if (
       this._integrationService.needsPageSelection(
-        getIntegration,
+        { ...getIntegration, inBetweenSteps: false },
         integrationProvider
       ) &&
       this._refreshIntegrationService.isExpired(getIntegration)

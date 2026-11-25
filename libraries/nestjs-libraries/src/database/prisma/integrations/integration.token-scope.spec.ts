@@ -590,7 +590,11 @@ describe('a page pick', { skip: !canLoad }, () => {
     const result = await repository().updateIntegration(
       picked.id,
       { ...params },
-      { providerIdentifier: 'facebook', internalId: 'user-1' }
+      {
+        providerIdentifier: 'facebook',
+        internalId: 'user-1',
+        inBetweenSteps: false,
+      }
     );
 
     assert.deepEqual(result, { id: picked.id });
@@ -613,13 +617,36 @@ describe('a page pick', { skip: !canLoad }, () => {
       const result = await repository().updateIntegration(
         picked.id,
         { ...params },
-        { providerIdentifier: 'facebook', internalId: read }
+        { providerIdentifier: 'facebook', internalId: read, inBetweenSteps: false }
       );
 
       assert.equal(result, null, `read as ${read}`);
       assert.equal(byId(picked.id).internalId, 'page-0');
       assert.equal(byId(picked.id).token, 'page-0-token');
     }
+  });
+
+  // A page whose id is the login's (a Tumblr primary blog) finishes the
+  // channel without changing its id.
+  it('writes nothing to a channel read as flagged that was finished meanwhile under the same id', async () => {
+    const picked = channel({
+      organizationId: 'org-a',
+      providerIdentifier: 'tumblr',
+      internalId: 'blog-1',
+      rootInternalId: 'blog-1',
+      inBetweenSteps: false,
+      token: 'finished-token',
+    });
+
+    const result = await repository().updateIntegration(
+      picked.id,
+      { ...params },
+      { providerIdentifier: 'tumblr', internalId: 'blog-1', inBetweenSteps: true }
+    );
+
+    assert.equal(result, null);
+    assert.equal(byId(picked.id).internalId, 'blog-1');
+    assert.equal(byId(picked.id).token, 'finished-token');
   });
 
   it('writes nothing when the channel became another one while its page was looked up', async () => {
