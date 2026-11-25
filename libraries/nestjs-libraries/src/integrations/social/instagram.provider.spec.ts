@@ -344,8 +344,10 @@ describe('InstagramDto collaborators', () => {
 // Instagram sometimes refuses media_publish as "blocked" (2207051) and
 // publishes the container all the same.
 describe('Instagram media_publish refused as blocked', () => {
-  const publish = async (containerStatus: string) => {
+  let feedReads: number;
+  const publish = async (containerStatus: string, pending: any) => {
     const provider = new InstagramProvider();
+    feedReads = 0;
     (provider as any).fetch = async (url: string) => {
       if (url.includes('/media_publish')) {
         // What fetch throws for Instagram's answer, through the real mapping,
@@ -354,6 +356,9 @@ describe('Instagram media_publish refused as blocked', () => {
           error: { code: 4, error_subcode: 2207051, message: 'Action is blocked' },
         });
         throw new BadBody('instagram', body, '{}', provider.handleErrors(body)!.value);
+      }
+      if (url.includes('/media?fields=id')) {
+        feedReads++;
       }
       const body = url.includes('fields=status_code')
         ? { status_code: containerStatus }
@@ -364,26 +369,38 @@ describe('Instagram media_publish refused as blocked', () => {
     };
     return provider.finalizePost(
       'token',
-      {
-        type: 'graph.facebook.com',
-        postType: 'single',
-        containers: ['container-1'],
-      } as any,
+      { type: 'graph.facebook.com', containers: ['container-1'], ...pending },
       { internalId: 'ig-1', profile: 'creator' } as any
     );
   };
+  const feedPost = { postType: 'single', story: false };
 
   it('reports the post Instagram published anyway', async () => {
-    assert.deepEqual(await publish('PUBLISHED'), {
-      status: 'completed',
-      postId: 'media-1',
-      releaseURL: 'https://www.instagram.com/p/abc/',
-    });
+    for (const pending of [feedPost, { postType: 'carousel', carouselId: 'c-1' }]) {
+      assert.deepEqual(await publish('PUBLISHED', pending), {
+        status: 'completed',
+        postId: 'media-1',
+        releaseURL: 'https://www.instagram.com/p/abc/',
+      });
+    }
   });
 
   it('fails as before when the container was not published', async () => {
-    await assert.rejects(publish('FINISHED'), {
+    await assert.rejects(publish('FINISHED', feedPost), {
       message: 'Instagram blocked your request',
     });
+  });
+
+  // The feed does not list stories: its newest item would be another post.
+  it('does not look in the feed for a story, or a post with no story flag', async () => {
+    for (const pending of [
+      { postType: 'single', story: true },
+      { postType: 'single' },
+    ]) {
+      await assert.rejects(publish('PUBLISHED', pending), {
+        message: 'Instagram blocked your request',
+      });
+      assert.equal(feedReads, 0);
+    }
   });
 });

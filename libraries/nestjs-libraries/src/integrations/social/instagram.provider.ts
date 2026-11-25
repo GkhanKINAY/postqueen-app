@@ -1045,6 +1045,9 @@ export class InstagramProvider
               ? 'single'
               : 'carousel',
           containers: medias,
+          // A single story is a 'single' too; the blocked-publish recovery
+          // needs to tell it from a feed post.
+          story: isStory,
           message: firstPost?.message || '',
           ...(collaborators
             ? {
@@ -1131,6 +1134,7 @@ export class InstagramProvider
       type: string;
       postType: 'stories' | 'single' | 'carousel';
       containers: string[];
+      story?: boolean;
       message?: string;
       carouselId?: string;
       collaborators?: string[];
@@ -1227,8 +1231,16 @@ export class InstagramProvider
     } catch (err) {
       // Instagram sometimes answers media_publish with 2207051 ("action is
       // blocked") and still publishes the container: ask Instagram before
-      // failing a post that may already be live.
-      if (!(err instanceof BadBody) || !err.message.includes('blocked')) {
+      // failing a post that may already be live. The answer is read from the
+      // account's feed, which does not list stories, so a story (or a single
+      // post from before `story` was recorded) fails as before.
+      const feedPost =
+        pendingData.postType === 'carousel' || pendingData.story === false;
+      if (
+        !feedPost ||
+        !(err instanceof BadBody) ||
+        !err.message.includes('blocked')
+      ) {
         throw err;
       }
 
