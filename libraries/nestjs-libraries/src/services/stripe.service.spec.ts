@@ -793,6 +793,357 @@ describe('the unpaid invoices of a cancelled subscription', () => {
   });
 });
 
+describe('an invoice of a cancelled subscription paid late', () => {
+  // The grant logic itself over a ledger faked in memory, as in the yearly
+  // credits block below: refs are unique.
+  type Grant = {
+    source: string;
+    amount: number;
+    tier?: string | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    externalRef?: string | null;
+    expiresAt?: Date | null;
+  };
+  let ledger: Grant[];
+  const currentGrants = async (_org: string, sources: string[]) =>
+    ledger
+      .filter(
+        (grant) =>
+          sources.includes(grant.source) &&
+          (!grant.expiresAt || grant.expiresAt > new Date()),
+      )
+      .reverse();
+  const credits = {
+    currentGrants,
+    grantWith: async (
+      org: string,
+      sources: string[],
+      decide: (current: Grant[]) => { grant: Grant } | null,
+    ) => {
+      const decision = decide(await currentGrants(org, sources));
+      if (
+        !decision ||
+        ledger.some((grant) => grant.externalRef === decision.grant.externalRef)
+      ) {
+        return { id: null, granted: false };
+      }
+      ledger.push(decision.grant);
+      return { id: 'grant', granted: true };
+    },
+  };
+  // A plan the organization holds some other way, and another account with
+  // the owner's email that is subscribed.
+  let heldPlan: Record<string, unknown> | null;
+  let otherAccount: Record<string, unknown> | null;
+  const late = () =>
+    new StripeService(
+      new SubscriptionService(
+        {
+          getOrganizationByCustomerId: async (customer: string) =>
+            orgOn(customer),
+          getSubscriptionByCustomerId: async () => null,
+          getSubscriptionByOrganizationId: async () => heldPlan,
+        } as any,
+        {} as any,
+        {} as any,
+        credits as any,
+      ) as any,
+      {
+        ...organizationService,
+        getTeam: async () => ({
+          users: [
+            { role: 'SUPERADMIN', user: { id: 'user1', email: 'a@b.co' } },
+            { role: 'USER', user: { id: 'user2', email: 'c@d.co' } },
+          ],
+        }),
+      } as any,
+      {
+        getUserWithActiveSubscriptionByEmail: record(
+          'getUserWithActiveSubscriptionByEmail',
+          () => otherAccount,
+        ),
+      } as any,
+      {} as any,
+      {} as any,
+      { announce: async () => false } as any,
+    );
+
+  // Server time, faked. The renewal failed on 10 January, Stripe ended the
+  // subscription on 10 February, and the customer paid the invoice on the
+  // 20th.
+  const DAY = 24 * 60 * 60;
+  const ENDED = Date.UTC(2027, 1, 10) / 1000;
+  const PAID = Date.UTC(2027, 1, 20, 12) / 1000;
+  const NEXT = Date.UTC(2027, 2, 20, 12) / 1000;
+  const pro = {
+    id: 'price_pro_month',
+    product: { name: 'PRO' },
+    recurring: { interval: 'month', interval_count: 1 },
+  };
+  const cancelled = (extra: Partial<Sub> = {}) =>
+    sub('sub_old', 100, {
+      status: 'canceled',
+      ended_at: ENDED,
+      canceled_at: ENDED,
+      automatic_tax: { enabled: true } as any,
+      metadata: {
+        service: 'postqueen',
+        uniqueId: 'u-old',
+        organizationId: 'org1',
+        credit_pricing: 'v2',
+        userId: 'user1',
+        fbc: 'fb.1.1.abc',
+        fbp: 'fb.1.2.def',
+      },
+      items: { data: [{ price: pro, quantity: 1 }] } as any,
+      discounts: [],
+      ...extra,
+    });
+  const invoice = (extra: Record<string, unknown> = {}) => ({
+    id: 'in_late',
+    customer: 'cus_1',
+    billing_reason: 'subscription_cycle',
+    amount_paid: 4900,
+    amount_remaining: 0,
+    status_transitions: { paid_at: PAID },
+    parent: { subscription_details: { subscription: 'sub_old' } },
+    lines: {
+      data: [{ quantity: 1, pricing: { price_details: { price: pro.id } } }],
+    },
+    ...extra,
+  });
+  const paid = (body: Record<string, unknown> = invoice()) =>
+    late().paymentSucceeded({
+      data: { object: body },
+    } as unknown as Stripe.InvoicePaymentSucceededEvent);
+  const resubscribed = () => called('subscriptions.create');
+
+  const faked: [object, string][] = [
+    [probe.subscriptions, 'create'],
+    [probe.invoices, 'retrieve'],
+    [probe.paymentMethods, 'retrieve'],
+  ];
+  let saved: unknown[];
+  before(() => {
+    saved = faked.map(
+      ([resource, method]) => Object.getPrototypeOf(resource)[method],
+    );
+    fake(probe.subscriptions, {
+      // The new subscription runs from now to its anchor, as Stripe starts
+      // one whose anchor is in the future.
+      create: record('subscriptions.create', (body) => {
+        const created = sub('sub_new', Math.floor(Date.now() / 1000), {
+          metadata: body.metadata,
+          items: {
+            data: [
+              {
+                price: pro,
+                quantity: body.items[0].quantity,
+                current_period_start: Math.floor(Date.now() / 1000),
+                current_period_end: body.billing_cycle_anchor,
+              },
+            ],
+          } as any,
+        });
+        subs.push(created);
+        return created;
+      }),
+    });
+    fake(probe.invoices, {
+      retrieve: async () => ({
+        payments: {
+          data: [
+            {
+              payment: {
+                payment_intent: {
+                  id: 'pi_1',
+                  status: 'succeeded',
+                  payment_method: 'pm_1',
+                },
+              },
+            },
+          ],
+        },
+      }),
+    });
+    fake(probe.paymentMethods, {
+      retrieve: async () => ({ id: 'pm_1', customer: 'cus_1' }),
+    });
+  });
+  after(() => {
+    faked.forEach(([resource, method], i) =>
+      fake(resource, { [method]: saved[i] }),
+    );
+  });
+  beforeEach(() => {
+    ledger = [];
+    heldPlan = null;
+    otherAccount = null;
+    mock.timers.enable({ apis: ['Date'], now: (PAID + 60) * 1000 });
+  });
+  afterEach(() => {
+    mock.timers.reset();
+  });
+
+  it('buys one period on the same plan from the payment on, with its credits once, however often the event comes', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
+    subs = [cancelled()];
+    invoices = [
+      {
+        id: 'in_older',
+        customer: 'cus_1',
+        status: 'open',
+        parent: { subscription_details: { subscription: 'sub_old' } } as any,
+      },
+    ];
+
+    await paid();
+    await paid();
+
+    assert.equal(resubscribed().length, 1);
+    const [body, options] = resubscribed()[0] as [any, any];
+    assert.deepEqual(options, { idempotencyKey: 'resubscribe_in_late' });
+    assert.equal(body.customer, 'cus_1');
+    assert.equal(body.default_payment_method, 'pm_1');
+    assert.deepEqual(body.items, [{ price: 'price_pro_month', quantity: 1 }]);
+    assert.equal(body.billing_cycle_anchor, NEXT);
+    assert.equal(body.proration_behavior, 'none');
+    assert.deepEqual(body.automatic_tax, { enabled: true });
+    // The price list stays the one it was sold on; the pixel keys go.
+    assert.deepEqual(body.metadata, {
+      service: 'postqueen',
+      uniqueId: 'u-old',
+      organizationId: 'org1',
+      credit_pricing: 'v2',
+    });
+
+    assert.equal(ledger.length, 1);
+    assert.equal(ledger[0].externalRef, 'in_late');
+    assert.equal(ledger[0].amount, planCreditsOn('v2', 'PRO', 'MONTHLY'));
+    assert.deepEqual(ledger[0].periodEnd, new Date(NEXT * 1000));
+
+    // The new subscription's own $0 first invoice adds nothing on top.
+    await paid({
+      id: 'in_zero',
+      customer: 'cus_1',
+      billing_reason: 'subscription_create',
+      amount_paid: 0,
+      amount_remaining: 0,
+      status_transitions: { paid_at: PAID + 60 },
+      parent: { subscription_details: { subscription: 'sub_new' } },
+    });
+    assert.equal(ledger.length, 1);
+    assert.equal(resubscribed().length, 1);
+
+    // The rest of what the cancelled subscription left unpaid is voided.
+    assert.deepEqual(
+      called('invoices.voidInvoice').map(([id]) => id),
+      ['in_older'],
+    );
+  });
+
+  it('carries the coupons still running, not a one-off or an ended one', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
+    const discount = (id: string, duration: string, end: number | null) => ({
+      end,
+      source: { coupon: { id, valid: true, duration } },
+    });
+    subs = [
+      cancelled({
+        discounts: [
+          discount('forever', 'forever', null),
+          discount('three_months', 'repeating', PAID + 30 * DAY),
+          discount('ended', 'repeating', PAID - DAY),
+          discount('once', 'once', null),
+        ] as any,
+      }),
+    ];
+    await paid();
+
+    assert.deepEqual((resubscribed()[0][0] as any).discounts, [
+      { coupon: 'forever' },
+      { coupon: 'three_months' },
+    ]);
+  });
+
+  it('does nothing for a payment made before the subscription ended', async () => {
+    subs = [cancelled({ ended_at: PAID + DAY, canceled_at: PAID - DAY })];
+    await paid();
+
+    assert.equal(resubscribed().length, 0);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('does nothing for a subscription still running, another service, an unpaid or a proration invoice', async () => {
+    subs = [cancelled({ status: 'active' })];
+    await paid();
+    subs = [cancelled({ metadata: { service: 'redsim' } })];
+    await paid();
+    subs = [cancelled()];
+    await paid(invoice({ amount_remaining: 100 }));
+    await paid(invoice({ billing_reason: 'subscription_update' }));
+
+    assert.equal(resubscribed().length, 0);
+    assert.equal(ledger.length, 0);
+  });
+
+  it('is skipped, and says why, where a checkout would be refused', async (t) => {
+    const warned = t.mock.method(Logger, 'warn', () => undefined);
+    const cases: [string, () => void][] = [
+      [
+        'another subscription is live',
+        () => {
+          subs = [cancelled(), sub('sub_live', 50)];
+        },
+      ],
+      [
+        'the organization holds a plan',
+        () => {
+          heldPlan = { isLifetime: true };
+        },
+      ],
+      [
+        'another account with the owner’s email is subscribed',
+        () => {
+          otherAccount = { id: 'user9' };
+        },
+      ],
+      [
+        'the invoice does not bill the plan',
+        () => {
+          subs = [
+            cancelled({
+              items: {
+                data: [{ price: { ...pro, id: 'price_ultimate' }, quantity: 1 }],
+              } as any,
+            }),
+          ];
+        },
+      ],
+    ];
+    for (const [reason, setUp] of cases) {
+      subs = [cancelled()];
+      heldPlan = null;
+      otherAccount = null;
+      setUp();
+      await paid();
+      assert.equal(resubscribed().length, 0, reason);
+      const said = String(warned.mock.calls.at(-1)?.arguments[0]);
+      assert.ok(said.includes('not resubscribed') && said.includes(reason), said);
+    }
+    assert.equal(ledger.length, 0);
+    // The owner's email is checked, a plain member's is not.
+    assert.deepEqual(
+      called('getUserWithActiveSubscriptionByEmail').map((args) => args),
+      [
+        ['a@b.co', 'user1'],
+        ['a@b.co', 'user1'],
+      ],
+    );
+  });
+});
+
 describe('a first checkout', () => {
   it('is refused while Stripe already bills the customer', async () => {
     subs = [sub('sub_old', 100)];

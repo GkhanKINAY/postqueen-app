@@ -7,6 +7,7 @@ import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/o
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { BillingSubscribeDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.subscribe.dto';
 import { groupBy, omit } from 'lodash';
+import dayjs from 'dayjs';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import {
   CREDIT_PACK_MONTHS,
@@ -1605,7 +1606,9 @@ export class StripeService extends PaymentProviderAbstract {
    * unpaid invoice stays payable from the hosted invoice page. That page
    * keeps the paying card only when the customer has no default card;
    * otherwise it offers an opt-in box, unticked. Flagging each unpaid
-   * invoice's payment for off-session use keeps the card in every case.
+   * invoice's payment for off-session use keeps the card in every case, so
+   * the subscription a late payment restores (`resubscribeOnLatePayment`)
+   * renews on it.
    *
    * Never throws, and a failure on one invoice does not stop the others. A
    * payment already flagged is skipped, so a redelivered event changes
@@ -3466,7 +3469,220 @@ export class StripeService extends PaymentProviderAbstract {
       await this.voidUnpaidInvoices(customer);
     }
 
+    await this.resubscribeOnLatePayment(event.data.object);
+
     return { ok: true };
+  }
+
+  /**
+   * A renewal Stripe could not charge ends, after its retries, with the
+   * subscription cancelled and the invoice left payable on the hosted invoice
+   * page (see `keepCardOfUnpaidInvoices`). Paying it took the money and
+   * restored nothing. Now it buys one period on the same plan, from the
+   * payment on: a new subscription on the same price, its first renewal one
+   * period after the payment, nothing charged now. The `created` event writes
+   * the plan back as for any subscription, and the period's credits are
+   * granted here, keyed by the paid invoice, since that invoice is what paid
+   * for them. The ledger grants a period once, so the daily pass, or the new
+   * subscription's own $0 invoice, adds nothing on top.
+   *
+   * It runs once per payment: only for a fully paid renewal of one of our
+   * subscriptions, paid after it ended, and not when anything else is live or
+   * was created since the payment (a redelivered event finds the one made
+   * the first time). Every other case is skipped and logged with a reason,
+   * including the checkout's own rules: one subscription per organization,
+   * one per owner's email, and none over a plan held some other way.
+   *
+   * A failure to read or create throws, so the webhook answers 500 and
+   * Stripe retries it: a swallowed error here is a customer who paid and has
+   * nothing.
+   */
+  private async resubscribeOnLatePayment(invoice: Stripe.Invoice) {
+    // Only a renewal bills one full period at the plan's price; an upgrade's
+    // proration or a first invoice does not.
+    const paidAt = invoice.status_transitions?.paid_at;
+    const subscriptionId = this.subscriptionIdOfInvoice(invoice);
+    if (
+      invoice.billing_reason !== 'subscription_cycle' ||
+      !(invoice.amount_paid > 0) ||
+      invoice.amount_remaining > 0 ||
+      !paidAt ||
+      !subscriptionId
+    ) {
+      return;
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['items.data.price.product', 'discounts.source.coupon'],
+    });
+    if (
+      subscription.metadata?.service !== SUBSCRIPTION_SERVICE_TAG ||
+      subscription.status !== 'canceled'
+    ) {
+      return;
+    }
+
+    // Only a payment made after the subscription ended is a late one: Stripe
+    // redelivers the event of an earlier payment when the webhook was down,
+    // and `canceled_at` is when a period-end cancel was asked for.
+    const endedAt = subscription.ended_at || subscription.canceled_at;
+    if (!endedAt || paidAt <= endedAt) {
+      return;
+    }
+
+    const customer = subscription.customer as string;
+    const skipped = (reason: string) => {
+      Logger.warn(
+        `[stripe] invoice ${invoice.id} of cancelled subscription ${subscription.id} was paid late; not resubscribed (${reason})`
+      );
+    };
+
+    const others = await stripe.subscriptions.list({
+      customer,
+      status: 'all',
+      limit: 100,
+    });
+    if (
+      others.data.some(
+        (f) =>
+          f.id !== subscription.id &&
+          (f.created >= paidAt ||
+            !['canceled', 'incomplete', 'incomplete_expired'].includes(
+              f.status
+            ))
+      )
+    ) {
+      return skipped('another subscription is live or was created since');
+    }
+
+    const org = await this._organizationService.getOrgByCustomerId(customer);
+    if (!org || org.deletedAt) {
+      return skipped('no organization on this customer');
+    }
+    // A founding member, a store subscription, a plan an admin granted, or
+    // a row the webhooks have not removed: nothing to restore.
+    if (
+      await this._subscriptionService.getSubscriptionByOrganizationId(org.id)
+    ) {
+      return skipped('the organization holds a plan');
+    }
+    // The rule every checkout applies (`assertNoOtherSubscribedAccount`):
+    // one subscription per email.
+    const team = await this._organizationService.getTeam(org.id);
+    for (const { user } of (team?.users || []).filter(
+      (u) => u.role === 'SUPERADMIN'
+    )) {
+      if (
+        await this._userService.getUserWithActiveSubscriptionByEmail(
+          user.email,
+          user.id
+        )
+      ) {
+        return skipped('another account with the owner’s email is subscribed');
+      }
+    }
+
+    const { billing, period } = this.tierOfSubscription(subscription);
+    if (!pricing[billing] || !period) {
+      return skipped(`unknown tier ${billing}`);
+    }
+
+    // The invoice must bill one period of the subscription's own price: an
+    // upgrade after the invoice was issued swaps the item for a dearer one.
+    const item = subscription.items.data[0];
+    const [line, ...moreLines] = invoice.lines?.data || [];
+    const linePrice = line?.pricing?.price_details?.price;
+    if (
+      !item?.price?.recurring ||
+      !line ||
+      moreLines.length ||
+      (typeof linePrice === 'string' ? linePrice : linePrice?.id) !==
+        item.price.id ||
+      line.quantity !== item.quantity
+    ) {
+      return skipped('the invoice does not bill the plan');
+    }
+
+    // The discounts the customer had keep applying, except a one-off coupon
+    // (the paid invoice used it) and one that had already ended.
+    const discounts = (subscription.discounts || [])
+      .map((d) => (typeof d === 'string' ? null : d))
+      .filter((d): d is Stripe.Discount => !!d && (!d.end || d.end > paidAt))
+      .map((d) => d.source?.coupon)
+      .filter(
+        (c): c is Stripe.Coupon =>
+          typeof c === 'object' && !!c && c.valid && c.duration !== 'once'
+      )
+      .map((c) => ({ coupon: c.id }));
+
+    const card = await this.getCardKeptByInvoice(invoice.id!, customer);
+    const created = await stripe.subscriptions.create(
+      {
+        customer,
+        ...(card ? { default_payment_method: card } : {}),
+        items: [{ price: item.price.id, quantity: item.quantity }],
+        ...(discounts.length ? { discounts } : {}),
+        ...(subscription.automatic_tax?.enabled
+          ? { automatic_tax: { enabled: true } }
+          : {}),
+        // The price list (`credit_pricing`) and the credits schedule go with
+        // it. The pixel keys do not: this continues the checkout's
+        // conversion, it is not a new one.
+        metadata: omit(subscription.metadata, ['userId', 'fbc', 'fbp']),
+        // Stripe refuses an anchor more than one period from its own clock,
+        // so the period is counted from Stripe's payment time.
+        billing_cycle_anchor: dayjs(paidAt * 1000)
+          .add(item.price.recurring.interval_count, item.price.recurring.interval)
+          .unix(),
+        proration_behavior: 'none',
+        expand: ['items.data.price.product'],
+      },
+      { idempotencyKey: `resubscribe_${invoice.id}` }
+    );
+    Logger.warn(
+      `[stripe] invoice ${invoice.id} of cancelled subscription ${
+        subscription.id
+      } was paid late; resubscribed as ${created.id} (card ${
+        card || 'none'
+      }, coupons ${discounts.map((d) => d.coupon).join(', ') || 'none'})`
+    );
+
+    if (await this.isEntitled(created)) {
+      await this.grantPeriodCredits(org.id, created, invoice.id!);
+    }
+    await this.voidUnpaidInvoices(customer);
+  }
+
+  /**
+   * The card that paid an invoice, when it is kept on the customer (see
+   * `keepCardOfUnpaidInvoices`). Never throws: without it the new
+   * subscription renews on the customer's default card.
+   */
+  private async getCardKeptByInvoice(invoiceId: string, customer: string) {
+    try {
+      const paid = (await this.getInvoicePaymentIntents(invoiceId)).find(
+        (p) => p.status === 'succeeded'
+      );
+      const card =
+        typeof paid?.payment_method === 'string'
+          ? paid.payment_method
+          : paid?.payment_method?.id;
+      if (!card) {
+        return undefined;
+      }
+
+      const owner = (await stripe.paymentMethods.retrieve(card)).customer;
+      return (typeof owner === 'string' ? owner : owner?.id) === customer
+        ? card
+        : undefined;
+    } catch (err) {
+      Logger.warn(
+        `[stripe] card that paid invoice ${invoiceId} not read: ${
+          (err as Error)?.message || err
+        }`
+      );
+      return undefined;
+    }
   }
 
   // The first charge of a subscription is the conversion: a trial that turned
