@@ -770,3 +770,4 @@ checksums:
     charge_disputed_no_refund: 64dd2aab66faa782f4d7c8db5199341a
     billing_cancel_failed: 00e2666f61f4bbea8c3fbc6d622bde22
     trial_end_admin_only: 1c5a980a21a72381268cb3fc703d34cd
+    no_ai_credits_ask_admin: 1175ca4a744042dc8397ca8d78916165

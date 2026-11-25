@@ -948,5 +948,6 @@
   "disputed": "Contesté",
   "charge_disputed_no_refund": "Ce prélèvement a fait l’objet d’une contestation et ne peut donc pas être remboursé",
   "billing_cancel_failed": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer ou contacter le support.",
-  "trial_end_admin_only": "Seul un administrateur de cet espace de travail peut mettre fin à l'essai et payer."
+  "trial_end_admin_only": "Seul un administrateur de cet espace de travail peut mettre fin à l'essai et payer.",
+  "no_ai_credits_ask_admin": "Vous n'avez pas assez de crédits pour cette image. Veuillez contacter un administrateur de votre espace de travail."
 }

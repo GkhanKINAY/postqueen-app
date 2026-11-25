@@ -4,6 +4,7 @@ import { ReactNode, useCallback } from 'react';
 import { MantineProvider } from '@mantine/core';
 import { FetchWrapperComponent } from '@gitroom/helpers/utils/custom.fetch';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
+import { useDecisionModal } from '@gitroom/frontend/components/layout/new-modal';
 import i18next from '@gitroom/react/translation/i18next';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
@@ -28,6 +29,7 @@ export function setCookie(cname: string, cvalue: string, exdays: number) {
 function LayoutContextInner(params: { children: ReactNode }) {
   const returnUrl = useReturnUrl();
   const { backendUrl, isGeneral, isSecured, billingEnabled } = useVariables();
+  const decision = useDecisionModal();
   const afterRequest = useCallback(
     async (url: string, options: RequestInit, response: Response) => {
       if (
@@ -156,10 +158,24 @@ function LayoutContextInner(params: { children: ReactNode }) {
         // Read from a clone: returning `true` below hands the original response
         // back to the caller, which reads the body again. A proxy can answer
         // 402 with a body that is not JSON; the dialog still opens.
-        const { message } = await response
+        const { message, canManageBillingUi } = await response
           .clone()
           .json()
-          .catch(() => ({} as { message?: string }));
+          .catch(
+            () =>
+              ({} as { message?: string; canManageBillingUi?: boolean })
+          );
+        // Billing is for admins: a plain member has nowhere to be sent, and
+        // the message already says who can act.
+        if (canManageBillingUi === false) {
+          await decision.open({
+            title: i18next.t('payment_required', 'Payment Required'),
+            onlyApprove: true,
+            approveLabel: i18next.t('ok', 'OK'),
+            description: message,
+          });
+          return true;
+        }
         if (
           await deleteDialog(message, 'Move to billing', 'Payment Required')
         ) {

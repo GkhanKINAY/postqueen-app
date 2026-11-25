@@ -966,5 +966,6 @@
   "disputed": "İtiraz edildi",
   "charge_disputed_no_refund": "Bu ücrete itiraz edildi, bu nedenle iade edilemez",
   "billing_cancel_failed": "Aboneliğinizi iptal edemedik. Lütfen tekrar deneyin veya destek ile iletişime geçin.",
-  "trial_end_admin_only": "Denemeyi yalnızca bu çalışma alanının bir yöneticisi bitirip ödeme yapabilir."
+  "trial_end_admin_only": "Denemeyi yalnızca bu çalışma alanının bir yöneticisi bitirip ödeme yapabilir.",
+  "no_ai_credits_ask_admin": "Bu görsel için yeterli krediniz yok. Lütfen çalışma alanınızın yöneticisine başvurun."
 }

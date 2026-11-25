@@ -948,5 +948,6 @@
   "disputed": "已争议",
   "charge_disputed_no_refund": "该费用已被争议，因此无法退款",
   "billing_cancel_failed": "我们无法取消您的订阅。请重试或联系支持人员。",
-  "trial_end_admin_only": "只有此工作区的管理员才能结束试用并付款。"
+  "trial_end_admin_only": "只有此工作区的管理员才能结束试用并付款。",
+  "no_ai_credits_ask_admin": "您的积分不足以生成此图片。请联系您工作区的管理员。"
 }
