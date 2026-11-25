@@ -1724,6 +1724,7 @@ extension_not_available_title
 extension_not_installed
 facebook_background_none
 facebook_background_note
+facebook_made_with_ai
 facebook_video_title
 failed_to_resend
 failed_to_revoke
@@ -1970,6 +1971,7 @@ label_branded_content
 label_comments
 label_community
 label_content_posting_method
+label_description
 label_disclose_video_content
 label_duet
 label_email
@@ -2854,4 +2856,6 @@ your_post_should_have_at_least_one_character_or_one_image
 your_video_will_be_labeled_paid_partnership
 your_video_will_be_labeled_promotional
 youre_all_set
+youtube_description_is_post_text
+youtube_made_with_ai
 youtube_thumbnail_overrides_media
