@@ -476,7 +476,7 @@ describe('A refresh that lost a race to another', { skip: !canLoad }, () => {
     }
   });
 
-  it('compares decrypted tokens: the stored ciphertext differs on every write', async () => {
+  it('needs decrypted rows: one token encrypts to a different string on every write', async () => {
     process.env.JWT_SECRET ||= 'refresh-race-spec-secret';
     const { AuthService } = await import('@gitroom/helpers/auth/auth.service');
     const first = AuthService.encryptToken('refresh-1');

@@ -348,7 +348,12 @@ describe('Instagram media_publish refused as blocked', () => {
     const provider = new InstagramProvider();
     (provider as any).fetch = async (url: string) => {
       if (url.includes('/media_publish')) {
-        throw new BadBody('instagram', '{}', '{}', 'Instagram blocked your request');
+        // What fetch throws for Instagram's answer, through the real mapping,
+        // so rewording it cannot quietly switch the recovery off.
+        const body = JSON.stringify({
+          error: { code: 4, error_subcode: 2207051, message: 'Action is blocked' },
+        });
+        throw new BadBody('instagram', body, '{}', provider.handleErrors(body)!.value);
       }
       const body = url.includes('fields=status_code')
         ? { status_code: containerStatus }

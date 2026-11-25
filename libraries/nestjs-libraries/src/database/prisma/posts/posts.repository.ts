@@ -248,6 +248,11 @@ export class PostsRepository {
       }
 
       const firstDate = dayjs.utc(post.publishDate);
+      // An invalid bound never compares as after, so the loop below would
+      // not end.
+      if (!rangeStart.isValid() || !rangeEnd.isValid() || !firstDate.isValid()) {
+        continue;
+      }
       let occurrence = firstDate;
       if (rangeStart.isAfter(firstDate)) {
         const skip = Math.ceil(

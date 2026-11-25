@@ -8,7 +8,17 @@ import { after, before, beforeEach, describe, it } from 'node:test';
 // never fails the sign-in.
 
 const ENV = ['JWT_SECRET', 'NOT_SECURED', 'FRONTEND_URL', 'DATABASE_URL'];
-const saved = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
+// Read on the paths that make an account; cleared so a developer's shell
+// cannot close registration or reach a real newsletter list.
+const CLEARED = [
+  'DISABLE_REGISTRATION',
+  'RESEND_CONTACTS_API_KEY',
+  'BEEHIIVE_API_KEY',
+  'LISTMONK_API_KEY',
+];
+const saved = Object.fromEntries(
+  [...ENV, ...CLEARED].map((k) => [k, process.env[k]]),
+);
 
 let AuthService: any;
 let AuthController: any;
@@ -36,7 +46,7 @@ before(async () => {
 });
 
 after(() => {
-  for (const k of ENV) {
+  for (const k of [...ENV, ...CLEARED]) {
     if (saved[k] === undefined) {
       delete process.env[k];
     } else {
@@ -47,6 +57,9 @@ after(() => {
 
 beforeEach(() => {
   delete process.env.NOT_SECURED;
+  for (const k of CLEARED) {
+    delete process.env[k];
+  }
 });
 
 const invite = { orgId: 'org-invited', role: 'USER' as const, id: 'inv01' };

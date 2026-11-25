@@ -456,12 +456,14 @@ export class PinterestProvider
       // Image pins make no API call before the create, so an expired token
       // would 401 there and the refresh retry would hit the armed state as a
       // false duplicate: probe the token read-only before arming instead.
-      await this.fetch(this.apiUrl('/user_account'), {
+      const probe = await this.fetch(this.apiUrl('/user_account'), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
+      // Only the status matters: release the connection.
+      await probe.body?.cancel().catch(() => {});
 
       return {
         status: 'pending',
