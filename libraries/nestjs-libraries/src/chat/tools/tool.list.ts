@@ -17,6 +17,7 @@ import { MediaListTool } from '@gitroom/nestjs-libraries/chat/tools/media.list.t
 import { MediaStatusTool } from '@gitroom/nestjs-libraries/chat/tools/media.status.tool';
 import { PostsListTool } from '@gitroom/nestjs-libraries/chat/tools/posts.list.tool';
 import { PostSettingsTool } from '@gitroom/nestjs-libraries/chat/tools/post.settings.tool';
+import { PostAttachmentsTool } from '@gitroom/nestjs-libraries/chat/tools/post.attachments.tool';
 import { DeletePostTool } from '@gitroom/nestjs-libraries/chat/tools/delete.post.tool';
 import { PostReadTool } from '@gitroom/nestjs-libraries/chat/tools/post.read.tool';
 import { AnalyticsSummaryTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.summary.tool';
@@ -38,6 +39,7 @@ export const toolList = [
   PostsListTool,
   PostReadTool,
   PostSettingsTool,
+  PostAttachmentsTool,
   DeletePostTool,
   AnalyticsSummaryTool,
   AnalyticsPostsTool,

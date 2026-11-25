@@ -45,8 +45,8 @@ const thumbnailUrl = z
 
 // Attachments are either a plain URL string or { path, alt?, thumbnail?,
 // thumbnailTimestamp? }, the same per-media fields as the public API (alt
-// has MediaDto's 1000 character limit).
-const attachment = z.union([
+// has MediaDto's 1000 character limit). Shared with postAttachmentsTool.
+export const attachment = z.union([
   attachmentUrl,
   z.object({
     path: attachmentUrl,
@@ -58,7 +58,7 @@ const attachment = z.union([
 
 type Attachment = z.infer<typeof attachment>;
 
-const toMedia = (a: Attachment) =>
+export const toMedia = (a: Attachment) =>
   typeof a === 'string'
     ? { path: a }
     : {

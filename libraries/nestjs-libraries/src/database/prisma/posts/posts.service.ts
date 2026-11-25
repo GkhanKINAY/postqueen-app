@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
+import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 import dayjs from 'dayjs';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
@@ -1934,6 +1935,40 @@ export class PostsService {
     postId: string,
     settings: Record<string, any>,
     creationMethod: CreationMethod
+  ) {
+    return this.updateUnpublishedPost(
+      orgId,
+      postId,
+      { settings },
+      creationMethod
+    );
+  }
+
+  // Same as updatePostSettings for the media of the main post: the passed list
+  // replaces the existing one, an empty list removes all of it. Shared by the
+  // agent/MCP tool and the public API PUT /posts/:id/attachments.
+  async updatePostAttachments(
+    orgId: string,
+    postId: string,
+    attachments: MediaDto[],
+    creationMethod: CreationMethod
+  ) {
+    return this.updateUnpublishedPost(
+      orgId,
+      postId,
+      { image: attachments },
+      creationMethod
+    );
+  }
+
+  // Changes a post that was not published yet in place: the passed settings
+  // are merged in, the passed media replace the main post's, and everything
+  // else (content, comments, date, state) stays.
+  private async updateUnpublishedPost(
+    orgId: string,
+    postId: string,
+    changes: { settings?: Record<string, any>; image?: MediaDto[] },
+    creationMethod: CreationMethod
   ): Promise<{ postId: string; publishDate: string }> {
     // Ordered as post -> comments, root includes integration and tags.
     const ordered = await this.getPostsRecursively(postId, true, orgId, true);
@@ -1964,6 +1999,37 @@ export class PostsService {
       );
     }
 
+    // A path is any file on the upload domain, another workspace's included,
+    // so new media has to come from this organization's library. What the
+    // post already carries may stay. createPost then swaps each path for the
+    // id of its media row, as it does for every caller naming media by path.
+    if (changes.image) {
+      let current: { path?: string }[] = [];
+      try {
+        current = JSON.parse(root.image || '[]');
+      } catch (err) {}
+      const kept = new Set(current.map((media) => media?.path));
+      const added = [
+        ...new Set(
+          changes.image
+            .map((media) => media.path)
+            .filter((path) => !kept.has(path))
+        ),
+      ];
+      const owned = added.length
+        ? await this._mediaService.findOwnedMediaByPaths(orgId, added)
+        : [];
+      const ownedPaths = new Set(
+        owned.flatMap((row) => [row.path, row.uploadedPath])
+      );
+      const foreign = added.filter((path) => !ownedPaths.has(path));
+      if (foreign.length) {
+        throw new BadRequestException(
+          `Media not found: ${foreign.join(', ')}. Upload it to the media library first.`
+        );
+      }
+    }
+
     const integration = (root as any).integration;
 
     let existingSettings: Record<string, any>;
@@ -1976,12 +2042,12 @@ export class PostsService {
     // Merge: only the passed keys change, everything else stays.
     const mergedSettings = {
       ...existingSettings,
-      ...(settings || {}),
+      ...(changes.settings || {}),
       __type: integration.providerIdentifier,
     };
 
     // Keep the existing content/ids so the posts are updated in place (the
-    // workflow identity is preserved) - only the settings differ.
+    // workflow identity is preserved) - only the passed changes differ.
     const value = ordered.map((p) => {
       let image = [];
       try {
@@ -1991,7 +2057,7 @@ export class PostsService {
         id: p.id,
         content: p.content,
         delay: p.delay || 0,
-        image,
+        image: p.id === root.id && changes.image ? changes.image : image,
       };
     });
 
@@ -2038,7 +2104,7 @@ export class PostsService {
       orgId,
       {
         date,
-        // Settings-only update: keep the current state and leave the running
+        // In-place update: keep the current state and leave the running
         // publish workflow alone.
         type: 'update',
         shortLink: false,
@@ -2057,7 +2123,7 @@ export class PostsService {
       } as any,
       creationMethod,
       // Keep the group stable: a client may have the calendar open while the
-      // settings are updated out of band, and the calendar links posts by group.
+      // post is updated out of band, and the calendar links posts by group.
       true
     );
 

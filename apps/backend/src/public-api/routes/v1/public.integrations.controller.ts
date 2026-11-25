@@ -36,6 +36,7 @@ import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto'
 import { ChangePostStatusDto } from '@gitroom/nestjs-libraries/dtos/posts/change.post.status.dto';
 import { UpdateReleaseIdDto } from '@gitroom/nestjs-libraries/dtos/posts/update.release.id.dto';
 import { UpdatePostSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/update.post.settings.dto';
+import { UpdatePostAttachmentsDto } from '@gitroom/nestjs-libraries/dtos/posts/update.post.attachments.dto';
 import {
   AuthorizationActions,
   Sections,
@@ -690,6 +691,21 @@ export class PublicIntegrationsController {
       org.id,
       id,
       body.settings,
+      'API'
+    );
+  }
+
+  @Put('/posts/:id/attachments')
+  async updatePostAttachments(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: UpdatePostAttachmentsDto
+  ) {
+    Sentry.metrics.count('public_api-request', 1);
+    return this._postsService.updatePostAttachments(
+      org.id,
+      id,
+      body.attachments,
       'API'
     );
   }
