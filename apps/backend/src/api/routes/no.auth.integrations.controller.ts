@@ -8,7 +8,9 @@ import {
   Param,
   Post,
   UseFilters,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { ConnectIntegrationDto } from '@gitroom/nestjs-libraries/dtos/integrations/connect.integration.dto';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
@@ -29,6 +31,8 @@ import { effectiveIsTrailing } from '@gitroom/nestjs-libraries/database/prisma/s
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { PlatformCallbackDto } from '@gitroom/nestjs-libraries/dtos/integrations/platform.callback.dto';
 import { PlatformCallbacksService } from '@gitroom/nestjs-libraries/database/prisma/platform-callbacks/platform-callbacks.service';
+import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
+import { PermissionsService } from '@gitroom/backend/services/auth/permissions/permissions.service';
 
 @ApiTags('Integrations')
 @Controller('/integrations')
@@ -38,7 +42,8 @@ export class NoAuthIntegrationsController {
     private _integrationService: IntegrationService,
     private _refreshIntegrationService: RefreshIntegrationService,
     private _organizationService: OrganizationService,
-    private _platformCallbacksService: PlatformCallbacksService
+    private _platformCallbacksService: PlatformCallbacksService,
+    private _permissionsService: PermissionsService
   ) {}
 
   @Get('/')
@@ -380,6 +385,13 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`redirect:${body.state}`);
     }
 
+    // A connect link's address: shown as a button on the confirmation, never
+    // followed on its own, since whoever made the link chose it
+    const continueURL = await ioRedis.get(`continue:${body.state}`);
+    if (continueURL) {
+      await ioRedis.del(`continue:${body.state}`);
+    }
+
     const extensionToken = integrationProvider.isChromeExtension
       ? AuthService.signJWT({
           integrationId: createUpdate.id,
@@ -404,6 +416,7 @@ export class NoAuthIntegrationsController {
       onboarding: onboarding === 'true',
       pages,
       ...(returnURL ? { returnURL } : {}),
+      ...(continueURL ? { continueURL } : {}),
       ...(extensionToken ? { extensionToken } : {}),
     };
   }
@@ -425,6 +438,47 @@ export class NoAuthIntegrationsController {
     }
 
     return this._integrationService.saveProviderPage(org.id, id, body);
+  }
+
+  // The page of a connect link (POST /public/v1/integrations/connect or the
+  // integrationConnectTool of the MCP): the person who opens it may have no
+  // PostQueen account
+  @Get('/public/connect/:token')
+  getConnectLink(@Param('token') token: string) {
+    return this._integrationService.getConnectLink(token);
+  }
+
+  // Capped per IP, since every attempt asks the platform for a new auth URL
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
+  @Post('/public/connect/:token')
+  async startConnectLink(@Param('token') token: string) {
+    // There is no org on the request for @CheckPolicies, and the link can be
+    // older than the last channel the plan allows (or come from the MCP)
+    const org = await this._organizationService.getOrgById(
+      await this._integrationService.getConnectLinkOrganization(token)
+    );
+    if (!org || org.deletedAt) {
+      throw new HttpException(
+        'This connection link expired, please ask for a new one',
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    const ability = await this._permissionsService.check(
+      org.id,
+      org.createdAt,
+      'USER',
+      [[AuthorizationActions.Create, Sections.CHANNEL]]
+    );
+    if (!ability.can(AuthorizationActions.Create, Sections.CHANNEL)) {
+      throw new HttpException(
+        'This PostQueen workspace reached the channel limit of its plan. It has to be upgraded before another channel can be added.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return this._integrationService.startConnectLink(token);
   }
 
   @Post('/extension-refresh')

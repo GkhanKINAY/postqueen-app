@@ -963,5 +963,17 @@
   "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません",
   "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。",
   "trial_end_admin_only": "トライアルを終了してお支払いできるのは、このワークスペースの管理者のみです。",
-  "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。"
+  "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。",
+  "connect_link_title": "PostQueen があなたの {{platform}} への接続を求めています",
+  "connect_link_trust": "このリンクの送信者を信頼できる場合にのみ続行してください",
+  "connect_link_automate": "PostQueen があなたの {{platform}} アカウントで投稿の予約と公開を行えるようになります",
+  "connect_link_system": "アカウントはこのリンクが属する PostQueen のワークスペースに追加され、そこから管理されます",
+  "connect_link_redirect": "完了後、PostQueen 外部のウェブサイト {{site}} に進むことができます",
+  "connect_link_next": "{{platform}} に移動して、ログインとアクセスの承認を行います",
+  "connect_link_continue": "{{platform}} に進む",
+  "connect_link_connecting": "接続中...",
+  "connect_link_close": "思っていたものと違いますか？このページを閉じれば、何も接続されません。",
+  "connect_link_expired": "このリンクは無効になりました",
+  "connect_link_expired_description": "接続リンクの有効期限は1時間です。送信者に新しいリンクを依頼してください。",
+  "connect_link_continue_to_site": "{{site}} に進む"
 }

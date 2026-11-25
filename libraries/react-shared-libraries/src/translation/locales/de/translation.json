@@ -963,5 +963,17 @@
   "charge_disputed_no_refund": "Dieser Betrag wurde angefochten und kann daher nicht erstattet werden",
   "billing_cancel_failed": "Wir konnten Ihr Abonnement nicht kündigen. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.",
   "trial_end_admin_only": "Nur ein Admin dieses Arbeitsbereichs kann den Testzeitraum beenden und bezahlen.",
-  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs."
+  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs.",
+  "connect_link_title": "PostQueen möchte sich mit Ihrem {{platform}}-Konto verbinden",
+  "connect_link_trust": "Fahren Sie nur fort, wenn Sie der Person vertrauen, die Ihnen diesen Link geschickt hat",
+  "connect_link_automate": "PostQueen kann dann Beiträge auf Ihrem {{platform}}-Konto planen und veröffentlichen",
+  "connect_link_system": "Ihr Konto wird dem PostQueen-Arbeitsbereich hinzugefügt, zu dem dieser Link gehört, und von dort verwaltet",
+  "connect_link_redirect": "Danach können Sie zu {{site}} weitergehen, einer Website außerhalb von PostQueen",
+  "connect_link_next": "Sie werden zu {{platform}} weitergeleitet, um sich anzumelden und den Zugriff zu genehmigen",
+  "connect_link_continue": "Weiter zu {{platform}}",
+  "connect_link_connecting": "Verbindung wird hergestellt...",
+  "connect_link_close": "Nicht das, was Sie erwartet haben? Schließen Sie diese Seite und es wird nichts verbunden.",
+  "connect_link_expired": "Dieser Link ist nicht mehr gültig",
+  "connect_link_expired_description": "Verbindungslinks sind eine Stunde lang gültig. Bitten Sie die Person, die ihn Ihnen geschickt hat, um einen neuen.",
+  "connect_link_continue_to_site": "Weiter zu {{site}}"
 }

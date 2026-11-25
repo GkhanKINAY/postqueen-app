@@ -1442,5 +1442,17 @@
   "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded",
   "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support.",
   "trial_end_admin_only": "Only an admin of this workspace can end the trial and pay.",
-  "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace."
+  "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace.",
+  "connect_link_title": "PostQueen wants to connect to your {{platform}}",
+  "connect_link_trust": "Only continue if you trust whoever sent you this link",
+  "connect_link_automate": "PostQueen will be able to schedule and publish posts on your {{platform}} account",
+  "connect_link_system": "Your account is added to the PostQueen workspace this link belongs to, and is managed from there",
+  "connect_link_redirect": "When you are done, you can continue to {{site}}, a website outside of PostQueen",
+  "connect_link_next": "You will be taken to {{platform}} to sign in and approve the access",
+  "connect_link_continue": "Continue to {{platform}}",
+  "connect_link_connecting": "Connecting...",
+  "connect_link_close": "Not what you expected? Close this page and nothing will be connected.",
+  "connect_link_expired": "This link is no longer valid",
+  "connect_link_expired_description": "Connection links work for one hour. Ask whoever sent it to you for a new one.",
+  "connect_link_continue_to_site": "Continue to {{site}}"
 }
