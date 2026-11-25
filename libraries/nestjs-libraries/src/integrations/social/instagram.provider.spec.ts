@@ -517,10 +517,14 @@ describe('Instagram (Facebook login) token renewal', () => {
 });
 
 // The container calls a post makes, with every Graph call answered here.
+// Meta documents `is_ai_generated` on a media container for both logins,
+// never on carousel children, and says nothing of stories:
+// https://developers.facebook.com/documentation/instagram-platform/content-publishing
 describe('Instagram Made with AI', () => {
   const containers = async (
     settings: Record<string, unknown>,
-    media: { path: string }[]
+    media: { path: string }[],
+    host = 'graph.facebook.com'
   ) => {
     const provider = new InstagramProvider();
     const urls: string[] = [];
@@ -539,7 +543,8 @@ describe('Instagram Made with AI', () => {
           media,
         },
       ] as any,
-      { internalId: 'ig-1', profile: 'creator' } as any
+      { internalId: 'ig-1', profile: 'creator' } as any,
+      host
     );
     return { provider, urls, response };
   };
@@ -554,16 +559,33 @@ describe('Instagram Made with AI', () => {
     }
   });
 
-  it('labels a single post and each story', async () => {
-    const single = await containers({ made_with_ai: true }, images(1));
-    assert.match(single.urls[0], /is_ai_generated=true/);
-    const stories = await containers(
-      { made_with_ai: true, post_type: 'story' },
-      images(2)
-    );
-    assert.equal(stories.urls.length, 2);
-    for (const url of stories.urls) {
-      assert.match(url, /is_ai_generated=true/);
+  it('labels a single post and a reel, with either login', async () => {
+    for (const host of ['graph.facebook.com', 'graph.instagram.com']) {
+      const single = await containers({ made_with_ai: true }, images(1), host);
+      assert.match(single.urls[0], new RegExp(`^https://${host}/`));
+      assert.match(single.urls[0], /is_ai_generated=true/);
+      const reel = await containers(
+        { made_with_ai: true, post_type: 'reel' },
+        images(1, 'mp4'),
+        host
+      );
+      assert.match(reel.urls[0], /media_type=REELS/);
+      assert.match(reel.urls[0], /is_ai_generated=true/);
+    }
+  });
+
+  it('sends nothing for a story, one or several', async () => {
+    for (const media of [images(1), images(2), images(1, 'mp4')]) {
+      const { urls, response } = await containers(
+        { made_with_ai: true, post_type: 'story' },
+        media
+      );
+      assert.equal(urls.length, media.length);
+      for (const url of urls) {
+        assert.match(url, /media_type=STORIES/);
+        assert.doesNotMatch(url, /is_ai_generated/);
+      }
+      assert.equal('madeWithAi' in (response.pendingData || {}), false);
     }
   });
 

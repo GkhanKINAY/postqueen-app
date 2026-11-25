@@ -35,6 +35,7 @@ const INSTAGRAM_STORY_METRICS = 'views,reach,shares,replies,total_interactions';
   [
     "Instagram should have at least one attachment, if it's a story, each attachment is published as its own separate story.",
     'If the content of the post (text, pictures or video) was made with AI, ask the user if they want to mark it as AI, and set made_with_ai to true only when they say yes.',
+    'made_with_ai applies to posts, reels and carousels only - Instagram documents no AI label for stories, so it is discarded for those. Never tell the user that a story will be marked as AI.',
   ].join(' ')
 )
 export class InstagramProvider
@@ -963,7 +964,12 @@ export class InstagramProvider
           )}`
         : ``;
     const isTrialReel = this.assetBoolean(firstPost.settings.is_trial_reel);
-    const madeWithAi = this.assetBoolean(firstPost.settings.made_with_ai);
+    // Meta documents is_ai_generated on a media container for both logins
+    // (Content Publishing, "AI Content"), except carousel children, and says
+    // nothing of stories. An unknown parameter can make Graph refuse the
+    // container, so a story goes out without it.
+    const madeWithAi =
+      !isStory && this.assetBoolean(firstPost.settings.made_with_ai);
     const medias = await Promise.all(
       firstPost?.media?.map(async (m) => {
         const caption =

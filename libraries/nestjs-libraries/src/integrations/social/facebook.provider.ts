@@ -46,8 +46,9 @@ const FACEBOOK_VIDEO_METRICS =
   'total_video_views,total_video_reactions_by_type_total,fb_reels_total_plays,post_video_likes_by_reaction_type,post_video_social_actions';
 
 // Editing the AI self-disclosure of a Page post only exists from v27.0
-// (Graph API v27.0 changelog): this one call is made on it, everything else
-// stays on META_GRAPH_API_VERSION.
+// ("does not apply to older versions"):
+// https://developers.facebook.com/documentation/development/graph-api/changelog/version27.0
+// This one call is made on it, everything else stays on META_GRAPH_API_VERSION.
 const META_AI_DISCLOSURE_API_VERSION = 'v27.0';
 const AI_DISCLOSURE_TIMEOUT = 30_000;
 

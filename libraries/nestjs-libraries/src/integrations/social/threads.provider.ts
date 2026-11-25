@@ -358,7 +358,8 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       ...(isCarouselItem ? { is_carousel_item: 'true' } : {}),
       ...(replyToId ? { reply_to_id: replyToId } : {}),
       // is_made_with_ai is rejected on carousel items, it goes on the carousel
-      // container instead
+      // container instead (Threads Posts, "Label AI-generated content":
+      // https://developers.facebook.com/documentation/threads/posts)
       ...(madeWithAi && !isCarouselItem ? { is_made_with_ai: 'true' } : {}),
       media_type: mediaType === 'video_url' ? 'VIDEO' : 'IMAGE',
       text: message,

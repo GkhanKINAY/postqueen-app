@@ -175,4 +175,17 @@ describe('composer channel settings controls', () => {
     assert.match(linkedin, /name="post_as_images_carousel"/);
     assert.match(linkedin, /layout="segment"/);
   });
+
+  // Only where Meta documents the label: Instagram posts, reels and
+  // carousels (not stories), Facebook text, link and photo posts (edit, v27.0).
+  it('offers Made with AI only where the network documents its label', () => {
+    const instagram = read('./instagram/instagram.collaborators.tsx');
+    const facebook = read('./facebook/facebook.provider.tsx');
+    assert.match(
+      instagram,
+      /\{postCurrentType !== 'story' && \(\s*<Checkbox\s+icon="ai"/
+    );
+    assert.match(facebook, /disabled=\{isVideo\}/);
+    assert.match(facebook, /'facebook_made_with_ai'/);
+  });
 });

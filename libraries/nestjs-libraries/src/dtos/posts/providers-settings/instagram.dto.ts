@@ -81,7 +81,7 @@ export class InstagramDto {
   @IsBoolean()
   @JSONSchema({
     description:
-      'Labels the post as AI generated (Instagram shows the "AI info" label). Works for posts, reels, carousels and stories.',
+      'Labels the post as AI generated (Instagram shows the "AI info" label). Works for posts, reels and carousels; ignored for stories, which Instagram documents no AI label for.',
   })
   made_with_ai?: boolean;
 }

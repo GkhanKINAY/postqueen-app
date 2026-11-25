@@ -118,6 +118,33 @@ describe('Facebook Made with AI', () => {
     );
   });
 
+  it('makes no extra call for a story', async () => {
+    const provider = new FacebookProvider();
+    const urls: string[] = [];
+    (provider as any).fetch = async (url: string) => {
+      urls.push(url);
+      return {
+        json: async () => ({ id: 'photo', video_id: 'v', upload_url: 'u' }),
+      };
+    };
+    await provider.postPending(
+      'page',
+      'token',
+      [
+        {
+          id: 'p',
+          message: 'hello',
+          settings: { post_type: 'story', made_with_ai: true },
+          media: [{ path: 'https://cdn.test/a.jpg' }],
+        },
+      ] as any,
+      {} as any
+    );
+    assert.ok(urls.length > 0);
+    assert.deepEqual(edits(urls.map((url) => ({ url }))), []);
+    assert.ok(urls.every((url) => !url.includes('v27.0')));
+  });
+
   it('never fails a live post over the label', async () => {
     const { result } = await postCalls({ made_with_ai: true }, [], true);
     assert.equal(result[0].status, 'success');
