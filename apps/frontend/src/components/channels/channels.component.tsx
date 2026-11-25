@@ -21,6 +21,7 @@ import {
 import {
   AddProviderComponent,
   CustomVariables,
+  useExtensionConnect,
 } from '@gitroom/frontend/components/launches/add.provider.component';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
 import { CalendarWeekProvider } from '@gitroom/frontend/components/launches/calendar.context';
@@ -691,6 +692,7 @@ export const ChannelsComponent: FC = () => {
   const toast = useToaster();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const extensionConnect = useExtensionConnect();
   const tourNeedsAdd = useTourNeeds('channel-add');
   const { data: integrations, mutate, isValidating } = useIntegrationList();
   const { mobile, tablet } = useViewport();
@@ -1112,6 +1114,15 @@ export const ChannelsComponent: FC = () => {
       });
       return;
     }
+    // A browser-extension channel (Skool) answers with a bare state id, not
+    // a url: it reconnects through the extension, as Add Channel connects it.
+    if (current.isChromeExtension) {
+      await extensionConnect(current.identifier, {
+        refresh: String(current.internalId),
+        redirectUrl: '/channels',
+      });
+      return;
+    }
     const params = new URLSearchParams({
       refresh: String(current.internalId),
       redirectUrl: '/channels',
@@ -1139,7 +1150,7 @@ export const ChannelsComponent: FC = () => {
       return;
     }
     window.location.href = url;
-  }, [current, fetch, modal, router, t, toast]);
+  }, [current, extensionConnect, fetch, modal, router, t, toast]);
 
   const openBot = useCallback(() => {
     if (!current) return;

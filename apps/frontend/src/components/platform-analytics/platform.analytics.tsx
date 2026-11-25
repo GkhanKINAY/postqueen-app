@@ -249,9 +249,16 @@ export const PlatformAnalytics = () => {
       integration: Integration & {
         identifier: string;
         internalId?: string;
+        isChromeExtension?: boolean;
       }
     ) =>
       () => {
+        // A browser-extension channel reconnects through the extension, and
+        // that flow lives on Channels.
+        if (integration.isChromeExtension) {
+          openReconnectInChannels(integration.id);
+          return;
+        }
         void (async () => {
           const { url } = await (
             await fetch(
@@ -272,7 +279,7 @@ export const PlatformAnalytics = () => {
           window.location.href = url;
         })();
       },
-    [fetch, t, toaster]
+    [fetch, openReconnectInChannels, t, toaster]
   );
 
   const onMenuChange = useCallback(
