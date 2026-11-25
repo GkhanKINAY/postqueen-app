@@ -5,7 +5,10 @@ import clsx from 'clsx';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { useExistingData } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
-import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
@@ -71,7 +74,7 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
   }
 
   return (
-    <div className={clsx('flex', locked && 'opacity-50 pointer-events-none')}>
+    <div className={clsx('flex', locked && 'pointer-events-none')}>
       <div className="flex flex-1">
         <div className="innerComponent flex-1 flex">
           <div className="flex flex-wrap gap-[12px] flex-1">
@@ -81,10 +84,17 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                   selectedIntegrations.findIndex(
                     (p) => p.integration.id === integration.id
                   ) !== -1;
+                // An unselected chip is greyed and a locked one faded, as a
+                // whole. A brand mark can't be: only its avatar, tick and
+                // ring are (see channelBrandMark).
+                const brand = isBrandMark(integration.identifier);
                 return (
                 <div
                   key={integration.id}
-                  className="flex gap-[8px] items-center"
+                  className={clsx(
+                    'flex gap-[8px] items-center',
+                    locked && !brand && 'opacity-50'
+                  )}
                   {...(toolTip && {
                     'data-tooltip-id': 'tooltip',
                     'data-tooltip-content': channelNameWithHandle(integration),
@@ -103,12 +113,19 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                     className={clsx(
                       'relative flex cursor-pointer items-center justify-center rounded-full bg-pqSettings',
                       isSelected
-                        ? 'ring-2 ring-pqBrand'
-                        : 'grayscale'
+                        ? brand && locked
+                          ? 'ring-2 ring-pqBrand/50'
+                          : 'ring-2 ring-pqBrand'
+                        : !brand && 'grayscale'
                     )}
                   >
                     {isSelected && (
-                      <span className="absolute -start-[4px] -top-[4px] z-[2] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-pqBrand text-pqOnBrand">
+                      <span
+                        className={clsx(
+                          'absolute -start-[4px] -top-[4px] z-[2] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-pqBrand text-pqOnBrand',
+                          brand && locked && 'opacity-50'
+                        )}
+                      >
                         <svg
                           viewBox="0 0 24 24"
                           width="10"
@@ -132,6 +149,14 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                       rounded="full"
                       badgeSize={16}
                       className="min-h-[42px] min-w-[42px]"
+                      dimClassName={
+                        brand
+                          ? clsx(
+                              !isSelected && 'grayscale',
+                              locked && 'opacity-50'
+                            )
+                          : undefined
+                      }
                     />
                   </button>
                 </div>

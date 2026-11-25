@@ -2155,8 +2155,10 @@ const CalendarItem: FC<{
   const tagNames = post.tags.map((p) => p.tag.name).join(', ');
   const actionButton =
     'grid h-[18px] w-[20px] place-items-center rounded-[4px] text-pqMuted transition-colors hover:bg-pqHover hover:text-pqText disabled:opacity-40';
+  // Paragraphs come apart (the card shows their line breaks as spaces), and a
+  // post of empty paragraphs still reads "no content".
   const contentPreview =
-    stripHtmlValidation('none', post.content, false, true, false) ||
+    stripHtmlValidation('none', post.content, false, true, false).trim() ||
     t('no_content', 'no content');
   const timeLabel = fromUtc(post.publishDate).format(timePattern());
 
@@ -2909,8 +2911,13 @@ const ListItem: FC<{
             </span>
           )}
           <div className="min-w-0 flex-1 line-clamp-2 break-words text-start text-[13.5px] leading-[1.5] text-pqText">
-            {stripHtmlValidation('none', post.content, false, true, false) ||
-              t('no_content', 'no content')}
+            {stripHtmlValidation(
+              'none',
+              post.content,
+              false,
+              true,
+              false
+            ).trim() || t('no_content', 'no content')}
           </div>
         </div>
         {!!post.tags?.length && (

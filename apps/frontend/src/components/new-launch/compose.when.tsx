@@ -21,13 +21,18 @@ export const ComposeWhen: FC<{
     <div
       data-pq="composer-when"
       className={clsx(
-        'flex min-w-0 items-center',
-        touch && 'w-full',
-        label && 'gap-[8px]'
+        'min-w-0',
+        // The label sits above the picker: beside it, it took the width the
+        // footer's other controls needed, and they were drawn over it. A
+        // grid, so the picker keeps its height (it grows as a flex item).
+        label ? 'grid gap-[4px]' : 'flex items-center',
+        touch && 'w-full'
       )}
     >
       {!!label && (
-        <span className="max-w-[160px] shrink-0 truncate text-[12.5px] text-pqMuted">
+        // As wide as the picker under it and no wider (w-0 keeps the label
+        // out of the width the column takes from its content).
+        <span className="w-0 min-w-full truncate text-[12.5px] text-pqMuted">
           {label}
         </span>
       )}

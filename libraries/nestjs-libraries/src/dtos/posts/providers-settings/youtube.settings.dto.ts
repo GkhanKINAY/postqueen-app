@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDefined,
   IsIn,
   IsOptional,
@@ -16,6 +17,7 @@ import {
 } from 'class-validator';
 import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 import { Type } from 'class-transformer';
+import { JSONSchema } from 'class-validator-jsonschema';
 
 // YouTube caps the combined length of all tags at 500 characters, and counts
 // the comma between two tags toward it. Tags containing whitespace are
@@ -70,9 +72,10 @@ export class YoutubeTagsSettings {
 
 export class YoutubeSettingsDto {
   // Any UTF-8 but < and > (videos resource); YouTube answers invalidTitle
-  // after the video is already uploaded.
+  // after the video is already uploaded. The length is YouTube's own, 1-100:
+  // its Required Minimum Functionality does not allow a stricter one.
   @IsString()
-  @MinLength(2)
+  @MinLength(1)
   @MaxLength(100)
   @Matches(/^[^<>]*$/, {
     message: 'YouTube titles cannot contain < or >',
@@ -99,4 +102,12 @@ export class YoutubeSettingsDto {
   @IsYoutubeTagsLength()
   @Type(() => YoutubeTagsSettings)
   tags: YoutubeTagsSettings[];
+
+  @IsOptional()
+  @IsBoolean()
+  @JSONSchema({
+    description:
+      'Discloses that the video has realistic altered or AI generated content (YouTube shows its altered or synthetic content label). YouTube asks for it only when the content looks realistic, not for animation or clearly unrealistic content.',
+  })
+  made_with_ai?: boolean;
 }

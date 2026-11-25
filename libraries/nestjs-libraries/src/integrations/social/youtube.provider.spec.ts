@@ -72,6 +72,82 @@ describe('YoutubeSettingsDto title', () => {
   it('accepts any other text, accents and emoji included', async () => {
     assert.equal((await errors('Ça marche 🎬 — part 2')).length, 0);
   });
+
+  // YouTube's own limits, 1 to 100 characters: the Required Minimum
+  // Functionality allows no stricter one.
+  it('accepts a one-character title, never an empty one', async () => {
+    assert.equal((await errors('A')).length, 0);
+    assert.equal((await errors('')).length, 1);
+    assert.equal((await errors('a'.repeat(100))).length, 0);
+    assert.equal((await errors('a'.repeat(101))).length, 1);
+  });
+});
+
+describe('YouTube altered or synthetic content', () => {
+  // The status a video's upload session is started with.
+  const uploadStatus = async (settings: Record<string, unknown>) => {
+    const youtube = new YoutubeProvider();
+    let body: any;
+    (youtube as any).youtubeMediaSize = async () => 1000;
+    (youtube as any).fetch = async (_url: string, init: RequestInit) => {
+      body = JSON.parse(String(init.body));
+      return new Response('', {
+        headers: { location: 'https://upload.test/session' },
+      });
+    };
+    await youtube.postPending(
+      'channel',
+      'token',
+      [
+        {
+          id: 'p',
+          message: 'Video description',
+          settings: { title: 'A video', type: 'public', ...settings },
+          media: [{ path: 'https://cdn.test/clip.mp4' }],
+        },
+      ] as any,
+      {} as any
+    );
+    return body.status;
+  };
+
+  it('leaves a video without the setting exactly as before', async () => {
+    const before = {
+      privacyStatus: 'public',
+      selfDeclaredMadeForKids: false,
+    };
+    assert.deepEqual(await uploadStatus({}), before);
+    assert.deepEqual(await uploadStatus({ made_with_ai: false }), before);
+    assert.deepEqual(
+      await uploadStatus({ selfDeclaredMadeForKids: 'yes' }),
+      { privacyStatus: 'public', selfDeclaredMadeForKids: true }
+    );
+  });
+
+  it('discloses it when the box is ticked', async () => {
+    for (const made_with_ai of [true, 'true']) {
+      assert.deepEqual(await uploadStatus({ made_with_ai }), {
+        privacyStatus: 'public',
+        selfDeclaredMadeForKids: false,
+        containsSyntheticMedia: true,
+      });
+    }
+  });
+
+  it('takes the setting as optional, and only as a yes or no', async () => {
+    const errors = (settings: Record<string, unknown>) =>
+      validate(
+        plainToInstance(YoutubeSettingsDto, {
+          title: 'A video',
+          type: 'public',
+          ...settings,
+        }) as object,
+        { skipMissingProperties: false }
+      );
+    assert.equal((await errors({})).length, 0);
+    assert.equal((await errors({ made_with_ai: true })).length, 0);
+    assert.equal((await errors({ made_with_ai: 'yes' })).length, 1);
+  });
 });
 
 describe('YouTube scopes', () => {

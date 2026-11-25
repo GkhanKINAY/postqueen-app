@@ -5,6 +5,10 @@ import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import clsx from 'clsx';
 import SafeImage from '@gitroom/react/helpers/safe.image';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 import { hasLinks } from '@gitroom/helpers/utils/strip.links';
@@ -353,13 +357,20 @@ export const InformationComponent: FC<{
               {selectedIntegrations.map((p, index) => (
                 <Fragment key={p.integration.id}>
                   <div>
-                    <SafeImage
-                      src={`/icons/platforms/${p.integration.identifier}.png`}
-                      alt={p.integration.name}
-                      className="h-[16px] w-[16px] min-h-[16px] min-w-[16px] rounded-[4px]"
-                      width={16}
-                      height={16}
-                    />
+                    {isBrandMark(p.integration.identifier) ? (
+                      <PlatformMark
+                        identifier={p.integration.identifier}
+                        size={16}
+                      />
+                    ) : (
+                      <SafeImage
+                        src={`/icons/platforms/${p.integration.identifier}.png`}
+                        alt={p.integration.name}
+                        className="h-[16px] w-[16px] min-h-[16px] min-w-[16px] rounded-[4px]"
+                        width={16}
+                        height={16}
+                      />
+                    )}
                   </div>
                   <div
                     className={clsx(

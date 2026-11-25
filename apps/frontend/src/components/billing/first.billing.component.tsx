@@ -41,7 +41,7 @@ import {
 } from '@gitroom/frontend/components/layout/user.context';
 import { useDubClickId } from '@gitroom/frontend/components/layout/dubAnalytics';
 import { readAttribution } from '@gitroom/helpers/utils/utm.saver';
-import SafeImage from '@gitroom/react/helpers/safe.image';
+import { PlatformMark } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import useCookie from 'react-use-cookie';
 import { LogoutComponent } from '@gitroom/frontend/components/layout/logout.component';
@@ -1022,15 +1022,8 @@ export const FirstBillingComponent = () => {
         {!!onboardingVideoUrl && (
           <div className="flex" onClick={showYouTube}>
             <div className="cursor-pointer flex gap-[10px] items-center underline hover:font-[700]">
-              <div>
-                <SafeImage
-                  className="text-[12px]"
-                  src="/icons/platforms/youtube.svg"
-                  width={22.5}
-                  height={16}
-                  alt="YouTube"
-                />
-              </div>
+              {/* The official mark, never under its minimum height */}
+              <PlatformMark identifier="youtube" size={20} plateClassName="" />
               <div>
                 {t(
                   'billing_see_the_power',

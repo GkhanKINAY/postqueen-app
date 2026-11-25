@@ -1454,5 +1454,11 @@
   "connect_link_close": "Not what you expected? Close this page and nothing will be connected.",
   "connect_link_expired": "This link is no longer valid",
   "connect_link_expired_description": "Connection links work for one hour. Ask whoever sent it to you for a new one.",
-  "connect_link_continue_to_site": "Continue to {{site}}"
+  "connect_link_continue_to_site": "Continue to {{site}}",
+  "label_privacy_status": "Privacy Status",
+  "label_description": "Description",
+  "youtube_description_is_post_text": "Your post text is the video description. Edit it in the editor.",
+  "label_made_with_ai": "Made with AI",
+  "facebook_made_with_ai": "Made with AI (only for text and photo posts)",
+  "youtube_made_with_ai": "Made with AI (realistic altered or synthetic content)"
 }

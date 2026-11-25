@@ -12,11 +12,13 @@ import { getPresetBackground } from '@gitroom/frontend/components/new-launch/pro
 import { Input } from '@gitroom/react/form/input';
 import { Select } from '@gitroom/react/form/select';
 import { FormChoice } from '@gitroom/react/form/form.choice';
+import { Checkbox } from '@gitroom/react/form/checkbox';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { FacebookPreview } from '@gitroom/frontend/components/new-launch/providers/facebook/facebook.preview';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useEffect } from 'react';
+import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 
 const postType = [
   {
@@ -40,6 +42,9 @@ export const FacebookSettings = () => {
 
   // Facebook background presets only render on text-only Page posts (no media).
   const hasMedia = !!value?.some((p) => !!p.image?.length);
+  // Facebook takes the AI label on text, link and photo posts only; a video
+  // post goes out without it.
+  const isVideo = hasExtension(value?.[0]?.image?.[0]?.path, 'mp4');
   const presetAvailable = postCurrentType !== 'story' && !hasMedia;
   const selectedBg = getPresetBackground(preset);
 
@@ -70,6 +75,16 @@ export const FacebookSettings = () => {
           <Input
             label={t('facebook_video_title', 'Video title (only for video posts)')}
             {...register('title')}
+          />
+          <Checkbox
+            icon="ai"
+            label={t(
+              'facebook_made_with_ai',
+              'Made with AI (only for text and photo posts)'
+            )}
+            disabled={isVideo}
+            defaultValue={false}
+            {...register('made_with_ai')}
           />
         </>
       )}

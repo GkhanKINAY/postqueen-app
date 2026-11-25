@@ -47,7 +47,10 @@ import SkoolProvider from '@gitroom/frontend/components/new-launch/providers/sko
 import WhopProvider from '@gitroom/frontend/components/new-launch/providers/whop/whop.provider';
 import MeweProvider from '@gitroom/frontend/components/new-launch/providers/mewe/mewe.provider';
 import TumblrProvider from '@gitroom/frontend/components/new-launch/providers/tumblr/tumblr.provider';
-import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { GlobalIcon } from '@gitroom/frontend/components/ui/icons';
 import clsx from 'clsx';
@@ -331,6 +334,7 @@ export const ShowAllProviders = forwardRef((props, ref) => {
               </button>
               {selectedIntegrations.map(({ integration }) => {
                 const active = previewFocus === integration.id;
+                const brand = isBrandMark(integration.identifier);
                 return (
                   <button
                     key={integration.id}
@@ -344,18 +348,28 @@ export const ShowAllProviders = forwardRef((props, ref) => {
                       )
                     }
                     className={clsx(
-                      'relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-pqSettings transition-all',
+                      'group/chip relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] transition-all',
                       active
-                        ? 'shadow-[inset_0_0_0_1.5px_var(--brand)]'
-                        : 'grayscale opacity-70 shadow-[inset_0_0_0_1.5px_transparent] hover:opacity-100'
+                        ? 'bg-pqSettings shadow-[inset_0_0_0_1.5px_var(--brand)]'
+                        : brand
+                          ? 'bg-pqSettings/70 shadow-[inset_0_0_0_1.5px_transparent] hover:bg-pqSettings'
+                          : 'bg-pqSettings grayscale opacity-70 shadow-[inset_0_0_0_1.5px_transparent] hover:opacity-100'
                     )}
                   >
                     <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[9px]">
+                      {/* An inactive chip is greyed and faded as a whole. A
+                          brand mark can't be: only its avatar and the chip's
+                          background are (see channelBrandMark). */}
                       <ChannelAvatar
                         integration={integration}
                         size={40}
                         rounded="lg"
                         className="min-h-[40px] min-w-[40px]"
+                        dimClassName={
+                          brand && !active
+                            ? 'grayscale opacity-70 transition-opacity group-hover/chip:opacity-100'
+                            : undefined
+                        }
                       />
                     </span>
                   </button>

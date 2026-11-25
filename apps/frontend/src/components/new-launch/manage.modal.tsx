@@ -43,7 +43,10 @@ import {
   useModals,
 } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
-import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { sortBy } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
@@ -2036,18 +2039,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           className={clsx(
             'flex min-w-0 select-none border-t border-pqBorder bg-pqInner pb-[max(12px,env(safe-area-inset-bottom))]',
             phoneFlow && composerPane !== 'schedule' && 'hidden',
+            // On desktop, when the two halves do not fit side by side, the
+            // second goes to a row of its own rather than over the first.
             compactFooter
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] w-full items-center justify-between overflow-x-auto overflow-y-hidden py-[20px] min-[1180px]:flex-row'
+              : 'min-h-[84px] w-full flex-wrap items-end justify-between gap-x-[8px] gap-y-[12px] overflow-x-auto overflow-y-hidden py-[20px] min-[1180px]:flex-row'
           )}
         >
           {!phoneFlow && (
           <div
             className={clsx(
-              'min-w-0 gap-[8px]',
+              'gap-[8px]',
+              // On tablet, bottom-aligned so Notify lines up with the date
+              // picker under the channel's "Time for" label. On desktop the
+              // half keeps its controls' width, so it can no longer be
+              // squeezed under them and have Notify drawn over the picker.
               compactFooter
-                ? 'grid w-full grid-cols-2'
-                : 'flex min-w-0 flex-1 items-center ps-[20px]'
+                ? 'grid w-full grid-cols-2 min-w-0 items-end'
+                : 'flex flex-1 items-center ps-[20px]'
             )}
           >
             {!dummy && !compactFooter && !publishedView && (
@@ -2122,8 +2131,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           )}
           <div
             className={clsx(
-              'flex min-w-0 items-center justify-end gap-[8px]',
-              compactFooter ? 'w-full flex-col' : 'shrink-0 pe-[20px]',
+              'flex min-w-0 justify-end gap-[8px]',
+              compactFooter
+                ? 'w-full flex-col items-center'
+                : 'ms-auto items-end shrink-0 pe-[20px]',
               phoneFlow && 'flex-row'
             )}
           >
@@ -2145,7 +2156,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 type="button"
                 onClick={stopRepeating}
                 disabled={loading}
-                className="cursor-pointer flex text-pqText gap-[8px] items-center text-[15px] font-[600] disabled:cursor-not-allowed disabled:opacity-60"
+                className={clsx(
+                  'cursor-pointer flex text-pqText gap-[8px] items-center text-[15px] font-[600] disabled:cursor-not-allowed disabled:opacity-60',
+                  !compactFooter && 'h-[44px]'
+                )}
               >
                 <div>
                   <RepeatIcon />
@@ -2158,7 +2172,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             {!phoneFlow && existingData?.integration && (
               <button
                 onClick={deletePost}
-                className="cursor-pointer flex text-pqWarn gap-[8px] items-center text-[15px] font-[600]"
+                className={clsx(
+                  'cursor-pointer flex text-pqWarn gap-[8px] items-center text-[15px] font-[600]',
+                  !compactFooter && 'h-[44px]'
+                )}
               >
                 <div>
                   <TrashIcon />
@@ -2440,6 +2457,9 @@ const ChannelsChecklist: FC<{
           const note = [p.status, p.effect?.[on ? 'ticked' : 'unticked']]
             .filter(Boolean)
             .join(' · ');
+          // A locked row is faded as a whole. A brand mark can't be: only
+          // its avatar, text and border are (see channelBrandMark).
+          const brand = isBrandMark(p.identifier);
           const face = (
             <>
               <ChannelAvatar
@@ -2450,8 +2470,14 @@ const ChannelsChecklist: FC<{
                 }}
                 size={32}
                 rounded="full"
+                dimClassName={brand && p.locked ? 'opacity-60' : undefined}
               />
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className={clsx(
+                  'flex min-w-0 flex-1 flex-col',
+                  brand && p.locked && 'opacity-60'
+                )}
+              >
                 <span className="truncate text-[14px] font-[600] text-pqText">
                   {p.name}
                 </span>
@@ -2465,7 +2491,12 @@ const ChannelsChecklist: FC<{
               <div
                 key={p.id}
                 data-pq="channels-checklist-locked"
-                className="flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] opacity-60 shadow-[inset_0_0_0_1px_var(--border)]"
+                className={clsx(
+                  'flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px]',
+                  brand
+                    ? 'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--border)_60%,transparent)]'
+                    : 'opacity-60 shadow-[inset_0_0_0_1px_var(--border)]'
+                )}
               >
                 {face}
               </div>
