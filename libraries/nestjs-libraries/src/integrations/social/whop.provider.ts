@@ -15,6 +15,7 @@ import {
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { WhopDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/whop.dto';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -258,9 +259,9 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
         // @ts-ignore - undici-only option; blocks SSRF to internal IPs
         dispatcher: getSsrfSafeDispatcher(),
       });
-      const contentLength = Number(
-        headResponse.headers.get('content-length') || 0
-      );
+      const contentLength =
+        ownUploadSize(item.path) ||
+        Number(headResponse.headers.get('content-length') || 0);
       if (!headResponse.ok || !contentLength) {
         // A permanent condition - fail fast instead of letting Temporal retry
         throw new BadBody(

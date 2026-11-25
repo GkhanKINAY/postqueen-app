@@ -14,6 +14,7 @@ import {
   ValidityMedia,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import dayjs from 'dayjs';
@@ -233,9 +234,9 @@ export class MastodonProvider extends SocialAbstract implements SocialProvider {
       if (!fileResponse.ok || !fileResponse.body) {
         throw new Error(`Failed to fetch media: ${fileResponse.statusText}`);
       }
-      const contentLength = Number(
-        fileResponse.headers.get('content-length') || 0
-      );
+      const contentLength =
+        ownUploadSize(fileUrl) ||
+        Number(fileResponse.headers.get('content-length') || 0);
 
       const form = new FormDataUpload();
       form.append('file', Readable.fromWeb(fileResponse.body as any), {
