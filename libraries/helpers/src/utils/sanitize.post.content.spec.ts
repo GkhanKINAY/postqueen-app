@@ -300,6 +300,57 @@ describe('sanitizePostContent', () => {
     assert.equal(sanitizePostContent(html), html);
   });
 
+  // Shift+Enter in the editor writes a <br> inside the paragraph, and pasted
+  // HTML brings its own in every spelling.
+  it('keeps a soft line break, in every spelling, where the editor puts one', () => {
+    for (const html of [
+      '<p dir="auto">one<br>two</p>',
+      '<p dir="auto">one<br><br><br>two</p>',
+      '<ul><li><p dir="auto">one<br>two</p></li></ul>',
+      '<p dir="auto"><strong>one<br>two</strong> <u>three<br>four</u></p>',
+    ]) {
+      assert.equal(sanitizePostContent(html), html);
+    }
+    for (const spelling of ['<br/>', '<br />', '</br>', '<BR>']) {
+      assert.equal(
+        sanitizePostContent(`<p>one${spelling}two</p>`),
+        '<p>one<br>two</p>'
+      );
+    }
+    assert.equal(
+      sanitizePostContent('<p>a<br class="x" onclick="alert(1)">b</p>'),
+      '<p>a<br class="x">b</p>'
+    );
+  });
+
+  it('stays fast on soft line breaks in every shape, keeping or flattening them', () => {
+    for (const [input, kept] of [
+      // a <br> counts as a tag, so past MAX_TAGS the post is flattened
+      ['<br>'.repeat(250_000), /^ +$/],
+      ['<br/>'.repeat(200_000), /^ +$/],
+      ['<br />'.repeat(150_000), /^ +$/],
+      ['</br>'.repeat(150_000), /^ +$/],
+      ['<p>a<br></p>'.repeat(30_000), /a/],
+      // below it every one stays
+      ['<p dir="auto">' + 'a<br>'.repeat(5_000) + '</p>', /^<p dir="auto">(a<br>){5000}<\/p>$/],
+      // list items, bold and underline, never closed, around breaks
+      ['<li>a<br>'.repeat(50_000), /a/],
+      ['<strong>a<br>'.repeat(20_000), /a/],
+      ['<u>a<br>'.repeat(5_000), /a/],
+      // shapes a list item pattern over the markup would scan to the end
+      // from: a "<li" in an attribute value and an opening <li> with no end
+      ['<p class="<li">x<br></p>'.repeat(20_000), /x/],
+      ['<li class="<li<li<li">a<br>'.repeat(20_000), /a/],
+      ['<li' + ' a'.repeat(300_000), /a/],
+      ['<li><br class="x"><br class="x">a</li>'.repeat(600), /a/],
+    ] as const) {
+      const started = Date.now();
+      const out = sanitizePostContent(input);
+      assert.ok(Date.now() - started < 1_500, `took ${Date.now() - started} ms`);
+      assert.match(out, kept);
+    }
+  });
+
   it('does not leave its picture rule on the shared instance', () => {
     sanitizePostContent('<img src="data:image/png;base64,AAAA">');
     // DOMPurify's defaults keep a data: picture; the post rule must not leak
