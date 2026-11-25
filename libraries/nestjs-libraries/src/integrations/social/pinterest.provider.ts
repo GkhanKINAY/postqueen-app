@@ -19,6 +19,7 @@ import {
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
+  statusMessage,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -444,6 +445,36 @@ export class PinterestProvider
     return witness();
   }
 
+  // Stops only on a token Pinterest refuses (401 asks for a refresh, 403 is
+  // the post error the create would get). Anything else, a 5xx or the
+  // network, goes on to arm the create, which meets it as it did before this
+  // probe existed.
+  private async probeToken(accessToken: string) {
+    const probe = await fetch(this.apiUrl('/user_account'), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => undefined);
+
+    if (probe?.status !== 401 && probe?.status !== 403) {
+      await probe?.body?.cancel().catch(() => {});
+      return;
+    }
+
+    const json = (await probe.text().catch(() => '')) || '{}';
+    if (probe.status === 401) {
+      throw new RefreshToken('pinterest', json, '{}');
+    }
+    throw new BadBody(
+      'pinterest',
+      json,
+      '{}',
+      this.handleErrors(json)?.value || statusMessage(403)
+    );
+  }
+
   override async finalizePost(
     accessToken: string,
     pendingData: PinterestPendingData,
@@ -456,14 +487,7 @@ export class PinterestProvider
       // Image pins make no API call before the create, so an expired token
       // would 401 there and the refresh retry would hit the armed state as a
       // false duplicate: probe the token read-only before arming instead.
-      const probe = await this.fetch(this.apiUrl('/user_account'), {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      // Only the status matters: release the connection.
-      await probe.body?.cancel().catch(() => {});
+      await this.probeToken(accessToken);
 
       return {
         status: 'pending',
