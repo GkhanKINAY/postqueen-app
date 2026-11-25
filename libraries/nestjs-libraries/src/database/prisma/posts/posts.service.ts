@@ -689,16 +689,17 @@ export class PostsService {
     );
   }
 
-  // A failed post's error, as the calendar, the public API and the agent
-  // tools list it. The stored error stays on the row after a retry succeeds,
-  // so only a post that is failed now carries one. The publish run stores
-  // fixed strings for a post it sent but could not confirm, which read as
-  // the notice the person was sent about it, naming the network and the
-  // channel.
+  // A failed post's error, as the calendar, the composer, the public API and
+  // the agent tools show it. The stored error stays on the row after a retry
+  // succeeds, so only a post that is failed now carries one. The publish run
+  // stores fixed strings for a post or comment it sent but could not
+  // confirm, which read as the notice the person was sent about it, naming
+  // the network and the channel.
   private readablePostError<
     P extends {
       state?: string;
       error?: string | null;
+      parentPostId?: string | null;
       integration?: { providerIdentifier: string; name: string } | null;
     }
   >(post: P): P {
@@ -717,7 +718,9 @@ export class PostsService {
       : 'the network';
     return {
       ...post,
-      error: `Your post was sent to ${network}, but we couldn't confirm it was published. Please check your ${
+      error: `Your ${
+        post.parentPostId ? 'comment' : 'post'
+      } was sent to ${network}, but we couldn't confirm it was published. Please check your ${
         post.integration?.name || network
       } account before posting again to avoid duplicates.`,
     };
@@ -1010,11 +1013,22 @@ export class PostsService {
     posts: PostWithConditionals[],
     convertToJPEG = false
   ) {
+    // Only the first post of the thread carries its channel.
+    const channel = posts?.[0]
+      ? withPostChannelDisplayName(posts[0]).integration
+      : undefined;
     return {
       group: posts?.[0]?.group,
       posts: await Promise.all(
         (posts || []).map(async ({ batchId, ...post }) => ({
           ...withPostChannelDisplayName(post),
+          // The reason as the calendar and the post lists show it.
+          error: this.readablePostError({
+            state: post.state,
+            error: post.error,
+            parentPostId: post.parentPostId,
+            integration: channel,
+          }).error,
           image: await this.updateMedia(
             post.id,
             JSON.parse(post.image || '[]'),

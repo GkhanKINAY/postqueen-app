@@ -42,6 +42,7 @@ const row = (state: string, error: string | null) => ({
 const service = (rows: any[]) =>
   new PostsService(
     {
+      getPostsByGroup: async () => rows,
       getPosts: async () => rows,
       getPostsList: async () => ({
         posts: rows,
@@ -53,7 +54,7 @@ const service = (rows: any[]) =>
     },
     { getSocialIntegrationName: () => 'Instagram' },
     {},
-    {},
+    { getMediaByIds: async () => [] },
     {},
     {},
     {},
@@ -99,5 +100,48 @@ describe('A failed post as the lists read it', { skip: !canLoadService }, () => 
     for (const post of list.p) {
       assert.ok(!post.error);
     }
+  });
+
+  it('reads the same in the composer, comments included', async () => {
+    const thread = (state: string, error: string | null) => [
+      {
+        id: 'p1',
+        group: 'g1',
+        batchId: null,
+        parentPostId: null,
+        integrationId: 'i1',
+        state,
+        error,
+        image: '[]',
+        settings: '{}',
+        integration: { ...integration, customName: null },
+      },
+      {
+        id: 'p2',
+        group: 'g1',
+        batchId: null,
+        parentPostId: 'p1',
+        integrationId: 'i1',
+        state,
+        error,
+        image: '[]',
+        settings: '{}',
+      },
+    ];
+
+    const failed = await service(
+      thread('ERROR', 'Could not confirm the post status')
+    ).getPostsByGroup('org', 'g1');
+    assert.equal(failed.posts[0].error, unconfirmed);
+    assert.equal(
+      failed.posts[1].error,
+      unconfirmed.replace('Your post', 'Your comment')
+    );
+
+    const retried = await service(
+      thread('PUBLISHED', 'The network refused the post.')
+    ).getPostsByGroup('org', 'g1');
+    assert.equal(retried.posts[0].error, null);
+    assert.equal(retried.posts[1].error, null);
   });
 });
