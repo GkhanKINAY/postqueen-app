@@ -99,6 +99,18 @@ describe('Instagram limits, on both tiles', () => {
       );
     });
 
+    it(`${name}: takes alt text up to 1000 characters`, async () => {
+      const withAlt = (alt: string) => [{ ...images(1)[0], alt }];
+      assert.equal(
+        await provider.checkValidity([withAlt('a'.repeat(1000))], { post_type: 'post' }, []),
+        true
+      );
+      assert.equal(
+        await provider.checkValidity([withAlt('a'.repeat(1001))], { post_type: 'post' }, []),
+        'Instagram alt text can be up to 1000 characters'
+      );
+    });
+
     it(`${name}: still works when no text is passed`, async () => {
       assert.equal(
         await provider.checkValidity([images(1)], { post_type: 'post' }, []),
