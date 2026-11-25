@@ -105,6 +105,13 @@ const TRIAL_REFUSALS = [TRIAL_CARD_REUSED, TRIAL_CARD_PREPAID];
  */
 const DUPLICATE_SUBSCRIPTION = 'duplicate-subscription';
 
+/**
+ * Stamped on a subscription made for an invoice paid after its subscription
+ * ended (see `resubscribeOnLatePayment`), with that invoice's id, so a retry
+ * of the same event knows the work was done.
+ */
+const LATE_PAYMENT_INVOICE = 'late_payment_invoice';
+
 /** Whether `a` came before `b`; the id breaks a tie in the same second. */
 const isOlderSubscription = (a: Stripe.Subscription, b: Stripe.Subscription) =>
   a.id !== b.id &&
@@ -2041,22 +2048,31 @@ export class StripeService extends PaymentProviderAbstract {
 
     // Nothing left to cancel — a retry of a cancel that already went through.
     // Report it as cancelled rather than throwing; the outcome the caller
-    // asked for is already true.
+    // asked for is already true. A reactivate has nothing to lift.
     if (!sub) {
-      return {
-        id,
-        cancel_at: new Date(),
-      };
+      return cancel === false
+        ? { id, cancel_at: undefined, unchanged: true }
+        : {
+            id,
+            cancel_at: new Date(),
+          };
     }
 
     // The page says what it wants (`cancel`), so a request that matches what
     // Stripe already has changes nothing. A second cancel (a second tab, a
     // stale page) used to toggle the plan back on, and a stale reactivate
     // dropped a scheduled downgrade on its way: this is checked before the
-    // schedules below are released for that reason. The date Stripe has is
-    // saved again, in case the row missed it. A page loaded before the
-    // intent was sent toggles as it always did.
-    if (cancel !== undefined && sub.cancel_at_period_end === cancel) {
+    // schedules below are released for that reason. It reads every
+    // subscription this request acts on, not only the newest: with a
+    // duplicate, a cancel is done once all of them are set to cancel, and a
+    // reactivate once none is. The date Stripe has is saved again, in case
+    // the row missed it. A page loaded before the intent was sent toggles on
+    // the newest as it always did.
+    if (
+      cancel === true
+        ? subscriptions.every((s) => s.cancel_at_period_end)
+        : cancel === false && !subscriptions.some((s) => s.cancel_at_period_end)
+    ) {
       const cancelAt = Math.max(
         0,
         ...subscriptions
@@ -2083,7 +2099,7 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     // If the user is toggling back (un-cancelling), just remove the cancel
-    if (sub.cancel_at_period_end) {
+    if (cancel === undefined ? sub.cancel_at_period_end : !cancel) {
       let cancel_at: number | null = null;
       for (const s of subscriptions) {
         const updated = await stripe.subscriptions.update(s.id, {
@@ -3516,12 +3532,12 @@ export class StripeService extends PaymentProviderAbstract {
    * It runs once per payment: only for a fully paid renewal of one of our
    * subscriptions that Stripe ended because its payment failed, paid after
    * it ended, and not when anything else is live or was created since the
-   * payment (a redelivered event finds the one made the first time). Every
-   * other case is skipped and logged with a reason, including a subscription
-   * someone cancelled (its unpaid invoices are voided, see
-   * `voidUnpaidInvoices`) or a dispute ended, and the checkout's own rules:
-   * one subscription per organization, one per owner's email, and none over
-   * a plan held some other way.
+   * payment (a retried event finds the one made the first time by its
+   * stamp). Every other case after the payment is skipped and logged as an
+   * error with a reason, including a subscription someone cancelled (its
+   * unpaid invoices are voided, see `voidUnpaidInvoices`) or a dispute
+   * ended, and the checkout's own rules: one subscription per organization,
+   * one per owner's email, and none over a plan held some other way.
    *
    * A failure to read, or a create Stripe could not complete, throws, so the
    * webhook answers 500 and Stripe retries it: a swallowed error here is a
@@ -3561,9 +3577,12 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     const customer = subscription.customer as string;
+    // From here on the customer has paid: every skip leaves them with a
+    // payment and nothing for it, so it is an error, for a person to look
+    // at and refund by request.
     const skipped = (reason: string) => {
-      Logger.warn(
-        `[stripe] invoice ${invoice.id} of cancelled subscription ${subscription.id} was paid late; not resubscribed (${reason})`
+      Logger.error(
+        `[stripe] invoice ${invoice.id} of cancelled subscription ${subscription.id} was paid late; not resubscribed (${reason}). The payment was not refunded.`
       );
     };
 
@@ -3579,6 +3598,15 @@ export class StripeService extends PaymentProviderAbstract {
       status: 'all',
       limit: 100,
     });
+    // A retry of an event that already got this far (see the stamp below):
+    // the subscription it made is the one to keep.
+    if (
+      others.data.some(
+        (f) => f.metadata?.[LATE_PAYMENT_INVOICE] === invoice.id
+      )
+    ) {
+      return;
+    }
     if (
       others.data.some(
         (f) =>
@@ -3640,15 +3668,15 @@ export class StripeService extends PaymentProviderAbstract {
       return skipped('the invoice does not bill the plan');
     }
 
-    // The discounts the customer had keep applying, except a one-off coupon
-    // (the paid invoice used it) and one that had already ended.
+    // Only a coupon that never ends goes with it. A repeating one would
+    // start its whole duration again on the new subscription (the retention
+    // offer, once per customer, would run a second time), and a one-off was
+    // used by the paid invoice.
     const discounts = (subscription.discounts || [])
-      .map((d) => (typeof d === 'string' ? null : d))
-      .filter((d): d is Stripe.Discount => !!d && (!d.end || d.end > paidAt))
-      .map((d) => d.source?.coupon)
+      .map((d) => (typeof d === 'string' ? null : d?.source?.coupon))
       .filter(
         (c): c is Stripe.Coupon =>
-          typeof c === 'object' && !!c && c.valid && c.duration !== 'once'
+          typeof c === 'object' && !!c && c.valid && c.duration === 'forever'
       )
       .map((c) => ({ coupon: c.id }));
 
@@ -3667,7 +3695,10 @@ export class StripeService extends PaymentProviderAbstract {
           // The price list (`credit_pricing`) and the credits schedule go
           // with it. The pixel keys do not: this continues the checkout's
           // conversion, it is not a new one.
-          metadata: omit(subscription.metadata, ['userId', 'fbc', 'fbp']),
+          metadata: {
+            ...omit(subscription.metadata, ['userId', 'fbc', 'fbp']),
+            [LATE_PAYMENT_INVOICE]: invoice.id!,
+          },
           // Stripe refuses an anchor more than one period from its own
           // clock, so the period is counted from Stripe's payment time.
           billing_cycle_anchor: dayjs(paidAt * 1000)

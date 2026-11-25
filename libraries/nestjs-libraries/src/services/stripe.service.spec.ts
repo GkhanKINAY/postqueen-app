@@ -744,6 +744,34 @@ describe('the intent Billing sends with a cancel', () => {
     assert.equal(result.unchanged, true);
   });
 
+  it('reads every subscription, not only the newest, with a duplicate', async () => {
+    // The newest is already set to cancel, the older one is not.
+    subs = [
+      sub('sub_old', 100),
+      sub('sub_new', 200, { cancel_at_period_end: true }),
+    ];
+    const cancelled = await service().setToCancel('org1', true);
+    assert.ok(subs.every((s) => s.cancel_at_period_end));
+    assert.equal(cancelled.unchanged, undefined);
+
+    // The newest is active again, the older one still set to cancel.
+    subs[1].cancel_at_period_end = false;
+    const reactivated = await service().setToCancel('org1', false);
+    assert.ok(subs.every((s) => !s.cancel_at_period_end));
+    assert.equal(reactivated.unchanged, undefined);
+  });
+
+  it('has nothing to lift for a reactivate when nothing bills', async () => {
+    subs = [sub('sub_gone', 100, { status: 'canceled' })];
+    const result = await service().setToCancel('org1', false);
+
+    assert.deepEqual(result, {
+      id: result.id,
+      cancel_at: undefined,
+      unchanged: true,
+    });
+  });
+
   it('still toggles for a page that sends no intent', async () => {
     subs = [sub('sub_a', 100, { cancel_at_period_end: true })];
     const result = await service().setToCancel('org1');
@@ -1117,6 +1145,7 @@ describe('an invoice of a cancelled subscription paid late', () => {
 
   it('buys one period on the same plan from the payment on, with its credits once, however often the event comes', async (t) => {
     t.mock.method(Logger, 'warn', () => undefined);
+    const errors = t.mock.method(Logger, 'error', () => undefined);
     subs = [cancelled()];
     invoices = [
       {
@@ -1139,13 +1168,17 @@ describe('an invoice of a cancelled subscription paid late', () => {
     assert.equal(body.billing_cycle_anchor, NEXT);
     assert.equal(body.proration_behavior, 'none');
     assert.deepEqual(body.automatic_tax, { enabled: true });
-    // The price list stays the one it was sold on; the pixel keys go.
+    // The price list stays the one it was sold on; the pixel keys go, and
+    // the invoice it was made for is stamped on it.
     assert.deepEqual(body.metadata, {
       service: 'postqueen',
       uniqueId: 'u-old',
       organizationId: 'org1',
       credit_pricing: 'v2',
+      late_payment_invoice: 'in_late',
     });
+    // The second delivery found its own subscription: nothing to report.
+    assert.equal(errors.mock.callCount(), 0);
 
     assert.equal(ledger.length, 1);
     assert.equal(ledger[0].externalRef, 'in_late');
@@ -1172,7 +1205,7 @@ describe('an invoice of a cancelled subscription paid late', () => {
     );
   });
 
-  it('carries the coupons still running, not a one-off or an ended one', async (t) => {
+  it('carries only a coupon that never ends', async (t) => {
     t.mock.method(Logger, 'warn', () => undefined);
     const discount = (id: string, duration: string, end: number | null) => ({
       end,
@@ -1190,9 +1223,9 @@ describe('an invoice of a cancelled subscription paid late', () => {
     ];
     await paid();
 
+    // A repeating one would start its whole duration again.
     assert.deepEqual((resubscribed()[0][0] as any).discounts, [
       { coupon: 'forever' },
-      { coupon: 'three_months' },
     ]);
   });
 
@@ -1217,8 +1250,8 @@ describe('an invoice of a cancelled subscription paid late', () => {
     assert.equal(ledger.length, 0);
   });
 
-  it('is skipped, and says why, where a checkout would be refused', async (t) => {
-    const warned = t.mock.method(Logger, 'warn', () => undefined);
+  it('is skipped, and reported as an error with the reason, where a checkout would be refused', async (t) => {
+    const reported = t.mock.method(Logger, 'error', () => undefined);
     const cases: [string, () => void][] = [
       [
         'it ended for cancellation_requested',
@@ -1278,8 +1311,13 @@ describe('an invoice of a cancelled subscription paid late', () => {
       setUp();
       await paid();
       assert.equal(resubscribed().length, 0, reason);
-      const said = String(warned.mock.calls.at(-1)?.arguments[0]);
-      assert.ok(said.includes('not resubscribed') && said.includes(reason), said);
+      const said = String(reported.mock.calls.at(-1)?.arguments[0]);
+      assert.ok(
+        said.includes('not resubscribed') &&
+          said.includes(reason) &&
+          said.includes('The payment was not refunded.'),
+        said,
+      );
     }
     assert.equal(ledger.length, 0);
     // The owner's email is checked, a plain member's is not.
