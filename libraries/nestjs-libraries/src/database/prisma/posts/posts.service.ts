@@ -12,6 +12,10 @@ import { MediaDto } from '@gitroom/nestjs-libraries/dtos/media/media.dto';
 import dayjs from 'dayjs';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import {
+  UNCONFIRMED_POST_ERRORS,
+  unconfirmedPostError,
+} from '@gitroom/helpers/utils/post.error.message';
+import {
   Integration,
   Post,
   Media,
@@ -103,15 +107,6 @@ type PostWithConditionals = Post & {
 // How long a platform may take to release a post's public link before the
 // open-post icon stops saying "try again in a minute".
 const RELEASE_PENDING_WINDOW_HOURS = 24;
-
-// What the post workflows store (markUnconfirmed) for a post that was sent
-// but never confirmed. The workflow files are frozen, so these stay as they
-// are written there.
-const UNCONFIRMED_POST_ERRORS = [
-  'Could not confirm the post status',
-  'Could not publish after several attempts',
-  'A previous publish attempt was interrupted',
-];
 
 @Injectable()
 export class PostsService {
@@ -719,11 +714,11 @@ export class PostsService {
       : 'the network';
     return {
       ...post,
-      error: `Your ${
-        post.parentPostId ? 'comment' : 'post'
-      } was sent to ${network}, but we couldn't confirm it was published. Please check your ${
+      error: unconfirmedPostError(
+        post.parentPostId ? 'comment' : 'post',
+        network,
         post.integration?.name || network
-      } account before posting again to avoid duplicates.`,
+      ),
     };
   }
 

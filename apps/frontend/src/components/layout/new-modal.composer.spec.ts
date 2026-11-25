@@ -167,4 +167,24 @@ describe('composer modal chrome', () => {
       2,
     );
   });
+
+  // A post that was sent but never confirmed may be live already, and its
+  // reason says to check before posting again: the banner must not end by
+  // telling the person to post it.
+  it('ends a failed post banner with check first when the post may be out', () => {
+    const banner = manage.slice(
+      manage.indexOf('data-pq="composer-failed"'),
+      manage.indexOf("'post_failed_fix'") + 200,
+    );
+    assert.match(
+      manage,
+      /import \{ isUnconfirmedPostError \} from '@gitroom\/helpers\/utils\/post\.error\.message'/,
+    );
+    assert.match(
+      banner,
+      /\{isUnconfirmedPostError\(existingData\.posts\[0\]\.error\)\s*\? t\(\s*'post_unconfirmed_check_first',\s*"Check the network first\. If the post isn't there, schedule it again or post it now\."\s*\)\s*: t\(\s*'post_failed_fix',\s*'Fix it, then schedule it again or post it now\.'\s*\)\}/,
+    );
+    // the reason before it is read the same way for every failure
+    assert.match(banner, /t\('post_failed_reason', 'Reason: \{\{error\}\}'/);
+  });
 });

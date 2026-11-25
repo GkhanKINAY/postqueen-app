@@ -974,12 +974,13 @@
   "connect_link_connecting": "接続中...",
   "connect_link_close": "思っていたものと違いますか？このページを閉じれば、何も接続されません。",
   "connect_link_expired": "このリンクは無効になりました",
-  "connect_link_expired_description": "接続リンクの有効期限は1時間です。送信者に新しいリンクを依頼してください。",
+  "connect_link_expired_description": "このリンクはすでに使用済みか、有効期限が切れています。送信者に新しいリンクを依頼してください。",
   "connect_link_continue_to_site": "{{site}} に進む",
   "label_privacy_status": "公開設定",
   "label_description": "説明",
   "youtube_description_is_post_text": "投稿のテキストが動画の説明になります。エディターで編集してください。",
   "label_made_with_ai": "AIで作成",
   "facebook_made_with_ai": "AIで作成（テキストと写真の投稿のみ）",
-  "youtube_made_with_ai": "AIで作成（リアルな改変または合成コンテンツ）"
+  "youtube_made_with_ai": "AIで作成（リアルな改変または合成コンテンツ）",
+  "post_unconfirmed_check_first": "まず投稿先のサービスで確認してください。投稿が見当たらない場合は、もう一度予約するか、今すぐ投稿してください。"
 }

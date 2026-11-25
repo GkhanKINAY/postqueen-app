@@ -974,12 +974,13 @@
   "connect_link_connecting": "연결 중...",
   "connect_link_close": "예상한 내용이 아닌가요? 이 페이지를 닫으면 아무것도 연결되지 않습니다.",
   "connect_link_expired": "이 링크는 더 이상 유효하지 않습니다",
-  "connect_link_expired_description": "연결 링크는 1시간 동안 유효합니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
+  "connect_link_expired_description": "이 링크는 이미 사용되었거나 만료되었습니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
   "connect_link_continue_to_site": "{{site}}(으)로 계속",
   "label_privacy_status": "공개 상태",
   "label_description": "설명",
   "youtube_description_is_post_text": "게시물 텍스트가 동영상 설명이 됩니다. 편집기에서 수정하세요.",
   "label_made_with_ai": "AI로 제작됨",
   "facebook_made_with_ai": "AI로 제작됨 (텍스트 및 사진 게시물만 해당)",
-  "youtube_made_with_ai": "AI로 제작됨 (사실적인 변경 또는 합성 콘텐츠)"
+  "youtube_made_with_ai": "AI로 제작됨 (사실적인 변경 또는 합성 콘텐츠)",
+  "post_unconfirmed_check_first": "먼저 해당 네트워크에서 확인하세요. 게시물이 없다면 다시 예약하거나 지금 게시하세요."
 }

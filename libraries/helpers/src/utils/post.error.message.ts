@@ -35,3 +35,34 @@ export const postErrorText = (error: any, fallback: string): string => {
 
   return text;
 };
+
+// What the post workflows store (markUnconfirmed) for a post that was sent
+// but never confirmed. The workflow files are frozen, so these stay as they
+// are written there.
+export const UNCONFIRMED_POST_ERRORS = [
+  'Could not confirm the post status',
+  'Could not publish after several attempts',
+  'A previous publish attempt was interrupted',
+];
+
+const NOT_CONFIRMED = "but we couldn't confirm it was published";
+
+/**
+ * How the lists, the composer and the API read one of those: the notice the
+ * person was sent about it, naming the network and the channel.
+ */
+export const unconfirmedPostError = (
+  what: 'post' | 'comment',
+  network: string,
+  account: string
+) =>
+  `Your ${what} was sent to ${network}, ${NOT_CONFIRMED}. Please check your ${account} account before posting again to avoid duplicates.`;
+
+/**
+ * Whether a failed post may be out already, from its error as stored or as
+ * read: posting it again could post it twice.
+ */
+export const isUnconfirmedPostError = (error: any): boolean => {
+  const text = postErrorText(error, '');
+  return UNCONFIRMED_POST_ERRORS.includes(text) || text.includes(NOT_CONFIRMED);
+};

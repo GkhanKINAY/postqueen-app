@@ -974,12 +974,13 @@
   "connect_link_connecting": "Conectando...",
   "connect_link_close": "¿No es lo que esperabas? Cierra esta página y no se conectará nada.",
   "connect_link_expired": "Este enlace ya no es válido",
-  "connect_link_expired_description": "Los enlaces de conexión funcionan durante una hora. Pide uno nuevo a quien te lo envió.",
+  "connect_link_expired_description": "Este enlace ya se ha usado o ha caducado. Pide uno nuevo a quien te lo envió.",
   "connect_link_continue_to_site": "Continuar a {{site}}",
   "label_privacy_status": "Estado de privacidad",
   "label_description": "Descripción",
   "youtube_description_is_post_text": "El texto de tu publicación es la descripción del video. Edítalo en el editor.",
   "label_made_with_ai": "Hecho con IA",
   "facebook_made_with_ai": "Hecho con IA (solo para publicaciones de texto y fotos)",
-  "youtube_made_with_ai": "Hecho con IA (contenido alterado o sintético realista)"
+  "youtube_made_with_ai": "Hecho con IA (contenido alterado o sintético realista)",
+  "post_unconfirmed_check_first": "Comprueba primero la red. Si la publicación no está allí, prográmala de nuevo o publícala ahora."
 }

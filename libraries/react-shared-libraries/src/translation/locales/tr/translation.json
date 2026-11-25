@@ -992,12 +992,13 @@
   "connect_link_connecting": "Bağlanıyor...",
   "connect_link_close": "Beklediğiniz bu değil mi? Bu sayfayı kapatın, hiçbir şey bağlanmaz.",
   "connect_link_expired": "Bu bağlantı artık geçerli değil",
-  "connect_link_expired_description": "Bağlantı linkleri bir saat geçerlidir. Linki size gönderen kişiden yenisini isteyin.",
+  "connect_link_expired_description": "Bu link zaten kullanılmış ya da süresi dolmuş. Linki size gönderen kişiden yenisini isteyin.",
   "connect_link_continue_to_site": "{{site}} adresine devam et",
   "label_privacy_status": "Gizlilik durumu",
   "label_description": "Açıklama",
   "youtube_description_is_post_text": "Gönderinizin metni video açıklamasıdır. Düzenleyicide düzenleyin.",
   "label_made_with_ai": "Yapay zeka ile oluşturuldu",
   "facebook_made_with_ai": "Yapay zeka ile oluşturuldu (yalnızca metin ve fotoğraf gönderileri için)",
-  "youtube_made_with_ai": "Yapay zeka ile oluşturuldu (gerçekçi, değiştirilmiş veya sentetik içerik)"
+  "youtube_made_with_ai": "Yapay zeka ile oluşturuldu (gerçekçi, değiştirilmiş veya sentetik içerik)",
+  "post_unconfirmed_check_first": "Önce platformu kontrol edin. Gönderi orada değilse yeniden zamanlayın ya da şimdi paylaşın."
 }
