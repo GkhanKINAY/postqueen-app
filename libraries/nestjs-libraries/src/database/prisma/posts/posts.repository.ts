@@ -65,6 +65,20 @@ export class PostsRepository {
     });
   }
 
+  // Re-read by the missing-post sweep right before it starts a workflow; a
+  // removed post reads as nothing.
+  getPostState(id: string) {
+    return this._post.model.post.findUnique({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: {
+        state: true,
+      },
+    });
+  }
+
   async getOldPosts(orgId: string, date: string) {
     const posts = await this._post.model.post.findMany({
       where: {
