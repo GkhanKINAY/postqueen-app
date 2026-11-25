@@ -87,6 +87,7 @@ import { useClickOutside } from '@mantine/hooks';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
+import { isUnconfirmedPostError } from '@gitroom/helpers/utils/post.error.message';
 import { MediaSettingsSection } from '@gitroom/frontend/components/new-launch/media.settings.section';
 import {
   fromUtc,
@@ -1636,10 +1637,17 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                             })}{' '}
                           </span>
                         )}
-                        {t(
-                          'post_failed_fix',
-                          'Fix it, then schedule it again or post it now.'
-                        )}
+                        {/* A post that was sent but never confirmed may be
+                            live already: posting it again could post it twice. */}
+                        {isUnconfirmedPostError(existingData.posts[0].error)
+                          ? t(
+                              'post_unconfirmed_check_first',
+                              "Check the network first. If the post isn't there, schedule it again or post it now."
+                            )
+                          : t(
+                              'post_failed_fix',
+                              'Fix it, then schedule it again or post it now.'
+                            )}
                       </div>
                     </div>
                   )}

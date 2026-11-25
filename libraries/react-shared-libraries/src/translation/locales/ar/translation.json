@@ -974,12 +974,13 @@
   "connect_link_connecting": "جارٍ الاتصال...",
   "connect_link_close": "ليس ما توقعته؟ أغلق هذه الصفحة ولن يتم ربط أي شيء.",
   "connect_link_expired": "هذا الرابط لم يعد صالحًا",
-  "connect_link_expired_description": "روابط الاتصال صالحة لمدة ساعة واحدة. اطلب رابطًا جديدًا ممن أرسله إليك.",
+  "connect_link_expired_description": "تم استخدام هذا الرابط بالفعل أو انتهت صلاحيته. اطلب رابطًا جديدًا ممن أرسله إليك.",
   "connect_link_continue_to_site": "المتابعة إلى {{site}}",
   "label_privacy_status": "حالة الخصوصية",
   "label_description": "الوصف",
   "youtube_description_is_post_text": "نص منشورك هو وصف الفيديو. عدّله في المحرر.",
   "label_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي",
   "facebook_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي (لمنشورات النص والصور فقط)",
-  "youtube_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي (محتوى واقعي معدَّل أو اصطناعي)"
+  "youtube_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي (محتوى واقعي معدَّل أو اصطناعي)",
+  "post_unconfirmed_check_first": "تحقق من الشبكة أولًا. إذا لم يكن المنشور موجودًا هناك، فأعد جدولته أو انشره الآن."
 }

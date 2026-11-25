@@ -154,7 +154,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
           <div className="max-w-[400px] text-[13.5px] text-pqMuted">
             {t(
               'connect_link_expired_description',
-              'Connection links work for one hour. Ask whoever sent it to you for a new one.'
+              'This link has already been used or has expired. Ask whoever sent it to you for a new one.'
             )}
           </div>
         </div>

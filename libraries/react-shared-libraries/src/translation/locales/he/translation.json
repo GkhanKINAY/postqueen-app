@@ -974,12 +974,13 @@
   "connect_link_connecting": "מתחבר...",
   "connect_link_close": "לא מה שציפית? סגור את הדף הזה ושום דבר לא יחובר.",
   "connect_link_expired": "הקישור הזה כבר לא תקף",
-  "connect_link_expired_description": "קישורי חיבור תקפים לשעה אחת. בקש קישור חדש ממי ששלח לך אותו.",
+  "connect_link_expired_description": "הקישור הזה כבר נוצל או שפג תוקפו. בקש קישור חדש ממי ששלח לך אותו.",
   "connect_link_continue_to_site": "המשך אל {{site}}",
   "label_privacy_status": "סטטוס פרטיות",
   "label_description": "תיאור",
   "youtube_description_is_post_text": "טקסט הפוסט שלך הוא תיאור הסרטון. ניתן לערוך אותו בעורך.",
   "label_made_with_ai": "נוצר באמצעות בינה מלאכותית",
   "facebook_made_with_ai": "נוצר באמצעות בינה מלאכותית (רק לפוסטים של טקסט ותמונות)",
-  "youtube_made_with_ai": "נוצר באמצעות בינה מלאכותית (תוכן ערוך או סינתטי שנראה מציאותי)"
+  "youtube_made_with_ai": "נוצר באמצעות בינה מלאכותית (תוכן ערוך או סינתטי שנראה מציאותי)",
+  "post_unconfirmed_check_first": "בדוק קודם ברשת. אם הפוסט לא שם, תזמן אותו שוב או פרסם אותו עכשיו."
 }

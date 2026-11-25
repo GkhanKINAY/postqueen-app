@@ -974,12 +974,13 @@
   "connect_link_connecting": "Đang kết nối...",
   "connect_link_close": "Không như bạn mong đợi? Hãy đóng trang này và sẽ không có gì được kết nối.",
   "connect_link_expired": "Liên kết này không còn hiệu lực",
-  "connect_link_expired_description": "Liên kết kết nối có hiệu lực trong một giờ. Hãy yêu cầu người gửi cấp liên kết mới.",
+  "connect_link_expired_description": "Liên kết này đã được sử dụng hoặc đã hết hạn. Hãy yêu cầu người gửi cấp liên kết mới.",
   "connect_link_continue_to_site": "Tiếp tục đến {{site}}",
   "label_privacy_status": "Trạng thái quyền riêng tư",
   "label_description": "Mô tả",
   "youtube_description_is_post_text": "Nội dung bài đăng của bạn là mô tả video. Hãy chỉnh sửa trong trình soạn thảo.",
   "label_made_with_ai": "Được tạo bằng AI",
   "facebook_made_with_ai": "Được tạo bằng AI (chỉ dành cho bài đăng văn bản và ảnh)",
-  "youtube_made_with_ai": "Được tạo bằng AI (nội dung chỉnh sửa hoặc tổng hợp trông như thật)"
+  "youtube_made_with_ai": "Được tạo bằng AI (nội dung chỉnh sửa hoặc tổng hợp trông như thật)",
+  "post_unconfirmed_check_first": "Hãy kiểm tra trên mạng xã hội trước. Nếu bài đăng không có ở đó, hãy lên lịch lại hoặc đăng ngay."
 }
