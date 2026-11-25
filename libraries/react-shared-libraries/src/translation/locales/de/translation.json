@@ -943,5 +943,11 @@
   "media_settings_saved_on_post": "Für diesen Post gespeichert. Die Datei ist nicht in deiner Mediathek.",
   "timezone": "Zeitzone",
   "automatic_timezone": "Automatisch ({{timezone}})",
-  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden"
+  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden",
+  "refund_charges_failed": "Die ausgewählten Beträge konnten nicht erstattet werden",
+  "disputed": "Angefochten",
+  "charge_disputed_no_refund": "Dieser Betrag wurde angefochten und kann daher nicht erstattet werden",
+  "billing_cancel_failed": "Wir konnten Ihr Abonnement nicht kündigen. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.",
+  "trial_end_admin_only": "Nur ein Admin dieses Arbeitsbereichs kann den Testzeitraum beenden und bezahlen.",
+  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs."
 }

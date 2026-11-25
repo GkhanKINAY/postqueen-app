@@ -40,6 +40,15 @@ describe('isBlockedIp', () => {
     assert.equal(isBlockedIp('::ffff:8.8.8.8'), false);
   });
 
+  it('judges an IPv4-translated (SIIT) address by the IPv4 it carries, in either spelling', () => {
+    assert.equal(isBlockedIp('::ffff:0:127.0.0.1'), true);
+    assert.equal(isBlockedIp('::ffff:0:7f00:1'), true);
+    assert.equal(isBlockedIp('::ffff:0:a9fe:a9fe'), true); // 169.254.169.254
+    assert.equal(isBlockedIp('0:0:0:0:ffff:0:a00:5'), true); // 10.0.0.5
+    assert.equal(isBlockedIp('::ffff:0:808:808'), false); // 8.8.8.8
+    assert.equal(isBlockedIp('::ffff:0:8.8.8.8'), false);
+  });
+
   it('looks inside NAT64, 6to4 and Teredo', () => {
     assert.equal(isBlockedIp('64:ff9b::7f00:1'), true);
     assert.equal(isBlockedIp('64:ff9b::127.0.0.1'), true);

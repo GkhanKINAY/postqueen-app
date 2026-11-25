@@ -20,6 +20,7 @@ import {
   formatCredits,
   useCreditsBalance,
 } from '@gitroom/frontend/components/billing/use.credits.balance';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 
 const GenerateTab = observer(({ store }: any) => {
   const inputRef = React.useRef<any>(null);
@@ -27,6 +28,7 @@ const GenerateTab = observer(({ store }: any) => {
   const [loading, setLoading] = React.useState(false);
   const fetch = useFetch();
   const toast = useToaster();
+  const user = useUser();
   const { data, mutate } = useCreditsBalance();
   // This tab makes a medium, square image, the route's default, priced on
   // the balance's own list, so nothing is priced before it has been read.
@@ -43,6 +45,17 @@ const GenerateTab = observer(({ store }: any) => {
     // tab this opened must not still read as short here.
     const fresh = await mutate();
     if (isShort(fresh)) {
+      // Billing is for admins: a plain member is told who can top up.
+      if (user?.role === 'USER') {
+        toast.show(
+          t(
+            'no_ai_credits_ask_admin',
+            "You don't have enough credits for this image. Please ask an admin of your workspace."
+          ),
+          'warning'
+        );
+        return;
+      }
       window.open('/billing', '_blank');
       return;
     }

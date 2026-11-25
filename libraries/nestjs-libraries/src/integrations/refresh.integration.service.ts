@@ -36,6 +36,20 @@ export class RefreshIntegrationService {
       return false as const;
     }
 
+    // The renewal is stored only under the root the channel was read with. A
+    // caller holding a partial row, without that key, gets the row read
+    // again: with no root the write would be a connect's, which checks none.
+    if (integration.rootInternalId === undefined) {
+      const row = await this._integrationService.getIntegrationById(
+        integration.organizationId,
+        integration.id
+      );
+      if (!row || row.deletedAt) {
+        return false as const;
+      }
+      integration = { ...integration, rootInternalId: row.rootInternalId };
+    }
+
     const socialProvider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
@@ -48,7 +62,10 @@ export class RefreshIntegrationService {
 
     await this._integrationService.createOrUpdateIntegration(
       undefined,
-      !!socialProvider.oneTimeToken,
+      // A root that is a page id (older channels) names no login: other
+      // organizations' channels of that page can belong to other logins.
+      !!socialProvider.oneTimeToken &&
+        !socialProvider.isPageId?.(integration.rootInternalId || ''),
       integration.organizationId,
       integration.name,
       // The stored picture stays as it is: the copy this caller holds may be
@@ -59,7 +76,16 @@ export class RefreshIntegrationService {
       integration.providerIdentifier,
       refresh.accessToken,
       refresh.refreshToken,
-      refresh.expiresIn
+      refresh.expiresIn,
+      undefined,
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      // Stored only if no reconnect moved the channel meanwhile.
+      integration.rootInternalId
     );
 
     return refresh;

@@ -9,6 +9,7 @@ import { analyticsFetchNeedsReconnect } from '@gitroom/nestjs-libraries/integrat
 import {
   isReadTimeout,
   MEDIA_READ_TIMEOUT,
+  ownUploadSize,
   readOrFetch,
 } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
@@ -513,9 +514,15 @@ export abstract class SocialAbstract {
   }
 
   // Resolves the total byte size of the media without loading it into memory:
-  // a HEAD request for remote URLs, statSync for local files.
+  // a HEAD request for remote URLs, statSync for local files and for our own
+  // local uploads (see ownUploadSize).
   protected async mediaSize(path: string, identifier = ''): Promise<number> {
     if (path.indexOf('http') === 0) {
+      const own = ownUploadSize(path);
+      if (own) {
+        return own;
+      }
+
       // the media path is user-influenced, keep the SSRF-safe dispatcher that
       // this.fetch applies to every other outbound request. identity encoding
       // so content-length matches the bytes a later GET actually streams

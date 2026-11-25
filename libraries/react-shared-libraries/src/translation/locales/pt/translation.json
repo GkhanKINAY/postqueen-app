@@ -943,5 +943,11 @@
   "media_settings_saved_on_post": "Salvo nesta publicação. O arquivo não está na sua biblioteca de mídia.",
   "timezone": "Fuso horário",
   "automatic_timezone": "Automático ({{timezone}})",
-  "could_not_save_timezone": "Não foi possível salvar o fuso horário"
+  "could_not_save_timezone": "Não foi possível salvar o fuso horário",
+  "refund_charges_failed": "Não foi possível reembolsar as cobranças selecionadas",
+  "disputed": "Contestada",
+  "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada",
+  "billing_cancel_failed": "Não conseguimos cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.",
+  "trial_end_admin_only": "Somente um administrador deste espaço de trabalho pode encerrar o teste e pagar.",
+  "no_ai_credits_ask_admin": "Você não tem créditos suficientes para esta imagem. Peça a um administrador do seu espaço de trabalho."
 }

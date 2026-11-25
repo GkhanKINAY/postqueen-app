@@ -43,7 +43,7 @@ describe('Pinterest API host', () => {
           }
         : String(url).includes('/boards')
         ? { items: [{ id: 'b1', name: 'Travel in Japan' }] }
-        : { id: 'u1', username: 'forceplayco', profile_image: '' };
+        : { id: 'u1', username: 'forcegamesco', profile_image: '' };
       return new Response(JSON.stringify(body), { status: 200 });
     }) as typeof fetch;
   });

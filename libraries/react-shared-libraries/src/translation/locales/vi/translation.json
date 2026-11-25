@@ -943,5 +943,11 @@
   "media_settings_saved_on_post": "Đã lưu cho bài đăng này. Tệp không có trong thư viện phương tiện của bạn.",
   "timezone": "Múi giờ",
   "automatic_timezone": "Tự động ({{timezone}})",
-  "could_not_save_timezone": "Không thể lưu múi giờ"
+  "could_not_save_timezone": "Không thể lưu múi giờ",
+  "refund_charges_failed": "Không thể hoàn tiền các khoản phí đã chọn",
+  "disputed": "Đang tranh chấp",
+  "charge_disputed_no_refund": "Khoản phí này đang bị tranh chấp nên không thể hoàn tiền",
+  "billing_cancel_failed": "Chúng tôi không thể hủy gói đăng ký của bạn. Vui lòng thử lại hoặc liên hệ bộ phận hỗ trợ.",
+  "trial_end_admin_only": "Chỉ quản trị viên của không gian làm việc này mới có thể kết thúc dùng thử và thanh toán.",
+  "no_ai_credits_ask_admin": "Bạn không có đủ tín dụng cho hình ảnh này. Vui lòng liên hệ quản trị viên không gian làm việc của bạn."
 }

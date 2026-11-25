@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, afterEach, describe, it } from 'node:test';
+import { after, afterEach, beforeEach, describe, it } from 'node:test';
 import {
   BadBody,
   platformMessage,
@@ -11,6 +11,7 @@ import {
   SocialAbstract,
   statusMessage,
 } from './social.abstract.ts';
+import { ownUploadSize } from './read.or.fetch.ts';
 
 const realFetch = globalThis.fetch;
 
@@ -379,5 +380,78 @@ describe('local media reads', () => {
       new Network().mediaSize(join(dir, 'a.mp4'), 'network'),
       BadBody
     );
+  });
+});
+
+// Next sends no Content-Length on a route handler's response (HEAD included),
+// so when it serves /uploads itself a HEAD cannot size our own media.
+describe('size of our own uploads', () => {
+  const uploadDirectory = process.env.UPLOAD_DIRECTORY;
+  const frontendUrl = process.env.FRONTEND_URL;
+  const root = mkdtempSync(join(tmpdir(), 'pq-own-'));
+  const dir = join(root, 'uploads');
+  mkdirSync(join(dir, '2026', '11'), { recursive: true });
+  writeFileSync(join(dir, '2026', '11', 'a.mp4'), 'twelve bytes');
+  writeFileSync(join(root, 'outside.txt'), 'secret');
+  const own = 'http://localhost:4200/uploads/2026/11/a.mp4';
+
+  // Answers a HEAD with this Content-Length and records the requests.
+  const head = (length: string) => {
+    const calls: { url: string; method?: string }[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method });
+      return new Response(null, { headers: { 'content-length': length } });
+    }) as typeof fetch;
+    return calls;
+  };
+
+  beforeEach(() => {
+    process.env.UPLOAD_DIRECTORY = dir;
+    process.env.FRONTEND_URL = 'http://localhost:4200/';
+  });
+  afterEach(() => {
+    process.env.UPLOAD_DIRECTORY = uploadDirectory;
+    process.env.FRONTEND_URL = frontendUrl;
+  });
+  after(() => rmSync(root, { recursive: true, force: true }));
+
+  it('reads it from disk, with no request', async () => {
+    const calls = head('99');
+    assert.equal(await new Network().mediaSize(own, 'network'), 12);
+    assert.equal(await new Network().mediaSize(`${own}?v=2`, 'network'), 12);
+    assert.equal(ownUploadSize(own), 12);
+    assert.equal(calls.length, 0);
+  });
+
+  it('asks with a HEAD for any other URL, as before', async () => {
+    const calls = head('34');
+    const url = 'https://cdn.example.com/uploads/2026/11/a.mp4';
+    assert.equal(await new Network().mediaSize(url, 'network'), 34);
+    assert.deepEqual(calls, [{ url, method: 'HEAD' }]);
+    assert.equal(ownUploadSize(url), null);
+  });
+
+  it('asks with a HEAD when this worker does not have the file', async () => {
+    const calls = head('34');
+    const missing = 'http://localhost:4200/uploads/2026/11/b.mp4';
+    assert.equal(await new Network().mediaSize(missing, 'network'), 34);
+    assert.equal(calls.length, 1);
+  });
+
+  it('never reads a path that leaves the upload directory', async () => {
+    head('34');
+    for (const url of [
+      'http://localhost:4200/uploads/../outside.txt',
+      'http://localhost:4200/uploads/2026/../../outside.txt',
+      'http://localhost:4200/uploads/2026/11',
+    ]) {
+      assert.equal(ownUploadSize(url), null, url);
+      assert.equal(await new Network().mediaSize(url, 'network'), 34, url);
+    }
+  });
+
+  it('reads nothing from disk without an upload directory', () => {
+    delete process.env.UPLOAD_DIRECTORY;
+    assert.equal(ownUploadSize(own), null);
   });
 });

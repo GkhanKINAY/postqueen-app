@@ -943,5 +943,11 @@
   "media_settings_saved_on_post": "이 게시물에 저장했습니다. 이 파일은 미디어 라이브러리에 없습니다.",
   "timezone": "시간대",
   "automatic_timezone": "자동 ({{timezone}})",
-  "could_not_save_timezone": "시간대를 저장할 수 없습니다"
+  "could_not_save_timezone": "시간대를 저장할 수 없습니다",
+  "refund_charges_failed": "선택한 청구 건을 환불할 수 없습니다.",
+  "disputed": "분쟁됨",
+  "charge_disputed_no_refund": "이 청구 건은 분쟁이 제기되어 환불할 수 없습니다.",
+  "billing_cancel_failed": "구독을 취소할 수 없습니다. 다시 시도하거나 고객 지원팀에 문의하세요.",
+  "trial_end_admin_only": "이 워크스페이스의 관리자만 체험을 종료하고 결제할 수 있습니다.",
+  "no_ai_credits_ask_admin": "이 이미지를 만들 크레딧이 부족합니다. 워크스페이스 관리자에게 문의하세요."
 }

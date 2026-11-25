@@ -42,10 +42,19 @@ describe('AuthService.encryptToken / decryptToken', () => {
     assert.equal(AuthService.decryptToken('plain-token'), 'plain-token');
   });
 
-  it('leaves an empty value and an encrypted one alone', () => {
-    const encrypted = AuthService.encryptToken('x');
+  it('leaves an empty value alone', () => {
     assert.equal(AuthService.encryptToken(''), '');
-    assert.equal(AuthService.encryptToken(encrypted), encrypted);
+  });
+
+  // Stored as it is, the next read would decrypt it into the token it came
+  // from.
+  it('refuses a value that already carries the prefix', () => {
+    const encrypted = AuthService.encryptToken('x');
+    assert.throws(() => AuthService.encryptToken(encrypted), /prefix/);
+    assert.throws(
+      () => AuthService.encryptToken(`${INTEGRATION_TOKEN_PREFIX}anything`),
+      /prefix/
+    );
   });
 
   it('decrypts under PREVIOUS_ENCRYPTION_KEY after a rotation', () => {

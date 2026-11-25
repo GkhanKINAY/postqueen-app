@@ -26,6 +26,7 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
 import { PaymentService } from '@gitroom/nestjs-libraries/services/payment/payment.service';
 import { BillingSyncDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.sync.dto';
+import { BillingCancelDto } from '@gitroom/nestjs-libraries/dtos/billing/billing.cancel.dto';
 import { StripeService } from '@gitroom/nestjs-libraries/services/stripe.service';
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 
@@ -74,6 +75,8 @@ export class BillingController {
   }
 
   @Get('/check/:id')
+  // Admins only, like the checkout whose result it reads.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async checkId(
     @GetOrgFromRequest() org: Organization,
     @Param('id') body: string
@@ -84,6 +87,8 @@ export class BillingController {
   }
 
   @Get('/check-discount')
+  // Admins only, like apply-discount, the offer it asks about.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {
       return { offerCoupon: false };
@@ -216,6 +221,8 @@ export class BillingController {
   }
 
   @Get('/is-trial-finished')
+  // Admins only: it can charge a founding member's deferred fee.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async isTrialFinished(@GetOrgFromRequest() org: Organization) {
     // Billing off: there is no trial, so it is always over.
     if (!isBillingEnabled()) {
@@ -398,17 +405,20 @@ export class BillingController {
   async cancel(
     @GetOrgFromRequest() org: Organization,
     @GetUserFromRequest() user: User,
-    @Body() body: { feedback: string }
+    @Body() body: BillingCancelDto
   ) {
     this.assertBillingEnabled();
     // The same call un-cancels a cancelled plan, and then `cancel_at` is
     // empty: only a cancellation tells the team and confirms to the customer.
-    // A plan that was already cancelled (a repeated submit) is not news.
+    // A plan that was already cancelled (a repeated submit, or a request
+    // that asked for what Stripe already had) is not news.
     const wasCancelled = !!(
       await this._subscriptionService.getSubscriptionByOrganizationId(org.id)
     )?.cancelAt;
-    const result = await (await this.provider(org)).setToCancel(org.id);
-    if (result?.cancel_at && !wasCancelled) {
+    const result = await (
+      await this.provider(org)
+    ).setToCancel(org.id, body.cancel);
+    if (result?.cancel_at && !result.unchanged && !wasCancelled) {
       // The plan is already cancelled: an email that cannot be queued must
       // not answer 500, or the customer's retry would un-cancel it.
       await this._organizationService

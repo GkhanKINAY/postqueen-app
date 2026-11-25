@@ -880,6 +880,7 @@ export const MainBillingComponent: FC<{
           const reactivateResponse = await fetch('/billing/cancel', {
             method: 'POST',
             body: JSON.stringify({
+              cancel: false,
               feedback: '',
             }),
             headers: {
@@ -1001,17 +1002,34 @@ export const MainBillingComponent: FC<{
           }
 
           setLoading(true);
-          const { cancel_at } = await (
-            await fetch('/billing/cancel', {
-              method: 'POST',
-              body: JSON.stringify({
-                feedback: result.feedback,
-              }),
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            })
-          ).json();
+          const cancelResponse = await fetch('/billing/cancel', {
+            method: 'POST',
+            body: JSON.stringify({
+              cancel: true,
+              feedback: result.feedback,
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          // customFetch resolves on 4xx/5xx: a failed cancel used to end the
+          // flow with nothing said at all.
+          if (!cancelResponse?.ok) {
+            setLoading(false);
+            toast.show(
+              t(
+                'billing_cancel_failed',
+                'We could not cancel your subscription. Please try again or contact support.'
+              ),
+              'warning'
+            );
+            return;
+          }
+
+          const { cancel_at } = await cancelResponse
+            .json()
+            .catch(() => ({} as any));
           setSubscription((subs) => ({
             ...subs!,
             cancelAt: cancel_at,

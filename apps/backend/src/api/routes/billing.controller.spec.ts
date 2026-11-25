@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 
@@ -107,6 +108,54 @@ describe('ending a trial from Billing', () => {
   });
 });
 
+describe('cancelling from Billing', () => {
+  const user = { email: 'owner@example.com' };
+  const cancelling = (provider: Record<string, unknown>) => {
+    const sent: string[] = [];
+    const controller = new BillingController(
+      { getSubscriptionByOrganizationId: async () => ({ cancelAt: null }) },
+      {},
+      {},
+      {
+        sendCancellationFeedback: async () => {
+          sent.push('feedback');
+        },
+        sendCancellationConfirmation: async () => {
+          sent.push('confirmation');
+        },
+      },
+      { getProviderForOrganization: async () => provider },
+      {},
+      {}
+    );
+    return { controller, sent };
+  };
+  const later = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  it('hands the intent to the provider and mails a new cancellation', async () => {
+    const asked: unknown[] = [];
+    const { controller, sent } = cancelling({
+      setToCancel: async (_id: string, cancel?: boolean) => {
+        asked.push(cancel);
+        return { cancel_at: later };
+      },
+    });
+    await controller.cancel(org, user, { cancel: true, feedback: 'x'.repeat(20) });
+
+    assert.deepEqual(asked, [true]);
+    assert.deepEqual(sent, ['feedback', 'confirmation']);
+  });
+
+  it('mails nothing for a cancel that was already in place', async () => {
+    const { controller, sent } = cancelling({
+      setToCancel: async () => ({ cancel_at: later, unchanged: true }),
+    });
+    await controller.cancel(org, user, { cancel: true, feedback: 'x'.repeat(20) });
+
+    assert.deepEqual(sent, []);
+  });
+});
+
 describe('the next charge, from Billing', () => {
   it('is null with billing off, without asking a provider', async () => {
     delete process.env.STRIPE_SECRET_KEY;
@@ -147,4 +196,41 @@ describe('the next charge, from Billing', () => {
 
     assert.equal(await controller.getRenewal(org), null);
   });
+});
+
+// A plain member never reaches a billing route that reads or changes what the
+// organization is charged: the Billing page being hidden from them is not
+// what stops them.
+describe('who can call the billing routes', () => {
+  const policies = (handler: string) =>
+    (Reflect.getMetadata(
+      'check_policy',
+      BillingController.prototype[handler]
+    ) || []) as Array<[string, string]>;
+
+  for (const handler of [
+    'checkId',
+    'checkDiscount',
+    'isTrialFinished',
+    'applyDiscount',
+    'applyLifetimeRetention',
+    'finishTrial',
+    'embedded',
+    'subscribe',
+    'modifyPayment',
+    'pendingPayment',
+    'getInvoices',
+    'getRenewal',
+    'cancel',
+    'prorate',
+    'lifetimeCheckout',
+    'creditsCheckout',
+  ]) {
+    it(`${handler} is for admins`, () => {
+      assert.ok(
+        policies(handler).some(([, section]) => section === 'admin'),
+        handler
+      );
+    });
+  }
 });
