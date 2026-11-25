@@ -279,3 +279,63 @@ describe('RefreshIntegrationService.refreshDueProfiles when the refresh throws',
     assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
   });
 });
+
+// A oneTimeToken login shares its renewed tokens with its other channels, by
+// root. A root that is a page id names no login, and a renewal is only stored
+// on the channel while it still has the root it was read with.
+describe('RefreshIntegrationService.refresh stores the renewal', { skip: !canLoad }, () => {
+  const renew = async (rootInternalId: string | null) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const { LinkedinPageProvider } =
+      await import('./social/linkedin.page.provider.ts');
+    const writes: any[][] = [];
+    const service = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          oneTimeToken: true,
+          isPageId: LinkedinPageProvider.prototype.isPageId,
+          refreshToken: async () => ({
+            accessToken: 'fresh',
+            refreshToken: 'fresh-refresh',
+            expiresIn: 3600,
+          }),
+        }),
+      } as any,
+      {
+        createOrUpdateIntegration: async (...args: any[]) => {
+          writes.push(args);
+        },
+      } as any,
+      {} as any,
+    );
+
+    await service.refresh({
+      id: 'ch-1',
+      organizationId: 'org-1',
+      providerIdentifier: 'linkedin-page',
+      internalId: '1234',
+      rootInternalId,
+      name: 'Brand',
+      refreshToken: 'old-refresh',
+      deletedAt: null,
+    } as any);
+
+    assert.equal(writes.length, 1);
+    return { oneTimeToken: writes[0][1], expectedRoot: writes[0][18] };
+  };
+
+  it("shares it with the login's channels when the root names the login", async () => {
+    assert.deepEqual(await renew('linkedin-page_m1'), {
+      oneTimeToken: true,
+      expectedRoot: 'linkedin-page_m1',
+    });
+  });
+
+  it('shares it with nobody when the root is a page id', async () => {
+    assert.deepEqual(await renew('1234'), {
+      oneTimeToken: false,
+      expectedRoot: '1234',
+    });
+  });
+});

@@ -319,7 +319,9 @@ export class IntegrationService implements OnModuleInit {
     refresh?: string,
     timezone?: number,
     customInstanceDetails?: string,
-    platformUserId?: string
+    platformUserId?: string,
+    rootInternalId?: string,
+    expectedRootInternalId?: string | null
   ) {
     // Pictures already on Cloudflare Images are kept as they are. The host is
     // compared as a hostname: a URL that merely contains the name somewhere is
@@ -362,7 +364,9 @@ export class IntegrationService implements OnModuleInit {
       refresh,
       timezone,
       customInstanceDetails,
-      platformUserId
+      platformUserId,
+      rootInternalId,
+      expectedRootInternalId
     );
   }
 
@@ -907,7 +911,10 @@ export class IntegrationService implements OnModuleInit {
 
       await this.createOrUpdateIntegration(
         undefined,
-        !!provider.oneTimeToken,
+        // A root that is a page id (older channels) names no login: other
+        // organizations' channels of that page can belong to other logins.
+        !!provider.oneTimeToken &&
+          !provider.isPageId?.(integration.rootInternalId || ''),
         integration.organizationId,
         integration.name,
         undefined,
@@ -916,7 +923,16 @@ export class IntegrationService implements OnModuleInit {
         integration.providerIdentifier,
         accessToken,
         refreshToken,
-        expiresIn
+        expiresIn,
+        undefined,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        // Stored only if no reconnect moved the channel meanwhile.
+        integration.rootInternalId
       );
     }
   }
@@ -1239,8 +1255,10 @@ export class IntegrationService implements OnModuleInit {
             // credentials, so the ones just signed in with go with it, as
             // they do to extra pages. The login they belong to goes too:
             // refresh reconnects as `rootInternalId`, and the old login may
-            // not see this page.
-            ...(getIntegration.refreshToken
+            // not see this page. With the login, its refresh token goes even
+            // when empty: the previous login's must not stay under the new
+            // root.
+            ...(getIntegration.refreshToken || getIntegration.rootInternalId
               ? { refreshToken: getIntegration.refreshToken }
               : {}),
             ...(getIntegration.rootInternalId
@@ -1253,8 +1271,13 @@ export class IntegrationService implements OnModuleInit {
             ...(getIntegration.platformUserId
               ? { platformUserId: getIntegration.platformUserId }
               : {}),
-          }
+          },
+          getIntegration
         );
+        // The channel became another one while its page was looked up.
+        if (!updated) {
+          throw new HttpException('Invalid request', HttpStatus.BAD_REQUEST);
+        }
         ids.push(updated.id);
         continue;
       }

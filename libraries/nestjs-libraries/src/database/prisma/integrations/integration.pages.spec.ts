@@ -64,15 +64,26 @@ const freshLogin = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const serviceSaving = (row: Record<string, unknown>) => {
-  const saved: Array<{ id: string; params: Record<string, unknown> }> = [];
+const serviceSaving = (
+  row: Record<string, unknown>,
+  answer: { id: string } | null = { id: 'kept' }
+) => {
+  const saved: Array<{
+    id: string;
+    params: Record<string, unknown>;
+    read: Record<string, unknown>;
+  }> = [];
   const service = new IntegrationService(
     {
       getIntegrationByIdNotDeleted: async () => row,
       checkForDeletedOnceAndUpdate: async () => undefined,
-      updateIntegration: async (id: string, params: Record<string, unknown>) => {
-        saved.push({ id, params });
-        return { id: 'kept' };
+      updateIntegration: async (
+        id: string,
+        params: Record<string, unknown>,
+        read: Record<string, unknown>
+      ) => {
+        saved.push({ id, params, read });
+        return answer;
       },
     },
     {},
@@ -120,13 +131,42 @@ describe('IntegrationService.saveProviderPage', { skip: !canLoadService }, () =>
     assert.equal('refreshToken' in saved[0].params, false);
     assert.equal('rootInternalId' in saved[0].params, false);
   });
+
+  // The page's earlier row keeps living: under the new login's root, the
+  // previous login's refresh token would keep renewing it.
+  it("sends the login's refresh token with its root even when it is empty", async () => {
+    const { service, saved } = serviceSaving(freshLogin({ refreshToken: '' }));
+
+    await service.saveProviderPage('org', 'fresh', { page: 'page-1' });
+
+    assert.equal(saved[0].params.rootInternalId, 'login-b');
+    assert.equal(saved[0].params.refreshToken, '');
+  });
+
+  it('saves the page only on the channel as it was read', async () => {
+    const { service, saved } = serviceSaving(freshLogin());
+
+    await service.saveProviderPage('org', 'fresh', { page: 'page-1' });
+
+    assert.equal(saved[0].read.providerIdentifier, 'youtube');
+    assert.equal(saved[0].read.internalId, 'login-b');
+  });
+
+  it('refuses the save when the channel became another one meanwhile', async () => {
+    const { service } = serviceSaving(freshLogin(), null);
+
+    await assert.rejects(
+      service.saveProviderPage('org', 'fresh', { page: 'page-1' }),
+      (err: any) => err?.getStatus?.() === 400
+    );
+  });
 });
 
 describe('IntegrationRepository.createExtraProviderPage', { skip: !canLoadService }, () => {
   const repositoryWith = (existing: Record<string, unknown> | null) => {
     const writes: Array<{ kind: string; data: Record<string, unknown> }> = [];
     const integration = {
-      findUnique: async () => existing,
+      findFirst: async () => existing,
       update: async ({ data }: any) => {
         writes.push({ kind: 'update', data });
         return { id: existing?.id, ...data };
