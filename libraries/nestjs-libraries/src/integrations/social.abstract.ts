@@ -224,6 +224,20 @@ export class PublishedWithError extends ApplicationFailure {
   }
 }
 
+// What a media store answered when a ranged read did not come back as 206,
+// for the failure's details.
+export function rangeReadFailure(response: {
+  status: number;
+  statusText: string;
+  ok: boolean;
+}) {
+  return JSON.stringify({
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+  });
+}
+
 // `unmapped` marks a refusal no handleErrors mapping explained, so the admin
 // stats can still count the failures that once read "Unknown Error".
 export class BadBody extends ApplicationFailure {
@@ -582,6 +596,7 @@ export abstract class SocialAbstract {
         // response.body here would silently load the whole file into memory and
         // upload corrupted chunks.
         if (response.status !== 206) {
+          await response.body?.cancel().catch(() => {});
           throw new BadBody(
             identifier,
             JSON.stringify({ status: response.status, start, end }),
