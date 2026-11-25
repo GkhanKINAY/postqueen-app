@@ -947,5 +947,6 @@
   "refund_charges_failed": "選択した請求の返金ができませんでした",
   "disputed": "異議申し立て中",
   "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません",
-  "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。"
+  "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。",
+  "trial_end_admin_only": "トライアルを終了してお支払いできるのは、このワークスペースの管理者のみです。"
 }

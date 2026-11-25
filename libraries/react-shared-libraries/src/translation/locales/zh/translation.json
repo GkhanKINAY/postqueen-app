@@ -947,5 +947,6 @@
   "refund_charges_failed": "无法退款所选费用",
   "disputed": "已争议",
   "charge_disputed_no_refund": "该费用已被争议，因此无法退款",
-  "billing_cancel_failed": "我们无法取消您的订阅。请重试或联系支持人员。"
+  "billing_cancel_failed": "我们无法取消您的订阅。请重试或联系支持人员。",
+  "trial_end_admin_only": "只有此工作区的管理员才能结束试用并付款。"
 }

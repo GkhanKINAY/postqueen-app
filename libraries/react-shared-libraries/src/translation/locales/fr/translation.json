@@ -947,5 +947,6 @@
   "refund_charges_failed": "Impossible de rembourser les frais sélectionnés",
   "disputed": "Contesté",
   "charge_disputed_no_refund": "Ce prélèvement a fait l’objet d’une contestation et ne peut donc pas être remboursé",
-  "billing_cancel_failed": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer ou contacter le support."
+  "billing_cancel_failed": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer ou contacter le support.",
+  "trial_end_admin_only": "Seul un administrateur de cet espace de travail peut mettre fin à l'essai et payer."
 }

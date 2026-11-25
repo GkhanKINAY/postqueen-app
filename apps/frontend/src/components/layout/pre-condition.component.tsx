@@ -17,6 +17,11 @@ export const PreConditionComponentModal: FC = () => {
           'precondition_channel_used_trial',
           "This social channel was previously connected to another PostQueen account.\nTo connect it during your trial, you can end the trial now: your plan's first payment is charged today instead of at the end of the trial, and nothing extra is added."
         )}
+        {'\n'}
+        {t(
+          'trial_end_admin_only',
+          'Only an admin of this workspace can end the trial and pay.'
+        )}
       </div>
       <div className="flex gap-[2px] justify-center">
         <Button

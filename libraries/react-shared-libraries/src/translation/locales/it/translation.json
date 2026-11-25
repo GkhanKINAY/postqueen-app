@@ -947,5 +947,6 @@
   "refund_charges_failed": "Impossibile rimborsare gli addebiti selezionati",
   "disputed": "Contestato",
   "charge_disputed_no_refund": "Questo addebito è stato contestato e quindi non può essere rimborsato",
-  "billing_cancel_failed": "Non siamo riusciti a cancellare il tuo abbonamento. Riprova o contatta l'assistenza."
+  "billing_cancel_failed": "Non siamo riusciti a cancellare il tuo abbonamento. Riprova o contatta l'assistenza.",
+  "trial_end_admin_only": "Solo un amministratore di questo spazio di lavoro può terminare la prova e pagare."
 }

@@ -947,5 +947,6 @@
   "refund_charges_failed": "No se pudo reembolsar los cargos seleccionados",
   "disputed": "En disputa",
   "charge_disputed_no_refund": "Este cargo fue disputado y, por lo tanto, no puede ser reembolsado",
-  "billing_cancel_failed": "No pudimos cancelar tu suscripción. Por favor, inténtalo de nuevo o contacta al soporte."
+  "billing_cancel_failed": "No pudimos cancelar tu suscripción. Por favor, inténtalo de nuevo o contacta al soporte.",
+  "trial_end_admin_only": "Solo un administrador de este espacio de trabajo puede terminar la prueba y pagar."
 }

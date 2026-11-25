@@ -631,7 +631,7 @@ export class MediaService {
 
     if (isTrialLocked(video, org)) {
       throw new HttpException(
-        `This video is not available during the trial. To use it now, open ${process.env.FRONTEND_URL}/billing and click "End free trial": your plan's first payment is charged today instead of at the end of the trial.`,
+        `This video is not available during the trial. To use it now, open ${process.env.FRONTEND_URL}/billing and click "End free trial": your plan's first payment is charged today instead of at the end of the trial. Only an admin of this workspace can end the trial and pay.`,
         406
       );
     }
@@ -651,7 +651,7 @@ export class MediaService {
 
     if (isTrialLocked(video, org)) {
       throw new HttpException(
-        `This video is not available during the trial. To use it now, open ${process.env.FRONTEND_URL}/billing and click "End free trial": your plan's first payment is charged today instead of at the end of the trial.`,
+        `This video is not available during the trial. To use it now, open ${process.env.FRONTEND_URL}/billing and click "End free trial": your plan's first payment is charged today instead of at the end of the trial. Only an admin of this workspace can end the trial and pay.`,
         406
       );
     }

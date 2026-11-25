@@ -118,10 +118,13 @@ function LayoutContextInner(params: { children: ReactNode }) {
         // the trial straight away (`?finishTrial`).
         if (
           await deleteDialog(
-            i18next.t(
+            `${i18next.t(
               'trial_feature_locked_end_trial',
               "This feature is not available during the trial. You can end the trial now: your plan's first payment is charged today instead of at the end of the trial."
-            ),
+            )} ${i18next.t(
+              'trial_end_admin_only',
+              'Only an admin of this workspace can end the trial and pay.'
+            )}`,
             i18next.t('finish_trial_charge_me_now', 'End trial and pay now'),
             i18next.t('end_free_trial', 'End free trial'),
             i18next.t('cancel', 'Cancel'),

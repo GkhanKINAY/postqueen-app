@@ -947,5 +947,6 @@
   "refund_charges_failed": "Não foi possível reembolsar as cobranças selecionadas",
   "disputed": "Contestada",
   "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada",
-  "billing_cancel_failed": "Não conseguimos cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte."
+  "billing_cancel_failed": "Não conseguimos cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.",
+  "trial_end_admin_only": "Somente um administrador deste espaço de trabalho pode encerrar o teste e pagar."
 }

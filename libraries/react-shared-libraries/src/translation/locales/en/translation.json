@@ -1426,5 +1426,6 @@
   "refund_charges_failed": "Could not refund the selected charges",
   "disputed": "Disputed",
   "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded",
-  "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support."
+  "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support.",
+  "trial_end_admin_only": "Only an admin of this workspace can end the trial and pay."
 }
