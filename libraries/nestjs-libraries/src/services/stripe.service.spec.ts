@@ -92,9 +92,13 @@ const sub = (id: string, created: number, extra: Partial<Sub> = {}): Sub => ({
 });
 
 fake(probe.subscriptions, {
-  list: record('subscriptions.list', ({ customer }) => ({
+  list: record('subscriptions.list', ({ customer, status }) => ({
     data: subs
-      .filter((s) => s.customer === customer)
+      .filter(
+        (s) =>
+          s.customer === customer &&
+          (!status || status === 'all' || s.status === status),
+      )
       .sort((a, b) => b.created - a.created),
   })),
   retrieve: record('subscriptions.retrieve', (id) =>
@@ -118,11 +122,21 @@ fake(probe.subscriptionSchedules, {
   release: record('subscriptionSchedules.release', () => ({})),
 });
 fake(probe.invoices, {
-  list: record('invoices.list', ({ customer, subscription }) => ({
+  // An invoice a test gives no status matches any status asked for.
+  list: record('invoices.list', ({ customer, subscription, status }) => ({
     data: subscription
       ? subscriptionInvoices
-      : invoices.filter((i) => i.customer === customer),
+      : invoices.filter(
+          (i) =>
+            i.customer === customer &&
+            (!status || !i.status || i.status === status),
+        ),
   })),
+  voidInvoice: record('invoices.voidInvoice', (id) => {
+    const found = invoices.find((i) => i.id === id)!;
+    found.status = 'void';
+    return found;
+  }),
 });
 fake(probe.subscriptions, {
   search: record('subscriptions.search', ({ query }) => ({
@@ -677,6 +691,105 @@ describe('an admin cancelling', () => {
     await service().cancelSubscription('org1');
 
     assert.deepEqual(called('subscriptions.cancel'), [['sub_waiting']]);
+  });
+});
+
+describe('the unpaid invoices of a cancelled subscription', () => {
+  const OURS = { service: 'postqueen' };
+  const unpaid = (
+    id: string,
+    subscription: string,
+    status: Stripe.Invoice.Status = 'open',
+  ): Partial<Stripe.Invoice> => ({
+    id,
+    customer: 'cus_1',
+    status,
+    parent: { subscription_details: { subscription } } as any,
+  });
+  beforeEach(() => {
+    invoices = [
+      unpaid('in_open', 'sub_failed'),
+      unpaid('in_uncollectible', 'sub_failed', 'uncollectible'),
+      unpaid('in_paid', 'sub_failed', 'paid'),
+      // Another integration on the same Stripe account.
+      unpaid('in_theirs', 'sub_theirs'),
+    ];
+  });
+  const voided = () => called('invoices.voidInvoice').map(([id]) => id);
+
+  it('are voided when the customer cancels a subscription whose payment failed', async () => {
+    subs = [
+      sub('sub_failed', 200, {
+        status: 'past_due',
+        metadata: OURS,
+        latest_invoice: { status: 'open' } as any,
+      }),
+      sub('sub_theirs', 50, { status: 'canceled', metadata: { service: 'redsim' } }),
+    ];
+    await service().setToCancel('org1');
+
+    assert.deepEqual(called('subscriptions.cancel'), [['sub_failed']]);
+    assert.deepEqual(voided(), ['in_open', 'in_uncollectible']);
+  });
+
+  it('are voided when support cancels, and on account deletion', async () => {
+    subs = [sub('sub_failed', 200, { status: 'past_due', metadata: OURS })];
+    await service().cancelSubscription('org1');
+    assert.deepEqual(voided(), ['in_open', 'in_uncollectible']);
+
+    calls = [];
+    invoices = [unpaid('in_open_2', 'sub_failed')];
+    subs = [sub('sub_failed', 200, { status: 'past_due', metadata: OURS })];
+    await service().cancelAllSubscriptions('org1');
+    assert.deepEqual(voided(), ['in_open_2']);
+  });
+
+  it('are left alone by a cancel at the end of a paid period', async () => {
+    subs = [sub('sub_paid', 200, { metadata: OURS })];
+    invoices = [unpaid('in_open', 'sub_paid')];
+    await service().setToCancel('org1');
+
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.deepEqual(voided(), []);
+  });
+
+  it('stay payable when Stripe ends the subscription after its retries', async () => {
+    subs = [sub('sub_failed', 200, { status: 'canceled', metadata: OURS })];
+    await service().deleteSubscription(deleted('sub_failed'));
+
+    assert.deepEqual(voided(), []);
+  });
+
+  it('are voided by the first payment of a new subscription', async () => {
+    subs = [
+      sub('sub_failed', 100, { status: 'canceled', metadata: OURS }),
+      sub('sub_new', 200, { metadata: OURS }),
+    ];
+    const paying = new StripeService(
+      { ...subscriptionService, isManagedBy: async () => false } as any,
+      organizationService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { announce: async () => false } as any,
+    );
+    const firstPayment = (billing_reason: string) =>
+      paying.paymentSucceeded({
+        data: {
+          object: {
+            id: `in_${billing_reason}`,
+            customer: 'cus_1',
+            amount_paid: 4900,
+            billing_reason,
+            parent: { subscription_details: { subscription: 'sub_new' } },
+          },
+        },
+      } as unknown as Stripe.InvoicePaymentSucceededEvent);
+
+    await firstPayment('subscription_cycle');
+    assert.deepEqual(voided(), []);
+    await firstPayment('subscription_create');
+    assert.deepEqual(voided(), ['in_open', 'in_uncollectible']);
   });
 });
 

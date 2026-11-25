@@ -1658,6 +1658,67 @@ export class StripeService extends PaymentProviderAbstract {
     }
   }
 
+  /**
+   * Voids the unpaid invoices of this customer's cancelled subscriptions.
+   * Stripe leaves them payable on the hosted invoice page, and paying one
+   * would buy a period that is no longer provided. Called after every cancel
+   * someone asked for (the customer, support, an account deletion, a switch
+   * to the founding plan) and when a new subscription's first payment
+   * arrives. Not when Stripe itself ends a subscription whose retries ran
+   * out: that invoice stays payable (see `keepCardOfUnpaidInvoices`).
+   *
+   * Never throws, and a failure on one invoice does not stop the others.
+   */
+  private async voidUnpaidInvoices(customer?: string | null) {
+    try {
+      if (!customer?.startsWith('cus_')) {
+        return;
+      }
+
+      const cancelled = (
+        await stripe.subscriptions.list({
+          customer,
+          status: 'canceled',
+          limit: 100,
+        })
+      ).data
+        .filter((f) => f.metadata?.service === SUBSCRIPTION_SERVICE_TAG)
+        .map((f) => f.id);
+      if (!cancelled.length) {
+        return;
+      }
+
+      for (const status of ['open', 'uncollectible'] as const) {
+        const invoices = await stripe.invoices.list({
+          customer,
+          status,
+          limit: 100,
+        });
+        for (const invoice of invoices.data) {
+          const subscriptionId = this.subscriptionIdOfInvoice(invoice);
+          if (!subscriptionId || !cancelled.includes(subscriptionId)) {
+            continue;
+          }
+          try {
+            await stripe.invoices.voidInvoice(invoice.id!);
+          } catch (err) {
+            Logger.warn(
+              `[stripe] unpaid invoice ${invoice.id} of cancelled subscription ${subscriptionId} not voided: ${
+                (err as Error)?.message || err
+              }`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      Logger.warn(
+        `[stripe] unpaid invoices of customer ${customer} not voided: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
+  }
+
   // After a login swap, move each Stripe customer's email to the login that
   // now owns it. Owner-only so a member's switch can't rewrite a shared org's
   // billing email, deduped per customer, and skipping admin-granted
@@ -2029,6 +2090,9 @@ export class StripeService extends PaymentProviderAbstract {
     for (const s of failed) {
       await stripe.subscriptions.cancel(s.id);
     }
+    if (failed.length) {
+      await this.voidUnpaidInvoices(customer);
+    }
 
     if (!paid.length) {
       // Nothing paid is left — delete the subscription
@@ -2095,6 +2159,7 @@ export class StripeService extends PaymentProviderAbstract {
     for (const sub of list.data.filter((f) => f.status !== 'canceled')) {
       await stripe.subscriptions.cancel(sub.id);
     }
+    await this.voidUnpaidInvoices(customer);
   }
 
   async cancelAllSubscriptions(organizationId: string) {
@@ -2117,6 +2182,7 @@ export class StripeService extends PaymentProviderAbstract {
     )) {
       await stripe.subscriptions.cancel(subscription.id);
     }
+    await this.voidUnpaidInvoices(org.paymentId);
 
     await this._subscriptionService.deleteSubscription(
       org.paymentId,
@@ -3391,6 +3457,15 @@ export class StripeService extends PaymentProviderAbstract {
     // tracking never holds up or fails this webhook.
     this.trackConversion(event.data.object, subscription).catch(() => {});
 
+    // The first payment of a new subscription makes the unpaid invoices of
+    // the cancelled ones obsolete.
+    if (
+      event.data.object.billing_reason === 'subscription_create' &&
+      subscription.metadata?.service === SUBSCRIPTION_SERVICE_TAG
+    ) {
+      await this.voidUnpaidInvoices(customer);
+    }
+
     return { ok: true };
   }
 
@@ -4548,6 +4623,7 @@ export class StripeService extends PaymentProviderAbstract {
     for (const subscription of subscriptions) {
       await stripe.subscriptions.cancel(subscription.id);
     }
+    await this.voidUnpaidInvoices(customer);
     await this._subscriptionService.deleteSubscription(
       customer,
       STRIPE_PROVIDER
