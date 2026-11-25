@@ -14,6 +14,7 @@
  */
 export const isEmailEnabled = () =>
   (process.env.EMAIL_PROVIDER === 'resend' ||
+    process.env.EMAIL_PROVIDER === 'ses' ||
     process.env.EMAIL_PROVIDER === 'nodemailer') &&
   !!process.env.EMAIL_FROM_ADDRESS &&
   !!process.env.EMAIL_FROM_NAME;
