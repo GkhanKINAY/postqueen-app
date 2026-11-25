@@ -34,3 +34,42 @@ describe('continue picker multi-select', () => {
     );
   });
 });
+
+describe('continue picker options that cannot be picked', () => {
+  const instagramSource = readFileSync(
+    fileURLToPath(
+      new URL('./instagram/instagram.continue.tsx', import.meta.url)
+    ),
+    'utf8',
+  );
+
+  it('shows a page not granted in the Facebook dialog, but never as a checkbox', () => {
+    for (const source of [facebookSource, instagramSource]) {
+      assert.match(source, /item\.disabledReason === 'not_granted'/);
+      assert.match(source, /not_selectable_page_not_granted_to_postqueen/);
+      assert.doesNotMatch(source, /postiz/i);
+    }
+    assert.match(
+      pickerSource,
+      /if \(getDisabledMessage\?\.\(item\)\) \{\s*return \(\s*<div\s*key=\{getItemId\(item\)\}\s*role="checkbox"\s*aria-checked="false"\s*aria-disabled="true"/,
+    );
+    // Clicking one, Select all and the one-option Save leave it out.
+    assert.match(
+      pickerSource,
+      /if \(getDisabledMessage\?\.\(item\)\) \{\s*return;\s*\}\s*if \(multi\)/,
+    );
+    assert.match(
+      pickerSource,
+      /setSelection\(selectableData\.map\(\(item\) => getSelectionValue\(item\)\)\)/,
+    );
+    assert.match(
+      pickerSource,
+      /filteredData\.length === 1 && selectableData\.length === 1/,
+    );
+  });
+
+  it('offers a way back from the full-page landing', () => {
+    assert.match(pickerSource, /t\('back_to_postqueen', 'Back to PostQueen'\)/);
+    assert.match(pickerSource, /\{hasDisabled && backButton\}/);
+  });
+});

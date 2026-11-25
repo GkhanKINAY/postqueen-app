@@ -38,8 +38,13 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
-import { useModals } from '@gitroom/frontend/components/layout/new-modal';
+import {
+  ModalFormActions,
+  useModals,
+} from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import { sortBy } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
 import {
@@ -244,20 +249,52 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const hasChannels = selectedIntegrations.length > 0;
 
   // The channels the post already has, each its own post (upstream
-  // a194e3f4), and the one in view, or the one that was opened.
+  // a194e3f4), in the order of the channels at the top of the editor, and
+  // the one in view, or the one that was opened.
   // A sibling whose channel is gone is not in the editor, so it is left out
   // of what the editor saves, asks about and deletes.
-  const existingPosts = [
-    existingData,
-    ...(existingData.siblings || []).filter((sibling) =>
-      integrations.some((p) => p.id === sibling.integration)
-    ),
-  ];
+  const existingPosts = sortBy(
+    [
+      existingData,
+      ...(existingData.siblings || []).filter((sibling) =>
+        integrations.some((p) => p.id === sibling.integration)
+      ),
+    ],
+    (p) => integrations.findIndex((i) => i.id === p.integration)
+  );
   const hasSiblings = existingPosts.length > 1;
   const channel =
     existingPosts.find((p) => p.integration === current) || existingData;
   const channelName = (integrationId: string) =>
     integrations.find((p) => p.id === integrationId)?.name || '';
+  // The channel's date already passed.
+  const passed = (p: (typeof existingPosts)[number]) =>
+    dayjs().isAfter((channelDates[p.integration] || date).utc());
+  // The channel is scheduled and still waits for the date it was saved with.
+  const waiting = (p: (typeof existingPosts)[number]) =>
+    p.posts?.[0]?.state === 'QUEUE' &&
+    dayjs().isBefore(dayjs.utc(p.posts[0].publishDate));
+  // A channel of the post as the channel checklists list it.
+  const channelRow = (p: (typeof existingPosts)[number]) => {
+    const integration = integrations.find((i) => i.id === p.integration);
+    const state = p.posts?.[0]?.state;
+    return {
+      id: p.integration,
+      name: integration?.name,
+      picture: integration?.picture,
+      identifier: integration?.identifier,
+      status:
+        state === 'PUBLISHED'
+          ? t('post_state_published', 'Published')
+          : state === 'ERROR'
+          ? t('post_state_error', 'Failed')
+          : state === 'DRAFT'
+          ? t('post_state_draft', 'Draft')
+          : passed(p) && !waiting(p)
+          ? t('channel_posting_now', 'Posting now')
+          : t('post_state_scheduled', 'Scheduled'),
+    };
+  };
 
   // The other channels of a post being edited show and move only their own
   // time; the one that was opened, and every new post, use the post's.
@@ -371,10 +408,11 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
   const deletePost = useCallback(async () => {
     setLoading(true);
 
-    // Saved with other channels: from the one in view, or from all of them.
+    // Saved with other channels: from the channels ticked in the list. Only
+    // the one in view starts ticked, as the old "Only from" came first.
     if (hasSiblings) {
-      const cancelsScheduled = existingPosts.some(
-        (p) => p !== channel && p.posts?.[0]?.state === 'QUEUE'
+      const hasPublished = existingPosts.some(
+        (p) => p.posts?.[0]?.state === 'PUBLISHED'
       );
       const groups = await new Promise<string[]>((resolve) => {
         modal.openModal({
@@ -382,62 +420,56 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           title: publishedView
             ? t('delete_published_title', 'Delete from PostQueen?')
             : t('delete_post', 'Delete Post'),
+          compact: 460,
           onClose: () => resolve([]),
           children: (
-            <div className="flex flex-col">
-              <div className="text-[20px] mb-[20px]">
-                {t(
-                  'delete_post_from_all_channels_question',
-                  'This post was created for more than one channel. Do you want to delete it from all of them?'
-                )}
-                {cancelsScheduled && (
-                  <div className="mt-[10px] text-[14px] text-pqMuted">
-                    {t(
-                      'delete_all_channels_cancels_scheduled',
-                      'Deleting it from all channels also cancels the posts still scheduled on the other channels.'
-                    )}
-                  </div>
-                )}
-                {publishedView && (
-                  <div className="mt-[10px] text-[14px] text-pqMuted">
-                    {t(
-                      'delete_published_body',
-                      'It stays live on the network. PostQueen removes it from your calendar and stops any repeats.'
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex w-full gap-[10px]">
-                <div className="flex-1 flex">
-                  <Button
-                    type="button"
-                    className="flex-1"
-                    onClick={() => {
-                      modal.closeById('delete-post-channels');
-                      resolve([channel.group!]);
-                    }}
-                  >
-                    {t('delete_only_from_channel', 'Only from {{name}}', {
-                      name: channelName(channel.integration),
-                      interpolation: { escapeValue: false },
-                    })}
-                  </Button>
-                </div>
-                <div className="flex-1 flex">
-                  <Button
-                    type="button"
-                    secondary
-                    className="flex-1"
-                    onClick={() => {
-                      modal.closeById('delete-post-channels');
-                      resolve(existingPosts.map((p) => p.group!));
-                    }}
-                  >
-                    {t('delete_from_all_channels', 'Delete from all channels')}
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <ChannelsChecklist
+              description={
+                <>
+                  {t(
+                    'delete_post_choose_channels',
+                    'Choose the channels to delete it from.'
+                  )}
+                  {hasPublished && (
+                    <span className="mt-[8px] block">
+                      {t(
+                        'delete_published_post_note',
+                        'A published post is removed from PostQueen only and stays live where it was published.'
+                      )}
+                    </span>
+                  )}
+                </>
+              }
+              channels={existingPosts.map((p) => ({
+                ...channelRow(p),
+                checked: p === channel,
+              }))}
+              needsChannel={true}
+              danger={true}
+              confirmLabel={(ids) =>
+                !ids.length
+                  ? t('delete_post', 'Delete Post')
+                  : ids.length === 1
+                  ? t('delete_from_one_channel', 'Delete from 1 channel')
+                  : t(
+                      'delete_from_channels',
+                      'Delete from {{channels}} channels',
+                      { channels: ids.length }
+                    )
+              }
+              onConfirm={(ids) => {
+                modal.closeById('delete-post-channels');
+                resolve(
+                  existingPosts
+                    .filter((p) => ids.includes(p.integration))
+                    .map((p) => p.group!)
+                );
+              }}
+              onCancel={() => {
+                modal.closeById('delete-post-channels');
+                resolve([]);
+              }}
+            />
           ),
         });
       });
@@ -533,6 +565,8 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
     channel,
     integrations,
     fetch,
+    date,
+    channelDates,
   ]);
 
   // Once a repeating post has published, the view offers Duplicate only, so
@@ -661,52 +695,13 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
       const saveTypeOf = (id: string) => saveAs[id] || type;
       const dateOf = (integrationId: string) =>
         channelDates[integrationId] || date;
-      // The channels that already went out, or are going out right now.
+      // The channels that already went out, or are scheduled to a date that
+      // passed.
       const published = existingPosts.filter(
         (p) =>
           p.posts?.[0]?.state === 'PUBLISHED' ||
-          (p.posts?.[0]?.state === 'QUEUE' &&
-            dayjs().isAfter(dateOf(p.integration).utc()))
+          (p.posts?.[0]?.state === 'QUEUE' && passed(p))
       );
-      const others = existingPosts.filter((p) => p !== channel);
-      // "Only {name}": the other channels are not saved at all, so they keep
-      // their groups, workflows, settings and tags as they are.
-      let onlyChannel = false;
-
-      // Another channel whose time already passed would go out at once, so it
-      // only gets its details saved.
-      if (type === 'schedule') {
-        for (const p of others) {
-          if (
-            !published.includes(p) &&
-            dayjs().isAfter(dateOf(p.integration).utc())
-          ) {
-            saveAs[p.integration] = 'update';
-          }
-        }
-      }
-
-      // Another channel that already went out is never published again from
-      // here: it only gets its details saved, so retrying the channel in view
-      // cannot post a sibling twice. Only the channel in view is asked about
-      // republishing.
-      if (type === 'now' || type === 'schedule') {
-        for (const p of others) {
-          if (published.includes(p)) {
-            saveAs[p.integration] = 'update';
-          }
-        }
-      }
-
-      // A draft of a post with other channels leaves the published ones as
-      // they are.
-      if (type === 'draft' && hasSiblings) {
-        for (const p of published) {
-          if (p.posts[0].state === 'PUBLISHED') {
-            saveAs[p.integration] = 'update';
-          }
-        }
-      }
 
       // The save that leaves a channel in its state.
       const asItIs = (p: (typeof existingPosts)[number]) =>
@@ -716,101 +711,202 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           ? 'schedule'
           : 'update';
 
-      // Like the delete, a save that changes the state of the other channels
-      // (scheduling their drafts, moving them to drafts) asks whether it is
-      // for all of them or only the channel in view.
-      if (
-        type !== 'update' &&
-        others.some(
-          (p) =>
-            !saveAs[p.integration] &&
-            // the republish question covers the published ones
-            (type === 'draft' || !published.includes(p)) &&
-            asItIs(p) !== type
-        )
-      ) {
-        const question =
-          type === 'draft'
-            ? t(
-                'draft_post_in_all_channels_question',
-                'This post was created for more than one channel. Do you want to move all of them to drafts?'
-              )
-            : type === 'now'
-            ? t(
-                'post_now_in_all_channels_question',
-                'This post was created for more than one channel. Do you want to post all of them now?'
-              )
-            : t(
-                'schedule_post_in_all_channels_question',
-                'This post was created for more than one channel. Do you want to schedule all of them?'
-              );
+      const isRecurring =
+        !!repeater || !!existingData?.posts?.[0]?.intervalInDays;
 
-        const allChannels =
-          type === 'draft'
-            ? t('draft_all_channels', 'Move all channels to drafts')
-            : type === 'now'
-            ? t('post_now_all_channels', 'Post all channels now')
-            : t('schedule_all_channels', 'Schedule all channels');
-
-        const whichChannels = await new Promise((resolve) => {
-          modal.openModal({
-            id: 'change-post-channels',
-            title: t('what_do_you_want_to_do', 'What do you want to do?'),
-            onClose: () => resolve(undefined),
-            children: (
-              <div className="flex flex-col">
-                <div className="text-[20px] mb-[20px]">{question}</div>
-                <div className="flex w-full gap-[10px]">
-                  <div className="flex-1 flex">
-                    <Button
-                      type="button"
-                      className="flex-1"
-                      onClick={() => {
-                        modal.closeById('change-post-channels');
-                        resolve('all');
-                      }}
-                    >
-                      {allChannels}
-                    </Button>
-                  </div>
-                  {/* a published channel in view stays published on a draft */}
-                  {!saveAs[channel.integration] && (
-                    <div className="flex-1 flex">
-                      <Button
-                        type="button"
-                        secondary
-                        className="flex-1"
-                        onClick={() => {
-                          modal.closeById('change-post-channels');
-                          resolve('only');
-                        }}
-                      >
-                        {t('only_channel_name', 'Only {{name}}', {
-                          name: channelName(channel.integration),
-                          interpolation: { escapeValue: false },
-                        })}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ),
-          });
+      // A post with other channels asks which of them the save applies to.
+      // The unticked ones keep their state and still get the edits. A channel
+      // that already went out is posted again only when it is ticked, so
+      // retrying the channel in view cannot post a sibling twice.
+      if (hasSiblings && type !== 'update') {
+        // The opened channel is a draft, the save schedules it.
+        const scheduling = existingData?.posts?.[0]?.state === 'DRAFT';
+        const rows = existingPosts.map((p) => {
+          const state = p.posts?.[0]?.state;
+          // the save leaves the channel in its state
+          const same = asItIs(p) === type;
+          // the channel went out, or is going out right now
+          const out = published.includes(p) && !waiting(p);
+          // a channel that went out goes out again
+          const again = type !== 'draft' && out;
+          // a channel whose date already passed goes out right away
+          const late = type === 'schedule' && !out && passed(p);
+          // a published channel stays published on a draft
+          const locked = same || (type === 'draft' && state === 'PUBLISHED');
+          return {
+            ...channelRow(p),
+            // a channel with nothing to choose says what it stays
+            ...(locked
+              ? {
+                  status:
+                    state === 'PUBLISHED'
+                      ? t('channel_stays_published', 'Stays published')
+                      : state === 'DRAFT'
+                      ? t('channel_stays_draft', 'Stays a draft')
+                      : t('channel_stays_scheduled', 'Stays scheduled'),
+                }
+              : {}),
+            locked,
+            // a channel that would go out right away starts ticked only when
+            // it failed, or is the draft in view
+            checked:
+              same ||
+              (!out &&
+                (!late ||
+                  state === 'ERROR' ||
+                  (state === 'DRAFT' && p === channel))),
+            effect:
+              again && type === 'schedule' && state === 'PUBLISHED' && passed(p)
+                ? {
+                    ticked: t(
+                      'channel_will_post_again_now',
+                      'will be posted again now'
+                    ),
+                    unticked: t(
+                      'channel_tick_to_post_again_now',
+                      'tick to post it again now'
+                    ),
+                  }
+                : again
+                ? {
+                    ticked: t('channel_will_post_again', 'will be posted again'),
+                    unticked: t(
+                      'channel_tick_to_post_again',
+                      'tick to post it again'
+                    ),
+                  }
+                : late
+                ? {
+                    ticked: t('channel_will_post_now', 'will be posted now'),
+                    unticked: t('channel_tick_to_post_now', 'tick to post it now'),
+                  }
+                : undefined,
+          };
         });
 
-        if (!whichChannels) {
-          return;
+        // The channels saved as `type`, the others keep their state.
+        let ticked = rows.filter((p) => p.checked).map((p) => p.id);
+
+        // Nothing to ask when the save leaves no channel to choose.
+        if (rows.some((p) => !p.locked)) {
+          const answer = await new Promise<string[] | undefined>((resolve) => {
+            modal.openModal({
+              id: 'change-post-channels',
+              title:
+                type === 'draft'
+                  ? t('save_as_draft', 'Save as draft')
+                  : type === 'now'
+                  ? t('post_now', 'Post now')
+                  : scheduling
+                  ? t('schedule', 'Schedule')
+                  : t('update', 'Update'),
+              compact: 460,
+              onClose: () => resolve(undefined),
+              children: (
+                <ChannelsChecklist
+                  description={
+                    <>
+                      {type === 'draft'
+                        ? t(
+                            'draft_post_choose_channels',
+                            'Choose the channels to move to drafts.'
+                          )
+                        : type === 'now'
+                        ? t(
+                            'post_now_choose_channels',
+                            'Choose the channels to post now.'
+                          )
+                        : scheduling
+                        ? t(
+                            'schedule_post_choose_channels',
+                            'Choose the channels to schedule.'
+                          )
+                        : t(
+                            'update_post_choose_channels',
+                            'Choose the channels to post or reschedule.'
+                          )}
+                      <span className="mt-[8px] block">
+                        {t(
+                          'unticked_channels_saved_note',
+                          'Unticked channels keep their status, but your edits are still saved to them.'
+                        )}
+                      </span>
+                      {isRecurring &&
+                        type !== 'draft' &&
+                        !!published.length && (
+                          <span className="mt-[8px] block">
+                            {t(
+                              'republish_recurring_note',
+                              'This is a recurring post: your changes apply to all future recurrences starting now.'
+                            )}
+                          </span>
+                        )}
+                    </>
+                  }
+                  channels={rows}
+                  confirmLabel={(ids) => {
+                    // the ticked channels the save moves to another state
+                    const moving = existingPosts.filter(
+                      (p) => ids.includes(p.integration) && asItIs(p) !== type
+                    );
+                    if (!moving.length) {
+                      return t(
+                        'just_update_post_details',
+                        'Just update the post details'
+                      );
+                    }
+                    if (type === 'draft') {
+                      return t('save_as_draft', 'Save as draft');
+                    }
+                    // channels whose date already passed are posted now
+                    const now = type === 'now' || moving.every(passed);
+                    if (type === 'now' || scheduling) {
+                      return now
+                        ? t('post_now', 'Post now')
+                        : t('schedule', 'Schedule');
+                    }
+                    return now
+                      ? t('update_and_post_now', 'Update and post now')
+                      : t('update_and_reschedule', 'Update and reschedule');
+                  }}
+                  onConfirm={(ids) => {
+                    modal.closeById('change-post-channels');
+                    resolve(ids);
+                  }}
+                  onCancel={() => {
+                    modal.closeById('change-post-channels');
+                    resolve(undefined);
+                  }}
+                />
+              ),
+            });
+          });
+
+          if (!answer) {
+            return;
+          }
+
+          ticked = answer;
         }
 
-        if (whichChannels === 'only') {
-          onlyChannel = true;
+        for (const p of existingPosts) {
+          if (!ticked.includes(p.integration)) {
+            saveAs[p.integration] = asItIs(p);
+          }
         }
+
+        republish =
+          type !== 'draft' &&
+          published.some((p) => ticked.includes(p.integration));
       }
 
-      // The published channels that would go out again.
-      const republishing = published.filter((p) => !saveAs[p.integration]);
+      // The single channel that would go out again, or right away.
+      const republishing = hasSiblings ? [] : published;
 
       if ((type === 'now' || type === 'schedule') && republishing.length) {
+        // The post still waits for its saved date, only the editor's date
+        // passed.
+        const waits = republishing.every(waiting);
         const channels = republishing
           .map(
             (p) =>
@@ -819,8 +915,6 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
               ).format('DD/MM/YYYY HH:mm')}`
           )
           .join(', ');
-        const isRecurring =
-          !!repeater || !!existingData?.posts?.[0]?.intervalInDays;
 
         // It closes on a choice, so a save that then fails its checks shows
         // the channel to fix.
@@ -832,11 +926,20 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             children: (
               <div className="flex flex-col">
                 <div className="text-[20px] mb-[20px]">
-                  {t(
-                    'post_already_published_republish_warning',
-                    'This post was already published. Republishing will publish it again to'
-                  )}{' '}
-                  {channels}.
+                  {waits ? (
+                    t(
+                      'post_date_passed_post_now_warning',
+                      'The date of this post already passed, so it will be posted now.'
+                    )
+                  ) : (
+                    <>
+                      {t(
+                        'post_already_published_republish_warning',
+                        'This post was already published. Republishing will publish it again to'
+                      )}{' '}
+                      {channels}.
+                    </>
+                  )}
                   {isRecurring && (
                     <div className="mt-[10px]">
                       {t(
@@ -871,7 +974,9 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                         resolve('republish');
                       }}
                     >
-                      {t('republish_the_post', 'Republish the post')}
+                      {waits
+                        ? t('post_now', 'Post now')
+                        : t('republish_the_post', 'Republish the post')}
                     </Button>
                   </div>
                 </div>
@@ -918,9 +1023,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
         );
         return;
       }
-      const allValues = onlyChannel
-        ? editorValues.filter((post: any) => post.id === channel.integration)
-        : editorValues;
+      const allValues = editorValues;
 
       const integrationById = (id: string) =>
         selectedIntegrations.find((p) => p.integration.id === id);
@@ -2278,6 +2381,162 @@ const Scrollable: FC<{
   return (
     <div className={clsx(className, hasScroll && scrollClasses)} ref={ref}>
       {children}
+    </div>
+  );
+};
+
+// The channels of a post saved with other channels, one row each: its status,
+// what the save does to it, and a tick when the save can change it. A locked
+// row is one the save leaves as it is, so it has nothing to choose.
+const ChannelsChecklist: FC<{
+  description: ReactNode;
+  channels: {
+    id: string;
+    name?: string;
+    picture?: string;
+    identifier?: string;
+    status: string;
+    effect?: { ticked: string; unticked: string };
+    checked: boolean;
+    locked?: boolean;
+  }[];
+  needsChannel?: boolean;
+  danger?: boolean;
+  confirmLabel: (ids: string[]) => string;
+  onConfirm: (ids: string[]) => void;
+  onCancel: () => void;
+}> = ({
+  description,
+  channels,
+  needsChannel,
+  danger,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}) => {
+  const t = useT();
+  const [ids, setIds] = useState(() =>
+    channels.filter((p) => p.checked).map((p) => p.id)
+  );
+  const selectable = channels.filter((p) => !p.locked);
+  const allSelected = selectable.every((p) => ids.includes(p.id));
+  const toggle = (id: string) =>
+    setIds((ticked) =>
+      ticked.includes(id)
+        ? ticked.filter((one) => one !== id)
+        : [...ticked, id]
+    );
+
+  return (
+    <div className="flex flex-col gap-[16px]">
+      <p className="text-[14px] leading-[1.6] text-pqMuted">{description}</p>
+      <div
+        role="group"
+        aria-label={t('channels', 'Channels')}
+        className="flex max-h-[320px] flex-col gap-[6px] overflow-y-auto"
+      >
+        {channels.map((p) => {
+          const on = ids.includes(p.id);
+          const note = [p.status, p.effect?.[on ? 'ticked' : 'unticked']]
+            .filter(Boolean)
+            .join(' · ');
+          const face = (
+            <>
+              <ChannelAvatar
+                integration={{
+                  picture: p.picture,
+                  identifier: p.identifier || '',
+                  name: p.name,
+                }}
+                size={32}
+                rounded="full"
+              />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-[14px] font-[600] text-pqText">
+                  {p.name}
+                </span>
+                <span className="text-[12.5px] text-pqMuted">{note}</span>
+              </span>
+            </>
+          );
+
+          if (p.locked) {
+            return (
+              <div
+                key={p.id}
+                data-pq="channels-checklist-locked"
+                className="flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] opacity-60 shadow-[inset_0_0_0_1px_var(--border)]"
+              >
+                {face}
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={p.id}
+              type="button"
+              role="checkbox"
+              aria-checked={on}
+              onClick={() => toggle(p.id)}
+              className={clsx(
+                'flex w-full cursor-pointer items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] text-start transition-colors',
+                on
+                  ? 'bg-pqNavActive shadow-[inset_0_0_0_1.5px_var(--brand)]'
+                  : 'shadow-[inset_0_0_0_1px_var(--border)] hover:bg-pqHover'
+              )}
+            >
+              {face}
+              <span
+                aria-hidden="true"
+                className={clsx(
+                  'grid size-[20px] shrink-0 place-items-center rounded-full',
+                  on
+                    ? 'bg-pqBrand text-pqOnBrand'
+                    : 'shadow-[inset_0_0_0_1.5px_var(--border)]'
+                )}
+              >
+                {on && (
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
+                    <path
+                      d="M5 12.5l4.5 4.5L19 7.5"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {selectable.length > 5 && (
+        <button
+          type="button"
+          onClick={() =>
+            setIds((ticked) => [
+              ...ticked.filter((id) => !selectable.some((p) => p.id === id)),
+              ...(allSelected ? [] : selectable.map((p) => p.id)),
+            ])
+          }
+          className="self-start cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
+        >
+          {allSelected ? t('clear', 'Clear') : t('select_all', 'Select all')}
+        </button>
+      )}
+      <ModalFormActions onCancel={onCancel}>
+        <Button
+          type="button"
+          variant={danger ? 'danger' : 'primary'}
+          disabled={needsChannel && !ids.length}
+          onClick={() => onConfirm(ids)}
+          className="h-[40px] shrink-0 rounded-[10px] px-[18px] text-[13.5px] font-[600]"
+        >
+          {confirmLabel(ids)}
+        </Button>
+      </ModalFormActions>
     </div>
   );
 };

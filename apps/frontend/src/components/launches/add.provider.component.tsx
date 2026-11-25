@@ -293,7 +293,7 @@ const ExtensionNotFound: FC = () => {
       <p className="text-[14px] text-textColor/80">
         {t(
           'extension_not_available',
-          'The PostQueen browser extension is not installed. You need to install it before connecting this channel.'
+          'The PostQueen browser extension is not installed or disabled. You need to install and enable it before connecting this channel.'
         )}
       </p>
       <div className="flex gap-[10px]">
@@ -321,6 +321,126 @@ const ExtensionNotFound: FC = () => {
         </Button>
       </div>
     </div>
+  );
+};
+
+// The browser-extension connect steps (extension check, cookies, state,
+// callback), shared by Add Channel and by Reconnect. An extension provider's
+// connect "url" is a bare state id, so opening it as a url ends on a 404.
+export const useExtensionConnect = () => {
+  const { extensionId } = useVariables();
+  const modal = useModals();
+  const toaster = useToaster();
+  const fetch = useFetch();
+  const t = useT();
+  return useCallback(
+    async (
+      identifier: string,
+      params: { onboarding?: boolean; refresh?: string; redirectUrl?: string }
+    ) => {
+      if (
+        !extensionId ||
+        typeof chrome === 'undefined' ||
+        !chrome?.runtime?.sendMessage
+      ) {
+        modal.openModal({
+          title: t('extension_not_available_title', 'Extension Not Found'),
+          withCloseButton: true,
+          children: <ExtensionNotFound />,
+        });
+        return;
+      }
+      try {
+        await new Promise<void>((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            extensionId,
+            { type: 'PING' },
+            (response: any) => {
+              if (chrome.runtime.lastError || !response?.status) {
+                reject(new Error('Extension not reachable'));
+              } else {
+                resolve();
+              }
+            }
+          );
+        });
+      } catch {
+        toaster.show(
+          t(
+            'extension_not_installed',
+            'PostQueen browser extension is not installed or not reachable.'
+          ),
+          'warning'
+        );
+        return;
+      }
+      try {
+        const cookieResponse = await new Promise<any>((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            extensionId,
+            { type: 'GET_COOKIES', provider: identifier },
+            (response: any) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else {
+                resolve(response);
+              }
+            }
+          );
+        });
+        if (!cookieResponse.success) {
+          toaster.show(
+            cookieResponse.error ||
+              t(
+                'extension_cookies_missing',
+                'Could not get cookies. Please log in to the platform first.'
+              ),
+            'warning'
+          );
+          return;
+        }
+        const query = new URLSearchParams({
+          ...(params.refresh
+            ? { refresh: params.refresh }
+            : params.onboarding
+            ? { onboarding: 'true' }
+            : {}),
+          ...(params.redirectUrl ? { redirectUrl: params.redirectUrl } : {}),
+        }).toString();
+        const response = await fetch(
+          `/integrations/social/${identifier}${query ? `?${query}` : ''}`
+        );
+        // The payment dialog already answered: a 402 when dismissed, 499
+        // when it sent the person to Billing. Neither body is a state.
+        if (response.status === 402 || response.status === 499) {
+          return;
+        }
+        const { url } = await response.json();
+        if (!url) {
+          toaster.show(
+            t(
+              'could_not_connect_platform',
+              'Could not connect to the platform, please try again later'
+            ),
+            'warning'
+          );
+          return;
+        }
+        modal.closeAll();
+        window.location.href = `/integrations/social/${identifier}?state=${url}&code=${Buffer.from(
+          JSON.stringify(cookieResponse.cookies)
+        ).toString('base64')}${params.onboarding ? '&onboarding=true' : ''}`;
+      } catch {
+        toaster.show(
+          t(
+            'extension_communication_error',
+            'Failed to communicate with the browser extension.'
+          ),
+          'warning'
+        );
+      }
+    },
+    [extensionId, fetch, modal, t, toaster]
   );
 };
 
@@ -828,7 +948,7 @@ export const AddProviderComponent: FC<{
   }, [step, onStepChange]);
 
   const { guides, fallback } = useProviderGuides();
-  const { isGeneral, extensionId } = useVariables();
+  const extensionConnect = useExtensionConnect();
   const toaster = useToaster();
   const router = useRouter();
   const fetch = useFetch();
@@ -976,89 +1096,7 @@ export const AddProviderComponent: FC<{
           if (!confirmed) {
             return;
           }
-          if (
-            !extensionId ||
-            typeof chrome === 'undefined' ||
-            !chrome?.runtime?.sendMessage
-          ) {
-            modal.openModal({
-              title: t('extension_not_available_title', 'Extension Not Found'),
-              withCloseButton: true,
-              children: <ExtensionNotFound />,
-            });
-            return;
-          }
-          try {
-            await new Promise<void>((resolve, reject) => {
-              chrome.runtime.sendMessage(
-                extensionId,
-                { type: 'PING' },
-                (response: any) => {
-                  if (chrome.runtime.lastError || !response?.status) {
-                    reject(new Error('Extension not reachable'));
-                  } else {
-                    resolve();
-                  }
-                }
-              );
-            });
-          } catch {
-            toaster.show(
-              t(
-                'extension_not_installed',
-                'PostQueen browser extension is not installed or not reachable.'
-              ),
-              'warning'
-            );
-            return;
-          }
-          try {
-            const cookieResponse = await new Promise<any>((resolve, reject) => {
-              chrome.runtime.sendMessage(
-                extensionId,
-                { type: 'GET_COOKIES', provider: identifier },
-                (response: any) => {
-                  if (chrome.runtime.lastError) {
-                    reject(new Error(chrome.runtime.lastError.message));
-                  } else {
-                    resolve(response);
-                  }
-                }
-              );
-            });
-            if (!cookieResponse.success) {
-              toaster.show(
-                cookieResponse.error ||
-                  t(
-                    'extension_cookies_missing',
-                    'Could not get cookies. Please log in to the platform first.'
-                  ),
-                'warning'
-              );
-              return;
-            }
-            const response = await fetch(
-              `/integrations/social/${identifier}${
-                onboarding ? '?onboarding=true' : ''
-              }`
-            );
-            if (response.status === 402 || response.status === 499) {
-              return;
-            }
-            const { url } = await response.json();
-            modal.closeAll();
-            window.location.href = `/integrations/social/${identifier}?state=${url}&code=${Buffer.from(
-              JSON.stringify(cookieResponse.cookies)
-            ).toString('base64')}${onboarding ? '&onboarding=true' : ''}`;
-          } catch {
-            toaster.show(
-              t(
-                'extension_communication_error',
-                'Failed to communicate with the browser extension.'
-              ),
-              'warning'
-            );
-          }
+          await extensionConnect(identifier, { onboarding });
           return;
         }
         if (isExternal) {
@@ -1098,7 +1136,7 @@ export const AddProviderComponent: FC<{
         }
         await gotoIntegration();
       },
-    [onboarding, touch]
+    [onboarding, touch, extensionConnect]
   );
 
   const t = useT();

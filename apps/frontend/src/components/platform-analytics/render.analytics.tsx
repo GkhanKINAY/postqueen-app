@@ -4,7 +4,7 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social';
 import { AnalyticsCardsGhost } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useToaster } from '@gitroom/react/toaster/toaster';
+import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launches/use.open.reconnect';
 import clsx from 'clsx';
 import {
   analyticsHasActivity,
@@ -205,8 +205,8 @@ const RefreshChannelState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
     >
       <p className="mb-[12px] text-center text-[15px] text-pqText">
         {t(
-          'this_channel_needs_to_be_refreshed',
-          'This channel needs to be refreshed to display analytics.',
+          'channel_disconnected_click_to_reconnect',
+          'Channel disconnected, click to reconnect.',
         )}
       </p>
       <button
@@ -214,7 +214,7 @@ const RefreshChannelState: FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
         onClick={onRefresh}
         className="inline-flex items-center gap-[6px] rounded-[8px] bg-pqBrand px-[16px] py-[8px] text-[14px] font-medium text-pqOnBrand transition-colors hover:bg-pqBrandHover"
       >
-        {t('refresh_channel', 'Refresh Channel')}
+        {t('reconnect_channel', 'Reconnect channel')}
       </button>
     </AnalyticsPaneMessage>
   );
@@ -365,34 +365,8 @@ export const RenderAnalytics: FC<{
     },
   );
 
-  const toast = useToaster();
-
-  const refreshChannel = useCallback(
-    (integrationData: AnalyticsIntegration) => async () => {
-      const { url } = await (
-        await fetch(
-          `/integrations/social/${integrationData.identifier}?refresh=${integrationData.internalId}`,
-          {
-            method: 'GET',
-          },
-        )
-      ).json();
-
-      if (!url) {
-        toast.show(
-          t(
-            'could_not_connect_platform',
-            'Could not connect to the platform, please try again later',
-          ),
-          'warning',
-        );
-        return;
-      }
-
-      window.location.href = url;
-    },
-    [fetch, t, toast],
-  );
+  // A reconnect starts on Channels, as everywhere off that page.
+  const openReconnectInChannels = useOpenReconnectInChannels();
 
   // One narrowing for the whole component. `customFetch` resolves a 4xx too, so
   // `data` can be `{ message, statusCode }` — `.map` on that is a render crash,
@@ -443,7 +417,11 @@ export const RenderAnalytics: FC<{
   // Only the analytics endpoint saying the token is dead. Empty series is
   // "no activity", not a reconnect.
   if (needsRefresh) {
-    return <RefreshChannelState onRefresh={refreshChannel(integration)} />;
+    return (
+      <RefreshChannelState
+        onRefresh={() => openReconnectInChannels(integration.id)}
+      />
+    );
   }
 
   if (error) {

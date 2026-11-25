@@ -442,7 +442,59 @@ describe('Instagram account picker', () => {
         id: 'ig-1',
         name: 'Brand IG',
         picture: { data: { url: 'https://ig.test/p.png' } },
+        disabledReason: undefined,
       },
     ]);
+  });
+
+  it('marks an account whose page was not granted, without a token', async () => {
+    globalThis.fetch = (async (url: string) => {
+      const href = String(url);
+      return new Response(
+        JSON.stringify(
+          href.includes('/me/businesses')
+            ? { data: [{ id: 'biz' }] }
+            : href.includes('/owned_pages')
+            ? {
+                data: [
+                  {
+                    id: '2002',
+                    name: 'Shop',
+                    instagram_business_account: { id: 'ig-2' },
+                  },
+                ],
+              }
+            : href.includes('/ig-2?')
+            ? { name: 'Shop IG', profile_picture_url: 'https://ig.test/s.png' }
+            : { data: [] }
+        )
+      );
+    }) as typeof fetch;
+
+    const accounts = await new InstagramProvider().pages('user-token');
+
+    assert.deepEqual(
+      accounts.map((a: any) => [a.id, a.disabledReason]),
+      [['ig-2', 'not_granted']]
+    );
+  });
+
+  it('refuses to save an account whose page has no token', async () => {
+    globalThis.fetch = (async (url: string) =>
+      new Response(
+        JSON.stringify(
+          String(url).includes('/2002?')
+            ? { name: 'Shop' }
+            : { id: 'ig-2', name: 'Shop IG', username: 'shop' }
+        )
+      )) as typeof fetch;
+
+    await assert.rejects(
+      new InstagramProvider().fetchPageInformation('user-token', {
+        pageId: '2002',
+        id: 'ig-2',
+      }),
+      /no permission to manage this page/
+    );
   });
 });
