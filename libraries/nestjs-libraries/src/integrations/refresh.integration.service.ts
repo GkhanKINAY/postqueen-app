@@ -36,6 +36,20 @@ export class RefreshIntegrationService {
       return false as const;
     }
 
+    // The renewal is stored only under the root the channel was read with. A
+    // caller holding a partial row, without that key, gets the row read
+    // again: with no root the write would be a connect's, which checks none.
+    if (integration.rootInternalId === undefined) {
+      const row = await this._integrationService.getIntegrationById(
+        integration.organizationId,
+        integration.id
+      );
+      if (!row || row.deletedAt) {
+        return false as const;
+      }
+      integration = { ...integration, rootInternalId: row.rootInternalId };
+    }
+
     const socialProvider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );

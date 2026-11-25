@@ -882,12 +882,25 @@ export class IntegrationService implements OnModuleInit {
 
   async refreshTokens() {
     const integrations = await this._integrationRepository.needsToBeRefreshed();
-    for (const integration of integrations) {
+    for (let integration of integrations) {
       const provider = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier
       );
       if (provider?.tokenNeverExpires) {
         continue;
+      }
+
+      // Stored only under the root the channel was read with: a row without
+      // that key is read again, as in RefreshIntegrationService.refresh.
+      if (integration.rootInternalId === undefined) {
+        const row = await this._integrationRepository.getIntegrationById(
+          integration.organizationId,
+          integration.id
+        );
+        if (!row || row.deletedAt) {
+          continue;
+        }
+        integration = { ...integration, rootInternalId: row.rootInternalId };
       }
 
       const data = await this.refreshToken(provider, integration.refreshToken!);

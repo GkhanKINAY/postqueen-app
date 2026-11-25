@@ -632,7 +632,7 @@ describe('a page pick', { skip: !canLoad }, () => {
 });
 
 describe('the hourly token renewal', { skip: !canLoad }, () => {
-  const renewAll = async (channels: Row[]) => {
+  const renewAll = async (channels: Row[], stored: Row[] = []) => {
     const writes: any[][] = [];
     const { LinkedinPageProvider } = await import(
       '../../../integrations/social/linkedin.page.provider.ts'
@@ -640,6 +640,10 @@ describe('the hourly token renewal', { skip: !canLoad }, () => {
     const service = new IntegrationService(
       {
         needsToBeRefreshed: async () => channels,
+        getIntegrationById: async (org: string, id: string) =>
+          stored.find(
+            (row) => row.organizationId === org && row.id === id
+          ) || null,
         createOrUpdateIntegration: async (...args: any[]) => {
           writes.push(args);
         },
@@ -686,6 +690,26 @@ describe('the hourly token renewal', { skip: !canLoad }, () => {
         { oneTimeToken: true, expectedRoot: 'linkedin-page_m1' },
         { oneTimeToken: false, expectedRoot: '3002' },
       ]
+    );
+  });
+
+  it('reads the root again for a row without it, and skips one that is gone', async () => {
+    const page = {
+      organizationId: 'org-a',
+      providerIdentifier: 'linkedin-page',
+      name: 'Brand',
+      refreshToken: 'old',
+    };
+
+    assert.deepEqual(
+      await renewAll(
+        [
+          { ...page, id: 'kept', internalId: '3003' },
+          { ...page, id: 'gone', internalId: '3004' },
+        ],
+        [{ id: 'kept', organizationId: 'org-a', rootInternalId: '3003' }]
+      ),
+      [{ oneTimeToken: false, expectedRoot: '3003' }]
     );
   });
 });
