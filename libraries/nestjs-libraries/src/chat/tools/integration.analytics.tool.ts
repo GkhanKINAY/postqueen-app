@@ -16,8 +16,9 @@ export class IntegrationAnalyticsTool implements AgentToolInterface {
       mcp: {
         annotations: {
           title: 'Channel Analytics',
+          // It can refresh the channel's token, but changes no user data
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
           idempotentHint: true,
           openWorldHint: true,
         },
