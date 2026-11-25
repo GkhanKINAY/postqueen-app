@@ -5,7 +5,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
-import { Disconnect } from '../social.abstract.ts';
+import { Disconnect, NotEnoughScopes } from '../social.abstract.ts';
 import {
   getYoutubeTagsLength,
   YoutubeSettingsDto,
@@ -442,5 +442,54 @@ describe('YouTube channel profile read', () => {
     } finally {
       (google as any).youtube = real;
     }
+  });
+});
+
+describe('YouTube channel listing for the picker', () => {
+  const listing = async (list: () => Promise<unknown>) => {
+    const real = google.youtube;
+    (google as any).youtube = () => ({ channels: { list } });
+    try {
+      return await provider.pages('token');
+    } finally {
+      (google as any).youtube = real;
+    }
+  };
+
+  it('lists the channels of the account', async () => {
+    const channels = await listing(async () => ({
+      data: {
+        items: [
+          {
+            id: 'UC-1',
+            snippet: { title: 'PostQueen', customUrl: '@postqueen', thumbnails: {} },
+            statistics: { subscriberCount: '12' },
+          },
+        ],
+      },
+    }));
+
+    assert.equal(channels.length, 1);
+    assert.equal(channels[0].id, 'UC-1');
+    assert.equal(channels[0].name, 'PostQueen');
+    assert.equal(channels[0].username, '@postqueen');
+  });
+
+  it('says so when the Google account has no YouTube channel', async () => {
+    await assert.rejects(
+      listing(async () => ({ data: {} })),
+      (err: unknown) =>
+        err instanceof NotEnoughScopes &&
+        /has no YouTube channel/.test(err.message)
+    );
+  });
+
+  it('passes a failed read on instead of answering an empty list', async () => {
+    await assert.rejects(
+      listing(async () => {
+        throw Object.assign(new Error('quotaExceeded'), { status: 403 });
+      }),
+      /quotaExceeded/
+    );
   });
 });

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { LinkedinProvider } from './linkedin.provider.ts';
 import { LinkedinPageProvider } from './linkedin.page.provider.ts';
+import { BadBody } from '../social.abstract.ts';
 
 const images = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.jpg` }));
@@ -175,6 +176,29 @@ describe('LinkedIn Page ids', () => {
       }),
       /Invalid LinkedIn page/
     );
+    assert.deepEqual(asked, []);
+  });
+
+  it('stops a post to a channel that never picked its page, without asking LinkedIn', async () => {
+    const asked = answers();
+    const provider = new LinkedinPageProvider();
+    const post = [{ id: 'p1', message: 'hello', settings: {}, media: [] }];
+
+    for (const [id, inBetweenSteps] of [
+      ['linkedin-page_member-1', false],
+      ['108012345', true],
+    ] as const) {
+      for (const send of [provider.post, provider.postPending]) {
+        await assert.rejects(
+          send.call(provider, id, 'token', post as any, {
+            inBetweenSteps,
+          } as any),
+          (err: unknown) =>
+            err instanceof BadBody &&
+            /not linked to a LinkedIn page/.test(err.message)
+        );
+      }
+    }
     assert.deepEqual(asked, []);
   });
 
