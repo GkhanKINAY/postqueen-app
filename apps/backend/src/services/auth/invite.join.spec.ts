@@ -277,6 +277,48 @@ describe('joining an invite on sign-in', () => {
   }
 });
 
+// The invite cookie lives two days, so on a shared browser the next person
+// to sign in would carry someone else's invite.
+describe('an emailed invite on a shared browser', () => {
+  const sentTo = (email: string) => ({ ...invite, email });
+
+  it('joins the account the invite was sent to, whatever the case and spaces', async () => {
+    const joins: unknown[][] = [];
+    const service = makeAuthService(joined, joins);
+    const result = await login(service, sentTo(' Member@Example.com '));
+    assert.equal(result.addedOrg.organizationId, invite.orgId);
+    assert.deepEqual(joins.map(([id]) => id), [existingUser.id]);
+  });
+
+  it('does not join another account, and still signs it in', async () => {
+    const joins: unknown[][] = [];
+    const service = makeAuthService(joined, joins);
+    for (const result of [
+      await login(service, sentTo('someone.else@example.com')),
+      await oauth(service, 'existing', sentTo('someone.else@example.com')),
+      await oauth(service, 'new', sentTo('someone.else@example.com')),
+      await otpLogin(service, sentTo('someone.else@example.com')),
+      await register(service, sentTo('someone.else@example.com')),
+    ]) {
+      assert.ok(result.jwt);
+      assert.equal(result.addedOrg, false);
+    }
+    assert.deepEqual(joins, []);
+  });
+
+  it('joins whoever signs in with a copied link, which names no one', async () => {
+    const joins: unknown[][] = [];
+    const service = makeAuthService(joined, joins);
+    for (const link of [invite, sentTo(''), sentTo('  ')]) {
+      assert.equal(
+        (await login(service, link)).addedOrg.organizationId,
+        invite.orgId,
+      );
+    }
+    assert.equal(joins.length, 3);
+  });
+});
+
 describe('accepting an invite to a workspace one is already in', () => {
   it('is a no-op, not a unique-constraint error', async () => {
     const created: unknown[] = [];
@@ -447,6 +489,31 @@ describe('the invite cookies on an OAuth sign-in', () => {
 });
 
 describe('the invite cookies on a password login', () => {
+  it('signs in and drops an invite sent to another address', async () => {
+    const joins: unknown[][] = [];
+    const res = fakeResponse();
+    await makeController(makeAuthService(joined, joins)).login(
+      {
+        cookies: {
+          org: AuthChecker.signJWT({
+            ...invite,
+            email: 'someone.else@example.com',
+            timeLimit: new Date(Date.now() + 86_400_000).toISOString(),
+          }),
+        },
+      },
+      { email: existingUser.email, password: 'correct horse', provider: 'LOCAL' },
+      res,
+      '203.0.113.7',
+      'spec',
+    );
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(joins, []);
+    assert.equal(res.cookies.showorg, undefined);
+    assert.equal(res.cookies.org.value, '');
+  });
+
   it('signs in and drops the invite when the join is refused', async () => {
     const res = fakeResponse();
     await makeController(makeAuthService(alreadyInOrg, [])).login(

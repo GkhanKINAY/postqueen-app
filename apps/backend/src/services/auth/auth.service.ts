@@ -30,6 +30,7 @@ import {
   shouldCompleteOauthWithoutOrgForm,
 } from '@gitroom/backend/services/auth/oauth-local-link';
 import {
+  emailsMatch,
   hasPasswordHash,
   oauthLinkTicketMatchesState,
 } from '@gitroom/helpers/auth/account-security';
@@ -53,10 +54,11 @@ const passwordHashToCompare = (hash?: string | null) =>
   ));
 
 // A team invite opened while logged out, as `getOrgFromCookie` reads it from
-// the `org` cookie.
+// the `org` cookie. `email` is the address an emailed invite was sent to; a
+// copied invite link carries none.
 type InviteToOrg =
   | boolean
-  | { orgId: string; role: 'USER' | 'ADMIN'; id: string };
+  | { orgId: string; role: 'USER' | 'ADMIN'; id: string; email?: string };
 
 @Injectable()
 export class AuthService {
@@ -231,7 +233,7 @@ export class AuthService {
       }
     }
 
-    const addedOrg = await this.joinInvitedOrg(user.id, addToOrg);
+    const addedOrg = await this.joinInvitedOrg(user, addToOrg);
 
     return { addedOrg, jwt: await this.jwt(user), isNew };
   }
@@ -286,7 +288,7 @@ export class AuthService {
         );
 
         const addedOrg = await this.joinInvitedOrg(
-          create.users[0].user.id,
+          create.users[0].user,
           addToOrg,
         );
 
@@ -324,7 +326,7 @@ export class AuthService {
       // invite is a member while still unactivated, and an existing one is
       // the same. Activation is still needed to use it: the throw below and
       // the auth middleware keep an unactivated user out.
-      const addedOrg = await this.joinInvitedOrg(loginUser.id, addToOrg);
+      const addedOrg = await this.joinInvitedOrg(loginUser, addToOrg);
 
       if (!loginUser.activated) {
         throw new Error('User is not activated');
@@ -340,7 +342,7 @@ export class AuthService {
       userAgent,
     );
 
-    const addedOrg = await this.joinInvitedOrg(user.id, addToOrg);
+    const addedOrg = await this.joinInvitedOrg(user, addToOrg);
     return { addedOrg, jwt: await this.jwt(user) };
   }
 
@@ -350,15 +352,32 @@ export class AuthService {
    * it: an invite already used, a member already there (409), a plan without
    * team members or a database error signs the person in to their own
    * workspace as before.
+   *
+   * The invite rides in a cookie that lives two days, so on a shared browser
+   * the next person to sign in would take someone else's invite. An emailed
+   * invite therefore joins only the account with the address it was sent to;
+   * a copied link names no one and joins whoever signs in, as it always has.
+   * Sign-up follows the same rule.
    */
-  private async joinInvitedOrg(userId: string, addToOrg?: InviteToOrg) {
+  private async joinInvitedOrg(
+    user: { id: string; email: string },
+    addToOrg?: InviteToOrg,
+  ) {
     if (!addToOrg || typeof addToOrg === 'boolean') {
+      return false as const;
+    }
+
+    const invited = addToOrg.email?.trim();
+    if (invited && !emailsMatch(invited, user.email || '')) {
+      this._logger.warn(
+        `Invite to ${addToOrg.orgId} not joined: it was sent to another address`,
+      );
       return false as const;
     }
 
     try {
       return await this._organizationService.addUserToOrg(
-        userId,
+        user.id,
         addToOrg.id,
         addToOrg.orgId,
         addToOrg.role,
@@ -813,7 +832,7 @@ export class AuthService {
         identity.id,
       );
       // This path does not go through routeAuth, so the invite is joined here.
-      const addedOrg = await this.joinInvitedOrg(existing.id, addToOrg);
+      const addedOrg = await this.joinInvitedOrg(existing, addToOrg);
       return {
         jwt: await this.jwt(existing),
         isNew: false,
@@ -851,7 +870,7 @@ export class AuthService {
       await this.sendWelcome(identity.email);
 
       const addedOrg = await this.joinInvitedOrg(
-        create.users[0].user.id,
+        create.users[0].user,
         addToOrg,
       );
 
