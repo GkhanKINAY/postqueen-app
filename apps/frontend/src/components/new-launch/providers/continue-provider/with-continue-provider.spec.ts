@@ -35,6 +35,18 @@ describe('continue picker multi-select', () => {
   });
 });
 
+describe('continue picker load', () => {
+  // POST /integrations/function answers `false` when the provider call
+  // failed. Read as a list it crashed the picker on .filter, read as an empty
+  // one it said the account has no pages: it is a failed load.
+  it('fails the load on an answer that is not a list', () => {
+    assert.match(
+      pickerSource,
+      /if \(!Array\.isArray\(answer\)\) \{\s*throw new Error\(/,
+    );
+  });
+});
+
 describe('continue picker options that cannot be picked', () => {
   const instagramSource = readFileSync(
     fileURLToPath(

@@ -193,7 +193,8 @@ export class IntegrationRepository {
   async updateIntegration(
     id: string,
     params: Partial<Integration>,
-    read: Pick<Integration, 'providerIdentifier' | 'internalId'>
+    read: Pick<Integration, 'providerIdentifier' | 'internalId'> &
+      Partial<Pick<Integration, 'inBetweenSteps'>>
   ) {
     if (
       params.picture &&
@@ -212,11 +213,16 @@ export class IntegrationRepository {
 
     // Still waiting for its page and not removed meanwhile either: a channel
     // removed in another tab must not come back with the page's token.
+    // Waiting is the flag, as it was read; a channel read without it (a token
+    // renewal turned it off, IntegrationService.needsPageSelection let it
+    // through) must still hold its login's id in place of a page's.
     const stillPicked = {
       id,
       providerIdentifier: read.providerIdentifier,
       internalId: read.internalId,
-      inBetweenSteps: true,
+      ...(read.inBetweenSteps === false
+        ? { rootInternalId: read.internalId }
+        : { inBetweenSteps: true }),
       deletedAt: null,
     };
 

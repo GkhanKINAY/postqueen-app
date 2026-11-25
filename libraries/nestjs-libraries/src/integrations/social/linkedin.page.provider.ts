@@ -13,6 +13,7 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import {
+  BadBody,
   Disconnect,
   RefreshToken,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
@@ -34,6 +35,7 @@ export class LinkedinPageProvider
   category = 'social' as const;
   override name = 'LinkedIn Page';
   override isBetweenSteps = true;
+  pageRequiredToPost = true;
   override refreshWait = true;
   override maxConcurrentJob = 2; // LinkedIn Page has professional posting limits
   // LinkedIn's data storage requirements keep a connected Page's name and
@@ -303,12 +305,26 @@ export class LinkedinPageProvider
     return /^\d+$/.test(internalId);
   }
 
+  // A channel that never finished the page step still carries the member id
+  // (or its placeholder) from authenticate(), not an organization id.
+  private checkPageId(id: string, integration: Integration) {
+    if (integration?.inBetweenSteps || id.startsWith(`${this.identifier}_`)) {
+      throw new BadBody(
+        this.identifier,
+        '{}',
+        JSON.stringify({ id }),
+        'This channel is not linked to a LinkedIn page. Please finish connecting it and select a page.'
+      );
+    }
+  }
+
   override async post(
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]> {
+    this.checkPageId(id, integration);
     return super.post(id, accessToken, postDetails, integration, 'company');
   }
 
@@ -320,6 +336,7 @@ export class LinkedinPageProvider
     postDetails: PostDetails[],
     integration: Integration
   ): Promise<PostResponse[]> {
+    this.checkPageId(id, integration);
     return super.postPending(
       id,
       accessToken,

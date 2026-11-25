@@ -25,6 +25,7 @@ if (canLoad) {
 }
 
 let NoAuthIntegrationsController: any;
+let NotEnoughScopes: any;
 let ioRedis: any;
 let redisGet: any;
 let redisDel: any;
@@ -39,6 +40,9 @@ before(async () => {
   ({ ioRedis } = await import(
     '../../../../../libraries/nestjs-libraries/src/redis/redis.service.ts'
   ));
+  ({ NotEnoughScopes } = await import(
+    '../../../../../libraries/nestjs-libraries/src/integrations/social.abstract.ts'
+  ));
   redisGet = ioRedis.get;
   redisDel = ioRedis.del;
 });
@@ -52,7 +56,7 @@ after(() => {
 // The arguments of createOrUpdateIntegration after the connect: the person
 // (platformUserId, 17th) and the login the channel belongs to from now on
 // (rootInternalId, 18th).
-const connect = async (
+const attempt = async (
   provider: Record<string, unknown>,
   refresh: string | null
 ) => {
@@ -85,11 +89,22 @@ const connect = async (
     {}
   );
 
-  await controller.connectSocialMedia('network', {
-    state: 'state-1',
-    code: 'code',
-    timezone: '0',
-  });
+  const result = await controller
+    .connectSocialMedia('network', {
+      state: 'state-1',
+      code: 'code',
+      timezone: '0',
+    })
+    .catch((err: unknown) => ({ failed: err }));
+
+  return { writes, result };
+};
+
+const connect = async (
+  provider: Record<string, unknown>,
+  refresh: string | null
+) => {
+  const { writes } = await attempt(provider, refresh);
 
   assert.equal(writes.length, 1);
   return {
@@ -173,5 +188,70 @@ describe('the root a connect states', { skip: !canLoad }, () => {
         rootInternalId: undefined,
       }
     );
+  });
+});
+
+describe('a connect whose pages cannot be listed', { skip: !canLoad }, () => {
+  const twoStep = (pages: () => Promise<unknown[]>) => ({
+    isBetweenSteps: true,
+    authenticate: login('account-1'),
+    pages,
+  });
+
+  it('is refused before any channel is saved', async () => {
+    const { writes, result } = await attempt(
+      twoStep(async () => {
+        throw new Error('Request failed with status code 500');
+      }),
+      null
+    );
+
+    assert.equal(writes.length, 0);
+    assert.ok(result.failed instanceof NotEnoughScopes);
+    assert.match(
+      result.failed.message,
+      /could not load the pages or accounts of this channel/
+    );
+  });
+
+  it("keeps the provider's own reason, as for an account without a channel", async () => {
+    const { writes, result } = await attempt(
+      twoStep(async () => {
+        throw new NotEnoughScopes('This Google account has no YouTube channel');
+      }),
+      null
+    );
+
+    assert.equal(writes.length, 0);
+    assert.equal(
+      result.failed.message,
+      'This Google account has no YouTube channel'
+    );
+  });
+
+  it('saves the channel and hands the pages over when they can be listed, an empty list included', async () => {
+    for (const listed of [[{ id: 'page-1', name: 'Brand' }], []]) {
+      const { writes, result } = await attempt(
+        twoStep(async () => listed),
+        null
+      );
+
+      assert.equal(writes.length, 1);
+      assert.deepEqual(result.pages, listed);
+    }
+  });
+
+  it('lists nothing on a reconnect', async () => {
+    let asked = 0;
+    const { writes } = await attempt(
+      twoStep(async () => {
+        asked++;
+        throw new Error('not asked on a reconnect');
+      }),
+      'account-1'
+    );
+
+    assert.equal(asked, 0);
+    assert.equal(writes.length, 1);
   });
 });

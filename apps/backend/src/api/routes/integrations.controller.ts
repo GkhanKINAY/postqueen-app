@@ -143,7 +143,10 @@ export class IntegrationsController {
             canComment: !!findIntegration?.comment,
             picture: p.picture || '/no-picture.jpg',
             identifier: p.providerIdentifier,
-            inBetweenSteps: p.inBetweenSteps,
+            inBetweenSteps: this._integrationService.needsPageSelection(
+              p,
+              findIntegration
+            ),
             refreshNeeded: p.refreshNeeded,
             isCustomFields: !!findIntegration.customFields,
             isChromeExtension: !!findIntegration.isChromeExtension,
@@ -416,6 +419,39 @@ export class IntegrationsController {
       )
     ) {
       throw new BadRequestException('This function cannot be called');
+    }
+
+    // As checkAnalytics does: a token past its stored expiry is refreshed
+    // first, or the page listing fails on it and the picker shows nothing.
+    // Only for a channel that still has to select its page: other channels
+    // post fine past the stored expiration, a failed refresh would flag them.
+    // And only when it still has to once the renewal has written
+    // inBetweenSteps: false (the login's id in place of a page's): a channel
+    // that has only the flag would come out of it looking finished, its
+    // page never picked. Not for a provider that cannot renew a token: its
+    // refresh only fails, flags the channel and emails a reconnect request.
+    if (
+      !integrationProvider.cannotRefreshToken &&
+      this._integrationService.needsPageSelection(
+        { ...getIntegration, inBetweenSteps: false },
+        integrationProvider
+      ) &&
+      this._refreshIntegrationService.isExpired(getIntegration)
+    ) {
+      const data = await this._refreshIntegrationService.refresh(
+        getIntegration
+      );
+
+      if (!data) {
+        return false;
+      }
+
+      getIntegration.token = data.accessToken;
+      getIntegration.refreshToken = data.refreshToken;
+
+      if (integrationProvider.refreshWait) {
+        await timer(10000);
+      }
     }
 
     // @ts-ignore

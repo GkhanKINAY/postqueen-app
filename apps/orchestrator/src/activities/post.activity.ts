@@ -600,6 +600,26 @@ export class PostActivity {
       integration.providerIdentifier
     );
 
+    // The channel still holds the account id of the login step: no page was
+    // selected, so the platform would reject the post. Thrown as BadBody so
+    // every workflow version - frozen once on main - fails the post with this
+    // message without needing a new workflow. A finished channel can hold the
+    // page id in both fields, so a provider that knows its page ids is asked.
+    // Checked before payForPublish, so such a post is never charged.
+    if (
+      getIntegration?.pageRequiredToPost &&
+      !!integration.rootInternalId &&
+      integration.internalId === integration.rootInternalId &&
+      !getIntegration.isPageId?.(integration.internalId)
+    ) {
+      throw new BadBody(
+        integration.providerIdentifier,
+        JSON.stringify({}),
+        Buffer.from('{}'),
+        'The connection of this channel was not finished. Please finish connecting it and select the page or account to post to, then try again.'
+      );
+    }
+
     await this.payForPublish(integration, posts);
 
     setHeartbeatDetails('update tags');

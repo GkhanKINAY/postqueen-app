@@ -47,6 +47,7 @@ export class GmbProvider extends SocialAbstract implements SocialProvider {
   category = 'business' as const;
   name = 'Google Business Profile';
   isBetweenSteps = true;
+  pageRequiredToPost = true;
   // Without its own client it signs people in through YouTube's, so a
   // YouTube revoke would end its access too.
   oauthClientId = () =>

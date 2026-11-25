@@ -135,7 +135,14 @@ export function withContinueProvider<TItem, TSelection>(
       // with no options to offer, and `isLoading` went false either way. Letting
       // it throw is what gives SWR an `error` to distinguish the two, the same
       // rule CLAUDE.md sets out under "Loading and empty states".
-      return await call.get(endpoint);
+      const answer = await call.get(endpoint);
+      // The function endpoint answers `false` when the provider call failed
+      // (a listing that rethrows its error, a token that could not be
+      // refreshed): that is a failed load too, not a list.
+      if (!Array.isArray(answer)) {
+        throw new Error('The options could not be loaded');
+      }
+      return answer;
     }, [initialData]);
 
     const { data, isLoading, error, mutate } = useSWR(

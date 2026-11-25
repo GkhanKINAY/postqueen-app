@@ -498,3 +498,20 @@ describe('Instagram account picker', () => {
     );
   });
 });
+
+describe('Instagram (Facebook login) token renewal', () => {
+  // The flag skips the refreshes the code starts on its own; it must stay
+  // true only while there is really nothing to renew with.
+  it('says it cannot renew a token, as its refreshToken answers none', async () => {
+    const provider = new InstagramProvider();
+
+    assert.equal(provider.cannotRefreshToken, true);
+    assert.equal((await provider.refreshToken('refresh')).accessToken, '');
+    // The standalone tile renews its token with Instagram's own endpoint.
+    assert.equal(
+      (new InstagramStandaloneProvider() as { cannotRefreshToken?: boolean })
+        .cannotRefreshToken,
+      undefined
+    );
+  });
+});

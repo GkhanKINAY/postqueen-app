@@ -14,7 +14,15 @@ let short: boolean;
 let stored: { err?: unknown; reason?: string };
 let notified: number;
 
-const activity = () =>
+const commentingProvider = {
+  editor: 'html',
+  comment: async () => {
+    calls.push(['comment']);
+    return [];
+  },
+};
+
+const activity = (provider: Record<string, unknown> = commentingProvider) =>
   new (PostActivity as any)(
     {
       getPostsRecursively: async () => [
@@ -51,19 +59,17 @@ const activity = () =>
       },
     },
     {
-      getSocialIntegration: () => ({
-        editor: 'html',
-        comment: async () => {
-          calls.push(['comment']);
-          return [];
-        },
-      }),
+      getSocialIntegration: () => provider,
       getSocialIntegrationName: () => 'X',
     },
     {},
     {},
     {},
-    {},
+    {
+      client: {
+        getRawClient: () => ({ workflow: { start: async () => undefined } }),
+      },
+    },
     { getSubscription: async () => ({}) }
   );
 
@@ -230,5 +236,94 @@ describe('Publish credits in the post activities', () => {
       }
     );
     assert.deepEqual(calls, [['pay', 'x', 'p2']]);
+  });
+});
+
+describe('A post to a channel that never picked its page', () => {
+  // A provider that cannot post without a page, and answers when asked.
+  const pageProvider = (fields: Record<string, unknown> = {}) => ({
+    editor: 'normal',
+    pageRequiredToPost: true,
+    post: async () => {
+      calls.push(['post']);
+      return [{ id: 'p1', postId: 'page-post-1', releaseURL: '', status: 'posted' }];
+    },
+    ...fields,
+  });
+  const post = [{ id: 'p1', content: '<p>hello</p>', settings: '{}', image: '[]' }];
+  const channel = (fields: Record<string, unknown>) => ({
+    organizationId: 'org-1',
+    providerIdentifier: 'facebook',
+    token: 't',
+    inBetweenSteps: false,
+    ...fields,
+  });
+
+  it('fails before anything is charged when the channel still holds the login id', async () => {
+    await assert.rejects(
+      activity(pageProvider()).postSocial(
+        channel({ internalId: 'user-1', rootInternalId: 'user-1' }),
+        post
+      ),
+      (err) => {
+        assert.ok(err instanceof BadBody);
+        assert.match(
+          (err as BadBody).message,
+          /The connection of this channel was not finished/
+        );
+        return true;
+      }
+    );
+    assert.deepEqual(calls, []);
+
+    await assert.rejects(
+      activity(pageProvider()).postSocialPending(
+        channel({ internalId: 'user-1', rootInternalId: 'user-1' }),
+        post
+      ),
+      BadBody
+    );
+    assert.deepEqual(calls, []);
+  });
+
+  it('pays and publishes once a page was picked', async () => {
+    await activity(pageProvider()).postSocial(
+      channel({ internalId: 'page-1', rootInternalId: 'user-1' }),
+      post
+    );
+    assert.deepEqual(calls, [['pay', 'facebook', 'p1'], ['post']]);
+  });
+
+  it('lets a finished channel whose root is its page id through, when the provider knows its page ids', async () => {
+    await activity(
+      pageProvider({ isPageId: (id: string) => /^\d+$/.test(id) })
+    ).postSocial(
+      channel({
+        providerIdentifier: 'linkedin-page',
+        internalId: '108012345',
+        rootInternalId: '108012345',
+      }),
+      post
+    );
+    assert.deepEqual(calls, [['pay', 'linkedin-page', 'p1'], ['post']]);
+  });
+
+  it('leaves alone a provider that posts with the login itself, and a channel without a root', async () => {
+    await activity(pageProvider({ pageRequiredToPost: undefined })).postSocial(
+      channel({
+        providerIdentifier: 'youtube',
+        internalId: 'UC-1',
+        rootInternalId: 'UC-1',
+      }),
+      post
+    );
+    assert.deepEqual(calls, [['pay', 'youtube', 'p1'], ['post']]);
+
+    calls = [];
+    await activity(pageProvider()).postSocial(
+      channel({ internalId: 'page-1', rootInternalId: null }),
+      post
+    );
+    assert.deepEqual(calls, [['pay', 'facebook', 'p1'], ['post']]);
   });
 });
