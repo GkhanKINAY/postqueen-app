@@ -124,11 +124,10 @@ export class IntegrationTriggerTool implements AgentToolInterface {
                 getIntegration
               );
 
+              // A failed refresh has already flagged the channel and told
+              // its person, once (refreshProcess); disconnectChannel here
+              // sent the notice again on every later trigger.
               if (!data) {
-                await this._integrationService.disconnectChannel(
-                  organizationId,
-                  getIntegration
-                );
                 throw new Error(
                   'The channel was disconnected because its token expired, the user needs to reconnect it in PostQueen'
                 );

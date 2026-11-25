@@ -733,6 +733,22 @@ describe('TikTok error mapping', () => {
     }
   });
 
+  it('reads the TikTok Business publish wording of a bad token under code 40000', () => {
+    assert.equal(
+      new TiktokBusinessProvider().handleErrors(
+        business(40000, 'The access token is invalid.')
+      )?.type,
+      'refresh-token'
+    );
+  });
+
+  it('stops a TikTok Business connect that came back without an auth_code', async () => {
+    await assert.rejects(
+      new TiktokBusinessProvider().authenticate({ code: '', codeVerifier: '' }),
+      (err: any) => err instanceof BadBody && /authorization code/.test(err.message)
+    );
+  });
+
   it('reads the TikTok Business rate limit codes', () => {
     for (const code of [40016, 40100, 40133]) {
       const answer = new TiktokBusinessProvider().handleErrors(
@@ -850,5 +866,66 @@ describe('TikTok video size, on both tiles', () => {
       await new MeasuredTiktokBusinessProvider(undefined, 0).checkValidity(video),
       true
     );
+  });
+});
+
+// TikTok asks for a chunk to be sent again after a 5xx; the source read for
+// a failed attempt is dropped rather than left holding its connection.
+describe('TikTok video chunk upload', () => {
+  let reads: AbortSignal[];
+  let puts: number[];
+
+  const run = async (answers: number[]) => {
+    const realFetch = globalThis.fetch;
+    const realSetTimeout = globalThis.setTimeout;
+    reads = [];
+    puts = [];
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0;
+    }) as any;
+    globalThis.fetch = (async (url: string, init: any) => {
+      if (init?.method === 'PUT') {
+        const status = answers[puts.length] ?? 201;
+        puts.push(status);
+        return new Response(status >= 400 ? '{"error":{}}' : null, { status });
+      }
+      reads.push(init.signal);
+      return new Response('chunk', { status: 206 });
+    }) as typeof fetch;
+    try {
+      await (new TiktokProvider() as any).uploadTikTokChunk(
+        'https://open-upload.tiktokapis.test/upload',
+        'https://cdn.test/a.mp4',
+        0,
+        4,
+        5,
+        'video/mp4'
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+      globalThis.setTimeout = realSetTimeout;
+    }
+  };
+
+  it('sends a chunk again after a 5xx or 429, reading it again each time', async () => {
+    await run([503, 429, 201]);
+    assert.deepEqual(puts, [503, 429, 201]);
+    assert.deepEqual(
+      reads.map((signal) => signal.aborted),
+      [true, true, false]
+    );
+  });
+
+  it('gives up after three more tries', async () => {
+    await assert.rejects(run([502, 502, 502, 502, 201]), BadBody);
+    assert.equal(puts.length, 4);
+    assert.ok(reads.every((signal) => signal.aborted));
+  });
+
+  it('does not resend a chunk TikTok refused', async () => {
+    await assert.rejects(run([400]), BadBody);
+    assert.deepEqual(puts, [400]);
+    assert.equal(reads[0].aborted, true);
   });
 });

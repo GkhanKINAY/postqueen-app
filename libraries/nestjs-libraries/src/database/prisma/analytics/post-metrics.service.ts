@@ -571,11 +571,22 @@ export class PostMetricsService {
         if (!refreshed || !refreshed.accessToken) {
           return { synced: 0, read: 0 };
         }
-        rows = await provider.postsAnalytics(
-          integration.internalId,
-          refreshed.accessToken,
-          [...byReleaseId.keys()],
-        );
+        // Refused again with the new token: give up on this read rather than
+        // fail the activity, whose retries would hold the hourly loop.
+        try {
+          rows = await provider.postsAnalytics(
+            integration.internalId,
+            refreshed.accessToken,
+            [...byReleaseId.keys()],
+          );
+        } catch (retryErr) {
+          this.logger.warn(
+            `postsAnalytics failed again after a refresh for ${integration.providerIdentifier} ${integrationId}: ${
+              retryErr instanceof Error ? retryErr.message : String(retryErr)
+            }`,
+          );
+          return { synced: 0, read: 0 };
+        }
       } else {
         this.logger.warn(
           `postsAnalytics failed for ${integration.providerIdentifier} ${integrationId}`,

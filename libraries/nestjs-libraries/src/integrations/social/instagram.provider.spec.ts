@@ -6,7 +6,7 @@ import { validate } from 'class-validator';
 import { InstagramProvider } from './instagram.provider.ts';
 import { InstagramStandaloneProvider } from './instagram.standalone.provider.ts';
 import { InstagramDto } from '../../dtos/posts/providers-settings/instagram.dto.ts';
-import { RefreshToken } from '../social.abstract.ts';
+import { BadBody, RefreshToken } from '../social.abstract.ts';
 
 const images = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
@@ -96,6 +96,18 @@ describe('Instagram limits, on both tiles', () => {
       assert.equal(
         await provider.checkValidity([images(1)], { post_type: 'post' }, [], [caption]),
         true
+      );
+    });
+
+    it(`${name}: takes alt text up to 1000 characters`, async () => {
+      const withAlt = (alt: string) => [{ ...images(1)[0], alt }];
+      assert.equal(
+        await provider.checkValidity([withAlt('a'.repeat(1000))], { post_type: 'post' }, []),
+        true
+      );
+      assert.equal(
+        await provider.checkValidity([withAlt('a'.repeat(1001))], { post_type: 'post' }, []),
+        'Instagram alt text can be up to 1000 characters'
       );
     });
 
@@ -326,6 +338,70 @@ describe('InstagramDto collaborators', () => {
     assert.deepEqual(Object.values(error.constraints || {}), [
       'Instagram allows up to 3 collaborators',
     ]);
+  });
+});
+
+// Instagram sometimes refuses media_publish as "blocked" (2207051) and
+// publishes the container all the same.
+describe('Instagram media_publish refused as blocked', () => {
+  let feedReads: number;
+  const publish = async (containerStatus: string, pending: any) => {
+    const provider = new InstagramProvider();
+    feedReads = 0;
+    (provider as any).fetch = async (url: string) => {
+      if (url.includes('/media_publish')) {
+        // What fetch throws for Instagram's answer, through the real mapping,
+        // so rewording it cannot quietly switch the recovery off.
+        const body = JSON.stringify({
+          error: { code: 4, error_subcode: 2207051, message: 'Action is blocked' },
+        });
+        throw new BadBody('instagram', body, '{}', provider.handleErrors(body)!.value);
+      }
+      if (url.includes('/media?fields=id')) {
+        feedReads++;
+      }
+      const body = url.includes('fields=status_code')
+        ? { status_code: containerStatus }
+        : url.includes('/media?fields=id')
+          ? { data: [{ id: 'media-1' }] }
+          : { permalink: 'https://www.instagram.com/p/abc/' };
+      return new Response(JSON.stringify(body));
+    };
+    return provider.finalizePost(
+      'token',
+      { type: 'graph.facebook.com', containers: ['container-1'], ...pending },
+      { internalId: 'ig-1', profile: 'creator' } as any
+    );
+  };
+  const feedPost = { postType: 'single', story: false };
+
+  it('reports the post Instagram published anyway', async () => {
+    for (const pending of [feedPost, { postType: 'carousel', carouselId: 'c-1' }]) {
+      assert.deepEqual(await publish('PUBLISHED', pending), {
+        status: 'completed',
+        postId: 'media-1',
+        releaseURL: 'https://www.instagram.com/p/abc/',
+      });
+    }
+  });
+
+  it('fails as before when the container was not published', async () => {
+    await assert.rejects(publish('FINISHED', feedPost), {
+      message: 'Instagram blocked your request',
+    });
+  });
+
+  // The feed does not list stories: its newest item would be another post.
+  it('does not look in the feed for a story, or a post with no story flag', async () => {
+    for (const pending of [
+      { postType: 'single', story: true },
+      { postType: 'single' },
+    ]) {
+      await assert.rejects(publish('PUBLISHED', pending), {
+        message: 'Instagram blocked your request',
+      });
+      assert.equal(feedReads, 0);
+    }
   });
 });
 

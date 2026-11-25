@@ -138,3 +138,18 @@ describe('Bluesky mentions', () => {
     );
   });
 });
+
+describe('Bluesky login identifier', () => {
+  it('drops a leading @ and spaces, which Bluesky reads as a bad email', () => {
+    const provider = new BlueskyProvider() as any;
+    assert.equal(
+      provider.loginIdentifier({ identifier: ' @someone.bsky.social ' }),
+      'someone.bsky.social'
+    );
+    assert.equal(
+      provider.loginIdentifier({ identifier: 'me@example.com' }),
+      'me@example.com'
+    );
+    assert.equal(provider.loginIdentifier({}), '');
+  });
+});

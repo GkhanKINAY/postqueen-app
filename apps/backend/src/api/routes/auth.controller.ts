@@ -106,6 +106,7 @@ export class AuthController {
         this._emailService.hasProvider();
 
       if (activationRequired) {
+        this.setInvitedOrg(req, response, addedOrg);
         response.header('activate', 'true');
         response.status(200).json({ activate: true });
         return;
@@ -127,23 +128,7 @@ export class AuthController {
         response.header('auth', jwt);
       }
 
-      if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
-        response.cookie('showorg', addedOrg.organizationId, {
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-          ...(areCookiesSecured()
-            ? {
-                secure: true,
-                httpOnly: true,
-                sameSite: 'none',
-              }
-            : {}),
-          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-        });
-
-        if (!areCookiesSecured()) {
-          response.header('showorg', addedOrg.organizationId);
-        }
-      }
+      this.setInvitedOrg(req, response, addedOrg);
 
       Sentry.metrics.count('new_user', 1);
       response.header('onboarding', 'true');
@@ -197,23 +182,7 @@ export class AuthController {
         response.header('auth', jwt);
       }
 
-      if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
-        response.cookie('showorg', addedOrg.organizationId, {
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-          ...(areCookiesSecured()
-            ? {
-                secure: true,
-                httpOnly: true,
-                sameSite: 'none',
-              }
-            : {}),
-          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
-        });
-
-        if (!areCookiesSecured()) {
-          response.header('showorg', addedOrg.organizationId);
-        }
-      }
+      this.setInvitedOrg(req, response, addedOrg);
 
       response.header('reload', 'true');
       response.status(200).json({
@@ -404,7 +373,7 @@ export class AuthController {
     }
 
     try {
-      const { jwt, token, isNew, linked, stepUp } =
+      const { jwt, token, isNew, linked, stepUp, addedOrg } =
         await this._authService.checkExists(
           provider,
           code,
@@ -414,6 +383,9 @@ export class AuthController {
           ip,
           userAgent,
           req?.cookies?.oauth_link_user,
+          // A sign-in here does not run routeAuth, so the invite of a
+          // logged-out invite link is read here too.
+          this._authService.getOrgFromCookie(req?.cookies?.org),
         );
 
       if (token) {
@@ -447,6 +419,8 @@ export class AuthController {
           linked: true,
         });
       }
+
+      this.setInvitedOrg(req, response, addedOrg);
 
       if (isNew) {
         Sentry.metrics.count('new_user', 1);
@@ -500,6 +474,51 @@ export class AuthController {
     }
   }
 
+  /**
+   * After a sign-in that read a logged-out invite (the `org` cookie): open the
+   * workspace it joined, and drop the cookie, which would otherwise ride along
+   * on every sign-in in this browser for the two days the proxy gives it.
+   */
+  private setInvitedOrg(
+    req: Request,
+    response: Response,
+    addedOrg?: boolean | { organizationId?: string },
+  ) {
+    if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
+      response.cookie('showorg', addedOrg.organizationId, {
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+        ...(areCookiesSecured()
+          ? {
+              secure: true,
+              httpOnly: true,
+              sameSite: 'none',
+            }
+          : {}),
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      });
+
+      if (!areCookiesSecured()) {
+        response.header('showorg', addedOrg.organizationId);
+      }
+    }
+
+    if (req?.cookies?.org) {
+      // The proxy sets it with the domain only when cookies are secured.
+      response.cookie('org', '', {
+        ...(areCookiesSecured()
+          ? {
+              domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+              secure: true,
+              httpOnly: true,
+              sameSite: 'none',
+            }
+          : {}),
+        path: '/',
+        expires: new Date(0),
+      });
+    }
+  }
+
   @Post('/otp/request')
   async otpRequest(
     @Body() body: OtpRequestDto,
@@ -520,6 +539,7 @@ export class AuthController {
 
   @Post('/otp/verify')
   async otpVerify(
+    @Req() req: Request,
     @Body() body: OtpVerifyDto,
     @ClientIp() ip: string,
     @UserAgent() userAgent: string,
@@ -530,14 +550,16 @@ export class AuthController {
     }
 
     try {
-      const { jwt, isNew } = await this._authService.verifyOtp(
+      const { jwt, isNew, addedOrg } = await this._authService.verifyOtp(
         body.email,
         body.code,
         ip,
         userAgent,
+        this._authService.getOrgFromCookie(req?.cookies?.org),
       );
 
       this.setAuthCookie(response, jwt);
+      this.setInvitedOrg(req, response, addedOrg);
 
       if (isNew) {
         response.header('onboarding', 'true');
