@@ -470,6 +470,35 @@ describe("stripHtmlValidation 'none' preview text", () => {
     });
   });
 
+  it('is fitted by each caller to how it shows the text', () => {
+    const read = (path: string) =>
+      readFileSync(
+        fileURLToPath(new URL(`../../../../${path}`, import.meta.url)),
+        'utf8'
+      );
+    // The delete dialog keeps line breaks, so the name inside its sentence
+    // is put on one line.
+    assert.match(
+      read('apps/frontend/src/components/settings/signatures.component.tsx'),
+      /name: stripHtmlValidation\([^)]*\)\s*\.replace\(\/\\s\+\/g, ' '\)\s*\.trim\(\)\s*\.slice\(0, 30\)/
+    );
+    // The agent's draft card shows two lines, so a blank one (an empty
+    // paragraph, a picture between two) does not take one of them.
+    const card = read('apps/frontend/src/components/agents/agent.draft.card.tsx');
+    assert.match(
+      card,
+      /stripHtmlValidation\('none', html \|\| '', false, true, false\)\s*\.replace\(\/\\n\\s\*\\n\/g, '\\n'\)\s*\.trim\(\)/
+    );
+    assert.match(card, /line-clamp-2 whitespace-pre-wrap/);
+    assert.equal(
+      preview('<p>a</p><p></p><p>b</p><img src="x"><p>c</p>').replace(
+        /\n\s*\n/g,
+        '\n'
+      ),
+      'a\nb\nc'
+    );
+  });
+
   it('stays fast on many paragraphs and items', () => {
     for (const input of [
       '<p>a</p>'.repeat(50_000),
