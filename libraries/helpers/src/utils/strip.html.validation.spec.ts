@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { parseFragment } from 'parse5';
 import { hasHtmlTag, stripHtmlValidation } from './strip.html.validation.ts';
 import { countLength } from './count.length.ts';
@@ -363,6 +366,123 @@ describe('stripHtmlValidation soft line breaks', () => {
           `${type} took ${Date.now() - started} ms`
         );
       }
+    }
+  });
+});
+
+// The 'none' type with `none` set is the plain text a preview shows: the
+// calendar cards, an agent's draft card, the signatures list and the public
+// page's title. Its paragraphs used to run together.
+describe("stripHtmlValidation 'none' preview text", () => {
+  const preview = (html: string) =>
+    stripHtmlValidation('none', html, false, true, false);
+
+  it('puts each paragraph on a line of its own', () => {
+    assert.equal(preview('<p>a</p><p>b</p>'), 'a\nb');
+    assert.equal(
+      preview('<p dir="auto">one<br>two</p><p dir="auto">three</p>'),
+      'one\ntwo\nthree'
+    );
+    // an empty paragraph is the blank line it was in the editor
+    assert.equal(preview('<p>a</p><p></p><p>b</p>'), 'a\n\nb');
+  });
+
+  it('does the same for headings and list items', () => {
+    assert.equal(preview('<h1>Title</h1><p>body</p>'), 'Title\nbody');
+    assert.equal(
+      preview('<p>Menu:</p><ul><li><p>one</p></li><li><p>two</p></li></ul>'),
+      'Menu:\none\ntwo'
+    );
+    // a soft break inside an item still keeps the item on one line
+    assert.equal(
+      preview('<ul><li><p>a<br>b</p></li><li><p>c</p></li></ul>'),
+      'a b\nc'
+    );
+  });
+
+  it('adds nothing where the markup already has a break or none is needed', () => {
+    assert.equal(preview('<p>a</p>\n<p>b</p>'), 'a\nb');
+    assert.equal(preview('<p>only</p>'), 'only');
+    assert.equal(preview('plain text'), 'plain text');
+    assert.equal(preview('<p><strong>bold</strong> and <u>under</u></p>'), 'bold and under');
+    assert.equal(preview(''), '');
+    // nothing at either end, so an empty post still trims to nothing
+    assert.equal(preview('<p></p><p></p>').trim(), '');
+  });
+
+  it('decodes the text once, as before', () => {
+    assert.equal(
+      preview('<p>a &amp;lt; b &lt;c&gt; &amp; d</p><p>e</p>'),
+      'a &lt; b <c> & d\ne'
+    );
+  });
+
+  it('leaves the joined text of a caller that does not ask for it alone', () => {
+    // An X article's fallback block and an email's excerpt read 'none'
+    // without the flag; what they get is unchanged.
+    assert.equal(stripHtmlValidation('none', '<p>a</p><p>b</p>'), 'ab');
+    assert.equal(stripHtmlValidation('none', '<p></p><p></p>'), '');
+    assert.equal(stripHtmlValidation('none', '<p>one<br>two</p>'), 'one\ntwo');
+  });
+
+  it('is asked for by every caller that shows the text, and by no other', () => {
+    const root = fileURLToPath(new URL('../../../../', import.meta.url));
+    const files = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        return statSync(path).isDirectory() ? files(path) : [path];
+      });
+    const callers: Record<string, { all: number; preview: number }> = {};
+    for (const base of ['apps', 'libraries']) {
+      for (const pkg of readdirSync(join(root, base))) {
+        const src = join(root, base, pkg, 'src');
+        if (!statSync(join(root, base, pkg)).isDirectory()) continue;
+        let paths: string[] = [];
+        try {
+          paths = files(src);
+        } catch {
+          continue;
+        }
+        for (const path of paths) {
+          if (!/\.tsx?$/.test(path) || path.endsWith('.spec.ts')) continue;
+          const source = readFileSync(path, 'utf8');
+          const all = source.match(/stripHtmlValidation\(\s*'none',/g);
+          if (!all) continue;
+          const asking = source.match(
+            /stripHtmlValidation\(\s*'none',\s*[^,]+,\s*false,\s*true,\s*false\s*\)/g
+          );
+          callers[relative(root, path)] = {
+            all: all.length,
+            preview: asking?.length || 0,
+          };
+        }
+      }
+    }
+    assert.deepEqual(callers, {
+      // what people read: a paragraph per line
+      'apps/frontend/src/components/launches/calendar.tsx': { all: 2, preview: 2 },
+      'apps/frontend/src/components/agents/agent.draft.card.tsx': { all: 1, preview: 1 },
+      'apps/frontend/src/app/(app)/(preview)/p/[id]/page.tsx': { all: 1, preview: 1 },
+      'apps/frontend/src/components/settings/signatures.component.tsx': { all: 2, preview: 2 },
+      // what is sent or mailed: unchanged
+      'libraries/nestjs-libraries/src/integrations/social/x.provider.ts': { all: 1, preview: 0 },
+      'apps/orchestrator/src/activities/post.activity.ts': { all: 1, preview: 0 },
+    });
+  });
+
+  it('stays fast on many paragraphs and items', () => {
+    for (const input of [
+      '<p>a</p>'.repeat(50_000),
+      '<ul>' + '<li><p>a<br>b</p></li>'.repeat(20_000) + '</ul>',
+      '<p class="<p>">x</p>'.repeat(20_000),
+    ]) {
+      const stored = sanitizePostContent(input);
+      const started = Date.now();
+      preview(stored);
+      assert.ok(
+        Date.now() - started < 1_500,
+        `took ${Date.now() - started} ms`
+      );
     }
   });
 });
