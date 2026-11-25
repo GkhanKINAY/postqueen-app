@@ -152,7 +152,13 @@ export const stripHtmlValidation = (
   const fragment = parseFragment(val);
   // An html channel keeps a soft line break as its <br>; every other type
   // gets the text it stands for.
-  const breaks = type === 'html' ? 0 : breaksToText(fragment);
+  const breaks =
+    type === 'html'
+      ? 0
+      : breaksToText(
+          fragment,
+          type === 'markdown' ? MARKDOWN_ONE_LINE_TAGS : ONE_LINE_TAGS
+        );
   const value = serialize(fragment);
 
   if (type === 'none') {
@@ -289,29 +295,39 @@ export const stripHtmlValidation = (
     .replace(/&lt;/gi, '<');
 };
 
+// The elements the plain text and markdown below put on one line: a list
+// item everywhere, and in markdown a heading too, whose "# " covers one line.
+const ONE_LINE_TAGS = ['li'];
+const MARKDOWN_ONE_LINE_TAGS = ['li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
 // A soft line break (Shift+Enter in the editor, or a pasted <br>) as the
-// text it stands for: a newline, or a space inside a list item, which the
-// plain text and markdown below flatten to one line. It is done on the parsed
-// tree rather than with a pattern over the markup, so it stays linear on any
-// input and leaves a "<br>" inside an attribute value alone. Returns how many
-// it replaced.
-const breaksToText = (fragment: DefaultTreeAdapterTypes.ParentNode) => {
+// text it stands for: a newline, or a space inside an element that is put on
+// one line. It is done on the parsed tree rather than with a pattern over the
+// markup, so it stays linear on any input and leaves a "<br>" inside an
+// attribute value alone. Returns how many it replaced.
+const breaksToText = (
+  fragment: DefaultTreeAdapterTypes.ParentNode,
+  oneLineTags: string[]
+) => {
   let replaced = 0;
-  const stack = [{ node: fragment, inItem: false }];
+  const stack = [{ node: fragment, oneLine: false }];
   while (stack.length) {
-    const { node, inItem } = stack.pop()!;
+    const { node, oneLine } = stack.pop()!;
     const children = node.childNodes;
     for (let index = 0; index < children.length; index++) {
       const child = children[index];
       if (child.nodeName === 'br') {
         children[index] = {
           nodeName: '#text',
-          value: inItem ? ' ' : '\n',
+          value: oneLine ? ' ' : '\n',
           parentNode: node,
         };
         replaced++;
       } else if ('childNodes' in child) {
-        stack.push({ node: child, inItem: inItem || child.nodeName === 'li' });
+        stack.push({
+          node: child,
+          oneLine: oneLine || oneLineTags.includes(child.nodeName),
+        });
       }
     }
   }
@@ -429,7 +445,7 @@ export const dropEmptyFollowUps = <
 
 export const convertToAscii = (value: string): string => {
   return value
-    .replace(/<strong>([\s\S]+?)<\/strong>/gi, (match, p1) => {
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return bold?.[char] || char;
@@ -437,7 +453,7 @@ export const convertToAscii = (value: string): string => {
 
       return match.replace(p1, replacer.join(''));
     })
-    .replace(/<u>([\s\S]+?)<\/u>/gi, (match, p1) => {
+    .replace(/<u>([\s\S]*?)<\/u>/gi, (match, p1) => {
       const replacer = p1.split('').map((char: string) => {
         // @ts-ignore
         return underlineMap?.[char] || char;

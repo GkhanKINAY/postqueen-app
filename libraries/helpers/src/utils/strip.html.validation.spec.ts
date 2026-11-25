@@ -289,6 +289,33 @@ describe('stripHtmlValidation soft line breaks', () => {
     );
   });
 
+  it('does not carry bold or underline from an empty tag into later text', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'normal',
+        '<p><strong></strong>x</p><p>y <strong>z</strong></p>',
+        true
+      ),
+      'x\ny 𝘇'
+    );
+    assert.equal(
+      stripHtmlValidation('normal', '<p><u></u>x</p><p>y <u>z</u></p>', true),
+      'x\ny z̲'
+    );
+  });
+
+  it('is a space inside a markdown heading, which covers one line', () => {
+    assert.equal(
+      stripHtmlValidation(
+        'markdown',
+        '<h1 dir="auto">a<br>b</h1><h2>c<br>d</h2><h3>e<br>f</h3><p>g<br>h</p>'
+      ),
+      '# a b\n## c d\n### e f\ng\nh\n'
+    );
+    // plain text has no heading syntax to keep on one line
+    assert.equal(stripHtmlValidation('normal', '<h2>a<br>b</h2>', true), 'a\nb');
+  });
+
   it('leaves a "<br>" inside an attribute value alone', () => {
     assert.equal(
       stripHtmlValidation(
