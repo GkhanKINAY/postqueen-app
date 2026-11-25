@@ -51,6 +51,9 @@
 # overrides closed undici (7.30.1), fast-uri (3.1.9) and body-parser (1.20.9,
 # 2.4.0); the two below need a major the holder has not taken, or have no fix
 # for the copies the holders pin.
+# 2026-11-25 (upstream sync): next 16.4.6 closed its seven November
+# advisories. http-cache-semantics GHSA-ch52-4w7c-c8xp stopped appearing (the
+# advisory was withdrawn on 2026-10-28) and is gone.
 # @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
 # 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
@@ -78,9 +81,6 @@ file-type GHSA-5v7r-6r5c-r473
 @graphql-tools/utils GHSA-7mx3-vvmw-hjmv
 # The same holder; GHSA-c4qx (2026-10-22, mergeIncrementalResult) is also fixed only in 12.
 @graphql-tools/utils GHSA-c4qx-w738-7hr3
-# @swc/cli's binary downloader (got -> cacheable-request), dev only; no released
-# fix, and it is a shared-cache issue in a single-user build step.
-http-cache-semantics GHSA-ch52-4w7c-c8xp
 # @mastra/memory 1.26 pins image-size 1.2.1 and no release fixes it; only
 # observational memory and thread summaries call it, and neither is enabled.
 image-size GHSA-5p2g-fcmc-qvqq
