@@ -1236,6 +1236,25 @@ export class IntegrationService implements OnModuleInit {
       pages.push(getIntegrationInformation);
     }
 
+    // A page that is already another provider's channel here is left alone
+    // (only a channel of the same provider is taken over), so it is refused
+    // before anything is written rather than failing half way.
+    for (const page of pages) {
+      const other = await this._integrationRepository.getIntegrationByInternalId(
+        org,
+        String(page.id)
+      );
+      if (
+        other &&
+        other.providerIdentifier !== getIntegration.providerIdentifier
+      ) {
+        throw new HttpException(
+          'This account is already connected as another channel, please delete one of them first',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+    }
+
     const ids: string[] = [];
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];

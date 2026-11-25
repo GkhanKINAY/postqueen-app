@@ -210,10 +210,14 @@ export class IntegrationRepository {
       }
     }
 
+    // Still waiting for its page and not removed meanwhile either: a channel
+    // removed in another tab must not come back with the page's token.
     const stillPicked = {
       id,
       providerIdentifier: read.providerIdentifier,
       internalId: read.internalId,
+      inBetweenSteps: true,
+      deletedAt: null,
     };
 
     const picked = await this._integration.model.integration.findFirst({
@@ -231,6 +235,9 @@ export class IntegrationRepository {
     // alone, and the update below then fails on the unique id instead.
     const existing = await this._integration.model.integration.findFirst({
       where: {
+        // The channel itself, put back between steps, picking its own page
+        // again is not an earlier channel to take over.
+        NOT: { id },
         organizationId: params.organizationId!,
         internalId: params.internalId,
         providerIdentifier: picked.providerIdentifier,

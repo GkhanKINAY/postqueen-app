@@ -66,7 +66,8 @@ const freshLogin = (overrides: Record<string, unknown> = {}) => ({
 
 const serviceSaving = (
   row: Record<string, unknown>,
-  answer: { id: string } | null = { id: 'kept' }
+  answer: { id: string } | null = { id: 'kept' },
+  connected: Record<string, unknown> | null = null
 ) => {
   const saved: Array<{
     id: string;
@@ -76,6 +77,7 @@ const serviceSaving = (
   const service = new IntegrationService(
     {
       getIntegrationByIdNotDeleted: async () => row,
+      getIntegrationByInternalId: async () => connected,
       checkForDeletedOnceAndUpdate: async () => undefined,
       updateIntegration: async (
         id: string,
@@ -150,6 +152,32 @@ describe('IntegrationService.saveProviderPage', { skip: !canLoadService }, () =>
 
     assert.equal(saved[0].read.providerIdentifier, 'youtube');
     assert.equal(saved[0].read.internalId, 'login-b');
+  });
+
+  it("refuses a page that is already another provider's channel, before writing anything", async () => {
+    const { service, saved } = serviceSaving(freshLogin(), { id: 'kept' }, {
+      id: 'standalone',
+      providerIdentifier: 'instagram-standalone',
+    });
+
+    await assert.rejects(
+      service.saveProviderPage('org', 'fresh', { page: 'page-1' }),
+      (err: any) =>
+        err?.getStatus?.() === 400 &&
+        /already connected as another channel/.test(err.message)
+    );
+    assert.equal(saved.length, 0);
+  });
+
+  it('saves a page this provider already has here, as before', async () => {
+    const { service, saved } = serviceSaving(freshLogin(), { id: 'kept' }, {
+      id: 'earlier',
+      providerIdentifier: 'youtube',
+    });
+
+    await service.saveProviderPage('org', 'fresh', { page: 'page-1' });
+
+    assert.equal(saved.length, 1);
   });
 
   it('refuses the save when the channel became another one meanwhile', async () => {

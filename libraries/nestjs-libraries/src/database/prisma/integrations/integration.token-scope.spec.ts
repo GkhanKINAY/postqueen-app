@@ -54,6 +54,8 @@ after(() => {
 type Row = Record<string, any>;
 let rows: Row[];
 let ids: number;
+// The integrations whose posts were soft-deleted.
+let postsRemoved: string[];
 
 const matches = (row: Row, where: Row = {}): boolean =>
   Object.entries(where).every(([field, rule]) => {
@@ -155,7 +157,16 @@ const integration = {
 const repository = () =>
   new IntegrationRepository(
     { model: { integration } },
-    { model: { post: { updateMany: async () => ({ count: 0 }) } } },
+    {
+      model: {
+        post: {
+          updateMany: async ({ where }: Row) => {
+            postsRemoved.push(where.integrationId);
+            return { count: 0 };
+          },
+        },
+      },
+    },
     {},
     {},
     {},
@@ -244,6 +255,7 @@ const connect = (
 beforeEach(() => {
   rows = [];
   ids = 0;
+  postsRemoved = [];
 });
 
 describe('the token copy of a oneTimeToken login', { skip: !canLoad }, () => {
@@ -516,6 +528,51 @@ describe('a page pick', { skip: !canLoad }, () => {
     assert.deepEqual(result, { id: earlier.id });
     assert.equal(byId(earlier.id).token, 'page-token');
     assert.ok(byId(picked.id).deletedAt);
+    assert.deepEqual(postsRemoved, [picked.id]);
+  });
+
+  it('writes nothing to a channel removed while its page was looked up', async () => {
+    const picked = channel({
+      organizationId: 'org-a',
+      providerIdentifier: 'facebook',
+      internalId: 'user-1',
+      rootInternalId: 'user-1',
+      inBetweenSteps: true,
+      token: 'user-token',
+      deletedAt: new Date('2026-11-25T00:00:00Z'),
+    });
+
+    const result = await repository().updateIntegration(
+      picked.id,
+      { ...params },
+      { providerIdentifier: 'facebook', internalId: 'user-1' }
+    );
+
+    assert.equal(result, null);
+    assert.ok(byId(picked.id).deletedAt);
+    assert.equal(byId(picked.id).token, 'user-token');
+  });
+
+  it('keeps the posts of a channel put back between steps that picks its own page again', async () => {
+    const picked = channel({
+      organizationId: 'org-a',
+      providerIdentifier: 'facebook',
+      internalId: 'page-1',
+      rootInternalId: 'user-1',
+      inBetweenSteps: true,
+      token: 'old-page-token',
+    });
+
+    const result = await repository().updateIntegration(
+      picked.id,
+      { ...params },
+      { providerIdentifier: 'facebook', internalId: 'page-1' }
+    );
+
+    assert.deepEqual(result, { id: picked.id });
+    assert.equal(byId(picked.id).token, 'page-token');
+    assert.equal(byId(picked.id).deletedAt, null);
+    assert.deepEqual(postsRemoved, []);
   });
 
   it('writes nothing when the channel became another one while its page was looked up', async () => {
@@ -628,6 +685,105 @@ describe('the hourly token renewal', { skip: !canLoad }, () => {
       [
         { oneTimeToken: true, expectedRoot: 'linkedin-page_m1' },
         { oneTimeToken: false, expectedRoot: '3002' },
+      ]
+    );
+  });
+});
+
+describe('a LinkedIn Page, end to end', { skip: !canLoad }, () => {
+  // Two organizations connect the same Page, each through its own admin:
+  // connect (placeholder row), pick the Page, then the hourly renewal. Two
+  // older rows of that Page, in two more organizations, hold its id as root.
+  it('shares no token between the logins of the same Page', async () => {
+    const { LinkedinPageProvider } = await import(
+      '../../../integrations/social/linkedin.page.provider.ts'
+    );
+    const repo = repository();
+    const service = new IntegrationService(
+      repo,
+      {},
+      {
+        getSocialIntegration: () => ({
+          oneTimeToken: true,
+          isPageId: LinkedinPageProvider.prototype.isPageId,
+          fetchPageInformation: async (token: string, { page }: Row) => ({
+            id: page,
+            name: 'Brand',
+            access_token: token,
+            username: 'brand',
+          }),
+          refreshToken: async (refresh: string) => ({
+            accessToken: `${refresh}-renewed`,
+            refreshToken: `${refresh}-next`,
+            expiresIn: 3600,
+          }),
+        }),
+      },
+      {},
+      {},
+      {},
+      {}
+    );
+
+    for (const [org, member] of [
+      ['org-a', 'member-a'],
+      ['org-b', 'member-b'],
+    ]) {
+      const placeholder = `linkedin-page_${member}`;
+      const row = await service.createOrUpdateIntegration(
+        undefined,
+        true,
+        org,
+        'Admin',
+        undefined,
+        'social',
+        placeholder,
+        'linkedin-page',
+        `${member}-token`,
+        `${member}-refresh`,
+        3600,
+        'admin',
+        true,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        placeholder
+      );
+      await service.saveProviderPage(org, row.id, { page: '5001' });
+    }
+
+    const pages = () =>
+      rows.filter((row) => row.internalId === '5001' && !row.deletedAt);
+    assert.deepEqual(
+      pages().map((row) => [row.organizationId, row.rootInternalId, row.token]),
+      [
+        ['org-a', 'linkedin-page_member-a', 'member-a-token'],
+        ['org-b', 'linkedin-page_member-b', 'member-b-token'],
+      ]
+    );
+    for (const member of ['c', 'd']) {
+      channel({
+        organizationId: `org-${member}`,
+        providerIdentifier: 'linkedin-page',
+        internalId: '5001',
+        rootInternalId: '5001',
+        token: `member-${member}-token`,
+        refreshToken: `member-${member}-refresh`,
+      });
+    }
+
+    // The hourly renewal reads every channel due and renews it.
+    repo.needsToBeRefreshed = async () => pages().map((row) => ({ ...row }));
+    await service.refreshTokens();
+
+    assert.deepEqual(
+      pages().map((row) => [row.organizationId, row.token]),
+      [
+        ['org-a', 'member-a-refresh-renewed'],
+        ['org-b', 'member-b-refresh-renewed'],
+        ['org-c', 'member-c-refresh-renewed'],
+        ['org-d', 'member-d-refresh-renewed'],
       ]
     );
   });
