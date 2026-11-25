@@ -16,11 +16,22 @@ export class SubscriptionExceptionFilter implements ExceptionFilter {
       exception.getResponse() as any;
 
     const message = getErrorMessage(error);
+    // A web session's own role. API keys and OAuth apps act as the whole
+    // organization and get no new field.
+    const request = ctx.getRequest();
+    const role = request?.user ? request?.org?.users?.[0]?.role : undefined;
+    const canManageBillingUi = role === 'SUPERADMIN' || role === 'ADMIN';
 
     response.status(status).json({
       statusCode: status,
-      message,
+      // Billing is for admins: a plain member is told who can act instead.
+      // The admin policy's own message already says so.
+      message:
+        role && !canManageBillingUi && error.section !== Sections.ADMIN
+          ? `${message} Please ask an admin of this workspace.`
+          : message,
       url: process.env.FRONTEND_URL + '/billing',
+      ...(role ? { canManageBillingUi } : {}),
     });
   }
 }
