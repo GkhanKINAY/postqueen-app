@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsDefined,
   IsIn,
   IsNumber,
@@ -11,6 +12,7 @@ import {
   ValidateNested,
   IsOptional,
 } from 'class-validator';
+import { JSONSchema } from 'class-validator-jsonschema';
 
 export class Collaborators {
   @IsDefined()
@@ -74,4 +76,12 @@ export class InstagramDto {
   @ValidateNested()
   @IsOptional()
   audio?: InstagramAudio;
+
+  @IsOptional()
+  @IsBoolean()
+  @JSONSchema({
+    description:
+      'Labels the post as AI generated (Instagram shows the "AI info" label). Works for posts, reels and carousels; ignored for stories, which Instagram documents no AI label for.',
+  })
+  made_with_ai?: boolean;
 }

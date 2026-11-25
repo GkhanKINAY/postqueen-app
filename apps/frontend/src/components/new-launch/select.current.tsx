@@ -120,6 +120,8 @@ export const SelectCurrent: FC = () => {
               data-tooltip-content={channelNameWithHandle(integration)}
               className={tabClass(isActive)}
             >
+              {/* A brand mark is bigger than this avatar: ChannelAvatar sets
+                  it beside, not on it (see channelBrandMark). */}
               <ChannelAvatar
                 integration={integration}
                 size={22}

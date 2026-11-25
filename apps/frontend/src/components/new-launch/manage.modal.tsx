@@ -43,7 +43,10 @@ import {
   useModals,
 } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
-import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { sortBy } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
@@ -2454,6 +2457,9 @@ const ChannelsChecklist: FC<{
           const note = [p.status, p.effect?.[on ? 'ticked' : 'unticked']]
             .filter(Boolean)
             .join(' · ');
+          // A locked row is faded as a whole. A brand mark can't be: only
+          // its avatar, text and border are (see channelBrandMark).
+          const brand = isBrandMark(p.identifier);
           const face = (
             <>
               <ChannelAvatar
@@ -2464,8 +2470,14 @@ const ChannelsChecklist: FC<{
                 }}
                 size={32}
                 rounded="full"
+                dimClassName={brand && p.locked ? 'opacity-60' : undefined}
               />
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className={clsx(
+                  'flex min-w-0 flex-1 flex-col',
+                  brand && p.locked && 'opacity-60'
+                )}
+              >
                 <span className="truncate text-[14px] font-[600] text-pqText">
                   {p.name}
                 </span>
@@ -2479,7 +2491,12 @@ const ChannelsChecklist: FC<{
               <div
                 key={p.id}
                 data-pq="channels-checklist-locked"
-                className="flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] opacity-60 shadow-[inset_0_0_0_1px_var(--border)]"
+                className={clsx(
+                  'flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px]',
+                  brand
+                    ? 'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--border)_60%,transparent)]'
+                    : 'opacity-60 shadow-[inset_0_0_0_1px_var(--border)]'
+                )}
               >
                 {face}
               </div>

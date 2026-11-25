@@ -3,8 +3,12 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  brandMarkBox,
+  brandMarkPlacement,
+  channelBrandMark,
   channelPlatformIcon,
   channelPlatformLabel,
+  isBrandMark,
   isUsableChannelPicture,
 } from './channel-picture.ts';
 
@@ -47,6 +51,20 @@ const linkedinPreview = readFileSync(
 const tiktokPreview = readFileSync(
   fileURLToPath(
     new URL('./providers/tiktok/tiktok.preview.tsx', import.meta.url)
+  ),
+  'utf8'
+);
+const manageModal = readFileSync(
+  fileURLToPath(new URL('./manage.modal.tsx', import.meta.url)),
+  'utf8'
+);
+const agents = readFileSync(
+  fileURLToPath(new URL('../agents/agent.tsx', import.meta.url)),
+  'utf8'
+);
+const youtubeSettings = readFileSync(
+  fileURLToPath(
+    new URL('./providers/youtube/youtube.provider.tsx', import.meta.url)
   ),
   'utf8'
 );
@@ -141,5 +159,109 @@ describe('channel avatar fallback', () => {
     assert.match(pickPlatform, /bg-pqBrandSoft text-pqText/);
     assert.doesNotMatch(pickPlatform, /opacity-40/);
     assert.doesNotMatch(pickPlatform, /bg-customColor29/);
+  });
+});
+
+describe('YouTube official mark', () => {
+  it('is a brand mark, the other networks keep their square icon', () => {
+    assert.equal(isBrandMark('youtube'), true);
+    assert.equal(isBrandMark('instagram'), false);
+    assert.equal(isBrandMark(undefined), false);
+    assert.equal(isBrandMark('constructor'), false);
+  });
+
+  it('is never shown under 20 px high, nor narrower than the icon it replaces', () => {
+    const mark = channelBrandMark('youtube')!;
+    for (const size of [12, 14, 16, 20, 24]) {
+      const { width, height } = brandMarkBox(mark, size);
+      assert.ok(height >= 20 - 0.01, `${size}: ${height}`);
+      assert.ok(width >= size);
+      assert.ok(Math.abs(width / height - mark.ratio) < 0.01);
+    }
+    const big = brandMarkBox(mark, 40);
+    assert.equal(big.width, 40);
+  });
+
+  it('links to the channel by id or handle, else to YouTube', () => {
+    const { link } = channelBrandMark('youtube')!;
+    assert.equal(
+      link('UCabcdefghijklmnopqrstuv'),
+      'https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv'
+    );
+    assert.equal(link('@postqueen'), 'https://www.youtube.com/@postqueen');
+    assert.equal(link(''), 'https://www.youtube.com');
+    assert.equal(link('@a/../x'), 'https://www.youtube.com');
+    assert.equal(link('javascript:alert(1)'), 'https://www.youtube.com');
+  });
+
+  it('uses its own files, and leaves the square YouTube icon to the rest of the app', () => {
+    const mark = channelBrandMark('youtube')!;
+    assert.equal(mark.src, '/icons/platforms/youtube-mark.svg');
+    assert.equal(mark.whiteSrc, '/icons/platforms/youtube-mark-white.svg');
+    assert.equal(mark.blackSrc, '/icons/platforms/youtube-mark-black.svg');
+  });
+
+  it('sits beside an avatar too small to carry it, never on it or nowhere', () => {
+    const mark = channelBrandMark('youtube')!;
+    for (const size of [22, 24, 28]) {
+      assert.deepEqual(brandMarkPlacement(mark, size, 14, true), {
+        face: 'photo',
+        badge: 'beside',
+      });
+      // A forced badge, as the agent draft card's stack asks for.
+      assert.equal(brandMarkPlacement(mark, size, 12, true, true).badge, 'beside');
+    }
+    for (const size of [32, 36, 42]) {
+      assert.equal(brandMarkPlacement(mark, size, 14, true).badge, 'on');
+    }
+    assert.equal(brandMarkPlacement(mark, 22, 14, true, false).badge, 'none');
+  });
+
+  it('never leaves an empty disc: the initial, or the mark where it fits', () => {
+    const mark = channelBrandMark('youtube')!;
+    // No photo, or one still loading, on a small avatar: the initial, and the
+    // mark beside it.
+    assert.deepEqual(brandMarkPlacement(mark, 22, 14, false), {
+      face: 'initial',
+      badge: 'beside',
+    });
+    assert.deepEqual(brandMarkPlacement(mark, 28, 14, false), {
+      face: 'initial',
+      badge: 'beside',
+    });
+    // Big enough: the face is the mark itself, with no second one.
+    assert.deepEqual(brandMarkPlacement(mark, 42, 16, false), {
+      face: 'mark',
+      badge: 'none',
+    });
+    assert.match(source, /continuePickerInitial\(/);
+    assert.match(source, /placement\.face === 'mark'/);
+  });
+
+  it('keeps the other networks faded as a whole, and only spares the mark', () => {
+    assert.match(source, /MonochromeMark/);
+    // Picker chips: greyed and faded on the chip, as before, except a brand.
+    assert.match(picks, /locked && !brand && 'opacity-50'/);
+    assert.match(picks, /: !brand && 'grayscale'/);
+    assert.match(picks, /dimClassName=\{\s*brand\s*\?/);
+    // Preview chips: the whole chip at 70 % and grey, except a brand.
+    assert.match(
+      providers,
+      /'bg-pqSettings grayscale opacity-70 shadow-\[inset_0_0_0_1\.5px_transparent\] hover:opacity-100'/
+    );
+    assert.match(providers, /brand && !active/);
+    // Locked checklist rows: the whole row at 60 %, except a brand.
+    assert.match(manageModal, /'opacity-60 shadow-\[inset_0_0_0_1px_var\(--border\)\]'/);
+    assert.match(manageModal, /dimClassName=\{brand && p\.locked \? 'opacity-60'/);
+    // The agents page hands brand channels to ChannelAvatar.
+    assert.match(agents, /isBrandMark\(integration\.identifier\) \? \(\s*<ComposerChannelAvatar/);
+    assert.match(agents, /blocked && !brand && 'opacity-60'/);
+  });
+
+  it('shows the description and names the privacy status on the YouTube settings', () => {
+    assert.match(youtubeSettings, /t\('label_description', 'Description'\)/);
+    assert.match(youtubeSettings, /youtube_description_is_post_text/);
+    assert.match(youtubeSettings, /label="Privacy Status"/);
+    assert.match(youtubeSettings, /translationKey="label_privacy_status"/);
   });
 });

@@ -681,5 +681,11 @@
   "connect_link_close": "ეს არ არის ის, რასაც ელოდით? დახურეთ ეს გვერდი და არაფერი დაუკავშირდება.",
   "connect_link_expired": "ეს ბმული აღარ მოქმედებს",
   "connect_link_expired_description": "დაკავშირების ბმულები ერთი საათის განმავლობაში მოქმედებს. სთხოვეთ ახალი ბმული მას, ვინც გამოგიგზავნათ.",
-  "connect_link_continue_to_site": "გაგრძელება {{site}}-ზე"
+  "connect_link_continue_to_site": "გაგრძელება {{site}}-ზე",
+  "label_privacy_status": "კონფიდენციალურობის სტატუსი",
+  "label_description": "აღწერა",
+  "youtube_description_is_post_text": "თქვენი პოსტის ტექსტი ვიდეოს აღწერაა. შეცვალეთ ის რედაქტორში.",
+  "label_made_with_ai": "შექმნილია AI-ის მეშვეობით",
+  "facebook_made_with_ai": "შექმნილია AI-ის მეშვეობით (მხოლოდ ტექსტური და ფოტო პოსტებისთვის)",
+  "youtube_made_with_ai": "შექმნილია AI-ის მეშვეობით (რეალისტური შეცვლილი ან სინთეტიკური კონტენტი)"
 }

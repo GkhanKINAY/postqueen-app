@@ -75,3 +75,86 @@ describe('Threads errors', () => {
     assert.match(String(answer?.value), /invalid link attachment/);
   });
 });
+
+// What each Threads container call carries, with every call answered here.
+const containerCalls = async (
+  settings: Record<string, unknown>,
+  mediaList: { path: string }[]
+) => {
+  const provider = new ThreadsProvider();
+  const calls: { url: string; form?: Record<string, string> }[] = [];
+  (provider as any).fetch = async (url: string, init: RequestInit = {}) => {
+    calls.push({
+      url,
+      ...(init.body instanceof FormData
+        ? { form: Object.fromEntries(init.body as any) }
+        : {}),
+    });
+    return new Response(JSON.stringify({ id: `c-${calls.length}` }));
+  };
+  const [response] = await provider.postPending(
+    'user',
+    'token',
+    [{ id: 'p', message: 'hello', settings, media: mediaList }] as any,
+    { internalId: 'user', profile: 'me' } as any
+  );
+  return { provider, calls, response };
+};
+
+describe('Threads Made with AI', () => {
+  it('leaves a post without the setting exactly as before', async () => {
+    for (const mediaList of [[], media(1), media(3)]) {
+      const { calls, response } = await containerCalls({}, mediaList);
+      for (const call of calls) {
+        assert.doesNotMatch(call.url, /is_made_with_ai/);
+        assert.equal(call.form?.is_made_with_ai, undefined);
+      }
+      assert.equal('madeWithAi' in (response.pendingData || {}), false);
+    }
+  });
+
+  it('labels a text post and a single media post', async () => {
+    const textPost = await containerCalls({ made_with_ai: true }, []);
+    assert.equal(textPost.calls[0].form?.is_made_with_ai, 'true');
+    const imagePost = await containerCalls({ made_with_ai: 'true' }, media(1));
+    assert.match(imagePost.calls[0].url, /is_made_with_ai=true/);
+  });
+
+  it('labels a carousel on its container, never on the items', async () => {
+    const { provider, calls, response } = await containerCalls(
+      { made_with_ai: true },
+      media(3)
+    );
+    assert.equal(calls.length, 3);
+    for (const call of calls) {
+      assert.doesNotMatch(call.url, /is_made_with_ai/);
+    }
+    assert.equal(response.pendingData?.madeWithAi, true);
+
+    (provider as any).fetch = async (url: string) => {
+      calls.push({ url });
+      return new Response(JSON.stringify({ id: 'carousel' }));
+    };
+    await provider.finalizePost('token', response.pendingData as any, {
+      internalId: 'user',
+    } as any);
+    assert.match(calls.at(-1)!.url, /media_type=CAROUSEL/);
+    assert.match(calls.at(-1)!.url, /is_made_with_ai=true/);
+  });
+
+  it('does not label a carousel whose pending data predates the setting', async () => {
+    const provider = new ThreadsProvider();
+    let url = '';
+    (provider as any).fetch = async (u: string) => {
+      url = u;
+      return new Response(JSON.stringify({ id: 'carousel' }));
+    };
+    await provider.finalizePost(
+      'token',
+      { step: 'children', childIds: ['a', 'b'], message: 'hi' },
+      { internalId: 'user' } as any
+    );
+    assert.match(url, /media_type=CAROUSEL/);
+    assert.doesNotMatch(url, /is_made_with_ai/);
+  });
+});

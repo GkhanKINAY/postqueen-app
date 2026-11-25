@@ -318,6 +318,9 @@ export interface Integrations {
   // then carries the custom one.
   originalName?: string;
   id: string;
+  // The channel's id on its platform, returned by `/integrations/list`. A
+  // brand mark links to the channel with it (see channelBrandMark).
+  internalId?: string;
   disabled?: boolean;
   // Returned by `/integrations/list` and read by every channel picker; it was
   // only ever reached through `any` casts, so the field was missing here.

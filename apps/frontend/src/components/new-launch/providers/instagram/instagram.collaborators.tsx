@@ -96,6 +96,17 @@ const InstagramCollaborators: FC<{
           )}
         </div>
       )}
+
+      {/* Instagram documents its AI label for posts, reels and carousels,
+          not stories: a story is published without it. */}
+      {postCurrentType !== 'story' && (
+        <Checkbox
+          icon="ai"
+          label={t('label_made_with_ai', 'Made with AI')}
+          defaultValue={false}
+          {...register('made_with_ai')}
+        />
+      )}
     </>
   );
 };
