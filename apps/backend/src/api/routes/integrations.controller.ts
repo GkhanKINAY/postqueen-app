@@ -428,8 +428,10 @@ export class IntegrationsController {
     // And only when it still has to once the renewal has written
     // inBetweenSteps: false (the login's id in place of a page's): a channel
     // that has only the flag would come out of it looking finished, its
-    // page never picked.
+    // page never picked. Not for a provider that cannot renew a token: its
+    // refresh only fails, flags the channel and emails a reconnect request.
     if (
+      !integrationProvider.cannotRefreshToken &&
       this._integrationService.needsPageSelection(
         { ...getIntegration, inBetweenSteps: false },
         integrationProvider

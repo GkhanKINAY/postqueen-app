@@ -45,12 +45,14 @@ const call = async (
     callable?: boolean;
     refreshed?: boolean;
     pageRequiredToPost?: boolean;
+    cannotRefreshToken?: boolean;
   } = {}
 ) => {
   const refreshes: string[] = [];
   const tokens: string[] = [];
   const provider = {
     pageRequiredToPost: options.pageRequiredToPost ?? true,
+    cannotRefreshToken: options.cannotRefreshToken,
     pages: async (token: string) => {
       tokens.push(token);
       return [{ id: 'page-1' }];
@@ -129,6 +131,19 @@ describe('a provider function call on an expired token', { skip: !canLoad }, () 
       assert.deepEqual(refreshes, []);
       assert.deepEqual(tokens, ['stored-token']);
     }
+  });
+
+  // Its refresh answers no token: it would only flag the channel and send a
+  // reconnect email for opening the picker.
+  it('refreshes nothing for a provider that cannot renew a token', async () => {
+    const { result, refreshes, tokens } = await call(
+      {},
+      { cannotRefreshToken: true }
+    );
+
+    assert.deepEqual(refreshes, []);
+    assert.deepEqual(tokens, ['stored-token']);
+    assert.deepEqual(result, [{ id: 'page-1' }]);
   });
 
   it('answers false without calling the provider when the refresh fails', async () => {

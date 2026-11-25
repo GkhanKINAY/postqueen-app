@@ -360,6 +360,14 @@ export interface SocialProvider
    * rejects still goes through refresh as before.
    */
   tokenNeverExpires?: boolean;
+  /**
+   * Whether this provider has nothing to renew a token with: its
+   * refreshToken answers no access token, so a refresh can only fail, flag
+   * the channel and email its person to reconnect. A refresh the code starts
+   * on its own, before the token was refused, is then skipped; a token the
+   * platform rejects still goes through refresh as before.
+   */
+  cannotRefreshToken?: boolean;
   // A message for the person whose channel could not be refreshed, when the
   // provider recognises why (e.g. a policy on their side they can change).
   refreshErrorMessage?(err: any): string | undefined;

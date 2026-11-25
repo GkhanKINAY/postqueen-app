@@ -44,6 +44,8 @@ export class InstagramProvider
   name = 'Instagram\n(Facebook Business)';
   isBetweenSteps = true;
   pageRequiredToPost = true;
+  // refreshToken below answers no token: there is nothing to renew with.
+  cannotRefreshToken = true;
   toolTip = 'Instagram must be business and connected to a Facebook page';
   scopes = [
     'instagram_basic',
