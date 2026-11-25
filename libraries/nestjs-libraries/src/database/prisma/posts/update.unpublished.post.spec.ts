@@ -4,6 +4,7 @@ import * as nodeModule from 'node:module';
 import { tmpdir } from 'node:os';
 import { afterEach, before, beforeEach, describe, it } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
+import { PostsRepository } from './posts.repository.ts';
 
 // As in create.post.spec.ts: tsx follows tsconfig's mapping of `file-type` to
 // its declarations, so the upload code the service imports is pointed at the
@@ -94,8 +95,13 @@ const service = (post: Record<string, any>) => {
   instance.validatePosts = async () => [
     { valid: true, errors: true, emptyContent: false, tooLong: false },
   ];
-  instance.createPost = async (org: string, body: any) => {
-    saved.push({ org, body });
+  instance.createPost = async (
+    org: string,
+    body: any,
+    _creationMethod: string,
+    inPlace: boolean
+  ) => {
+    saved.push({ org, body, inPlace });
     return [{ postId: body.posts[0].value[0].id }];
   };
   return instance;
@@ -255,3 +261,98 @@ describe(
     });
   }
 );
+
+describe(
+  'an in-place update of a repeating post',
+  { skip: !canLoadService },
+  () => {
+    it('keeps the interval through a settings update and an attachments update', async () => {
+      const weekly = post({ intervalInDays: 7 });
+      await service(weekly).updatePostSettings(
+        'org-1',
+        'post-1',
+        { title: 'New' },
+        'API'
+      );
+      await service(weekly).updatePostAttachments(
+        'org-1',
+        'post-1',
+        [{ id: 'a', path: OWN }],
+        'MCP'
+      );
+      assert.deepEqual(
+        saved.map((s) => [s.body.inter, s.inPlace]),
+        [
+          [7, true],
+          [7, true],
+        ]
+      );
+
+      saved = [];
+      await service(post()).updatePostSettings('org-1', 'post-1', {}, 'API');
+      assert.equal(saved[0].body.inter, undefined);
+    });
+  }
+);
+
+// What createOrUpdatePost writes over an existing row, recorded
+const upserts = async (inPlace: boolean, inter?: number) => {
+  const written: any[] = [];
+  const repository = new PostsRepository(
+    {
+      model: {
+        post: {
+          findFirst: async () => null,
+          findUnique: async () => ({ organizationId: 'org-1' }),
+          upsert: async (args: any) => {
+            written.push(args);
+            return { id: args.where.id };
+          },
+          updateMany: async () => ({ count: 0 }),
+        },
+      },
+    } as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    { model: { tagsPosts: { deleteMany: async () => ({ count: 0 }) } } } as any,
+    {} as any
+  );
+  await repository.createOrUpdatePost(
+    'update',
+    'org-1',
+    '2026-12-01T10:00:00Z',
+    {
+      group: 'group-1',
+      integration: { id: 'channel-1' },
+      value: [{ id: 'post-1', content: '<p>hello</p>', image: [] }],
+      settings: { __type: 'bluesky' },
+    } as any,
+    [],
+    'MCP' as any,
+    inter,
+    inPlace
+  );
+  return written[0].update;
+};
+
+describe('saving over an existing post', () => {
+  it('leaves the interval, the approval and the order and message links of an in-place update alone', async () => {
+    const update = await upserts(true, 7);
+    assert.equal(update.intervalInDays, 7);
+    assert.equal(update.group, 'group-1');
+    assert.equal('approvedSubmitForOrder' in update, false);
+    assert.equal('lastMessage' in update, false);
+    assert.equal('submittedForOrder' in update, false);
+    assert.equal('state' in update, false);
+  });
+
+  it('still resets them on an edit from the dashboard', async () => {
+    const update = await upserts(false);
+    assert.equal(update.intervalInDays, null);
+    assert.equal(update.approvedSubmitForOrder, 'NO');
+    assert.deepEqual(update.lastMessage, { disconnect: true });
+    assert.deepEqual(update.submittedForOrder, { disconnect: true });
+    assert.notEqual(update.group, 'group-1');
+  });
+});

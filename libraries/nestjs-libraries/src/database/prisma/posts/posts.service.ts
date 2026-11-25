@@ -1670,7 +1670,8 @@ export class PostsService {
     orgId: string,
     body: CreatePostDto,
     creationMethod: CreationMethod,
-    keepGroup = false
+    // An out-of-band update of an existing post (see createOrUpdatePost)
+    inPlace = false
   ): Promise<any[]> {
     if (body.type === 'update') {
       await this.guardUpdateTargets(orgId, body.posts);
@@ -1862,7 +1863,7 @@ export class PostsService {
           body.tags,
           creationMethod,
           body.inter,
-          keepGroup,
+          inPlace,
           batchId
         );
 
@@ -2108,6 +2109,9 @@ export class PostsService {
         // publish workflow alone.
         type: 'update',
         shortLink: false,
+        // The repository writes the interval on every update, so a repeating
+        // post would stop repeating without it.
+        inter: root.intervalInDays || undefined,
         tags: ((root as any).tags || []).map((t: any) => ({
           value: t.tag.name,
           label: t.tag.name,
@@ -2122,8 +2126,9 @@ export class PostsService {
         ],
       } as any,
       creationMethod,
-      // Keep the group stable: a client may have the calendar open while the
-      // post is updated out of band, and the calendar links posts by group.
+      // In place: keep the group stable (a client may have the calendar open
+      // while the post is updated out of band, and the calendar links posts by
+      // group) and everything an edit in the dashboard resets.
       true
     );
 
