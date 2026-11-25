@@ -395,7 +395,13 @@ const LayoutBody = ({
       <NotificationsLiveBridge />
       <TrialTracker />
       <CheckPayment
-        check={searchParams.get('check') || ''}
+        // Only an admin can start a checkout, and /billing/check answers
+        // admins only: a member who opens such a link is not asked to wait.
+        check={
+          ['ADMIN', 'SUPERADMIN'].includes(user?.role!)
+            ? searchParams.get('check') || ''
+            : ''
+        }
         mutate={mutate}
       >
         <ShowMediaBoxModal />
