@@ -6,7 +6,7 @@ import { validate } from 'class-validator';
 import { InstagramProvider } from './instagram.provider.ts';
 import { InstagramStandaloneProvider } from './instagram.standalone.provider.ts';
 import { InstagramDto } from '../../dtos/posts/providers-settings/instagram.dto.ts';
-import { RefreshToken } from '../social.abstract.ts';
+import { BadBody, RefreshToken } from '../social.abstract.ts';
 
 const images = (count: number, ext = 'jpg') =>
   Array.from({ length: count }, (_, i) => ({ path: `https://cdn.test/${i}.${ext}` }));
@@ -338,5 +338,47 @@ describe('InstagramDto collaborators', () => {
     assert.deepEqual(Object.values(error.constraints || {}), [
       'Instagram allows up to 3 collaborators',
     ]);
+  });
+});
+
+// Instagram sometimes refuses media_publish as "blocked" (2207051) and
+// publishes the container all the same.
+describe('Instagram media_publish refused as blocked', () => {
+  const publish = async (containerStatus: string) => {
+    const provider = new InstagramProvider();
+    (provider as any).fetch = async (url: string) => {
+      if (url.includes('/media_publish')) {
+        throw new BadBody('instagram', '{}', '{}', 'Instagram blocked your request');
+      }
+      const body = url.includes('fields=status_code')
+        ? { status_code: containerStatus }
+        : url.includes('/media?fields=id')
+          ? { data: [{ id: 'media-1' }] }
+          : { permalink: 'https://www.instagram.com/p/abc/' };
+      return new Response(JSON.stringify(body));
+    };
+    return provider.finalizePost(
+      'token',
+      {
+        type: 'graph.facebook.com',
+        postType: 'single',
+        containers: ['container-1'],
+      } as any,
+      { internalId: 'ig-1', profile: 'creator' } as any
+    );
+  };
+
+  it('reports the post Instagram published anyway', async () => {
+    assert.deepEqual(await publish('PUBLISHED'), {
+      status: 'completed',
+      postId: 'media-1',
+      releaseURL: 'https://www.instagram.com/p/abc/',
+    });
+  });
+
+  it('fails as before when the container was not published', async () => {
+    await assert.rejects(publish('FINISHED'), {
+      message: 'Instagram blocked your request',
+    });
   });
 });
