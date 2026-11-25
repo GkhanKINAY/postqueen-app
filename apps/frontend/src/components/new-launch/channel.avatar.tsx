@@ -21,23 +21,34 @@ export {
   isUsableChannelPicture,
 };
 
-/** The official monochrome version that suits the theme behind it. */
-const MonochromeMark: FC<{
-  mark: ChannelBrandMark;
+type MarkImageProps = {
+  src: string;
   alt: string;
   width: number;
   height: number;
-}> = ({ mark, alt, width, height }) => {
+};
+
+const MarkImage: FC<MarkImageProps> = ({ src, alt, width, height }) => (
+  <img
+    src={src}
+    alt={alt}
+    width={width}
+    height={height}
+    draggable={false}
+    className="block max-w-none"
+    style={{ width, height, minWidth: width, minHeight: height }}
+  />
+);
+
+/** The official monochrome version that suits the theme behind it. */
+const MonochromeMark: FC<
+  Omit<MarkImageProps, 'src'> & { mark: ChannelBrandMark }
+> = ({ mark, ...image }) => {
   const { mode } = useThemeMode();
   return (
-    <img
+    <MarkImage
       src={mode === 'dark' ? mark.whiteSrc : mark.blackSrc}
-      alt={alt}
-      width={width}
-      height={height}
-      draggable={false}
-      className="block max-w-none"
-      style={{ width, height, minWidth: width, minHeight: height }}
+      {...image}
     />
   );
 };
@@ -76,15 +87,7 @@ export const PlatformMark: FC<{
   const image = inactive ? (
     <MonochromeMark mark={mark} alt={alt} width={width} height={height} />
   ) : (
-    <img
-      src={mark.src}
-      alt={alt}
-      width={width}
-      height={height}
-      draggable={false}
-      className="block max-w-none"
-      style={{ width, height, minWidth: width, minHeight: height }}
-    />
+    <MarkImage src={mark.src} alt={alt} width={width} height={height} />
   );
   const plate = clsx(
     'inline-flex shrink-0 rounded-[3px] p-[1px]',
@@ -151,7 +154,14 @@ export const ChannelAvatar: FC<{
   const faceMark = mark && !showPhoto ? brandMarkBox(mark, size * 0.64) : null;
   const faceMarkFits =
     !!faceMark && Math.hypot(faceMark.width, faceMark.height) <= size;
-  const showBadge = badge ?? (showPhoto || (!!mark && !faceMarkFits));
+  // As a badge it needs an avatar at least as wide as itself (plate
+  // included); a smaller one would be buried under it. There the caller sets
+  // the mark beside the avatar, as the composer's version tabs do.
+  const markFitsBadge =
+    !!mark && brandMarkBox(mark, badgeSize).width + 2 <= size;
+  const showBadge =
+    (badge ?? (showPhoto || (!!mark && !faceMarkFits))) &&
+    (!mark || markFitsBadge);
   const radius = rounded === 'full' ? 'rounded-full' : 'rounded-[8px]';
 
   return (
@@ -174,6 +184,7 @@ export const ChannelAvatar: FC<{
             <PlatformMark
               identifier={integration.identifier}
               size={size * 0.64}
+              channel={channel}
               inactive={!!dimClassName}
               plateClassName=""
             />

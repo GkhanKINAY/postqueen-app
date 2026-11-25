@@ -53,7 +53,10 @@ const tiktokPreview = readFileSync(
   ),
   'utf8'
 );
-const showAllProviders = providers;
+const manageModal = readFileSync(
+  fileURLToPath(new URL('./manage.modal.tsx', import.meta.url)),
+  'utf8'
+);
 const youtubeSettings = readFileSync(
   fileURLToPath(
     new URL('./providers/youtube/youtube.provider.tsx', import.meta.url)
@@ -192,8 +195,15 @@ describe('YouTube official mark', () => {
     assert.doesNotMatch(picks, /'grayscale'\n\s*\)}\n\s*>/);
     assert.doesNotMatch(picks, /locked && 'opacity-50 pointer-events-none'/);
     assert.match(picks, /dimClassName=\{clsx\(/);
-    assert.doesNotMatch(showAllProviders, /: 'grayscale opacity-70 shadow/);
-    assert.match(showAllProviders, /dimClassName=\{/);
+    assert.doesNotMatch(providers, /: 'grayscale opacity-70 shadow/);
+    assert.match(providers, /dimClassName=\{/);
+    assert.doesNotMatch(manageModal, /py-\[10px\] opacity-60/);
+    assert.match(manageModal, /dimClassName=\{p\.locked \? 'opacity-60'/);
+  });
+
+  it('never buries an avatar under a badge wider than itself', () => {
+    assert.match(source, /const markFitsBadge =/);
+    assert.match(source, /\(!mark \|\| markFitsBadge\)/);
   });
 
   it('shows the description and names the privacy status on the YouTube settings', () => {

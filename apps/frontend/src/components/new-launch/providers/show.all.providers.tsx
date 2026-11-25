@@ -344,7 +344,7 @@ export const ShowAllProviders = forwardRef((props, ref) => {
                       )
                     }
                     className={clsx(
-                      'group/focus relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-pqSettings transition-all',
+                      'group/chip relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-pqSettings transition-all',
                       active
                         ? 'shadow-[inset_0_0_0_1.5px_var(--brand)]'
                         : 'shadow-[inset_0_0_0_1.5px_transparent]'
@@ -361,7 +361,7 @@ export const ShowAllProviders = forwardRef((props, ref) => {
                         dimClassName={
                           active
                             ? undefined
-                            : 'grayscale opacity-70 transition-opacity group-hover/focus:opacity-100'
+                            : 'grayscale opacity-70 transition-opacity group-hover/chip:opacity-100'
                         }
                       />
                     </span>

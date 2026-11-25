@@ -2440,6 +2440,8 @@ const ChannelsChecklist: FC<{
           const note = [p.status, p.effect?.[on ? 'ticked' : 'unticked']]
             .filter(Boolean)
             .join(' · ');
+          // A locked row is faded through ChannelAvatar and its text, not
+          // as a whole: a brand mark can't be (see channelBrandMark).
           const face = (
             <>
               <ChannelAvatar
@@ -2450,8 +2452,14 @@ const ChannelsChecklist: FC<{
                 }}
                 size={32}
                 rounded="full"
+                dimClassName={p.locked ? 'opacity-60' : undefined}
               />
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className={clsx(
+                  'flex min-w-0 flex-1 flex-col',
+                  p.locked && 'opacity-60'
+                )}
+              >
                 <span className="truncate text-[14px] font-[600] text-pqText">
                   {p.name}
                 </span>
@@ -2465,7 +2473,7 @@ const ChannelsChecklist: FC<{
               <div
                 key={p.id}
                 data-pq="channels-checklist-locked"
-                className="flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] opacity-60 shadow-[inset_0_0_0_1px_var(--border)]"
+                className="flex w-full items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] shadow-[inset_0_0_0_1px_var(--border)]"
               >
                 {face}
               </div>
