@@ -503,10 +503,10 @@ Lessons, in the order they cost time:
 23 taken as they were, 75 adapted, 1 taken only for its guard, 16 already
 here, 18 skipped, 6 skipped on the owner's word, 1 deferred.** A commit counts
 as adapted when the commit that carries its hash here has an "Adapted for this
-fork" paragraph, and a folded commit counts once per upstream hash. Four of
-the 75 (`fe82ea298`, `3b7e966b0`, `bffedf292`, `d7d189f59`) are in #430, open
-when this was written. The guard is `4ff97adfa`'s (see the lessons). The
-owner's six and the deferred one are in the skip table below.
+fork" paragraph, and a folded commit counts once per upstream hash. All 99
+(the guard included) are named by their full hash in a commit message on
+`main`. The guard is `4ff97adfa`'s (see the lessons). The owner's six and the
+deferred one are in the skip table below.
 
 As in October, every commit was triaged against `origin/main` before anything
 was picked, by three read-only agents over consecutive ranges, and the owner
@@ -534,7 +534,8 @@ Security went out first, as v3.6.175 on its own:
   same-major overrides for the advisories published since the last dependency
   pass.
 
-Everything else goes out as v3.6.176:
+Everything else is to be released as v3.6.176: #420, #421, #423 to #430, and
+#432.
 
 - #420 fixes, range A: a logged-out invite joined on every sign-in path, a
   second invite to a workspace already joined is a no-op, one reconnect notice
@@ -568,13 +569,18 @@ Everything else goes out as v3.6.176:
   the workspace that made the link), `integrationAnalyticsTool`, and the
   attachments of an unpublished post replaced in place. 28 MCP tools with a
   key, 27 with sign-in.
-- #430 labels, open when this was written: YouTube's official mark and the
-  fields its policies ask for in the composer, and Made with AI for YouTube,
-  Facebook, Instagram and Threads, sent only where Meta documents it.
-
-Our own #429, open when this was written, fixes two things the sync's
-screenshots showed: "Notify me" drawn over the date label in the composer
-footer, and paragraphs run together in previews.
+- #429, our own: two things the sync's screenshots showed, "Notify me" drawn
+  over the date label in the composer footer, and paragraphs run together in
+  previews.
+- #430 labels: YouTube's official mark and the fields its policies ask for in
+  the composer. The mark is its own asset (`youtube-mark.svg` and its white
+  and black versions), used only by `PlatformMark`. Made with AI is sent only
+  where the platforms document it: Instagram on a feed post, reel or carousel
+  container with either login, never on a story; Threads on its containers;
+  Facebook through one v27.0 edit after the post is live, which never fails
+  it; YouTube as `status.containsSyntheticMedia`.
+- #432: the `-s ours` merge of `44df988cb` (merge commit `549897d16`), which
+  records the range as handled. GitHub shows 0 commits behind.
 
 The triage and the reviews found more than upstream's diffs said. What was
 open here, and is now closed:
@@ -616,8 +622,12 @@ Left for later:
   Older than this sync.
 - Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
   until a one-off void pass.
-- Outside the composer (calendar cards, Channels list, analytics, agents,
-  plugs) YouTube's icon is still drawn rounded, or greyed with its row (#430).
+- The official YouTube mark is in the composer, its previews, the public
+  preview page, the first-billing link and the agents page. Elsewhere
+  (calendar cards, Channels list, channel filter and pick lists, posts panel,
+  analytics, plugs) YouTube keeps its square icon, drawn rounded, small or
+  greyed with its row. Upstream moved some of those to the mark; they can
+  follow on the same `PlatformMark`.
 - An X article with a soft break has not been tried against X's API.
 - `nestjs-temporal-core` is marked "no longer supported" on npm.
 
@@ -690,8 +700,8 @@ Lessons, in the order they cost time:
 
 **Synced through `44df988cb` (2026-11-24), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
-and `main` has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `a5affe62c` (2026-10-24),
+and `main` has that commit as an ancestor through a `-s ours` merge (#432,
+see "Next time"). The previous watermarks were `a5affe62c` (2026-10-24),
 `91c91f633` (2026-10-09), `374fb202` (2026-09-25),
 `60431b08` (the same day, before
 three late commits), `5ff9e0b2` (2026-09-22, the first one merged that way),
