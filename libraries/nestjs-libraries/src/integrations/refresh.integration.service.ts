@@ -198,21 +198,24 @@ export class RefreshIntegrationService {
       });
 
     if (!refresh || !refresh.accessToken) {
-      if (refreshError) {
-        console.error(
-          `Could not refresh ${integration.providerIdentifier} integration ${integration.id}`,
-          [
-            refreshError?.response?.data?.error,
-            refreshError?.response?.data?.error_description,
-          ]
-            .filter((p) => typeof p === 'string')
-            .join(' ') ||
-            refreshError?.message ||
-            String(refreshError)
-        );
-      }
+      console.error(
+        `Could not refresh ${integration.providerIdentifier} integration ${integration.id}`,
+        refreshError
+          ? [
+              refreshError?.response?.data?.error,
+              refreshError?.response?.data?.error_description,
+            ]
+              .filter((p) => typeof p === 'string')
+              .join(' ') ||
+              refreshError?.message ||
+              String(refreshError)
+          : 'no access token returned'
+      );
 
-      await this._integrationService.refreshNeeded(
+      // A channel that is already flagged keeps failing on every later
+      // refresh attempt (e.g. hourly analytics polling of an expired token),
+      // so only the attempt that flagged it notifies.
+      const flagged = await this._integrationService.refreshNeeded(
         integration.organizationId,
         integration.id
       );
@@ -220,12 +223,14 @@ export class RefreshIntegrationService {
       // No disconnectChannel call here: it only writes the refreshNeeded flag
       // set on the line above, and it notifies again — with an empty cause —
       // so one failure produced two identical notifications and two emails.
-      await this._integrationService.informAboutRefreshError(
-        integration.organizationId,
-        integration,
-        cause,
-        socialProvider.refreshErrorMessage?.(refreshError)
-      );
+      if (flagged) {
+        await this._integrationService.informAboutRefreshError(
+          integration.organizationId,
+          integration,
+          cause,
+          socialProvider.refreshErrorMessage?.(refreshError)
+        );
+      }
 
       return false;
     }

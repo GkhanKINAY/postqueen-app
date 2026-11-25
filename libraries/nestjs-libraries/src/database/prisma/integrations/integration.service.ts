@@ -889,14 +889,16 @@ export class IntegrationService implements OnModuleInit {
       const data = await this.refreshToken(provider, integration.refreshToken!);
 
       if (!data) {
-        await this.informAboutRefreshError(
-          integration.organizationId,
-          integration
-        );
-        await this._integrationRepository.refreshNeeded(
+        const flagged = await this._integrationRepository.refreshNeeded(
           integration.organizationId,
           integration.id
         );
+        if (flagged) {
+          await this.informAboutRefreshError(
+            integration.organizationId,
+            integration
+          );
+        }
         // One channel that cannot refresh must not stop the ones after it.
         // This was a `return`, so a single revoked token ended the whole pass
         // and every channel behind it was left to expire.

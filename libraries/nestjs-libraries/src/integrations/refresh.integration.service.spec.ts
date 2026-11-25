@@ -279,3 +279,94 @@ describe('RefreshIntegrationService.refreshDueProfiles when the refresh throws',
     assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
   });
 });
+
+// A channel whose token cannot be refreshed fails again on every later
+// attempt (an analytics poll, a post), and each one used to email its person.
+// The flag is claimed: only the attempt that turns it on notifies.
+describe('A failed refresh notifies once per disconnect', { skip: !canLoad }, () => {
+  it('claims the flag only while it is off', async () => {
+    const { IntegrationRepository } = await import(
+      '../database/prisma/integrations/integration.repository.ts'
+    );
+    const calls: any[] = [];
+    let flagged = false;
+    // Over the one model it touches: constructing the repository builds its
+    // storage, which these tests do not need.
+    const repository = {
+      _integration: {
+        model: {
+          integration: {
+            updateMany: async (args: any) => {
+              calls.push(args);
+              const flips = args.where.refreshNeeded === false && !flagged;
+              flagged = flagged || flips;
+              return { count: flips ? 1 : 0 };
+            },
+          },
+        },
+      },
+    };
+    const claim = () =>
+      IntegrationRepository.prototype.refreshNeeded.call(
+        repository,
+        'org-1',
+        'ch-1',
+      );
+
+    assert.equal(await claim(), true);
+    assert.equal(await claim(), false);
+    assert.deepEqual(calls[0], {
+      where: { id: 'ch-1', organizationId: 'org-1', refreshNeeded: false },
+      data: { refreshNeeded: true },
+    });
+  });
+
+  const failing = async (claims: boolean[]) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const notified: string[] = [];
+    const service = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => {
+            throw new Error('invalid_grant');
+          },
+          refreshErrorMessage: () => 'The token was revoked.',
+        }),
+      } as any,
+      {
+        refreshNeeded: async () => claims.shift() ?? false,
+        informAboutRefreshError: async (
+          _org: string,
+          _integration: unknown,
+          cause: string,
+          reason: string,
+        ) => {
+          notified.push(`${cause}|${reason}`);
+        },
+      } as any,
+      {} as any,
+    );
+    const channel = {
+      id: 'ch-1',
+      organizationId: 'org-1',
+      providerIdentifier: 'youtube',
+      refreshToken: 'refresh',
+    } as any;
+    return { service, channel, notified };
+  };
+
+  it('tells its person on the attempt that flags the channel, with the cause', async () => {
+    const { service, channel, notified } = await failing([true]);
+    assert.equal(await service.refresh(channel, 'analytics'), false);
+    assert.deepEqual(notified, ['analytics|The token was revoked.']);
+  });
+
+  it('stays quiet on later attempts of a channel already flagged', async () => {
+    const { service, channel, notified } = await failing([true, false, false]);
+    await service.refresh(channel);
+    await service.refresh(channel);
+    await service.refresh(channel);
+    assert.equal(notified.length, 1);
+  });
+});
