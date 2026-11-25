@@ -335,6 +335,8 @@ describe('A failed refresh notifies once per disconnect', { skip: !canLoad }, ()
         }),
       } as any,
       {
+        // No other flow stored anything meanwhile.
+        getIntegrationById: async () => null,
         refreshNeeded: async () => claims.shift() ?? false,
         informAboutRefreshError: async (
           _org: string,
@@ -368,5 +370,120 @@ describe('A failed refresh notifies once per disconnect', { skip: !canLoad }, ()
     await service.refresh(channel);
     await service.refresh(channel);
     assert.equal(notified.length, 1);
+  });
+});
+
+// Two flows refreshing one channel at once: with a provider that issues a new
+// refresh token every time, the platform takes the first and refuses the
+// second. The second reads the row again and uses what the first stored.
+describe('A refresh that lost a race to another', { skip: !canLoad }, () => {
+  const future = () => new Date(Date.now() + 2 * 60 * 60 * 1000);
+  // What the caller holds: always a row read through Prisma, whose extension
+  // decrypts the tokens (see prisma.service.ts).
+  const held = {
+    id: 'ch-1',
+    organizationId: 'org-1',
+    internalId: 'tt-1',
+    providerIdentifier: 'tiktok',
+    name: 'Creator',
+    token: 'access-1',
+    refreshToken: 'refresh-1',
+  } as any;
+
+  const race = async (reads: any[]) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const log: string[] = [];
+    const realSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0;
+    }) as any;
+    try {
+      const result = await new RefreshIntegrationService(
+        {
+          getSocialIntegration: () => ({
+            refreshToken: async () => {
+              throw new Error('invalid_grant');
+            },
+          }),
+        } as any,
+        {
+          getIntegrationById: async () => {
+            log.push('read');
+            // the last row stays, as a database would keep answering it
+            return reads.length > 1 ? reads.shift() : reads[0];
+          },
+          refreshNeeded: async () => {
+            log.push('flag');
+            return true;
+          },
+          informAboutRefreshError: async () => {
+            log.push('notify');
+          },
+          createOrUpdateIntegration: async () => {
+            log.push('store');
+          },
+        } as any,
+        {} as any,
+      ).refresh(held);
+      return { result, log };
+    } finally {
+      globalThis.setTimeout = realSetTimeout;
+    }
+  };
+
+  it('uses the tokens the other flow stored, once they are there', async () => {
+    const won = {
+      ...held,
+      token: 'access-2',
+      refreshToken: 'refresh-2',
+      tokenExpiration: future(),
+      refreshNeeded: false,
+      inBetweenSteps: false,
+      deletedAt: null,
+    };
+    const { result, log } = await race([
+      { ...won, token: held.token, refreshToken: held.refreshToken },
+      won,
+    ]);
+    assert.equal((result as any).accessToken, 'access-2');
+    assert.equal((result as any).refreshToken, 'refresh-2');
+    assert.deepEqual(log, ['read', 'read', 'store']);
+  });
+
+  it('flags the channel when the row still holds the tokens that failed', async () => {
+    const same = {
+      ...held,
+      tokenExpiration: future(),
+      refreshNeeded: false,
+      inBetweenSteps: false,
+      deletedAt: null,
+    };
+    const { result, log } = await race([same]);
+    assert.equal(result, false);
+    assert.deepEqual(log, ['read', 'read', 'read', 'flag', 'notify']);
+  });
+
+  it('does not wait on a channel already flagged or removed', async () => {
+    for (const stored of [
+      { ...held, refreshNeeded: true },
+      { ...held, deletedAt: new Date() },
+      null,
+    ]) {
+      const { log } = await race([stored]);
+      assert.deepEqual(log.slice(0, 2), ['read', 'flag']);
+    }
+  });
+
+  it('compares decrypted tokens: the stored ciphertext differs on every write', async () => {
+    process.env.JWT_SECRET ||= 'refresh-race-spec-secret';
+    const { AuthService } = await import('@gitroom/helpers/auth/auth.service');
+    const first = AuthService.encryptToken('refresh-1');
+    const second = AuthService.encryptToken('refresh-1');
+    // Comparing what the database holds would always read "changed", and
+    // hand back the very tokens that just failed.
+    assert.notEqual(first, second);
+    assert.equal(AuthService.decryptToken(first), AuthService.decryptToken(second));
   });
 });
