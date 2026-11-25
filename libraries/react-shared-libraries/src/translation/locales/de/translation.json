@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagram verknüpft ein Reel nur bei Musik mit der Seite des Sounds. Reels mit einem Originalton werden unter Ihrem Konto als „Original-Audio“ gekennzeichnet.",
   "back_to_postqueen": "Zurück zu PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "Nicht auswählbar: PostQueen hat keinen Zugriff auf diese Seite",
-  "you_did_not_grant_postqueen_access_to_this_page": "Sie haben PostQueen im Facebook-Dialog keinen Zugriff auf diese Seite gewährt.\nVerbinden Sie den Kanal erneut, klicken Sie bei Facebook auf „Einstellungen bearbeiten“, wählen Sie die Option, den Zugriff nur für aktuelle Seiten zu erlauben, und setzen Sie ein Häkchen bei dieser Seite sowie bei Ihren anderen verbundenen Seiten."
+  "you_did_not_grant_postqueen_access_to_this_page": "Sie haben PostQueen im Facebook-Dialog keinen Zugriff auf diese Seite gewährt.\nVerbinden Sie den Kanal erneut, klicken Sie bei Facebook auf „Einstellungen bearbeiten“, wählen Sie die Option, den Zugriff nur für aktuelle Seiten zu erlauben, und setzen Sie ein Häkchen bei dieser Seite sowie bei Ihren anderen verbundenen Seiten.",
+  "refund_charges_failed": "Die ausgewählten Beträge konnten nicht erstattet werden",
+  "disputed": "Angefochten",
+  "charge_disputed_no_refund": "Dieser Betrag wurde angefochten und kann daher nicht erstattet werden",
+  "billing_cancel_failed": "Wir konnten Ihr Abonnement nicht kündigen. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.",
+  "trial_end_admin_only": "Nur ein Admin dieses Arbeitsbereichs kann den Testzeitraum beenden und bezahlen.",
+  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs."
 }

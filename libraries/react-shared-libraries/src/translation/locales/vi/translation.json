@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagram chỉ liên kết Reel với trang âm thanh khi đó là nhạc. Reel đăng với âm thanh gốc sẽ được gắn nhãn \"Âm thanh gốc\" dưới tài khoản của bạn.",
   "back_to_postqueen": "Quay lại PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "Không thể chọn: PostQueen chưa được cấp quyền truy cập Trang này",
-  "you_did_not_grant_postqueen_access_to_this_page": "Bạn chưa cấp cho PostQueen quyền truy cập Trang này trong hộp thoại của Facebook.\nHãy kết nối lại kênh, nhấp vào Chỉnh sửa cài đặt trên màn hình Facebook, chọn tùy chọn chỉ cấp quyền cho các Trang hiện có, rồi đánh dấu chọn Trang này cùng với các Trang khác mà bạn đã kết nối."
+  "you_did_not_grant_postqueen_access_to_this_page": "Bạn chưa cấp cho PostQueen quyền truy cập Trang này trong hộp thoại của Facebook.\nHãy kết nối lại kênh, nhấp vào Chỉnh sửa cài đặt trên màn hình Facebook, chọn tùy chọn chỉ cấp quyền cho các Trang hiện có, rồi đánh dấu chọn Trang này cùng với các Trang khác mà bạn đã kết nối.",
+  "refund_charges_failed": "Không thể hoàn tiền các khoản phí đã chọn",
+  "disputed": "Đang tranh chấp",
+  "charge_disputed_no_refund": "Khoản phí này đang bị tranh chấp nên không thể hoàn tiền",
+  "billing_cancel_failed": "Chúng tôi không thể hủy gói đăng ký của bạn. Vui lòng thử lại hoặc liên hệ bộ phận hỗ trợ.",
+  "trial_end_admin_only": "Chỉ quản trị viên của không gian làm việc này mới có thể kết thúc dùng thử và thanh toán.",
+  "no_ai_credits_ask_admin": "Bạn không có đủ tín dụng cho hình ảnh này. Vui lòng liên hệ quản trị viên không gian làm việc của bạn."
 }

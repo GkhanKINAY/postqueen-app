@@ -243,6 +243,38 @@ describe('post metrics lookback', () => {
   });
 });
 
+describe('post metrics read after a refused token', () => {
+  it('gives up on the read when the refreshed token is refused too', async () => {
+    const { RefreshToken } = await import(
+      '../../../integrations/social.abstract.ts'
+    );
+    const tokens: string[] = [];
+    providers.revoked = {
+      postsAnalytics: async (_: string, token: string) => {
+        tokens.push(token);
+        throw new RefreshToken('revoked', '{}', '{}');
+      },
+    };
+    integrations['int-revoked'] = {
+      id: 'int-revoked',
+      providerIdentifier: 'revoked',
+    };
+    try {
+      const svc = service();
+      svc._refreshIntegrationService.refresh = async () => ({
+        accessToken: 'fresh',
+      });
+      assert.deepEqual(await svc.syncIntegration('org-1', 'int-revoked'), {
+        synced: 0,
+      });
+      assert.deepEqual(tokens, ['token', 'fresh']);
+    } finally {
+      delete providers.revoked;
+      delete integrations['int-revoked'];
+    }
+  });
+});
+
 describe('automatic post metrics sync', () => {
   it('leaves manual-only providers out of the hourly targets', async () => {
     const targets = await service().listIntegrationsNeedingSync();

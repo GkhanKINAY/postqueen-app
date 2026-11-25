@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "O Instagram só vincula um Reel à página do som quando é música. Reels publicados com um som original aparecem como \"Áudio original\" abaixo da sua conta.",
   "back_to_postqueen": "Voltar ao PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "Não é possível selecionar: o PostQueen não tem acesso à Página",
-  "you_did_not_grant_postqueen_access_to_this_page": "Você não concedeu ao PostQueen acesso a esta Página na janela de permissões do Facebook.\nReconecte o canal, clique em Editar configurações na tela do Facebook, escolha a opção de autorizar apenas as Páginas atuais e marque esta Página junto com as outras Páginas que você já conectou."
+  "you_did_not_grant_postqueen_access_to_this_page": "Você não concedeu ao PostQueen acesso a esta Página na janela de permissões do Facebook.\nReconecte o canal, clique em Editar configurações na tela do Facebook, escolha a opção de autorizar apenas as Páginas atuais e marque esta Página junto com as outras Páginas que você já conectou.",
+  "refund_charges_failed": "Não foi possível reembolsar as cobranças selecionadas",
+  "disputed": "Contestada",
+  "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada",
+  "billing_cancel_failed": "Não conseguimos cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.",
+  "trial_end_admin_only": "Somente um administrador deste espaço de trabalho pode encerrar o teste e pagar.",
+  "no_ai_credits_ask_admin": "Você não tem créditos suficientes para esta imagem. Peça a um administrador do seu espaço de trabalho."
 }

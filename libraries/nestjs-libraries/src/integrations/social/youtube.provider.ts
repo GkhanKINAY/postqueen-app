@@ -24,12 +24,14 @@ import {
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
+  rangeReadFailure,
   stripQuery,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import * as process from 'node:process';
 import dayjs from 'dayjs';
 import { createReadStream, statSync } from 'fs';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import {
@@ -556,6 +558,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   // a HEAD request for remote URLs, statSync for local files.
   private async youtubeMediaSize(path: string): Promise<number> {
     if (path.indexOf('http') === 0) {
+      const own = ownUploadSize(path);
+      if (own) {
+        return own;
+      }
+
       // the media path is user-influenced, keep the SSRF-safe dispatcher that
       // this.fetch applies to every other outbound request. identity encoding
       // so content-length matches the bytes a later GET actually streams
@@ -603,9 +610,10 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       // A store that ignores Range (200 with the full file) or answers with an
       // error page would corrupt the upload at this offset.
       if (response.status !== 206) {
+        await response.body?.cancel().catch(() => {});
         throw new BadBody(
           this.identifier,
-          '{}',
+          rangeReadFailure(response),
           '{}',
           'The media storage did not return the requested byte range, please try again'
         );

@@ -1,11 +1,15 @@
 'use client';
 
-import { ContinuePickerItem } from '../continue-picker-item';
+import {
+  ContinuePickerItem,
+  joinContinuePickerMeta,
+} from '../continue-picker-item';
 import { withContinueProvider } from '../with-continue-provider';
 
 interface GmbItem {
   id: string;
   name: string;
+  address?: string;
   accountName: string;
   locationName: string;
   picture?: {
@@ -53,7 +57,9 @@ export const GmbContinue = withContinueProvider<GmbItem, GmbSelection>({
     <ContinuePickerItem
       pictureUrl={item.picture?.data?.url}
       name={item.name}
-      meta="Google Business"
+      // Two locations of one business share a title: the address tells
+      // them apart.
+      meta={joinContinuePickerMeta(item.address) || 'Google Business'}
       fallback={
         <svg
           xmlns="http://www.w3.org/2000/svg"

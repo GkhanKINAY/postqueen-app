@@ -65,6 +65,20 @@ export class PostsRepository {
     });
   }
 
+  // Re-read by the missing-post sweep right before it starts a workflow; a
+  // removed post reads as nothing.
+  getPostState(id: string) {
+    return this._post.model.post.findUnique({
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: {
+        state: true,
+      },
+    });
+  }
+
   async getOldPosts(orgId: string, date: string) {
     const posts = await this._post.model.post.findMany({
       where: {
@@ -216,30 +230,48 @@ export class PostsRepository {
       },
     });
 
-    return list.map(withPostChannelDisplayName).reduce((all, post) => {
+    // This runs on the request thread, so keep it linear: push into one array
+    // (spreading the accumulator on every post was quadratic and blocked the
+    // event loop for seconds on large orgs), and expand repeating posts only
+    // inside [startDate, endDate] instead of from their first publish date.
+    const rangeStart = dayjs.utc(startDate);
+    const rangeEnd = dayjs.utc(endDate);
+    const result: any[] = [];
+
+    for (const post of list.map(withPostChannelDisplayName)) {
       // A non-positive interval would step backwards and never reach endDate,
       // spinning here forever. @Min(1) on the DTO stops new ones; this covers
       // any row written before that validator existed.
       if (!post.intervalInDays || post.intervalInDays < 1) {
-        return [...all, post];
+        result.push(post);
+        continue;
       }
 
-      const addMorePosts = [];
-      let startingDate = dayjs.utc(post.publishDate);
-      while (dayjs.utc(endDate).isSameOrAfter(startingDate)) {
-        if (dayjs(startingDate).isSameOrAfter(dayjs.utc(post.publishDate))) {
-          addMorePosts.push({
-            ...post,
-            publishDate: startingDate.toDate(),
-            actualDate: post.publishDate,
-          });
-        }
-
-        startingDate = startingDate.add(post.intervalInDays, 'days');
+      const firstDate = dayjs.utc(post.publishDate);
+      // An invalid bound never compares as after, so the loop below would
+      // not end.
+      if (!rangeStart.isValid() || !rangeEnd.isValid() || !firstDate.isValid()) {
+        continue;
+      }
+      let occurrence = firstDate;
+      if (rangeStart.isAfter(firstDate)) {
+        const skip = Math.ceil(
+          rangeStart.diff(firstDate, 'day', true) / post.intervalInDays
+        );
+        occurrence = firstDate.add(skip * post.intervalInDays, 'day');
       }
 
-      return [...all, ...addMorePosts];
-    }, [] as any[]);
+      while (!occurrence.isAfter(rangeEnd)) {
+        result.push({
+          ...post,
+          publishDate: occurrence.toDate(),
+          actualDate: post.publishDate,
+        });
+        occurrence = occurrence.add(post.intervalInDays, 'day');
+      }
+    }
+
+    return result;
   }
 
   /**

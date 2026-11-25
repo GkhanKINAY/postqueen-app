@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagram 仅在使用音乐时才会将 Reel 链接到音频页面。使用原创声音发布的 Reel 会在您的账号下标注为“原创音频”。",
   "back_to_postqueen": "返回 PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "无法选择：尚未授权 PostQueen 访问此公共主页",
-  "you_did_not_grant_postqueen_access_to_this_page": "您未在 Facebook 对话框中授权 PostQueen 访问此公共主页。\n请重新连接该渠道，在 Facebook 界面上点击“编辑设置”，选择“仅授权访问当前的公共主页”，然后勾选此公共主页以及您已连接的其他公共主页。"
+  "you_did_not_grant_postqueen_access_to_this_page": "您未在 Facebook 对话框中授权 PostQueen 访问此公共主页。\n请重新连接该渠道，在 Facebook 界面上点击“编辑设置”，选择“仅授权访问当前的公共主页”，然后勾选此公共主页以及您已连接的其他公共主页。",
+  "refund_charges_failed": "无法退款所选费用",
+  "disputed": "已争议",
+  "charge_disputed_no_refund": "该费用已被争议，因此无法退款",
+  "billing_cancel_failed": "我们无法取消您的订阅。请重试或联系支持人员。",
+  "trial_end_admin_only": "只有此工作区的管理员才能结束试用并付款。",
+  "no_ai_credits_ask_admin": "您的积分不足以生成此图片。请联系您工作区的管理员。"
 }

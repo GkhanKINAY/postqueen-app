@@ -9,6 +9,7 @@ import { analyticsFetchNeedsReconnect } from '@gitroom/nestjs-libraries/integrat
 import {
   isReadTimeout,
   MEDIA_READ_TIMEOUT,
+  ownUploadSize,
   readOrFetch,
 } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
@@ -33,6 +34,7 @@ export const stripQuery = (url: string) => {
 export type ValidityMedia = {
   path: string;
   thumbnail?: string;
+  alt?: string;
 };
 
 // Temporal serializes the whole ApplicationFailure (message + details) into the
@@ -221,6 +223,20 @@ export class PublishedWithError extends ApplicationFailure {
       [{ identifier, postDbId, releaseId, releaseURL }]
     );
   }
+}
+
+// What a media store answered when a ranged read did not come back as 206,
+// for the failure's details.
+export function rangeReadFailure(response: {
+  status: number;
+  statusText: string;
+  ok: boolean;
+}) {
+  return JSON.stringify({
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+  });
 }
 
 // `unmapped` marks a refusal no handleErrors mapping explained, so the admin
@@ -498,9 +514,15 @@ export abstract class SocialAbstract {
   }
 
   // Resolves the total byte size of the media without loading it into memory:
-  // a HEAD request for remote URLs, statSync for local files.
+  // a HEAD request for remote URLs, statSync for local files and for our own
+  // local uploads (see ownUploadSize).
   protected async mediaSize(path: string, identifier = ''): Promise<number> {
     if (path.indexOf('http') === 0) {
+      const own = ownUploadSize(path);
+      if (own) {
+        return own;
+      }
+
       // the media path is user-influenced, keep the SSRF-safe dispatcher that
       // this.fetch applies to every other outbound request. identity encoding
       // so content-length matches the bytes a later GET actually streams
@@ -581,6 +603,7 @@ export abstract class SocialAbstract {
         // response.body here would silently load the whole file into memory and
         // upload corrupted chunks.
         if (response.status !== 206) {
+          await response.body?.cancel().catch(() => {});
           throw new BadBody(
             identifier,
             JSON.stringify({ status: response.status, start, end }),

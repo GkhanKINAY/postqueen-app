@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagram은 음악인 경우에만 릴스를 사운드 페이지에 연결합니다. 오리지널 사운드로 게시된 릴스는 계정 아래에 \"오리지널 오디오\"로 표시됩니다.",
   "back_to_postqueen": "PostQueen으로 돌아가기",
   "not_selectable_page_not_granted_to_postqueen": "선택할 수 없음: PostQueen에 이 페이지에 대한 접근 권한이 부여되지 않았습니다",
-  "you_did_not_grant_postqueen_access_to_this_page": "Facebook 대화 상자에서 PostQueen에 이 페이지에 대한 접근 권한을 부여하지 않았습니다.\n채널을 다시 연결한 뒤 Facebook 화면에서 ‘설정 수정’을 클릭하고, 현재 페이지에만 접근을 허용하는 옵션을 선택한 다음, 이미 연결된 다른 페이지와 함께 이 페이지에도 체크 표시를 하세요."
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebook 대화 상자에서 PostQueen에 이 페이지에 대한 접근 권한을 부여하지 않았습니다.\n채널을 다시 연결한 뒤 Facebook 화면에서 ‘설정 수정’을 클릭하고, 현재 페이지에만 접근을 허용하는 옵션을 선택한 다음, 이미 연결된 다른 페이지와 함께 이 페이지에도 체크 표시를 하세요.",
+  "refund_charges_failed": "선택한 청구 건을 환불할 수 없습니다.",
+  "disputed": "분쟁됨",
+  "charge_disputed_no_refund": "이 청구 건은 분쟁이 제기되어 환불할 수 없습니다.",
+  "billing_cancel_failed": "구독을 취소할 수 없습니다. 다시 시도하거나 고객 지원팀에 문의하세요.",
+  "trial_end_admin_only": "이 워크스페이스의 관리자만 체험을 종료하고 결제할 수 있습니다.",
+  "no_ai_credits_ask_admin": "이 이미지를 만들 크레딧이 부족합니다. 워크스페이스 관리자에게 문의하세요."
 }

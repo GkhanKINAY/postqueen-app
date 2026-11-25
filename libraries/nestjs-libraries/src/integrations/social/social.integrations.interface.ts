@@ -372,7 +372,7 @@ export interface SocialProvider
    * looks at media ignores it.
    */
   checkValidity(
-    posts: Array<{ path: string; thumbnail?: string }[]>,
+    posts: Array<{ path: string; thumbnail?: string; alt?: string }[]>,
     settings: any,
     additionalSettings: any[],
     texts?: string[],

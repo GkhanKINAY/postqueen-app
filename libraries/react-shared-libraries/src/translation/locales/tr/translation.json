@@ -975,5 +975,11 @@
   "instagram_original_sound_not_linked": "Instagram bir Reel'i sesin sayfasına yalnızca müzik için bağlar. Orijinal sesle yayınlanan Reel'ler hesabınızın altında \"Orijinal ses\" olarak etiketlenir.",
   "back_to_postqueen": "PostQueen’e dön",
   "not_selectable_page_not_granted_to_postqueen": "Seçilemiyor: PostQueen’e bu Sayfaya erişim izni verilmedi",
-  "you_did_not_grant_postqueen_access_to_this_page": "Facebook iletişim kutusunda PostQueen’e bu Sayfaya erişim izni vermediniz.\nKanalı yeniden bağlayın, Facebook ekranında “Ayarları düzenle”ye tıklayın, yalnızca mevcut Sayfalara erişim izni vermeyi seçin ve bu Sayfayı diğer bağlı Sayfalarınızla birlikte işaretleyin."
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebook iletişim kutusunda PostQueen’e bu Sayfaya erişim izni vermediniz.\nKanalı yeniden bağlayın, Facebook ekranında “Ayarları düzenle”ye tıklayın, yalnızca mevcut Sayfalara erişim izni vermeyi seçin ve bu Sayfayı diğer bağlı Sayfalarınızla birlikte işaretleyin.",
+  "refund_charges_failed": "Seçilen ücretler iade edilemedi",
+  "disputed": "İtiraz edildi",
+  "charge_disputed_no_refund": "Bu ücrete itiraz edildi, bu nedenle iade edilemez",
+  "billing_cancel_failed": "Aboneliğinizi iptal edemedik. Lütfen tekrar deneyin veya destek ile iletişime geçin.",
+  "trial_end_admin_only": "Denemeyi yalnızca bu çalışma alanının bir yöneticisi bitirip ödeme yapabilir.",
+  "no_ai_credits_ask_admin": "Bu görsel için yeterli krediniz yok. Lütfen çalışma alanınızın yöneticisine başvurun."
 }

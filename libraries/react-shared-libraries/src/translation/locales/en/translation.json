@@ -1436,5 +1436,11 @@
   "instagram_original_sound_not_linked": "Instagram links a Reel to the sound's page only for music. Reels published with an original sound are labeled \"Original audio\" under your account.",
   "back_to_postqueen": "Back to PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "Not selectable: page not granted to PostQueen",
-  "you_did_not_grant_postqueen_access_to_this_page": "You did not grant PostQueen access to this Page in the Facebook dialog.\nReconnect the channel, click Edit settings on the Facebook screen, choose to opt in to current Pages only, and tick this Page together with your other connected Pages."
+  "you_did_not_grant_postqueen_access_to_this_page": "You did not grant PostQueen access to this Page in the Facebook dialog.\nReconnect the channel, click Edit settings on the Facebook screen, choose to opt in to current Pages only, and tick this Page together with your other connected Pages.",
+  "refund_charges_failed": "Could not refund the selected charges",
+  "disputed": "Disputed",
+  "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded",
+  "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support.",
+  "trial_end_admin_only": "Only an admin of this workspace can end the trial and pay.",
+  "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace."
 }

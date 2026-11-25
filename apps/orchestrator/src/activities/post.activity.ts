@@ -200,6 +200,12 @@ export class PostActivity {
   async searchForMissingThreeHoursPosts() {
     const list = await this._postService.searchForMissingThreeHoursPosts();
     for (const post of list) {
+      // the list can be long, the post may have been published since it was loaded
+      const current = await this._postService.getPostState(post.id);
+      if (current?.state !== 'QUEUE') {
+        continue;
+      }
+
       // v1012, matching posts.service.ts. The recovery sweep starting an older
       // version would have quietly reintroduced the duplicate-publish loop on
       // exactly the posts that had already gone wrong once.

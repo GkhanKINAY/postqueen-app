@@ -455,6 +455,18 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
         };
     }
 
+    // Discord refusing the bot token itself answers code 0 with this message.
+    // The token is the app's bot, not the channel's login, so a reconnect
+    // brings back the same token: a post error, not the generic 401 rule's
+    // reconnect.
+    if (String(parsed?.message).includes('401: Unauthorized')) {
+      return {
+        type: 'bad-body',
+        value:
+          'Discord rejected the PostQueen bot token. Reconnecting the channel will not help.',
+      };
+    }
+
     return undefined;
   }
 }

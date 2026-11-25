@@ -393,16 +393,12 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
         response.response?.id ||
         ''
     );
-    const blogUrl = this.normalizeBlogUrl(
-      integration.profile || `https://www.tumblr.com/${id}`
-    );
-
     return [
       {
         id: post.id,
         status: 'completed',
         postId,
-        releaseURL: `${blogUrl}/post/${postId}`,
+        releaseURL: `https://www.tumblr.com/${id}/${postId}`,
       },
     ];
   }
@@ -415,10 +411,6 @@ export class TumblrProvider extends SocialAbstract implements SocialProvider {
     return `${TUMBLR_API_URL}/blog/${encodeURIComponent(
       `${blogName}.tumblr.com`
     )}/avatar/128`;
-  }
-
-  private normalizeBlogUrl(url: string) {
-    return this.normalizeUrl(url).replace(/\/$/, '');
   }
 
   private normalizeUrl(url: string) {

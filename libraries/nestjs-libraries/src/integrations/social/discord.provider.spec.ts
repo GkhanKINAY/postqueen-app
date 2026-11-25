@@ -87,3 +87,13 @@ describe('Discord follow-ups', () => {
     assert.deepEqual(sentTo, ['root-message']);
   });
 });
+
+describe('Discord refusing the bot token', () => {
+  it('is a post error, not a reconnect', () => {
+    const answer = new DiscordProvider().handleErrors(
+      JSON.stringify({ message: '401: Unauthorized', code: 0 })
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /PostQueen bot token/);
+  });
+});

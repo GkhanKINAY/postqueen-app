@@ -387,3 +387,255 @@ describe('RefreshIntegrationService.refresh stores the renewal', { skip: !canLoa
     assert.deepEqual(writes, []);
   });
 });
+
+
+// A channel whose token cannot be refreshed fails again on every later
+// attempt (an analytics poll, a post), and each one used to email its person.
+// The flag is claimed: only the attempt that turns it on notifies.
+describe('A failed refresh notifies once per disconnect', { skip: !canLoad }, () => {
+  it('claims the flag only while it is off', async () => {
+    const { IntegrationRepository } = await import(
+      '../database/prisma/integrations/integration.repository.ts'
+    );
+    const calls: any[] = [];
+    let flagged = false;
+    // Over the one model it touches: constructing the repository builds its
+    // storage, which these tests do not need.
+    const repository = {
+      _integration: {
+        model: {
+          integration: {
+            updateMany: async (args: any) => {
+              calls.push(args);
+              const flips = args.where.refreshNeeded === false && !flagged;
+              flagged = flagged || flips;
+              return { count: flips ? 1 : 0 };
+            },
+          },
+        },
+      },
+    };
+    const claim = () =>
+      IntegrationRepository.prototype.refreshNeeded.call(
+        repository,
+        'org-1',
+        'ch-1',
+      );
+
+    assert.equal(await claim(), true);
+    assert.equal(await claim(), false);
+    assert.deepEqual(calls[0], {
+      where: { id: 'ch-1', organizationId: 'org-1', refreshNeeded: false },
+      data: { refreshNeeded: true },
+    });
+  });
+
+  const failing = async (claims: boolean[]) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const notified: string[] = [];
+    const service = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => {
+            throw new Error('invalid_grant');
+          },
+          refreshErrorMessage: () => 'The token was revoked.',
+        }),
+      } as any,
+      {
+        // No other flow stored anything meanwhile.
+        getIntegrationById: async () => null,
+        refreshNeeded: async () => claims.shift() ?? false,
+        informAboutRefreshError: async (
+          _org: string,
+          _integration: unknown,
+          cause: string,
+          reason: string,
+        ) => {
+          notified.push(`${cause}|${reason}`);
+        },
+      } as any,
+      {} as any,
+    );
+    const channel = {
+      id: 'ch-1',
+      organizationId: 'org-1',
+      providerIdentifier: 'youtube',
+      refreshToken: 'refresh',
+      rootInternalId: 'yt-1',
+    } as any;
+    return { service, channel, notified };
+  };
+
+  it('tells its person on the attempt that flags the channel, with the cause', async () => {
+    const { service, channel, notified } = await failing([true]);
+    assert.equal(await service.refresh(channel, 'analytics'), false);
+    assert.deepEqual(notified, ['analytics|The token was revoked.']);
+  });
+
+  it('stays quiet on later attempts of a channel already flagged', async () => {
+    const { service, channel, notified } = await failing([true, false, false]);
+    await service.refresh(channel);
+    await service.refresh(channel);
+    await service.refresh(channel);
+    assert.equal(notified.length, 1);
+  });
+});
+
+// Two flows refreshing one channel at once: with a provider that issues a new
+// refresh token every time, the platform takes the first and refuses the
+// second. The second reads the row again and uses what the first stored.
+describe('A refresh that lost a race to another', { skip: !canLoad }, () => {
+  const future = () => new Date(Date.now() + 2 * 60 * 60 * 1000);
+  // What the caller holds: always a row read through Prisma, whose extension
+  // decrypts the tokens (see prisma.service.ts).
+  const held = {
+    id: 'ch-1',
+    organizationId: 'org-1',
+    internalId: 'tt-1',
+    rootInternalId: 'tt-1',
+    providerIdentifier: 'tiktok',
+    name: 'Creator',
+    token: 'access-1',
+    refreshToken: 'refresh-1',
+  } as any;
+
+  const race = async (reads: any[]) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const log: string[] = [];
+    const realSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0;
+    }) as any;
+    try {
+      const result = await new RefreshIntegrationService(
+        {
+          getSocialIntegration: () => ({
+            refreshToken: async () => {
+              throw new Error('invalid_grant');
+            },
+          }),
+        } as any,
+        {
+          getIntegrationById: async () => {
+            log.push('read');
+            // the last row stays, as a database would keep answering it
+            return reads.length > 1 ? reads.shift() : reads[0];
+          },
+          refreshNeeded: async () => {
+            log.push('flag');
+            return true;
+          },
+          informAboutRefreshError: async () => {
+            log.push('notify');
+          },
+          createOrUpdateIntegration: async () => {
+            log.push('store');
+          },
+        } as any,
+        {} as any,
+      ).refresh(held);
+      return { result, log };
+    } finally {
+      globalThis.setTimeout = realSetTimeout;
+    }
+  };
+
+  it('uses the tokens the other flow stored, once they are there', async () => {
+    const won = {
+      ...held,
+      token: 'access-2',
+      refreshToken: 'refresh-2',
+      tokenExpiration: future(),
+      refreshNeeded: false,
+      inBetweenSteps: false,
+      deletedAt: null,
+    };
+    const { result, log } = await race([
+      { ...won, token: held.token, refreshToken: held.refreshToken },
+      won,
+    ]);
+    assert.equal((result as any).accessToken, 'access-2');
+    assert.equal((result as any).refreshToken, 'refresh-2');
+    assert.deepEqual(log, ['read', 'read', 'store']);
+  });
+
+  it('flags the channel when the row still holds the tokens that failed', async () => {
+    const same = {
+      ...held,
+      tokenExpiration: future(),
+      refreshNeeded: false,
+      inBetweenSteps: false,
+      deletedAt: null,
+    };
+    const { result, log } = await race([same]);
+    assert.equal(result, false);
+    assert.deepEqual(log, ['read', 'read', 'read', 'flag', 'notify']);
+  });
+
+  // #419 drops a renewal when a reconnect moved the channel to another login
+  // meanwhile; the platform did renew, so nothing is flagged or sent.
+  it('treats a renewal the root guard dropped as a renewal, not a failure', async () => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const log: string[] = [];
+    const result = await new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => ({
+            accessToken: 'access-2',
+            refreshToken: 'refresh-2',
+            expiresIn: 3600,
+          }),
+        }),
+      } as any,
+      {
+        // What the repository answers for a dropped renewal: the row as it
+        // is, under the login the reconnect moved it to.
+        createOrUpdateIntegration: async () => {
+          log.push('store');
+          return { ...held, rootInternalId: 'another-login' };
+        },
+        getIntegrationById: async () => {
+          log.push('read');
+          return null;
+        },
+        refreshNeeded: async () => {
+          log.push('flag');
+          return true;
+        },
+        informAboutRefreshError: async () => {
+          log.push('notify');
+        },
+      } as any,
+      {} as any,
+    ).refresh(held);
+    assert.equal((result as any).accessToken, 'access-2');
+    assert.deepEqual(log, ['store']);
+  });
+
+  it('does not wait on a channel already flagged or removed', async () => {
+    for (const stored of [
+      { ...held, refreshNeeded: true },
+      { ...held, deletedAt: new Date() },
+      null,
+    ]) {
+      const { log } = await race([stored]);
+      assert.deepEqual(log.slice(0, 2), ['read', 'flag']);
+    }
+  });
+
+  it('needs decrypted rows: one token encrypts to a different string on every write', async () => {
+    process.env.JWT_SECRET ||= 'refresh-race-spec-secret';
+    const { AuthService } = await import('@gitroom/helpers/auth/auth.service');
+    const first = AuthService.encryptToken('refresh-1');
+    const second = AuthService.encryptToken('refresh-1');
+    // Comparing what the database holds would always read "changed", and
+    // hand back the very tokens that just failed.
+    assert.notEqual(first, second);
+    assert.equal(AuthService.decryptToken(first), AuthService.decryptToken(second));
+  });
+});

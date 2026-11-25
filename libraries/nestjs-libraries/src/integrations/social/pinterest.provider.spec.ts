@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PinterestProvider } from './pinterest.provider.ts';
+import { BadBody, RefreshToken } from '../social.abstract.ts';
 
 describe('Pinterest description', () => {
   it('takes the 800 characters Create Pin allows, on the server', () => {
@@ -42,7 +43,7 @@ describe('Pinterest API host', () => {
           }
         : String(url).includes('/boards')
         ? { items: [{ id: 'b1', name: 'Travel in Japan' }] }
-        : { id: 'u1', username: 'forceplayco', profile_image: '' };
+        : { id: 'u1', username: 'forcegamesco', profile_image: '' };
       return new Response(JSON.stringify(body), { status: 200 });
     }) as typeof fetch;
   });
@@ -130,5 +131,58 @@ describe('Pinterest video pins', () => {
     assert.equal(await provider.checkValidity([[video]] as any), message);
     assert.equal(await provider.checkValidity([[video, video]] as any), message);
     assert.equal(await provider.checkValidity([[video, cover, cover]] as any), message);
+  });
+});
+
+describe('Pinterest pin create handshake', () => {
+  const pending = { settings: { board: 'b1' }, message: 'Hello' } as any;
+  const realFetch = globalThis.fetch;
+  let calls: string[];
+
+  // The probe's answer; `null` is a request that never got one.
+  const probeAnswers = (status: number | null) => {
+    calls = [];
+    globalThis.fetch = (async (url: string) => {
+      calls.push(String(url));
+      if (status === null) {
+        throw new TypeError('fetch failed');
+      }
+      return new Response('{"code":2,"message":"Authentication failed."}', {
+        status,
+      });
+    }) as typeof fetch;
+  };
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('reads the account before arming, so an expired token is refreshed first', async () => {
+    probeAnswers(200);
+    const answer = await new PinterestProvider().finalizePost('token', pending, {} as any);
+    assert.match(calls.join(), /^https:\/\/api[a-z-]*\.pinterest\.com\/v5\/user_account$/);
+    assert.equal(answer.status, 'pending');
+    assert.equal((answer as any).pendingData.attempting, true);
+  });
+
+  it('stops before arming on a refused token', async () => {
+    probeAnswers(401);
+    await assert.rejects(
+      new PinterestProvider().finalizePost('token', pending, {} as any),
+      RefreshToken
+    );
+    probeAnswers(403);
+    await assert.rejects(
+      new PinterestProvider().finalizePost('token', pending, {} as any),
+      BadBody
+    );
+  });
+
+  it('arms the create as before when the probe itself fails', async () => {
+    for (const status of [500, 503, 429, null]) {
+      probeAnswers(status);
+      const answer = await new PinterestProvider().finalizePost('token', pending, {} as any);
+      assert.equal((answer as any).pendingData.attempting, true, String(status));
+    }
   });
 });

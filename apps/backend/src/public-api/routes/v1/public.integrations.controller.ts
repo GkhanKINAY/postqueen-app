@@ -782,11 +782,10 @@ export class PublicIntegrationsController {
             getIntegration
           );
 
+          // A failed refresh has already flagged the channel and told its
+          // person, once (refreshProcess); disconnectChannel here sent the
+          // notice again on every later call.
           if (!data) {
-            await this._integrationService.disconnectChannel(
-              org.id,
-              getIntegration
-            );
             throw new HttpException(
               { msg: 'Channel disconnected due to expired token' },
               401

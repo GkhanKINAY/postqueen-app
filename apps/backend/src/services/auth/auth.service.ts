@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomBytes, randomInt } from 'crypto';
 import {
   OtpPurpose,
@@ -30,6 +30,7 @@ import {
   shouldCompleteOauthWithoutOrgForm,
 } from '@gitroom/backend/services/auth/oauth-local-link';
 import {
+  emailsMatch,
   hasPasswordHash,
   oauthLinkTicketMatchesState,
 } from '@gitroom/helpers/auth/account-security';
@@ -52,8 +53,17 @@ const passwordHashToCompare = (hash?: string | null) =>
     randomBytes(16).toString('hex'),
   ));
 
+// A team invite opened while logged out, as `getOrgFromCookie` reads it from
+// the `org` cookie. `email` is the address an emailed invite was sent to; a
+// copied invite link carries none.
+type InviteToOrg =
+  | boolean
+  | { orgId: string; role: 'USER' | 'ADMIN'; id: string; email?: string };
+
 @Injectable()
 export class AuthService {
+  private readonly _logger = new Logger(AuthService.name);
+
   constructor(
     private _userService: UsersService,
     private _organizationService: OrganizationService,
@@ -130,7 +140,13 @@ export class AuthService {
     return { sent: true };
   }
 
-  async verifyOtp(email: string, code: string, ip: string, userAgent: string) {
+  async verifyOtp(
+    email: string,
+    code: string,
+    ip: string,
+    userAgent: string,
+    addToOrg?: InviteToOrg,
+  ) {
     email = email.toLowerCase();
 
     // Rate limiting only — the captcha is solved when the code is requested,
@@ -217,7 +233,9 @@ export class AuthService {
       }
     }
 
-    return { jwt: await this.jwt(user), isNew };
+    const addedOrg = await this.joinInvitedOrg(user, addToOrg);
+
+    return { addedOrg, jwt: await this.jwt(user), isNew };
   }
   async canRegister(provider: string) {
     if (
@@ -235,7 +253,7 @@ export class AuthService {
     body: CreateOrgUserDto | LoginUserDto,
     ip: string,
     userAgent: string,
-    addToOrg?: boolean | { orgId: string; role: 'USER' | 'ADMIN'; id: string },
+    addToOrg?: InviteToOrg,
   ) {
     if (provider === Provider.LOCAL) {
       if (process.env.DISALLOW_PLUS && body.email.includes('+')) {
@@ -269,15 +287,10 @@ export class AuthService {
           userAgent,
         );
 
-        const addedOrg =
-          addToOrg && typeof addToOrg !== 'boolean'
-            ? await this._organizationService.addUserToOrg(
-                create.users[0].user.id,
-                addToOrg.id,
-                addToOrg.orgId,
-                addToOrg.role,
-              )
-            : false;
+        const addedOrg = await this.joinInvitedOrg(
+          create.users[0].user,
+          addToOrg,
+        );
 
         const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
         // The account is already activated when this install does not gate on
@@ -309,11 +322,17 @@ export class AuthService {
         throw new Error('Invalid user name or password');
       }
 
+      // Before the activation gate on purpose: a new account made through an
+      // invite is a member while still unactivated, and an existing one is
+      // the same. Activation is still needed to use it: the throw below and
+      // the auth middleware keep an unactivated user out.
+      const addedOrg = await this.joinInvitedOrg(loginUser, addToOrg);
+
       if (!loginUser.activated) {
         throw new Error('User is not activated');
       }
 
-      return { addedOrg: false, jwt: await this.jwt(loginUser) };
+      return { addedOrg, jwt: await this.jwt(loginUser) };
     }
 
     const user = await this.loginOrRegisterProvider(
@@ -323,16 +342,54 @@ export class AuthService {
       userAgent,
     );
 
-    const addedOrg =
-      addToOrg && typeof addToOrg !== 'boolean'
-        ? await this._organizationService.addUserToOrg(
-            user.id,
-            addToOrg.id,
-            addToOrg.orgId,
-            addToOrg.role,
-          )
-        : false;
+    const addedOrg = await this.joinInvitedOrg(user, addToOrg);
     return { addedOrg, jwt: await this.jwt(user) };
+  }
+
+  /**
+   * Joins the workspace a logged-out invite was opened for, on whichever path
+   * signs the person in. The join comes with the sign-in, so it never fails
+   * it: an invite already used, a member already there (409), a plan without
+   * team members or a database error signs the person in to their own
+   * workspace as before.
+   *
+   * The invite rides in a cookie that lives two days, so on a shared browser
+   * the next person to sign in would take someone else's invite. An emailed
+   * invite therefore joins only the account with the address it was sent to;
+   * a copied link names no one and joins whoever signs in, as it always has.
+   * Sign-up follows the same rule.
+   */
+  private async joinInvitedOrg(
+    user: { id: string; email: string },
+    addToOrg?: InviteToOrg,
+  ) {
+    if (!addToOrg || typeof addToOrg === 'boolean') {
+      return false as const;
+    }
+
+    const invited = addToOrg.email?.trim();
+    if (invited && !emailsMatch(invited, user.email || '')) {
+      this._logger.warn(
+        `Invite to ${addToOrg.orgId} not joined: it was sent to another address`,
+      );
+      return false as const;
+    }
+
+    try {
+      return await this._organizationService.addUserToOrg(
+        user.id,
+        addToOrg.id,
+        addToOrg.orgId,
+        addToOrg.role,
+      );
+    } catch (err) {
+      this._logger.warn(
+        `Invite to ${addToOrg.orgId} not joined: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return false as const;
+    }
   }
 
   public getOrgFromCookie(cookie?: string) {
@@ -714,6 +771,7 @@ export class AuthService {
     ip?: string,
     userAgent?: string,
     linkTicket?: string,
+    addToOrg?: InviteToOrg,
   ) {
     // the mobile app passes redirect_uri and keeps no cookies, the web flow
     // never passes it, so the state nonce is only enforced for the web flow
@@ -773,10 +831,13 @@ export class AuthService {
         provider.toUpperCase() as Provider,
         identity.id,
       );
+      // This path does not go through routeAuth, so the invite is joined here.
+      const addedOrg = await this.joinInvitedOrg(existing, addToOrg);
       return {
         jwt: await this.jwt(existing),
         isNew: false,
         stepUp: this.stepUpJwt(existing.id),
+        addedOrg,
       };
     }
 
@@ -808,10 +869,16 @@ export class AuthService {
       await NewsletterService.register(identity.email);
       await this.sendWelcome(identity.email);
 
+      const addedOrg = await this.joinInvitedOrg(
+        create.users[0].user,
+        addToOrg,
+      );
+
       return {
         jwt: await this.jwt(create.users[0].user),
         isNew: true,
         stepUp: this.stepUpJwt(create.users[0].user.id),
+        addedOrg,
       };
     }
 

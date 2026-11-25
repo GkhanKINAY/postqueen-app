@@ -277,6 +277,7 @@ billing_billing_address
 billing_cancel
 billing_cancel_anytime
 billing_cancel_anytime_short
+billing_cancel_failed
 billing_cancel_notice_lapsed
 billing_cancel_notice_title
 billing_cancel_notice_trial
@@ -481,6 +482,7 @@ channel_will_post_again_now
 channel_will_post_now
 channels
 channels_list_empty_hint
+charge_disputed_no_refund
 chat_actions
 chat_delete_failed
 chat_deleted
@@ -1635,6 +1637,7 @@ discount_active
 discount_applied_successfully
 discount_forever
 discount_until
+disputed
 documentation
 done
 dont_have_an_account
@@ -2104,6 +2107,7 @@ next_day
 next_free_slot
 next_month
 no
+no_ai_credits_ask_admin
 no_alt_text
 no_analytics_yet
 no_approved_apps
@@ -2393,6 +2397,7 @@ reconnect_before_new_post
 reconnect_channel
 redirect_url
 refreshing_analytics
+refund_charges_failed
 refund_selected
 refund_selected_confirm
 refunded
@@ -2704,6 +2709,7 @@ transfer_ownership_confirm
 trial_banner_active
 trial_banner_active_until
 trial_banner_founding
+trial_end_admin_only
 trial_feature_locked_end_trial
 trial_reel
 try_again

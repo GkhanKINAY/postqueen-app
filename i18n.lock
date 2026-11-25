@@ -790,3 +790,9 @@ checksums:
     back_to_postqueen: 5a034d5158c8f0b362245414dbf239c2
     not_selectable_page_not_granted_to_postqueen: c7637534409c13dca1ae71caddf156f5
     you_did_not_grant_postqueen_access_to_this_page: 8a5bee167b22955758b38c4fe7fdb931
+    refund_charges_failed: 2357f7192f6ba7492229efb9109f275c
+    disputed: 608edc2188a1228d0f4b2a5969ee1c5b
+    charge_disputed_no_refund: 64dd2aab66faa782f4d7c8db5199341a
+    billing_cancel_failed: 00e2666f61f4bbea8c3fbc6d622bde22
+    trial_end_admin_only: 1c5a980a21a72381268cb3fc703d34cd
+    no_ai_credits_ask_admin: 1175ca4a744042dc8397ca8d78916165

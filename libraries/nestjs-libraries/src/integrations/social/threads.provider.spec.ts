@@ -56,3 +56,22 @@ describe('Threads text', () => {
     assert.equal(await text('😀'.repeat(200)), true);
   });
 });
+
+describe('Threads errors', () => {
+  it('names an invalid link attachment (4279047) instead of an unknown error', () => {
+    const answer = new ThreadsProvider().handleErrors(
+      JSON.stringify({
+        error: {
+          message: 'Invalid parameter',
+          type: 'THApiException',
+          code: 100,
+          error_subcode: 4279047,
+          is_transient: false,
+          error_user_title: 'Invalid Link Attachment',
+        },
+      })
+    );
+    assert.equal(answer?.type, 'bad-body');
+    assert.match(String(answer?.value), /invalid link attachment/);
+  });
+});

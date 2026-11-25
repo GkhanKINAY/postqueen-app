@@ -29,6 +29,7 @@ import {
   getSsrfSafeAxios,
   getSsrfSafeDispatcher,
 } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import sharp from 'sharp';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -126,7 +127,9 @@ async function startVideoUpload(
     // @ts-ignore - undici-only option; blocks SSRF to internal IPs
     dispatcher: getSsrfSafeDispatcher(),
   });
-  const videoSize = Number(headResponse.headers.get('content-length') || 0);
+  const videoSize =
+    ownUploadSize(videoPath) ||
+    Number(headResponse.headers.get('content-length') || 0);
   if (!headResponse.ok || !videoSize) {
     throw new BadBody(
       'bluesky',
@@ -391,7 +394,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
       const {
         data: { accessJwt, refreshJwt, handle, did },
       } = await agent.login({
-        identifier: body.identifier,
+        identifier: this.loginIdentifier(body),
         password: body.password,
       });
 
@@ -408,10 +411,23 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
         picture: profile?.data?.avatar || '',
         username: profile.data.handle!,
       };
-    } catch (e) {
+    } catch (e: any) {
       console.log(e);
-      return 'Invalid credentials';
+      switch (e?.error) {
+        case 'RateLimitExceeded':
+          return 'Bluesky is temporarily refusing logins for this account, please try again later';
+        case 'XRPCNotSupported':
+          return 'Could not reach a Bluesky server at the Service URL';
+        default:
+          return 'Invalid credentials';
+      }
     }
+  }
+
+  // The stored connect body keeps whatever the user typed; Bluesky reads a
+  // leading "@" as an email address and rejects it, so strip it on every login.
+  private loginIdentifier(body: { identifier?: string }) {
+    return String(body.identifier || '').trim().replace(/^@/, '');
   }
 
   private async getAgent(integration: Integration) {
@@ -425,7 +441,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
 
     try {
       await agent.login({
-        identifier: body.identifier,
+        identifier: this.loginIdentifier(body),
         password: body.password,
       });
     } catch (err: any) {
@@ -914,7 +930,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: this.loginIdentifier(body),
       password: body.password,
     });
 
@@ -977,7 +993,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: this.loginIdentifier(body),
       password: body.password,
     });
 
@@ -1035,7 +1051,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     });
 
     await agent.login({
-      identifier: body.identifier,
+      identifier: this.loginIdentifier(body),
       password: body.password,
     });
 

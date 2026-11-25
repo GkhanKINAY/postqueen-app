@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagramがリールを音源のページにリンクするのは音楽の場合のみです。オリジナル音源で公開されたリールには、アカウント名の下に「オリジナル音源」と表示されます。",
   "back_to_postqueen": "PostQueenに戻る",
   "not_selectable_page_not_granted_to_postqueen": "選択できません：PostQueenにこのページへのアクセスが許可されていません",
-  "you_did_not_grant_postqueen_access_to_this_page": "Facebookのダイアログで、PostQueenにこのページへのアクセスを許可していません。\nチャンネルを再接続し、Facebookの画面で「設定を編集」をクリックしてください。現在のページのみを許可するオプションを選び、このページと、すでに接続されている他のページにチェックを入れてください。"
+  "you_did_not_grant_postqueen_access_to_this_page": "Facebookのダイアログで、PostQueenにこのページへのアクセスを許可していません。\nチャンネルを再接続し、Facebookの画面で「設定を編集」をクリックしてください。現在のページのみを許可するオプションを選び、このページと、すでに接続されている他のページにチェックを入れてください。",
+  "refund_charges_failed": "選択した請求の返金ができませんでした",
+  "disputed": "異議申し立て中",
+  "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません",
+  "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。",
+  "trial_end_admin_only": "トライアルを終了してお支払いできるのは、このワークスペースの管理者のみです。",
+  "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。"
 }

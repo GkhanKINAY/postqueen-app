@@ -957,5 +957,11 @@
   "instagram_original_sound_not_linked": "Instagram ne relie un Reel à la page du son que pour la musique. Les Reels publiés avec un son original sont indiqués comme « Audio original » sous votre compte.",
   "back_to_postqueen": "Retour à PostQueen",
   "not_selectable_page_not_granted_to_postqueen": "Impossible de sélectionner cette Page : PostQueen n’y a pas accès",
-  "you_did_not_grant_postqueen_access_to_this_page": "Vous n’avez pas autorisé PostQueen à accéder à cette Page dans la boîte de dialogue Facebook.\nReconnectez le canal, cliquez sur « Modifier les paramètres » sur l’écran Facebook, choisissez de n’autoriser l’accès qu’aux Pages actuelles, puis cochez cette Page ainsi que vos autres Pages déjà connectées."
+  "you_did_not_grant_postqueen_access_to_this_page": "Vous n’avez pas autorisé PostQueen à accéder à cette Page dans la boîte de dialogue Facebook.\nReconnectez le canal, cliquez sur « Modifier les paramètres » sur l’écran Facebook, choisissez de n’autoriser l’accès qu’aux Pages actuelles, puis cochez cette Page ainsi que vos autres Pages déjà connectées.",
+  "refund_charges_failed": "Impossible de rembourser les frais sélectionnés",
+  "disputed": "Contesté",
+  "charge_disputed_no_refund": "Ce prélèvement a fait l’objet d’une contestation et ne peut donc pas être remboursé",
+  "billing_cancel_failed": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer ou contacter le support.",
+  "trial_end_admin_only": "Seul un administrateur de cet espace de travail peut mettre fin à l'essai et payer.",
+  "no_ai_credits_ask_admin": "Vous n'avez pas assez de crédits pour cette image. Veuillez contacter un administrateur de votre espace de travail."
 }

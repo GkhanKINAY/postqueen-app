@@ -5,6 +5,7 @@ import {
   SocialAbstract,
 } from '../social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
+import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import {
   AuthTokenDetails,
   MediaContent,
@@ -240,9 +241,9 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
       });
       const contentType =
         headResponse.headers.get('content-type') || 'application/octet-stream';
-      const contentLength = Number(
-        headResponse.headers.get('content-length') || 0
-      );
+      const contentLength =
+        ownUploadSize(item.path) ||
+        Number(headResponse.headers.get('content-length') || 0);
       if (!headResponse.ok || !contentLength) {
         // A permanent condition - fail fast instead of letting Temporal retry
         throw new BadBody(

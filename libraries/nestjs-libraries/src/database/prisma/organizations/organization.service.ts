@@ -273,7 +273,9 @@ export class OrganizationService {
       pricing[normalizeTier(org?.subscription?.subscriptionTier)]?.label ||
       'PostQueen';
     const endsNow = dayjs(cancelAt).isBefore(dayjs().add(1, 'hour'));
-    const date = dayjs.utc(cancelAt).format('MMMM D, YYYY');
+    // Billing shows the date in the user's own timezone, so the two can be a
+    // day apart: the email says which one it is.
+    const date = `${dayjs.utc(cancelAt).format('MMMM D, YYYY')} (UTC)`;
     await this._notificationsService.sendEmail(
       email,
       'Your PostQueen subscription is cancelled',
