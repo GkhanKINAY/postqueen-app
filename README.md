@@ -42,7 +42,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-2563EB?labelColor=15131C" alt="License: AGPL-3.0"></a>
   <a href="https://www.npmjs.com/package/postqueen"><img src="https://img.shields.io/npm/v/postqueen?label=CLI&color=CB3837&labelColor=15131C&logo=npm&logoColor=white" alt="postqueen CLI on npm"></a>
   <a href="https://www.npmjs.com/package/n8n-nodes-postqueen"><img src="https://img.shields.io/npm/v/n8n-nodes-postqueen?label=n8n%20node&color=EA4B71&labelColor=15131C&logo=n8n&logoColor=white" alt="n8n node on npm"></a>
-  <a href="https://www.forbes.com/profile/gokhan-kinay/"><img src="https://img.shields.io/badge/Forbes-30%20Under%2030%20Europe-C9A227?labelColor=15131C" alt="Founder: Forbes 30 Under 30 Europe"></a>
+  <a href="https://www.forbes.com/profile/gokhan-kinay/"><img src="https://img.shields.io/badge/Forbes-30%20Under%2030%20Europe-C9A227?labelColor=15131C" alt="Co-Founder: Forbes 30 Under 30 Europe"></a>
 </p>
 
 <p align="center">
@@ -228,10 +228,10 @@ curl https://api.postqueen.ai/public/v1/integrations -H "Authorization: YOUR_API
 ## Built by
 
 <p align="center">
-  <a href="https://www.forbes.com/profile/gokhan-kinay/"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/founder-dark.png"><img src=".github/assets/showcase/founder-light.png" width="100%" alt="Gökhan KINAY, founder of PostQueen and Forbes 30 Under 30 Europe (2023, Sports & Games): I built PostQueen for my own apps. Promoting them meant posting on every channel, every week, and I kept falling behind. Now I tell my agent what to share, and it is handled."></picture></a>
+  <a href="https://www.forbes.com/profile/gokhan-kinay/"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/founder-dark.png"><img src=".github/assets/showcase/founder-light.png" width="100%" alt="Gökhan KINAY, co-founder of PostQueen and Forbes 30 Under 30 Europe (2023, Sports & Games): I built PostQueen for my own apps. Promoting them meant posting on every channel, every week, and I kept falling behind. Now I tell my agent what to share, and it is handled."></picture></a>
 </p>
 
-PostQueen is made by Forceplay OÜ, a software company in Tallinn, Estonia.
+PostQueen is made by Forcegames OÜ, a software company in Tallinn, Estonia, co-founded by Gökhan KINAY and Aslıhan KINAY.
 
 <p align="center">
   <a href="https://app.postqueen.ai/auth?utm_source=github&utm_medium=readme&utm_campaign=postqueen-app&utm_content=closing-band"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/showcase/cta-dark.png"><img src=".github/assets/showcase/cta-light.png" width="100%" alt="Ready when you are: hand your next post to your agent. Start 7-day trial for $0. $0 due today, cancel in one click."></picture></a>
