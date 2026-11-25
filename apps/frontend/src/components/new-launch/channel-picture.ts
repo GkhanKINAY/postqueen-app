@@ -25,11 +25,12 @@ export interface ChannelBrandMark {
 const BRAND_MARKS: Record<string, ChannelBrandMark> = {
   // YouTube API Services Developer Policies III.F.2 and the YouTube branding
   // guidelines: the files are the official icons from brand.youtube, and "the
-  // minimum height for digital media is 20 dp".
+  // minimum height for digital media is 20 dp". youtube.svg/png stay the
+  // square platform icons the rest of the app draws.
   youtube: {
-    src: '/icons/platforms/youtube.svg',
-    whiteSrc: '/icons/platforms/youtube-white.svg',
-    blackSrc: '/icons/platforms/youtube-black.svg',
+    src: '/icons/platforms/youtube-mark.svg',
+    whiteSrc: '/icons/platforms/youtube-mark-white.svg',
+    blackSrc: '/icons/platforms/youtube-mark-black.svg',
     ratio: 396.533 / 277.776,
     minHeight: 20,
     link: (channel) =>
@@ -66,6 +67,37 @@ export function brandMarkBox(
   return {
     width: Math.round(width * 100) / 100,
     height: Math.round((width / mark.ratio) * 100) / 100,
+  };
+}
+
+/**
+ * Where a brand mark goes on a channel avatar of `size` px. It is never drawn
+ * under its minimum height or cut by the round face, so it is the face of a
+ * channel without a photo only where it fits there (otherwise the face shows
+ * the channel's initial), and the badge only on an avatar at least as wide as
+ * itself, plate included; next to a smaller avatar it sits beside it.
+ * `badge` is the caller's choice, undefined for the default (a badge on a
+ * photo, or where the face can't carry the mark).
+ */
+export function brandMarkPlacement(
+  mark: ChannelBrandMark,
+  size: number,
+  badgeSize: number,
+  showPhoto: boolean,
+  badge?: boolean
+): { face: 'photo' | 'mark' | 'initial'; badge: 'on' | 'beside' | 'none' } {
+  const inFace = brandMarkBox(mark, size * 0.64);
+  const face = showPhoto
+    ? 'photo'
+    : Math.hypot(inFace.width, inFace.height) <= size
+      ? 'mark'
+      : 'initial';
+  if (!(badge ?? face !== 'mark')) {
+    return { face, badge: 'none' };
+  }
+  return {
+    face,
+    badge: brandMarkBox(mark, badgeSize).width + 2 <= size ? 'on' : 'beside',
   };
 }
 

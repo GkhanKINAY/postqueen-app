@@ -32,6 +32,10 @@ import { useOpenReconnectInChannels } from '@gitroom/frontend/components/launche
 import { ChannelsListEmpty } from '@gitroom/frontend/components/ui/no-channels-art';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { channelListSubtitle, channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
+import {
+  ChannelAvatar as ComposerChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
@@ -261,6 +265,9 @@ export const AgentList: FC<{
           const blocked = needsAttention(integration);
           const isSelected =
             !blocked && selected.some((p) => p.id === integration.id);
+          // A blocked row is faded as a whole. A brand mark can't be: only
+          // its avatar and text are (see channelBrandMark).
+          const brand = isBrandMark(integration.identifier);
           return (
             <button
               type="button"
@@ -271,7 +278,7 @@ export const AgentList: FC<{
               title={channelNameWithHandle(integration)}
               className={clsx(
                 'flex min-h-[48px] w-full items-center gap-[11px] rounded-pqSm px-[10px] py-[7px] text-start transition-colors hover:bg-pqHover mobile:min-h-[56px]',
-                blocked && 'opacity-60'
+                blocked && !brand && 'opacity-60'
               )}
             >
               {blocked ? (
@@ -298,8 +305,17 @@ export const AgentList: FC<{
                   )}
                 </span>
               )}
-              <ChannelAvatar integration={integration} size={28} />
-              <span className="min-w-0 flex-1">
+              <ChannelAvatar
+                integration={integration}
+                size={28}
+                dimClassName={brand && blocked ? 'opacity-60' : undefined}
+              />
+              <span
+                className={clsx(
+                  'min-w-0 flex-1',
+                  brand && blocked && 'opacity-60'
+                )}
+              >
                 <span className="block truncate text-[13px] font-[600] text-pqText">
                   {integration.name}
                 </span>
@@ -315,7 +331,12 @@ export const AgentList: FC<{
                 </span>
               </span>
               {blocked && (
-                <span className="shrink-0 text-[12px] font-[600] text-pqWarn">
+                <span
+                  className={clsx(
+                    'shrink-0 text-[12px] font-[600] text-pqWarn',
+                    brand && 'opacity-60'
+                  )}
+                >
                   {t('reconnect', 'Reconnect')}
                 </span>
               )}
@@ -343,28 +364,42 @@ export const AgentList: FC<{
   );
 };
 
-/** A channel's picture with its platform badge, as the pickers draw it. */
+/**
+ * A channel's picture with its platform badge, as the pickers draw it. A
+ * brand mark can't be a round badge: those channels take the composer's
+ * avatar, which draws the official mark (see channelBrandMark).
+ */
 const ChannelAvatar: FC<{
-  integration: { identifier: string; picture?: string | null };
+  integration: { identifier: string; picture?: string | null; name?: string };
   size: number;
-}> = ({ integration, size }) => (
-  <span className="relative shrink-0" style={{ width: size, height: size }}>
-    <ImageWithFallback
-      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-      src={integration.picture || '/no-picture.jpg'}
-      className="rounded-full"
-      alt={integration.identifier}
-      width={size}
-      height={size}
+  /** Brand marks only, see ComposerChannelAvatar. */
+  dimClassName?: string;
+}> = ({ integration, size, dimClassName }) =>
+  isBrandMark(integration.identifier) ? (
+    <ComposerChannelAvatar
+      integration={integration}
+      size={size}
+      rounded="full"
+      dimClassName={dimClassName}
     />
-    <img
-      src={`/icons/platforms/${integration.identifier}.png`}
-      alt=""
-      className="absolute -bottom-[2px] -end-[2px] rounded-full border border-pqPop"
-      style={{ width: Math.round(size * 0.5), height: Math.round(size * 0.5) }}
-    />
-  </span>
-);
+  ) : (
+    <span className="relative shrink-0" style={{ width: size, height: size }}>
+      <ImageWithFallback
+        fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+        src={integration.picture || '/no-picture.jpg'}
+        className="rounded-full"
+        alt={integration.identifier}
+        width={size}
+        height={size}
+      />
+      <img
+        src={`/icons/platforms/${integration.identifier}.png`}
+        alt=""
+        className="absolute -bottom-[2px] -end-[2px] rounded-full border border-pqPop"
+        style={{ width: Math.round(size * 0.5), height: Math.round(size * 0.5) }}
+      />
+    </span>
+  );
 
 const SearchGlyph: FC = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" className="shrink-0 text-pqSoft">
@@ -449,7 +484,9 @@ export const ChannelPickerButton: FC = () => {
                 key={p.id}
                 className={clsx(
                   'flex rounded-full shadow-[0_0_0_2px_var(--pop)]',
-                  i > 0 && '-ms-[6px]'
+                  i > 0 && '-ms-[6px]',
+                  // its mark sits beside it: keep the next one off the mark
+                  isBrandMark(p.identifier) && 'relative z-[1]'
                 )}
                 title={channelNameWithHandle(p)}
               >

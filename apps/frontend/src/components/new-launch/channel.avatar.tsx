@@ -4,8 +4,10 @@ import { FC } from 'react';
 import clsx from 'clsx';
 import { useFallbackUntilLoaded } from '@gitroom/react/helpers/image.with.fallback';
 import { useThemeMode } from '@gitroom/frontend/components/layout/mode.component';
+import { continuePickerInitial } from '@gitroom/frontend/components/new-launch/providers/continue-provider/continue-picker-meta';
 import {
   brandMarkBox,
+  brandMarkPlacement,
   channelBrandMark,
   channelPlatformIcon,
   channelPlatformLabel,
@@ -148,23 +150,55 @@ export const ChannelAvatar: FC<{
   );
   const showPhoto = faceSrc !== iconSrc;
   const mark = channelBrandMark(integration.identifier);
-  // Without a photo the face is the platform icon. A brand mark can't shrink
-  // under its minimum height or be cut by the round face: where it does not
-  // fit, the face stays empty and the badge carries the mark.
-  const faceMark = mark && !showPhoto ? brandMarkBox(mark, size * 0.64) : null;
-  const faceMarkFits =
-    !!faceMark && Math.hypot(faceMark.width, faceMark.height) <= size;
-  // As a badge it needs an avatar at least as wide as itself (plate
-  // included); a smaller one would be buried under it. There the caller sets
-  // the mark beside the avatar, as the composer's version tabs do.
-  const markFitsBadge =
-    !!mark && brandMarkBox(mark, badgeSize).width + 2 <= size;
-  const showBadge =
-    (badge ?? (showPhoto || (!!mark && !faceMarkFits))) &&
-    (!mark || markFitsBadge);
+  // A brand mark's own rules decide its face and badge (see
+  // brandMarkPlacement): next to a small avatar it sits beside it.
+  const placement = mark
+    ? brandMarkPlacement(mark, size, badgeSize, showPhoto, badge)
+    : null;
+  const wantsBadge = placement
+    ? placement.badge !== 'none'
+    : (badge ?? showPhoto);
+  const markBeside = placement?.badge === 'beside';
   const radius = rounded === 'full' ? 'rounded-full' : 'rounded-[8px]';
 
-  return (
+  const face =
+    placement && placement.face !== 'photo' ? (
+      placement.face === 'mark' ? (
+        <PlatformMark
+          identifier={integration.identifier}
+          size={size * 0.64}
+          channel={channel}
+          inactive={!!dimClassName}
+          plateClassName=""
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="select-none font-[600] leading-none text-pqMuted"
+          style={{ fontSize: Math.round(size * 0.42) }}
+        >
+          {continuePickerInitial(
+            integration.name || channelPlatformLabel(integration.identifier)
+          )}
+        </span>
+      )
+    ) : (
+      <img
+        src={faceSrc}
+        alt={integration.name || integration.identifier}
+        width={showPhoto ? size : Math.round(size * 0.64)}
+        height={showPhoto ? size : Math.round(size * 0.64)}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        className={
+          showPhoto
+            ? 'h-full w-full object-cover'
+            : 'h-[64%] w-[64%] object-contain'
+        }
+      />
+    );
+
+  const avatar = (
     <span
       className={clsx(
         'relative inline-flex shrink-0 items-center justify-center',
@@ -176,36 +210,13 @@ export const ChannelAvatar: FC<{
         className={clsx(
           'flex h-full w-full items-center justify-center overflow-hidden bg-pqTableHeader',
           radius,
-          !(mark && !showPhoto) && dimClassName
+          placement?.face !== 'mark' && dimClassName
         )}
       >
-        {mark && !showPhoto ? (
-          faceMarkFits && (
-            <PlatformMark
-              identifier={integration.identifier}
-              size={size * 0.64}
-              channel={channel}
-              inactive={!!dimClassName}
-              plateClassName=""
-            />
-          )
-        ) : (
-          <img
-            src={faceSrc}
-            alt={integration.name || integration.identifier}
-            width={showPhoto ? size : Math.round(size * 0.64)}
-            height={showPhoto ? size : Math.round(size * 0.64)}
-            referrerPolicy="no-referrer"
-            decoding="async"
-            className={
-              showPhoto
-                ? 'h-full w-full object-cover'
-                : 'h-[64%] w-[64%] object-contain'
-            }
-          />
-        )}
+        {face}
       </span>
-      {showBadge &&
+      {wantsBadge &&
+        !markBeside &&
         (mark ? (
           // Bigger than a square badge, so it hangs off a round avatar's
           // corner; a square one keeps it inside, where a wrapper may clip.
@@ -236,6 +247,23 @@ export const ChannelAvatar: FC<{
             )}
           />
         ))}
+    </span>
+  );
+
+  if (!markBeside) {
+    return avatar;
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-[4px]">
+      {avatar}
+      <PlatformMark
+        identifier={integration.identifier}
+        size={badgeSize}
+        channel={channel}
+        inactive={!!dimClassName}
+        plateClassName=""
+      />
     </span>
   );
 };

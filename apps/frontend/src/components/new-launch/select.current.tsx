@@ -3,11 +3,7 @@
 import { FC } from 'react';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import clsx from 'clsx';
-import {
-  ChannelAvatar,
-  isBrandMark,
-  PlatformMark,
-} from '@gitroom/frontend/components/new-launch/channel.avatar';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useShallow } from 'zustand/react/shallow';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
@@ -124,18 +120,12 @@ export const SelectCurrent: FC = () => {
               data-tooltip-content={channelNameWithHandle(integration)}
               className={tabClass(isActive)}
             >
+              {/* A brand mark is bigger than this avatar: ChannelAvatar sets
+                  it beside, not on it (see channelBrandMark). */}
               <ChannelAvatar
                 integration={integration}
                 size={22}
                 rounded="full"
-                badge={isBrandMark(integration.identifier) ? false : undefined}
-              />
-              {/* A brand mark is bigger than this avatar: it sits next to it,
-                  not on it (see channelBrandMark). */}
-              <PlatformMark
-                identifier={integration.identifier}
-                size={14}
-                plateClassName=""
               />
               <span className="max-w-[140px] truncate">{integration.name}</span>
               <IsGlobal id={integration.id} />

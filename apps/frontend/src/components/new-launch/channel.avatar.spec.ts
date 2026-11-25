@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   brandMarkBox,
+  brandMarkPlacement,
   channelBrandMark,
   channelPlatformIcon,
   channelPlatformLabel,
@@ -55,6 +56,10 @@ const tiktokPreview = readFileSync(
 );
 const manageModal = readFileSync(
   fileURLToPath(new URL('./manage.modal.tsx', import.meta.url)),
+  'utf8'
+);
+const agents = readFileSync(
+  fileURLToPath(new URL('../agents/agent.tsx', import.meta.url)),
   'utf8'
 );
 const youtubeSettings = readFileSync(
@@ -189,21 +194,68 @@ describe('YouTube official mark', () => {
     assert.equal(link('javascript:alert(1)'), 'https://www.youtube.com');
   });
 
-  it('is dimmed through ChannelAvatar, never through a wrapper around it', () => {
-    assert.match(source, /dimClassName/);
-    assert.match(source, /MonochromeMark/);
-    assert.doesNotMatch(picks, /'grayscale'\n\s*\)}\n\s*>/);
-    assert.doesNotMatch(picks, /locked && 'opacity-50 pointer-events-none'/);
-    assert.match(picks, /dimClassName=\{clsx\(/);
-    assert.doesNotMatch(providers, /: 'grayscale opacity-70 shadow/);
-    assert.match(providers, /dimClassName=\{/);
-    assert.doesNotMatch(manageModal, /py-\[10px\] opacity-60/);
-    assert.match(manageModal, /dimClassName=\{p\.locked \? 'opacity-60'/);
+  it('uses its own files, and leaves the square YouTube icon to the rest of the app', () => {
+    const mark = channelBrandMark('youtube')!;
+    assert.equal(mark.src, '/icons/platforms/youtube-mark.svg');
+    assert.equal(mark.whiteSrc, '/icons/platforms/youtube-mark-white.svg');
+    assert.equal(mark.blackSrc, '/icons/platforms/youtube-mark-black.svg');
   });
 
-  it('never buries an avatar under a badge wider than itself', () => {
-    assert.match(source, /const markFitsBadge =/);
-    assert.match(source, /\(!mark \|\| markFitsBadge\)/);
+  it('sits beside an avatar too small to carry it, never on it or nowhere', () => {
+    const mark = channelBrandMark('youtube')!;
+    for (const size of [22, 24, 28]) {
+      assert.deepEqual(brandMarkPlacement(mark, size, 14, true), {
+        face: 'photo',
+        badge: 'beside',
+      });
+      // A forced badge, as the agent draft card's stack asks for.
+      assert.equal(brandMarkPlacement(mark, size, 12, true, true).badge, 'beside');
+    }
+    for (const size of [32, 36, 42]) {
+      assert.equal(brandMarkPlacement(mark, size, 14, true).badge, 'on');
+    }
+    assert.equal(brandMarkPlacement(mark, 22, 14, true, false).badge, 'none');
+  });
+
+  it('never leaves an empty disc: the initial, or the mark where it fits', () => {
+    const mark = channelBrandMark('youtube')!;
+    // No photo, or one still loading, on a small avatar: the initial, and the
+    // mark beside it.
+    assert.deepEqual(brandMarkPlacement(mark, 22, 14, false), {
+      face: 'initial',
+      badge: 'beside',
+    });
+    assert.deepEqual(brandMarkPlacement(mark, 28, 14, false), {
+      face: 'initial',
+      badge: 'beside',
+    });
+    // Big enough: the face is the mark itself, with no second one.
+    assert.deepEqual(brandMarkPlacement(mark, 42, 16, false), {
+      face: 'mark',
+      badge: 'none',
+    });
+    assert.match(source, /continuePickerInitial\(/);
+    assert.match(source, /placement\.face === 'mark'/);
+  });
+
+  it('keeps the other networks faded as a whole, and only spares the mark', () => {
+    assert.match(source, /MonochromeMark/);
+    // Picker chips: greyed and faded on the chip, as before, except a brand.
+    assert.match(picks, /locked && !brand && 'opacity-50'/);
+    assert.match(picks, /: !brand && 'grayscale'/);
+    assert.match(picks, /dimClassName=\{\s*brand\s*\?/);
+    // Preview chips: the whole chip at 70 % and grey, except a brand.
+    assert.match(
+      providers,
+      /'bg-pqSettings grayscale opacity-70 shadow-\[inset_0_0_0_1\.5px_transparent\] hover:opacity-100'/
+    );
+    assert.match(providers, /brand && !active/);
+    // Locked checklist rows: the whole row at 60 %, except a brand.
+    assert.match(manageModal, /'opacity-60 shadow-\[inset_0_0_0_1px_var\(--border\)\]'/);
+    assert.match(manageModal, /dimClassName=\{brand && p\.locked \? 'opacity-60'/);
+    // The agents page hands brand channels to ChannelAvatar.
+    assert.match(agents, /isBrandMark\(integration\.identifier\) \? \(\s*<ComposerChannelAvatar/);
+    assert.match(agents, /blocked && !brand && 'opacity-60'/);
   });
 
   it('shows the description and names the privacy status on the YouTube settings', () => {
