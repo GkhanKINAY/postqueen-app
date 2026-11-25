@@ -968,5 +968,6 @@
   "label_description": "설명",
   "youtube_description_is_post_text": "게시물 텍스트가 동영상 설명이 됩니다. 편집기에서 수정하세요.",
   "label_made_with_ai": "AI로 제작됨",
-  "facebook_made_with_ai": "AI로 제작됨 (텍스트 및 사진 게시물만 해당)"
+  "facebook_made_with_ai": "AI로 제작됨 (텍스트 및 사진 게시물만 해당)",
+  "youtube_made_with_ai": "AI로 제작됨 (사실적인 변경 또는 합성 콘텐츠)"
 }

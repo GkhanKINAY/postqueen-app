@@ -12,6 +12,7 @@ import { Input } from '@gitroom/react/form/input';
 import { YoutubeTags } from '@gitroom/frontend/components/new-launch/providers/youtube/youtube.tags';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { FormChoice } from '@gitroom/react/form/form.choice';
+import { Checkbox } from '@gitroom/react/form/checkbox';
 import { YoutubePreview } from '@gitroom/frontend/components/new-launch/providers/youtube/youtube.preview';
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import {
@@ -111,6 +112,17 @@ const YoutubeSettings: FC = () => {
         options={madeForKids}
       />
       <YoutubeTags label="Tags" {...register('tags')} />
+      {/* YouTube's altered or synthetic content disclosure
+          (status.containsSyntheticMedia). */}
+      <Checkbox
+        icon="ai"
+        label={t(
+          'youtube_made_with_ai',
+          'Made with AI (realistic altered or synthetic content)'
+        )}
+        defaultValue={false}
+        {...register('made_with_ai')}
+      />
       {!!thumbnail?.path && (
         <div className="flex items-center gap-[10px] text-[12.5px] leading-[1.5] text-pqMuted">
           <div className="flex-1">

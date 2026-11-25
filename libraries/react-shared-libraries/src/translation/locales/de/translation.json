@@ -968,5 +968,6 @@
   "label_description": "Beschreibung",
   "youtube_description_is_post_text": "Der Text Ihres Beitrags ist die Videobeschreibung. Bearbeiten Sie ihn im Editor.",
   "label_made_with_ai": "Mit KI erstellt",
-  "facebook_made_with_ai": "Mit KI erstellt (nur für Text- und Foto-Beiträge)"
+  "facebook_made_with_ai": "Mit KI erstellt (nur für Text- und Foto-Beiträge)",
+  "youtube_made_with_ai": "Mit KI erstellt (realistische veränderte oder synthetische Inhalte)"
 }

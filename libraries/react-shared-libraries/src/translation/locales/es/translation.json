@@ -968,5 +968,6 @@
   "label_description": "Descripción",
   "youtube_description_is_post_text": "El texto de tu publicación es la descripción del video. Edítalo en el editor.",
   "label_made_with_ai": "Hecho con IA",
-  "facebook_made_with_ai": "Hecho con IA (solo para publicaciones de texto y fotos)"
+  "facebook_made_with_ai": "Hecho con IA (solo para publicaciones de texto y fotos)",
+  "youtube_made_with_ai": "Hecho con IA (contenido alterado o sintético realista)"
 }

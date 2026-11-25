@@ -968,5 +968,6 @@
   "label_description": "Mô tả",
   "youtube_description_is_post_text": "Nội dung bài đăng của bạn là mô tả video. Hãy chỉnh sửa trong trình soạn thảo.",
   "label_made_with_ai": "Được tạo bằng AI",
-  "facebook_made_with_ai": "Được tạo bằng AI (chỉ dành cho bài đăng văn bản và ảnh)"
+  "facebook_made_with_ai": "Được tạo bằng AI (chỉ dành cho bài đăng văn bản và ảnh)",
+  "youtube_made_with_ai": "Được tạo bằng AI (nội dung chỉnh sửa hoặc tổng hợp trông như thật)"
 }

@@ -986,5 +986,6 @@
   "label_description": "Açıklama",
   "youtube_description_is_post_text": "Gönderinizin metni video açıklamasıdır. Düzenleyicide düzenleyin.",
   "label_made_with_ai": "Yapay zeka ile oluşturuldu",
-  "facebook_made_with_ai": "Yapay zeka ile oluşturuldu (yalnızca metin ve fotoğraf gönderileri için)"
+  "facebook_made_with_ai": "Yapay zeka ile oluşturuldu (yalnızca metin ve fotoğraf gönderileri için)",
+  "youtube_made_with_ai": "Yapay zeka ile oluşturuldu (gerçekçi, değiştirilmiş veya sentetik içerik)"
 }
