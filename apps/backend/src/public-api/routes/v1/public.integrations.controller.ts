@@ -422,10 +422,11 @@ export class PublicIntegrationsController {
       if (refresh) {
         // The callback matches the channel by its provider account id, while
         // API callers only know the integration id.
-        const existing = await this._integrationService.getIntegrationById(
-          org.id,
-          refresh
-        );
+        const existing =
+          await this._integrationService.getIntegrationByIdNotDeleted(
+            org.id,
+            refresh
+          );
         await ioRedis.set(
           `refresh:${state}`,
           existing?.internalId || refresh,

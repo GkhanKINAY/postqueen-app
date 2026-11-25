@@ -64,7 +64,8 @@ describe('phone calendar and composer', () => {
     const whenRight = manage.indexOf(
       '!phoneFlow && (!compactFooter || !hasChannels)',
     );
-    const draft = manage.indexOf("t('save_as_draft'");
+    // The footer's button, not the channel checklist's title above it.
+    const draft = manage.indexOf("t('save_as_draft'", whenRight);
     const scheduleIdx = manage.lastIndexOf("schedule('schedule')");
     assert.ok(whenRight > 0 && draft > whenRight && scheduleIdx > draft);
     assert.match(manage, /shrink-0 pe-\[20px\]/);
