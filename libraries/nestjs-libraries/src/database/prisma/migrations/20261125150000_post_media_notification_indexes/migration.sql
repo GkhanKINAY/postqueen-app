@@ -13,8 +13,12 @@
 -- Every CREATE comes before every DROP: the file runs as one transaction, and a
 -- DROP INDEX holds an ACCESS EXCLUSIVE lock on its table until the end, so an
 -- early one would block reads of Post and Media while the new indexes build.
--- Plain (not CONCURRENTLY) statements: production has about 4,300 Post and
--- 4,100 Media rows, so each build takes well under a second.
+-- Plain (not CONCURRENTLY) statements: on the hosted service these tables are
+-- small enough that plain CREATE/DROP INDEX in one transaction takes
+-- milliseconds. A self-hosted install with very large Post/Media tables can
+-- create the indexes CONCURRENTLY under these same names before upgrading;
+-- the CREATEs here then find them and do nothing (see the pull request that
+-- added this migration).
 -- Generated with `prisma migrate diff`, Prisma's own (truncated, 63-character)
 -- names kept; guarded like the other recent migrations, so a database that
 -- already matches from `db push` finds a no-op.
