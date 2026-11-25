@@ -57,7 +57,6 @@
   "go_to_the_calendar_to_add_channels": "채널을 추가하려면 캘린더로 이동하세요",
   "channels": "채널",
   "activate": "활성화",
-  "this_channel_needs_to_be_refreshed": "이 채널을 새로 고침해야 합니다.",
   "no_data_in_this_period": "이 기간에 데이터가 없습니다",
   "click_here_to_refresh": "여기를 클릭하여 새로 고침",
   "can_t_show_analytics_yet": "아직 분석 정보를 표시할 수 없습니다.",

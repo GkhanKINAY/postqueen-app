@@ -44,7 +44,6 @@ import {
 } from '@gitroom/frontend/components/layout/new-modal';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
-import { Checkbox } from '@gitroom/react/form/checkbox';
 import { sortBy } from 'lodash';
 import { SelectCustomer } from '@gitroom/frontend/components/launches/select.customer';
 import { DummyCodeComponent } from '@gitroom/frontend/components/new-launch/dummy.code.component';
@@ -2451,7 +2450,6 @@ const ChannelsChecklist: FC<{
                 }}
                 size={32}
                 rounded="full"
-                badge
               />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-[14px] font-[600] text-pqText">

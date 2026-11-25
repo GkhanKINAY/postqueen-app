@@ -416,6 +416,16 @@ export const useExtensionConnect = () => {
           return;
         }
         const { url } = await response.json();
+        if (!url) {
+          toaster.show(
+            t(
+              'could_not_connect_platform',
+              'Could not connect to the platform, please try again later'
+            ),
+            'warning'
+          );
+          return;
+        }
         modal.closeAll();
         window.location.href = `/integrations/social/${identifier}?state=${url}&code=${Buffer.from(
           JSON.stringify(cookieResponse.cookies)

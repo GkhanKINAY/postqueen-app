@@ -1302,7 +1302,7 @@ export class TiktokBusinessProvider
 
     if (draft && post?.data?.status === 'FAILED') {
       // an inbox item TikTok confirmed and then failed - the only trace of it
-      console.log(`TikTok inbox upload ${publishId} failed later: ${body}`);
+      console.warn(`TikTok inbox upload ${publishId} failed later: ${body}`);
     }
 
     const publicPostId = this.publicPostId(body);

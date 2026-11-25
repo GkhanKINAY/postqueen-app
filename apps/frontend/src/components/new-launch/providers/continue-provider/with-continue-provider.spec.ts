@@ -51,7 +51,7 @@ describe('continue picker options that cannot be picked', () => {
     }
     assert.match(
       pickerSource,
-      /if \(getDisabledMessage\?\.\(item\)\) \{\s*return \(\s*<div\s*key=\{getItemId\(item\)\}\s*aria-disabled="true"/,
+      /if \(getDisabledMessage\?\.\(item\)\) \{\s*return \(\s*<div\s*key=\{getItemId\(item\)\}\s*role="checkbox"\s*aria-checked="false"\s*aria-disabled="true"/,
     );
     // Clicking one, Select all and the one-option Save leave it out.
     assert.match(

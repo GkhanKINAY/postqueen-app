@@ -1381,7 +1381,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
     if (draft && post?.data?.status === 'FAILED') {
       // an inbox item TikTok confirmed and then failed - the only trace of it
-      console.log(`TikTok inbox upload ${publishId} failed later: ${raw}`);
+      console.warn(`TikTok inbox upload ${publishId} failed later: ${raw}`);
     }
 
     if (!publicPostId) {

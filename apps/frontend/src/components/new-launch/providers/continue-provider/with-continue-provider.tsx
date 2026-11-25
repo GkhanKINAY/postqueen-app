@@ -255,14 +255,14 @@ export function withContinueProvider<TItem, TSelection>(
       return (
         <span className="flex items-center justify-center gap-[6px] text-[12px] text-pqMuted">
           <span>{t(disabled.caption.key, disabled.caption.text)}</span>
-          <span
-            role="img"
+          <button
+            type="button"
             aria-label={t(disabled.tooltip.key, disabled.tooltip.text)}
             data-tooltip-id="tooltip"
             data-tooltip-place="bottom"
             data-tooltip-class-name="!max-w-[360px] whitespace-pre-line break-words"
             data-tooltip-content={t(disabled.tooltip.key, disabled.tooltip.text)}
-            className="inline-flex shrink-0 cursor-help text-pqSoft"
+            className="inline-flex shrink-0 cursor-help rounded-full text-pqSoft outline-none focus-visible:ring-2 focus-visible:ring-pqBrand"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -280,7 +280,7 @@ export function withContinueProvider<TItem, TSelection>(
               <path d="M12 16v-4" />
               <path d="M12 8h.01" />
             </svg>
-          </span>
+          </button>
         </span>
       );
     };
@@ -422,6 +422,8 @@ export function withContinueProvider<TItem, TSelection>(
                   return (
                     <div
                       key={getItemId(item)}
+                      role="checkbox"
+                      aria-checked="false"
                       aria-disabled="true"
                       className={clsx(
                         'relative flex min-h-[156px] cursor-not-allowed flex-col items-center justify-center gap-[10px] rounded-pqMd px-[14px] py-[18px] text-center shadow-[inset_0_0_0_1px_var(--border)]',
@@ -461,15 +463,17 @@ export function withContinueProvider<TItem, TSelection>(
               })}
             </div>
             <div className="flex flex-wrap items-center gap-[12px]">
-              <button
-                type="button"
-                onClick={handleToggleAll}
-                className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
-              >
-                {allVisibleSelected
-                  ? t('clear', 'Clear')
-                  : t('select_all', 'Select all')}
-              </button>
+              {selectableData.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAll}
+                  className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
+                >
+                  {allVisibleSelected
+                    ? t('clear', 'Clear')
+                    : t('select_all', 'Select all')}
+                </button>
+              )}
               {saveButton}
               {hasDisabled && backButton}
             </div>
@@ -527,17 +531,22 @@ export function withContinueProvider<TItem, TSelection>(
                   return (
                     <div
                       key={getItemId(item)}
+                      role="checkbox"
+                      aria-checked="false"
                       aria-disabled="true"
                       className={clsx(
-                        'flex w-full cursor-not-allowed items-center gap-[12px] rounded-pqMd px-[14px] py-[10px] text-start shadow-[inset_0_0_0_1px_var(--border)]',
+                        'flex w-full cursor-not-allowed flex-wrap items-center gap-x-[12px] gap-y-[6px] rounded-pqMd px-[14px] py-[10px] text-start shadow-[inset_0_0_0_1px_var(--border)]',
                         listAvatarClass,
                         listAvatarBoxClass
                       )}
                     >
-                      <span className="flex min-w-0 flex-1 items-center gap-[12px] opacity-60">
+                      <span className="flex min-w-0 flex-1 basis-[200px] items-center gap-[12px] opacity-60">
                         {renderItem(item, false)}
                       </span>
-                      <span className="shrink-0">{disabledNote(item)}</span>
+                      {/* Beside the name when there is room, under it on a phone. */}
+                      <span className="ms-auto min-w-0 text-start">
+                        {disabledNote(item)}
+                      </span>
                     </div>
                   );
                 }
@@ -566,15 +575,17 @@ export function withContinueProvider<TItem, TSelection>(
               })}
             </div>
             <div className="flex flex-wrap items-center gap-[12px]">
-              <button
-                type="button"
-                onClick={handleToggleAll}
-                className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
-              >
-                {allVisibleSelected
-                  ? t('clear', 'Clear')
-                  : t('select_all', 'Select all')}
-              </button>
+              {selectableData.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAll}
+                  className="cursor-pointer text-[13.5px] font-[600] text-pqFocused hover:underline"
+                >
+                  {allVisibleSelected
+                    ? t('clear', 'Clear')
+                    : t('select_all', 'Select all')}
+                </button>
+              )}
               {saveButton}
               {hasDisabled && backButton}
             </div>
