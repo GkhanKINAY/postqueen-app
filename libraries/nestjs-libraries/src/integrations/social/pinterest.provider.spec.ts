@@ -132,3 +132,20 @@ describe('Pinterest video pins', () => {
     assert.equal(await provider.checkValidity([[video, cover, cover]] as any), message);
   });
 });
+
+describe('Pinterest pin create handshake', () => {
+  const pending = { settings: { board: 'b1' }, message: 'Hello' } as any;
+
+  it('reads the account before arming, so an expired token is refreshed first', async () => {
+    const provider = new PinterestProvider();
+    const calls: string[] = [];
+    (provider as any).fetch = async (url: string) => {
+      calls.push(url);
+      return new Response('{}');
+    };
+    const answer = await provider.finalizePost('token', pending, {} as any);
+    assert.match(calls.join(), /^https:\/\/api[a-z-]*\.pinterest\.com\/v5\/user_account$/);
+    assert.equal(answer.status, 'pending');
+    assert.equal((answer as any).pendingData.attempting, true);
+  });
+});
