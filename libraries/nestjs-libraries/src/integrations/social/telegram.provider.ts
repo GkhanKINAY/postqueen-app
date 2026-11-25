@@ -40,20 +40,26 @@ const telegramEscape = (text: string) =>
     .replace(/>/g, '&gt;');
 
 // What Telegram receives as the text or caption: HTML parse mode, with
-// <strong> as <b> and each paragraph on its own line. Only the tags the html
-// path keeps are read as tags (and of those only u, strong and p are sent);
-// anything else that looks like one, a typed "<3" or "<b>", is text.
+// <strong> as <b>, each paragraph on its own line and a soft line break
+// (<br>) as a newline. Only the tags the html path keeps are read as tags
+// (and of those only u, strong, p and br are sent); anything else that looks
+// like one, a typed "<3" or "<b>", is text.
 const telegramText = (message: string) =>
   (message || '')
-    .split(/(<\/?(?:p|strong|u|a|ul|li|h[1-3])(?:\s[^<>]*)?>)/)
+    .split(/(<\/?(?:p|strong|u|a|ul|li|h[1-3]|br)(?:\s[^<>]*)?>)/)
     .map((part, index) =>
-      index % 2 ? striptags(part, ['u', 'strong', 'p']) : telegramEscape(part)
+      index % 2
+        ? striptags(part, ['u', 'strong', 'p', 'br'])
+        : telegramEscape(part)
     )
     .join('')
     .replace(/<strong>/g, '<b>')
     .replace(/<\/strong>/g, '</b>')
     // The editor writes <p dir="auto">, so a paragraph may carry attributes.
-    .replace(/<p(?:\s[^>]*)?>(.*?)<\/p>/g, '$1\n');
+    // Paragraphs first: their pattern does not cross the newline a <br>
+    // becomes.
+    .replace(/<p(?:\s[^>]*)?>(.*?)<\/p>/g, '$1\n')
+    .replace(/<br[^>]*>/gi, '\n');
 
 // The length Telegram counts: tags and entities are markup, "&amp;" is one
 // character.
