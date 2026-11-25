@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { resolve, sep } from 'path';
 import { getSsrfSafeAxios } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 
@@ -36,6 +36,24 @@ export const ownUploadPath = (url: string) => {
     return null;
   }
   return insideUploads(url.slice(prefix.length).split(/[?#]/)[0]);
+};
+
+// The size on disk of this instance's own local upload, or null for any other
+// URL and when this worker does not have the file. Asking over HTTP does not
+// work for these: since 16.4.5, Next sends no Content-Length on a route
+// handler's response, HEAD included, so when Next itself serves /uploads (no
+// proxy in front) a HEAD no longer tells the size.
+export const ownUploadSize = (url: string) => {
+  const own = ownUploadPath(url);
+  if (!own) {
+    return null;
+  }
+  try {
+    const stat = statSync(own);
+    return stat.isFile() ? stat.size : null;
+  } catch {
+    return null;
+  }
 };
 
 /**
