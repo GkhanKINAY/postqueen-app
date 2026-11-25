@@ -576,6 +576,47 @@ describe('A refresh that lost a race to another', { skip: !canLoad }, () => {
     assert.deepEqual(log, ['read', 'read', 'read', 'flag', 'notify']);
   });
 
+  // #419 drops a renewal when a reconnect moved the channel to another login
+  // meanwhile; the platform did renew, so nothing is flagged or sent.
+  it('treats a renewal the root guard dropped as a renewal, not a failure', async () => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const log: string[] = [];
+    const result = await new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => ({
+            accessToken: 'access-2',
+            refreshToken: 'refresh-2',
+            expiresIn: 3600,
+          }),
+        }),
+      } as any,
+      {
+        // What the repository answers for a dropped renewal: the row as it
+        // is, under the login the reconnect moved it to.
+        createOrUpdateIntegration: async () => {
+          log.push('store');
+          return { ...held, rootInternalId: 'another-login' };
+        },
+        getIntegrationById: async () => {
+          log.push('read');
+          return null;
+        },
+        refreshNeeded: async () => {
+          log.push('flag');
+          return true;
+        },
+        informAboutRefreshError: async () => {
+          log.push('notify');
+        },
+      } as any,
+      {} as any,
+    ).refresh(held);
+    assert.equal((result as any).accessToken, 'access-2');
+    assert.deepEqual(log, ['store']);
+  });
+
   it('does not wait on a channel already flagged or removed', async () => {
     for (const stored of [
       { ...held, refreshNeeded: true },

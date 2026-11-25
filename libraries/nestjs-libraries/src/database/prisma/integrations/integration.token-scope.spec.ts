@@ -714,6 +714,73 @@ describe('the hourly token renewal', { skip: !canLoad }, () => {
   });
 });
 
+// A renewal the platform refuses: another flow may have stored new tokens
+// meanwhile, and otherwise the person is told once, by whichever attempt
+// turns the flag on.
+describe('the hourly token renewal, refused', { skip: !canLoad }, () => {
+  const refuseAll = async (renewedElsewhere: string[], claims: boolean[]) => {
+    const log: string[] = [];
+    const channel = (id: string) => ({
+      id,
+      organizationId: 'org-a',
+      internalId: `internal-${id}`,
+      rootInternalId: `internal-${id}`,
+      providerIdentifier: 'tiktok',
+      name: id,
+      refreshToken: 'old',
+    });
+    const service = new IntegrationService(
+      {
+        needsToBeRefreshed: async () => [channel('renewed'), channel('revoked')],
+        refreshNeeded: async (_: string, id: string) => {
+          log.push(`flag ${id}`);
+          return claims.shift() ?? false;
+        },
+        createOrUpdateIntegration: async () => {
+          log.push('write');
+        },
+      },
+      {},
+      {
+        getSocialIntegration: () => ({
+          refreshToken: async () => {
+            throw new Error('invalid_grant');
+          },
+        }),
+      },
+      {},
+      {
+        renewedMeanwhile: async (integration: Row) =>
+          renewedElsewhere.includes(integration.id)
+            ? { accessToken: 'stored', refreshToken: 'stored-refresh' }
+            : false,
+      },
+      {},
+      {},
+      {}
+    );
+    service.informAboutRefreshError = async (_: string, integration: Row) => {
+      log.push(`notify ${integration.id}`);
+    };
+    await service.refreshTokens();
+    return log;
+  };
+
+  it('leaves a channel another flow renewed meanwhile alone', async () => {
+    assert.deepEqual(await refuseAll(['renewed'], [true]), [
+      'flag revoked',
+      'notify revoked',
+    ]);
+  });
+
+  it('tells the person once, on the run that flags the channel', async () => {
+    assert.deepEqual(await refuseAll([], [false, false]), [
+      'flag renewed',
+      'flag revoked',
+    ]);
+  });
+});
+
 describe('a LinkedIn Page, end to end', { skip: !canLoad }, () => {
   // Two organizations connect the same Page, each through its own admin:
   // connect (placeholder row), pick the Page, then the hourly renewal. Two

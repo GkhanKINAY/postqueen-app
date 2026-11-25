@@ -210,6 +210,66 @@ export class RefreshIntegrationService {
       });
   }
 
+  /**
+   * After a refresh the platform refused: the tokens another flow stored for
+   * this channel meanwhile, or false. A provider that replaces the refresh
+   * token on every refresh rejects the second of two refreshes running at
+   * once (two posts, a post and analytics) while the first is still storing
+   * its tokens, so the row is read up to three times (now, after 1 s and
+   * after 3 s). Only tokens that differ from the ones that failed, on the
+   * same account and provider, unexpired, on a channel neither flagged,
+   * removed nor between steps, count.
+   *
+   * Both rows compared here come from Prisma reads, whose extension
+   * decrypts the tokens (prisma.service.ts): every caller of refresh() hands
+   * over such a row, directly or through an activity. Stored ciphertext has
+   * a random IV, so it would always read as changed.
+   */
+  async renewedMeanwhile(
+    integration: Integration
+  ): Promise<AuthTokenDetails | false> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const stored = await this._integrationService.getIntegrationById(
+        integration.organizationId,
+        integration.id
+      );
+      if (
+        !stored ||
+        stored.refreshNeeded ||
+        stored.inBetweenSteps ||
+        stored.deletedAt
+      ) {
+        return false;
+      }
+      if (
+        stored.internalId === integration.internalId &&
+        stored.providerIdentifier === integration.providerIdentifier &&
+        stored.refreshToken &&
+        stored.refreshToken !== integration.refreshToken &&
+        stored.token !== integration.token &&
+        stored.tokenExpiration &&
+        stored.tokenExpiration.getTime() > Date.now()
+      ) {
+        return {
+          id: stored.internalId,
+          name: stored.name,
+          username: stored.profile || '',
+          picture: stored.picture || '',
+          accessToken: stored.token,
+          refreshToken: stored.refreshToken,
+          expiresIn: Math.floor(
+            (stored.tokenExpiration.getTime() - Date.now()) / 1000
+          ),
+        };
+      }
+      if (attempt < 2) {
+        await timer(1000 * (attempt + 1));
+      }
+    }
+
+    return false;
+  }
+
   private async refreshProcess(
     integration: Integration,
     socialProvider: SocialProvider,
@@ -225,50 +285,10 @@ export class RefreshIntegrationService {
 
     if (!refresh || !refresh.accessToken) {
       // Two flows can refresh the same channel at once (two posts, a post and
-      // analytics). A provider that replaces the refresh token on every refresh
-      // rejects the second one while the first is still storing its tokens:
-      // wait for them and reuse them instead of flagging the channel.
-      // Both rows compared here come from Prisma reads, whose extension
-      // decrypts the tokens (prisma.service.ts): every caller of refresh()
-      // hands over such a row, directly or through an activity. Stored
-      // ciphertext has a random IV, so it would always read as changed.
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const stored = await this._integrationService.getIntegrationById(
-          integration.organizationId,
-          integration.id
-        );
-        if (
-          !stored ||
-          stored.refreshNeeded ||
-          stored.inBetweenSteps ||
-          stored.deletedAt
-        ) {
-          break;
-        }
-        if (
-          stored.internalId === integration.internalId &&
-          stored.providerIdentifier === integration.providerIdentifier &&
-          stored.refreshToken &&
-          stored.refreshToken !== integration.refreshToken &&
-          stored.token !== integration.token &&
-          stored.tokenExpiration &&
-          stored.tokenExpiration.getTime() > Date.now()
-        ) {
-          return {
-            id: stored.internalId,
-            name: stored.name,
-            username: stored.profile || '',
-            picture: stored.picture || '',
-            accessToken: stored.token,
-            refreshToken: stored.refreshToken,
-            expiresIn: Math.floor(
-              (stored.tokenExpiration.getTime() - Date.now()) / 1000
-            ),
-          };
-        }
-        if (attempt < 2) {
-          await timer(1000 * (attempt + 1));
-        }
+      // analytics): use what the other one stored instead of flagging.
+      const renewed = await this.renewedMeanwhile(integration);
+      if (renewed) {
+        return renewed;
       }
 
       console.error(

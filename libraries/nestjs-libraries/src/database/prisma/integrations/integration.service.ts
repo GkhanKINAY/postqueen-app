@@ -906,6 +906,11 @@ export class IntegrationService implements OnModuleInit {
       const data = await this.refreshToken(provider, integration.refreshToken!);
 
       if (!data) {
+        // Another flow renewed it meanwhile and stored its tokens: nothing to
+        // write, and nothing to flag.
+        if (await this._refreshIntegrationService.renewedMeanwhile(integration)) {
+          continue;
+        }
         const flagged = await this._integrationRepository.refreshNeeded(
           integration.organizationId,
           integration.id
