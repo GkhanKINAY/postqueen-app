@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as nodeModule from 'node:module';
 import { tmpdir } from 'node:os';
 import { afterEach, before, beforeEach, describe, it } from 'node:test';
+import { createHash } from 'node:crypto';
 import { HttpException } from '@nestjs/common';
 
 // As in integration.analytics.spec.ts: tsx follows tsconfig's mapping of
@@ -100,6 +101,8 @@ const refused = (status: number, message?: RegExp) => (err: unknown) =>
   (!message || message.test(err.message));
 
 const tokenOf = (url: string) => url.split('/').pop()!;
+const sha256 = (value: string) =>
+  createHash('sha256').update(value).digest('hex');
 
 describe(
   'connect links',
@@ -116,9 +119,11 @@ describe(
         url,
         /^https:\/\/app\.example\.com\/integrations\/connect\/[a-f0-9]{64}$/
       );
+      // stored under the token's hash: the keys alone open nothing
       assert.deepEqual(writes.map((w) => [w.key, w.ttl]), [
-        [`connectLink:${tokenOf(url)}`, 3600],
+        [`connectLink:${sha256(tokenOf(url))}`, 3600],
       ]);
+      assert.equal(await ioRedis.get(`connectLink:${tokenOf(url)}`), undefined);
       assert.deepEqual(JSON.parse(writes[0].value), {
         org: 'org-1',
         integration: 'linkedin',
@@ -234,11 +239,65 @@ describe(
         [
           [`organization:${state}`, 'org-1', 3600],
           [`login:${state}`, writes[1].value, 3600],
+          [`connectLinkState:${state}`, sha256(tokenOf(url)), 3600],
           [`continue:${state}`, 'https://client.example.com/done', 3600],
         ]
       );
       // `redirect:` is the one the connect callback follows on its own
       assert.equal(await ioRedis.get(`redirect:${state}`), undefined);
+    });
+
+    const stateOf = () =>
+      writes
+        .find((w) => w.key.startsWith('organization:'))!
+        .key.slice('organization:'.length);
+
+    it('is spent by the channel it connects', async () => {
+      const { url } = await service().createConnectLink(org, 'linkedin');
+      writes = [];
+      await service().startConnectLink(tokenOf(url));
+      // the connect callback saved the channel
+      await service().spendConnectLink(stateOf());
+
+      await assert.rejects(
+        service().getConnectLink(tokenOf(url)),
+        refused(404, /expired/)
+      );
+      await assert.rejects(
+        service().startConnectLink(tokenOf(url)),
+        refused(404, /expired/)
+      );
+    });
+
+    it('stays usable after a cancelled sign-in, and a later one can still spend it', async () => {
+      const { url } = await service().createConnectLink(org, 'linkedin');
+      writes = [];
+      // the person went to the platform and cancelled: no callback, or one
+      // that failed before a channel was saved, so nothing spends the link
+      await service().startConnectLink(tokenOf(url));
+      const cancelled = stateOf();
+
+      writes = [];
+      assert.match(
+        (await service().startConnectLink(tokenOf(url))).url,
+        /linkedin\.com/
+      );
+      await service().spendConnectLink(stateOf());
+      await assert.rejects(
+        service().getConnectLink(tokenOf(url)),
+        refused(404, /expired/)
+      );
+      // the abandoned state spends nothing more
+      await service().spendConnectLink(cancelled);
+    });
+
+    it('spends nothing for a connect that did not come through a link', async () => {
+      const { url } = await service().createConnectLink(org, 'linkedin');
+      await service().spendConnectLink('state-of-the-dashboard');
+      assert.equal(
+        (await service().getConnectLink(tokenOf(url))).identifier,
+        'linkedin'
+      );
     });
   }
 );

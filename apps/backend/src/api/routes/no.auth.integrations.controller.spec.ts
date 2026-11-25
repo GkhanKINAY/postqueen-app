@@ -69,6 +69,7 @@ const attempt = async (
   ioRedis.del = async () => 1;
 
   const writes: any[][] = [];
+  const spent: string[] = [];
   const controller = new NoAuthIntegrationsController(
     {
       getAllowedSocialsIntegrations: () => ['network'],
@@ -82,6 +83,9 @@ const attempt = async (
       createOrUpdateIntegration: async (...args: any[]) => {
         writes.push(args);
         return { id: 'channel-1' };
+      },
+      spendConnectLink: async (state: string) => {
+        spent.push(state);
       },
     },
     { startRefreshWorkflow: async () => false },
@@ -97,7 +101,7 @@ const attempt = async (
     })
     .catch((err: unknown) => ({ failed: err }));
 
-  return { writes, result };
+  return { writes, result, spent };
 };
 
 const connect = async (
@@ -285,6 +289,7 @@ describe('a connect link', { skip: !canLoad }, () => {
         migrateIntegration: async () => undefined,
         migrateIntegrationOnConnect: async () => undefined,
         createOrUpdateIntegration: async () => ({ id: 'channel-1' }),
+        spendConnectLink: async () => undefined,
         getConnectLinkOrganization: async () => 'org-1',
         startConnectLink: async (token: string) => {
           extra.started?.push(token);
@@ -357,5 +362,32 @@ describe('a connect link', { skip: !canLoad }, () => {
       { url: 'https://network.example/oauth' }
     );
     assert.deepEqual(started, ['token']);
+  });
+});
+
+describe('the link a connect came through', { skip: !canLoad }, () => {
+  it('is spent once the channel is saved', async () => {
+    const { writes, spent } = await attempt(
+      { isBetweenSteps: false, authenticate: login('account-1') },
+      null
+    );
+    assert.equal(writes.length, 1);
+    assert.deepEqual(spent, ['state-1']);
+  });
+
+  it('stays usable after a sign-in that failed or was cancelled', async () => {
+    for (const authenticate of [
+      async () => 'The user cancelled',
+      async () => {
+        throw new Error('access_denied');
+      },
+    ]) {
+      const { writes, spent } = await attempt(
+        { isBetweenSteps: false, authenticate },
+        null
+      );
+      assert.equal(writes.length, 0);
+      assert.deepEqual(spent, []);
+    }
   });
 });

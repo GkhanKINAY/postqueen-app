@@ -24,7 +24,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { OpsAlertService } from '@gitroom/nestjs-libraries/track/ops.alert.service';
 import dayjs from 'dayjs';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -50,7 +50,6 @@ import {
   Sections,
   SubscriptionException,
 } from '@gitroom/backend/services/auth/permissions/permission.exception.class';
-import { randomBytes } from 'crypto';
 
 dayjs.extend(utc);
 
@@ -1363,11 +1362,12 @@ export class IntegrationService implements OnModuleInit {
   // person sent to the platform. Like the invite links of the add-channel
   // screen, only providers that connect with a plain redirect can be linked.
   //
-  // The token is 256 random bits and lives for an hour. It names the
-  // organization server-side, so whoever opens it can add a channel to that
-  // workspace only, and only while its plan has room (checked again when they
-  // continue). It stays valid for that hour, so a refused or cancelled consent
-  // can be tried again.
+  // The token is 256 random bits and lives for an hour, stored under its
+  // sha256 so the Redis keys alone open nothing. It names the organization
+  // server-side, so whoever opens it can add a channel to that workspace
+  // only, and only while its plan has room (checked again when they
+  // continue). A refused or cancelled consent can be tried again within the
+  // hour; a connected channel spends the link.
   async createConnectLink(
     org: Parameters<IntegrationService['assertConnectAllowed']>[1] & {
       id: string;
@@ -1404,7 +1404,7 @@ export class IntegrationService implements OnModuleInit {
 
     const token = randomBytes(32).toString('hex');
     await ioRedis.set(
-      `connectLink:${token}`,
+      `connectLink:${this.connectLinkKey(token)}`,
       JSON.stringify({
         org: org.id,
         integration,
@@ -1447,11 +1447,16 @@ export class IntegrationService implements OnModuleInit {
     );
   }
 
+  private connectLinkKey(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
   // A provider removed or hidden since the link was made reads as expired
   private async loadConnectLink(token: string) {
     const link = /^[a-f0-9]{64}$/.test(token)
       ? (JSON.parse(
-          (await ioRedis.get(`connectLink:${token}`)) || 'null'
+          (await ioRedis.get(`connectLink:${this.connectLinkKey(token)}`)) ||
+            'null'
         ) as {
           org: string;
           integration: string;
@@ -1493,7 +1498,8 @@ export class IntegrationService implements OnModuleInit {
   // dashboard, the platform sends them back to /integrations/social/:provider,
   // which adds the channel to the organization of the link whoever is signed
   // in, and checks the trial lock again. The link stays valid until it
-  // expires, so they can come back and try again
+  // expires or a channel is connected through it, so a cancelled sign-in can
+  // be tried again
   async startConnectLink(token: string) {
     const { org, integration, redirectUrl } = await this.loadConnectLink(token);
     const provider = this._integrationManager.getSocialIntegration(integration);
@@ -1503,6 +1509,13 @@ export class IntegrationService implements OnModuleInit {
 
       await ioRedis.set(`organization:${state}`, org, 'EX', 3600);
       await ioRedis.set(`login:${state}`, codeVerifier, 'EX', 3600);
+      // So the callback can spend the link once a channel is connected
+      await ioRedis.set(
+        `connectLinkState:${state}`,
+        this.connectLinkKey(token),
+        'EX',
+        3600
+      );
       if (redirectUrl) {
         // Not `redirect:`, which the connect callback follows on its own:
         // this one is only offered as a button on the confirmation
@@ -1516,6 +1529,17 @@ export class IntegrationService implements OnModuleInit {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  // The connect callback added a channel through a link: the link is spent.
+  // Only on success, so a cancelled or failed sign-in can be tried again.
+  async spendConnectLink(state: string) {
+    const key = await ioRedis.get(`connectLinkState:${state}`);
+    if (!key) {
+      return;
+    }
+    await ioRedis.del(`connectLink:${key}`);
+    await ioRedis.del(`connectLinkState:${state}`);
   }
 
   async checkAnalytics(

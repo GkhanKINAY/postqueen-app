@@ -29,7 +29,7 @@ export class IntegrationConnectTool implements AgentToolInterface {
       description: `
 Use this when the user wants to add (connect) a new social media channel to PostQueen: an account, a profile, a page or a business page, for example a Facebook Page, a LinkedIn Page or a Google Business Profile.
 It returns the URL of a PostQueen page. The user opens it in a browser, reads what connecting the channel means, and continues to the platform to sign in and approve the access.
-The channel is added only after the user completes that page, and is listed by integrationList afterwards. The URL works for one hour.
+The channel is added only after the user completes that page, and is listed by integrationList afterwards. The URL works for one hour and for one channel: once a channel is connected through it, make a new one for the next (a cancelled sign-in can be retried with the same URL).
 With a redirectUrl, the confirmation shown once the channel is connected offers a button to that address, and the PostQueen page names that website before the user continues. Without it, a user who is signed in to PostQueen lands on their Channels page, and anyone else sees a confirmation that the channel is connected.
 It cannot reconnect or refresh an existing channel. Platforms that need an API key, an instance URL, a wallet or the browser extension are added from the PostQueen app instead.
 The workspace's plan is checked when the user continues from the page: if it has no channel left, the page says so and nothing is connected.

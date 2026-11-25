@@ -392,6 +392,9 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`continue:${body.state}`);
     }
 
+    // A connect link connects one channel: the channel is saved, so it is spent
+    await this._integrationService.spendConnectLink(body.state);
+
     const extensionToken = integrationProvider.isChromeExtension
       ? AuthService.signJWT({
           integrationId: createUpdate.id,
