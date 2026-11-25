@@ -344,18 +344,25 @@ export const ShowAllProviders = forwardRef((props, ref) => {
                       )
                     }
                     className={clsx(
-                      'relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-pqSettings transition-all',
+                      'group/focus relative flex h-[44px] w-[44px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-[10px] bg-pqSettings transition-all',
                       active
                         ? 'shadow-[inset_0_0_0_1.5px_var(--brand)]'
-                        : 'grayscale opacity-70 shadow-[inset_0_0_0_1.5px_transparent] hover:opacity-100'
+                        : 'shadow-[inset_0_0_0_1.5px_transparent]'
                     )}
                   >
                     <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[9px]">
+                      {/* Dimmed through ChannelAvatar: a brand mark can't be
+                          (see channelBrandMark). */}
                       <ChannelAvatar
                         integration={integration}
                         size={40}
                         rounded="lg"
                         className="min-h-[40px] min-w-[40px]"
+                        dimClassName={
+                          active
+                            ? undefined
+                            : 'grayscale opacity-70 transition-opacity group-hover/focus:opacity-100'
+                        }
                       />
                     </span>
                   </button>

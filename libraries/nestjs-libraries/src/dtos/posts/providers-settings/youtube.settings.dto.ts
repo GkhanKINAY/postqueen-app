@@ -70,9 +70,10 @@ export class YoutubeTagsSettings {
 
 export class YoutubeSettingsDto {
   // Any UTF-8 but < and > (videos resource); YouTube answers invalidTitle
-  // after the video is already uploaded.
+  // after the video is already uploaded. The length is YouTube's own, 1-100:
+  // its Required Minimum Functionality does not allow a stricter one.
   @IsString()
-  @MinLength(2)
+  @MinLength(1)
   @MaxLength(100)
   @Matches(/^[^<>]*$/, {
     message: 'YouTube titles cannot contain < or >',

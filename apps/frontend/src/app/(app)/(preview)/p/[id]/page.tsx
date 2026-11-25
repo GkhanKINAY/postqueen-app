@@ -15,6 +15,9 @@ import { getT } from '@gitroom/react/translation/get.translation.service.backend
 import { RenderPreviewDateClient } from '@gitroom/frontend/components/preview/render.preview.date.client';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
+import { PlatformMark } from '@gitroom/frontend/components/new-launch/channel.avatar';
+// From the plain module: a server component can't call a 'use client' export.
+import { isBrandMark } from '@gitroom/frontend/components/new-launch/channel-picture';
 
 function absoluteMediaUrl(path: string | undefined | null): string | undefined {
   if (!path) return undefined;
@@ -177,13 +180,24 @@ export default async function Auth(
                       width={50}
                       height={50}
                     />
-                    <div className="absolute -bottom-[4px] -end-[4px] h-[24px] w-[24px]">
-                      <img
-                        className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
-                        alt={integration.providerIdentifier}
-                        src={`/icons/platforms/${integration.providerIdentifier}.png`}
+                    {/* A brand mark is never rounded or covered, and links
+                        to the channel (see channelBrandMark). */}
+                    {isBrandMark(integration.providerIdentifier) ? (
+                      <PlatformMark
+                        identifier={integration.providerIdentifier}
+                        size={24}
+                        channel={integration.profile || ''}
+                        className="absolute -bottom-[4px] -end-[8px]"
                       />
-                    </div>
+                    ) : (
+                      <div className="absolute -bottom-[4px] -end-[4px] h-[24px] w-[24px]">
+                        <img
+                          className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
+                          alt={integration.providerIdentifier}
+                          src={`/icons/platforms/${integration.providerIdentifier}.png`}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1 space-y-[10px]">
                     <div className="flex flex-wrap items-center gap-x-[8px] gap-y-[4px]">

@@ -963,5 +963,8 @@
   "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません",
   "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。",
   "trial_end_admin_only": "トライアルを終了してお支払いできるのは、このワークスペースの管理者のみです。",
-  "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。"
+  "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。",
+  "label_privacy_status": "公開設定",
+  "label_description": "説明",
+  "youtube_description_is_post_text": "投稿のテキストが動画の説明になります。エディターで編集してください。"
 }

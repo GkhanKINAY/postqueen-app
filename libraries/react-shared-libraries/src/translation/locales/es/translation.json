@@ -963,5 +963,8 @@
   "charge_disputed_no_refund": "Este cargo fue disputado y, por lo tanto, no puede ser reembolsado",
   "billing_cancel_failed": "No pudimos cancelar tu suscripción. Por favor, inténtalo de nuevo o contacta al soporte.",
   "trial_end_admin_only": "Solo un administrador de este espacio de trabajo puede terminar la prueba y pagar.",
-  "no_ai_credits_ask_admin": "No tienes suficientes créditos para esta imagen. Pide ayuda a un administrador de tu espacio de trabajo."
+  "no_ai_credits_ask_admin": "No tienes suficientes créditos para esta imagen. Pide ayuda a un administrador de tu espacio de trabajo.",
+  "label_privacy_status": "Estado de privacidad",
+  "label_description": "Descripción",
+  "youtube_description_is_post_text": "El texto de tu publicación es la descripción del video. Edítalo en el editor."
 }

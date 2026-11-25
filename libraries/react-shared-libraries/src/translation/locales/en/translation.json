@@ -1442,5 +1442,8 @@
   "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded",
   "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support.",
   "trial_end_admin_only": "Only an admin of this workspace can end the trial and pay.",
-  "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace."
+  "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace.",
+  "label_privacy_status": "Privacy Status",
+  "label_description": "Description",
+  "youtube_description_is_post_text": "Your post text is the video description. Edit it in the editor."
 }

@@ -70,8 +70,10 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
     );
   }
 
+  // A locked or unselected channel is dimmed through ChannelAvatar, not on a
+  // wrapper: a brand mark can't be dimmed (see channelBrandMark).
   return (
-    <div className={clsx('flex', locked && 'opacity-50 pointer-events-none')}>
+    <div className={clsx('flex', locked && 'pointer-events-none')}>
       <div className="flex flex-1">
         <div className="innerComponent flex-1 flex">
           <div className="flex flex-wrap gap-[12px] flex-1">
@@ -102,13 +104,16 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                     }}
                     className={clsx(
                       'relative flex cursor-pointer items-center justify-center rounded-full bg-pqSettings',
-                      isSelected
-                        ? 'ring-2 ring-pqBrand'
-                        : 'grayscale'
+                      isSelected && 'ring-2 ring-pqBrand'
                     )}
                   >
                     {isSelected && (
-                      <span className="absolute -start-[4px] -top-[4px] z-[2] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-pqBrand text-pqOnBrand">
+                      <span
+                        className={clsx(
+                          'absolute -start-[4px] -top-[4px] z-[2] flex h-[16px] w-[16px] items-center justify-center rounded-full bg-pqBrand text-pqOnBrand',
+                          locked && 'opacity-50'
+                        )}
+                      >
                         <svg
                           viewBox="0 0 24 24"
                           width="10"
@@ -132,6 +137,10 @@ export const PicksSocialsComponent: FC<{ toolTip?: boolean }> = ({
                       rounded="full"
                       badgeSize={16}
                       className="min-h-[42px] min-w-[42px]"
+                      dimClassName={clsx(
+                        !isSelected && 'grayscale',
+                        locked && 'opacity-50'
+                      )}
                     />
                   </button>
                 </div>

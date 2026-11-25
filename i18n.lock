@@ -796,3 +796,6 @@ checksums:
     billing_cancel_failed: 00e2666f61f4bbea8c3fbc6d622bde22
     trial_end_admin_only: 1c5a980a21a72381268cb3fc703d34cd
     no_ai_credits_ask_admin: 1175ca4a744042dc8397ca8d78916165
+    label_privacy_status: e25598b40325620e4a727d17a8747d0b
+    label_description: e17686a22ffad04cc7bb70524ed4478b
+    youtube_description_is_post_text: 0948f6da11be24f138ed3f3d8c97e16d

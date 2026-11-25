@@ -963,5 +963,8 @@
   "charge_disputed_no_refund": "Dieser Betrag wurde angefochten und kann daher nicht erstattet werden",
   "billing_cancel_failed": "Wir konnten Ihr Abonnement nicht kündigen. Bitte versuchen Sie es erneut oder wenden Sie sich an den Support.",
   "trial_end_admin_only": "Nur ein Admin dieses Arbeitsbereichs kann den Testzeitraum beenden und bezahlen.",
-  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs."
+  "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs.",
+  "label_privacy_status": "Datenschutzstatus",
+  "label_description": "Beschreibung",
+  "youtube_description_is_post_text": "Der Text Ihres Beitrags ist die Videobeschreibung. Bearbeiten Sie ihn im Editor."
 }

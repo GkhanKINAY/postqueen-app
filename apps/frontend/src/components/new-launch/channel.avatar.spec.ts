@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  brandMarkBox,
+  channelBrandMark,
   channelPlatformIcon,
   channelPlatformLabel,
+  isBrandMark,
   isUsableChannelPicture,
 } from './channel-picture.ts';
 
@@ -47,6 +50,13 @@ const linkedinPreview = readFileSync(
 const tiktokPreview = readFileSync(
   fileURLToPath(
     new URL('./providers/tiktok/tiktok.preview.tsx', import.meta.url)
+  ),
+  'utf8'
+);
+const showAllProviders = providers;
+const youtubeSettings = readFileSync(
+  fileURLToPath(
+    new URL('./providers/youtube/youtube.provider.tsx', import.meta.url)
   ),
   'utf8'
 );
@@ -141,5 +151,55 @@ describe('channel avatar fallback', () => {
     assert.match(pickPlatform, /bg-pqBrandSoft text-pqText/);
     assert.doesNotMatch(pickPlatform, /opacity-40/);
     assert.doesNotMatch(pickPlatform, /bg-customColor29/);
+  });
+});
+
+describe('YouTube official mark', () => {
+  it('is a brand mark, the other networks keep their square icon', () => {
+    assert.equal(isBrandMark('youtube'), true);
+    assert.equal(isBrandMark('instagram'), false);
+    assert.equal(isBrandMark(undefined), false);
+    assert.equal(isBrandMark('constructor'), false);
+  });
+
+  it('is never shown under 20 px high, nor narrower than the icon it replaces', () => {
+    const mark = channelBrandMark('youtube')!;
+    for (const size of [12, 14, 16, 20, 24]) {
+      const { width, height } = brandMarkBox(mark, size);
+      assert.ok(height >= 20 - 0.01, `${size}: ${height}`);
+      assert.ok(width >= size);
+      assert.ok(Math.abs(width / height - mark.ratio) < 0.01);
+    }
+    const big = brandMarkBox(mark, 40);
+    assert.equal(big.width, 40);
+  });
+
+  it('links to the channel by id or handle, else to YouTube', () => {
+    const { link } = channelBrandMark('youtube')!;
+    assert.equal(
+      link('UCabcdefghijklmnopqrstuv'),
+      'https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv'
+    );
+    assert.equal(link('@postqueen'), 'https://www.youtube.com/@postqueen');
+    assert.equal(link(''), 'https://www.youtube.com');
+    assert.equal(link('@a/../x'), 'https://www.youtube.com');
+    assert.equal(link('javascript:alert(1)'), 'https://www.youtube.com');
+  });
+
+  it('is dimmed through ChannelAvatar, never through a wrapper around it', () => {
+    assert.match(source, /dimClassName/);
+    assert.match(source, /MonochromeMark/);
+    assert.doesNotMatch(picks, /'grayscale'\n\s*\)}\n\s*>/);
+    assert.doesNotMatch(picks, /locked && 'opacity-50 pointer-events-none'/);
+    assert.match(picks, /dimClassName=\{clsx\(/);
+    assert.doesNotMatch(showAllProviders, /: 'grayscale opacity-70 shadow/);
+    assert.match(showAllProviders, /dimClassName=\{/);
+  });
+
+  it('shows the description and names the privacy status on the YouTube settings', () => {
+    assert.match(youtubeSettings, /t\('label_description', 'Description'\)/);
+    assert.match(youtubeSettings, /youtube_description_is_post_text/);
+    assert.match(youtubeSettings, /label="Privacy Status"/);
+    assert.match(youtubeSettings, /translationKey="label_privacy_status"/);
   });
 });

@@ -4,6 +4,71 @@ export function channelPlatformIcon(identifier: string): string {
     : `/icons/platforms/${identifier}.png`;
 }
 
+/**
+ * A platform that allows only its official mark: its own shape and colours,
+ * never rounded, cropped, recoloured, dimmed or covered, on one solid
+ * background, never under a minimum height, and a link to the channel wherever
+ * a click on it does nothing else. Generic catalog, like the labels below.
+ */
+export interface ChannelBrandMark {
+  src: string;
+  /** The official monochrome versions, shown while the channel is inactive. */
+  whiteSrc: string;
+  blackSrc: string;
+  /** Width over height. */
+  ratio: number;
+  minHeight: number;
+  /** The channel's page from its id or handle, else the platform's home. */
+  link: (channel: string) => string;
+}
+
+const BRAND_MARKS: Record<string, ChannelBrandMark> = {
+  // YouTube API Services Developer Policies III.F.2 and the YouTube branding
+  // guidelines: the files are the official icons from brand.youtube, and "the
+  // minimum height for digital media is 20 dp".
+  youtube: {
+    src: '/icons/platforms/youtube.svg',
+    whiteSrc: '/icons/platforms/youtube-white.svg',
+    blackSrc: '/icons/platforms/youtube-black.svg',
+    ratio: 396.533 / 277.776,
+    minHeight: 20,
+    link: (channel) =>
+      /^UC[\w-]{22}$/.test(channel)
+        ? `https://www.youtube.com/channel/${channel}`
+        : /^@[^\s/?#\\]+$/.test(channel)
+          ? `https://www.youtube.com/${encodeURI(channel)}`
+          : 'https://www.youtube.com',
+  },
+};
+
+export function channelBrandMark(
+  identifier?: string | null
+): ChannelBrandMark | undefined {
+  const id = String(identifier || '');
+  return Object.prototype.hasOwnProperty.call(BRAND_MARKS, id)
+    ? BRAND_MARKS[id]
+    : undefined;
+}
+
+export function isBrandMark(identifier?: string | null): boolean {
+  return !!channelBrandMark(identifier);
+}
+
+/**
+ * The box of a brand mark standing in for a square icon of `size` px: at least
+ * as wide as that icon, and never under the mark's minimum height.
+ */
+export function brandMarkBox(
+  mark: ChannelBrandMark,
+  size: number
+): { width: number; height: number } {
+  const width = Math.max(size, mark.minHeight * mark.ratio);
+  return {
+    width: Math.round(width * 100) / 100,
+    height: Math.round((width / mark.ratio) * 100) / 100,
+  };
+}
+
 /** Product name for an integration identifier. Generic catalog — not per-provider UI. */
 const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',

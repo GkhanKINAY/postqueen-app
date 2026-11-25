@@ -582,6 +582,7 @@ export const EditorWrapper: FC<{
                   integration={internalFromAll}
                   size={36}
                   rounded="full"
+                  channel={internalFromAll.internalId}
                 />
               )}
               <div className="font-display text-[16px] font-[700] text-pqText">
