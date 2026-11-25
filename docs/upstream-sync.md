@@ -124,7 +124,8 @@ a failed comment marking the comment instead of the root post, no "Already
 posted" error on a run that finds the post already published, and a single
 failure for a channel whose setup was never finished. We have since written
 v1.0.10 through v1.0.12 ourselves (October 2026: v1.0.12, `postWorkflowV1012`,
-is the one running). So upstream's next post workflow becomes our **v1.0.13**:
+is the one running, still after the November 2026 sync). So upstream's next
+post workflow becomes our **v1.0.13**:
 take only the newest, adapt the three lines above, carry our own changes into
 it (the header comments of v1.0.9 to v1.0.12 list them), and move both call
 sites (`posts.service.ts`, and the missed-posts sweep in `post.activity.ts`).
@@ -496,13 +497,202 @@ Lessons, in the order they cost time:
 - `integration.profile.spec.ts` fails twice on a European clock across a DST
   change; run the suite with `TZ=UTC`, as CI does.
 
+## November 2026: what happened
+
+**140 commits past the watermark (`a5affe62c..44df988cb`, merges not counted):
+23 taken as they were, 75 adapted, 1 taken only for its guard, 16 already
+here, 18 skipped, 6 skipped on the owner's word, 1 deferred.** A commit counts
+as adapted when the commit that carries its hash here has an "Adapted for this
+fork" paragraph, and a folded commit counts once per upstream hash. Four of
+the 75 (`fe82ea298`, `3b7e966b0`, `bffedf292`, `d7d189f59`) are in #430, open
+when this was written. The guard is `4ff97adfa`'s (see the lessons). The
+owner's six and the deferred one are in the skip table below.
+
+As in October, every commit was triaged against `origin/main` before anything
+was picked, by three read-only agents over consecutive ranges, and the owner
+settled what the triage could not. Each PR was written by its own agent in its
+own worktree and reviewed, before it merged, by an agent that did not write
+it. Upstream's four advisories published on 2026-11-02 (GHSA-fw23-6gv6-pr5p,
+GHSA-q6r4-5ph8-gr45, GHSA-jwv2-hpxf-9gwr, GHSA-jhfm-m4vp-jcpc) were all
+closed here already.
+
+Security went out first, as v3.6.175 on its own:
+
+- #419: channel token reuse scoped (`356045009` + `9d9529c98`, with the
+  `isPageId` of `58a915fc3`). A renewed LinkedIn or LinkedIn Page token now
+  reaches only channels of the same provider and the same login, never a
+  removed one. A page pick takes over only a channel of the same provider
+  (another provider's channel answers 400). LinkedIn Page refuses a login
+  without a member id and a page id that is not an organization id. Also in
+  it: the SSRF guard ignores proxy env (`ad57f595f`) and judges the
+  `::ffff:0:a.b.c.d` form by its IPv4 (`59e9af4c9`), the encryption prefix
+  guard of `4ff97adfa`, the kept-group sweep of a post save scoped to the
+  organization (`f4d7ca7aa`), and an organization admin required on the three
+  remaining billing reads (`8cee785e4`). Ours in the same PR: the Facebook
+  page picker's list carries no page access tokens.
+- #418: Next.js 16.4.6 (`e9ec50525`, Next's November security release), with
+  same-major overrides for the advisories published since the last dependency
+  pass.
+
+Everything else goes out as v3.6.176:
+
+- #420 fixes, range A: a logged-out invite joined on every sign-in path, a
+  second invite to a workspace already joined is a no-op, one reconnect notice
+  per disconnect, a refresh that lost a race uses the tokens the other flow
+  stored, `getPosts` linear with repeating posts expanded only inside the
+  window, TikTok chunk retries, Bluesky logins normalized, Instagram alt text,
+  `MUSE_CHALLENGE`, and the missing-post sweep re-reading each post.
+- #421 billing: unpaid invoices of cancelled subscriptions voided (our tag
+  `'postqueen'`), the card that pays one kept, a late-paid invoice of a
+  subscription Stripe ended re-subscribes with that period's credits granted
+  once, refunds of disputed charges blocked, plain members told to ask an
+  admin, and the cancel request sending its intent beside our feedback step.
+- #423 editor: soft line breaks (Shift+Enter, pasted `<br>`), and every reader
+  of stored post HTML taught `<br>`: the sanitizer, `stripHtmlValidation`,
+  Telegram, X posts and articles, the counters and the previews.
+- #424 fixes, ranges B and C: Threads counted in characters again (with its
+  preview crop), Mastodon media through `/api/v2/media`, readable reasons for
+  posts whose publish could not be confirmed, a post's error returned only
+  while it is in ERROR, extension channels reconnected through the extension,
+  Facebook and Instagram pages not granted shown as disabled, and the owner's
+  per-channel checklist (`e4798dea3`) in the save and delete dialogs.
+- #425 page selection: a post to a channel that never picked its page fails
+  before it is charged, and the channel shows its picker again.
+- #426 indexes: migration `20261125150000_post_media_notification_indexes`
+  (seven indexes added, eight dropped, `Post_releaseURL_idx` kept), and the
+  calendar's post query split in two.
+- #427 dependencies: a dormant Amazon SES email provider
+  (`EMAIL_PROVIDER="ses"`), and `md5`, `@swc-node/register`, `react-refresh`
+  and five root ESLint plugins removed.
+- #428 MCP and API: connect links (a PostQueen page that connects a channel to
+  the workspace that made the link), `integrationAnalyticsTool`, and the
+  attachments of an unpublished post replaced in place. 28 MCP tools with a
+  key, 27 with sign-in.
+- #430 labels, open when this was written: YouTube's official mark and the
+  fields its policies ask for in the composer, and Made with AI for YouTube,
+  Facebook, Instagram and Threads, sent only where Meta documents it.
+
+Our own #429, open when this was written, fixes two things the sync's
+screenshots showed: "Notify me" drawn over the date label in the composer
+footer, and paragraphs run together in previews.
+
+The triage and the reviews found more than upstream's diffs said. What was
+open here, and is now closed:
+
+- Channel token reuse was not limited to the same provider and login here
+  either (upstream's fix, in #419 above).
+- An emailed invite joins only the account with the address it was sent to;
+  a copied link still joins whoever signs in (#420).
+- Instagram stories skip the blocked-publish recovery, which reads the feed
+  and would not find them (#420).
+- `21a57a2bf` (#420) logged the whole Instagram token exchange answer when it
+  had no top-level token, which Instagram's documented answer does not have.
+  Every such line now goes through one helper that leaves token fields out
+  (#424).
+- A settings or attachments update of a repeating post wrote
+  `intervalInDays: null` and stopped it repeating. This was on `main` before
+  the sync (`postSettingsTool`, `PUT /posts/:id/settings`); the post keeps its
+  interval now (#428).
+- A connect link is spent once a channel is saved through it, and is stored
+  under the hash of its token (#428). Upstream's stays usable for its hour.
+- Next 16.4.5 sends no `Content-Length` from route handlers, so a self-hosted
+  install that serves `/uploads` from Next (local storage, no proxy in front)
+  could not size its own media and failed to post. Our own uploads are now
+  sized from disk (#418).
+- Smaller: the trigger tool and the public function route sent a second
+  reconnect notice (#420); opening the page picker of an Instagram channel
+  past its stored expiry flagged it, now skipped through `cannotRefreshToken`
+  (#425); the composer's failed-post banner reads errors the way the calendar
+  does (#424); an empty bold or underline no longer styles the text after it
+  (#423).
+
+Left for later:
+
+- The MCP channel list, the MCP schedule tool and autopost still read the
+  stored `inBetweenSteps` flag, as upstream's do. A post they make to an
+  unfinished channel fails before it is charged.
+- `updateSubscription` has no duplicate check, so an asynchronous checkout that
+  settles after a late-payment re-subscribe can leave two live subscriptions.
+  Older than this sync.
+- Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
+  until a one-off void pass.
+- Outside the composer (calendar cards, Channels list, analytics, agents,
+  plugs) YouTube's icon is still drawn rounded, or greyed with its row (#430).
+- An X article with a soft break has not been tried against X's API.
+- `nestjs-temporal-core` is marked "no longer supported" on npm.
+
+**No post workflow came in.** `postWorkflowV1012` is still the one running,
+and upstream's next post workflow would still become our v1.0.13 (see
+September above). The only workflow file in the range, `4ff97adfa`'s
+`encrypt.tokens.workflow.ts`, was not taken. Activity code changed in three
+places, with no parameter change: `finalizePost` repeats a refused LinkedIn
+create after a refresh (`abe99bea0`), the missing-post sweep re-reads each
+post before it starts a workflow (`7b18262a1`), and a post to a channel that
+never picked its page stops before `payForPublish` (`32a6d0e64`).
+
+Lessons, in the order they cost time:
+
+- **Never take upstream's token encryption (`4ff97adfa`).** It uses the same
+  `enc:v1:` prefix and the same `ENCRYPTION_KEY` name as ours (since
+  v3.6.102), in a different format: their value carries a key id, and their
+  `ENCRYPTION_KEY` is the 32-byte key itself in base64, where ours derives a
+  key from it. Taken, every stored token would fail to decrypt. Only its
+  guard came in: a value that already starts with the prefix is refused on
+  write. Their `encrypt` / `encryptFields` / `decryptTokens` calls,
+  `ENCRYPTION_PROVIDER`, the KMS provider, `encrypt.tokens.workflow.ts` and
+  the `omit` on `getIntegrationsList` (it breaks `revokeAccessForAccount`
+  here) stay out of every later pick, and an upstream commit that calls them
+  is adapted without the calls. Ours also uses a random IV, so one token never
+  encrypts to the same string twice: upstream code that compares tokens
+  (`878636e82`) must compare the decrypted rows Prisma returns, never
+  ciphertext.
+- **More than about three agents building at once overloads the machine.**
+  The PRs ran their builds and full suites in parallel, the load average
+  reached 30 to 225, and the wall-clock bounds in
+  `sanitize.post.content.spec.ts` (and at times `sentry.scrub.spec.ts` and
+  `strip.html.validation.spec.ts`) failed in nearly every PR's full run, each
+  passing when run alone. Keep parallel builds to three, and rerun a timing
+  failure on its own before reading it as a regression.
+- **Count on production, read-only, before merging a behaviour change.**
+  Three changes could have reached live data: LinkedIn renewals scoped to one
+  provider and login (#419), the page-selection gate that stops posts (#425),
+  and the new stored shape of soft breaks and bold (#423). A read-only count
+  before each merge showed that none of them touched an existing channel or
+  queued post, which turned every "could break" into "touches nobody".
+- **During a GitHub outage a push can miss its PR.** The branch moved, but the
+  PR kept showing and checking the old head (#418). Closing and reopening the
+  PR resynced it.
+- **When PRs overlap, merge `main` into the branch instead of rebasing and
+  force-pushing.** Several sync PRs touched the same locale catalogs,
+  `i18n.lock`, `docs/ui-migration-log.md` and the integration repository.
+  Merging `main` in kept every review and every other worktree on history
+  that still existed, and the conflicts stayed append-only: both sides' keys
+  and log entries, lock checksums recomputed.
+- **Read a framework security release for behaviour changes.** Next 16.4.5
+  drops `Content-Length` from route handler responses, HEAD included, which
+  broke posting from self-hosted local storage (above). Check its notes
+  against our own route handlers, not only the build.
+- **A picked log line can carry a token.** `21a57a2bf` logged the whole token
+  exchange answer when it lacked a top-level `access_token`; the documented
+  answer keeps the token inside a `data` list. A spec in a later PR caught it
+  after the merge. Read every log line a pick adds as if it printed the
+  provider's whole answer.
+- **Keep production numbers out of public text.** #426's migration comment and
+  PR body first carried production row counts. The repository is public: the
+  counts were removed, and the PR was squash-merged so the history holds only
+  the clean message. Write "small enough for a plain CREATE INDEX", not the
+  count.
+- **Parallel agents share one scratchpad directory.** Two agents writing a log
+  or a fixture under the same file name read each other's output. Give each
+  PR its own subfolder.
+
 ## Where the sync currently stands
 
-**Synced through `a5affe62c` (2026-10-24), and merged.** Everything upstream had
+**Synced through `44df988cb` (2026-11-24), and merged.** Everything upstream had
 written by that commit is either in this tree or listed below with a reason,
 and `main` has that commit as an ancestor through a `-s ours` merge (see
-"Next time"). The previous watermarks were `91c91f633` (2026-10-09),
-`374fb202` (2026-09-25),
+"Next time"). The previous watermarks were `a5affe62c` (2026-10-24),
+`91c91f633` (2026-10-09), `374fb202` (2026-09-25),
 `60431b08` (the same day, before
 three late commits), `5ff9e0b2` (2026-09-22, the first one merged that way),
 `8b84b0dc` (the same day, before three README commits), `6f107801`
@@ -554,6 +744,23 @@ Skipped, deliberately:
 | `c145f0c3b` (in part) `70911f869` | The post-checkout "channels re-enabled" notice. Its backend half was already here (`enableAutoDisabledIntegrations` with headroom), and its all-or-nothing copy does not fit our partial re-enable |
 | `3f848ccb6` | `db push` without `--accept-data-loss`. Taken in #330 and reverted: our schema since v3.6.89 (the `AGENCY` to `ULTIMATE` enum rename, then the `Credits` idempotency index in v3.6.107) carries changes Prisma flags as data loss even on an empty table, so every self-hosted install on `db push` older than v3.6.107 stopped booting. Those changes cannot actually drop rows (Postgres refuses the cast or the index instead). Self-hosters are pointed at `PRISMA_MIGRATE` with a full baseline in `.env.example` |
 | `80d527b48` | AM/PM in the date picker's time input; ours is Mantine 9's native `TimeInput`, to be redone on our date-format hook |
+| `24fa15026` `e162ffc57` `47f3b3ae8` `ae69cb72a` (November) | RunPod and Transloadit: a local uploader address, a reflow of the RunPod check in the app layout, Image Text Slides rendered on RunPod, and that render's polling. This fork runs its own ffmpeg (see Media below) |
+| `acf6c2430` | Patches `getLastPublishDate` from the skipped `273c7b504`; our streak runs on `streakWorkflowV3` |
+| `38f0f5a4a` | Upstream's AWS deploy workflow |
+| `fe16da81e` `43877cfe5` `9e9f1a0ff` | Empty commits |
+| `ecfd943ae` | Cancels the subscription and detaches the card when the trial's $1 card check fails; our `checkValidCard` places no $1 hold |
+| `4eafd2102` `3101654fe` | Fixes in upstream's day view slot and launches channel list, which this fork's redesign does not render |
+| `920f318f5` `124471829` | Translations of strings this fork does not use: our finish-trial text differs, and the neutral analytics empty-state text of `85e941eba` was not taken |
+| `0b6cf42dc` `5bb5d96b5` | Chatbase refunds; Chatbase was removed from this fork |
+| `4ff97adfa` (except its guard) | Upstream's channel token encryption: the same `enc:v1:` prefix and `ENCRYPTION_KEY` name as ours in an incompatible format, so every stored token would fail to decrypt (see the November lessons). Only the refusal of a value that already carries the prefix was taken (#419). Its `getIntegrationsList` `omit` is never taken either |
+| `60d0cf108` | Step one of keeping tokens out of the Temporal history: activities decrypt a channel's tokens through upstream's encryption service. Inert alone; encrypting Temporal payloads stays a separate, later decision |
+| `85a0246b6` | Owner: Slack keeps listing private channels and keeps `groups:read`. The owner posts to a private channel, and others may want to |
+| `c07d55958` | Owner: the cancellation feedback step stays, and its reason still reaches the team's "Cancelled" email |
+| `951cb5e45` | Owner: the republish guard stays; publishing a published post again still needs `republish: true` |
+| `4b7b9901a` `e5ba6362e` | Owner: LeadJourney, not taken |
+| `de62bd9d8` | Owner: a staff tool that grants AI image and video credits, not taken |
+| `2a86ee059` | **Deferred, not rejected** (owner). Moves the AI text calls from `gpt-4.1` to `gpt-6.2-sol`. Its vendor cost is to be measured against the credit rates first, as separate work. The same commit deleted the TikTok Business scope list and reformatted that file; that part is never taken |
+| `1bf6d7665` | Puts back the TikTok Business scope list `2a86ee059` deleted; net zero with it, so it comes or stays out with it |
 
 Already here, or empty once picked (second sync):
 
@@ -578,10 +785,37 @@ Already here, or empty once picked (second sync):
 | `42bc85edc` `8d4b871ba` | `f789a93e9`: no replay at all, no prompts or PII |
 | `b08559568` `6d4737503` | sharp 0.35.5 and `billing_no_invoices` were already here |
 | `c0fee9eaa` `0b22d994b` `b2897ff7d` `23beddcd0` `18a312b6b` `30e1f83ce` | Picked ahead of the sync (LinkedIn mentions, YouTube thumbnail errors, Pinterest retry, YouTube quota) |
+| `6682d3200` (November) | The agent graph and autopost already make images through `OpenaiService.generateImage` |
+| `0c9d39400` | `runInConcurrent` already rethrows `ApplicationFailure` |
+| `61cf1ddad` | `refreshTokens` already goes on past a channel whose refresh fails |
+| `1b4e7e501` | `EmailExtras.headers` already carries List-Unsubscribe to Resend and Nodemailer; its SES mapping came with `4d13c6a2a` (#427) |
+| `3506e9194` `d36b23c95` | Handled in the redesigned day view |
+| `a44769621` | `sendCancellationConfirmation` already emails the customer |
+| `004925743` | The `endsNow` branch already words a cancellation that takes effect at once |
+| `2de8d408e` | Our set-to-cancel email already has the exact end date, and ours is broader |
+| `8f4726d54` | `cancel_at` is already compared by time |
+| `6c283195d` | Instagram carousels already take up to 20 items |
+| `38cbaeb44` | Instagram already retries `media_publish` while the media is not ready |
+| `a8b03f2df` | `finish.trial.tsx` already says the button charges now |
+| `aa3954ee8` | `f92427a14` already refuses only post ids of another organization (`countPostsOfOtherOrganizations`), so the editor's new ids go through |
+| `a4b92f2a0` | `5b2136dfe` already stores generator images before they enter the graph state |
+| `82121e28c` | Deleted channels already return nothing on every analytics path before a refresh, and Facebook already skips the stored-expiry refresh (`tokenNeverExpires`, since v3.6.121). Instagram keeps its expiry on purpose: its user token, which expires after 60 days, is what audio search and the blocked-publish check use |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
 (`61cc2d47`, `50b171e6`, `88332766`), upstream's ChatGPT app-directory listing
 for their hosted service.
+
+In November, the same: `optionalOnSelfHosted` and the
+`chatgpt-app-submission.json` hunks of `df1eac308`, `4823080b4` and
+`12911db24`, and also `postAnalyticsTool` of `12911db24` (our
+`analyticsPostTool` covers it); the `main.ts` keep-alive and `headersTimeout`
+hunk of `08ab8196c` (upstream's AWS load balancer); the drop of
+`Post_releaseURL_idx` in `9b3f11b05` (`getPublishedByReleaseUrl` reads it);
+the neutral analytics empty-state text of `85e941eba`; the discount-modal
+strings of `337cff8b2`; the onboarding modal and launches menu hunks of
+`fe82ea298`; and, of `bc0bd2df2`, the removal of `@tailwindcss/postcss` (the
+frontend's PostCSS config uses it), of the `fast-xml-parser` override and of
+`@typescript-eslint/parser`.
 
 **Media is a permanent divergence (2026-09-18).** This fork has no Transloadit:
 no `transloadit` / `@uppy/transloadit` package, no `TRANSLOADIT_*` env, no
@@ -597,7 +831,9 @@ our own container on a `media` task queue. So: skip any upstream commit that
 touches the Transloadit assembly in `images.slides.ts`, `media.processor.interface.ts`,
 `runpod*`, `createProcessor`, `RUNPOD_*` env or the uploader image; map a change
 to their `checkProcessing` onto `normalizeMedia`; and take their `Media` status
-and route changes only where the names already match ours.
+and route changes only where the names already match ours. In November 2026
+upstream also moved the Image Text Slides render onto RunPod and dropped
+Transloadit (`47f3b3ae8`); ours stays on ffmpeg.
 
 **Medium is gone from this fork (2026-09-19).** Medium's API is archived and it
 issues no new integration tokens, so the channel was removed whole:
