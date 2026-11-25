@@ -9,7 +9,20 @@ import { isIntegrationTokenEncryptionEnabled } from '@gitroom/helpers/utils/inte
 
 const TOKEN_FIELDS = ['token', 'refreshToken'] as const;
 
-function encryptTokenFields(row: any) {
+// A token is written encrypted, or plain with ENCRYPT_INTEGRATION_TOKENS=false.
+// A value that already carries the prefix is refused either way: every read
+// decrypts it, so stored as it is, an encrypted token copied from somewhere
+// else would be handed back as the real one.
+function storedToken(value: string) {
+  if (AuthService.isEncryptedToken(value)) {
+    throw new Error('A channel token cannot start with the encryption prefix');
+  }
+  return isIntegrationTokenEncryptionEnabled()
+    ? AuthService.encryptToken(value)
+    : value;
+}
+
+export function encryptTokenFields(row: any) {
   if (!row || typeof row !== 'object') {
     return row;
   }
@@ -17,9 +30,9 @@ function encryptTokenFields(row: any) {
   for (const field of TOKEN_FIELDS) {
     const value = out[field];
     if (typeof value === 'string') {
-      out[field] = AuthService.encryptToken(value);
+      out[field] = storedToken(value);
     } else if (value && typeof value.set === 'string') {
-      out[field] = { ...value, set: AuthService.encryptToken(value.set) };
+      out[field] = { ...value, set: storedToken(value.set) };
     }
   }
   return out;
@@ -41,9 +54,6 @@ const integrationTokenEncryption = Prisma.defineExtension({
   query: {
     integration: {
       $allOperations({ args, query }) {
-        if (!isIntegrationTokenEncryptionEnabled()) {
-          return query(args);
-        }
         const write = args as any;
         return query({
           ...write,

@@ -74,6 +74,8 @@ export class BillingController {
   }
 
   @Get('/check/:id')
+  // Admins only, like the checkout whose result it reads.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async checkId(
     @GetOrgFromRequest() org: Organization,
     @Param('id') body: string
@@ -84,6 +86,8 @@ export class BillingController {
   }
 
   @Get('/check-discount')
+  // Admins only, like apply-discount, the offer it asks about.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async checkDiscount(@GetOrgFromRequest() org: Organization) {
     if (!isBillingEnabled()) {
       return { offerCoupon: false };
@@ -216,6 +220,8 @@ export class BillingController {
   }
 
   @Get('/is-trial-finished')
+  // Admins only: it can charge a founding member's deferred fee.
+  @CheckPolicies([AuthorizationActions.Create, Sections.ADMIN])
   async isTrialFinished(@GetOrgFromRequest() org: Organization) {
     // Billing off: there is no trial, so it is always over.
     if (!isBillingEnabled()) {

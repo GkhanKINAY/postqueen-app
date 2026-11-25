@@ -173,8 +173,14 @@ export class AuthService {
   }
 
   static encryptToken(value: string) {
-    if (!value || AuthService.isEncryptedToken(value)) {
+    if (!value) {
       return value;
+    }
+    // A value to store never looks encrypted already. Passed through, the
+    // next read would decrypt it: an encrypted token copied from somewhere
+    // else would come back as the real one.
+    if (AuthService.isEncryptedToken(value)) {
+      throw new Error('A channel token cannot start with the encryption prefix');
     }
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(

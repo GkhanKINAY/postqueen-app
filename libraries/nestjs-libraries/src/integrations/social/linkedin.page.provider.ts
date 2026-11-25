@@ -201,6 +201,11 @@ export class LinkedinPageProvider
 
   async fetchPageInformation(accessToken: string, params: { page: string }) {
     const pageId = params.page;
+    // It goes into the URL path: anything but an organization id (e.g.
+    // "../me") makes LinkedIn answer with another kind of id.
+    if (!this.isPageId(String(pageId))) {
+      throw new Error('Invalid LinkedIn page');
+    }
     const data = await (
       await fetch(
         `https://api.linkedin.com/v2/organizations/${pageId}?projection=(id,localizedName,vanityName,logoV2(original~:playableStreams))`,
@@ -266,6 +271,12 @@ export class LinkedinPageProvider
       })
     ).json();
 
+    // Without the member id every failed lookup would share one placeholder,
+    // and with it the tokens of every channel connected that way.
+    if (!id) {
+      throw new Error('Could not load the LinkedIn profile');
+    }
+
     const { vanityName } = await (
       await fetch('https://api.linkedin.com/v2/me', {
         headers: {
@@ -285,6 +296,11 @@ export class LinkedinPageProvider
       picture,
       username: vanityName,
     };
+  }
+
+  // Organization ids are numeric, the member id and its placeholder are not.
+  isPageId(internalId: string) {
+    return /^\d+$/.test(internalId);
   }
 
   override async post(

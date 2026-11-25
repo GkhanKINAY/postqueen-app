@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { LinkedinProvider } from './linkedin.provider.ts';
@@ -138,3 +138,64 @@ for (const [name, provider] of [
     });
   });
 }
+
+// A LinkedIn Page channel's id goes into the API path and, before a page is
+// picked, its placeholder is the root its tokens are shared by.
+describe('LinkedIn Page ids', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  // Answers every call in order, and records the URLs asked.
+  const answers = (...bodies: unknown[]) => {
+    const asked: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      asked.push(String(url));
+      return new Response(JSON.stringify(bodies.shift() ?? {}));
+    }) as typeof fetch;
+    return asked;
+  };
+
+  it('are organization ids, which are numeric', () => {
+    const provider = new LinkedinPageProvider();
+    assert.equal(provider.isPageId('108012345'), true);
+    assert.equal(provider.isPageId('linkedin-page_abc123'), false);
+    assert.equal(provider.isPageId('abc123'), false);
+    assert.equal(provider.isPageId('../me'), false);
+    assert.equal(provider.isPageId(''), false);
+  });
+
+  it('refuses a page that is not an organization id, without asking LinkedIn', async () => {
+    const asked = answers({ id: 'member-1', localizedName: 'Someone' });
+
+    await assert.rejects(
+      new LinkedinPageProvider().fetchPageInformation('token', {
+        page: '../me',
+      }),
+      /Invalid LinkedIn page/
+    );
+    assert.deepEqual(asked, []);
+  });
+
+  it('refuses a login whose profile came back without a member id', async () => {
+    answers(
+      {
+        access_token: 'token',
+        expires_in: 3600,
+        refresh_token: 'refresh',
+        scope: new LinkedinPageProvider().scopes.join(' '),
+      },
+      { name: 'Someone' },
+      { vanityName: 'someone' }
+    );
+
+    await assert.rejects(
+      new LinkedinPageProvider().authenticate({
+        code: 'code',
+        codeVerifier: '',
+      }),
+      /Could not load the LinkedIn profile/
+    );
+  });
+});

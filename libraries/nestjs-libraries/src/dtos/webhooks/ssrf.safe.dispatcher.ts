@@ -83,7 +83,11 @@ function guardAgent<T extends http.Agent>(agent: T): T {
 // axios can't use an undici dispatcher, but Node's http(s) agents accept the
 // same `lookup` hook, so axios requests (providers that need form-data /
 // stream uploads) get the identical pinned-DNS guard as `this.fetch`.
+// `proxy: false` because with HTTP(S)_PROXY set axios would connect to the
+// proxy instead, and the target IP would never be checked. The undici
+// dispatcher above already ignores those env vars.
 const ssrfSafeAxios = axios.create({
+  proxy: false,
   httpAgent: guardAgent(
     new http.Agent({ lookup: ssrfSafeLookup } as http.AgentOptions)
   ),

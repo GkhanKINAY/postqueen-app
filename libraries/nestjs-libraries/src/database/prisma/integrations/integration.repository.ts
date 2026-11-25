@@ -186,7 +186,15 @@ export class IntegrationRepository {
     });
   }
 
-  async updateIntegration(id: string, params: Partial<Integration>) {
+  // `read` is the channel as it was when the page was picked: the page lookup
+  // runs in between, and a channel that became another one meanwhile (another
+  // provider, another id) must not get the picked page and its token. Answers
+  // null when nothing was written.
+  async updateIntegration(
+    id: string,
+    params: Partial<Integration>,
+    read: Pick<Integration, 'providerIdentifier' | 'internalId'>
+  ) {
     if (
       params.picture &&
       (params.picture.indexOf(process.env.CLOUDFLARE_BUCKET_URL!) === -1 ||
@@ -202,22 +210,55 @@ export class IntegrationRepository {
       }
     }
 
-    const existing = await this._integration.model.integration.findUnique({
-      where: {
-        organizationId_internalId: {
-          organizationId: params.organizationId!,
-          internalId: params.internalId,
-        },
-      },
+    // Still waiting for its page and not removed meanwhile either: a channel
+    // removed in another tab must not come back with the page's token.
+    const stillPicked = {
+      id,
+      providerIdentifier: read.providerIdentifier,
+      internalId: read.internalId,
+      inBetweenSteps: true,
+      deletedAt: null,
+    };
+
+    const picked = await this._integration.model.integration.findFirst({
+      where: stillPicked,
+      select: { providerIdentifier: true, picture: true },
     });
-    const current = existing
-      ? existing
-      : await this._integration.model.integration.findUnique({
-          where: { id },
-          select: { picture: true },
-        });
+
+    if (!picked) {
+      return null;
+    }
+
+    // Only a channel of the same provider is taken over. Another provider's
+    // row with this id (whose id can be anything its server answers) would
+    // keep its provider and get this login's tokens and identity; it is left
+    // alone, and the update below then fails on the unique id instead.
+    const existing = await this._integration.model.integration.findFirst({
+      where: {
+        // The channel itself, put back between steps, picking its own page
+        // again is not an earlier channel to take over.
+        NOT: { id },
+        organizationId: params.organizationId!,
+        internalId: params.internalId,
+        providerIdentifier: picked.providerIdentifier,
+      },
+      select: { id: true, picture: true },
+    });
+    const current = existing ? existing : picked;
 
     if (existing) {
+      const { count } = await this._integration.model.integration.updateMany({
+        where: stillPicked,
+        data: {
+          internalId: `deleted_${params.internalId}_${makeId(10)}`,
+          deletedAt: new Date(),
+        },
+      });
+
+      if (!count) {
+        return null;
+      }
+
       await this._posts.model.post.updateMany({
         where: {
           integrationId: id,
@@ -226,22 +267,13 @@ export class IntegrationRepository {
           deletedAt: new Date(),
         },
       });
-
-      await this._integration.model.integration.update({
-        where: {
-          id,
-        },
-        data: {
-          internalId: `deleted_${params.internalId}_${makeId(10)}`,
-          deletedAt: new Date(),
-        },
-      });
     }
 
-    const updated = await this._integration.model.integration.update({
-      where: {
-        ...(existing ? { id: existing.id } : { id }),
-      },
+    const target = existing ? existing.id : id;
+    const { count } = await this._integration.model.integration.updateMany({
+      where: existing
+        ? { id: existing.id, providerIdentifier: picked.providerIdentifier }
+        : stillPicked,
       data: {
         ...params,
         disabled: false,
@@ -259,13 +291,22 @@ export class IntegrationRepository {
       },
     });
 
+    if (!count) {
+      return null;
+    }
+
+    const updated = await this._integration.model.integration.findUnique({
+      where: { id: target },
+      select: { id: true, picture: true },
+    });
+
     // The picture it had (the account's own, from the first step, or the
     // page's earlier one) is no longer shown anywhere.
-    if (current?.picture && current.picture !== updated.picture) {
+    if (current?.picture && current.picture !== updated?.picture) {
       await this.removeOwnPicture(current.picture);
     }
 
-    return updated;
+    return { id: target };
   }
 
   // Extra pages from a two-step picker (Facebook, Instagram, …). The first
@@ -301,13 +342,16 @@ export class IntegrationRepository {
     }
 
     const rootInternalId = template.rootInternalId || template.internalId;
-    const existing = await this._integration.model.integration.findUnique({
+    // Only a row of the same provider is taken over, as in updateIntegration:
+    // another provider's row with this id is left alone, and the create below
+    // then fails on the unique id instead.
+    const existing = await this._integration.model.integration.findFirst({
       where: {
-        organizationId_internalId: {
-          organizationId: template.organizationId,
-          internalId: page.internalId,
-        },
+        organizationId: template.organizationId,
+        internalId: page.internalId,
+        providerIdentifier: template.providerIdentifier,
       },
+      select: { id: true },
     });
 
     const shared = {
@@ -457,7 +501,13 @@ export class IntegrationRepository {
     refresh?: string,
     timezone?: number,
     customInstanceDetails?: string,
-    platformUserId?: string
+    platformUserId?: string,
+    // The login the channel belongs to from now on. A oneTimeToken provider
+    // shares its tokens by root, so its connects always state it.
+    rootInternalId?: string,
+    // Set by a token renewal: the root the channel was read with. The
+    // renewal is stored only while the channel still has it.
+    expectedRootInternalId?: string | null
   ) {
     // An offset of 0 (UTC, or London in winter) is a real offset. Tested
     // for truthiness it fell through to the column default, 02:00, 06:40 and
@@ -471,18 +521,144 @@ export class IntegrationRepository {
           ]),
         }
       : {};
-    // A new picture replaces the stored one, whose copy is then deleted.
-    const current = picture
-      ? await this._integration.model.integration.findUnique({
-          where: {
-            organizationId_internalId: {
-              internalId,
-              organizationId: org,
+    const renewal = expectedRootInternalId !== undefined;
+    // A new picture replaces the stored one, whose copy is then deleted. A
+    // connect that lands on another provider's channel with the same id
+    // replaces it: it starts from its own id as root, and keeps no refresh
+    // token or person of the previous provider's login.
+    const previous =
+      picture || !renewal
+        ? await this._integration.model.integration.findUnique({
+            where: {
+              organizationId_internalId: {
+                internalId,
+                organizationId: org,
+              },
             },
-          },
-          select: { picture: true },
-        })
-      : null;
+            select: {
+              picture: true,
+              providerIdentifier: true,
+              rootInternalId: true,
+            },
+          })
+        : null;
+    const providerChanges =
+      !renewal && !!previous && previous.providerIdentifier !== provider;
+    const movesTo =
+      rootInternalId || (providerChanges ? internalId : undefined);
+    const rootChanges =
+      !!previous && !!movesTo && previous.rootInternalId !== movesTo;
+
+    const update: Prisma.IntegrationUncheckedUpdateInput = {
+      ...(additionalSettings
+        ? { additionalSettings: JSON.stringify(additionalSettings) }
+        : {}),
+      ...(customInstanceDetails ? { customInstanceDetails } : {}),
+      // A refresh does not send it, and must not clear it.
+      ...(platformUserId
+        ? { platformUserId }
+        : providerChanges
+        ? { platformUserId: null }
+        : {}),
+      type: type as any,
+      ...(!refresh
+        ? {
+            inBetweenSteps: isBetweenSteps,
+          }
+        : {}),
+      ...(picture ? { picture } : {}),
+      profile: username,
+      providerIdentifier: provider,
+      token,
+      // Never wipe a stored refresh token with an empty one, unless the
+      // channel moves to another login: the previous login's refresh token
+      // would keep renewing its tokens under the new login's root.
+      ...(refreshToken || rootChanges || providerChanges
+        ? { refreshToken }
+        : {}),
+      ...(expiresIn
+        ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
+        : {}),
+      internalId,
+      organizationId: org,
+      deletedAt: null,
+      refreshNeeded: false,
+      // Fresh credentials: the clock of a channel waiting for its person
+      // starts again, and one whose data was erased fills up again.
+      disconnectedAt: null,
+      dataErasedAt: null,
+      // A reconnect can be done with another login: the channel moves to
+      // it, otherwise the oneTimeToken copy below would hand the new tokens
+      // to every channel of the previous login, in any organization.
+      ...(movesTo ? { rootInternalId: movesTo } : {}),
+    };
+
+    const copyToSameLogin = async (
+      rootId: string | null,
+      except: Prisma.IntegrationWhereInput
+    ) => {
+      // A channel without a root does not say which login it is; falling
+      // back to its own id would match other logins' channels that use it
+      // as their root.
+      if (!rootId) {
+        return;
+      }
+
+      await this._integration.model.integration.updateMany({
+        where: {
+          NOT: except,
+          rootInternalId: rootId,
+          // Only the same provider's ids come from the same login: another
+          // provider's id can be anything its server answers, and would get
+          // these tokens just by matching the string.
+          providerIdentifier: provider,
+          // A deleted channel must not keep receiving the login's tokens.
+          deletedAt: null,
+        },
+        data: {
+          token,
+          refreshToken,
+          refreshNeeded: false,
+          disconnectedAt: null,
+          dataErasedAt: null,
+          ...(expiresIn
+            ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
+            : {}),
+        },
+      });
+    };
+
+    // A token renewal is only stored while the channel still has the root it
+    // was read with. A reconnect in between moved it to another login, whose
+    // tokens must not be overwritten, nor copied over with the previous ones.
+    // A renewal never brings a deleted channel back, nor creates one.
+    if (renewal) {
+      const { count } = await this._integration.model.integration.updateMany({
+        where: {
+          organizationId: org,
+          internalId,
+          rootInternalId: expectedRootInternalId,
+          deletedAt: null,
+        },
+        data: update,
+      });
+
+      if (count && picture && previous?.picture && previous.picture !== picture) {
+        await this.removeOwnPicture(previous.picture);
+      }
+
+      if (count && oneTimeToken) {
+        await copyToSameLogin(expectedRootInternalId, {
+          organizationId: org,
+          internalId,
+        });
+      }
+
+      return this._integration.model.integration.findFirst({
+        where: { organizationId: org, internalId },
+      });
+    }
+
     const upsert = await this._integration.model.integration.upsert({
       where: {
         organizationId_internalId: {
@@ -506,80 +682,26 @@ export class IntegrationRepository {
         ...postTimes,
         organizationId: org,
         refreshNeeded: false,
-        rootInternalId: internalId,
+        // A reconnect of a channel the org does not have yet belongs to the
+        // login, never to the page id that other organizations may share.
+        rootInternalId: rootInternalId || internalId,
         ...(customInstanceDetails ? { customInstanceDetails } : {}),
         ...(platformUserId ? { platformUserId } : {}),
         additionalSettings: additionalSettings
           ? JSON.stringify(additionalSettings)
           : '[]',
       },
-      update: {
-        ...(additionalSettings
-          ? { additionalSettings: JSON.stringify(additionalSettings) }
-          : {}),
-        ...(customInstanceDetails ? { customInstanceDetails } : {}),
-        // A refresh does not send it, and must not clear it.
-        ...(platformUserId ? { platformUserId } : {}),
-        type: type as any,
-        ...(!refresh
-          ? {
-              inBetweenSteps: isBetweenSteps,
-            }
-          : {}),
-        ...(picture ? { picture } : {}),
-        profile: username,
-        providerIdentifier: provider,
-        token,
-        // Never wipe a stored refresh token with an empty one.
-        ...(refreshToken ? { refreshToken } : {}),
-        ...(expiresIn
-          ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
-          : {}),
-        internalId,
-        organizationId: org,
-        deletedAt: null,
-        refreshNeeded: false,
-        // Fresh credentials: the clock of a channel waiting for its person
-        // starts again, and one whose data was erased fills up again.
-        disconnectedAt: null,
-        dataErasedAt: null,
-      },
+      update,
     });
 
-    if (current?.picture && current.picture !== upsert.picture) {
-      await this.removeOwnPicture(current.picture);
+    if (picture && previous?.picture && previous.picture !== upsert.picture) {
+      await this.removeOwnPicture(previous.picture);
     }
 
     if (oneTimeToken) {
-      const rootId =
-        (
-          await this._integration.model.integration.findFirst({
-            where: {
-              organizationId: org,
-              internalId: internalId,
-            },
-          })
-        )?.rootInternalId || internalId;
-
-      await this._integration.model.integration.updateMany({
-        where: {
-          id: {
-            not: upsert.id,
-          },
-          rootInternalId: rootId,
-          deletedAt: null,
-        },
-        data: {
-          token,
-          refreshToken,
-          refreshNeeded: false,
-          disconnectedAt: null,
-          dataErasedAt: null,
-          ...(expiresIn
-            ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
-            : {}),
-        },
-      });
+      // The root of the row just written: reading it back in a second query
+      // could see a root a concurrent reconnect moved in between.
+      await copyToSameLogin(upsert.rootInternalId, { id: upsert.id });
     }
 
     return upsert;
@@ -1390,8 +1512,9 @@ export class IntegrationRepository {
   // of its users can mean. New rows carry platformUserId. A personal account
   // is its own internalId, whoever connected it. A page or business account
   // connected before platformUserId existed keeps the person only in
-  // rootInternalId. A reconnect does not move it (picking the page again in
-  // Configure Channel does), so it is read only while platformUserId is empty.
+  // rootInternalId. A reconnect moves it to the login that reconnected, as
+  // picking the page again in Configure Channel does. It is read only while
+  // platformUserId is empty.
   // Soft-deleted rows are included, since they still hold the profile.
   getIntegrationsByPlatformUser(providers: string[], platformUserId: string) {
     return this._integration.model.integration.findMany({

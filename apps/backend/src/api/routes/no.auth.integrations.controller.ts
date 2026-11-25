@@ -116,6 +116,9 @@ export class NoAuthIntegrationsController {
       await ioRedis.del(`onboarding:${body.state}`);
     }
 
+    // The login that did a reconnect: the channel's root moves to it.
+    let reconnectedBy: string | undefined;
+
     const {
       error,
       accessToken,
@@ -159,6 +162,7 @@ export class NoAuthIntegrationsController {
               refresh,
               auth.accessToken
             );
+            reconnectedBy = auth.id ? String(auth.id) : undefined;
             // reConnect answers for the page; the person is still the one
             // who just logged in. The refresh token and its expiry come from
             // this new authentication: body.refresh is empty on the OAuth
@@ -303,7 +307,15 @@ export class NoAuthIntegrationsController {
               Buffer.from(body.code, 'base64').toString()
             )
           : undefined,
-        platformUserId
+        platformUserId,
+        // A oneTimeToken provider shares its tokens by root, so every connect
+        // states it: the login that reconnected, or the id it connected with
+        // (its login) when there was no page to reconnect.
+        reconnectedBy ||
+          (integrationProvider.oneTimeToken &&
+          !(refresh && integrationProvider.reConnect)
+            ? String(id)
+            : undefined)
       );
 
     this._refreshIntegrationService

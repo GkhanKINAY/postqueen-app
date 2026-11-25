@@ -65,6 +65,10 @@ export function isBlockedIPv6(ip: string): boolean {
   if (zeroThrough(5) && g[5] === 0xffff) {
     return isBlockedIPv4(embeddedIPv4(g[6], g[7]));
   }
+  // ::ffff:0:0:0/96 — IPv4-translated (SIIT) carries one the same way
+  if (zeroThrough(4) && g[4] === 0xffff && g[5] === 0) {
+    return isBlockedIPv4(embeddedIPv4(g[6], g[7]));
+  }
   // 64:ff9b::/96 — NAT64 well-known prefix carries an IPv4 address;
   // 64:ff9b:1::/48 is the local-use NAT64 range
   if (g[0] === 0x64 && g[1] === 0xff9b) {

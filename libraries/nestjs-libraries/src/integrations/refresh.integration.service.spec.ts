@@ -279,3 +279,111 @@ describe('RefreshIntegrationService.refreshDueProfiles when the refresh throws',
     assert.equal(marks['integration:profile-read:ch-100'], 24 * 60 * 60);
   });
 });
+
+// A oneTimeToken login shares its renewed tokens with its other channels, by
+// root. A root that is a page id names no login, and a renewal is only stored
+// on the channel while it still has the root it was read with.
+describe('RefreshIntegrationService.refresh stores the renewal', { skip: !canLoad }, () => {
+  const renewWith = async (
+    channel: Record<string, unknown>,
+    stored: Record<string, unknown> | null = null
+  ) => {
+    const { RefreshIntegrationService } =
+      await import('./refresh.integration.service.ts');
+    const { LinkedinPageProvider } =
+      await import('./social/linkedin.page.provider.ts');
+    const writes: any[][] = [];
+    const asked: string[] = [];
+    const service = new RefreshIntegrationService(
+      {
+        getSocialIntegration: () => ({
+          oneTimeToken: true,
+          isPageId: LinkedinPageProvider.prototype.isPageId,
+          refreshToken: async () => {
+            asked.push('refreshToken');
+            return {
+              accessToken: 'fresh',
+              refreshToken: 'fresh-refresh',
+              expiresIn: 3600,
+            };
+          },
+        }),
+      } as any,
+      {
+        getIntegrationById: async (org: string, id: string) => {
+          asked.push(`read ${org} ${id}`);
+          return stored;
+        },
+        createOrUpdateIntegration: async (...args: any[]) => {
+          writes.push(args);
+        },
+      } as any,
+      {} as any,
+    );
+
+    const result = await service.refresh({
+      id: 'ch-1',
+      organizationId: 'org-1',
+      providerIdentifier: 'linkedin-page',
+      internalId: '1234',
+      name: 'Brand',
+      refreshToken: 'old-refresh',
+      deletedAt: null,
+      ...channel,
+    } as any);
+    return { result, writes, asked };
+  };
+
+  const renew = async (rootInternalId: string | null) => {
+    const { writes } = await renewWith({ rootInternalId });
+    assert.equal(writes.length, 1);
+    return { oneTimeToken: writes[0][1], expectedRoot: writes[0][18] };
+  };
+
+  it("shares it with the login's channels when the root names the login", async () => {
+    assert.deepEqual(await renew('linkedin-page_m1'), {
+      oneTimeToken: true,
+      expectedRoot: 'linkedin-page_m1',
+    });
+  });
+
+  it('shares it with nobody when the root is a page id', async () => {
+    assert.deepEqual(await renew('1234'), {
+      oneTimeToken: false,
+      expectedRoot: '1234',
+    });
+  });
+
+  // A caller holding a partial row must not fall back to the unchecked write
+  // of a connect, which an absent root would select.
+  it('reads the root again for a channel passed without it', async () => {
+    const { writes, asked } = await renewWith({}, {
+      id: 'ch-1',
+      rootInternalId: '1234',
+      deletedAt: null,
+    });
+
+    assert.deepEqual(asked, ['read org-1 ch-1', 'refreshToken']);
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0][1], false);
+    assert.equal(writes[0][18], '1234');
+  });
+
+  it('keeps a root read again as null, which matches only a channel without one', async () => {
+    const { writes } = await renewWith({}, {
+      id: 'ch-1',
+      rootInternalId: null,
+      deletedAt: null,
+    });
+
+    assert.equal(writes[0][18], null);
+  });
+
+  it('asks the platform nothing for a channel passed without its root that is gone', async () => {
+    const { result, writes, asked } = await renewWith({}, null);
+
+    assert.equal(result, false);
+    assert.deepEqual(asked, ['read org-1 ch-1']);
+    assert.deepEqual(writes, []);
+  });
+});

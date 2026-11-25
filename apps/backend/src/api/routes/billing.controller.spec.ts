@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 
@@ -147,4 +148,41 @@ describe('the next charge, from Billing', () => {
 
     assert.equal(await controller.getRenewal(org), null);
   });
+});
+
+// A plain member never reaches a billing route that reads or changes what the
+// organization is charged: the Billing page being hidden from them is not
+// what stops them.
+describe('who can call the billing routes', () => {
+  const policies = (handler: string) =>
+    (Reflect.getMetadata(
+      'check_policy',
+      BillingController.prototype[handler]
+    ) || []) as Array<[string, string]>;
+
+  for (const handler of [
+    'checkId',
+    'checkDiscount',
+    'isTrialFinished',
+    'applyDiscount',
+    'applyLifetimeRetention',
+    'finishTrial',
+    'embedded',
+    'subscribe',
+    'modifyPayment',
+    'pendingPayment',
+    'getInvoices',
+    'getRenewal',
+    'cancel',
+    'prorate',
+    'lifetimeCheckout',
+    'creditsCheckout',
+  ]) {
+    it(`${handler} is for admins`, () => {
+      assert.ok(
+        policies(handler).some(([, section]) => section === 'admin'),
+        handler
+      );
+    });
+  }
 });

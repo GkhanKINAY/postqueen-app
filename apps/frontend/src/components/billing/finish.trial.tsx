@@ -84,6 +84,13 @@ export const takeFinishTrialConfirmed = () => {
 const MAX_POLL_ATTEMPTS = 30;
 
 /**
+ * The trial routes answer 402 to a member who is not an admin, and the app's
+ * fetch shows that as a dialog; 499 is that dialog sending them to Billing.
+ */
+const refusedForMember = (response: Response) =>
+  response.status === 402 || response.status === 499;
+
+/**
  * End-trial overlay — LOOK from the prototype `finishTrialOpen` sheet
  * (`PostQueen App v2.dc.html` ~3090–3141 + `ft*` vals). WORK stays the repo's:
  * POST `/billing/finish-trial`, poll until clear, then revalidate on close.
@@ -156,6 +163,12 @@ export const FinishTrial: FC<{
       let body: any;
       try {
         const response = await fetch('/billing/is-trial-finished');
+        // Only an admin can end the trial: the dialog the refusal opened
+        // already said so, and asking again would open it again.
+        if (refusedForMember(response)) {
+          props.close();
+          return;
+        }
         body = response.ok ? await response.json() : null;
       } catch (e) {
         body = null;
@@ -176,7 +189,7 @@ export const FinishTrial: FC<{
       }
       setPhase(lifetime ? 'founder' : 'charged');
     },
-    [fetch, lifetime]
+    [fetch, lifetime, props.close]
   );
 
   /**
@@ -210,6 +223,12 @@ export const FinishTrial: FC<{
       const response = await fetch('/billing/finish-trial', {
         method: 'POST',
       });
+      // Only an admin can end the trial, and nothing was charged: there is
+      // nothing to wait for.
+      if (refusedForMember(response)) {
+        props.close();
+        return;
+      }
       body = response.ok ? await response.json() : null;
     } catch (e) {
       body = null;
@@ -240,7 +259,7 @@ export const FinishTrial: FC<{
       }
     }
     checkFinished();
-  }, [fetch, checkFinished, paymentAction, waitForPlan]);
+  }, [fetch, checkFinished, paymentAction, waitForPlan, props.close]);
 
   // Revalidate on the way out — not while open — so a trial-locked parent
   // (X panel / AI lock) does not unmount this dialog before the thank-you is read.

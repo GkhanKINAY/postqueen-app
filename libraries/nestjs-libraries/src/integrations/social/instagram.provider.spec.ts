@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { InstagramProvider } from './instagram.provider.ts';
@@ -325,6 +325,48 @@ describe('InstagramDto collaborators', () => {
     assert.equal(error.property, 'collaborators');
     assert.deepEqual(Object.values(error.constraints || {}), [
       'Instagram allows up to 3 collaborators',
+    ]);
+  });
+});
+
+// The account list goes to the browser for the picker, even when Graph lists
+// the Facebook pages behind it with their page tokens.
+describe('Instagram account picker', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('lists the accounts without a page token', async () => {
+    globalThis.fetch = (async (url: string) =>
+      new Response(
+        JSON.stringify(
+          String(url).includes('/me/accounts')
+            ? {
+                data: [
+                  {
+                    id: '1001',
+                    name: 'Brand',
+                    access_token: 'page-token',
+                    instagram_business_account: { id: 'ig-1' },
+                  },
+                ],
+              }
+            : String(url).includes('/ig-1?')
+            ? { name: 'Brand IG', profile_picture_url: 'https://ig.test/p.png' }
+            : { data: [] }
+        )
+      )) as typeof fetch;
+
+    const accounts = await new InstagramProvider().pages('user-token');
+
+    assert.deepEqual(accounts, [
+      {
+        pageId: '1001',
+        id: 'ig-1',
+        name: 'Brand IG',
+        picture: { data: { url: 'https://ig.test/p.png' } },
+      },
     ]);
   });
 });
