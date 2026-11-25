@@ -53,7 +53,11 @@
 # for the copies the holders pin.
 # 2026-11-25 (upstream sync): next 16.4.6 closed its seven November
 # advisories. http-cache-semantics GHSA-ch52-4w7c-c8xp stopped appearing (the
-# advisory was withdrawn on 2026-10-28) and is gone.
+# advisory was withdrawn on 2026-10-28) and is gone. 34 more were published
+# since the last pass. Same-major overrides closed 29: node-forge (1.4.4, which
+# also closed the older GHSA-86w9 entry), hono (4.13.22), @hono/node-server
+# (1.19.19), follow-redirects (1.16.3), qs (6.17.1) and effect (3.22.5). The
+# five below dated 2026-11-25 need a major the holder has not taken.
 # @ag-ui/mastra 1.1 -> @ai-sdk/ui-utils 1.2 pins provider-utils 2; there is no
 # 2.x fix, and ui-utils does not use the affected response handlers.
 @ai-sdk/provider-utils GHSA-866g-f22w-33x8
@@ -65,6 +69,8 @@
 # query-string 7.1.3 pins decode-uri-component 0.2.2; the fix is 0.5, a line
 # query-string 7 does not accept.
 decode-uri-component GHSA-vcc3-ghjq-m6fr
+# 2026-11-25: the same query-string 7 copy; GHSA-qr28 is also fixed only in 0.5.
+decode-uri-component GHSA-qr28-fpjm-wq7f
 # Prisma 7.9.1's own config loader pins deepmerge-ts 7; the fix is 8.
 deepmerge-ts GHSA-ggr8-5vv4-36mx
 # Browser wallet adapters only (WalletConnect utils, crypto-browserify); no
@@ -76,11 +82,22 @@ esbuild GHSA-g7r4-m6w7-qqqr
 # @langchain/community -> ibm-cloud-sdk-core pins file-type 16; nothing imports
 # @langchain/community, and our own upload paths use file-type 22.
 file-type GHSA-5v7r-6r5c-r473
+# 2026-11-25: glob 10 and 13 come with build tools (Nest CLI, Sentry's bundler
+# plugin, rimraf) and js-beautify, which globs only in its CLI; the fix is 14.
+# None of them walks a path that comes from a request.
+glob GHSA-3g3m-2fjr-6pw4
+# 2026-11-25: @copilotkit/runtime and type-graphql hold graphql-scalars 1; the
+# fix is 2. CopilotKit uses only GraphQLJSONObject, not the PhoneNumber scalar.
+graphql-scalars GHSA-x8rm-f576-gq67
 # @copilotkit/runtime -> graphql-yoga 5 holds utils 10 and 11; the fix is 12,
 # which yoga does not accept. mergeDeep only merges CopilotKit's own schema.
 @graphql-tools/utils GHSA-7mx3-vvmw-hjmv
 # The same holder; GHSA-c4qx (2026-10-22, mergeIncrementalResult) is also fixed only in 12.
 @graphql-tools/utils GHSA-c4qx-w738-7hr3
+# 2026-11-25: the MCP SDK and CopilotKit runtime hold @hono/node-server 1;
+# GHSA-rmxm is fixed only in 2.1.3. It is in serveStatic, which neither they
+# nor our code call.
+@hono/node-server GHSA-rmxm-3fg6-px4f
 # @mastra/memory 1.26 pins image-size 1.2.1 and no release fixes it; only
 # observational memory and thread summaries call it, and neither is enabled.
 image-size GHSA-5p2g-fcmc-qvqq
@@ -88,9 +105,10 @@ image-size GHSA-w3rx-r6r6-pgpr
 # CopilotKit's markdown (streamdown, rehype-katex, remark-math) takes katex
 # 0.16; the fix is 0.18. Low severity and needs a prototype already polluted.
 katex GHSA-238p-pmpm-9mq7
-# @langchain/google-gauth -> google-auth-library 8 -> gtoken -> google-p12-pem
-# only converts a p12 key; no released fix, and nothing verifies signatures.
-node-forge GHSA-86w9-cpqp-85rv
+# 2026-11-25: minimatch 9 and 10 come with glob, @swc/cli, typescript-eslint
+# and editorconfig; the fix is 11. Their patterns come from tool config, never
+# from a request.
+minimatch GHSA-g3hv-75wg-m249
 # polotno's editor holds quill 2.0.3, the latest; the issue is in Quill's HTML
 # export of the user's own design.
 quill GHSA-v3m3-f69x-jf25
