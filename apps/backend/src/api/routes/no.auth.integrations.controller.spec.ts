@@ -69,6 +69,7 @@ const attempt = async (
   ioRedis.del = async () => 1;
 
   const writes: any[][] = [];
+  const spent: string[] = [];
   const controller = new NoAuthIntegrationsController(
     {
       getAllowedSocialsIntegrations: () => ['network'],
@@ -82,6 +83,9 @@ const attempt = async (
       createOrUpdateIntegration: async (...args: any[]) => {
         writes.push(args);
         return { id: 'channel-1' };
+      },
+      spendConnectLink: async (state: string) => {
+        spent.push(state);
       },
     },
     { startRefreshWorkflow: async () => false },
@@ -97,7 +101,7 @@ const attempt = async (
     })
     .catch((err: unknown) => ({ failed: err }));
 
-  return { writes, result };
+  return { writes, result, spent };
 };
 
 const connect = async (
@@ -253,5 +257,137 @@ describe('a connect whose pages cannot be listed', { skip: !canLoad }, () => {
 
     assert.equal(asked, 0);
     assert.equal(writes.length, 1);
+  });
+});
+
+describe('a connect link', { skip: !canLoad }, () => {
+  const controller = (
+    redis: Record<string, string>,
+    deleted: string[],
+    extra: {
+      org?: Record<string, unknown> | null;
+      canCreateChannel?: boolean;
+      started?: string[];
+    } = {}
+  ) => {
+    ioRedis.get = async (key: string) => redis[key] ?? null;
+    ioRedis.del = async (key: string) => {
+      deleted.push(key);
+      return 1;
+    };
+    return new NoAuthIntegrationsController(
+      {
+        getAllowedSocialsIntegrations: () => ['network'],
+        getSocialIntegration: () => ({
+          isBetweenSteps: false,
+          authenticate: login('account-1'),
+        }),
+      },
+      {
+        assertConnectAllowed: () => undefined,
+        checkPreviousConnections: async () => false,
+        migrateIntegration: async () => undefined,
+        migrateIntegrationOnConnect: async () => undefined,
+        createOrUpdateIntegration: async () => ({ id: 'channel-1' }),
+        spendConnectLink: async () => undefined,
+        getConnectLinkOrganization: async () => 'org-1',
+        startConnectLink: async (token: string) => {
+          extra.started?.push(token);
+          return { url: 'https://network.example/oauth' };
+        },
+      },
+      { startRefreshWorkflow: async () => false },
+      {
+        getOrgById: async () =>
+          extra.org === undefined
+            ? { id: 'org-1', isTrailing: false, createdAt: new Date() }
+            : extra.org,
+      },
+      {},
+      {
+        check: async () => ({
+          can: () => extra.canCreateChannel ?? true,
+        }),
+      }
+    );
+  };
+
+  it('hands its address back to be offered, never to be followed', async () => {
+    const deleted: string[] = [];
+    const result = await controller(
+      {
+        'login:state-1': 'verifier',
+        'organization:state-1': 'org-1',
+        'continue:state-1': 'https://client.example.com/done',
+      },
+      deleted
+    ).connectSocialMedia('network', {
+      state: 'state-1',
+      code: 'code',
+      timezone: '0',
+    });
+
+    assert.equal(result.continueURL, 'https://client.example.com/done');
+    assert.equal(result.returnURL, undefined);
+    assert.ok(deleted.includes('continue:state-1'));
+  });
+
+  it("refuses to start once the workspace's plan has no channel left, without a billing answer", async () => {
+    const started: string[] = [];
+    await assert.rejects(
+      controller({}, [], { canCreateChannel: false, started }).startConnectLink(
+        'token'
+      ),
+      (err: any) => err.getStatus() === 400 && /channel limit/.test(err.message)
+    );
+    assert.deepEqual(started, []);
+  });
+
+  it('reads a removed workspace as an expired link', async () => {
+    const started: string[] = [];
+    await assert.rejects(
+      controller({}, [], {
+        org: { id: 'org-1', deletedAt: new Date() },
+        started,
+      }).startConnectLink('token'),
+      (err: any) => err.getStatus() === 404
+    );
+    assert.deepEqual(started, []);
+  });
+
+  it('starts the sign-in while the plan has room', async () => {
+    const started: string[] = [];
+    assert.deepEqual(
+      await controller({}, [], { started }).startConnectLink('token'),
+      { url: 'https://network.example/oauth' }
+    );
+    assert.deepEqual(started, ['token']);
+  });
+});
+
+describe('the link a connect came through', { skip: !canLoad }, () => {
+  it('is spent once the channel is saved', async () => {
+    const { writes, spent } = await attempt(
+      { isBetweenSteps: false, authenticate: login('account-1') },
+      null
+    );
+    assert.equal(writes.length, 1);
+    assert.deepEqual(spent, ['state-1']);
+  });
+
+  it('stays usable after a sign-in that failed or was cancelled', async () => {
+    for (const authenticate of [
+      async () => 'The user cancelled',
+      async () => {
+        throw new Error('access_denied');
+      },
+    ]) {
+      const { writes, spent } = await attempt(
+        { isBetweenSteps: false, authenticate },
+        null
+      );
+      assert.equal(writes.length, 0);
+      assert.deepEqual(spent, []);
+    }
   });
 });

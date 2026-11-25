@@ -26,6 +26,7 @@
 /(app)/auth/login-required/page.tsx
 /(app)/auth/login/page.tsx
 /(app)/auth/page.tsx
+/(app)/integrations/connect/[token]/page.tsx
 /(app)/integrations/social/[provider]/page.tsx
 /(app)/oauth/authorize/page.tsx
 /(extension)/modal/[style]/[platform]/page.tsx

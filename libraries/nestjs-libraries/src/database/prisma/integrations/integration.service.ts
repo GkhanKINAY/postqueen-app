@@ -24,7 +24,7 @@ import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/n
 import { CreditsService } from '@gitroom/nestjs-libraries/database/prisma/credits/credits.service';
 import { OpsAlertService } from '@gitroom/nestjs-libraries/track/ops.alert.service';
 import dayjs from 'dayjs';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import {
@@ -1355,6 +1355,191 @@ export class IntegrationService implements OnModuleInit {
     }
 
     return { success: true, id: ids[ids.length - 1], ids };
+  }
+
+  // Connect links (public API and MCP): the link opens a PostQueen page that
+  // explains what connecting the channel means, and only from there is the
+  // person sent to the platform. Like the invite links of the add-channel
+  // screen, only providers that connect with a plain redirect can be linked.
+  //
+  // The token is 256 random bits and lives for an hour, stored under its
+  // sha256 so the Redis keys alone open nothing. It names the organization
+  // server-side, so whoever opens it can add a channel to that workspace
+  // only, and only while its plan has room (checked again when they
+  // continue). A refused or cancelled consent can be tried again within the
+  // hour; a connected channel spends the link.
+  async createConnectLink(
+    org: Parameters<IntegrationService['assertConnectAllowed']>[1] & {
+      id: string;
+    },
+    integration: string,
+    redirectUrl?: string
+  ) {
+    if (
+      !this._integrationManager
+        .getAllowedSocialsIntegrations()
+        .includes(integration) ||
+      this._integrationManager.isHiddenProvider(integration)
+    ) {
+      throw new HttpException('Integration not allowed', HttpStatus.BAD_REQUEST);
+    }
+
+    if (
+      !this._integrationManager
+        .getLinkableSocialsIntegrations()
+        .includes(integration)
+    ) {
+      throw new HttpException(
+        'This platform cannot be connected with a link, add it from the PostQueen app instead',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // Said now rather than on the page, to whoever asked for the link: the
+    // person who opens it could not do anything about a trial
+    this.assertConnectAllowed(
+      this._integrationManager.getSocialIntegration(integration),
+      org
+    );
+
+    const token = randomBytes(32).toString('hex');
+    await ioRedis.set(
+      `connectLink:${this.connectLinkKey(token)}`,
+      JSON.stringify({
+        org: org.id,
+        integration,
+        redirectUrl,
+        redirectTo: redirectUrl
+          ? this.connectLinkRedirectHost(redirectUrl)
+          : undefined,
+      }),
+      'EX',
+      3600
+    );
+
+    // A page of the app, like the post previews and the Media page the MCP
+    // tools hand out
+    return { url: `${process.env.FRONTEND_URL}/integrations/connect/${token}` };
+  }
+
+  // The confirmation offers this URL as a button once the channel is
+  // connected, with the result added to its query string, and the page names
+  // its host before the person continues: it has to be an absolute http(s)
+  // URL that parses the way a browser reads it, with no fragment (the query
+  // is appended) and no user name or password in front of the host
+  private connectLinkRedirectHost(redirectUrl: string) {
+    try {
+      const { protocol, host, username, password } = new URL(redirectUrl);
+      if (
+        ['http:', 'https:'].includes(protocol) &&
+        redirectUrl.length <= 2048 &&
+        !redirectUrl.includes('#') &&
+        !username &&
+        !password
+      ) {
+        return host;
+      }
+    } catch (err) {}
+
+    throw new HttpException(
+      'The redirect URL must be an absolute http(s) URL without a fragment or credentials',
+      HttpStatus.BAD_REQUEST
+    );
+  }
+
+  private connectLinkKey(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  // A provider removed or hidden since the link was made reads as expired
+  private async loadConnectLink(token: string) {
+    const link = /^[a-f0-9]{64}$/.test(token)
+      ? (JSON.parse(
+          (await ioRedis.get(`connectLink:${this.connectLinkKey(token)}`)) ||
+            'null'
+        ) as {
+          org: string;
+          integration: string;
+          redirectUrl?: string;
+          redirectTo?: string;
+        } | null)
+      : null;
+    if (
+      !link ||
+      !this._integrationManager
+        .getLinkableSocialsIntegrations()
+        .includes(link.integration)
+    ) {
+      throw new HttpException(
+        'This connection link expired, please ask for a new one',
+        HttpStatus.NOT_FOUND
+      );
+    }
+    return link;
+  }
+
+  // The organization the channel is added to, the controller checks its plan
+  async getConnectLinkOrganization(token: string) {
+    return (await this.loadConnectLink(token)).org;
+  }
+
+  // What the page shows: the platform, and where the person ends up afterwards
+  async getConnectLink(token: string) {
+    const { integration, redirectTo } = await this.loadConnectLink(token);
+    const provider = this._integrationManager.getSocialIntegration(integration);
+    return {
+      identifier: provider.identifier,
+      name: provider.name,
+      ...(redirectTo ? { redirectTo } : {}),
+    };
+  }
+
+  // The person agreed: from here it is the same flow as connecting from the
+  // dashboard, the platform sends them back to /integrations/social/:provider,
+  // which adds the channel to the organization of the link whoever is signed
+  // in, and checks the trial lock again. The link stays valid until it
+  // expires or a channel is connected through it, so a cancelled sign-in can
+  // be tried again
+  async startConnectLink(token: string) {
+    const { org, integration, redirectUrl } = await this.loadConnectLink(token);
+    const provider = this._integrationManager.getSocialIntegration(integration);
+
+    try {
+      const { codeVerifier, state, url } = await provider.generateAuthUrl();
+
+      await ioRedis.set(`organization:${state}`, org, 'EX', 3600);
+      await ioRedis.set(`login:${state}`, codeVerifier, 'EX', 3600);
+      // So the callback can spend the link once a channel is connected
+      await ioRedis.set(
+        `connectLinkState:${state}`,
+        this.connectLinkKey(token),
+        'EX',
+        3600
+      );
+      if (redirectUrl) {
+        // Not `redirect:`, which the connect callback follows on its own:
+        // this one is only offered as a button on the confirmation
+        await ioRedis.set(`continue:${state}`, redirectUrl, 'EX', 3600);
+      }
+
+      return { url };
+    } catch (err) {
+      throw new HttpException(
+        'Failed to generate auth URL',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // The connect callback added a channel through a link: the link is spent.
+  // Only on success, so a cancelled or failed sign-in can be tried again.
+  async spendConnectLink(state: string) {
+    const key = await ioRedis.get(`connectLinkState:${state}`);
+    if (!key) {
+      return;
+    }
+    await ioRedis.del(`connectLink:${key}`);
+    await ioRedis.del(`connectLinkState:${state}`);
   }
 
   async checkAnalytics(

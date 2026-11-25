@@ -80,6 +80,7 @@
 /integrations/plugs/${data
 /integrations/plugs/${data.id}/activate
 /integrations/provider/${continueId}/connect
+/integrations/public/connect/${token}
 /integrations/social-connect/${provider}
 /integrations/social/${current.identifier}
 /integrations/social/${identifier}

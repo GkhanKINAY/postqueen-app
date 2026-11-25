@@ -86,6 +86,7 @@ export const ToolStep: FC<{
     analyticsSummaryTool: t('copilot_step_analytics', 'Reading analytics'),
     analyticsPostsTool: t('copilot_step_analytics', 'Reading analytics'),
     analyticsPostTool: t('copilot_step_analytics', 'Reading analytics'),
+    integrationAnalyticsTool: t('copilot_step_analytics', 'Reading analytics'),
     generateImageTool: t('copilot_step_image', 'Generating image'),
     generateVideoOptions: t('copilot_step_video_options', 'Checking video generators'),
     videoFunctionTool: t('copilot_step_video_options', 'Checking video generators'),

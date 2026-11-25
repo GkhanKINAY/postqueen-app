@@ -45,8 +45,8 @@ const thumbnailUrl = z
 
 // Attachments are either a plain URL string or { path, alt?, thumbnail?,
 // thumbnailTimestamp? }, the same per-media fields as the public API (alt
-// has MediaDto's 1000 character limit).
-const attachment = z.union([
+// has MediaDto's 1000 character limit). Shared with postAttachmentsTool.
+export const attachment = z.union([
   attachmentUrl,
   z.object({
     path: attachmentUrl,
@@ -58,7 +58,7 @@ const attachment = z.union([
 
 type Attachment = z.infer<typeof attachment>;
 
-const toMedia = (a: Attachment) =>
+export const toMedia = (a: Attachment) =>
   typeof a === 'string'
     ? { path: a }
     : {
@@ -134,7 +134,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                       .string()
                       .max(MAX_POST_CONTENT_LENGTH)
                       .describe(
-                        "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
+                        "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p, br (you can't have u and strong together; br is a line break inside a paragraph), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
                       ),
                     attachments: z
                       .array(attachment)

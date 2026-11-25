@@ -963,5 +963,17 @@
   "charge_disputed_no_refund": "Ce prélèvement a fait l’objet d’une contestation et ne peut donc pas être remboursé",
   "billing_cancel_failed": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer ou contacter le support.",
   "trial_end_admin_only": "Seul un administrateur de cet espace de travail peut mettre fin à l'essai et payer.",
-  "no_ai_credits_ask_admin": "Vous n'avez pas assez de crédits pour cette image. Veuillez contacter un administrateur de votre espace de travail."
+  "no_ai_credits_ask_admin": "Vous n'avez pas assez de crédits pour cette image. Veuillez contacter un administrateur de votre espace de travail.",
+  "connect_link_title": "PostQueen souhaite se connecter à votre compte {{platform}}",
+  "connect_link_trust": "Ne continuez que si vous faites confiance à la personne qui vous a envoyé ce lien",
+  "connect_link_automate": "PostQueen pourra programmer et publier des posts sur votre compte {{platform}}",
+  "connect_link_system": "Votre compte est ajouté à l'espace de travail PostQueen auquel appartient ce lien, et géré depuis celui-ci",
+  "connect_link_redirect": "Une fois terminé, vous pourrez continuer vers {{site}}, un site externe à PostQueen",
+  "connect_link_next": "Vous allez être redirigé vers {{platform}} pour vous connecter et approuver l'accès",
+  "connect_link_continue": "Continuer vers {{platform}}",
+  "connect_link_connecting": "Connexion...",
+  "connect_link_close": "Ce n'est pas ce que vous attendiez ? Fermez cette page et rien ne sera connecté.",
+  "connect_link_expired": "Ce lien n'est plus valide",
+  "connect_link_expired_description": "Les liens de connexion sont valables une heure. Demandez-en un nouveau à la personne qui vous l'a envoyé.",
+  "connect_link_continue_to_site": "Continuer vers {{site}}"
 }

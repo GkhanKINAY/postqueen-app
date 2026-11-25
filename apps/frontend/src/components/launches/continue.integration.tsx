@@ -28,11 +28,30 @@ interface TwoStepState {
   onboarding: boolean;
   pages: any[];
   returnURL?: string;
+  continueURL?: string;
 }
 
 interface SuccessState {
   message: string;
+  // A connect link's own address, offered as a button (never followed on its
+  // own): whoever made the link chose it
+  continueURL?: string;
 }
+
+// The result goes on in the query string; the address may carry its own
+const withResultParams = (url: string, path: string) => {
+  const params = path.includes('?') ? path.split('?')[1] : '';
+  const separator = url.includes('?') ? '&' : '?';
+  return params ? `${url}${separator}${params}` : url;
+};
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
 
 const oauthCallbackKeys = new Set([
   'state',
@@ -64,11 +83,22 @@ export const ContinueIntegration: FC<{
 
   // Helper to handle navigation - redirects if logged or returnURL exists, otherwise shows inline
   const navigateOrShow = useCallback(
-    (path: string, returnURL: string | undefined, successMessage: string) => {
-      if (returnURL) {
+    (
+      path: string,
+      returnURL: string | undefined,
+      successMessage: string,
+      continueURL?: string
+    ) => {
+      if (continueURL) {
+        // A connect link's address: the confirmation offers it, signed in or
+        // not, rather than sending the browser there
+        setSuccessState({
+          message: successMessage,
+          continueURL: withResultParams(continueURL, path),
+        });
+      } else if (returnURL) {
         // If returnURL exists, always redirect to it with the path params
-        const params = path.includes('?') ? path.split('?')[1] : '';
-        push(params ? `${returnURL}?${params}` : returnURL);
+        push(withResultParams(returnURL, path));
       } else if (logged) {
         // If logged in without returnURL, use normal navigation
         push(path);
@@ -207,6 +237,7 @@ export const ContinueIntegration: FC<{
         onboarding: resOnboarding,
         pages,
         returnURL,
+        continueURL,
         extensionToken,
       } = await data.json();
       const onboarding = resOnboarding || searchParams.onboarding === 'true';
@@ -246,6 +277,7 @@ export const ContinueIntegration: FC<{
           onboarding,
           pages: pages || [],
           returnURL,
+          continueURL,
         });
         return;
       }
@@ -259,7 +291,8 @@ export const ContinueIntegration: FC<{
           onboarding,
         }),
         returnURL,
-        'Channel Updated'
+        'Channel Updated',
+        continueURL
       );
     })();
   }, []);
@@ -334,7 +367,8 @@ export const ContinueIntegration: FC<{
                 onboarding: twoStepState.onboarding,
               }),
               twoStepState.returnURL,
-              'Channel Added'
+              'Channel Added',
+              twoStepState.continueURL
             );
             return;
           }
@@ -435,6 +469,19 @@ export const ContinueIntegration: FC<{
               `Your ${providerDisplayName} channel has been successfully connected. You can close this window now.`
             )}
         </div>
+        {!!successState.continueURL && (
+          <a
+            href={successState.continueURL}
+            // The OAuth code is still in this page's address
+            rel="noreferrer"
+            className="mt-[24px] flex min-h-[44px] items-center justify-center rounded-pqSm bg-pqBrand px-[18px] text-[14px] font-[600] text-pqOnBrand transition-colors hover:bg-pqBrandHover"
+          >
+            {t('connect_link_continue_to_site', 'Continue to {{site}}', {
+              site: hostOf(successState.continueURL),
+              interpolation: { escapeValue: false },
+            })}
+          </a>
+        )}
       </div>
     );
   }
