@@ -972,8 +972,13 @@ Confirm a specific commit by its hash in our messages, since cherry-picks
 carry it:
 
 ```bash
-git log origin/main --format='%H%n%B' | grep <upstream-hash>
+git log origin/main ^upstream/main --format='%B' | grep <upstream-hash>
 ```
+
+Leave out `^upstream/main` and every upstream commit up to the watermark
+matches: since the `-s ours` merges, upstream's own commits are in `main`'s
+history, and `%H` prints their hashes. Counted that way, the November check
+read 140 of 140 present; limited to our own commits it read the true 99.
 
 `git cherry` and subject matching still do not work for that, because this
 fork renames and adapts what it takes. Six of the eight commits that "did not
