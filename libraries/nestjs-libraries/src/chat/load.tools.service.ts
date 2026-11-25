@@ -219,7 +219,7 @@ ${renderArray(
   - Platform format will also be passed can be "normal", "markdown", "html", make sure you use the correct format for each platform.
 
 # Post content format
-- The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box
+- The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p, br (you can\'t have u and strong together; br is a line break inside a paragraph), don't use a "code" box
 - No markdown and no inline styles inside post content.
 
 # Media

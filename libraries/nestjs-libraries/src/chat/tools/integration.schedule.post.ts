@@ -134,7 +134,7 @@ If validation fails, the result contains output.errors describing what to fix; t
                       .string()
                       .max(MAX_POST_CONTENT_LENGTH)
                       .describe(
-                        "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can't have u and strong together), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
+                        "The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p, br (you can't have u and strong together; br is a line break inside a paragraph), img (<img src=\"...\">) only when the integration rules say pictures go inside the content, and span only for a mention in the exact format given by a mention tool from the integrationSchema tools"
                       ),
                     attachments: z
                       .array(attachment)
