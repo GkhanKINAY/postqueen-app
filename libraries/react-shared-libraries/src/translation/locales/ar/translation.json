@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "ليس لديك رصيد كافٍ لهذه الصورة. يرجى التواصل مع مسؤول مساحة العمل الخاصة بك.",
   "label_privacy_status": "حالة الخصوصية",
   "label_description": "الوصف",
-  "youtube_description_is_post_text": "نص منشورك هو وصف الفيديو. عدّله في المحرر."
+  "youtube_description_is_post_text": "نص منشورك هو وصف الفيديو. عدّله في المحرر.",
+  "label_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي",
+  "facebook_made_with_ai": "تم الإنشاء بالذكاء الاصطناعي (لمنشورات النص والصور فقط)"
 }

@@ -1445,5 +1445,7 @@
   "no_ai_credits_ask_admin": "You don't have enough credits for this image. Please ask an admin of your workspace.",
   "label_privacy_status": "Privacy Status",
   "label_description": "Description",
-  "youtube_description_is_post_text": "Your post text is the video description. Edit it in the editor."
+  "youtube_description_is_post_text": "Your post text is the video description. Edit it in the editor.",
+  "label_made_with_ai": "Made with AI",
+  "facebook_made_with_ai": "Made with AI (only for text and photo posts)"
 }

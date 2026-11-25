@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "Sie haben nicht genug Credits für dieses Bild. Bitte wenden Sie sich an einen Admin Ihres Arbeitsbereichs.",
   "label_privacy_status": "Datenschutzstatus",
   "label_description": "Beschreibung",
-  "youtube_description_is_post_text": "Der Text Ihres Beitrags ist die Videobeschreibung. Bearbeiten Sie ihn im Editor."
+  "youtube_description_is_post_text": "Der Text Ihres Beitrags ist die Videobeschreibung. Bearbeiten Sie ihn im Editor.",
+  "label_made_with_ai": "Mit KI erstellt",
+  "facebook_made_with_ai": "Mit KI erstellt (nur für Text- und Foto-Beiträge)"
 }

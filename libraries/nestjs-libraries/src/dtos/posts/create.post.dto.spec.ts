@@ -49,6 +49,24 @@ describe('Post settings by channel', () => {
     assert.deepEqual(await errorsFor('moltbook', { submolt: 'general' }), []);
   });
 
+  // Threads moved from no settings class to ThreadsDto: a post saved before
+  // still carries only __type, or the thread finisher fields.
+  it('take a Threads post saved before ThreadsDto, and its Made with AI box', async () => {
+    assert.deepEqual(await errorsFor('threads'), []);
+    assert.deepEqual(
+      await errorsFor('threads', {
+        active_thread_finisher: true,
+        thread_finisher: 'Follow for more',
+      }),
+      []
+    );
+    assert.deepEqual(await errorsFor('threads', { made_with_ai: true }), []);
+    assert.deepEqual(await errorsFor('threads', { made_with_ai: false }), []);
+    assert.deepEqual(await errorsFor('threads', { made_with_ai: 'yes' }), [
+      ['isBoolean'],
+    ]);
+  });
+
   it('still refuse a provider nobody declared', async () => {
     assert.notDeepEqual(await errorsFor('nope'), []);
   });

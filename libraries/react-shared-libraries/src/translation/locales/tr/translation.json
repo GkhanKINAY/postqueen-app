@@ -984,5 +984,7 @@
   "no_ai_credits_ask_admin": "Bu görsel için yeterli krediniz yok. Lütfen çalışma alanınızın yöneticisine başvurun.",
   "label_privacy_status": "Gizlilik durumu",
   "label_description": "Açıklama",
-  "youtube_description_is_post_text": "Gönderinizin metni video açıklamasıdır. Düzenleyicide düzenleyin."
+  "youtube_description_is_post_text": "Gönderinizin metni video açıklamasıdır. Düzenleyicide düzenleyin.",
+  "label_made_with_ai": "Yapay zeka ile oluşturuldu",
+  "facebook_made_with_ai": "Yapay zeka ile oluşturuldu (yalnızca metin ve fotoğraf gönderileri için)"
 }

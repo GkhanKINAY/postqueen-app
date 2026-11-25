@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "您的积分不足以生成此图片。请联系您工作区的管理员。",
   "label_privacy_status": "隐私状态",
   "label_description": "描述",
-  "youtube_description_is_post_text": "你的帖子文本就是视频描述。请在编辑器中编辑。"
+  "youtube_description_is_post_text": "你的帖子文本就是视频描述。请在编辑器中编辑。",
+  "label_made_with_ai": "由AI制作",
+  "facebook_made_with_ai": "由AI制作（仅适用于文字和图片帖子）"
 }

@@ -96,6 +96,13 @@ const InstagramCollaborators: FC<{
           )}
         </div>
       )}
+
+      <Checkbox
+        icon="ai"
+        label={t('label_made_with_ai', 'Made with AI')}
+        defaultValue={false}
+        {...register('made_with_ai')}
+      />
     </>
   );
 };

@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "Bạn không có đủ tín dụng cho hình ảnh này. Vui lòng liên hệ quản trị viên không gian làm việc của bạn.",
   "label_privacy_status": "Trạng thái quyền riêng tư",
   "label_description": "Mô tả",
-  "youtube_description_is_post_text": "Nội dung bài đăng của bạn là mô tả video. Hãy chỉnh sửa trong trình soạn thảo."
+  "youtube_description_is_post_text": "Nội dung bài đăng của bạn là mô tả video. Hãy chỉnh sửa trong trình soạn thảo.",
+  "label_made_with_ai": "Được tạo bằng AI",
+  "facebook_made_with_ai": "Được tạo bằng AI (chỉ dành cho bài đăng văn bản và ảnh)"
 }

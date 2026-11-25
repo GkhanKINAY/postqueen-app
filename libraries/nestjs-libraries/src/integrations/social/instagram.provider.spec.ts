@@ -515,3 +515,77 @@ describe('Instagram (Facebook login) token renewal', () => {
     );
   });
 });
+
+// The container calls a post makes, with every Graph call answered here.
+describe('Instagram Made with AI', () => {
+  const containers = async (
+    settings: Record<string, unknown>,
+    media: { path: string }[]
+  ) => {
+    const provider = new InstagramProvider();
+    const urls: string[] = [];
+    (provider as any).fetch = async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ id: `c-${urls.length}` }));
+    };
+    const [response] = await provider.postPending(
+      'ig-1',
+      'token',
+      [
+        {
+          id: 'p',
+          message: 'hello',
+          settings: { post_type: 'post', ...settings },
+          media,
+        },
+      ] as any,
+      { internalId: 'ig-1', profile: 'creator' } as any
+    );
+    return { provider, urls, response };
+  };
+
+  it('leaves a post without the setting exactly as before', async () => {
+    for (const media of [images(1), images(3)]) {
+      const { urls, response } = await containers({}, media);
+      for (const url of urls) {
+        assert.doesNotMatch(url, /is_ai_generated/);
+      }
+      assert.equal('madeWithAi' in (response.pendingData || {}), false);
+    }
+  });
+
+  it('labels a single post and each story', async () => {
+    const single = await containers({ made_with_ai: true }, images(1));
+    assert.match(single.urls[0], /is_ai_generated=true/);
+    const stories = await containers(
+      { made_with_ai: true, post_type: 'story' },
+      images(2)
+    );
+    assert.equal(stories.urls.length, 2);
+    for (const url of stories.urls) {
+      assert.match(url, /is_ai_generated=true/);
+    }
+  });
+
+  it('labels a carousel on its container, never on the items', async () => {
+    const { provider, urls, response } = await containers(
+      { made_with_ai: true },
+      images(3)
+    );
+    for (const url of urls) {
+      assert.doesNotMatch(url, /is_ai_generated/);
+    }
+    assert.equal(response.pendingData?.madeWithAi, true);
+
+    let container = '';
+    (provider as any).fetch = async (url: string) => {
+      container = url;
+      return new Response(JSON.stringify({ id: 'carousel' }));
+    };
+    await provider.finalizePost('token', response.pendingData as any, {
+      internalId: 'ig-1',
+    } as any);
+    assert.match(container, /media_type=CAROUSEL/);
+    assert.match(container, /is_ai_generated=true/);
+  });
+});

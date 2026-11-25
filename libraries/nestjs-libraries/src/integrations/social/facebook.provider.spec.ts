@@ -50,6 +50,81 @@ describe('Facebook embedded URL', () => {
   });
 });
 
+// Every Graph call a page post makes, answered here; `failEdit` makes the
+// AI label edit fail the way a refused call does.
+const postCalls = async (
+  settings: Record<string, unknown>,
+  media: string[],
+  failEdit = false
+) => {
+  const provider = new FacebookProvider();
+  const calls: { url: string; body?: any }[] = [];
+  (provider as any).fetch = async (url: string, init: RequestInit = {}) => {
+    calls.push({ url, body: init.body ? JSON.parse(String(init.body)) : undefined });
+    if (failEdit && /\/v27\.0\/post\?/.test(url)) {
+      throw new Error('(#100) Invalid parameter');
+    }
+    return {
+      json: async () =>
+        url.includes('/feed?')
+          ? { id: 'post', permalink_url: 'https://fb.test/post' }
+          : url.includes('/videos?')
+            ? { id: 'video', permalink_url: 'https://fb.test/video' }
+            : { id: 'photo' },
+    };
+  };
+  const result = await provider.post(
+    'page',
+    'token',
+    [
+      {
+        id: 'p',
+        message: 'hello',
+        settings,
+        media: media.map((path) => ({ path })),
+      },
+    ] as any,
+    {} as any
+  );
+  return { calls, result };
+};
+
+describe('Facebook Made with AI', () => {
+  const edits = (calls: { url: string }[]) =>
+    calls.filter((c) => c.url.includes('/post?'));
+
+  it('labels a text or photo post with an edit on v27.0, after it is live', async () => {
+    for (const media of [[], ['https://cdn.test/a.jpg']]) {
+      const { calls } = await postCalls({ made_with_ai: true }, media);
+      const [edit] = edits(calls);
+      assert.match(edit.url, /^https:\/\/graph\.facebook\.com\/v27\.0\/post\?/);
+      assert.deepEqual(edit.body, { is_ai_generated: true });
+      assert.equal(calls.at(-1), edit);
+    }
+  });
+
+  it('makes no extra call without the setting, or for a video', async () => {
+    assert.deepEqual(edits((await postCalls({}, [])).calls), []);
+    assert.deepEqual(
+      edits((await postCalls({ made_with_ai: false }, [])).calls),
+      []
+    );
+    assert.deepEqual(
+      edits(
+        (await postCalls({ made_with_ai: true }, ['https://cdn.test/a.mp4']))
+          .calls
+      ),
+      []
+    );
+  });
+
+  it('never fails a live post over the label', async () => {
+    const { result } = await postCalls({ made_with_ai: true }, [], true);
+    assert.equal(result[0].status, 'success');
+    assert.equal(result[0].postId, 'post');
+  });
+});
+
 describe('Facebook post metrics availability', () => {
   const provider = new FacebookProvider();
   const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);

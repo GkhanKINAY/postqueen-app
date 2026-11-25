@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "Vous n'avez pas assez de crédits pour cette image. Veuillez contacter un administrateur de votre espace de travail.",
   "label_privacy_status": "Statut de confidentialité",
   "label_description": "Description",
-  "youtube_description_is_post_text": "Le texte de votre publication est la description de la vidéo. Modifiez-le dans l'éditeur."
+  "youtube_description_is_post_text": "Le texte de votre publication est la description de la vidéo. Modifiez-le dans l'éditeur.",
+  "label_made_with_ai": "Réalisé avec l'IA",
+  "facebook_made_with_ai": "Réalisé avec l'IA (uniquement pour les publications texte et photo)"
 }

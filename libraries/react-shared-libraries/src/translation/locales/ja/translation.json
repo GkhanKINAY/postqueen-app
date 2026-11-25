@@ -966,5 +966,7 @@
   "no_ai_credits_ask_admin": "この画像に必要なクレジットが足りません。ワークスペースの管理者にお問い合わせください。",
   "label_privacy_status": "公開設定",
   "label_description": "説明",
-  "youtube_description_is_post_text": "投稿のテキストが動画の説明になります。エディターで編集してください。"
+  "youtube_description_is_post_text": "投稿のテキストが動画の説明になります。エディターで編集してください。",
+  "label_made_with_ai": "AIで作成",
+  "facebook_made_with_ai": "AIで作成（テキストと写真の投稿のみ）"
 }
