@@ -2036,18 +2036,24 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           className={clsx(
             'flex min-w-0 select-none border-t border-pqBorder bg-pqInner pb-[max(12px,env(safe-area-inset-bottom))]',
             phoneFlow && composerPane !== 'schedule' && 'hidden',
+            // On desktop, when the two halves do not fit side by side, the
+            // second goes to a row of its own rather than over the first.
             compactFooter
               ? 'flex-col gap-[10px] overflow-x-hidden px-[16px] py-[12px]'
-              : 'min-h-[84px] w-full items-center justify-between overflow-x-auto overflow-y-hidden py-[20px] min-[1180px]:flex-row'
+              : 'min-h-[84px] w-full flex-wrap items-end justify-between gap-x-[8px] gap-y-[12px] overflow-x-auto overflow-y-hidden py-[20px] min-[1180px]:flex-row'
           )}
         >
           {!phoneFlow && (
           <div
             className={clsx(
-              'min-w-0 gap-[8px]',
+              'gap-[8px]',
+              // On tablet, bottom-aligned so Notify lines up with the date
+              // picker under the channel's "Time for" label. On desktop the
+              // half keeps its controls' width, so it can no longer be
+              // squeezed under them and have Notify drawn over the picker.
               compactFooter
-                ? 'grid w-full grid-cols-2'
-                : 'flex min-w-0 flex-1 items-center ps-[20px]'
+                ? 'grid w-full grid-cols-2 min-w-0 items-end'
+                : 'flex flex-1 items-center ps-[20px]'
             )}
           >
             {!dummy && !compactFooter && !publishedView && (
@@ -2122,8 +2128,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
           )}
           <div
             className={clsx(
-              'flex min-w-0 items-center justify-end gap-[8px]',
-              compactFooter ? 'w-full flex-col' : 'shrink-0 pe-[20px]',
+              'flex min-w-0 justify-end gap-[8px]',
+              compactFooter
+                ? 'w-full flex-col items-center'
+                : 'ms-auto items-end shrink-0 pe-[20px]',
               phoneFlow && 'flex-row'
             )}
           >
@@ -2145,7 +2153,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 type="button"
                 onClick={stopRepeating}
                 disabled={loading}
-                className="cursor-pointer flex text-pqText gap-[8px] items-center text-[15px] font-[600] disabled:cursor-not-allowed disabled:opacity-60"
+                className={clsx(
+                  'cursor-pointer flex text-pqText gap-[8px] items-center text-[15px] font-[600] disabled:cursor-not-allowed disabled:opacity-60',
+                  !compactFooter && 'h-[44px]'
+                )}
               >
                 <div>
                   <RepeatIcon />
@@ -2158,7 +2169,10 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             {!phoneFlow && existingData?.integration && (
               <button
                 onClick={deletePost}
-                className="cursor-pointer flex text-pqWarn gap-[8px] items-center text-[15px] font-[600]"
+                className={clsx(
+                  'cursor-pointer flex text-pqWarn gap-[8px] items-center text-[15px] font-[600]',
+                  !compactFooter && 'h-[44px]'
+                )}
               >
                 <div>
                   <TrashIcon />

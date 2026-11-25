@@ -883,17 +883,19 @@ export class PostsRepository {
     tags: { value: string; label: string }[],
     creationMethod: CreationMethod,
     inter?: number,
-    // Keep the existing group instead of rotating it, so open clients
-    // (calendar) holding the group stay valid. Used by out-of-band updates
-    // (agent / MCP / public API); the dashboard keeps the rotate-and-sweep.
-    keepGroup = false,
+    // An out-of-band update of an existing post (agent / MCP / public API):
+    // keep the existing group instead of rotating it, so open clients
+    // (calendar) holding the group stay valid, and leave alone what an edit
+    // in the dashboard resets (the marketplace approval, order and message).
+    // The dashboard keeps the rotate-and-sweep.
+    inPlace = false,
     // Shared by the posts saved together for several channels, so opening one
     // of them in the editor brings the others.
     batchId?: string
   ) {
     const posts: Post[] = [];
     const uuid = uuidv4();
-    const group = keepGroup && body.group ? body.group : uuid;
+    const group = inPlace && body.group ? body.group : uuid;
 
     // An edited post stays in the batch it was created in, even when it is
     // saved on its own or with a group that was rotated since. Read before
@@ -966,7 +968,9 @@ export class PostsRepository {
         group,
         batchId: existingBatchId || batchId,
         intervalInDays: inter ? +inter : null,
-        approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO,
+        ...(type === 'update' && inPlace
+          ? {}
+          : { approvedSubmitForOrder: APPROVED_SUBMIT_FOR_ORDER.NO }),
         ...(type === 'create' ? { creationMethod } : {}),
         ...(state === 'update'
           ? {}
@@ -991,12 +995,16 @@ export class PostsRepository {
           create: { ...updateData('create') },
           update: {
             ...updateData('update'),
-            lastMessage: {
-              disconnect: true,
-            },
-            submittedForOrder: {
-              disconnect: true,
-            },
+            ...(inPlace
+              ? {}
+              : {
+                  lastMessage: {
+                    disconnect: true,
+                  },
+                  submittedForOrder: {
+                    disconnect: true,
+                  },
+                }),
           },
         })
       );
@@ -1057,7 +1065,7 @@ export class PostsRepository {
         )?.id!
       : undefined;
 
-    if (body.group && !keepGroup) {
+    if (body.group && !inPlace) {
       await this._post.model.post.updateMany({
         where: {
           // `group` comes straight from the request body. Without this filter
@@ -1075,9 +1083,9 @@ export class PostsRepository {
       });
     }
 
-    // keepGroup: the updated rows still carry the old group, so sweep only the
+    // inPlace: the updated rows still carry the old group, so sweep only the
     // rows dropped from it (removed comments) by id instead of by group.
-    if (body.group && keepGroup) {
+    if (body.group && inPlace) {
       await this._post.model.post.updateMany({
         where: {
           // Like the sweep above: `group` comes from the request.

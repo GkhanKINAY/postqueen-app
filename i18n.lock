@@ -796,6 +796,18 @@ checksums:
     billing_cancel_failed: 00e2666f61f4bbea8c3fbc6d622bde22
     trial_end_admin_only: 1c5a980a21a72381268cb3fc703d34cd
     no_ai_credits_ask_admin: 1175ca4a744042dc8397ca8d78916165
+    connect_link_title: 1f5309da81aaae1d43a640099683c1d1
+    connect_link_trust: 7f3b071ea4cb489f408d4ecd86bd1b7e
+    connect_link_automate: afccaee3267a57384dad47508c6e87f0
+    connect_link_system: bb665a92576a7b4494b95fce35b3f909
+    connect_link_redirect: 8c638e76495441078325fc2382c60eb9
+    connect_link_next: 92be9bc5c54ecd2d6262de3c75cde125
+    connect_link_continue: 4c71b9d883d9965e16729f6ad02c73c6
+    connect_link_connecting: 0627ab04701831ecbde4135e1ef9210c
+    connect_link_close: cef636594144aab36fe4df845c933ec5
+    connect_link_expired: f536192f63445c31ddf1ac9ce2bf343c
+    connect_link_expired_description: 5171dc0e2b33e37c1d570c8ec332d641
+    connect_link_continue_to_site: 7ffc0fa5e7ea72a289f6c6a4015d0f03
     label_privacy_status: e25598b40325620e4a727d17a8747d0b
     label_description: e17686a22ffad04cc7bb70524ed4478b
     youtube_description_is_post_text: 0948f6da11be24f138ed3f3d8c97e16d

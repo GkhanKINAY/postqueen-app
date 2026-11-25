@@ -159,6 +159,14 @@ export const stripHtmlValidation = (
           fragment,
           type === 'markdown' ? MARKDOWN_ONE_LINE_TAGS : ONE_LINE_TAGS
         );
+  // The plain text a preview shows (a calendar card, an agent's draft, the
+  // signatures list, the public page's title) asks for 'none' with `none` set, and gets each
+  // paragraph on a line of its own instead of "<p>a</p><p>b</p>" as "ab".
+  // Without `none` the text stays joined as before: an X article's fallback
+  // block and an email's excerpt read it that way.
+  if (type === 'none' && none) {
+    blocksToLines(fragment);
+  }
   const value = serialize(fragment);
 
   if (type === 'none') {
@@ -332,6 +340,41 @@ const breaksToText = (
     }
   }
   return replaced;
+};
+
+// What the editor writes as blocks: a line of its own each.
+const BLOCK_TAGS = ['p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+const isBlankText = (node: DefaultTreeAdapterTypes.ChildNode) =>
+  node.nodeName === '#text' &&
+  !(node as DefaultTreeAdapterTypes.TextNode).value.trim();
+
+// A newline between a block and whatever is next to it, on the parsed tree
+// like the soft breaks above, so it stays linear and leaves attribute values
+// alone. Whitespace already between them is separation enough.
+const blocksToLines = (fragment: DefaultTreeAdapterTypes.ParentNode) => {
+  const stack = [fragment];
+  while (stack.length) {
+    const node = stack.pop()!;
+    const children: DefaultTreeAdapterTypes.ChildNode[] = [];
+    for (const child of node.childNodes) {
+      const previous = children[children.length - 1];
+      if (
+        previous &&
+        (BLOCK_TAGS.includes(previous.nodeName) ||
+          BLOCK_TAGS.includes(child.nodeName)) &&
+        !isBlankText(previous) &&
+        !isBlankText(child)
+      ) {
+        children.push({ nodeName: '#text', value: '\n', parentNode: node });
+      }
+      children.push(child);
+      if ('childNodes' in child) {
+        stack.push(child);
+      }
+    }
+    node.childNodes = children;
+  }
 };
 
 // &nbsp; as a space, on the text between tags only. "&amp;nbsp;" (a typed

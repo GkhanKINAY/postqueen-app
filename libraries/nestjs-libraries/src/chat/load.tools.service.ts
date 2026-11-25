@@ -219,7 +219,7 @@ ${renderArray(
   - Platform format will also be passed can be "normal", "markdown", "html", make sure you use the correct format for each platform.
 
 # Post content format
-- The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p (you can\'t have u and strong together), don't use a "code" box
+- The content of the post, HTML, Each line must be wrapped in <p> here is the possible tags: h1, h2, h3, u, strong, li, ul, p, br (you can\'t have u and strong together; br is a line break inside a paragraph), don't use a "code" box
 - No markdown and no inline styles inside post content.
 
 # Media
@@ -242,9 +242,12 @@ ${renderArray(
   - analyticsSummaryTool: totals for posts published in the last 7, 30 or 90 days. Optional integrationId or platform.
   - analyticsPostsTool: ranked posts, top posts, or search with q (caption / channel / platform). Use this for "top posts", "best post this week", "how did the Tuesday X post do".
   - analyticsPostTool: one post by id. If error is missing_release, tell the user to connect the published content in the app; do not guess.
+  - integrationAnalyticsTool: one channel's own numbers over the last days (followers, impressions, engagement per day), not its posts. For X it only returns what the last Refresh in the app's Analytics loaded; an empty list there means nobody has pressed it yet, so tell the user that rather than calling it again.
   - The date window selects which posts appear by publish date. The numbers are current lifetime totals, not "likes that happened inside this window". Say that clearly when the user asks about a period.
   - Facebook comments are unknown. Pinterest likes and comments are unknown. Google Business has no per-post metrics. X is omitted when DISABLE_X_ANALYTICS is set.
 - To change the provider settings of an existing post that was not published yet (scheduled or draft), first find it with postsListTool, then use postSettingsTool with the post's id. It only updates the settings - the content and the publish date stay as they are - and only the keys you pass are changed (get them with the integrationSchema tool). Show the user which post and which settings will change and get their confirmation first.
+- To add (connect) a new channel, integrationConnectTool returns a link to a PostQueen page that works for one hour and connects one channel: give the user the link, and make a new one for each further channel. The channel is added once they finish that page, and integrationList shows it then. It cannot reconnect an existing channel, and platforms that need an API key, an instance URL, a wallet or the browser extension are added from the app instead.
+- To change the attachments (media) of an existing post that was not published yet (scheduled or draft), first find it with postsListTool, then use postAttachmentsTool with the post's id. Only the main post's attachments change - the content, the settings and the publish date stay as they are - and the list you pass replaces all of them (an empty list removes them all). New media must come from the media library (uploadFromUrlTool or mediaListTool). Show the user which post and which attachments it will have and get their confirmation first.
 - A comment or thread item can wait after the previous one: its delay is in minutes (0 for right after). Set it when the user asks ("the comment five minutes later").
 - In the PostQueen app nothing you call deletes a post: showPostCard puts the post on a card and the user deletes it from there. Over MCP or an API client, deletePostTool deletes one: find it with postsListTool first, then pass the post's id. It deletes the post on that one channel with its comments; when the same post was made for several channels, ask which channels and call it once per post id. A repeating post is listed once per repetition with the same id, and deleting it deletes every repetition. Deleting a published post only removes it from PostQueen: it stays live on the social network. Deletion cannot be undone, so show the user which post will be deleted (channel, date and text), say the two cases above when they apply, and wait for an explicit yes.
 - Between tools, we will reference things like: [output:name] and [input:name] to set the information right.

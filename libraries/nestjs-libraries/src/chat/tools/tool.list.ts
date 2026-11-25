@@ -11,16 +11,19 @@ import { ClippingWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/c
 import { GenerateImageTool } from '@gitroom/nestjs-libraries/chat/tools/generate.image.tool';
 import { IntegrationListTool } from '@gitroom/nestjs-libraries/chat/tools/integration.list.tool';
 import { GroupListTool } from '@gitroom/nestjs-libraries/chat/tools/group.list.tool';
+import { IntegrationConnectTool } from '@gitroom/nestjs-libraries/chat/tools/integration.connect.tool';
 import { UploadFromUrlTool } from '@gitroom/nestjs-libraries/chat/tools/upload.from.url.tool';
 import { MediaListTool } from '@gitroom/nestjs-libraries/chat/tools/media.list.tool';
 import { MediaStatusTool } from '@gitroom/nestjs-libraries/chat/tools/media.status.tool';
 import { PostsListTool } from '@gitroom/nestjs-libraries/chat/tools/posts.list.tool';
 import { PostSettingsTool } from '@gitroom/nestjs-libraries/chat/tools/post.settings.tool';
+import { PostAttachmentsTool } from '@gitroom/nestjs-libraries/chat/tools/post.attachments.tool';
 import { DeletePostTool } from '@gitroom/nestjs-libraries/chat/tools/delete.post.tool';
 import { PostReadTool } from '@gitroom/nestjs-libraries/chat/tools/post.read.tool';
 import { AnalyticsSummaryTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.summary.tool';
 import { AnalyticsPostsTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.posts.tool';
 import { AnalyticsPostTool } from '@gitroom/nestjs-libraries/chat/tools/analytics.post.tool';
+import { IntegrationAnalyticsTool } from '@gitroom/nestjs-libraries/chat/tools/integration.analytics.tool';
 import { UploadWidgetTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.tool';
 import { UploadWidgetTicketTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.ticket.tool';
 import { UploadWidgetStatusTool } from '@gitroom/nestjs-libraries/chat/tools/upload.widget.status.tool';
@@ -29,16 +32,19 @@ import { UploadLinkTool } from '@gitroom/nestjs-libraries/chat/tools/upload.link
 export const toolList = [
   IntegrationListTool,
   GroupListTool,
+  IntegrationConnectTool,
   IntegrationValidationTool,
   IntegrationTriggerTool,
   IntegrationSchedulePostTool,
   PostsListTool,
   PostReadTool,
   PostSettingsTool,
+  PostAttachmentsTool,
   DeletePostTool,
   AnalyticsSummaryTool,
   AnalyticsPostsTool,
   AnalyticsPostTool,
+  IntegrationAnalyticsTool,
   GenerateVideoOptionsTool,
   VideoFunctionTool,
   GenerateVideoTool,

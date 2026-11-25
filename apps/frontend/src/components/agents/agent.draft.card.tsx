@@ -217,8 +217,11 @@ const hashKey = (value: string) => {
   return Math.abs(hash).toString(36);
 };
 
+// A line per paragraph, without the blank ones: the card shows two lines.
 const previewText = (html: string | undefined) =>
-  stripHtmlValidation('none', html || '', false, true, false).trim();
+  stripHtmlValidation('none', html || '', false, true, false)
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
 
 /**
  * The channel's own Post Preview, the one Create Post shows, outside the

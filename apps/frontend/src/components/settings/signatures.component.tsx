@@ -65,6 +65,7 @@ export const SignaturesComponent: FC<{
             'are_you_sure_you_want_to_delete',
             `Are you sure you want to delete?`,
             {
+              // One line inside the sentence: the dialog keeps line breaks.
               name: stripHtmlValidation(
                 'none',
                 row.content,
@@ -72,6 +73,7 @@ export const SignaturesComponent: FC<{
                 true,
                 false
               )
+                .replace(/\s+/g, ' ')
                 .trim()
                 .slice(0, 30),
             }
