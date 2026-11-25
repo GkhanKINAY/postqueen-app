@@ -2006,7 +2006,7 @@ export class StripeService extends PaymentProviderAbstract {
     });
   }
 
-  async setToCancel(organizationId: string) {
+  async setToCancel(organizationId: string, cancel?: boolean) {
     const id = makeId(10);
     const org = await this._organizationService.getOrgById(organizationId);
     const customer = await this.createOrGetCustomer(org!);
@@ -2019,6 +2019,11 @@ export class StripeService extends PaymentProviderAbstract {
     // The Plans cancel copy promises an immediate return to FREE — honour that
     // instead of reporting success while leaving `isLifetime` intact.
     if (localSub?.isLifetime && org?.isTrailing) {
+      // Nothing here is ever set to cancel, so a reactivate has nothing to
+      // undo, and must not end the trial.
+      if (cancel === false) {
+        return { id, cancel_at: undefined, unchanged: true };
+      }
       await this.cancelOpenStripeSubscriptions(customer);
       await this._subscriptionService.revokeLocalSubscription(organizationId);
       await this._organizationService.endTrial(organizationId);
@@ -2041,6 +2046,26 @@ export class StripeService extends PaymentProviderAbstract {
       return {
         id,
         cancel_at: new Date(),
+      };
+    }
+
+    // The page says what it wants (`cancel`), so a request that matches what
+    // Stripe already has changes nothing. A second cancel (a second tab, a
+    // stale page, a double submit) used to toggle the plan back on, and a
+    // stale reactivate dropped a scheduled downgrade on its way: this is
+    // checked before the schedules below are released for that reason. A
+    // page loaded before the intent was sent toggles as it always did.
+    if (cancel !== undefined && sub.cancel_at_period_end === cancel) {
+      const cancelAt = Math.max(
+        0,
+        ...subscriptions
+          .filter((s) => s.cancel_at_period_end)
+          .map((s) => s.cancel_at || 0)
+      );
+      return {
+        id,
+        cancel_at: cancelAt ? new Date(cancelAt * 1000) : undefined,
+        unchanged: true,
       };
     }
 

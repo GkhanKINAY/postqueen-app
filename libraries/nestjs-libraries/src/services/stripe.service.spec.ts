@@ -682,6 +682,75 @@ describe('cancelling from Billing', () => {
   });
 });
 
+describe('the intent Billing sends with a cancel', () => {
+  it('cancels once: a second cancel keeps it cancelled', async () => {
+    subs = [sub('sub_a', 100), sub('sub_b', 200)];
+    await service().setToCancel('org1', true);
+    const again = await service().setToCancel('org1', true);
+
+    assert.equal(called('subscriptions.update').length, 2);
+    assert.ok(subs.every((s) => s.cancel_at_period_end));
+    assert.deepEqual(again, {
+      id: again.id,
+      cancel_at: new Date(1_000_200 * 1000),
+      unchanged: true,
+    });
+  });
+
+  it('reactivates once: a second reactivate keeps it active', async () => {
+    subs = [sub('sub_a', 100, { cancel_at_period_end: true })];
+    await service().setToCancel('org1', false);
+    const again = await service().setToCancel('org1', false);
+
+    assert.equal(called('subscriptions.update').length, 1);
+    assert.equal(subs[0].cancel_at_period_end, false);
+    assert.equal(again.unchanged, true);
+    assert.equal(again.cancel_at, undefined);
+  });
+
+  it('leaves a scheduled downgrade alone when a stale reactivate arrives', async () => {
+    subs = [sub('sub_a', 100, { schedule: 'sub_sched_1' as any })];
+    const result = await service().setToCancel('org1', false);
+
+    assert.equal(called('subscriptionSchedules.release').length, 0);
+    assert.equal(called('subscriptions.update').length, 0);
+    assert.equal(result.unchanged, true);
+  });
+
+  it('does not end a founding-member trial on a reactivate', async () => {
+    localSub = { isLifetime: true };
+    const trialing = new StripeService(
+      subscriptionService as any,
+      {
+        ...organizationService,
+        getOrgById: async () => ({
+          id: 'org1',
+          paymentId: orgCustomer,
+          isTrailing: true,
+        }),
+        endTrial: record('endTrial', () => ({})),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { announce: async () => false } as any,
+    );
+    const result = await trialing.setToCancel('org1', false);
+
+    assert.equal(called('revokeLocalSubscription').length, 0);
+    assert.equal(called('endTrial').length, 0);
+    assert.equal(result.unchanged, true);
+  });
+
+  it('still toggles for a page that sends no intent', async () => {
+    subs = [sub('sub_a', 100, { cancel_at_period_end: true })];
+    const result = await service().setToCancel('org1');
+
+    assert.equal(subs[0].cancel_at_period_end, false);
+    assert.equal(result.unchanged, undefined);
+  });
+});
+
 describe('an admin cancelling', () => {
   it('still cancels a checkout waiting on its first payment', async () => {
     subs = [

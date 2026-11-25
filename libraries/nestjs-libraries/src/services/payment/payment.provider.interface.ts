@@ -93,8 +93,9 @@ export abstract class PaymentProviderAbstract {
     return this.notSupported();
   }
 
-  // Toggle cancel-at-period-end
-  async setToCancel(organizationId: string): Promise<any> {
+  // Set (cancel true) or lift (cancel false) cancel-at-period-end; a request
+  // without the intent toggles it
+  async setToCancel(organizationId: string, cancel?: boolean): Promise<any> {
     return this.notSupported();
   }
 

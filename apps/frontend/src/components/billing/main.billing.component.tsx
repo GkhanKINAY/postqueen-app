@@ -880,6 +880,7 @@ export const MainBillingComponent: FC<{
           const reactivateResponse = await fetch('/billing/cancel', {
             method: 'POST',
             body: JSON.stringify({
+              cancel: false,
               feedback: '',
             }),
             headers: {
@@ -1004,6 +1005,7 @@ export const MainBillingComponent: FC<{
           const cancelResponse = await fetch('/billing/cancel', {
             method: 'POST',
             body: JSON.stringify({
+              cancel: true,
               feedback: result.feedback,
             }),
             headers: {
