@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { FacebookProvider } from './facebook.provider.ts';
 import { RefreshToken } from '../social.abstract.ts';
 
@@ -220,5 +220,60 @@ describe('Facebook post metrics', () => {
     } finally {
       dead.restore();
     }
+  });
+});
+
+// The page list goes to the browser for the picker; the picked page's token is
+// read again on the server when it is saved.
+describe('Facebook page picker', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  const page = {
+    id: '1001',
+    name: 'Brand',
+    username: 'brand',
+    access_token: 'page-token',
+    picture: { data: { url: 'https://fb.test/brand.png' } },
+  };
+  const graph = () => {
+    globalThis.fetch = (async (url: string) =>
+      new Response(
+        JSON.stringify(
+          String(url).includes('/me/accounts')
+            ? { data: [page] }
+            : { data: [] }
+        )
+      )) as typeof fetch;
+  };
+
+  it('lists the pages without their page tokens', async () => {
+    graph();
+
+    const pages = await new FacebookProvider().pages('user-token');
+
+    assert.deepEqual(pages, [
+      {
+        id: '1001',
+        name: 'Brand',
+        username: 'brand',
+        picture: { data: { url: 'https://fb.test/brand.png' } },
+      },
+    ]);
+    assert.equal(JSON.stringify(pages).includes('page-token'), false);
+  });
+
+  it('still saves the picked page with its token', async () => {
+    graph();
+
+    const saved = await new FacebookProvider().fetchPageInformation(
+      'user-token',
+      { page: '1001' }
+    );
+
+    assert.equal(saved.id, '1001');
+    assert.equal(saved.access_token, 'page-token');
   });
 });

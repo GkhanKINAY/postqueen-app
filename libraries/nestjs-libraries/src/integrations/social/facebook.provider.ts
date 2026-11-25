@@ -485,7 +485,15 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
       // Business Manager API not available for all users
     }
 
-    return allPages;
+    // The list goes to the browser for the page picker, so it carries what
+    // the picker shows and no page token: the picked page's token is read
+    // again on the server when it is saved (fetchPageInformation).
+    return allPages.map((page: any) => ({
+      id: page.id,
+      name: page.name,
+      username: page.username,
+      picture: page.picture,
+    }));
   }
 
   async fetchPageInformation(accessToken: string, data: { page: string }) {
