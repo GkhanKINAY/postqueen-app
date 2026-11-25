@@ -1032,6 +1032,8 @@ export class PostsRepository {
     if (body.group && keepGroup) {
       await this._post.model.post.updateMany({
         where: {
+          // Like the sweep above: `group` comes from the request.
+          organizationId: orgId,
           group: body.group,
           deletedAt: null,
           id: {
