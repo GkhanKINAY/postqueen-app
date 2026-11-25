@@ -946,5 +946,6 @@
   "could_not_save_timezone": "Không thể lưu múi giờ",
   "refund_charges_failed": "Không thể hoàn tiền các khoản phí đã chọn",
   "disputed": "Đang tranh chấp",
-  "charge_disputed_no_refund": "Khoản phí này đang bị tranh chấp nên không thể hoàn tiền"
+  "charge_disputed_no_refund": "Khoản phí này đang bị tranh chấp nên không thể hoàn tiền",
+  "billing_cancel_failed": "Chúng tôi không thể hủy gói đăng ký của bạn. Vui lòng thử lại hoặc liên hệ bộ phận hỗ trợ."
 }

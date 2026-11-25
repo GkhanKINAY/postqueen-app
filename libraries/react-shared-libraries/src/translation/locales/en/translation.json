@@ -1425,5 +1425,6 @@
   "could_not_save_timezone": "Could not save the timezone",
   "refund_charges_failed": "Could not refund the selected charges",
   "disputed": "Disputed",
-  "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded"
+  "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded",
+  "billing_cancel_failed": "We could not cancel your subscription. Please try again or contact support."
 }

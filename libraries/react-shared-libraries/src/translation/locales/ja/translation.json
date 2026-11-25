@@ -946,5 +946,6 @@
   "could_not_save_timezone": "タイムゾーンを保存できませんでした",
   "refund_charges_failed": "選択した請求の返金ができませんでした",
   "disputed": "異議申し立て中",
-  "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません"
+  "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません",
+  "billing_cancel_failed": "ご契約のキャンセルに失敗しました。再度お試しいただくか、サポートまでご連絡ください。"
 }

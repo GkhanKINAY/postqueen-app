@@ -964,5 +964,6 @@
   "could_not_save_timezone": "Saat dilimi kaydedilemedi",
   "refund_charges_failed": "Seçilen ücretler iade edilemedi",
   "disputed": "İtiraz edildi",
-  "charge_disputed_no_refund": "Bu ücrete itiraz edildi, bu nedenle iade edilemez"
+  "charge_disputed_no_refund": "Bu ücrete itiraz edildi, bu nedenle iade edilemez",
+  "billing_cancel_failed": "Aboneliğinizi iptal edemedik. Lütfen tekrar deneyin veya destek ile iletişime geçin."
 }

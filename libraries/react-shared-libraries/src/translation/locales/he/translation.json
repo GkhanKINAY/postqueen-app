@@ -946,5 +946,6 @@
   "could_not_save_timezone": "לא ניתן היה לשמור את אזור הזמן",
   "refund_charges_failed": "לא היה ניתן להחזיר את החיובים שנבחרו",
   "disputed": "במחלוקת",
-  "charge_disputed_no_refund": "חיוב זה היה במחלוקת ולכן לא ניתן להחזיר אותו"
+  "charge_disputed_no_refund": "חיוב זה היה במחלוקת ולכן לא ניתן להחזיר אותו",
+  "billing_cancel_failed": "לא הצלחנו לבטל את המנוי שלך. נסה שוב או פנה לתמיכה."
 }

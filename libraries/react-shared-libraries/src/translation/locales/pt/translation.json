@@ -946,5 +946,6 @@
   "could_not_save_timezone": "Não foi possível salvar o fuso horário",
   "refund_charges_failed": "Não foi possível reembolsar as cobranças selecionadas",
   "disputed": "Contestada",
-  "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada"
+  "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada",
+  "billing_cancel_failed": "Não conseguimos cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte."
 }

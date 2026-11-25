@@ -946,5 +946,6 @@
   "could_not_save_timezone": "No se pudo guardar la zona horaria",
   "refund_charges_failed": "No se pudo reembolsar los cargos seleccionados",
   "disputed": "En disputa",
-  "charge_disputed_no_refund": "Este cargo fue disputado y, por lo tanto, no puede ser reembolsado"
+  "charge_disputed_no_refund": "Este cargo fue disputado y, por lo tanto, no puede ser reembolsado",
+  "billing_cancel_failed": "No pudimos cancelar tu suscripción. Por favor, inténtalo de nuevo o contacta al soporte."
 }
