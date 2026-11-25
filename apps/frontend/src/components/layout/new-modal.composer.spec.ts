@@ -142,4 +142,29 @@ describe('composer modal chrome', () => {
     assert.match(icons, /export const SendIcon/);
     assert.match(icons, /export const DraftIcon/);
   });
+
+  // A post with several channels shows "Time for {name}" by the picker. Beside
+  // it, the label pushed the desktop footer past its width, and Notify was
+  // drawn over it; on tablet and phone the picker ran past its cell.
+  it('keeps the footer controls and the channel time label clear of each other', () => {
+    // the label goes above the picker, as wide as it
+    assert.match(when, /label \? 'grid gap-\[4px\]' : 'flex items-center'/);
+    assert.match(when, /className="w-0 min-w-full truncate text-\[12\.5px\] text-pqMuted"/);
+    assert.doesNotMatch(when, /max-w-\[160px\] shrink-0 truncate/);
+    // desktop: the left half keeps its width and the right half wraps to a
+    // row of its own, at the end, rather than being drawn over
+    assert.match(
+      manage,
+      /'min-h-\[84px\] w-full flex-wrap items-end justify-between gap-x-\[8px\] gap-y-\[12px\]/,
+    );
+    assert.match(manage, /: 'flex flex-1 items-center ps-\[20px\]'/);
+    assert.doesNotMatch(manage, /'flex min-w-0 flex-1 items-center ps-\[20px\]'/);
+    assert.match(manage, /: 'ms-auto items-end shrink-0 pe-\[20px\]'/);
+    // bottom-aligned, so Notify and the text buttons line up with the picker
+    assert.match(manage, /'grid w-full grid-cols-2 min-w-0 items-end'/);
+    assert.equal(
+      manage.match(/!compactFooter && 'h-\[44px\]'/g)?.length,
+      2,
+    );
+  });
 });
