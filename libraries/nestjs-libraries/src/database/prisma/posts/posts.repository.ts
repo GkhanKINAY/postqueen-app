@@ -149,86 +149,102 @@ export class PostsRepository {
     const startDate = dayjs.utc(query.startDate).toDate();
     const endDate = dayjs.utc(query.endDate).toDate();
 
-    const list = await this._post.model.post.findMany({
-      where: {
-        AND: [
-          {
-            OR: [
-              {
-                organizationId: orgId,
-              },
-            ],
-          },
-          {
-            OR: [
-              {
-                publishDate: {
-                  gte: startDate,
-                  lte: endDate,
-                },
-              },
-              {
-                intervalInDays: {
-                  not: null,
-                },
-              },
-            ],
-          },
-        ],
-        // GOTCHA: the customer filter used to be spread in below as a second
-        // `integration` key, and the later key won. Filtering by customer
-        // therefore dropped `deletedAt: null` and returned posts belonging to
-        // channels the user had already disconnected. Merge, do not re-declare.
-        integration: {
-          deletedAt: null,
-          organizationId: orgId,
-          ...(query.customer ? { customerId: query.customer } : {}),
-        },
-        deletedAt: null,
-        parentPostId: null,
-        // Dated drafts belong on the Day/Week/Month grid with a Draft label
-        // (same publishDate the Drafts list already shows). The Posts panel
-        // still has its own getPostsList filter.
-      },
-      select: {
-        id: true,
-        content: true,
-        publishDate: true,
-        releaseURL: true,
-        releaseId: true,
-        state: true,
-        // The ERROR badge tooltips render `post.error`; without it every
-        // failure in the product read "An error occurred while publishing this
-        // post" while the real provider message sat unused in the row.
-        error: true,
-        intervalInDays: true,
-        group: true,
-        creationMethod: true,
-        settings: true,
-        // Calendar/list cards read the first image/video path. Existing column;
-        // minify already passes unmapped keys through as `image`.
-        image: true,
-        tags: {
-          where: {
-            tag: {
-              deletedAt: null,
+    const whereBase = {
+      AND: [
+        {
+          OR: [
+            {
+              organizationId: orgId,
             },
-          },
-          select: {
-            tag: true,
+          ],
+        },
+      ],
+      // GOTCHA: the customer filter used to be spread in below as a second
+      // `integration` key, and the later key won. Filtering by customer
+      // therefore dropped `deletedAt: null` and returned posts belonging to
+      // channels the user had already disconnected. Merge, do not re-declare.
+      integration: {
+        deletedAt: null as any,
+        organizationId: orgId,
+        ...(query.customer ? { customerId: query.customer } : {}),
+      },
+      deletedAt: null as Date | null,
+      parentPostId: null as string | null,
+      // Dated drafts belong on the Day/Week/Month grid with a Draft label
+      // (same publishDate the Drafts list already shows). The Posts panel
+      // still has its own getPostsList filter.
+    };
+
+    const select = {
+      id: true,
+      content: true,
+      publishDate: true,
+      releaseURL: true,
+      releaseId: true,
+      state: true,
+      // The ERROR badge tooltips render `post.error`; without it every
+      // failure in the product read "An error occurred while publishing this
+      // post" while the real provider message sat unused in the row.
+      error: true,
+      intervalInDays: true,
+      group: true,
+      creationMethod: true,
+      settings: true,
+      // Calendar/list cards read the first image/video path. Existing column;
+      // minify already passes unmapped keys through as `image`.
+      image: true,
+      tags: {
+        where: {
+          tag: {
+            deletedAt: null as Date | null,
           },
         },
-        integration: {
-          select: {
-            id: true,
-            providerIdentifier: true,
-            name: true,
-            customName: true,
-            picture: true,
-          },
+        select: {
+          tag: true,
         },
       },
-    });
+      integration: {
+        select: {
+          id: true,
+          providerIdentifier: true,
+          name: true,
+          customName: true,
+          picture: true,
+        },
+      },
+    };
+
+    // The posts of the range and the repeating posts are loaded separately, so
+    // each is one range on an index that starts with organizationId
+    // ([organizationId, publishDate, ...] and [organizationId, intervalInDays]).
+    // As one query ("in the range OR repeating") the planner has to combine
+    // two scans, and on a large organization it read every post of the
+    // organization, whatever the range was. A repeating post is loaded
+    // whatever its first date, and expanded into the range below.
+    const [inRange, repeating] = await Promise.all([
+      this._post.model.post.findMany({
+        where: {
+          ...whereBase,
+          publishDate: {
+            gte: startDate,
+            lte: endDate,
+          },
+          intervalInDays: null,
+        },
+        select,
+      }),
+      this._post.model.post.findMany({
+        where: {
+          ...whereBase,
+          intervalInDays: {
+            not: null,
+          },
+        },
+        select,
+      }),
+    ]);
+
+    const list = [...inRange, ...repeating];
 
     // This runs on the request thread, so keep it linear: push into one array
     // (spreading the accumulator on every post was quadratic and blocked the
