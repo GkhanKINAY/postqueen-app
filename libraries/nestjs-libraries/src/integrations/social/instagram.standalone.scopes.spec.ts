@@ -49,12 +49,24 @@ describe('Instagram (Standalone) scope check log', () => {
   });
 
   it('hides a token in any other shape of answer', async () => {
+    // The token inside a `data` list: the exchange reads as failed.
     answer(
       { data: [{ access_token: SHORT, user_id: '1', permissions: '' }] },
+      { access_token: LONG, token_type: 'bearer', expires_in: 5183944 }
+    );
+    let line = await logged();
+    assert.match(line, /token exchange failed/);
+    assert.match(line, /"access_token":"\[hidden\]"/);
+    assert.doesNotMatch(line, new RegExp(`${SHORT}|${LONG}`));
+
+    // A long-lived answer that echoes tokens beside its error.
+    answer(
+      { access_token: SHORT, user_id: null, permissions: [] },
       { error: { message: 'bad', access_token: LONG }, refresh_token: LONG }
     );
-    const line = await logged();
-    assert.match(line, /"hasShortLivedToken":false/);
+    line = await logged();
+    assert.match(line, /scope check failed/);
+    assert.match(line, /"hasShortLivedToken":true/);
     assert.doesNotMatch(line, new RegExp(`${SHORT}|${LONG}`));
   });
 });

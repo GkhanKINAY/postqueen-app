@@ -20,6 +20,13 @@ import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorato
 
 const instagramProvider = new InstagramProvider();
 
+// An Instagram token answer as a log line: whether each token came, never
+// the token, whatever shape the answer has (a `data` list, an echoed error).
+const withoutTokens = (answer: unknown) =>
+  JSON.stringify(answer, (key, value) =>
+    /token/i.test(key) && typeof value === 'string' ? '[hidden]' : value
+  );
+
 @Rules(
   "Instagram should have at least one attachment, if it's a story, each attachment is published as its own separate story"
 )
@@ -187,7 +194,7 @@ export class InstagramStandaloneProvider
     if (!getAccessToken.access_token) {
       console.error(
         'Instagram standalone token exchange failed:',
-        JSON.stringify(getAccessToken)
+        withoutTokens(getAccessToken)
       );
       throw new Error(
         getAccessToken.error_message || 'Instagram token exchange failed'
@@ -210,17 +217,11 @@ export class InstagramStandaloneProvider
       const { access_token: shortLivedToken, ...exchange } = getAccessToken;
       console.error(
         'Instagram standalone scope check failed:',
-        JSON.stringify(
-          {
-            ...exchange,
-            hasShortLivedToken: !!shortLivedToken,
-            longLived: { hasToken: !!access_token, expires_in, ...all },
-          },
-          // Whether each token came, never the token: a response of another
-          // shape (a `data` list, an echoed error) could carry one anywhere.
-          (key, value) =>
-            /token/i.test(key) && typeof value === 'string' ? '[hidden]' : value
-        )
+        withoutTokens({
+          ...exchange,
+          hasShortLivedToken: !!shortLivedToken,
+          longLived: { hasToken: !!access_token, expires_in, ...all },
+        })
       );
       throw err;
     }
