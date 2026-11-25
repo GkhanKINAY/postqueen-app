@@ -1500,6 +1500,11 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   async deleteSubscription(event: Stripe.CustomerSubscriptionDeletedEvent) {
+    // In the background, with its own catch: it only prepares a later
+    // payment, so a slow or failing Stripe call must neither hold nor fail the
+    // downgrade below.
+    this.keepCardOfUnpaidInvoices(event.data.object.id).catch(() => {});
+
     // A trial refused for its card was never granted, and recording an end
     // date would show "your plan ended" on the paywall of an account that never
     // had one.
@@ -1569,6 +1574,88 @@ export class StripeService extends PaymentProviderAbstract {
       undefined,
       this.creditPricingOfSubscription(survivor)
     );
+  }
+
+  /**
+   * The PaymentIntents behind an invoice's payments. Never throws: it runs
+   * inside Stripe webhooks.
+   */
+  private async getInvoicePaymentIntents(invoiceId: string) {
+    try {
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['payments.data.payment.payment_intent'],
+      });
+      return (invoice.payments?.data || [])
+        .map((p) => p.payment.payment_intent)
+        .filter(
+          (p): p is Stripe.PaymentIntent => typeof p === 'object' && !!p
+        );
+    } catch (err) {
+      Logger.warn(
+        `[stripe] payments of invoice ${invoiceId} not read: ${
+          (err as Error)?.message || err
+        }`
+      );
+      return [];
+    }
+  }
+
+  /**
+   * When Stripe ends a subscription whose renewal it could not charge, the
+   * unpaid invoice stays payable from the hosted invoice page. That page
+   * keeps the paying card only when the customer has no default card;
+   * otherwise it offers an opt-in box, unticked. Flagging each unpaid
+   * invoice's payment for off-session use keeps the card in every case.
+   *
+   * Never throws, and a failure on one invoice does not stop the others. A
+   * payment already flagged is skipped, so a redelivered event changes
+   * nothing.
+   */
+  private async keepCardOfUnpaidInvoices(subscriptionId: string) {
+    try {
+      const invoices = await stripe.invoices.list({
+        subscription: subscriptionId,
+        limit: 100,
+      });
+      for (const invoice of invoices.data) {
+        if (invoice.status !== 'open' && invoice.status !== 'uncollectible') {
+          continue;
+        }
+        for (const paymentIntent of await this.getInvoicePaymentIntents(
+          invoice.id!
+        )) {
+          // The only statuses Stripe lets the flag be set on;
+          // `requires_action` is where a renewal that needed 3D Secure is left.
+          if (
+            paymentIntent.setup_future_usage ||
+            ![
+              'requires_payment_method',
+              'requires_confirmation',
+              'requires_action',
+            ].includes(paymentIntent.status)
+          ) {
+            continue;
+          }
+          try {
+            await stripe.paymentIntents.update(paymentIntent.id, {
+              setup_future_usage: 'off_session',
+            });
+          } catch (err) {
+            Logger.warn(
+              `[stripe] card of unpaid invoice ${invoice.id} (subscription ${subscriptionId}) not kept: ${
+                (err as Error)?.message || err
+              }`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      Logger.warn(
+        `[stripe] unpaid invoices of ${subscriptionId} not read to keep their card: ${
+          (err as Error)?.message || err
+        }`
+      );
+    }
   }
 
   // After a login swap, move each Stripe customer's email to the login that
