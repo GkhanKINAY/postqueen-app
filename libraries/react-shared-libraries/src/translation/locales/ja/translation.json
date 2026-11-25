@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "この投稿に保存しました。このファイルはメディアライブラリにはありません。",
   "timezone": "タイムゾーン",
   "automatic_timezone": "自動 ({{timezone}})",
-  "could_not_save_timezone": "タイムゾーンを保存できませんでした"
+  "could_not_save_timezone": "タイムゾーンを保存できませんでした",
+  "refund_charges_failed": "選択した請求の返金ができませんでした",
+  "disputed": "異議申し立て中",
+  "charge_disputed_no_refund": "この請求は異議申し立てがあったため、返金できません"
 }

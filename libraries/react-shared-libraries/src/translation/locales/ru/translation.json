@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "Сохранено в этом посте. Этого файла нет в вашей медиатеке.",
   "timezone": "Часовой пояс",
   "automatic_timezone": "Автоматически ({{timezone}})",
-  "could_not_save_timezone": "Не удалось сохранить часовой пояс"
+  "could_not_save_timezone": "Не удалось сохранить часовой пояс",
+  "refund_charges_failed": "Не удалось вернуть выбранные платежи",
+  "disputed": "Оспаривается",
+  "charge_disputed_no_refund": "Этот платеж был оспорен и поэтому не может быть возвращён"
 }

@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "Für diesen Post gespeichert. Die Datei ist nicht in deiner Mediathek.",
   "timezone": "Zeitzone",
   "automatic_timezone": "Automatisch ({{timezone}})",
-  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden"
+  "could_not_save_timezone": "Die Zeitzone konnte nicht gespeichert werden",
+  "refund_charges_failed": "Die ausgewählten Beträge konnten nicht erstattet werden",
+  "disputed": "Angefochten",
+  "charge_disputed_no_refund": "Dieser Betrag wurde angefochten und kann daher nicht erstattet werden"
 }

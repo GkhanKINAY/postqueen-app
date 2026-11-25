@@ -4755,6 +4755,7 @@ export class StripeService extends PaymentProviderAbstract {
         status: charge.status,
         refunded: charge.refunded,
         amount_refunded: charge.amount_refunded,
+        disputed: charge.disputed,
         description: charge.description,
         receipt_url: charge.receipt_url || null,
         invoice: (charge as any).invoice || null,
@@ -4776,8 +4777,20 @@ export class StripeService extends PaymentProviderAbstract {
       }
     }
 
+    // `charge.disputed` stays true after a dispute is won, so the dispute's
+    // own status decides. One that cannot be read counts as open.
+    const disputedMap: Record<string, boolean> = {};
+    for (const charge of chargeList.filter((f) => f.disputed)) {
+      try {
+        disputedMap[charge.id] = await this.hasUnresolvedDispute(charge.id);
+      } catch {
+        disputedMap[charge.id] = true;
+      }
+    }
+
     return chargeList.map((charge) => ({
       ...charge,
+      disputed: !!disputedMap[charge.id],
       invoice_pdf:
         charge.invoice && invoicePdfMap[charge.invoice as string]
           ? invoicePdfMap[charge.invoice as string]
@@ -4785,6 +4798,19 @@ export class StripeService extends PaymentProviderAbstract {
     }));
   }
 
+  /** Whether a charge has a dispute that is not won or closed. */
+  private async hasUnresolvedDispute(chargeId: string) {
+    const disputes = await stripe.disputes.list({ charge: chargeId });
+    return disputes.data.some(
+      (f) => f.status !== 'won' && f.status !== 'warning_closed'
+    );
+  }
+
+  /**
+   * Refunds the given charges in full. What failed comes back with the first
+   * reason, for the admin screen to show: a refund Stripe refused used to
+   * just reload the list.
+   */
   async refundCharges(organizationId: string, chargeIds: string[]) {
     const org = await this._organizationService.getOrgById(organizationId);
     if (!org?.paymentId) {
@@ -4793,6 +4819,7 @@ export class StripeService extends PaymentProviderAbstract {
 
     const refunded: string[] = [];
     const failed: string[] = [];
+    let reason: string | undefined;
 
     for (const chargeId of chargeIds) {
       try {
@@ -4810,14 +4837,28 @@ export class StripeService extends PaymentProviderAbstract {
           failed.push(chargeId);
           continue;
         }
+        // The bank holds that money now; a refund on top would pay it twice.
+        if (charge.disputed && (await this.hasUnresolvedDispute(chargeId))) {
+          failed.push(chargeId);
+          reason =
+            reason ||
+            `Charge ${chargeId} was disputed and thus cannot be refunded`;
+          continue;
+        }
         await stripe.refunds.create({ charge: chargeId });
         refunded.push(chargeId);
       } catch (err) {
+        Logger.warn(
+          `[stripe] refund of charge ${chargeId} for organization ${organizationId} failed: ${
+            (err as Error)?.message || err
+          }`
+        );
         failed.push(chargeId);
+        reason = reason || (err as Error)?.message;
       }
     }
 
-    return { refunded, failed };
+    return { refunded, failed, ...(reason ? { reason } : {}) };
   }
 
   async cancelSubscription(organizationId: string) {

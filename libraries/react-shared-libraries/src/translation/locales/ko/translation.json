@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "이 게시물에 저장했습니다. 이 파일은 미디어 라이브러리에 없습니다.",
   "timezone": "시간대",
   "automatic_timezone": "자동 ({{timezone}})",
-  "could_not_save_timezone": "시간대를 저장할 수 없습니다"
+  "could_not_save_timezone": "시간대를 저장할 수 없습니다",
+  "refund_charges_failed": "선택한 청구 건을 환불할 수 없습니다.",
+  "disputed": "분쟁됨",
+  "charge_disputed_no_refund": "이 청구 건은 분쟁이 제기되어 환불할 수 없습니다."
 }

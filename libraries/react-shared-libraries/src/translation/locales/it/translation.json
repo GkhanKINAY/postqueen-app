@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "Salvato in questo post. Il file non è nella tua libreria multimediale.",
   "timezone": "Fuso orario",
   "automatic_timezone": "Automatico ({{timezone}})",
-  "could_not_save_timezone": "Impossibile salvare il fuso orario"
+  "could_not_save_timezone": "Impossibile salvare il fuso orario",
+  "refund_charges_failed": "Impossibile rimborsare gli addebiti selezionati",
+  "disputed": "Contestato",
+  "charge_disputed_no_refund": "Questo addebito è stato contestato e quindi non può essere rimborsato"
 }

@@ -765,3 +765,6 @@ checksums:
     delete_account_warning: fe34b30062ffbe6c63d68cedbd70df37
     delete_account_confirm: 5dacabcf442cc35dd25197427214c9c5
     tiktok_daily_account_cap_reached: 1af76046aad6496125e49205b4e9931a
+    refund_charges_failed: 2357f7192f6ba7492229efb9109f275c
+    disputed: 608edc2188a1228d0f4b2a5969ee1c5b
+    charge_disputed_no_refund: 64dd2aab66faa782f4d7c8db5199341a

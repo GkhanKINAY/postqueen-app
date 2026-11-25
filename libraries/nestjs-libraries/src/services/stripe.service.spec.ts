@@ -2051,10 +2051,17 @@ describe('a founding member’s plan', () => {
 
 describe('an admin refund', () => {
   // The charges Stripe holds, by id, and what this block replaces.
-  let charges: Record<string, { id: string; customer: string | null }>;
+  let charges: Record<
+    string,
+    { id: string; customer: string | null; disputed?: boolean }
+  >;
+  // Each charge's disputes, by status.
+  let disputes: Record<string, string[]>;
   const faked: [object, string][] = [
     [probe.charges, 'retrieve'],
+    [probe.charges, 'list'],
     [probe.refunds, 'create'],
+    [probe.disputes, 'list'],
   ];
   let saved: unknown[];
   before(() => {
@@ -2068,9 +2075,21 @@ describe('an admin refund', () => {
         }
         return charges[id];
       },
+      list: async () => ({
+        data: Object.values(charges).map((charge) => ({
+          status: 'succeeded',
+          refunded: false,
+          ...charge,
+        })),
+      }),
     });
     fake(probe.refunds, {
       create: record('refunds.create', (body) => ({ id: 're_1', ...body })),
+    });
+    fake(probe.disputes, {
+      list: async ({ charge }: { charge: string }) => ({
+        data: (disputes[charge] || []).map((status) => ({ status })),
+      }),
     });
   });
   after(() => {
@@ -2084,6 +2103,7 @@ describe('an admin refund', () => {
       ch_other: { id: 'ch_other', customer: 'cus_2' },
       ch_guest: { id: 'ch_guest', customer: null },
     };
+    disputes = {};
   });
 
   it('refunds the organization’s own charge in full', async () => {
@@ -2106,10 +2126,56 @@ describe('an admin refund', () => {
     });
   });
 
-  it('refuses a charge Stripe does not know', async () => {
+  it('refuses a charge Stripe does not know, and says why', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
     const result = await service().refundCharges('org1', ['ch_missing']);
     assert.equal(called('refunds.create').length, 0);
-    assert.deepEqual(result, { refunded: [], failed: ['ch_missing'] });
+    assert.deepEqual(result, {
+      refunded: [],
+      failed: ['ch_missing'],
+      reason: 'No such charge',
+    });
+  });
+
+  it('refuses a charge while its dispute is open, and refunds one whose dispute was won', async () => {
+    charges = {
+      ch_open: { id: 'ch_open', customer: 'cus_1', disputed: true },
+      ch_won: { id: 'ch_won', customer: 'cus_1', disputed: true },
+    };
+    disputes = { ch_open: ['needs_response'], ch_won: ['won'] };
+    const result = await service().refundCharges('org1', ['ch_open', 'ch_won']);
+
+    assert.deepEqual(called('refunds.create'), [[{ charge: 'ch_won' }]]);
+    assert.deepEqual(result, {
+      refunded: ['ch_won'],
+      failed: ['ch_open'],
+      reason: 'Charge ch_open was disputed and thus cannot be refunded',
+    });
+  });
+
+  it('marks a charge disputed on the list only while its dispute is open', async () => {
+    charges = {
+      ch_open: { id: 'ch_open', customer: 'cus_1', disputed: true },
+      ch_won: { id: 'ch_won', customer: 'cus_1', disputed: true },
+      ch_closed: { id: 'ch_closed', customer: 'cus_1', disputed: true },
+      ch_plain: { id: 'ch_plain', customer: 'cus_1', disputed: false },
+    };
+    disputes = {
+      ch_open: ['under_review'],
+      ch_won: ['won'],
+      ch_closed: ['warning_closed'],
+    };
+    const listed = await service().getCharges('org1');
+
+    assert.deepEqual(
+      listed.map((charge) => [charge.id, charge.disputed]),
+      [
+        ['ch_open', true],
+        ['ch_won', false],
+        ['ch_closed', false],
+        ['ch_plain', false],
+      ],
+    );
   });
 });
 

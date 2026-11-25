@@ -1422,5 +1422,8 @@
   "media_settings_saved_on_post": "Saved on this post. The file is not in your media library.",
   "timezone": "Timezone",
   "automatic_timezone": "Automatic ({{timezone}})",
-  "could_not_save_timezone": "Could not save the timezone"
+  "could_not_save_timezone": "Could not save the timezone",
+  "refund_charges_failed": "Could not refund the selected charges",
+  "disputed": "Disputed",
+  "charge_disputed_no_refund": "This charge was disputed and thus cannot be refunded"
 }

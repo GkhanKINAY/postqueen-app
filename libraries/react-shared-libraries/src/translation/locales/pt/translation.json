@@ -943,5 +943,8 @@
   "media_settings_saved_on_post": "Salvo nesta publicação. O arquivo não está na sua biblioteca de mídia.",
   "timezone": "Fuso horário",
   "automatic_timezone": "Automático ({{timezone}})",
-  "could_not_save_timezone": "Não foi possível salvar o fuso horário"
+  "could_not_save_timezone": "Não foi possível salvar o fuso horário",
+  "refund_charges_failed": "Não foi possível reembolsar as cobranças selecionadas",
+  "disputed": "Contestada",
+  "charge_disputed_no_refund": "Esta cobrança foi contestada e, portanto, não pode ser reembolsada"
 }
