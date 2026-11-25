@@ -575,6 +575,53 @@ describe('a page pick', { skip: !canLoad }, () => {
     assert.deepEqual(postsRemoved, []);
   });
 
+  // A renewal writes inBetweenSteps: false, also over a channel that never
+  // picked its page, which then still holds the login's id.
+  it('saves the page of a channel a renewal turned the flag off for', async () => {
+    const picked = channel({
+      organizationId: 'org-a',
+      providerIdentifier: 'facebook',
+      internalId: 'user-1',
+      rootInternalId: 'user-1',
+      inBetweenSteps: false,
+      token: 'user-token',
+    });
+
+    const result = await repository().updateIntegration(
+      picked.id,
+      { ...params },
+      { providerIdentifier: 'facebook', internalId: 'user-1' }
+    );
+
+    assert.deepEqual(result, { id: picked.id });
+    assert.equal(byId(picked.id).internalId, 'page-1');
+    assert.equal(byId(picked.id).token, 'page-token');
+  });
+
+  it('writes nothing to a channel that got its page while this one was looked up', async () => {
+    const picked = channel({
+      organizationId: 'org-a',
+      providerIdentifier: 'facebook',
+      // read while it still held user-1; another tab picked page-0 since
+      internalId: 'page-0',
+      rootInternalId: 'user-1',
+      inBetweenSteps: false,
+      token: 'page-0-token',
+    });
+
+    for (const read of ['user-1', 'page-0']) {
+      const result = await repository().updateIntegration(
+        picked.id,
+        { ...params },
+        { providerIdentifier: 'facebook', internalId: read }
+      );
+
+      assert.equal(result, null, `read as ${read}`);
+      assert.equal(byId(picked.id).internalId, 'page-0');
+      assert.equal(byId(picked.id).token, 'page-0-token');
+    }
+  });
+
   it('writes nothing when the channel became another one while its page was looked up', async () => {
     const picked = channel({
       organizationId: 'org-a',

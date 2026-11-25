@@ -67,7 +67,8 @@ const freshLogin = (overrides: Record<string, unknown> = {}) => ({
 const serviceSaving = (
   row: Record<string, unknown>,
   answer: { id: string } | null = { id: 'kept' },
-  connected: Record<string, unknown> | null = null
+  connected: Record<string, unknown> | null = null,
+  provider: Record<string, unknown> = {}
 ) => {
   const saved: Array<{
     id: string;
@@ -98,6 +99,7 @@ const serviceSaving = (
           access_token: 'page-token',
           username: 'brand',
         }),
+        ...provider,
       }),
     },
     {},
@@ -180,12 +182,110 @@ describe('IntegrationService.saveProviderPage', { skip: !canLoadService }, () =>
     assert.equal(saved.length, 1);
   });
 
+  // A renewal writes inBetweenSteps: false, also over a channel that never
+  // picked its page; the channel list shows it as unfinished again.
+  it('takes the pick of a channel a renewal turned the flag off for, while it still holds the login id', async () => {
+    const { service, saved } = serviceSaving(
+      freshLogin({ inBetweenSteps: false }),
+      { id: 'kept' },
+      null,
+      { pageRequiredToPost: true }
+    );
+
+    await service.saveProviderPage('org', 'fresh', { page: 'page-1' });
+
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].params.internalId, 'page-1');
+  });
+
+  it('refuses a pick for a channel that already has its page, or posts with the login itself', async () => {
+    for (const [row, provider] of [
+      [freshLogin({ inBetweenSteps: false, internalId: 'page-0' }), { pageRequiredToPost: true }],
+      [freshLogin({ inBetweenSteps: false }), {}],
+      [
+        freshLogin({ inBetweenSteps: false, internalId: '1001', rootInternalId: '1001' }),
+        { pageRequiredToPost: true, isPageId: (id: string) => /^\d+$/.test(id) },
+      ],
+    ] as const) {
+      const { service, saved } = serviceSaving(row, { id: 'kept' }, null, provider);
+
+      await assert.rejects(
+        service.saveProviderPage('org', 'fresh', { page: 'page-1' }),
+        (err: any) => err?.getStatus?.() === 400
+      );
+      assert.equal(saved.length, 0);
+    }
+  });
+
   it('refuses the save when the channel became another one meanwhile', async () => {
     const { service } = serviceSaving(freshLogin(), null);
 
     await assert.rejects(
       service.saveProviderPage('org', 'fresh', { page: 'page-1' }),
       (err: any) => err?.getStatus?.() === 400
+    );
+  });
+});
+
+describe('IntegrationService.needsPageSelection', { skip: !canLoadService }, () => {
+  const service = () =>
+    new IntegrationService({}, {}, {}, {}, {}, {}, {});
+  const channel = (fields: Record<string, unknown> = {}) => ({
+    inBetweenSteps: false,
+    internalId: 'login-1',
+    rootInternalId: 'login-1',
+    ...fields,
+  });
+  const needsPage = { pageRequiredToPost: true };
+  const knowsPageIds = {
+    pageRequiredToPost: true,
+    isPageId: (id: string) => /^\d+$/.test(id),
+  };
+
+  // The post workflows fail a post on the flag whatever the provider.
+  it('keeps every channel that is still flagged, whatever its provider', () => {
+    for (const provider of [needsPage, {}, undefined]) {
+      assert.equal(
+        service().needsPageSelection(
+          channel({ inBetweenSteps: true, internalId: 'UC-1' }),
+          provider
+        ),
+        true
+      );
+    }
+  });
+
+  it("adds a channel whose renewal turned the flag off while it still holds the login's id", () => {
+    assert.equal(service().needsPageSelection(channel(), needsPage), true);
+  });
+
+  it('leaves out a finished channel, a provider that posts with the login, and a root that is a page id', () => {
+    assert.equal(
+      service().needsPageSelection(channel({ internalId: 'page-1' }), needsPage),
+      false
+    );
+    assert.equal(service().needsPageSelection(channel(), {}), false);
+    assert.equal(service().needsPageSelection(channel(), undefined), false);
+    assert.equal(
+      service().needsPageSelection(channel({ rootInternalId: null }), needsPage),
+      false
+    );
+    assert.equal(
+      service().needsPageSelection(
+        channel({ internalId: '1001', rootInternalId: '1001' }),
+        knowsPageIds
+      ),
+      false
+    );
+    assert.equal(
+      service().needsPageSelection(
+        channel({
+          internalId: 'linkedin-page_m1',
+          rootInternalId: 'linkedin-page_m1',
+        }),
+        knowsPageIds
+      ),
+      true
     );
   });
 });

@@ -212,11 +212,14 @@ export class IntegrationRepository {
 
     // Still waiting for its page and not removed meanwhile either: a channel
     // removed in another tab must not come back with the page's token.
+    // Waiting is the flag, or the login's id still in place of a page's after
+    // a token renewal turned the flag off (IntegrationService
+    // .needsPageSelection decides which channels get here).
     const stillPicked = {
       id,
       providerIdentifier: read.providerIdentifier,
       internalId: read.internalId,
-      inBetweenSteps: true,
+      OR: [{ inBetweenSteps: true }, { rootInternalId: read.internalId }],
       deletedAt: null,
     };
 
