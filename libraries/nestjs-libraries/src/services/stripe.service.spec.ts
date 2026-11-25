@@ -690,6 +690,8 @@ describe('the intent Billing sends with a cancel', () => {
 
     assert.equal(called('subscriptions.update').length, 2);
     assert.ok(subs.every((s) => s.cancel_at_period_end));
+    // The date Stripe has is written again, in case the row missed it.
+    assert.deepEqual(called('updateCancelAt').at(-1), ['org1', 1_000_200]);
     assert.deepEqual(again, {
       id: again.id,
       cancel_at: new Date(1_000_200 * 1000),
@@ -829,6 +831,63 @@ describe('the unpaid invoices of a cancelled subscription', () => {
     assert.deepEqual(voided(), []);
   });
 
+  it('keep the card that pays them, when Stripe ends the subscription', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
+    const retrieve = Object.getPrototypeOf(probe.invoices).retrieve;
+    const update = Object.getPrototypeOf(probe.paymentIntents).update;
+    // Each invoice's payments, by the PaymentIntent behind them.
+    const intents: Record<string, Record<string, unknown>[]> = {
+      in_open: [
+        { id: 'pi_card', status: 'requires_payment_method' },
+        { id: 'pi_3ds', status: 'requires_action' },
+        {
+          id: 'pi_flagged',
+          status: 'requires_payment_method',
+          setup_future_usage: 'off_session',
+        },
+      ],
+      in_uncollectible: [
+        { id: 'pi_refused', status: 'requires_confirmation' },
+        { id: 'pi_after', status: 'requires_payment_method' },
+      ],
+      in_paid: [{ id: 'pi_paid', status: 'succeeded' }],
+    };
+    subscriptionInvoices = invoices.filter((i) => i.id !== 'in_theirs');
+    fake(probe.invoices, {
+      retrieve: async (id: string) => ({
+        payments: {
+          data: (intents[id] || []).map((payment_intent) => ({
+            payment: { payment_intent },
+          })),
+        },
+      }),
+    });
+    fake(probe.paymentIntents, {
+      update: record('paymentIntents.update', (id) => {
+        if (id === 'pi_refused') {
+          throw new Error('Stripe is down');
+        }
+        return { id };
+      }),
+    });
+    try {
+      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+    } finally {
+      fake(probe.invoices, { retrieve });
+      fake(probe.paymentIntents, { update });
+    }
+
+    // Every status the flag can go on, not one that already has it, not a
+    // paid invoice, and one refusal does not stop the next.
+    assert.deepEqual(
+      called('paymentIntents.update').map(([id]) => id),
+      ['pi_card', 'pi_3ds', 'pi_refused', 'pi_after'],
+    );
+    assert.deepEqual(called('paymentIntents.update')[0][1], {
+      setup_future_usage: 'off_session',
+    });
+  });
+
   it('are voided by the first payment of a new subscription', async () => {
     subs = [
       sub('sub_failed', 100, { status: 'canceled', metadata: OURS }),
@@ -955,6 +1014,7 @@ describe('an invoice of a cancelled subscription paid late', () => {
       status: 'canceled',
       ended_at: ENDED,
       canceled_at: ENDED,
+      cancellation_details: { reason: 'payment_failed' } as any,
       automatic_tax: { enabled: true } as any,
       metadata: {
         service: 'postqueen',
@@ -1161,6 +1221,26 @@ describe('an invoice of a cancelled subscription paid late', () => {
     const warned = t.mock.method(Logger, 'warn', () => undefined);
     const cases: [string, () => void][] = [
       [
+        'it ended for cancellation_requested',
+        () => {
+          subs = [
+            cancelled({
+              cancellation_details: { reason: 'cancellation_requested' } as any,
+            }),
+          ];
+        },
+      ],
+      [
+        'it ended for payment_disputed',
+        () => {
+          subs = [
+            cancelled({
+              cancellation_details: { reason: 'payment_disputed' } as any,
+            }),
+          ];
+        },
+      ],
+      [
         'another subscription is live',
         () => {
           subs = [cancelled(), sub('sub_live', 50)];
@@ -1210,6 +1290,37 @@ describe('an invoice of a cancelled subscription paid late', () => {
         ['a@b.co', 'user1'],
       ],
     );
+  });
+
+  it('logs a create Stripe refuses, and leaves anything else for the retry', async (t) => {
+    t.mock.method(Logger, 'warn', () => undefined);
+    const errors = t.mock.method(Logger, 'error', () => undefined);
+    const create = Object.getPrototypeOf(probe.subscriptions).create;
+    let failure: Error;
+    fake(probe.subscriptions, {
+      create: async () => {
+        throw failure;
+      },
+    });
+    try {
+      subs = [cancelled()];
+      failure = Object.assign(new Error('This coupon cannot be redeemed'), {
+        type: 'StripeInvalidRequestError',
+      });
+      await assert.doesNotReject(paid());
+      assert.match(
+        String(errors.mock.calls.at(-1)?.arguments[0]),
+        /Stripe refused the new subscription: This coupon cannot be redeemed/,
+      );
+
+      failure = Object.assign(new Error('socket hang up'), {
+        type: 'StripeConnectionError',
+      });
+      await assert.rejects(paid(), /socket hang up/);
+      assert.equal(ledger.length, 0);
+    } finally {
+      fake(probe.subscriptions, { create });
+    }
   });
 });
 
@@ -2227,12 +2338,14 @@ describe('an admin refund', () => {
       ch_open: { id: 'ch_open', customer: 'cus_1', disputed: true },
       ch_won: { id: 'ch_won', customer: 'cus_1', disputed: true },
       ch_closed: { id: 'ch_closed', customer: 'cus_1', disputed: true },
+      ch_prevented: { id: 'ch_prevented', customer: 'cus_1', disputed: true },
       ch_plain: { id: 'ch_plain', customer: 'cus_1', disputed: false },
     };
     disputes = {
       ch_open: ['under_review'],
       ch_won: ['won'],
       ch_closed: ['warning_closed'],
+      ch_prevented: ['prevented'],
     };
     const listed = await service().getCharges('org1');
 
@@ -2242,6 +2355,7 @@ describe('an admin refund', () => {
         ['ch_open', true],
         ['ch_won', false],
         ['ch_closed', false],
+        ['ch_prevented', false],
         ['ch_plain', false],
       ],
     );
