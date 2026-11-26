@@ -6,21 +6,23 @@ import { before, beforeEach, describe, it } from 'node:test';
 import { insufficientCredits } from '../credits/credits.repository.ts';
 import { AI_FIXED_CREDIT_COSTS_PROPOSAL } from '../subscriptions/pricing.ts';
 
-// tsconfig maps file-type to its type declarations for tsc, and tsx follows
-// that mapping at run time, so the storage would load a .d.ts. Point it at
-// the package's own entry instead, as agent.graph.service.spec.ts does.
+// tsconfig maps file-type and mime to their type declarations for tsc, and
+// tsx follows that mapping at run time, so the storage would load a .d.ts.
+// Point them at the packages' own entries instead, as
+// agent.graph.service.spec.ts and integration.pages.spec.ts do.
 // registerHooks arrived in Node 22.15; on an older 22 the spec is skipped
 // rather than failed.
+const entries: Record<string, string> = {
+  'file-type': '../../../../../../node_modules/file-type/source/index.js',
+  mime: '../../../../../../node_modules/mime/dist/src/index.js',
+};
 const canLoadService = typeof nodeModule.registerHooks === 'function';
 if (canLoadService) {
   nodeModule.registerHooks({
     resolve: (specifier, context, next) =>
-      specifier === 'file-type'
+      entries[specifier]
         ? {
-            url: new URL(
-              '../../../../../../node_modules/file-type/source/index.js',
-              import.meta.url
-            ).href,
+            url: new URL(entries[specifier], import.meta.url).href,
             shortCircuit: true,
           }
         : next(specifier, context),
@@ -28,11 +30,15 @@ if (canLoadService) {
 }
 
 let AutopostService: any;
+let IntegrationService: any;
 before(async () => {
   // The service builds its storage when it is made; nothing is stored here.
   process.env.UPLOAD_DIRECTORY ||= tmpdir();
   if (canLoadService) {
     ({ AutopostService } = await import('./autopost.service.ts'));
+    ({ IntegrationService } = await import(
+      '../integrations/integration.service.ts'
+    ));
   }
 });
 
@@ -62,6 +68,25 @@ const channel = {
   inBetweenSteps: false,
 };
 
+// A channel whose provider posts only to a picked page. A renewal wrote
+// inBetweenSteps: false over it, yet it still holds the login's id.
+const renewedUnpicked = {
+  id: 'ch-2',
+  name: 'Facebook',
+  organizationId: 'org-1',
+  providerIdentifier: 'facebook',
+  internalId: 'login-1',
+  rootInternalId: 'login-1',
+  disabled: false,
+  refreshNeeded: false,
+  inBetweenSteps: false,
+};
+
+const providers: Record<string, Record<string, unknown>> = {
+  x: {},
+  facebook: { pageRequiredToPost: true },
+};
+
 let balance: number;
 let spends: { key: string; amount: number }[];
 let posts: string[];
@@ -70,6 +95,8 @@ let notifications: string[];
 let refunds: string[];
 let failPublish: boolean;
 let publishShort: boolean;
+let channels: Record<string, unknown>[];
+let sentTo: string[][];
 
 // Every collaborator faked. The AI calls themselves never run: the fake
 // credits service stands in for the work it would have paid for.
@@ -80,7 +107,10 @@ const service = (autopost = rule) =>
       updateUrl: async () => undefined,
     },
     {},
-    { getIntegrationsList: async () => [channel] },
+    {
+      getIntegrationsList: async () => channels,
+      needsPageSelection: IntegrationService.prototype.needsPageSelection,
+    },
     {
       validatePosts: async () => {
         validated += 1;
@@ -97,6 +127,7 @@ const service = (autopost = rule) =>
           throw insufficientCredits(500, 20);
         }
         posts.push(body.type);
+        sentTo.push(body.posts.map((p: any) => p.integration.id));
         return [];
       },
     },
@@ -136,7 +167,9 @@ const service = (autopost = rule) =>
         spends.splice(open, 1);
         return true;
       },
-    }
+    },
+    {},
+    { getSocialIntegration: (name: string) => providers[name] }
   );
 
 const run = async (autopost = rule) => {
@@ -158,6 +191,8 @@ beforeEach(() => {
   refunds = [];
   failPublish = false;
   publishShort = false;
+  channels = [channel];
+  sentTo = [];
 });
 
 describe('Autopost and credits', { skip: !canLoadService }, () => {
@@ -275,5 +310,36 @@ describe('Autopost and credits', { skip: !canLoadService }, () => {
     assert.deepEqual(spends, []);
     assert.deepEqual(posts, ['now']);
     assert.deepEqual(notifications, []);
+  });
+});
+
+describe('Autopost channels', { skip: !canLoadService }, () => {
+  const withoutAi = {
+    ...rule,
+    generateContent: false,
+    addPicture: false,
+    content: 'Fixed text',
+  };
+
+  it('publishes to none of the channels the Channels page shows as unfinished', async () => {
+    channels = [channel, renewedUnpicked];
+    await run(withoutAi);
+    assert.deepEqual(posts, ['now']);
+    assert.deepEqual(sentTo, [['ch-1']]);
+  });
+
+  it('says it has no channel when its only one never picked its page', async () => {
+    channels = [renewedUnpicked];
+    await run(withoutAi);
+    assert.deepEqual(posts, []);
+    assert.deepEqual(notifications, ['Autopost has no channel to post to']);
+  });
+
+  // A draft on it is what the person wants waiting once they pick the page.
+  it('still saves a draft for it when the rule only drafts', async () => {
+    channels = [channel, renewedUnpicked];
+    await run({ ...withoutAi, autoPublish: false });
+    assert.deepEqual(posts, ['draft']);
+    assert.deepEqual(sentTo, [['ch-1', 'ch-2']]);
   });
 });

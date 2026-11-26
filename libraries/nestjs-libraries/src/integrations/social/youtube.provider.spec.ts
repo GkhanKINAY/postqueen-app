@@ -1,11 +1,17 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { Readable } from 'node:stream';
+import { describe, it, type TestContext } from 'node:test';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
-import { Disconnect, NotEnoughScopes } from '../social.abstract.ts';
+import {
+  BadBody,
+  Disconnect,
+  MEDIA_READ_SLOW,
+  NotEnoughScopes,
+} from '../social.abstract.ts';
 import {
   getYoutubeTagsLength,
   YoutubeSettingsDto,
@@ -88,7 +94,7 @@ describe('YouTube altered or synthetic content', () => {
   const uploadStatus = async (settings: Record<string, unknown>) => {
     const youtube = new YoutubeProvider();
     let body: any;
-    (youtube as any).youtubeMediaSize = async () => 1000;
+    (youtube as any).mediaSize = async () => 1000;
     (youtube as any).fetch = async (_url: string, init: RequestInit) => {
       body = JSON.parse(String(init.body));
       return new Response('', {
@@ -567,5 +573,126 @@ describe('YouTube channel listing for the picker', () => {
       }),
       /quotaExceeded/
     );
+  });
+});
+
+// finalizePost reads the video back one ranged chunk at a time. A store that
+// could not answer is asked once more 5 seconds later, then the batch goes
+// back to the workflow as pending; only a refused range fails the post.
+describe('YouTube chunk reads', () => {
+  // Answers the reads in turn, the last answer for good; a 0 is no answer.
+  const read = async (t: TestContext, ...statuses: number[]) => {
+    const realFetch = globalThis.fetch;
+    let count = 0;
+    globalThis.fetch = (async () => {
+      const status = statuses[Math.min(count++, statuses.length - 1)];
+      if (!status) {
+        throw new TypeError('fetch failed');
+      }
+      return new Response(status === 206 ? 'chunk' : null, { status });
+    }) as any;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      const done = (new YoutubeProvider() as any)
+        .youtubeChunkStream('https://cdn.test/clip.mp4', 0, 4)
+        .then(
+          (value: unknown) => ({ value }),
+          (err: unknown) => ({ err })
+        );
+      let outcome: { value?: any; err?: unknown } | undefined;
+      done.then((o: any) => (outcome = o));
+      while (outcome === undefined) {
+        await new Promise((resolve) => setImmediate(resolve));
+        t.mock.timers.tick(5000);
+      }
+      return { ...outcome, count };
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+
+  it('asks once more when the store could not answer, and streams that', async (t) => {
+    for (const first of [503, 429, 0]) {
+      const { value, count } = await read(t, first, 206);
+      assert.equal(await new Response(value).text(), 'chunk', String(first));
+      assert.equal(count, 2);
+      t.mock.timers.reset();
+    }
+  });
+
+  it('says busy when the store still cannot answer', async (t) => {
+    for (const status of [503, 500, 429, 0]) {
+      const { value, count } = await read(t, status);
+      assert.equal(value, 'busy', String(status));
+      assert.equal(count, 2);
+      t.mock.timers.reset();
+    }
+  });
+
+  it('fails the post when the store refuses the range or the file', async (t) => {
+    for (const status of [200, 404]) {
+      const { err, count } = await read(t, status);
+      assert.ok(err instanceof BadBody, String(status));
+      assert.equal(count, 1);
+      t.mock.timers.reset();
+    }
+  });
+});
+
+// A busy store hands the batch back to the workflow, the way a spent batch
+// budget does, and fails the post only after about ten minutes of it.
+describe('YouTube upload batches on a busy store', () => {
+  const pendingData = {
+    uploadUri: 'https://upload.test/session',
+    videoSize: 10,
+    path: 'https://cdn.test/clip.mp4',
+    uploadedBytes: 0,
+    thumbnail: '',
+  };
+
+  const batch = async (chunk: unknown, data: Record<string, unknown>) => {
+    const youtube = new YoutubeProvider() as any;
+    youtube.probeUploadSession = async () => ({ uploadedBytes: 4 });
+    youtube.youtubeChunkStream = async () => chunk;
+    const realFetch = globalThis.fetch;
+    // Google keeps the bytes and asks for more, without saying how many
+    globalThis.fetch = (async () => new Response(null, { status: 308 })) as any;
+    try {
+      return await youtube.finalizePost(
+        'token',
+        { ...pendingData, ...data },
+        {} as any
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+
+  it('hands the batch back with one more busy batch counted', async () => {
+    assert.deepEqual(await batch('busy', {}), {
+      status: 'pending',
+      pendingData: { ...pendingData, uploadedBytes: 4, storeBusy: 1 },
+    });
+    assert.equal(
+      (await batch('busy', { storeBusy: 13 })).pendingData.storeBusy,
+      14
+    );
+  });
+
+  it('fails the post on the fifteenth busy batch in a row', async () => {
+    await assert.rejects(batch('busy', { storeBusy: 14 }), (err) => {
+      assert.ok(err instanceof BadBody);
+      assert.equal(err.message, MEDIA_READ_SLOW);
+      return true;
+    });
+  });
+
+  it('starts counting again after a batch that read the media', async () => {
+    const { status, pendingData: data } = await batch(
+      Readable.from(['chunk']),
+      { storeBusy: 9 }
+    );
+    assert.equal(status, 'pending');
+    assert.equal(data.storeBusy, 0);
   });
 });

@@ -4,12 +4,16 @@ import {
 import { createTool } from '@mastra/core/tools';
 import { Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import z from 'zod';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 
 @Injectable()
 export class IntegrationListTool implements AgentToolInterface {
-  constructor(private _integrationService: IntegrationService) {}
+  constructor(
+    private _integrationService: IntegrationService,
+    private _integrationManager: IntegrationManager
+  ) {}
   name = 'integrationList';
 
   run() {
@@ -57,7 +61,14 @@ export class IntegrationListTool implements AgentToolInterface {
               (p) =>
                 !p.disabled &&
                 !p.refreshNeeded &&
-                !p.inBetweenSteps &&
+                // as the Channels page decides it: a renewal can turn the
+                // flag off on a channel that never picked its page
+                !this._integrationService.needsPageSelection(
+                  p,
+                  this._integrationManager.getSocialIntegration(
+                    p.providerIdentifier
+                  )
+                ) &&
                 (!inputData.group || p.customer?.id === inputData.group)
             )
             .map((p) => ({

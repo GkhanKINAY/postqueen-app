@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { PostActivity } from './post.activity.ts';
-import { MEDIA_READ_FAILED } from '@gitroom/nestjs-libraries/integrations/social.abstract';
+import {
+  MEDIA_NOT_FOUND,
+  MEDIA_READ_FAILED,
+  MEDIA_READ_SLOW,
+  MEDIA_SIZE_UNKNOWN,
+} from '@gitroom/nestjs-libraries/integrations/social.abstract';
 
 /**
  * post.workflow v1.0.12 hands every notice to `publishingNotice`. The in-app
@@ -83,6 +88,17 @@ describe('publishingNotice', () => {
     );
     assert.equal(email.preheader, MEDIA_READ_FAILED);
     assert.match(email.lead, /^We could not send your post from Sunrise Studio to LinkedIn Page/);
+  });
+
+  it('says the same of every media read that failed on our side', async () => {
+    for (const reason of [MEDIA_NOT_FOUND, MEDIA_READ_SLOW, MEDIA_SIZE_UNKNOWN]) {
+      const [, subject, , , , , , email] = await run('bad_body', reason);
+      assert.equal(subject, 'Your post to LinkedIn Page didn’t go out');
+      assert.deepEqual(
+        email.blocks.find((b: any) => b.type === 'reason'),
+        { type: 'reason', label: 'What happened', text: reason }
+      );
+    }
   });
 
   it('keeps the published text the panel and the quiet-post check read', async () => {
