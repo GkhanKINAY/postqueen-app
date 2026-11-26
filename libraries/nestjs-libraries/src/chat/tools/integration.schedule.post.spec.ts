@@ -162,7 +162,7 @@ describe('MCP scheduling to an unfinished channel', { skip: !canLoadService }, (
     facebook: { pageRequiredToPost: true },
     youtube: {},
   };
-  const schedule = async (row: Record<string, unknown>) => {
+  const schedule = async (row: Record<string, unknown> | null) => {
     const created: any[] = [];
     let validated = 0;
     const tool = new IntegrationSchedulePostTool(
@@ -179,16 +179,17 @@ describe('MCP scheduling to an unfinished channel', { skip: !canLoadService }, (
         },
       } as any,
       {
-        getIntegrationByIdNotDeleted: async () => ({
-          id: 'int-1',
-          name: 'Channel',
-          disabled: false,
-          refreshNeeded: false,
-          internalId: 'login-1',
-          rootInternalId: 'login-1',
-          inBetweenSteps: false,
-          ...row,
-        }),
+        getIntegrationByIdNotDeleted: async () =>
+          row && {
+            id: 'int-1',
+            name: 'Channel',
+            disabled: false,
+            refreshNeeded: false,
+            internalId: 'login-1',
+            rootInternalId: 'login-1',
+            inBetweenSteps: false,
+            ...row,
+          },
         needsPageSelection: IntegrationService.prototype.needsPageSelection,
       } as any,
       {
@@ -212,8 +213,26 @@ describe('MCP scheduling to an unfinished channel', { skip: !canLoadService }, (
       { providerIdentifier: 'youtube', inBetweenSteps: true },
     ]) {
       const { result, created, validated } = await schedule(row);
-      assert.match(result.output.errors, /needs to be reconnected/);
+      assert.match(
+        result.output.errors,
+        /^Channel: The connection of this channel was not finished\./
+      );
       assert.equal(validated, 0);
+      assert.deepEqual(created, []);
+    }
+  });
+
+  // Each refusal reaches the agent as its message, inside `output` as the
+  // output schema has it, not as a failed output validation.
+  it('says a channel is missing, or has to be reconnected, inside output', async () => {
+    const cases: [Record<string, unknown> | null, RegExp][] = [
+      [null, /^Integration not found$/],
+      [{ providerIdentifier: 'youtube', disabled: true }, /needs to be reconnected/],
+      [{ providerIdentifier: 'youtube', refreshNeeded: true }, /needs to be reconnected/],
+    ];
+    for (const [row, message] of cases) {
+      const { result, created } = await schedule(row);
+      assert.match(result.output.errors, message);
       assert.deepEqual(created, []);
     }
   });

@@ -218,11 +218,18 @@ If validation fails, the result contains output.errors describing what to fix; t
             };
           }
 
+          if (integration.disabled || integration.refreshNeeded) {
+            return {
+              output: {
+                errors: `${integration.name}: This channel needs to be reconnected before you can schedule posts. Please reconnect it from Channels.`,
+              },
+            };
+          }
+
           // Unfinished as the Channels page decides it: a renewal can turn
-          // the flag off on a channel that never picked its page.
+          // the flag off on a channel that never picked its page. Worded as
+          // the worker words a post it stops for this.
           if (
-            integration.disabled ||
-            integration.refreshNeeded ||
             this._integrationService.needsPageSelection(
               integration,
               this._integrationManager.getSocialIntegration(
@@ -232,7 +239,7 @@ If validation fails, the result contains output.errors describing what to fix; t
           ) {
             return {
               output: {
-                errors: `${integration.name}: This channel needs to be reconnected before you can schedule posts. Please reconnect it from Channels.`,
+                errors: `${integration.name}: The connection of this channel was not finished. Please finish connecting it from Channels and select the page or account to post to, then try again.`,
               },
             };
           }
