@@ -626,7 +626,7 @@ Left for later:
   platform's icon (calendar cards, posts panel, Channels, channel filter and
   pick lists, analytics, Add Channel, getting started, connect links, the
   sign-in showcase), drawn by `PlatformMark` or the brand-aware
-  `ChannelAvatar` (2026-11-26 follow-up). The plugs lists draw it the same
+  `ChannelAvatar` (#439). The plugs lists draw it the same
   way, though YouTube has no plugs today. Two places are left. The emails
   still show `youtube.png` with rounded corners: Gmail does not show SVG, so
   they need a PNG of the mark, which `scripts/email-icons.mjs` could draw.
