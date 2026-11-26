@@ -25,8 +25,12 @@ and in the Docker image build. Serving the same file from this repository
 keeps installs working with no code change: the root `package.json` points at
 it with a `file:` spec, so every import still reads `'nestjs-temporal-core'`.
 
-pnpm checks the file against the integrity in `pnpm-lock.yaml` on every
-install, so a changed tarball fails the install instead of being used.
+A frozen install, which is what CI runs, checks the file against the
+integrity in `pnpm-lock.yaml` and fails on a mismatch. A plain `pnpm install`
+(the Docker image build, a local install) re-reads the file and rewrites the
+integrity instead, so the CI build job is the guard: a tarball changed without
+its lockfile entry fails there, and one changed together with it has to be
+checked by hand as described below.
 
 ### Changing it
 
