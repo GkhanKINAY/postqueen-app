@@ -135,11 +135,16 @@ export const MEDIA_READ_FAILED =
   'We could not read the media for this post, so it was not published. Attach the media again, then schedule the post.';
 export const MEDIA_READ_SLOW =
   'We could not read the media for this post in time, so it was not published. Try again in a few minutes.';
+export const MEDIA_NOT_FOUND =
+  'The media file for this post was not found, so it was not published. Attach the media again, then schedule the post.';
+export const MEDIA_SIZE_UNKNOWN =
+  'Could not determine the media size for upload';
 export const REQUEST_NOT_COMPLETED =
   'PostQueen could not complete the request to the network, so the post was not published. Try again in a few minutes.';
 export const OWN_FAILURE_MESSAGES = [
   MEDIA_READ_FAILED,
   MEDIA_READ_SLOW,
+  MEDIA_NOT_FOUND,
   REQUEST_NOT_COMPLETED,
 ];
 
@@ -258,6 +263,80 @@ export class BadBody extends ApplicationFailure {
       },
     ]);
   }
+}
+
+/**
+ * The size and type of a remote media file, from a HEAD, for the providers
+ * that declare an upload's length before they stream it. A HEAD answers with
+ * no length for our own local uploads when Next serves them, so their size is
+ * read from disk instead (see ownUploadSize).
+ *
+ * What a refused HEAD means decides how the post fails. Nothing has been sent
+ * to the network yet when this runs:
+ * - 404 or 410: the file is gone, and asking again gets the same answer.
+ * - 429, a 5xx, or no answer at all: the store could not answer this time.
+ *   Our own uploads route answers 503 with Retry-After: 5 when its store times
+ *   out or is throttled, so this waits that long and asks once more, the way
+ *   readOrFetch and mediaChunk read a stalled file once more. A second
+ *   failure fails the post with MEDIA_READ_SLOW rather than a retryable
+ *   error: the workflow would publish again at once, and when that ran out it
+ *   would tell the user the post may already be live.
+ * - any other 4xx: refused for good, as readOrFetch treats it.
+ * - a 2xx without a usable length: `unknownSize`, the caller's own message.
+ */
+export async function mediaHead(
+  path: string,
+  identifier: string,
+  unknownSize = MEDIA_SIZE_UNKNOWN,
+  retried = false
+): Promise<{ size: number; type: string | null }> {
+  let head: Response | undefined;
+  try {
+    // the media path is user-influenced, keep the SSRF-safe dispatcher that
+    // every other outbound request gets. identity encoding so content-length
+    // matches the bytes a later GET actually streams (fetch transparently
+    // decompresses encoded bodies).
+    head = await fetch(path, {
+      method: 'HEAD',
+      headers: { 'accept-encoding': 'identity' },
+      dispatcher: getSsrfSafeDispatcher(),
+    } as any);
+  } catch (err) {
+    // no answer at all, `head` stays undefined
+  }
+
+  const failure = JSON.stringify({
+    status: head?.status || 0,
+    path: stripQuery(path),
+  });
+
+  if (!head || head.status === 429 || head.status >= 500) {
+    if (!retried) {
+      await timer(5000);
+      return mediaHead(path, identifier, unknownSize, true);
+    }
+    throw new BadBody(identifier, failure, '{}', MEDIA_READ_SLOW);
+  }
+
+  if (!head.ok) {
+    throw new BadBody(
+      identifier,
+      failure,
+      '{}',
+      head.status === 404 || head.status === 410
+        ? MEDIA_NOT_FOUND
+        : MEDIA_READ_FAILED
+    );
+  }
+
+  // A zero/NaN size would poison chunk-count math downstream.
+  const size =
+    ownUploadSize(path) || Number(head.headers.get('content-length'));
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new BadBody(identifier, '{}', '{}', unknownSize);
+  }
+
+  return { size, type: head.headers.get('content-type') };
 }
 
 export class NotEnoughScopes {
@@ -514,37 +593,21 @@ export abstract class SocialAbstract {
   }
 
   // Resolves the total byte size of the media without loading it into memory:
-  // a HEAD request for remote URLs, statSync for local files and for our own
-  // local uploads (see ownUploadSize).
-  protected async mediaSize(path: string, identifier = ''): Promise<number> {
+  // a HEAD request for remote URLs (see mediaHead), statSync for local files
+  // and for our own local uploads (see ownUploadSize).
+  protected async mediaSize(
+    path: string,
+    identifier = '',
+    unknownSize = MEDIA_SIZE_UNKNOWN
+  ): Promise<number> {
     if (path.indexOf('http') === 0) {
       const own = ownUploadSize(path);
       if (own) {
         return own;
       }
 
-      // the media path is user-influenced, keep the SSRF-safe dispatcher that
-      // this.fetch applies to every other outbound request. identity encoding
-      // so content-length matches the bytes a later GET actually streams
-      // (fetch transparently decompresses encoded bodies).
       setHeartbeatDetails(`media size ${stripQuery(path)}`);
-      const head = await fetch(path, {
-        method: 'HEAD',
-        headers: { 'accept-encoding': 'identity' },
-        dispatcher: getSsrfSafeDispatcher(),
-      } as any);
-      const length = Number(head.headers.get('content-length'));
-      // A failed HEAD can still carry a content-length (of the error body),
-      // and a zero/NaN size would poison chunk-count math downstream.
-      if (!head.ok || !Number.isFinite(length) || length <= 0) {
-        throw new BadBody(
-          identifier,
-          '{}',
-          Buffer.from('{}'),
-          'Could not determine the media size for upload'
-        );
-      }
-      return length;
+      return (await mediaHead(path, identifier, unknownSize)).size;
     }
 
     return statSync(this.localMediaPath(path, identifier)).size;

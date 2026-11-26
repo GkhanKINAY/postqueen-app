@@ -1,4 +1,8 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
 import { r2Endpoint } from '@gitroom/nestjs-libraries/upload/r2.endpoint';
 
@@ -41,20 +45,48 @@ function r2(): S3Client {
   return client;
 }
 
-export interface R2Object {
-  body: Readable;
+export interface R2Head {
   contentType?: string;
   contentLength?: number;
   etag?: string;
+}
+
+export interface R2Object extends R2Head {
+  body: Readable;
   // Set only when a `range` was asked for and the store answered with part of
   // the object. Its presence is what tells the caller to reply 206.
   contentRange?: string;
 }
 
+// The only failure that says the object is not there. GetObject names it
+// NoSuchKey; HeadObject has no body to name it in and reports NotFound. Both
+// carry the 404. A missing bucket is a 404 too, but it is this install's
+// settings that are wrong, not the file that is gone.
+const isMissing = (err: any) =>
+  err?.name === 'NoSuchKey' ||
+  err?.name === 'NotFound' ||
+  (err?.$metadata?.httpStatusCode === 404 && err?.name !== 'NoSuchBucket');
+
+// Anything else (a timeout, throttling, a socket pool with nothing free, a
+// dropped connection) says nothing about the object: it may well be there.
+// Answering that as missing told the networks, and our own size reads, that
+// the file was gone for good. Logged by name and status only, so nothing of
+// the request it failed on is written out.
+const reportUnavailable = (key: string, err: any) => {
+  const status = err?.$metadata?.httpStatusCode;
+  console.error(
+    `[uploads] could not read ${key} from R2: ${err?.name || 'Error'}${
+      status ? ` (status ${status})` : ''
+    }`
+  );
+  return 'unavailable' as const;
+};
+
 /**
  * Returns null when the object is not there, rather than throwing — a missing
  * file is a 404, not a server error, and media URLs are public enough to be
- * probed.
+ * probed. Returns 'unavailable' when the store could not be asked, which the
+ * caller answers with a 503 to come back for.
  *
  * `range` is passed through verbatim as the S3 `Range` parameter, so the store
  * decides what it can satisfy rather than this doing arithmetic on a header it
@@ -64,7 +96,7 @@ export interface R2Object {
 export async function readFromR2(
   key: string,
   range?: string
-): Promise<R2Object | null | 'range-not-satisfiable'> {
+): Promise<R2Object | null | 'range-not-satisfiable' | 'unavailable'> {
   try {
     const object = await r2().send(
       new GetObjectCommand({
@@ -88,6 +120,42 @@ export async function readFromR2(
       return 'range-not-satisfiable';
     }
 
-    return null;
+    if (isMissing(err)) {
+      return null;
+    }
+
+    return reportUnavailable(key, err);
+  }
+}
+
+/**
+ * What a HEAD answers with: the object's metadata, without opening its body.
+ * A HEAD that went through readFromR2 pulled the whole object out of the store
+ * for Express to throw away, and held one of the client's sockets while it
+ * did, which for a large video is most of the read timeout. Same null and
+ * 'unavailable' as readFromR2.
+ */
+export async function headFromR2(
+  key: string
+): Promise<R2Head | null | 'unavailable'> {
+  try {
+    const object = await r2().send(
+      new HeadObjectCommand({
+        Bucket: process.env.CLOUDFLARE_BUCKETNAME!,
+        Key: key,
+      })
+    );
+
+    return {
+      contentType: object.ContentType,
+      contentLength: object.ContentLength,
+      etag: object.ETag,
+    };
+  } catch (err) {
+    if (isMissing(err)) {
+      return null;
+    }
+
+    return reportUnavailable(key, err);
   }
 }

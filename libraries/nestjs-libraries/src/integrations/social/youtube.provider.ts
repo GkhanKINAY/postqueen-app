@@ -30,9 +30,8 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import * as process from 'node:process';
 import dayjs from 'dayjs';
-import { createReadStream, statSync } from 'fs';
+import { createReadStream } from 'fs';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 import {
@@ -565,40 +564,6 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   // workflow calls finalizePost again for the remaining bytes.
   private static readonly YOUTUBE_UPLOAD_BATCH_MS = 4 * 60 * 1000;
 
-  // Resolves the total byte size of the media without loading it into memory:
-  // a HEAD request for remote URLs, statSync for local files.
-  private async youtubeMediaSize(path: string): Promise<number> {
-    if (path.indexOf('http') === 0) {
-      const own = ownUploadSize(path);
-      if (own) {
-        return own;
-      }
-
-      // the media path is user-influenced, keep the SSRF-safe dispatcher that
-      // this.fetch applies to every other outbound request. identity encoding
-      // so content-length matches the bytes a later GET actually streams
-      // (fetch transparently decompresses encoded bodies).
-      setHeartbeatDetails(`youtube: media size ${stripQuery(path)}`);
-      const head = await fetch(path, {
-        method: 'HEAD',
-        headers: { 'accept-encoding': 'identity' },
-        dispatcher: getSsrfSafeDispatcher(),
-      } as any);
-      const length = head.headers.get('content-length');
-      if (!length) {
-        throw new BadBody(
-          this.identifier,
-          '{}',
-          '{}',
-          'Could not determine the video size for the YouTube upload'
-        );
-      }
-      return Number(length);
-    }
-
-    return statSync(this.localMediaPath(path, this.identifier)).size;
-  }
-
   // Returns a streaming body for the [start, end] byte range of the media so we
   // never hold the whole file in memory: a ranged GET for remote URLs, a ranged
   // read stream for local files.
@@ -708,7 +673,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
 
     const { settings }: { settings: YoutubeSettingsDto } = firstPost;
     const path = firstPost?.media?.[0]?.path!;
-    const videoSize = await this.youtubeMediaSize(path);
+    const videoSize = await this.mediaSize(
+      path,
+      this.identifier,
+      'Could not determine the video size for the YouTube upload'
+    );
 
     // Start a resumable upload session: nothing exists on the channel until
     // the final byte is received, so nothing here is irreversible yet - the

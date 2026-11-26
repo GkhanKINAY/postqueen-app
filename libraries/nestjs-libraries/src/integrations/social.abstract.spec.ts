@@ -3,9 +3,22 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, afterEach, beforeEach, describe, it } from 'node:test';
+import {
+  after,
+  afterEach,
+  beforeEach,
+  describe,
+  it,
+  type TestContext,
+} from 'node:test';
 import {
   BadBody,
+  MEDIA_NOT_FOUND,
+  MEDIA_READ_FAILED,
+  MEDIA_READ_SLOW,
+  MEDIA_SIZE_UNKNOWN,
+  mediaHead,
+  OWN_FAILURE_MESSAGES,
   platformMessage,
   RefreshToken,
   SocialAbstract,
@@ -453,5 +466,137 @@ describe('size of our own uploads', () => {
   it('reads nothing from disk without an upload directory', () => {
     delete process.env.UPLOAD_DIRECTORY;
     assert.equal(ownUploadSize(own), null);
+  });
+});
+
+// What a refused HEAD means decides how the post fails. Nothing has been
+// sent to the network when it runs.
+describe('sizing remote media', () => {
+  const url = 'https://cdn.example.com/aB3xY9pQr7.mp4';
+
+  // Answers every request with this status and these headers.
+  const head = (status: number, headers: Record<string, string> = {}) => {
+    const calls: { url: string; method?: string }[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method });
+      return new Response(null, { status, headers });
+    }) as typeof fetch;
+    return calls;
+  };
+
+  const failsFor = (message: string) => (err: unknown) => {
+    assert.ok(err instanceof BadBody);
+    assert.equal(err.message, message);
+    return true;
+  };
+
+  it('reads the size and type from a HEAD', async () => {
+    const calls = head(200, {
+      'content-length': '104857600',
+      'content-type': 'video/mp4',
+    });
+    assert.deepEqual(await mediaHead(url, 'network'), {
+      size: 104857600,
+      type: 'video/mp4',
+    });
+    assert.deepEqual(calls, [{ url, method: 'HEAD' }]);
+  });
+
+  it('fails the post for good when the file is gone', async () => {
+    for (const status of [404, 410]) {
+      head(status, { 'content-length': '9' });
+      await assert.rejects(
+        mediaHead(url, 'network'),
+        failsFor(MEDIA_NOT_FOUND)
+      );
+      await assert.rejects(
+        new Network().mediaSize(url, 'network'),
+        failsFor(MEDIA_NOT_FOUND)
+      );
+    }
+    assert.ok(OWN_FAILURE_MESSAGES.includes(MEDIA_NOT_FOUND));
+  });
+
+  it('fails it for good when the host refuses the file', async () => {
+    head(403, { 'content-length': '9' });
+    await assert.rejects(
+      new Network().mediaSize(url, 'network'),
+      failsFor(MEDIA_READ_FAILED)
+    );
+  });
+
+  // Runs `read` with the 5 second wait between the two asks skipped. The
+  // test enables the mocked setTimeout first.
+  const settled = async (t: TestContext, read: () => Promise<unknown>) => {
+    let outcome: { value?: unknown; err?: unknown } | undefined;
+    const done = read().then(
+      (value) => (outcome = { value }),
+      (err) => (outcome = { err })
+    );
+    while (outcome === undefined) {
+      await new Promise((resolve) => setImmediate(resolve));
+      t.mock.timers.tick(5000);
+    }
+    await done;
+    return outcome;
+  };
+
+  it('asks once more when the store cannot answer, and takes that answer', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const calls: number[] = [];
+    globalThis.fetch = (async () => {
+      calls.push(calls.length);
+      return calls.length === 1
+        ? new Response(null, { status: 503, headers: { 'retry-after': '5' } })
+        : new Response(null, { headers: { 'content-length': '34' } });
+    }) as typeof fetch;
+    const { value } = await settled(t, () =>
+      new Network().mediaSize(url, 'network')
+    );
+    assert.equal(value, 34);
+    assert.equal(calls.length, 2);
+  });
+
+  it('says the read was slow, never that the file is gone, when it still cannot', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    for (const status of [429, 500, 502, 503]) {
+      const calls = head(status, { 'retry-after': '5' });
+      const { err } = await settled(t, () =>
+        new Network().mediaSize(url, 'network')
+      );
+      assert.ok(err instanceof BadBody, String(status));
+      assert.equal(err.message, MEDIA_READ_SLOW);
+      assert.equal(details(err).json, JSON.stringify({ status, path: url }));
+      assert.equal(calls.length, 2);
+    }
+  });
+
+  it('does the same when nothing answers', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let count = 0;
+    globalThis.fetch = (async () => {
+      count++;
+      throw new TypeError('fetch failed');
+    }) as typeof fetch;
+    const { err } = await settled(t, () =>
+      new Network().mediaSize(url, 'network')
+    );
+    assert.ok(err instanceof BadBody);
+    assert.equal(err.message, MEDIA_READ_SLOW);
+    assert.equal(count, 2);
+  });
+
+  it("keeps the caller's message for an answer without a size", async () => {
+    for (const headers of [{}, { 'content-length': '0' }]) {
+      head(200, headers);
+      await assert.rejects(
+        new Network().mediaSize(url, 'network'),
+        failsFor(MEDIA_SIZE_UNKNOWN)
+      );
+      await assert.rejects(
+        new Network().mediaSize(url, 'network', 'No video size'),
+        failsFor('No video size')
+      );
+    }
   });
 });

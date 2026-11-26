@@ -88,7 +88,7 @@ describe('YouTube altered or synthetic content', () => {
   const uploadStatus = async (settings: Record<string, unknown>) => {
     const youtube = new YoutubeProvider();
     let body: any;
-    (youtube as any).youtubeMediaSize = async () => 1000;
+    (youtube as any).mediaSize = async () => 1000;
     (youtube as any).fetch = async (_url: string, init: RequestInit) => {
       body = JSON.parse(String(init.body));
       return new Response('', {

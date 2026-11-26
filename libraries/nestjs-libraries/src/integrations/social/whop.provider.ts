@@ -11,11 +11,11 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
   MEDIA_READ_FAILED,
+  mediaHead,
   platformMessage,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import { WhopDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/whop.dto';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -252,25 +252,10 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
       // The size comes from a HEAD request; the PUT below streams the bytes
       // so the file is never buffered in memory (it used to stay resident
       // through the whole ~9 minute status poll).
-      const headResponse = await fetch(item.path, {
-        method: 'HEAD',
-        // identity encoding so content-length matches the bytes the GET streams
-        headers: { 'accept-encoding': 'identity' },
-        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-        dispatcher: getSsrfSafeDispatcher(),
-      });
-      const contentLength =
-        ownUploadSize(item.path) ||
-        Number(headResponse.headers.get('content-length') || 0);
-      if (!headResponse.ok || !contentLength) {
-        // A permanent condition - fail fast instead of letting Temporal retry
-        throw new BadBody(
-          this.identifier,
-          '{}',
-          '{}',
-          'Could not determine the media size for upload'
-        );
-      }
+      const { size: contentLength } = await mediaHead(
+        item.path,
+        this.identifier
+      );
       const fileName = item.path.split('/').pop() || 'file';
 
       const createFileResponse = await (
