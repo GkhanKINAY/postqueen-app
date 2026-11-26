@@ -717,6 +717,24 @@ describe('reading remote media', () => {
     }
   });
 
+  // A deadline there would cut a long upload: Bluesky, Skool and Whop stream
+  // this body straight into the network's request.
+  it('gives the whole-file read no deadline, unlike the size read', async () => {
+    const asked: { method?: string; signal?: AbortSignal | null }[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      asked.push({ method: init?.method, signal: init?.signal });
+      return new Response('twelve bytes', {
+        headers: { 'content-length': '12' },
+      });
+    }) as typeof fetch;
+    await mediaGet(url, 'network');
+    await mediaHead(url, 'network');
+    assert.equal(asked[0].method, 'GET');
+    assert.equal(asked[0].signal, undefined);
+    assert.equal(asked[1].method, 'HEAD');
+    assert.ok(asked[1].signal instanceof AbortSignal);
+  });
+
   it('reads a chunk again when the store could not answer', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const asked = store(503, 206);
