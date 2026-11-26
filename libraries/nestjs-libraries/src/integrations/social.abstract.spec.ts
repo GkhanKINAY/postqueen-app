@@ -586,6 +586,26 @@ describe('sizing remote media', () => {
     assert.equal(count, 2);
   });
 
+  it('gives a HEAD a deadline, and counts missing it as no answer', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const signals: (AbortSignal | undefined)[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      signals.push(init?.signal ?? undefined);
+      // what fetch rejects with when AbortSignal.timeout runs out
+      throw new DOMException(
+        'The operation was aborted due to timeout',
+        'TimeoutError'
+      );
+    }) as typeof fetch;
+    const { err } = await settled(t, () => mediaHead(url, 'network'));
+    assert.ok(err instanceof BadBody);
+    assert.equal(err.message, MEDIA_READ_SLOW);
+    assert.equal(signals.length, 2);
+    // a fresh deadline for each ask
+    assert.ok(signals.every((signal) => signal instanceof AbortSignal));
+    assert.notEqual(signals[0], signals[1]);
+  });
+
   it("keeps the caller's message for an answer without a size", async () => {
     for (const headers of [{}, { 'content-length': '0' }]) {
       head(200, headers);

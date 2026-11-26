@@ -300,6 +300,9 @@ export async function mediaHead(
       method: 'HEAD',
       headers: { 'accept-encoding': 'identity' },
       dispatcher: getSsrfSafeDispatcher(),
+      // a route that never answers counts as no answer, rather than holding
+      // the activity until undici gives up on its own after five minutes
+      signal: AbortSignal.timeout(MEDIA_READ_TIMEOUT),
     } as any);
   } catch (err) {
     // no answer at all, `head` stays undefined
