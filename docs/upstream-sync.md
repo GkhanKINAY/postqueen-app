@@ -614,9 +614,6 @@ open here, and is now closed:
 
 Left for later:
 
-- The MCP channel list, the MCP schedule tool and autopost still read the
-  stored `inBetweenSteps` flag, as upstream's do. A post they make to an
-  unfinished channel fails before it is charged.
 - Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
   until a one-off void pass. That pass also takes the unpaid invoices other
   than renewals (an upgrade charged at once, say) of subscriptions Stripe
