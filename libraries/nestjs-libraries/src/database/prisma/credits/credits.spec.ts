@@ -417,6 +417,11 @@ describe('The right of withdrawal', () => {
 
 describe('Model tokens', () => {
   it('are priced before v2 at the provider cost times 25, cached input at the full rate', () => {
+    assert.deepEqual(LLM_CREDIT_RATES.legacy['gpt-6.2-sol'], {
+      input: 0.0625,
+      cachedInput: 0.05,
+      output: 0.25,
+    });
     assert.deepEqual(LLM_CREDIT_RATES.legacy['gpt-5.2'], {
       input: 0.044,
       cachedInput: 0.044,
@@ -427,7 +432,8 @@ describe('Model tokens', () => {
       cachedInput: 0.05,
       output: 0.2,
     });
-    // $1.75 / $14 and $2 / $8 a million tokens, times 25
+    // $1.75 / $14 and $2 / $8 a million tokens, times 25; gpt-6.2-sol's
+    // uncached input at the $2.50 it bills for a cache write
     const perThousand = (dollarsPerMillion: number) =>
       (dollarsPerMillion / 1000) * 25;
     const close = (a: number, b: number) => Math.abs(a - b) < 0.0005;
@@ -435,15 +441,25 @@ describe('Model tokens', () => {
     assert.ok(close(perThousand(14), 0.35));
     assert.ok(close(perThousand(2), 0.05));
     assert.ok(close(perThousand(8), 0.2));
+    // gpt-6.2-sol: $2.50 written to its cache, $2 in and $10 out, times 25
+    assert.ok(close(perThousand(2.5), 0.0625));
+    assert.ok(close(perThousand(10), 0.25));
   });
 
   it('are priced on v2 at the provider cost times 50, cached input at its own rate', () => {
-    // $1.75 / $0.175 / $14 and $2 / $0.50 / $8 a million tokens, times 50
+    // $1.75 / $0.175 / $14 and $2 / $0.50 / $8 a million tokens, times 50;
+    // gpt-6.2-sol $2.50 written / $0.10 / $10
     const perThousand = (dollarsPerMillion: number) =>
       (dollarsPerMillion / 1000) * 50;
     const close = (a: number, b: number) => Math.abs(a - b) < 0.000001;
+    const sol = LLM_CREDIT_RATES.v2['gpt-6.2-sol'];
     const gpt52 = LLM_CREDIT_RATES.v2['gpt-5.2'];
     const gpt41 = LLM_CREDIT_RATES.v2['gpt-4.1'];
+    // gpt-6.2-sol: its uncached input at the $2.50 it bills for a cache
+    // write, never under the rule; $0.10 cached and $10 out
+    assert.ok(close(sol.input, perThousand(2.5)));
+    assert.ok(close(sol.cachedInput, perThousand(0.1)));
+    assert.ok(close(sol.output, perThousand(10)));
     assert.ok(close(gpt52.input, perThousand(1.75)));
     assert.ok(close(gpt52.cachedInput, perThousand(0.175)));
     assert.ok(close(gpt52.output, perThousand(14)));
@@ -463,6 +479,12 @@ describe('Model tokens', () => {
     assert.equal(llmCreditCost('legacy', 'gpt-5.2', 0, 0), 0);
     // v2: 8.75 + 14 hundredths
     assert.equal(llmCreditCost('v2', 'gpt-5.2', 1000, 200), 23);
+    // gpt-6.2-sol, 1000 in and 200 out: 6.25 + 5 hundredths, 12.5 + 10 on v2
+    assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1000, 200), 12);
+    assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1000, 200), 23);
+    // a million in and a million out: 62.5 + 250 credits, 125 + 500 on v2
+    assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1_000_000, 1_000_000), 31250);
+    assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1_000_000, 1_000_000), 62500);
   });
 
   it('charge the cached part of a prompt at its rate on v2, and in full before', () => {
@@ -472,6 +494,12 @@ describe('Model tokens', () => {
       llmCreditCost('legacy', 'gpt-5.2', 1000, 200, 800),
       llmCreditCost('legacy', 'gpt-5.2', 1000, 200)
     );
+    // gpt-6.2-sol: 200 at 12.5, 800 at 0.5 and 200 out at 50 a thousand:
+    // 2.5 + 0.4 + 10 = 12.9 on v2. Before v2 the cached part pays the full
+    // $2 input rate and only the written part more: 200 at 6.25, 800 at 5
+    // and 200 out at 25, 1.25 + 4 + 5 = 10.25
+    assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1000, 200, 800), 13);
+    assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1000, 200, 800), 11);
     // never more cached than the prompt
     assert.equal(
       llmCreditCost('v2', 'gpt-5.2', 1000, 0, 5000),
@@ -488,16 +516,33 @@ describe('Model tokens', () => {
       llmCreditRate('v2', 'gpt-5.2-2025-12-11'),
       LLM_CREDIT_RATES.v2['gpt-5.2']
     );
+    for (const cp of CREDIT_PRICINGS) {
+      assert.equal(llmCreditRate(cp, 'gpt-6.2-sol'), LLM_CREDIT_RATES[cp]['gpt-6.2-sol']);
+      // a dated snapshot of it, should the API answer with one
+      assert.equal(
+        llmCreditRate(cp, 'gpt-6.2-sol-2026-11-20'),
+        LLM_CREDIT_RATES[cp]['gpt-6.2-sol']
+      );
+    }
     assert.deepEqual(llmCreditRate('legacy', 'gpt-9'), {
-      input: 0.05,
+      input: 0.0625,
       cachedInput: 0.05,
       output: 0.35,
     });
     assert.deepEqual(llmCreditRate('v2', undefined), {
-      input: 0.1,
+      input: 0.125,
       cachedInput: 0.025,
       output: 0.7,
     });
+    // never nothing: a model without a row pays at least what every row does
+    for (const cp of CREDIT_PRICINGS) {
+      const unknown = llmCreditRate(cp, 'gpt-6.2-sol-mini');
+      for (const rate of Object.values(LLM_CREDIT_RATES[cp])) {
+        assert.ok(unknown.input >= rate.input);
+        assert.ok(unknown.cachedInput >= rate.cachedInput);
+        assert.ok(unknown.output >= rate.output);
+      }
+    }
     // not a prefix match: a mini model is not priced as its big sibling
     assert.deepEqual(
       llmCreditRate('legacy', 'gpt-4.1-mini'),
@@ -595,6 +640,34 @@ describe('Model tokens', () => {
     balance = -100000;
     await service().assertLlmTurn('org-1');
     await service().assertLlmTurn('org-1', true);
+  });
+});
+
+describe('Fixed-price model calls', () => {
+  // A fixed price cannot follow what a call reasons, so every such call asks
+  // for low effort. @langchain/openai only sends its own `reasoning` option
+  // to the models it knows by name, so the LangChain ones pass it as a kwarg.
+  it('run at low reasoning effort', () => {
+    const openai = read('../../../openai/openai.service.ts');
+    const parses = openai.split('openai.chat.completions.parse(').slice(1);
+    assert.equal(parses.length, 6);
+    for (const call of parses) {
+      const body = call.slice(0, call.indexOf('messages:'));
+      assert.match(body, /model: 'gpt-6\.2-sol',/);
+      assert.match(body, /reasoning_effort: 'low',/);
+    }
+    const chatModel = (text: string) =>
+      between(text, 'new ChatOpenAI({', '});');
+    assert.match(
+      chatModel(read('../../../agent/agent.graph.service.ts')),
+      /useResponsesApi: true,[\s\S]*modelKwargs: \{ reasoning: \{ effort: 'low' \} \},/
+    );
+    for (const rel of [
+      '../../../agent/agent.graph.insert.service.ts',
+      '../autopost/autopost.service.ts',
+    ]) {
+      assert.match(chatModel(read(rel)), /modelKwargs: \{ reasoning_effort: 'low' \},/, rel);
+    }
   });
 });
 

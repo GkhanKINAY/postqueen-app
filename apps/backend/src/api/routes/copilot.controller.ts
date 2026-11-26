@@ -38,6 +38,26 @@ import { AuthorizationActions, Sections } from '@gitroom/backend/services/auth/p
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
 import { CopilotCreditsService } from '@gitroom/nestjs-libraries/chat/copilot.credits.service';
 
+// An agent of the record the runtime takes (its `agents` may also be a
+// factory or a promise of that record).
+type RuntimeAgent = Awaited<
+  Exclude<
+    NonNullable<ConstructorParameters<typeof CopilotRuntime>[0]>['agents'],
+    ((...args: never[]) => unknown) | undefined
+  >
+>[string];
+
+// `@copilotkit/runtime/v2` ships no root type entry the backend's
+// `moduleResolution: node` can see (see mastra.thread.runner.ts), so the
+// runtime's own BuiltInAgent comes in through `require`.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { BuiltInAgent } = require('@copilotkit/runtime/v2') as {
+  BuiltInAgent: new (config: {
+    model: ReturnType<OpenAIAdapter['getLanguageModel']>;
+    providerOptions?: Record<string, Record<string, string>>;
+  }) => RuntimeAgent;
+};
+
 export type ChannelsContext = {
   organization: string;
   ui: string;
@@ -142,17 +162,28 @@ export class CopilotController {
 
     await this._copilotCreditsService.assertRun(organization.id, req?.body);
 
+    // Its own client, so every call is charged by the tokens it used.
+    const serviceAdapter = new OpenAIAdapter({
+      model: 'gpt-6.2-sol',
+      openai: this._openaiService.meteredClient(
+        organization.id,
+        'copilot_chat'
+      ),
+    });
     const copilotRuntimeHandler = copilotRuntimeNodeHttpEndpoint({
       endpoint: '/copilot/chat',
-      runtime: new CopilotRuntime(),
-      // Its own client, so every call is charged by the tokens it used.
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-        openai: this._openaiService.meteredClient(
-          organization.id,
-          'copilot_chat'
-        ),
+      // The default agent the runtime would build from the adapter, built
+      // here to ask for low reasoning effort: gpt-6.2-sol reasons by default,
+      // which gpt-4.1 never did.
+      runtime: new CopilotRuntime({
+        agents: {
+          default: new BuiltInAgent({
+            model: serviceAdapter.getLanguageModel(),
+            providerOptions: { openai: { reasoningEffort: 'low' } },
+          }),
+        },
       }),
+      serviceAdapter,
       cors: this.runtimeCors(),
     });
 
@@ -260,7 +291,7 @@ export class CopilotController {
       runtime,
       // properties: req.body.variables.properties,
       serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
+        model: 'gpt-6.2-sol',
       }),
       cors: this.runtimeCors(),
     });

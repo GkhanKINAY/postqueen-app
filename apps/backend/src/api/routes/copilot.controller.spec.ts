@@ -176,4 +176,16 @@ describe('Copilot and credits', () => {
       /openai: this\._openaiService\.meteredClient\(\s*organization\.id,\s*'copilot_chat'\s*\)/
     );
   });
+
+  it('runs /copilot/chat on the default agent the adapter makes, at low reasoning effort', () => {
+    const chat = controller.slice(
+      controller.indexOf("@Post('/chat')"),
+      controller.indexOf("@Post('/agent')")
+    );
+    assert.match(
+      chat,
+      /default: new BuiltInAgent\(\{\s*model: serviceAdapter\.getLanguageModel\(\),\s*providerOptions: \{ openai: \{ reasoningEffort: 'low' \} \},\s*\}\)/
+    );
+    assert.match(chat, /\n\s*serviceAdapter,\n/);
+  });
 });

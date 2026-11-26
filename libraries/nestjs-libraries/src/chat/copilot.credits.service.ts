@@ -126,6 +126,15 @@ export class CopilotCreditsService {
       // tools, which a model retrying a failing draft never does. A normal
       // turn is three or four steps; image and analytics flows a few more.
       maxSteps: 12,
+      // gpt-6.2-sol reasons by default, where gpt-5.2 before it did not.
+      // Low is the lowest effort we ask for. At low effort a turn of up to twelve steps stays
+      // about as quick as it was, and its reasoning, charged as output,
+      // stays small. No summary: given an effort, @ai-sdk/openai asks for a
+      // detailed reasoning summary unless told not to, and the Copilot
+      // never asked for one before.
+      providerOptions: {
+        openai: { reasoningEffort: 'low', reasoningSummary: null },
+      },
       // Checked before every further step: a run that took the balance past
       // the floor stops there, however it started. Runs started together,
       // or a client that sends every run as the rest of a turn, each go one

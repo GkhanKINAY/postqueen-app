@@ -29,8 +29,13 @@ const toolNode = new ToolNode(tools);
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'gpt-4.1',
-  temperature: 0.7,
+  model: 'gpt-6.2-sol',
+  // gpt-6 models only call tools (the research step) through the Responses API
+  useResponsesApi: true,
+  // A fixed price pays for the run (`generator`), so its reasoning is kept
+  // low. Sent as a model kwarg: @langchain/openai only sends its own
+  // `reasoning` option to the o-series and gpt-5 models it knows by name.
+  modelKwargs: { reasoning: { effort: 'low' } },
 });
 
 interface WorkflowChannelsState {
@@ -48,7 +53,7 @@ interface WorkflowChannelsState {
   tone: 'personal' | 'company';
   content?: {
     content: string;
-    website?: string;
+    website?: string | null;
     prompt?: string;
     image?: string;
   }[];
@@ -56,15 +61,17 @@ interface WorkflowChannelsState {
   popularPosts?: { content: string; hook: string }[];
 }
 
-const category = z.object({
+// Sent as strict structured outputs, which refuse a property left out of
+// `required`: a field the model may leave empty is nullable, never optional.
+export const category = z.object({
   category: z.string().describe('The category for the post'),
 });
 
-const topic = z.object({
+export const topic = z.object({
   topic: z.string().describe('The topic for the post'),
 });
 
-const hook = z.object({
+export const hook = z.object({
   hook: z
     .string()
     .describe(
@@ -72,7 +79,7 @@ const hook = z.object({
     ),
 });
 
-const contentZod = (
+export const contentZod = (
   isPicture: boolean,
   format: 'one_short' | 'one_long' | 'thread_short' | 'thread_long'
 ) => {
@@ -81,7 +88,6 @@ const contentZod = (
     website: z
       .string()
       .nullable()
-      .optional()
       .describe(
         "Website for the new post if exists, If one of the post present a brand, website link must be to the root domain of the brand or don't include it, website url should contain the brand name"
       ),

@@ -10,8 +10,12 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'gpt-4o-2024-08-06',
-  temperature: 0,
+  model: 'gpt-6.2-sol',
+  // Nothing meters these calls (an internal route behind AGENT_API_KEY), so
+  // their reasoning is kept low. Sent as a model kwarg: @langchain/openai
+  // only sends its own `reasoning` option to the o-series and gpt-5 models it
+  // knows by name.
+  modelKwargs: { reasoning_effort: 'low' },
 });
 
 interface WorkflowChannelsState {
@@ -22,15 +26,16 @@ interface WorkflowChannelsState {
   content?: string;
 }
 
-const category = z.object({
+// Sent as strict structured outputs (see agent.graph.service.ts).
+export const category = z.object({
   category: z.string().describe('The category for the post'),
 });
 
-const topic = z.object({
+export const topic = z.object({
   topic: z.string().describe('The topic of the post'),
 });
 
-const hook = z.object({
+export const hook = z.object({
   hook: z.string().describe('The hook of the post'),
 });
 

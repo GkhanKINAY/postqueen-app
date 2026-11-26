@@ -717,20 +717,35 @@ export const IMAGE_SLIDES_CREDIT_COST: Record<CreditPricing, number> = {
 
 /**
  * What a model's tokens cost, in credits per thousand: the provider's price
- * times 25 in `legacy`, times 50 in `v2`. gpt-5.2 is $1.75 in, $0.175 cached
- * and $14 out a million tokens, gpt-4.1 $2, $0.50 and $8. `legacy` charges
- * the cached part of the prompt at the full input rate, as it always did;
- * `v2` charges it at the cached rate OpenAI bills. Output includes reasoning.
+ * times 25 in `legacy`, times 50 in `v2`. gpt-6.2-sol is $2 in, $0.10 cached
+ * and $10 out a million tokens, gpt-5.2 $1.75, $0.175 and $14, gpt-4.1 $2,
+ * $0.50 and $8. `legacy` charges the cached part of the prompt at the full
+ * input rate, as it always did; `v2` charges it at the cached rate OpenAI
+ * bills. Output includes reasoning.
+ *
+ * gpt-6.2-sol also writes a prompt of 1,024 tokens or more to its cache on
+ * its own, and bills the part it writes at $2.50 a million rather than $2.
+ * The usage read here does not count that part apart, so its uncached input
+ * is priced at the write rate: a prompt too short to be cached pays a
+ * quarter over the rule on its input, never under it. Its cached input on
+ * `legacy` stays at the full input rate of $2, the written part being the
+ * only one billed above it. Over 272,000 input tokens its prices rise to $4
+ * in, $0.20 cached, $5 written and $15 out; no prompt here comes near that.
+ *
+ * gpt-5.2 and gpt-4.1 stay: a call made by the version before is still
+ * charged at its own price, and an unknown model pays the highest of all.
  */
 export const LLM_CREDIT_RATES: Record<
   CreditPricing,
   Record<string, { input: number; cachedInput: number; output: number }>
 > = {
   legacy: {
+    'gpt-6.2-sol': { input: 0.0625, cachedInput: 0.05, output: 0.25 },
     'gpt-5.2': { input: 0.044, cachedInput: 0.044, output: 0.35 },
     'gpt-4.1': { input: 0.05, cachedInput: 0.05, output: 0.2 },
   },
   v2: {
+    'gpt-6.2-sol': { input: 0.125, cachedInput: 0.005, output: 0.5 },
     'gpt-5.2': { input: 0.0875, cachedInput: 0.00875, output: 0.7 },
     'gpt-4.1': { input: 0.1, cachedInput: 0.025, output: 0.4 },
   },
@@ -803,17 +818,26 @@ export const LLM_CONTINUATION_FLOOR = -500;
  * What the older AI features take per call, in hundredths, because they
  * cannot report their tokens. Estimated from the provider's cost, times 25 in
  * `legacy` and about 50 in `v2`:
- * - `generator`: POST /posts/generator, about five gpt-4.1 calls over a web
- *   search's results plus the Tavily search itself, about $0.05.
+ * - `generator`: POST /posts/generator, about five gpt-6.2-sol calls over a
+ *   web search's results plus the Tavily search itself, about $0.05.
  * - `generatorPicture`: each picture it makes, priced as a medium square AI
  *   image (`imageCreditCost`).
- * - `autopostText`: one gpt-4.1 call on a feed item (read up to 8,000
+ * - `autopostText`: one gpt-6.2-sol call on a feed item (read up to 8,000
  *   characters), about $0.01.
  * - `autopostPicture`: a medium square AI image (`imageCreditCost`), plus
- *   10 for the gpt-4.1 call that writes its prompt from the feed item.
- * - `separatePosts`: one gpt-4.1 call on the post (up to 20,000 characters),
- *   a few more when a part has to be shortened, about $0.01 for a usual
- *   post and several times that at the limit.
+ *   10 for the gpt-6.2-sol call that writes its prompt from the feed item.
+ * - `separatePosts`: one gpt-6.2-sol call on the post (up to 20,000
+ *   characters), a few more when a part has to be shortened, about $0.01 for
+ *   a usual post and several times that at the limit.
+ *
+ * The estimates were made on gpt-4.1. gpt-6.2-sol bills the same input, or a
+ * quarter more for a prompt it writes to its cache, a quarter more output,
+ * and its reasoning as output on top (see `LLM_CREDIT_RATES`). Every call
+ * these prices pay for runs at low reasoning effort to keep that bounded,
+ * and so do the model calls inside the other fixed prices: an image's
+ * prompt, Image Text Slides, a HeyGen voice script and clip picking. The
+ * metered Copilot runs at low effort too, so a turn stays about as quick as
+ * it was on gpt-5.2; it pays for its reasoning by the token.
  */
 export const AI_FIXED_CREDIT_COSTS_PROPOSAL: Record<
   CreditPricing,

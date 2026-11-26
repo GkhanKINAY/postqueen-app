@@ -10,15 +10,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
 });
 
-const PicturePrompt = z.object({
+// Sent as strict structured outputs (zodResponseFormat), which refuse a
+// property left out of `required` and a length bound on a string
+// (`maxLength`): a length is checked in code.
+export const PicturePrompt = z.object({
   prompt: z.string(),
 });
 
-const VoicePrompt = z.object({
+export const VoicePrompt = z.object({
   voice: z.string(),
 });
 
-const ClipsPrompt = z.object({
+export const ClipsPrompt = z.object({
   clips: z.array(
     z.object({
       from: z.number().describe('Number of the first line of the clip'),
@@ -29,6 +32,25 @@ const ClipsPrompt = z.object({
         .describe('Social media post to publish the clip with, no hashtags'),
     })
   ),
+});
+
+export const SeparatePostsPrompt = z.object({
+  posts: z.array(z.string()),
+});
+
+export const SeparatePostPrompt = z.object({
+  post: z.string(),
+});
+
+export const SlidesPrompt = z.object({
+  slides: z
+    .array(
+      z.object({
+        imagePrompt: z.string(),
+        voiceText: z.string(),
+      })
+    )
+    .describe('an array of slides'),
 });
 
 /** The three sizes gpt-image renders: square feeds, portrait stories, landscape links. */
@@ -219,7 +241,11 @@ export class OpenaiService {
     const { clips } = (
       await openai.chat.completions.parse(
         {
-          model: 'gpt-4.1',
+          model: 'gpt-6.2-sol',
+          // a fixed price pays for every call in this service (clips, an
+          // image, a video, a thread split), so their reasoning is low;
+          // generatePosts and extractWebsiteText have no caller
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -295,7 +321,8 @@ Clips must not overlap. Write the title and the post in this language, whatever 
     return (
       (
         await openai.chat.completions.parse({
-          model: 'gpt-4.1',
+          model: 'gpt-6.2-sol',
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -316,7 +343,8 @@ Clips must not overlap. Write the title and the post in this language, whatever 
     return (
       (
         await openai.chat.completions.parse({
-          model: 'gpt-4.1',
+          model: 'gpt-6.2-sol',
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -334,41 +362,32 @@ Clips must not overlap. Write the title and the post in this language, whatever 
   }
 
   async generatePosts(content: string) {
+    // gpt-6 models do not accept the `n` parameter, so each of the 5
+    // variations of a prompt is its own request
     const posts = (
-      await Promise.all([
-        openai.chat.completions.create({
-          messages: [
-            {
-              role: 'assistant',
-              content:
-                'Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element',
-            },
-            {
-              role: 'user',
-              content: content!,
-            },
-          ],
-          n: 5,
-          temperature: 1,
-          model: 'gpt-4.1',
-        }),
-        openai.chat.completions.create({
-          messages: [
-            {
-              role: 'assistant',
-              content:
-                'Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis',
-            },
-            {
-              role: 'user',
-              content: content!,
-            },
-          ],
-          n: 5,
-          temperature: 1,
-          model: 'gpt-4.1',
-        }),
-      ])
+      await Promise.all(
+        [
+          'Generate a Twitter post from the content without emojis in the following JSON format: { "post": string } put it in an array with one element',
+          'Generate a thread for social media in the following JSON format: Array<{ "post": string }> without emojis',
+        ].flatMap((prompt) =>
+          [...new Array(5)].map(() =>
+            openai.chat.completions.create({
+              messages: [
+                {
+                  role: 'assistant',
+                  content: prompt,
+                },
+                {
+                  role: 'user',
+                  content: content!,
+                },
+              ],
+              temperature: 1,
+              model: 'gpt-6.2-sol',
+            })
+          )
+        )
+      )
     ).flatMap((p) => p.choices);
 
     return shuffle(
@@ -404,7 +423,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
           content,
         },
       ],
-      model: 'gpt-4.1',
+      model: 'gpt-6.2-sol',
     });
 
     const { content: articleContent } = websiteContent.choices[0].message;
@@ -413,36 +432,41 @@ Clips must not overlap. Write the title and the post in this language, whatever 
   }
 
   async separatePosts(content: string, len: number) {
-    const SeparatePostsPrompt = z.object({
-      posts: z.array(z.string()),
-    });
+    // At low effort gpt-6.2-sol now and then answers an empty list instead of
+    // a thread, most often when the parts cannot all reach a minimum length,
+    // so the prompt asks for parts as full as the context allows rather than
+    // a minimum it cannot always meet, and an empty answer is asked once
+    // more. A second empty answer throws, so the credits go back.
+    let posts: string[] = [];
+    for (let attempt = 0; attempt < 2 && !posts.length; attempt++) {
+      posts =
+        (
+          await openai.chat.completions.parse({
+            model: 'gpt-6.2-sol',
+            // at the default effort the model spends around 40 seconds checking
+            // the lengths, low keeps them right in about a third of the time
+            reasoning_effort: 'low',
+            messages: [
+              {
+                role: 'system',
+                content: `You are an assistant that take a social media post and break it to a thread, each post must be maximum ${len} characters and as close to ${len} characters as the context allows, keeping the exact wording and break lines, however make sure you split posts based on context. Always return at least one post`,
+              },
+              {
+                role: 'user',
+                content: content,
+              },
+            ],
+            response_format: zodResponseFormat(
+              SeparatePostsPrompt,
+              'separatePosts'
+            ),
+          })
+        ).choices[0].message.parsed?.posts || [];
+    }
 
-    const SeparatePostPrompt = z.object({
-      post: z.string().max(len),
-    });
-
-    const posts =
-      (
-        await openai.chat.completions.parse({
-          model: 'gpt-4.1',
-          messages: [
-            {
-              role: 'system',
-              content: `You are an assistant that take a social media post and break it to a thread, each post must be minimum ${
-                len - 10
-              } and maximum ${len} characters, keeping the exact wording and break lines, however make sure you split posts based on context`,
-            },
-            {
-              role: 'user',
-              content: content,
-            },
-          ],
-          response_format: zodResponseFormat(
-            SeparatePostsPrompt,
-            'separatePosts'
-          ),
-        })
-      ).choices[0].message.parsed?.posts || [];
+    if (!posts.length) {
+      throw new Error('The post could not be split into a thread');
+    }
 
     return {
       posts: await Promise.all(
@@ -454,10 +478,11 @@ Clips must not overlap. Write the title and the post in this language, whatever 
           let retries = 4;
           while (retries) {
             try {
-              return (
+              const shrunk =
                 (
                   await openai.chat.completions.parse({
-                    model: 'gpt-4.1',
+                    model: 'gpt-6.2-sol',
+                    reasoning_effort: 'low',
                     messages: [
                       {
                         role: 'system',
@@ -473,8 +498,14 @@ Clips must not overlap. Write the title and the post in this language, whatever 
                       'separatePost'
                     ),
                   })
-                ).choices[0].message.parsed?.post || ''
-              );
+                ).choices[0].message.parsed?.post || '';
+              // the length the schema's .max() used to check, which strict
+              // structured outputs refuse: a part still too long is asked
+              // again
+              if (shrunk.length > len) {
+                throw new Error('Still too long');
+              }
+              return shrunk;
             } catch (e) {
               retries--;
             }
@@ -493,7 +524,8 @@ Clips must not overlap. Write the title and the post in this language, whatever 
         const parse =
           (
             await openai.chat.completions.parse({
-              model: 'gpt-4.1',
+              model: 'gpt-6.2-sol',
+              reasoning_effort: 'low',
               messages: [
                 {
                   role: 'system',
@@ -504,19 +536,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
                   content: text,
                 },
               ],
-              response_format: zodResponseFormat(
-                z.object({
-                  slides: z
-                    .array(
-                      z.object({
-                        imagePrompt: z.string(),
-                        voiceText: z.string(),
-                      })
-                    )
-                    .describe('an array of slides'),
-                }),
-                'slides'
-              ),
+              response_format: zodResponseFormat(SlidesPrompt, 'slides'),
             })
           ).choices[0].message.parsed?.slides || [];
 

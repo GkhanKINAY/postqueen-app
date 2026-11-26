@@ -53,11 +53,16 @@ interface WorkflowChannelsState {
 
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
-  model: 'gpt-4.1',
-  temperature: 0.7,
+  model: 'gpt-6.2-sol',
+  // A fixed price pays for these calls (`autopostText`, `autopostPicture`),
+  // so their reasoning is kept low. Sent as a model kwarg: @langchain/openai
+  // only sends its own `reasoning` option to the o-series and gpt-5 models it
+  // knows by name.
+  modelKwargs: { reasoning_effort: 'low' },
 });
 
-const generateContent = z.object({
+// Sent as strict structured outputs (see agent.graph.service.ts).
+export const generateContent = z.object({
   socialMediaPostContent: z
     .string()
     .describe('Content for social media posts max 120 chars'),
@@ -68,7 +73,7 @@ const generateContent = z.object({
 // and the fixed price of the call, within bounds.
 const MAX_SOURCE_TEXT = 8000;
 
-const dallePrompt = z.object({
+export const dallePrompt = z.object({
   generatedTextToBeSentToDallE: z
     .string()
     .describe('Generated prompt from description to be sent to DallE'),

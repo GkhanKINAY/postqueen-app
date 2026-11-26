@@ -31,11 +31,21 @@ if (canLoadService) {
 }
 
 let AgentGraphService: any;
+let generatorSchemas: any;
+let insertSchemas: any;
+let autopostSchemas: any;
+let openaiSchemas: any;
 before(async () => {
   // The service builds its storage when it is made; nothing is stored here.
   process.env.UPLOAD_DIRECTORY ||= tmpdir();
   if (canLoadService) {
-    ({ AgentGraphService } = await import('./agent.graph.service.ts'));
+    generatorSchemas = await import('./agent.graph.service.ts');
+    ({ AgentGraphService } = generatorSchemas);
+    insertSchemas = await import('./agent.graph.insert.service.ts');
+    autopostSchemas = await import(
+      '../database/prisma/autopost/autopost.service.ts'
+    );
+    openaiSchemas = await import('../openai/openai.service.ts');
   }
 });
 
@@ -220,5 +230,76 @@ describe('The AI post generator and credits', { skip: !canLoadService }, () => {
     };
     assert.deepEqual(await service().generatePictures(state), {});
     assert.deepEqual(calls, []);
+  });
+});
+
+// Strict structured outputs refuse a schema with a property left out of
+// `required` or a length bound on a string, so a field the model may leave
+// empty is nullable and a length is checked in code. Converted the way each
+// client does it on the wire: LangChain's ChatOpenAI for the generator, the
+// insert graph and autopost, the OpenAI SDK's zodResponseFormat for
+// OpenaiService.
+describe('Structured outputs sent to the model', { skip: !canLoadService }, () => {
+  const assertStrict = (schema: any, path: string) => {
+    if (!schema || typeof schema !== 'object') {
+      return;
+    }
+    assert.ok(!('maxLength' in schema) && !('minLength' in schema), path);
+    if (schema.properties) {
+      assert.deepEqual(
+        [...(schema.required || [])].sort(),
+        Object.keys(schema.properties).sort(),
+        path
+      );
+      assert.equal(schema.additionalProperties, false, path);
+    }
+    for (const [key, value] of Object.entries(schema)) {
+      assertStrict(value, `${path}.${key}`);
+    }
+  };
+
+  it('list every property as required, and bound no string length', async () => {
+    const { ChatOpenAI } = await import('@langchain/openai');
+    const { zodResponseFormat } = await import('openai/helpers/zod');
+    const langchain: any = new ChatOpenAI({
+      model: 'gpt-6.2-sol',
+      apiKey: 'sk-spec',
+    });
+    const viaLangChain = (name: string, schema: any) => {
+      const format = langchain._getResponseFormat({
+        type: 'json_schema',
+        json_schema: { name, schema },
+      });
+      assert.equal(format.json_schema.strict, true, name);
+      assertStrict(format.json_schema.schema, name);
+    };
+    const viaOpenAI = (name: string, schema: any) => {
+      const format = zodResponseFormat(schema, name);
+      assert.equal(format.json_schema.strict, true, name);
+      assertStrict(format.json_schema.schema, name);
+    };
+
+    viaLangChain('category', generatorSchemas.category);
+    viaLangChain('topic', generatorSchemas.topic);
+    viaLangChain('hook', generatorSchemas.hook);
+    for (const format of ['one_short', 'one_long', 'thread_short', 'thread_long']) {
+      for (const isPicture of [true, false]) {
+        viaLangChain(
+          `content ${format} ${isPicture}`,
+          generatorSchemas.contentZod(isPicture, format)
+        );
+      }
+    }
+    viaLangChain('insert category', insertSchemas.category);
+    viaLangChain('insert topic', insertSchemas.topic);
+    viaLangChain('insert hook', insertSchemas.hook);
+    viaLangChain('autopost content', autopostSchemas.generateContent);
+    viaLangChain('autopost picture', autopostSchemas.dallePrompt);
+    viaOpenAI('clipsPrompt', openaiSchemas.ClipsPrompt);
+    viaOpenAI('picturePrompt', openaiSchemas.PicturePrompt);
+    viaOpenAI('voice', openaiSchemas.VoicePrompt);
+    viaOpenAI('separatePosts', openaiSchemas.SeparatePostsPrompt);
+    viaOpenAI('separatePost', openaiSchemas.SeparatePostPrompt);
+    viaOpenAI('slides', openaiSchemas.SlidesPrompt);
   });
 });
