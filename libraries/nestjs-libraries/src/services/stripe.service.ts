@@ -1651,9 +1651,15 @@ export class StripeService extends PaymentProviderAbstract {
    * the subscription a late payment restores (`resubscribeOnLatePayment`)
    * renews on it.
    *
+   * Only a renewal stays payable: paying it is what brings the plan back.
+   * Any other unpaid invoice of the ended subscription (an upgrade charged
+   * at once, a first invoice) would take the money and buy nothing, so it
+   * is voided here, as `voidUnpaidInvoices` voids those of a cancel someone
+   * asked for.
+   *
    * Never throws, and a failure on one invoice does not stop the others. A
-   * payment already flagged is skipped, so a redelivered event changes
-   * nothing.
+   * payment already flagged, and an invoice already void, is skipped, so a
+   * redelivered event changes nothing.
    */
   private async keepCardOfUnpaidInvoices(subscriptionId: string) {
     try {
@@ -1663,6 +1669,18 @@ export class StripeService extends PaymentProviderAbstract {
       });
       for (const invoice of invoices.data) {
         if (invoice.status !== 'open' && invoice.status !== 'uncollectible') {
+          continue;
+        }
+        if (invoice.billing_reason !== 'subscription_cycle') {
+          try {
+            await stripe.invoices.voidInvoice(invoice.id!);
+          } catch (err) {
+            Logger.warn(
+              `[stripe] unpaid invoice ${invoice.id} of ended subscription ${subscriptionId}, not a renewal, not voided: ${
+                (err as Error)?.message || err
+              }`
+            );
+          }
           continue;
         }
         for (const paymentIntent of await this.getInvoicePaymentIntents(
@@ -1709,7 +1727,8 @@ export class StripeService extends PaymentProviderAbstract {
    * someone asked for (the customer, support, an account deletion, a switch
    * to the founding plan) and when a new subscription's first payment
    * arrives. Not when Stripe itself ends a subscription whose retries ran
-   * out: that invoice stays payable (see `keepCardOfUnpaidInvoices`).
+   * out: its renewal invoice stays payable (see `keepCardOfUnpaidInvoices`,
+   * which voids the others).
    *
    * Never throws, and a failure on one invoice does not stop the others.
    */
@@ -3570,8 +3589,9 @@ export class StripeService extends PaymentProviderAbstract {
    * stamp). Every other case after the payment is skipped and logged as an
    * error with a reason, including a subscription someone cancelled (its
    * unpaid invoices are voided, see `voidUnpaidInvoices`) or a dispute
-   * ended, and the checkout's own rules: one subscription per organization,
-   * one per owner's email, and none over a plan held some other way.
+   * ended, an invoice that is not a renewal, and the checkout's own rules:
+   * one subscription per organization, one per owner's email, and none over
+   * a plan held some other way.
    *
    * A failure to read, or a create Stripe could not complete, throws, so the
    * webhook answers 500 and Stripe retries it: a swallowed error here is a
@@ -3583,11 +3603,8 @@ export class StripeService extends PaymentProviderAbstract {
     invoice: Stripe.Invoice,
     paidFor: Stripe.Subscription
   ) {
-    // Only a renewal bills one full period at the plan's price; an upgrade's
-    // proration or a first invoice does not.
     const paidAt = invoice.status_transitions?.paid_at;
     if (
-      invoice.billing_reason !== 'subscription_cycle' ||
       !(invoice.amount_paid > 0) ||
       invoice.amount_remaining > 0 ||
       !paidAt ||
@@ -3625,6 +3642,14 @@ export class StripeService extends PaymentProviderAbstract {
     const why = subscription.cancellation_details?.reason;
     if (why !== 'payment_failed') {
       return skipped(`it ended for ${why || 'an unknown reason'}`);
+    }
+
+    // Only a renewal bills one full period at the plan's price; an upgrade's
+    // proration or a first invoice does not, and restores nothing. Stripe's
+    // end of the subscription voids such an invoice (see
+    // `keepCardOfUnpaidInvoices`), so one paid late is one that escaped it.
+    if (invoice.billing_reason !== 'subscription_cycle') {
+      return skipped('the invoice is not a renewal');
     }
 
     const others = await stripe.subscriptions.list({

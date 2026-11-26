@@ -993,7 +993,10 @@ describe('the unpaid invoices of a cancelled subscription', () => {
       ],
       in_paid: [{ id: 'pi_paid', status: 'succeeded' }],
     };
-    subscriptionInvoices = invoices.filter((i) => i.id !== 'in_theirs');
+    // Renewals: the only unpaid invoices an ended subscription keeps.
+    subscriptionInvoices = invoices
+      .filter((i) => i.id !== 'in_theirs')
+      .map((i) => ({ ...i, billing_reason: 'subscription_cycle' }));
     fake(probe.invoices, {
       retrieve: async (id: string) => ({
         payments: {
@@ -1027,6 +1030,77 @@ describe('the unpaid invoices of a cancelled subscription', () => {
     assert.deepEqual(called('paymentIntents.update')[0][1], {
       setup_future_usage: 'off_session',
     });
+  });
+
+  it('are voided when Stripe ends the subscription, unless they are renewals', async (t) => {
+    const warned = t.mock.method(Logger, 'warn', () => undefined);
+    const renewal = (id: string, billing_reason: string, status?: Stripe.Invoice.Status) => ({
+      ...unpaid(id, 'sub_failed', status),
+      billing_reason,
+    }) as Partial<Stripe.Invoice>;
+    invoices = [
+      renewal('in_renewal', 'subscription_cycle'),
+      renewal('in_upgrade', 'subscription_update'),
+      renewal('in_first', 'subscription_create', 'uncollectible'),
+      renewal('in_refused', 'subscription_update'),
+      renewal('in_upgrade_paid', 'subscription_update', 'paid'),
+    ];
+    subscriptionInvoices = invoices;
+    const { retrieve, voidInvoice } = Object.getPrototypeOf(probe.invoices);
+    const { update } = Object.getPrototypeOf(probe.paymentIntents);
+    fake(probe.invoices, {
+      retrieve: async (id: string) => ({
+        payments: {
+          data:
+            id === 'in_renewal'
+              ? [
+                  {
+                    payment: {
+                      payment_intent: {
+                        id: 'pi_renewal',
+                        status: 'requires_payment_method',
+                      },
+                    },
+                  },
+                ]
+              : [],
+        },
+      }),
+      voidInvoice: record('invoices.voidInvoice', (id) => {
+        if (id === 'in_refused') {
+          throw new Error('Stripe is down');
+        }
+        const found = invoices.find((i) => i.id === id)!;
+        found.status = 'void';
+        return found;
+      }),
+    });
+    fake(probe.paymentIntents, {
+      update: record('paymentIntents.update', (id) => ({ id })),
+    });
+    try {
+      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+      // One refusal does not stop the next, and is reported.
+      assert.deepEqual(voided(), ['in_upgrade', 'in_first', 'in_refused']);
+      assert.match(
+        String(warned.mock.calls.at(-1)?.arguments[0]),
+        /in_refused of ended subscription sub_failed, not a renewal, not voided/,
+      );
+      // The renewal stays payable, on the card that pays it.
+      assert.deepEqual(
+        called('paymentIntents.update').map(([id]) => id),
+        ['pi_renewal'],
+      );
+      assert.equal(invoices[0].status, 'open');
+
+      // The event again: only what is still unpaid is tried.
+      calls = [];
+      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+      assert.deepEqual(voided(), ['in_refused']);
+    } finally {
+      fake(probe.invoices, { retrieve, voidInvoice });
+      fake(probe.paymentIntents, { update });
+    }
   });
 
   it('are voided by the first payment of a new subscription', async () => {
@@ -1350,17 +1424,47 @@ describe('an invoice of a cancelled subscription paid late', () => {
     assert.equal(ledger.length, 0);
   });
 
-  it('does nothing for a subscription still running, another service, an unpaid or a proration invoice', async () => {
+  it('does nothing for a subscription still running, another service, or an unpaid invoice', async (t) => {
+    const errors = t.mock.method(Logger, 'error', () => undefined);
     subs = [cancelled({ status: 'active' })];
     await paid();
+    await paid(invoice({ billing_reason: 'subscription_update' }));
     subs = [cancelled({ metadata: { service: 'redsim' } })];
     await paid();
     subs = [cancelled()];
     await paid(invoice({ amount_remaining: 100 }));
+    await paid(
+      invoice({ billing_reason: 'subscription_update', amount_paid: 0 }),
+    );
+
+    assert.equal(resubscribed().length, 0);
+    assert.equal(ledger.length, 0);
+    assert.equal(errors.mock.callCount(), 0);
+  });
+
+  it('reports a late payment of an invoice that is not a renewal, and buys nothing with it', async (t) => {
+    const errors = t.mock.method(Logger, 'error', () => undefined);
+    subs = [cancelled()];
+    // An upgrade charged at once, paid after Stripe ended the subscription.
     await paid(invoice({ billing_reason: 'subscription_update' }));
 
     assert.equal(resubscribed().length, 0);
     assert.equal(ledger.length, 0);
+    const said = String(errors.mock.calls.at(-1)?.arguments[0]);
+    assert.ok(
+      said.includes('not resubscribed (the invoice is not a renewal)') &&
+        said.includes('The payment was not refunded.'),
+      said,
+    );
+
+    // Paid while the subscription still ran, it bought what it billed.
+    await paid(
+      invoice({
+        billing_reason: 'subscription_update',
+        status_transitions: { paid_at: ENDED - DAY },
+      }),
+    );
+    assert.equal(errors.mock.callCount(), 1);
   });
 
   it('is skipped, and reported as an error with the reason, where a checkout would be refused', async (t) => {
