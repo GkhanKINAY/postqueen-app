@@ -614,9 +614,6 @@ open here, and is now closed:
 
 Left for later:
 
-- The MCP channel list, the MCP schedule tool and autopost still read the
-  stored `inBetweenSteps` flag, as upstream's do. A post they make to an
-  unfinished channel fails before it is charged.
 - `updateSubscription` has no duplicate check, so an asynchronous checkout that
   settles after a late-payment re-subscribe can leave two live subscriptions.
   Older than this sync.
