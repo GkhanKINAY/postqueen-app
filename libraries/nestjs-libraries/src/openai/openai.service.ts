@@ -432,31 +432,41 @@ Clips must not overlap. Write the title and the post in this language, whatever 
   }
 
   async separatePosts(content: string, len: number) {
-    const posts =
-      (
-        await openai.chat.completions.parse({
-          model: 'gpt-6.2-sol',
-          // at the default effort the model spends around 40 seconds checking
-          // the lengths, low keeps them right in about a third of the time
-          reasoning_effort: 'low',
-          messages: [
-            {
-              role: 'system',
-              content: `You are an assistant that take a social media post and break it to a thread, each post must be minimum ${
-                len - 10
-              } and maximum ${len} characters, keeping the exact wording and break lines, however make sure you split posts based on context`,
-            },
-            {
-              role: 'user',
-              content: content,
-            },
-          ],
-          response_format: zodResponseFormat(
-            SeparatePostsPrompt,
-            'separatePosts'
-          ),
-        })
-      ).choices[0].message.parsed?.posts || [];
+    // At low effort gpt-6.2-sol now and then answers an empty list instead of
+    // a thread, most often when the parts cannot all reach a minimum length,
+    // so the prompt asks for parts as full as the context allows rather than
+    // a minimum it cannot always meet, and an empty answer is asked once
+    // more. A second empty answer throws, so the credits go back.
+    let posts: string[] = [];
+    for (let attempt = 0; attempt < 2 && !posts.length; attempt++) {
+      posts =
+        (
+          await openai.chat.completions.parse({
+            model: 'gpt-6.2-sol',
+            // at the default effort the model spends around 40 seconds checking
+            // the lengths, low keeps them right in about a third of the time
+            reasoning_effort: 'low',
+            messages: [
+              {
+                role: 'system',
+                content: `You are an assistant that take a social media post and break it to a thread, each post must be maximum ${len} characters and as close to ${len} characters as the context allows, keeping the exact wording and break lines, however make sure you split posts based on context. Always return at least one post`,
+              },
+              {
+                role: 'user',
+                content: content,
+              },
+            ],
+            response_format: zodResponseFormat(
+              SeparatePostsPrompt,
+              'separatePosts'
+            ),
+          })
+        ).choices[0].message.parsed?.posts || [];
+    }
+
+    if (!posts.length) {
+      throw new Error('The post could not be split into a thread');
+    }
 
     return {
       posts: await Promise.all(
