@@ -60,7 +60,8 @@ const model = new ChatOpenAI({
   modelKwargs: { reasoning_effort: 'low' },
 });
 
-const generateContent = z.object({
+// Sent as strict structured outputs (see agent.graph.service.ts).
+export const generateContent = z.object({
   socialMediaPostContent: z
     .string()
     .describe('Content for social media posts max 120 chars'),
@@ -71,7 +72,7 @@ const generateContent = z.object({
 // and the fixed price of the call, within bounds.
 const MAX_SOURCE_TEXT = 8000;
 
-const dallePrompt = z.object({
+export const dallePrompt = z.object({
   generatedTextToBeSentToDallE: z
     .string()
     .describe('Generated prompt from description to be sent to DallE'),

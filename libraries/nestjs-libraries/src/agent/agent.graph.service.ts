@@ -53,7 +53,7 @@ interface WorkflowChannelsState {
   tone: 'personal' | 'company';
   content?: {
     content: string;
-    website?: string;
+    website?: string | null;
     prompt?: string;
     image?: string;
   }[];
@@ -61,15 +61,17 @@ interface WorkflowChannelsState {
   popularPosts?: { content: string; hook: string }[];
 }
 
-const category = z.object({
+// Sent as strict structured outputs, which refuse a property left out of
+// `required`: a field the model may leave empty is nullable, never optional.
+export const category = z.object({
   category: z.string().describe('The category for the post'),
 });
 
-const topic = z.object({
+export const topic = z.object({
   topic: z.string().describe('The topic for the post'),
 });
 
-const hook = z.object({
+export const hook = z.object({
   hook: z
     .string()
     .describe(
@@ -77,7 +79,7 @@ const hook = z.object({
     ),
 });
 
-const contentZod = (
+export const contentZod = (
   isPicture: boolean,
   format: 'one_short' | 'one_long' | 'thread_short' | 'thread_long'
 ) => {
@@ -86,7 +88,6 @@ const contentZod = (
     website: z
       .string()
       .nullable()
-      .optional()
       .describe(
         "Website for the new post if exists, If one of the post present a brand, website link must be to the root domain of the brand or don't include it, website url should contain the brand name"
       ),

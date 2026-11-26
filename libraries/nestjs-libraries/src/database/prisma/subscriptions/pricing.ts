@@ -836,7 +836,8 @@ export const LLM_CONTINUATION_FLOOR = -500;
  * these prices pay for runs at low reasoning effort to keep that bounded,
  * and so do the model calls inside the other fixed prices: an image's
  * prompt, Image Text Slides, a HeyGen voice script and clip picking. The
- * metered Copilot keeps the model's default, since it pays for the tokens.
+ * metered Copilot runs at low effort too, so a turn stays about as quick as
+ * it was on gpt-5.2; it pays for its reasoning by the token.
  */
 export const AI_FIXED_CREDIT_COSTS_PROPOSAL: Record<
   CreditPricing,

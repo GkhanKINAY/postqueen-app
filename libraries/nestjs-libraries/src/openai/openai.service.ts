@@ -10,15 +10,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
 });
 
-const PicturePrompt = z.object({
+// Sent as strict structured outputs (zodResponseFormat), which refuse a
+// property left out of `required` and a length bound on a string
+// (`maxLength`): a length is checked in code.
+export const PicturePrompt = z.object({
   prompt: z.string(),
 });
 
-const VoicePrompt = z.object({
+export const VoicePrompt = z.object({
   voice: z.string(),
 });
 
-const ClipsPrompt = z.object({
+export const ClipsPrompt = z.object({
   clips: z.array(
     z.object({
       from: z.number().describe('Number of the first line of the clip'),
@@ -29,6 +32,25 @@ const ClipsPrompt = z.object({
         .describe('Social media post to publish the clip with, no hashtags'),
     })
   ),
+});
+
+export const SeparatePostsPrompt = z.object({
+  posts: z.array(z.string()),
+});
+
+export const SeparatePostPrompt = z.object({
+  post: z.string(),
+});
+
+export const SlidesPrompt = z.object({
+  slides: z
+    .array(
+      z.object({
+        imagePrompt: z.string(),
+        voiceText: z.string(),
+      })
+    )
+    .describe('an array of slides'),
 });
 
 /** The three sizes gpt-image renders: square feeds, portrait stories, landscape links. */
@@ -410,14 +432,6 @@ Clips must not overlap. Write the title and the post in this language, whatever 
   }
 
   async separatePosts(content: string, len: number) {
-    const SeparatePostsPrompt = z.object({
-      posts: z.array(z.string()),
-    });
-
-    const SeparatePostPrompt = z.object({
-      post: z.string().max(len),
-    });
-
     const posts =
       (
         await openai.chat.completions.parse({
@@ -454,7 +468,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
           let retries = 4;
           while (retries) {
             try {
-              return (
+              const shrunk =
                 (
                   await openai.chat.completions.parse({
                     model: 'gpt-6.2-sol',
@@ -474,8 +488,14 @@ Clips must not overlap. Write the title and the post in this language, whatever 
                       'separatePost'
                     ),
                   })
-                ).choices[0].message.parsed?.post || ''
-              );
+                ).choices[0].message.parsed?.post || '';
+              // the length the schema's .max() used to check, which strict
+              // structured outputs refuse: a part still too long is asked
+              // again
+              if (shrunk.length > len) {
+                throw new Error('Still too long');
+              }
+              return shrunk;
             } catch (e) {
               retries--;
             }
@@ -506,19 +526,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
                   content: text,
                 },
               ],
-              response_format: zodResponseFormat(
-                z.object({
-                  slides: z
-                    .array(
-                      z.object({
-                        imagePrompt: z.string(),
-                        voiceText: z.string(),
-                      })
-                    )
-                    .describe('an array of slides'),
-                }),
-                'slides'
-              ),
+              response_format: zodResponseFormat(SlidesPrompt, 'slides'),
             })
           ).choices[0].message.parsed?.slides || [];
 

@@ -640,7 +640,8 @@ Taken after the sync:
   shuts down `gpt-4.1-2025-04-14` and `gpt-4o-2024-08-06`, which the AI text
   calls used, on 2027-01-14. Every OpenAI text call now uses `gpt-6.2-sol`,
   the Copilot agent's `gpt-5.2` included, as upstream did; image models did
-  not change. Adapted: our two Copilot routes and the Mastra agent kept their
+  not change. Every call asks for low reasoning effort: the model reasons by
+  default, refuses `none`, and bills its reasoning as output. Adapted: our two Copilot routes and the Mastra agent kept their
   metering and only changed the model, `gpt-6.2-sol` got its credit rates
   (its uncached input priced at the rate it bills for writing a prompt to its
   cache, see `LLM_CREDIT_RATES`), and its TikTok Business scope deletion and

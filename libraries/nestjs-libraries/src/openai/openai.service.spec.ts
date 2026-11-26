@@ -376,14 +376,15 @@ describe('/copilot/chat', () => {
         return { id: 'spend', charged: true };
       },
     } as any);
-    // The same adapter the controller builds; the runtime's default agent
-    // runs on `getLanguageModel()`.
+    // The same adapter the controller builds; its default agent runs on
+    // `getLanguageModel()` with the provider options the controller gives it.
     const model: any = new OpenAIAdapter({
       model: 'gpt-6.2-sol',
       openai: service.meteredClient('org-1', 'copilot_chat'),
     }).getLanguageModel();
     const { stream } = await model.doStream({
       prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
+      providerOptions: { openai: { reasoningEffort: 'low' } },
     });
     const reader = stream.getReader();
     while (!(await reader.read()).done) {
@@ -391,6 +392,9 @@ describe('/copilot/chat', () => {
     }
     assert.match(sent[0].url, /\/responses$/);
     assert.equal(sent[0].body.model, 'gpt-6.2-sol');
+    // CopilotKit's own @ai-sdk/openai knows gpt-6.2-sol for a reasoning
+    // model, so the effort reaches the wire rather than being dropped
+    assert.deepEqual(sent[0].body.reasoning, { effort: 'low' });
     assert.deepEqual(charges, [
       [
         'org-1',

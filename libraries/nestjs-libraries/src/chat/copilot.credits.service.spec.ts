@@ -75,7 +75,8 @@ const fakeModel = (steps: any[][]) => {
     provider: 'openai.responses',
     modelId: 'gpt-5.2',
     supportedUrls: {},
-    async doGenerate() {
+    async doGenerate(options: any) {
+      modelOptions.push(options);
       const parts = steps[call++];
       const meta = parts.find((p) => p.type === 'response-metadata');
       const finish = parts.find((p) => p.type === 'finish');
@@ -95,7 +96,8 @@ const fakeModel = (steps: any[][]) => {
         warnings: [],
       };
     },
-    async doStream() {
+    async doStream(options: any) {
+      modelOptions.push(options);
       const parts = steps[call++];
       return {
         stream: new ReadableStream({
@@ -124,6 +126,7 @@ let calls: string[];
 let checks: string[];
 let balance: number;
 let failCharges: boolean;
+let modelOptions: any[];
 
 // The credits service with its ledger faked: a key is charged once, the way
 // the real one's unique (organizationId, idempotencyKey) makes it.
@@ -194,6 +197,7 @@ beforeEach(() => {
   checks = [];
   balance = 500;
   failCharges = false;
+  modelOptions = [];
 });
 
 describe('Copilot runs are charged by the tokens of each model call', () => {
@@ -298,6 +302,24 @@ describe('Copilot runs are charged by the tokens of each model call', () => {
       charges.map((c) => c.key),
       ['llm:resp_1', 'llm:resp_2']
     );
+  });
+
+  it('asks every model call for low reasoning effort and no summary, streamed or not', async () => {
+    await agentFor(turn()).generate('Schedule it', {
+      requestContext: appContext({ id: 'org-1' }),
+    });
+    const output = await agentFor(turn('resp_3', 'resp_4')).stream(
+      'Schedule it',
+      { requestContext: appContext({ id: 'org-1' }) }
+    );
+    await output.consumeStream();
+    assert.equal(modelOptions.length, 4);
+    for (const options of modelOptions) {
+      assert.deepEqual(options.providerOptions?.openai, {
+        reasoningEffort: 'low',
+        reasoningSummary: null,
+      });
+    }
   });
 
   it('passes on the part of each prompt the provider served from its cache', async () => {

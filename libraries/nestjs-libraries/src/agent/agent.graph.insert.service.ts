@@ -26,15 +26,16 @@ interface WorkflowChannelsState {
   content?: string;
 }
 
-const category = z.object({
+// Sent as strict structured outputs (see agent.graph.service.ts).
+export const category = z.object({
   category: z.string().describe('The category for the post'),
 });
 
-const topic = z.object({
+export const topic = z.object({
   topic: z.string().describe('The topic of the post'),
 });
 
-const hook = z.object({
+export const hook = z.object({
   hook: z.string().describe('The hook of the post'),
 });
 
