@@ -5,7 +5,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { google } from 'googleapis';
 import { YoutubeProvider } from './youtube.provider.ts';
-import { Disconnect, NotEnoughScopes } from '../social.abstract.ts';
+import { BadBody, Disconnect, NotEnoughScopes } from '../social.abstract.ts';
+import { ApplicationFailure } from '@temporalio/common';
 import {
   getYoutubeTagsLength,
   YoutubeSettingsDto,
@@ -567,5 +568,46 @@ describe('YouTube channel listing for the picker', () => {
       }),
       /quotaExceeded/
     );
+  });
+});
+
+// finalizePost reads the video back one ranged chunk at a time. A plain error
+// there makes the workflow wait, ask the upload session for its offset and
+// resume; a BadBody fails the post.
+describe('YouTube chunk reads', () => {
+  const read = async (status: number) => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(status === 206 ? 'chunk' : null, { status })) as any;
+    try {
+      return await (new YoutubeProvider() as any).youtubeChunkStream(
+        'https://cdn.test/clip.mp4',
+        0,
+        4
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+
+  it('resumes later when the media store could not answer', async () => {
+    for (const status of [429, 500, 503]) {
+      await assert.rejects(read(status), (err) => {
+        assert.ok(!(err instanceof ApplicationFailure), String(status));
+        assert.match((err as Error).message, new RegExp(`answered ${status}`));
+        return true;
+      });
+    }
+  });
+
+  it('fails the post when the store refuses the range or the file', async () => {
+    for (const status of [200, 404]) {
+      await assert.rejects(read(status), BadBody);
+    }
+  });
+
+  it('streams the range it asked for', async () => {
+    const body = await read(206);
+    assert.equal(await new Response(body).text(), 'chunk');
   });
 });

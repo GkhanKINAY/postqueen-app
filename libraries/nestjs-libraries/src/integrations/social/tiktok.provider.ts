@@ -14,6 +14,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 import {
   BadBody,
   Disconnect,
+  mediaStoreBusy,
   platformMessage,
   RefreshToken,
   SocialAbstract,
@@ -901,7 +902,14 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   // never hold the whole file in memory: a ranged GET for remote URLs, a ranged
   // read stream for local files. `release` drops the source when the upload
   // ends without reading it to the end, so its connection is not held open.
-  private async tiktokChunkStream(path: string, start: number, end: number) {
+  // 'busy' when the store could not answer this time and `canRetry` says the
+  // caller may ask again (see mediaStoreBusy).
+  private async tiktokChunkStream(
+    path: string,
+    start: number,
+    end: number,
+    canRetry = false
+  ) {
     if (path.indexOf('http') === 0) {
       const controller = new AbortController();
       // identity encoding so the store keeps content-length and can answer
@@ -919,6 +927,9 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
       // error page would corrupt the upload at this offset.
       if (response.status !== 206) {
         await response.body?.cancel().catch(() => {});
+        if (canRetry && mediaStoreBusy(response.status)) {
+          return 'busy' as const;
+        }
         throw new BadBody(
           'tiktok-error-upload',
           rangeReadFailure(response),
@@ -926,7 +937,7 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
           `We could not read this video from PostQueen's media storage (status ${
             response.status
           }), so it was not sent to TikTok. ${
-            response.status >= 500
+            mediaStoreBusy(response.status)
               ? 'Try again in a few minutes.'
               : 'Attach the video again, then schedule the post.'
           }`
@@ -972,7 +983,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
 
   // TikTok documents a 5xx on a chunk as a gateway or internal error and asks
   // to submit the chunk again, so the source stream is re-opened per attempt.
-  // 429 is retried the same way this.fetch does.
+  // 429 is retried the same way this.fetch does, and so is a media store that
+  // could not answer for the chunk.
   private async uploadTikTokChunk(
     uploadUrl: string,
     path: string,
@@ -982,7 +994,25 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
     contentType: string,
     totalRetries = 0
   ): Promise<void> {
-    const { body, release } = await this.tiktokChunkStream(path, start, end);
+    const source = await this.tiktokChunkStream(
+      path,
+      start,
+      end,
+      totalRetries <= 2
+    );
+    if (source === 'busy') {
+      await timer(5000);
+      return this.uploadTikTokChunk(
+        uploadUrl,
+        path,
+        start,
+        end,
+        videoSize,
+        contentType,
+        totalRetries + 1
+      );
+    }
+    const { body, release } = source;
 
     setHeartbeatDetails(`tiktok: upload chunk ${start}-${end}`);
 

@@ -9,6 +9,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   BadBody,
+  mediaGet,
   mediaHead,
   RefreshToken,
   SocialAbstract,
@@ -127,14 +128,7 @@ async function startVideoUpload(
   );
 
   setHeartbeatDetails('bluesky: read video');
-  const videoResponse = await fetch(videoPath, {
-    headers: { 'accept-encoding': 'identity' },
-    // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-    dispatcher: getSsrfSafeDispatcher(),
-  });
-  if (!videoResponse.ok || !videoResponse.body) {
-    throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
-  }
+  const video = await mediaGet(videoPath, 'bluesky');
 
   console.log('Uploading video', videoPath, videoSize);
 
@@ -152,7 +146,7 @@ async function startVideoUpload(
       'Content-Type': 'video/mp4',
       'Content-Length': videoSize.toString(),
     },
-    body: videoResponse.body,
+    body: video,
     // Required by undici when streaming a request body.
     duplex: 'half',
   } as any);

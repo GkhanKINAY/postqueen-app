@@ -10,12 +10,11 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { timer } from '@gitroom/helpers/utils/timer';
 import {
   BadBody,
-  MEDIA_READ_FAILED,
+  mediaGet,
   mediaHead,
   platformMessage,
   SocialAbstract,
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { WhopDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/whop.dto';
 import { Integration } from '@gitroom/nestjs-libraries/database/prisma/generated/client';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -276,19 +275,7 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
       ).json();
 
       if (createFileResponse.upload_url) {
-        const fileResponse = await fetch(item.path, {
-          headers: { 'accept-encoding': 'identity' },
-          // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-          dispatcher: getSsrfSafeDispatcher(),
-        });
-        if (!fileResponse.ok || !fileResponse.body) {
-          throw new BadBody(
-            this.identifier,
-            JSON.stringify({ status: fileResponse.status }),
-            '{}',
-            MEDIA_READ_FAILED
-          );
-        }
+        const file = await mediaGet(item.path, this.identifier);
         const uploadResponse = await fetch(createFileResponse.upload_url, {
           method: 'PUT',
           headers: {
@@ -296,7 +283,7 @@ export class WhopProvider extends SocialAbstract implements SocialProvider {
             'Content-Length': String(contentLength),
             ...(createFileResponse.upload_headers || {}),
           },
-          body: fileResponse.body,
+          body: file,
           // Required by undici when streaming a request body.
           duplex: 'half',
         } as any);

@@ -1,11 +1,10 @@
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   BadBody,
-  MEDIA_READ_FAILED,
+  mediaGet,
   mediaHead,
   SocialAbstract,
 } from '../social.abstract';
-import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import {
   AuthTokenDetails,
   MediaContent,
@@ -256,19 +255,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
         }, 'create file record')
       ).json();
 
-      const fileResponse = await fetch(item.path, {
-        headers: { 'accept-encoding': 'identity' },
-        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-        dispatcher: getSsrfSafeDispatcher(),
-      });
-      if (!fileResponse.ok || !fileResponse.body) {
-        throw new BadBody(
-          this.identifier,
-          JSON.stringify({ status: fileResponse.status }),
-          '{}',
-          MEDIA_READ_FAILED
-        );
-      }
+      const file = await mediaGet(item.path, this.identifier);
       const uploadResponse = await fetch(createFileResponse.write_url, {
         method: 'PUT',
         headers: {
@@ -276,7 +263,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
           'Content-Length': String(contentLength),
           'x-amz-acl': createFileResponse.acl,
         },
-        body: fileResponse.body,
+        body: file,
         // Required by undici when streaming a request body.
         duplex: 'half',
       } as any);

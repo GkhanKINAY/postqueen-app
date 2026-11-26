@@ -1,8 +1,16 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import {
   after,
   afterEach,
@@ -17,6 +25,7 @@ import {
   MEDIA_READ_FAILED,
   MEDIA_READ_SLOW,
   MEDIA_SIZE_UNKNOWN,
+  mediaGet,
   mediaHead,
   OWN_FAILURE_MESSAGES,
   platformMessage,
@@ -469,6 +478,22 @@ describe('size of our own uploads', () => {
   });
 });
 
+// Runs `read` with the 5 second wait between the two asks skipped. The
+// test enables the mocked setTimeout first.
+const settled = async (t: TestContext, read: () => Promise<unknown>) => {
+  let outcome: { value?: unknown; err?: unknown } | undefined;
+  const done = read().then(
+    (value) => (outcome = { value }),
+    (err) => (outcome = { err })
+  );
+  while (outcome === undefined) {
+    await new Promise((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(5000);
+  }
+  await done;
+  return outcome;
+};
+
 // What a refused HEAD means decides how the post fails. Nothing has been
 // sent to the network when it runs.
 describe('sizing remote media', () => {
@@ -524,22 +549,6 @@ describe('sizing remote media', () => {
       failsFor(MEDIA_READ_FAILED)
     );
   });
-
-  // Runs `read` with the 5 second wait between the two asks skipped. The
-  // test enables the mocked setTimeout first.
-  const settled = async (t: TestContext, read: () => Promise<unknown>) => {
-    let outcome: { value?: unknown; err?: unknown } | undefined;
-    const done = read().then(
-      (value) => (outcome = { value }),
-      (err) => (outcome = { err })
-    );
-    while (outcome === undefined) {
-      await new Promise((resolve) => setImmediate(resolve));
-      t.mock.timers.tick(5000);
-    }
-    await done;
-    return outcome;
-  };
 
   it('asks once more when the store cannot answer, and takes that answer', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
@@ -655,6 +664,98 @@ describe('sizing remote media', () => {
         new Network().mediaSize(url, 'network', 'No video size'),
         failsFor('No video size')
       );
+    }
+  });
+});
+
+// The reads after the size read: the whole file streamed into an upload, or
+// one ranged chunk of it. Same answers as the size read.
+describe('reading remote media', () => {
+  const url = 'https://cdn.example.com/aB3xY9pQr7.mp4';
+
+  // Answers the requests in turn with these statuses, the last one for good.
+  const store = (...statuses: number[]) => {
+    const asked: (string | undefined)[] = [];
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      const status = statuses[Math.min(asked.length, statuses.length - 1)];
+      asked.push((init?.headers as Record<string, string>)?.Range);
+      return new Response(status < 300 ? 'twelve bytes' : null, { status });
+    }) as typeof fetch;
+    return asked;
+  };
+
+  const text = async (stream: Readable) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks).toString();
+  };
+
+  it('streams the file, asking once more when the store could not answer', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const asked = store(503, 200);
+    const { value } = await settled(t, () =>
+      (new Network() as any).mediaStream(url, 'network')
+    );
+    assert.equal(await text(value as Readable), 'twelve bytes');
+    assert.equal(asked.length, 2);
+  });
+
+  it('fails the post when the store stays busy, or does not have the file', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    for (const [status, message, asks] of [
+      [503, MEDIA_READ_SLOW, 2],
+      [429, MEDIA_READ_SLOW, 2],
+      [404, MEDIA_NOT_FOUND, 1],
+      [403, MEDIA_READ_FAILED, 1],
+    ] as const) {
+      const asked = store(status);
+      const { err } = await settled(t, () => mediaGet(url, 'network'));
+      assert.ok(err instanceof BadBody, String(status));
+      assert.equal(err.message, message);
+      assert.equal(asked.length, asks);
+    }
+  });
+
+  it('reads a chunk again when the store could not answer', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const asked = store(503, 206);
+    const { value } = await settled(t, () =>
+      (new Network() as any).mediaChunk(url, 0, 11, 'network')
+    );
+    assert.equal(String(value), 'twelve bytes');
+    assert.deepEqual(asked, ['bytes=0-11', 'bytes=0-11']);
+  });
+
+  it('fails a chunk the store will not give', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    for (const [status, message, asks] of [
+      [503, MEDIA_READ_SLOW, 2],
+      [404, MEDIA_NOT_FOUND, 1],
+      // a store that ignores the Range would corrupt the upload at this offset
+      [200, MEDIA_READ_FAILED, 1],
+    ] as const) {
+      const asked = store(status);
+      const { err } = await settled(t, () =>
+        (new Network() as any).mediaChunk(url, 0, 11, 'network')
+      );
+      assert.ok(err instanceof BadBody, String(status));
+      assert.equal(err.message, message);
+      assert.equal(asked.length, asks);
+    }
+  });
+
+  // These stream the file into their upload themselves.
+  it('is how Skool, Whop and Bluesky read the file they upload', () => {
+    for (const name of ['skool', 'whop', 'bluesky']) {
+      const source = readFileSync(
+        fileURLToPath(new URL(`./social/${name}.provider.ts`, import.meta.url)),
+        'utf8'
+      );
+      assert.match(source, /await mediaGet\(/, name);
+      assert.match(source, /await mediaHead\(/, name);
+      assert.doesNotMatch(source, /method: 'HEAD'/, name);
     }
   });
 });

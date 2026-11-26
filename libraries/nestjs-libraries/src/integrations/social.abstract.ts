@@ -277,82 +277,100 @@ const unreachable = (err: any): string =>
     ? 'ENOTFOUND'
     : '';
 
-/**
- * The size and type of a remote media file, from a HEAD, for the providers
- * that declare an upload's length before they stream it. A HEAD answers with
- * no length for our own local uploads when Next serves them, so their size is
- * read from disk instead (see ownUploadSize).
- *
- * What a refused HEAD means decides how the post fails. Nothing has been sent
- * to the network yet when this runs:
- * - 404 or 410: the file is gone, and asking again gets the same answer.
- * - no answer because none can come (see unreachable): MEDIA_READ_FAILED at
- *   once, without the wait.
- * - 429, a 5xx, or no answer at all: the store could not answer this time.
- *   Our own uploads route answers 503 with Retry-After: 5 when its store times
- *   out or is throttled, so this waits that long and asks once more, the way
- *   readOrFetch and mediaChunk read a stalled file once more. A second
- *   failure fails the post with MEDIA_READ_SLOW rather than a retryable
- *   error: the workflow would publish again at once, and when that ran out it
- *   would tell the user the post may already be live.
- * - any other 4xx: refused for good, as readOrFetch treats it.
- * - a 2xx without a usable length: `unknownSize`, the caller's own message.
- */
-export async function mediaHead(
+// The store could not answer this time: throttled (429), failing on its own
+// side (5xx), or no answer at all (0). Our own uploads route answers 503 with
+// Retry-After: 5 when its store times out or is throttled, so a media read
+// waits that long and asks once more, the way readOrFetch and mediaChunk read
+// a stalled file once more.
+export const mediaStoreBusy = (status: number) =>
+  !status || status === 429 || status >= 500;
+
+// The post's failure line for a media read that did not come back. Each is
+// final: a store still busy after the second ask fails the post with
+// MEDIA_READ_SLOW rather than a retryable error, because the workflow would
+// publish again at once, and when that ran out it would tell the user the
+// post may already be live although nothing was sent.
+const mediaReadFailure = (status: number) =>
+  status === 404 || status === 410
+    ? MEDIA_NOT_FOUND
+    : mediaStoreBusy(status)
+    ? MEDIA_READ_SLOW
+    : MEDIA_READ_FAILED;
+
+// A media file asked for with the SSRF-safe dispatcher, since the path is
+// user-influenced, and identity encoding, so content-length matches the bytes
+// a GET streams (fetch transparently decompresses encoded bodies). Resolves
+// with a 2xx answer only:
+// - a store that could not answer is asked once more (see mediaStoreBusy);
+// - no answer because none can come (see unreachable) fails the post at once;
+// - anything else fails it with the line that fits (see mediaReadFailure).
+async function requestMedia(
   path: string,
   identifier: string,
-  unknownSize = MEDIA_SIZE_UNKNOWN,
+  method: 'HEAD' | 'GET',
   retried = false
-): Promise<{ size: number; type: string | null }> {
-  let head: Response | undefined;
+): Promise<Response> {
+  let response: Response | undefined;
   try {
-    // the media path is user-influenced, keep the SSRF-safe dispatcher that
-    // every other outbound request gets. identity encoding so content-length
-    // matches the bytes a later GET actually streams (fetch transparently
-    // decompresses encoded bodies).
-    head = await fetch(path, {
-      method: 'HEAD',
+    response = await fetch(path, {
+      method,
       headers: { 'accept-encoding': 'identity' },
       dispatcher: getSsrfSafeDispatcher(),
-      // a route that never answers counts as no answer, rather than holding
-      // the activity until undici gives up on its own after five minutes
-      signal: AbortSignal.timeout(MEDIA_READ_TIMEOUT),
+      // A HEAD that never answers counts as no answer, rather than holding the
+      // activity until undici gives up on its own after five minutes. A GET
+      // gets none: its body is streamed into the upload for as long as that
+      // takes.
+      ...(method === 'HEAD'
+        ? { signal: AbortSignal.timeout(MEDIA_READ_TIMEOUT) }
+        : {}),
     } as any);
   } catch (err) {
-    if (unreachable(err)) {
+    const reason = unreachable(err);
+    if (reason) {
       throw new BadBody(
         identifier,
-        JSON.stringify({ path: stripQuery(path), reason: unreachable(err) }),
+        JSON.stringify({ path: stripQuery(path), reason }),
         '{}',
         MEDIA_READ_FAILED
       );
     }
-    // no answer at all, `head` stays undefined
+    // no answer at all, `response` stays undefined
   }
 
-  const failure = JSON.stringify({
-    status: head?.status || 0,
-    path: stripQuery(path),
-  });
-
-  if (!head || head.status === 429 || head.status >= 500) {
-    if (!retried) {
-      await timer(5000);
-      return mediaHead(path, identifier, unknownSize, true);
-    }
-    throw new BadBody(identifier, failure, '{}', MEDIA_READ_SLOW);
+  if (response?.ok) {
+    return response;
   }
 
-  if (!head.ok) {
-    throw new BadBody(
-      identifier,
-      failure,
-      '{}',
-      head.status === 404 || head.status === 410
-        ? MEDIA_NOT_FOUND
-        : MEDIA_READ_FAILED
-    );
+  await response?.body?.cancel().catch(() => {});
+  const status = response?.status || 0;
+  if (mediaStoreBusy(status) && !retried) {
+    await timer(5000);
+    return requestMedia(path, identifier, method, true);
   }
+
+  throw new BadBody(
+    identifier,
+    JSON.stringify({ status, path: stripQuery(path) }),
+    '{}',
+    mediaReadFailure(status)
+  );
+}
+
+/**
+ * The size and type of a remote media file, from a HEAD, for the providers
+ * that declare an upload's length before they stream it. A HEAD answers with
+ * no length for our own local uploads when Next serves them, so their size is
+ * read from disk instead (see ownUploadSize). Nothing has been sent to the
+ * network yet when this runs. A refused HEAD fails the post as requestMedia
+ * says; a 2xx without a usable length fails it with `unknownSize`, the
+ * caller's own message.
+ */
+export async function mediaHead(
+  path: string,
+  identifier: string,
+  unknownSize = MEDIA_SIZE_UNKNOWN
+): Promise<{ size: number; type: string | null }> {
+  const head = await requestMedia(path, identifier, 'HEAD');
 
   // A zero/NaN size would poison chunk-count math downstream.
   const size =
@@ -362,6 +380,27 @@ export async function mediaHead(
   }
 
   return { size, type: head.headers.get('content-type') };
+}
+
+/**
+ * The body of a remote media file, for the providers that stream it straight
+ * into the network's upload instead of holding it in memory. Fails the post
+ * as requestMedia says.
+ */
+export async function mediaGet(
+  path: string,
+  identifier: string
+): Promise<ReadableStream<Uint8Array>> {
+  const response = await requestMedia(path, identifier, 'GET');
+  if (!response.body) {
+    throw new BadBody(
+      identifier,
+      JSON.stringify({ status: response.status, path: stripQuery(path) }),
+      '{}',
+      MEDIA_READ_FAILED
+    );
+  }
+  return response.body;
 }
 
 export class NotEnoughScopes {
@@ -692,11 +731,17 @@ export abstract class SocialAbstract {
         // upload corrupted chunks.
         if (response.status !== 206) {
           await response.body?.cancel().catch(() => {});
+          // the store could not answer this time: ask once more after the
+          // wait its Retry-After names (see mediaStoreBusy)
+          if (mediaStoreBusy(response.status) && !retried) {
+            await timer(5000);
+            return this.mediaChunk(path, start, end, identifier, true);
+          }
           throw new BadBody(
             identifier,
             JSON.stringify({ status: response.status, start, end }),
             Buffer.from('{}'),
-            MEDIA_READ_FAILED
+            mediaReadFailure(response.status)
           );
         }
         return Buffer.from(await response.arrayBuffer());
@@ -743,23 +788,10 @@ export abstract class SocialAbstract {
       return createReadStream(this.localMediaPath(path, identifier));
     }
 
-    // identity encoding so the streamed byte count matches the size mediaSize
-    // reported - a decompressed body would overflow any declared length.
-    const response = await fetch(path, {
-      headers: { 'accept-encoding': 'identity' },
-      dispatcher: getSsrfSafeDispatcher(),
-    } as any);
-
-    if (!response.ok || !response.body) {
-      throw new BadBody(
-        identifier,
-        '{}',
-        Buffer.from('{}'),
-        MEDIA_READ_FAILED
-      );
-    }
-
-    return Readable.fromWeb(response.body as any);
+    // identity encoding (see requestMedia) so the streamed byte count matches
+    // the size mediaSize reported - a decompressed body would overflow any
+    // declared length.
+    return Readable.fromWeb((await mediaGet(path, identifier)) as any);
   }
 
   // Streamed request bodies can't be replayed by this.fetch's retry, so

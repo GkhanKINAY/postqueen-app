@@ -20,6 +20,7 @@ import {
 import {
   BadBody,
   Disconnect,
+  mediaStoreBusy,
   NotEnoughScopes,
   PublishedWithError,
   RefreshToken,
@@ -587,6 +588,15 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       // error page would corrupt the upload at this offset.
       if (response.status !== 206) {
         await response.body?.cancel().catch(() => {});
+        // The store could not answer this time (see mediaStoreBusy). Nothing
+        // of this chunk was sent, and the session stays resumable: a plain
+        // error makes the workflow wait, ask the session for its offset and
+        // resume from there, as for Google's own 429 and 5xx below.
+        if (mediaStoreBusy(response.status)) {
+          throw new Error(
+            `The media store answered ${response.status} for bytes ${start}-${end}`
+          );
+        }
         throw new BadBody(
           this.identifier,
           rangeReadFailure(response),
