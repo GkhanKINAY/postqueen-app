@@ -633,7 +633,7 @@ Left for later:
 `nestjs-temporal-core` is now served from `vendor/`, the same 3.4.0 tarball
 under the same integrity: npm marks every version of it "no longer supported"
 and its source repository is gone, so an install could not count on the
-registry keeping it.
+registry keeping it (#435).
 
 **No post workflow came in.** `postWorkflowV1012` is still the one running,
 and upstream's next post workflow would still become our v1.0.13 (see
