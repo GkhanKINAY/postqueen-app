@@ -432,7 +432,8 @@ describe('Model tokens', () => {
       cachedInput: 0.05,
       output: 0.2,
     });
-    // $1.75 / $14 and $2 / $8 a million tokens, times 25
+    // $1.75 / $14 and $2 / $8 a million tokens, times 25; gpt-6.2-sol's
+    // uncached input at the $2.50 it bills for a cache write
     const perThousand = (dollarsPerMillion: number) =>
       (dollarsPerMillion / 1000) * 25;
     const close = (a: number, b: number) => Math.abs(a - b) < 0.0005;
@@ -446,7 +447,8 @@ describe('Model tokens', () => {
   });
 
   it('are priced on v2 at the provider cost times 50, cached input at its own rate', () => {
-    // $1.75 / $0.175 / $14 and $2 / $0.50 / $8 a million tokens, times 50
+    // $1.75 / $0.175 / $14 and $2 / $0.50 / $8 a million tokens, times 50;
+    // gpt-6.2-sol $2.50 written / $0.10 / $10
     const perThousand = (dollarsPerMillion: number) =>
       (dollarsPerMillion / 1000) * 50;
     const close = (a: number, b: number) => Math.abs(a - b) < 0.000001;
@@ -481,14 +483,8 @@ describe('Model tokens', () => {
     assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1000, 200), 12);
     assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1000, 200), 23);
     // a million in and a million out: 62.5 + 250 credits, 125 + 500 on v2
-    assert.equal(
-      llmCreditCost('legacy', 'gpt-6.2-sol', 1_000_000, 1_000_000),
-      31250
-    );
-    assert.equal(
-      llmCreditCost('v2', 'gpt-6.2-sol', 1_000_000, 1_000_000),
-      62500
-    );
+    assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1_000_000, 1_000_000), 31250);
+    assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1_000_000, 1_000_000), 62500);
   });
 
   it('charge the cached part of a prompt at its rate on v2, and in full before', () => {
@@ -499,7 +495,9 @@ describe('Model tokens', () => {
       llmCreditCost('legacy', 'gpt-5.2', 1000, 200)
     );
     // gpt-6.2-sol: 200 at 12.5, 800 at 0.5 and 200 out at 50 a thousand:
-    // 2.5 + 0.4 + 10 = 12.9 on v2; before v2, 200 at 6.25 and 800 at 5
+    // 2.5 + 0.4 + 10 = 12.9 on v2. Before v2 the cached part pays the full
+    // $2 input rate and only the written part more: 200 at 6.25, 800 at 5
+    // and 200 out at 25, 1.25 + 4 + 5 = 10.25
     assert.equal(llmCreditCost('v2', 'gpt-6.2-sol', 1000, 200, 800), 13);
     assert.equal(llmCreditCost('legacy', 'gpt-6.2-sol', 1000, 200, 800), 11);
     // never more cached than the prompt
@@ -518,15 +516,12 @@ describe('Model tokens', () => {
       llmCreditRate('v2', 'gpt-5.2-2025-12-11'),
       LLM_CREDIT_RATES.v2['gpt-5.2']
     );
-    for (const creditPricing of ['legacy', 'v2'] as const) {
-      assert.equal(
-        llmCreditRate(creditPricing, 'gpt-6.2-sol'),
-        LLM_CREDIT_RATES[creditPricing]['gpt-6.2-sol']
-      );
+    for (const cp of CREDIT_PRICINGS) {
+      assert.equal(llmCreditRate(cp, 'gpt-6.2-sol'), LLM_CREDIT_RATES[cp]['gpt-6.2-sol']);
       // a dated snapshot of it, should the API answer with one
       assert.equal(
-        llmCreditRate(creditPricing, 'gpt-6.2-sol-2026-11-20'),
-        LLM_CREDIT_RATES[creditPricing]['gpt-6.2-sol']
+        llmCreditRate(cp, 'gpt-6.2-sol-2026-11-20'),
+        LLM_CREDIT_RATES[cp]['gpt-6.2-sol']
       );
     }
     assert.deepEqual(llmCreditRate('legacy', 'gpt-9'), {
@@ -540,9 +535,9 @@ describe('Model tokens', () => {
       output: 0.7,
     });
     // never nothing: a model without a row pays at least what every row does
-    for (const creditPricing of ['legacy', 'v2'] as const) {
-      const unknown = llmCreditRate(creditPricing, 'gpt-6.2-sol-mini');
-      for (const rate of Object.values(LLM_CREDIT_RATES[creditPricing])) {
+    for (const cp of CREDIT_PRICINGS) {
+      const unknown = llmCreditRate(cp, 'gpt-6.2-sol-mini');
+      for (const rate of Object.values(LLM_CREDIT_RATES[cp])) {
         assert.ok(unknown.input >= rate.input);
         assert.ok(unknown.cachedInput >= rate.cachedInput);
         assert.ok(unknown.output >= rate.output);

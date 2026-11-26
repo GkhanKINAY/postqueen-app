@@ -727,9 +727,10 @@ export const IMAGE_SLIDES_CREDIT_COST: Record<CreditPricing, number> = {
  * its own, and bills the part it writes at $2.50 a million rather than $2.
  * The usage read here does not count that part apart, so its uncached input
  * is priced at the write rate: a prompt too short to be cached pays a
- * quarter over the rule on its input, never under it. Over 272K input tokens
- * its prices rise to $4 in, $0.20 cached, $5 written and $15 out; no prompt
- * here comes near that.
+ * quarter over the rule on its input, never under it. Its cached input on
+ * `legacy` stays at the full input rate of $2, the written part being the
+ * only one billed above it. Over 272,000 input tokens its prices rise to $4
+ * in, $0.20 cached, $5 written and $15 out; no prompt here comes near that.
  *
  * gpt-5.2 and gpt-4.1 stay: a call made by the version before is still
  * charged at its own price, and an unknown model pays the highest of all.
@@ -828,6 +829,7 @@ export const LLM_CONTINUATION_FLOOR = -500;
  * - `separatePosts`: one gpt-6.2-sol call on the post (up to 20,000
  *   characters), a few more when a part has to be shortened, about $0.01 for
  *   a usual post and several times that at the limit.
+ *
  * The estimates were made on gpt-4.1. gpt-6.2-sol bills the same input, or a
  * quarter more for a prompt it writes to its cache, a quarter more output,
  * and its reasoning as output on top (see `LLM_CREDIT_RATES`).
