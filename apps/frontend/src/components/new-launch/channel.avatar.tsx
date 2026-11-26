@@ -275,8 +275,8 @@ export const ChannelAvatar: FC<{
  * fall back to their icon. The mark is centred on a row as high as the icon
  * it stands in for and reaches past it, so a card keeps its height (the week
  * view packs its hours by it). The mark being wider than the icon, a narrow
- * card hides the photo, then the mark, so the time next to them stays whole:
- * `avatarClassName` and `markClassName` take the card's container queries.
+ * card hides the photo so the time next to them stays whole; the mark itself
+ * always shows. `avatarClassName` takes the card's container query.
  */
 export const BrandMarkLead: FC<{
   integration: {
@@ -286,18 +286,16 @@ export const BrandMarkLead: FC<{
   };
   size: number;
   rounded?: 'full' | 'lg';
-  markClassName?: string;
   avatarClassName?: string;
 }> = ({
   integration,
   size,
   rounded = 'full',
-  markClassName,
   avatarClassName,
 }) => (
   <>
     <span
-      className={clsx('flex shrink-0 items-center', markClassName)}
+      className="flex shrink-0 items-center"
       style={{ height: size }}
     >
       <PlatformMark

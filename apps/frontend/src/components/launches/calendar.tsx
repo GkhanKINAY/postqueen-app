@@ -2194,7 +2194,9 @@ const CalendarItem: FC<{
         />
         {brand ? (
           // Accent 3, mark 30.5, photo 13, an English 12-hour time 47 and
-          // their gaps: the photo goes under 116 px, the mark under 98.
+          // their gaps: the photo goes under 116 px. The mark stays, so the
+          // network can always be told; below that the time cuts, as the
+          // other networks' does.
           <BrandMarkLead
             integration={{
               picture: post.integration.picture,
@@ -2202,7 +2204,6 @@ const CalendarItem: FC<{
               name: post.integration.name,
             }}
             size={13}
-            markClassName="@max-[98px]:hidden"
             avatarClassName="@max-[116px]:hidden"
           />
         ) : (
@@ -2507,7 +2508,9 @@ const CalendarItem: FC<{
           >
             {brand ? (
               // Mark 30.5, photo 16, an English 12-hour time 47 and their
-              // gaps: the photo goes under 106 px, the mark under 85.
+              // gaps: the photo goes under 106 px. The mark stays, so the
+              // network can always be told; below that the time cuts, as the
+              // other networks' does.
               <BrandMarkLead
                 integration={{
                   picture: post.integration.picture,
@@ -2515,7 +2518,6 @@ const CalendarItem: FC<{
                   name: post.integration.name,
                 }}
                 size={16}
-                markClassName="@max-[85px]:hidden"
                 avatarClassName="@max-[106px]:hidden"
               />
             ) : (
