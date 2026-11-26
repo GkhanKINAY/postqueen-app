@@ -20,6 +20,7 @@ import {
 import {
   BadBody,
   Disconnect,
+  MEDIA_READ_SLOW,
   mediaStoreBusy,
   NotEnoughScopes,
   PublishedWithError,
@@ -31,6 +32,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import * as process from 'node:process';
 import dayjs from 'dayjs';
+import { timer } from '@gitroom/helpers/utils/timer';
 import { createReadStream } from 'fs';
 import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
@@ -564,11 +566,24 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   // Keep each upload batch well below the 10-minute activity timeout, the
   // workflow calls finalizePost again for the remaining bytes.
   private static readonly YOUTUBE_UPLOAD_BATCH_MS = 4 * 60 * 1000;
+  // Batches in a row that could not read the media before the post fails with
+  // MEDIA_READ_SLOW. Each costs two reads 5 seconds apart, up to 15 seconds
+  // each when our uploads route waits out its store, and the workflow's 20
+  // second wait before the next batch: about 27 to 57 seconds, so 15 of them
+  // give the store roughly ten minutes to come back.
+  private static readonly YOUTUBE_STORE_BUSY_BATCHES = 15;
 
   // Returns a streaming body for the [start, end] byte range of the media so we
   // never hold the whole file in memory: a ranged GET for remote URLs, a ranged
-  // read stream for local files.
-  private async youtubeChunkStream(path: string, start: number, end: number) {
+  // read stream for local files. 'busy' when the store could not answer twice,
+  // 5 seconds apart (see mediaStoreBusy): finalizePost hands the batch back to
+  // the workflow to try later.
+  private async youtubeChunkStream(
+    path: string,
+    start: number,
+    end: number,
+    retried = false
+  ) {
     if (path.indexOf('http') === 0) {
       // identity encoding so the store keeps content-length and can answer
       // with the requested range: a transformed (compressed) response loses
@@ -576,27 +591,32 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       setHeartbeatDetails(
         `youtube: read media ${start}-${end} ${stripQuery(path)}`
       );
-      const response = await fetch(path, {
-        headers: {
-          Range: `bytes=${start}-${end}`,
-          'accept-encoding': 'identity',
-        },
-        dispatcher: getSsrfSafeDispatcher(),
-      } as any);
+      let response: Response | undefined;
+      try {
+        response = await fetch(path, {
+          headers: {
+            Range: `bytes=${start}-${end}`,
+            'accept-encoding': 'identity',
+          },
+          dispatcher: getSsrfSafeDispatcher(),
+        } as any);
+      } catch (err) {
+        // no answer at all, `response` stays undefined
+      }
+
+      if (!response || mediaStoreBusy(response.status)) {
+        await response?.body?.cancel().catch(() => {});
+        if (!retried) {
+          await timer(5000);
+          return this.youtubeChunkStream(path, start, end, true);
+        }
+        return 'busy' as const;
+      }
 
       // A store that ignores Range (200 with the full file) or answers with an
       // error page would corrupt the upload at this offset.
       if (response.status !== 206) {
         await response.body?.cancel().catch(() => {});
-        // The store could not answer this time (see mediaStoreBusy). Nothing
-        // of this chunk was sent, and the session stays resumable: a plain
-        // error makes the workflow wait, ask the session for its offset and
-        // resume from there, as for Google's own 429 and 5xx below.
-        if (mediaStoreBusy(response.status)) {
-          throw new Error(
-            `The media store answered ${response.status} for bytes ${start}-${end}`
-          );
-        }
         throw new BadBody(
           this.identifier,
           rangeReadFailure(response),
@@ -762,6 +782,8 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       thumbnail: string;
       videoId?: string;
       postDbId?: string;
+      // batches in a row that could not read the media (see finalizePost)
+      storeBusy?: number;
     },
     integration: Integration
   ): Promise<PendingCheckResponse> {
@@ -814,6 +836,8 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
       thumbnail: string;
       videoId?: string;
       postDbId?: string;
+      // batches in a row that could not read the media (see finalizePost)
+      storeBusy?: number;
     },
     integration: Integration
   ): Promise<PendingCheckResponse> {
@@ -838,7 +862,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
           if (Date.now() - started > YoutubeProvider.YOUTUBE_UPLOAD_BATCH_MS) {
             return {
               status: 'pending',
-              pendingData: { ...pendingData, uploadedBytes: uploaded },
+              pendingData: {
+                ...pendingData,
+                uploadedBytes: uploaded,
+                storeBusy: 0,
+              },
             };
           }
 
@@ -852,6 +880,32 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
             uploaded,
             end
           );
+
+          // The store could not answer for this chunk. Nothing of it was sent
+          // and the session stays resumable, so hand the batch back the way
+          // a spent batch budget does: the workflow waits and resumes from
+          // the offset the session reports. A plain error would count against
+          // the workflow's error budget and end as "could not confirm",
+          // although a session that never got its last byte made no video.
+          if (body === 'busy') {
+            const storeBusy = (pendingData.storeBusy || 0) + 1;
+            if (storeBusy >= YoutubeProvider.YOUTUBE_STORE_BUSY_BATCHES) {
+              throw new BadBody(
+                this.identifier,
+                JSON.stringify({ storeBusy, uploadedBytes: uploaded }),
+                '{}',
+                MEDIA_READ_SLOW
+              );
+            }
+            return {
+              status: 'pending',
+              pendingData: {
+                ...pendingData,
+                uploadedBytes: uploaded,
+                storeBusy,
+              },
+            };
+          }
 
           setHeartbeatDetails('youtube: upload chunk to google');
           const upload = await fetch(pendingData.uploadUri, {
@@ -875,7 +929,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
               // next probe find the truth
               return {
                 status: 'pending',
-                pendingData: { ...pendingData, uploadedBytes: uploaded },
+                pendingData: {
+                  ...pendingData,
+                  uploadedBytes: uploaded,
+                  storeBusy: 0,
+                },
               };
             }
             uploaded = Number(range.split('-')[1]) + 1;
@@ -918,7 +976,11 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
           // all bytes sent without a confirmation, the next check asks the session
           return {
             status: 'pending',
-            pendingData: { ...pendingData, uploadedBytes: uploaded },
+            pendingData: {
+              ...pendingData,
+              uploadedBytes: uploaded,
+              storeBusy: 0,
+            },
           };
         }
       } else {
