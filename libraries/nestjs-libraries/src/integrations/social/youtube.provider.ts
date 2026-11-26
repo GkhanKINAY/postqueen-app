@@ -566,11 +566,15 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   // Keep each upload batch well below the 10-minute activity timeout, the
   // workflow calls finalizePost again for the remaining bytes.
   private static readonly YOUTUBE_UPLOAD_BATCH_MS = 4 * 60 * 1000;
-  // Batches in a row that could not read the media before the post fails with
-  // MEDIA_READ_SLOW. Each costs two reads 5 seconds apart, up to 15 seconds
-  // each when our uploads route waits out its store, and the workflow's 20
-  // second wait before the next batch: about 27 to 57 seconds, so 15 of them
-  // give the store roughly ten minutes to come back.
+  // Batches in a row that ended on a read the store could not answer before
+  // the post fails with MEDIA_READ_SLOW. A batch that sends some chunks and
+  // then meets such a read still counts; only a batch that ends without one
+  // starts the count again, which keeps it well inside the workflow's pending
+  // checks. Each costs two reads 5 seconds apart and the workflow's 20 second
+  // wait before the next batch. A read takes seconds when the store answers
+  // 503 at once, and up to about 45 when our uploads route first waits out
+  // the R2 client's three timed attempts, so 15 of them give the store from
+  // about ten minutes to about half an hour to come back.
   private static readonly YOUTUBE_STORE_BUSY_BATCHES = 15;
 
   // Returns a streaming body for the [start, end] byte range of the media so we
