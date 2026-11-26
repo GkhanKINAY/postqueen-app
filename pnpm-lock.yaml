@@ -447,8 +447,8 @@ importers:
         specifier: ^3.1.5
         version: 3.1.5(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(yargs@17.7.3)
       nestjs-temporal-core:
-        specifier: ^3.4.0
-        version: 3.4.0(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.27.7)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        specifier: file:vendor/nestjs-temporal-core-3.4.0.tgz
+        version: file:vendor/nestjs-temporal-core-3.4.0.tgz(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.27.7)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       next:
         specifier: 16.4.6
         version: 16.4.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.58.2)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.102.0)
@@ -11909,10 +11909,10 @@ packages:
       '@nestjs/core': ^6.0.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
       yargs: ^16.0.0 || ^17.0.0
 
-  nestjs-temporal-core@3.4.0:
-    resolution: {integrity: sha512-GLCDofCHXMUkztx2UWF20fj9YkrMOKTb3gqhTGOTCAhjbzec6Ckh2lhHhdD2VIe8NiBHvZVZqDKahuf+WLX2qg==}
+  nestjs-temporal-core@file:vendor/nestjs-temporal-core-3.4.0.tgz:
+    resolution: {integrity: sha512-GLCDofCHXMUkztx2UWF20fj9YkrMOKTb3gqhTGOTCAhjbzec6Ckh2lhHhdD2VIe8NiBHvZVZqDKahuf+WLX2qg==, tarball: file:vendor/nestjs-temporal-core-3.4.0.tgz}
+    version: 3.4.0
     engines: {node: '>=20.3.0', npm: '>=8.0.0'}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       '@nestjs/common': ^9.0.0 || ^10.0.0 || ^11.0.0
       '@nestjs/core': ^9.0.0 || ^10.0.0 || ^11.0.0
@@ -29865,7 +29865,7 @@ snapshots:
       lodash.flattendeep: 4.4.0
       yargs: 17.7.3
 
-  nestjs-temporal-core@3.4.0(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.27.7)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2):
+  nestjs-temporal-core@file:vendor/nestjs-temporal-core-3.4.0.tgz(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.7)(@temporalio/client@1.22.0)(@temporalio/common@1.22.0)(@temporalio/worker@1.22.0(@swc/helpers@0.5.23)(esbuild@0.27.7)(postcss@8.5.26))(@temporalio/workflow@1.22.0)(reflect-metadata@0.2.2)(rxjs@7.8.2):
     dependencies:
       '@nestjs/common': 11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 11.2.7(@nestjs/common@11.2.7(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@11.2.7)(@nestjs/platform-express@11.2.7)(reflect-metadata@0.2.2)(rxjs@7.8.2)
