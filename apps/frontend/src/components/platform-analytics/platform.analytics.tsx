@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'reac
 import { sortIntegrationsByProviderImportance } from '@gitroom/frontend/components/launches/helpers/sort.integrations';
 import clsx from 'clsx';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  ChannelAvatar,
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { RenderAnalytics } from '@gitroom/frontend/components/platform-analytics/render.analytics';
 import { WorkspaceAnalytics } from '@gitroom/frontend/components/platform-analytics/workspace.analytics';
@@ -57,22 +62,41 @@ const AllChannelsMosaic: FC<{
   const { shown, extra } = uniquePlatforms(integrations, compact ? 2 : 3);
   return (
     <span data-pq="all-channels-mosaic" className="flex shrink-0 items-center">
-      {shown.map((integration, index) => (
-        <span
-          key={integration.identifier}
-          className="relative size-[22px] overflow-hidden rounded-[6px] bg-pqSettings shadow-[0_0_0_1.5px_var(--inner)]"
-          style={{
-            marginInlineStart: index ? -7 : 0,
-            zIndex: shown.length - index,
-          }}
-        >
-          <img
-            src={`/icons/platforms/${integration.identifier}.png`}
-            alt=""
-            className="size-full object-cover"
-          />
-        </span>
-      ))}
+      {shown.map((integration, index) =>
+        isBrandMark(integration.identifier) ? (
+          // A brand mark is never covered or cropped: nothing overlaps it,
+          // and the tile after it slides under it (see channelBrandMark).
+          <span
+            key={integration.identifier}
+            className="relative flex"
+            style={{
+              marginInlineStart: index ? 2 : 0,
+              zIndex: shown.length - index,
+            }}
+          >
+            <PlatformMark
+              identifier={integration.identifier}
+              size={22}
+              plateClassName="bg-pqSettings shadow-[0_0_0_1.5px_var(--inner)]"
+            />
+          </span>
+        ) : (
+          <span
+            key={integration.identifier}
+            className="relative size-[22px] overflow-hidden rounded-[6px] bg-pqSettings shadow-[0_0_0_1.5px_var(--inner)]"
+            style={{
+              marginInlineStart: index ? -7 : 0,
+              zIndex: shown.length - index,
+            }}
+          >
+            <img
+              src={`/icons/platforms/${integration.identifier}.png`}
+              alt=""
+              className="size-full object-cover"
+            />
+          </span>
+        )
+      )}
       {extra > 0 && (
         <span
           className="relative grid size-[22px] place-items-center rounded-[6px] bg-pqSettings text-[9px] font-[700] tabular-nums text-pqText shadow-[0_0_0_1.5px_var(--inner)]"
@@ -451,6 +475,16 @@ export const PlatformAnalytics = () => {
           >
             {selected === ALL_CHANNELS ? (
               <AllChannelsMosaic compact integrations={sortedIntegrations} />
+            ) : currentIntegration &&
+              isBrandMark(currentIntegration.identifier) ? (
+              // A brand mark is never rounded: ChannelAvatar draws the
+              // official one (see channelBrandMark).
+              <ChannelAvatar
+                integration={currentIntegration}
+                size={32}
+                rounded="full"
+                badgeSize={15}
+              />
             ) : (
               <span className="relative h-[32px] w-[32px] shrink-0">
                 <ImageWithFallback
@@ -545,21 +579,30 @@ export const PlatformAnalytics = () => {
                     isSelected ? 'bg-pqNavActive' : 'hover:bg-pqHover'
                   )}
                 >
-                  <span className="relative h-[32px] w-[32px] shrink-0">
-                    <ImageWithFallback
-                      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                      src={integration.picture || '/no-picture.jpg'}
-                      alt=""
-                      width={32}
-                      height={32}
-                      className="rounded-full"
+                  {isBrandMark(integration.identifier) ? (
+                    <ChannelAvatar
+                      integration={integration}
+                      size={32}
+                      rounded="full"
+                      badgeSize={15}
                     />
-                    <img
-                      src={`/icons/platforms/${integration.identifier}.png`}
-                      alt=""
-                      className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
-                    />
-                  </span>
+                  ) : (
+                    <span className="relative h-[32px] w-[32px] shrink-0">
+                      <ImageWithFallback
+                        fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                        src={integration.picture || '/no-picture.jpg'}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                      <img
+                        src={`/icons/platforms/${integration.identifier}.png`}
+                        alt=""
+                        className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
+                      />
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px]">
                       {integration.name}
@@ -740,19 +783,30 @@ export const PlatformAnalytics = () => {
                   )}
                 >
                   <span className="relative h-[32px] w-[32px] shrink-0">
-                    <ImageWithFallback
-                      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                      src={integration.picture || '/no-picture.jpg'}
-                      alt={integration.identifier}
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                    <img
-                      src={`/icons/platforms/${integration.identifier}.png`}
-                      alt=""
-                      className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
-                    />
+                    {isBrandMark(integration.identifier) ? (
+                      <ChannelAvatar
+                        integration={integration}
+                        size={32}
+                        rounded="full"
+                        badgeSize={15}
+                      />
+                    ) : (
+                      <>
+                        <ImageWithFallback
+                          fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                          src={integration.picture || '/no-picture.jpg'}
+                          alt={integration.identifier}
+                          width={32}
+                          height={32}
+                          className="rounded-full"
+                        />
+                        <img
+                          src={`/icons/platforms/${integration.identifier}.png`}
+                          alt=""
+                          className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
+                        />
+                      </>
+                    )}
                     {needsRefresh && (
                       <span className="absolute -start-[2px] -top-[2px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqWarn text-[10px] font-[700] text-pqOnBrand">
                         !
@@ -869,21 +923,32 @@ export const PlatformAnalytics = () => {
         {selected !== ALL_CHANNELS && !!currentIntegration && !!options.length && (
           <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-[18px]">
             <div className="flex flex-wrap items-center gap-[12px]">
-              <span className="relative size-[44px] shrink-0">
-                <ImageWithFallback
-                  fallbackSrc={`/icons/platforms/${currentIntegration.identifier}.png`}
-                  src={currentIntegration.picture || '/no-picture.jpg'}
-                  alt=""
-                  width={44}
-                  height={44}
-                  className="size-[44px] rounded-full object-cover"
+              {/* A brand mark links to the channel (see channelBrandMark) */}
+              {isBrandMark(currentIntegration.identifier) ? (
+                <ChannelAvatar
+                  integration={currentIntegration}
+                  size={44}
+                  rounded="full"
+                  badgeSize={19}
+                  channel={currentIntegration.internalId}
                 />
-                <img
-                  src={`/icons/platforms/${currentIntegration.identifier}.png`}
-                  alt=""
-                  className="absolute -bottom-[3px] -end-[3px] size-[19px] rounded-full border border-pqInner object-cover"
-                />
-              </span>
+              ) : (
+                <span className="relative size-[44px] shrink-0">
+                  <ImageWithFallback
+                    fallbackSrc={`/icons/platforms/${currentIntegration.identifier}.png`}
+                    src={currentIntegration.picture || '/no-picture.jpg'}
+                    alt=""
+                    width={44}
+                    height={44}
+                    className="size-[44px] rounded-full object-cover"
+                  />
+                  <img
+                    src={`/icons/platforms/${currentIntegration.identifier}.png`}
+                    alt=""
+                    className="absolute -bottom-[3px] -end-[3px] size-[19px] rounded-full border border-pqInner object-cover"
+                  />
+                </span>
+              )}
               <div className="min-w-0">
                 <div className="truncate font-display text-[20px] font-[600] -tracking-[0.02em] text-pqText">
                   {currentIntegration.name}

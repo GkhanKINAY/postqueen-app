@@ -11,6 +11,10 @@ import { useViewport } from '@gitroom/frontend/components/layout/use.viewport';
 import { MobileSheet } from '@gitroom/frontend/components/layout/mobile-sheet';
 import { useTour } from '@gitroom/frontend/components/onboarding/tour';
 import { GETTING_STARTED_CONNECT_ICONS } from '@gitroom/frontend/components/onboarding/getting-started';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useGettingStarted } from '@gitroom/frontend/components/onboarding/use.getting.started';
 
 const RING = 2 * Math.PI * 7;
@@ -110,16 +114,26 @@ const ConnectChannelStrip: FC<{
         <span className="text-[12px] font-[500] text-pqSoft">{label}</span>
       )}
       <span className="flex flex-wrap items-center gap-[6px]">
-        {GETTING_STARTED_CONNECT_ICONS.map((id) => (
-          <img
-            key={id}
-            src={`/icons/platforms/${id}.png`}
-            alt=""
-            width={36}
-            height={36}
-            className={clsx(icon, 'shrink-0 rounded-[8px] object-cover')}
-          />
-        ))}
+        {GETTING_STARTED_CONNECT_ICONS.map((id) =>
+          // A brand mark is never rounded (see channelBrandMark)
+          isBrandMark(id) ? (
+            <PlatformMark
+              key={id}
+              identifier={id}
+              size={touch ? 36 : 32}
+              plateClassName=""
+            />
+          ) : (
+            <img
+              key={id}
+              src={`/icons/platforms/${id}.png`}
+              alt=""
+              width={36}
+              height={36}
+              className={clsx(icon, 'shrink-0 rounded-[8px] object-cover')}
+            />
+          )
+        )}
         <span
           data-pq="getting-started-add-channel"
           aria-hidden="true"

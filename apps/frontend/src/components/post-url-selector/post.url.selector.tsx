@@ -12,6 +12,10 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 const postUrlEmitter = new EventEmitter();
 export const ShowPostSelector = () => {
   const [showPostSelector, setShowPostSelector] = useState(false);
@@ -188,20 +192,35 @@ export const PostSelector: FC<{
                         key={p.id}
                       >
                         <div className="flex gap-[10px] items-center">
-                          <div className="relative">
-                            <img
-                              src={p.integration.picture}
-                              className="w-[32px] h-[32px] rounded-full"
+                          {/* A brand mark is never rounded: ChannelAvatar
+                              draws the official one (see channelBrandMark). */}
+                          {isBrandMark(p?.integration?.providerIdentifier) ? (
+                            <ChannelAvatar
+                              integration={{
+                                picture: p.integration.picture,
+                                identifier: p.integration.providerIdentifier,
+                                name: p.integration.name,
+                              }}
+                              size={32}
+                              rounded="full"
+                              badgeSize={20}
                             />
-                            <img
-                              className="w-[20px] h-[20px] rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
-                              src={
-                                `/icons/platforms/` +
-                                p?.integration?.providerIdentifier +
-                                '.png'
-                              }
-                            />
-                          </div>
+                          ) : (
+                            <div className="relative">
+                              <img
+                                src={p.integration.picture}
+                                className="w-[32px] h-[32px] rounded-full"
+                              />
+                              <img
+                                className="w-[20px] h-[20px] rounded-full absolute z-10 -bottom-[5px] -end-[5px] border border-fifth"
+                                src={
+                                  `/icons/platforms/` +
+                                  p?.integration?.providerIdentifier +
+                                  '.png'
+                                }
+                              />
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <div className="truncate">{p.integration.name}</div>
                             {!!formatChannelHandle(

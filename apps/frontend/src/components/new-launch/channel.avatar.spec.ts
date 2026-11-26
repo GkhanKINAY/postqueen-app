@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
@@ -263,5 +264,57 @@ describe('YouTube official mark', () => {
     assert.match(youtubeSettings, /youtube_description_is_post_text/);
     assert.match(youtubeSettings, /label="Privacy Status"/);
     assert.match(youtubeSettings, /translationKey="label_privacy_status"/);
+  });
+});
+
+describe('YouTube official mark across the app', () => {
+  const root = fileURLToPath(new URL('../..', import.meta.url));
+  const read = (file: string) => readFileSync(join(root, file), 'utf8');
+
+  it('is checked for wherever a platform icon is drawn', () => {
+    // Nothing renders MenuComponent, and the connect hub's cells name no
+    // network with a brand mark.
+    const exempt = [
+      'components/launches/launches.component.tsx',
+      'components/public-api/connect-hub.tsx',
+    ];
+    const drawing = readdirSync(root, { recursive: true })
+      .map(String)
+      .filter(
+        (file) =>
+          file.endsWith('.tsx') &&
+          !file.endsWith('.spec.tsx') &&
+          read(file).includes('/icons/platforms/')
+      );
+    assert.ok(drawing.length > 15);
+    assert.deepEqual(
+      drawing.filter(
+        (file) => !exempt.includes(file) && !/isBrandMark\(/.test(read(file))
+      ),
+      []
+    );
+  });
+
+  it('leads post cards with the mark, on a row no higher than the icon', () => {
+    const calendar = read('components/launches/calendar.tsx');
+    const panel = read('components/launches/posts.panel.tsx');
+    assert.equal(calendar.match(/<BrandMarkLead\b/g)?.length, 4);
+    assert.equal(panel.match(/<BrandMarkLead\b/g)?.length, 1);
+    assert.match(
+      source,
+      /className="flex shrink-0 items-center"\s*style=\{\{ height: size \}\}\s*>\s*<PlatformMark/
+    );
+  });
+
+  it('gives the time of a narrow card room before its photo, never its mark', () => {
+    const calendar = read('components/launches/calendar.tsx');
+    // Week cards and month chips query their own width, brand marks only,
+    // so the other networks' cards are laid out as before.
+    assert.match(calendar, /brand && '@container min-h-\[16px\]'/);
+    assert.match(calendar, /brand && '@container',/);
+    assert.match(calendar, /size=\{16\}\s*avatarClassName="@max-\[106px\]:hidden"/);
+    assert.match(calendar, /size=\{13\}\s*avatarClassName="@max-\[116px\]:hidden"/);
+    // The mark is how the network is told apart: it never hides.
+    assert.doesNotMatch(calendar, /markClassName/);
   });
 });

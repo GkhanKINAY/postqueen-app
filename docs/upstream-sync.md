@@ -615,20 +615,25 @@ open here, and is now closed:
   under the same integrity: npm marks every version of it "no longer
   supported" and its source repository is gone, so an install could not count
   on the registry keeping it (#435).
+- The unpaid invoices left payable by subscriptions cancelled before #421
+  and #436 were voided by hand on 2026-11-26, with the owner's OK. What a
+  cancelled subscription leaves payable now is only a renewal of one Stripe
+  ended after its retries, which paying restores.
 
 Left for later:
 
-- Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
-  until a one-off void pass. That pass also takes the unpaid invoices other
-  than renewals (an upgrade charged at once, say) of subscriptions Stripe
-  ended after its retries before #436: paying one bought nothing, and only
-  since then are they voided when Stripe ends a subscription.
-- The official YouTube mark is in the composer, its previews, the public
-  preview page, the first-billing link and the agents page. Elsewhere
-  (calendar cards, Channels list, channel filter and pick lists, posts panel,
-  analytics, plugs) YouTube keeps its square icon, drawn rounded, small or
-  greyed with its row. Upstream moved some of those to the mark; they can
-  follow on the same `PlatformMark`.
+- YouTube's official mark is now on every screen of the app that shows a
+  platform's icon (calendar cards, posts panel, Channels, channel filter and
+  pick lists, analytics, Add Channel, getting started, connect links, the
+  sign-in showcase), drawn by `PlatformMark` or the brand-aware
+  `ChannelAvatar` (#439). The plugs lists draw it the same
+  way, though YouTube has no plugs today. Two places are left. The emails
+  still show `youtube.png` with rounded corners: Gmail does not show SVG, so
+  they need a PNG of the mark, which `scripts/email-icons.mjs` could draw.
+  The empty-state art (`no-channels.svg`, `no-channels-colors.svg`) has a
+  tilted YouTube icon among its decorations, which is a design question for
+  the owner. `MenuComponent` in `launches.component.tsx` still has its own
+  YouTube case, but nothing renders it.
 - An X article with a soft break has not been tried against X's API.
 
 **No post workflow came in.** `postWorkflowV1012` is still the one running,

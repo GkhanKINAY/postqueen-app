@@ -7,6 +7,10 @@ import { sortIntegrationsByProviderImportance } from '@gitroom/frontend/componen
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import clsx from 'clsx';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useRouter } from 'next/navigation';
 import { PlugsContext } from '@gitroom/frontend/components/plugs/plugs.context';
@@ -280,19 +284,32 @@ export const Plugs = () => {
                   )}
                 >
                   <span className="relative h-[32px] w-[32px] shrink-0">
-                    <ImageWithFallback
-                      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                      src={integration.picture || '/no-picture.jpg'}
-                      alt={integration.identifier}
-                      width={32}
-                      height={32}
-                      className="rounded-full"
-                    />
-                    <img
-                      src={`/icons/platforms/${integration.identifier}.png`}
-                      alt=""
-                      className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
-                    />
+                    {/* A brand mark is never rounded: ChannelAvatar draws the
+                        official one (see channelBrandMark). */}
+                    {isBrandMark(integration.identifier) ? (
+                      <ChannelAvatar
+                        integration={integration}
+                        size={32}
+                        rounded="full"
+                        badgeSize={15}
+                      />
+                    ) : (
+                      <>
+                        <ImageWithFallback
+                          fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                          src={integration.picture || '/no-picture.jpg'}
+                          alt={integration.identifier}
+                          width={32}
+                          height={32}
+                          className="rounded-full"
+                        />
+                        <img
+                          src={`/icons/platforms/${integration.identifier}.png`}
+                          alt=""
+                          className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
+                        />
+                      </>
+                    )}
                     {needsRefresh && (
                       <span className="absolute -start-[2px] -top-[2px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqWarn text-[10px] font-[700] text-pqOnBrand">
                         !

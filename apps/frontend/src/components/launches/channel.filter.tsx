@@ -8,6 +8,10 @@ import {
 } from '@gitroom/frontend/components/launches/calendar.context';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useAnchoredPopover } from '@gitroom/frontend/components/layout/use.anchored.popover';
 import { ChannelPickList } from '@gitroom/frontend/components/launches/channel.pick.list';
 
@@ -92,13 +96,24 @@ export const ChannelFilter: FC = () => {
                 className="relative size-[18px] overflow-hidden rounded-[5px] border border-pqInner"
                 style={{ marginInlineStart: index ? -6 : 0, zIndex: 3 - index }}
               >
-                <ImageWithFallback
-                  fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                  src={integration.picture || '/no-picture.jpg'}
-                  alt=""
-                  width={18}
-                  height={18}
-                />
+                {/* A brand mark can't stand in for a missing photo here:
+                    ChannelAvatar shows the channel's initial instead (see
+                    channelBrandMark). */}
+                {isBrandMark(integration.identifier) ? (
+                  <ChannelAvatar
+                    integration={integration}
+                    size={16}
+                    badge={false}
+                  />
+                ) : (
+                  <ImageWithFallback
+                    fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                    src={integration.picture || '/no-picture.jpg'}
+                    alt=""
+                    width={18}
+                    height={18}
+                  />
+                )}
               </span>
             ))}
           </span>

@@ -19,6 +19,10 @@ import {
   usePostActions,
   displayPostState,
 } from '@gitroom/frontend/components/launches/calendar';
+import {
+  BrandMarkLead,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
 import {
@@ -451,19 +455,32 @@ const QueueCard: FC<{
       <div className="mb-[7px] flex min-w-0 items-center gap-[7px]">
         {/* Platform + avatar side-by-side (calendar card pattern) — corner
             badge was too small to read which network. */}
-        <img
-          className="size-[20px] shrink-0 rounded-[5px] object-cover"
-          src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-          alt=""
-        />
-        <ImageWithFallback
-          fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-          src={post.integration?.picture || '/no-picture.jpg'}
-          alt=""
-          width={20}
-          height={20}
-          className="size-[20px] shrink-0 rounded-full object-cover"
-        />
+        {isBrandMark(post.integration?.providerIdentifier) ? (
+          <BrandMarkLead
+            integration={{
+              picture: post.integration.picture,
+              identifier: post.integration.providerIdentifier,
+              name: post.integration.name,
+            }}
+            size={20}
+          />
+        ) : (
+          <>
+            <img
+              className="size-[20px] shrink-0 rounded-[5px] object-cover"
+              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+              alt=""
+            />
+            <ImageWithFallback
+              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+              src={post.integration?.picture || '/no-picture.jpg'}
+              alt=""
+              width={20}
+              height={20}
+              className="size-[20px] shrink-0 rounded-full object-cover"
+            />
+          </>
+        )}
         <span className="min-w-0 flex-1 truncate text-[11.5px] text-pqMuted">
           {formatShortWeekdayTime(fromUtc(post.publishDate))}
         </span>

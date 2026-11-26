@@ -8,7 +8,10 @@ import { useStateCallback } from '@gitroom/react/helpers/use.state.callback';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { channelNameWithHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useAiAvailable } from '@gitroom/frontend/components/layout/user.context';
-import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 const PickPlatformCopilotBindings: FC<{
   isMain: boolean;
@@ -273,6 +276,9 @@ export const PickPlatforms: FC<{
                       </div>
                     );
                   }
+                  // An unselected chip is greyed as a whole. A brand mark
+                  // can't be: only its avatar is (see channelBrandMark).
+                  const brand = isBrandMark(integration.identifier);
                   return (
                     <div
                       key={integration.id}
@@ -289,13 +295,20 @@ export const PickPlatforms: FC<{
                           'relative grid size-[40px] cursor-pointer place-items-center rounded-full transition-all',
                           selected
                             ? 'ring-2 ring-pqBrand ring-offset-2 ring-offset-pqSettings'
-                            : 'opacity-50 grayscale hover:opacity-80 hover:grayscale-0'
+                            : brand
+                              ? 'group/pick'
+                              : 'opacity-50 grayscale hover:opacity-80 hover:grayscale-0'
                         )}
                       >
                         <ChannelAvatar
                           integration={integration}
                           size={36}
                           rounded="full"
+                          dimClassName={
+                            brand && !selected
+                              ? 'opacity-50 grayscale transition-all group-hover/pick:opacity-80 group-hover/pick:grayscale-0'
+                              : undefined
+                          }
                         />
                         {selected && (
                           <span

@@ -5,6 +5,10 @@
 // the README illustration (`public/auth/calendar.svg`). Flip the constant
 // to restore a still — do not delete the PNG or the SVG.
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 /** `'app'` / `'calendar'` restore the product stills. */
 const SHOWCASE_STILL: 'insights' | 'app' | 'calendar' = 'insights';
@@ -89,21 +93,25 @@ const PreviewThumb = ({
 }: {
   platform: string;
   size?: 26 | 28 | 32 | 40;
-}) => (
-  <span
-    className="flex shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-pqSettings"
-    style={{ width: size, height: size }}
-  >
-    <img
-      src={`/icons/platforms/${platform}.png`}
-      alt=""
-      width={size}
-      height={size}
-      className="object-contain"
+}) =>
+  // A brand mark is never rounded or cropped (see channelBrandMark)
+  isBrandMark(platform) ? (
+    <PlatformMark identifier={platform} size={size} plateClassName="" />
+  ) : (
+    <span
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-pqSettings"
       style={{ width: size, height: size }}
-    />
-  </span>
-);
+    >
+      <img
+        src={`/icons/platforms/${platform}.png`}
+        alt=""
+        width={size}
+        height={size}
+        className="object-contain"
+        style={{ width: size, height: size }}
+      />
+    </span>
+  );
 
 const POSTING_DAY_HEIGHTS = [88, 22, 46, 14, 58, 8, 34];
 
@@ -396,15 +404,19 @@ const StillShowcase = ({ still }: { still: 'app' | 'calendar' }) => {
 
       <div className="flex shrink-0 flex-col items-center gap-[14px] px-[32px]">
         <div className="flex items-center gap-[10px]">
-          {CHANNELS.map((channel) => (
-            <img
-              key={channel}
-              src={`/icons/platforms/${channel}.png`}
-              alt=""
-              aria-hidden="true"
-              className="size-[30px] rounded-full ring-1 ring-inset ring-white/25"
-            />
-          ))}
+          {CHANNELS.map((channel) =>
+            isBrandMark(channel) ? (
+              <PlatformMark key={channel} identifier={channel} size={30} />
+            ) : (
+              <img
+                key={channel}
+                src={`/icons/platforms/${channel}.png`}
+                alt=""
+                aria-hidden="true"
+                className="size-[30px] rounded-full ring-1 ring-inset ring-white/25"
+              />
+            )
+          )}
         </div>
         <p className="text-[14px] font-[500] text-white/90">
           {t(
