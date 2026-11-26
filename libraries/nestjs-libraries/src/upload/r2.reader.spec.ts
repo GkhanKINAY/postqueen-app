@@ -61,12 +61,17 @@ const tooMany = () =>
     message: 'Too many requests',
     $metadata: { httpStatusCode: 429 },
   });
-// What the SDK's HTTP handler rejects with when requestTimeout runs out: no
-// HTTP answer, so no status.
+// What the SDK's HTTP handler rejects with when no response headers arrive
+// within requestTimeout. It does so only with throwOnRequestTimeout set,
+// which r2() sets; without it the handler logs a warning and keeps waiting.
+// No HTTP answer, so no status.
 const timedOut = () =>
-  Object.assign(new Error('Connection timed out after 15000 ms'), {
-    name: 'TimeoutError',
-  });
+  Object.assign(
+    new Error(
+      '@smithy/node-http-handler - [ERROR] a request has exceeded the configured 15000 ms requestTimeout.'
+    ),
+    { name: 'TimeoutError', code: 'ETIMEDOUT' }
+  );
 
 describe('readFromR2', () => {
   it('reads the object', async (t) => {
@@ -165,6 +170,24 @@ describe('readFromR2', () => {
       lines[0],
       '[uploads] could not read aB3xY9pQr7.mp4 from R2: TimeoutError'
     );
+  });
+});
+
+describe('the R2 client', () => {
+  // A store that took the connection and then said nothing kept the read open
+  // for good: requestTimeout alone only logs a warning. The handler's own
+  // behaviour, a stall cut at the timeout and a long body left to stream, is
+  // too slow for this suite and was checked against a fake slow store.
+  it('fails a read whose answer does not start within the timeout', async (t) => {
+    let handler: any;
+    t.mock.method(S3Client.prototype, 'send', function (this: S3Client) {
+      handler = this.config.requestHandler;
+      throw missingKey();
+    });
+    await readFromR2('aB3xY9pQr7.mp4');
+    const config = await handler.configProvider;
+    assert.equal(config.requestTimeout, 15000);
+    assert.equal(config.throwOnRequestTimeout, true);
   });
 });
 

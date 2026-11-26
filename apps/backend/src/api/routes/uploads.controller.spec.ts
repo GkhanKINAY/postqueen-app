@@ -66,10 +66,15 @@ const throttled = fails(
       $metadata: { httpStatusCode: 503 },
     })
 );
+// What the SDK's HTTP handler rejects with when no response headers arrive
+// within requestTimeout (see r2.reader.spec.ts).
 const timedOut = fails(() =>
-  Object.assign(new Error('Connection timed out after 15000 ms'), {
-    name: 'TimeoutError',
-  })
+  Object.assign(
+    new Error(
+      '@smithy/node-http-handler - [ERROR] a request has exceeded the configured 15000 ms requestTimeout.'
+    ),
+    { name: 'TimeoutError', code: 'ETIMEDOUT' }
+  )
 );
 
 // The headers a client sizes, caches and trusts the file by.

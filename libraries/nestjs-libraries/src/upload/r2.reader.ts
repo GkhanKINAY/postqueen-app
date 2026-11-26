@@ -35,9 +35,14 @@ function r2(): S3Client {
         secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY!,
       },
       // Fail a stuck read instead of letting the request hang with no answer.
+      // requestTimeout only runs until the response headers arrive, so a long
+      // video still streams for as long as it takes. Without
+      // throwOnRequestTimeout it only logs a warning, and a store that took the
+      // connection and then said nothing kept the request open for good.
       requestHandler: {
         connectionTimeout: 5000,
         requestTimeout: 15000,
+        throwOnRequestTimeout: true,
       },
     });
   }
