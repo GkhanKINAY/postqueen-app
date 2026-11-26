@@ -507,7 +507,7 @@ fork" paragraph, and a folded commit counts once per upstream hash. All 100
 (the guard included) are named by their full hash in a commit message on
 `main`. The guard is `4ff97adfa`'s (see the lessons). The owner's six are in
 the skip table below. One commit, the model switch `2a86ee059`, was deferred
-at the sync and taken on 2026-11-26 (see "Taken after the sync" below); that
+at the sync and taken on 2026-11-26 (#437, see "Taken after the sync"); that
 made `1bf6d7665`, until then skipped, one already here.
 
 As in October, every commit was triaged against `origin/main` before anything
@@ -635,7 +635,7 @@ Left for later:
 
 Taken after the sync:
 
-- **The model switch, `2a86ee059` (2026-11-26).** Deferred at the sync until
+- **The model switch, `2a86ee059` (#437, 2026-11-26).** Deferred at the sync until
   its cost was weighed against the credit rates, then taken because OpenAI
   shuts down `gpt-4.1-2025-04-14` and `gpt-4o-2024-08-06`, which the AI text
   calls used, on 2027-01-14. Every OpenAI text call now uses `gpt-6.2-sol`,
@@ -823,7 +823,7 @@ Already here, or empty once picked (second sync):
 | `a8b03f2df` | `finish.trial.tsx` already says the button charges now |
 | `aa3954ee8` | `f92427a14` already refuses only post ids of another organization (`countPostsOfOtherOrganizations`), so the editor's new ids go through |
 | `a4b92f2a0` | `5b2136dfe` already stores generator images before they enter the graph state |
-| `1bf6d7665` | Puts back the TikTok Business scope list `2a86ee059` deleted. That deletion was left out when `2a86ee059` was taken, so the list never left |
+| `1bf6d7665` | Puts back the TikTok Business scope list `2a86ee059` deleted. That deletion was left out when `2a86ee059` was taken (#437), so the list never left |
 | `82121e28c` | Deleted channels already return nothing on every analytics path before a refresh, and Facebook already skips the stored-expiry refresh (`tokenNeverExpires`, since v3.6.121). Instagram keeps its expiry on purpose: its user token, which expires after 60 days, is what audio search and the blocked-publish check use |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
