@@ -19,7 +19,8 @@ import { LLM_TURN_MINIMUM } from '../database/prisma/subscriptions/pricing.ts';
 const org = { id: 'org-1', name: 'Spec organization' };
 const answer = '- Facebook: 3\n- Instagram: 1';
 
-// The model, faked: one call that answers with text.
+// The model, faked: one call that answers with text, or fails.
+let modelFails: boolean;
 const usage = {
   inputTokens: { total: 1000, noCache: 1000, cacheRead: 0, cacheWrite: 0 },
   outputTokens: { total: 20, text: 20, reasoning: 0 },
@@ -35,6 +36,9 @@ const fakeModel = {
   modelId: 'gpt-6.2-sol',
   supportedUrls: {},
   async doGenerate() {
+    if (modelFails) {
+      throw new Error('The model could not answer');
+    }
     return {
       content: [{ type: 'text', text: answer }],
       finishReason: { unified: 'stop', raw: 'stop' },
@@ -44,6 +48,9 @@ const fakeModel = {
     };
   },
   async doStream() {
+    if (modelFails) {
+      throw new Error('The model could not answer');
+    }
     return {
       stream: new ReadableStream({
         start(controller) {
@@ -169,6 +176,7 @@ describe('ask_postqueen over MCP', () => {
   });
 
   beforeEach(() => {
+    modelFails = false;
     balance = 500;
     charges = [];
     generate = realGenerate;
@@ -221,7 +229,9 @@ describe('ask_postqueen over MCP', () => {
       seen.push({ message, options, auth: getAuth() });
       return {
         text: answer,
-        steps: Array.from({ length: 6 }, () => ({
+        finishReason: 'stop',
+        steps: Array.from({ length: 6 }, (_, i) => ({
+          text: i === 5 ? answer : '',
           request: { body: 'system prompt and tools '.repeat(5000) },
           response: { body: 'x'.repeat(20000) },
         })),
@@ -257,19 +267,42 @@ describe('ask_postqueen over MCP', () => {
     assert.deepEqual(ours.auth, org);
   });
 
+  const stopped =
+    'The agent stopped before it finished its answer (finish reason: tool-calls). Actions it took may already have run, so check them before asking again.';
+  const text = (value: string) => ({
+    content: [{ type: 'text', text: value }],
+    isError: false,
+  });
+
   // A run that ends on a tool call (the step cap, or the credits floor
-  // reached mid-run) has no text; the client hears that it stopped
-  it('says the agent stopped when a run ends without text', async () => {
+  // reached mid-run) has not answered: the client hears that it stopped,
+  // after whatever it wrote before, and that its actions may have run
+  it('says the agent stopped when a run ends on a tool call', async () => {
     generate = async () => ({ text: '', finishReason: 'tool-calls', steps: [] });
-    assert.deepEqual(await ask('/ours', 'Schedule everything'), {
-      content: [
-        {
-          type: 'text',
-          text: 'The agent stopped before it wrote an answer (finish reason: tool-calls).',
-        },
-      ],
-      isError: false,
+    assert.deepEqual(await ask('/ours', 'Schedule everything'), text(stopped));
+
+    generate = async () => ({
+      text: 'Checking now.Checking now.',
+      finishReason: 'tool-calls',
+      steps: [{ text: 'Checking now.' }, { text: '' }, { text: 'Checking now.' }],
     });
+    assert.deepEqual(
+      await ask('/ours', 'Schedule everything'),
+      text(`Checking now.\n\nChecking now.\n\n${stopped}`)
+    );
+  });
+
+  // Mastra's `text` runs the steps' texts together
+  it('keeps the text of each step apart', async () => {
+    generate = async () => ({
+      text: `Checking now.${answer}`,
+      finishReason: 'stop',
+      steps: [{ text: 'Checking now.' }, { text: answer }],
+    });
+    assert.deepEqual(
+      await ask('/ours', 'How many channels do I have?'),
+      text(`Checking now.\n\n${answer}`)
+    );
   });
 
   it('runs the agent and charges its model calls to the organization', async () => {
@@ -280,12 +313,28 @@ describe('ask_postqueen over MCP', () => {
     ]);
   });
 
-  it('answers an error from the agent as an MCP error, as before', async () => {
+  // An error is still an MCP error, with its message and nothing more
+  it('answers an error from the agent as an MCP error', async () => {
     balance = 0;
-    const ours = await ask('/ours', 'How many channels do I have?');
-    assert.equal(ours.isError, true);
-    assert.deepEqual(ours, await ask('/agents', 'How many channels do I have?'));
-    assert.match((ours.content as any)[0].text, /credits/i);
+    const result = await ask('/ours', 'How many channels do I have?');
+    assert.equal(result.isError, true);
+    const error = JSON.parse((result.content as any)[0].text);
+    assert.equal(error.code, 'TOOL_EXECUTION_FAILED');
+    assert.match(error.message, /Not enough credits/);
+    assert.deepEqual(error.cause, { message: error.message, name: 'Error' });
     assert.deepEqual(charges, []);
+  });
+
+  // An error from the model loop carries its stack, and Mastra's tool sent
+  // it on with the server's file paths
+  it('never sends a stack with an error', async () => {
+    modelFails = true;
+    const ours = await ask('/ours', 'How many channels do I have?');
+    const theirs = await ask('/agents', 'How many channels do I have?');
+    assert.equal(ours.isError, true);
+    const body = (ours.content as any)[0].text;
+    assert.match(JSON.parse(body).message, /The model could not answer/);
+    assert.doesNotMatch(body, /stack|node_modules|\.ts:\d+|\.js:\d+/);
+    assert.match((theirs.content as any)[0].text, /"stack":/);
   });
 });

@@ -113,7 +113,7 @@ describe('MCP tool lists', () => {
         /'(\w+)'/g,
       ),
     ].map((m) => m[1]);
-    assert.equal([...tools, 'ask_postqueen'].length, 28);
+    // and ask_postqueen on top with a key: 28
     assert.equal(tools.length, 27);
     assert.equal(tools.filter((name) => !hidden.includes(name)).length, 22);
   });
