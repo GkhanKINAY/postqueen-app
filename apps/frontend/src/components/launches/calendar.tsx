@@ -88,6 +88,10 @@ import {
 } from '@gitroom/frontend/components/launches/post.card.actions';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  BrandMarkLead,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -2185,21 +2189,34 @@ const CalendarItem: FC<{
           style={{ background: accent }}
           aria-hidden="true"
         />
-        <img
-          className="size-[13px] shrink-0 rounded-[4px] object-cover"
-          src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-          alt=""
-        />
-        <span className="relative size-[13px] shrink-0">
-          <ImageWithFallback
-            className="size-[13px] rounded-full object-cover"
-            src={post.integration.picture || ''}
-            fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-            alt=""
-            width={13}
-            height={13}
+        {isBrandMark(post.integration?.providerIdentifier) ? (
+          <BrandMarkLead
+            integration={{
+              picture: post.integration.picture,
+              identifier: post.integration.providerIdentifier,
+              name: post.integration.name,
+            }}
+            size={13}
           />
-        </span>
+        ) : (
+          <>
+            <img
+              className="size-[13px] shrink-0 rounded-[4px] object-cover"
+              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+              alt=""
+            />
+            <span className="relative size-[13px] shrink-0">
+              <ImageWithFallback
+                className="size-[13px] rounded-full object-cover"
+                src={post.integration.picture || ''}
+                fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                alt=""
+                width={13}
+                height={13}
+              />
+            </span>
+          </>
+        )}
         <span className="min-w-0 truncate text-[10px] font-[700] text-pqMuted">
           {timeLabel}
         </span>
@@ -2296,19 +2313,32 @@ const CalendarItem: FC<{
               ref={leadRef}
               className="flex min-w-0 items-center gap-[7px]"
             >
-              <img
-                className="size-[16px] shrink-0 rounded-[4px] object-cover"
-                src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-                alt=""
-              />
-              <ImageWithFallback
-                className="size-[16px] shrink-0 rounded-full object-cover"
-                src={post.integration.picture || ''}
-                fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-                alt=""
-                width={16}
-                height={16}
-              />
+              {isBrandMark(post.integration?.providerIdentifier) ? (
+                <BrandMarkLead
+                  integration={{
+                    picture: post.integration.picture,
+                    identifier: post.integration.providerIdentifier,
+                    name: post.integration.name,
+                  }}
+                  size={16}
+                />
+              ) : (
+                <>
+                  <img
+                    className="size-[16px] shrink-0 rounded-[4px] object-cover"
+                    src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                    alt=""
+                  />
+                  <ImageWithFallback
+                    className="size-[16px] shrink-0 rounded-full object-cover"
+                    src={post.integration.picture || ''}
+                    fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                    alt=""
+                    width={16}
+                    height={16}
+                  />
+                </>
+              )}
               <span className="min-w-0 truncate text-[11.5px] text-pqSoft">
                 {post.integration.name}
                 {channelHandle ? ` · ${channelHandle}` : ''}
@@ -2467,19 +2497,32 @@ const CalendarItem: FC<{
             ref={leadRef}
             className="flex min-w-0 items-center gap-[5px]"
           >
-            <img
-              className="size-[16px] shrink-0 rounded-[4px] object-cover"
-              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-            />
-            <ImageWithFallback
-              className="size-[16px] shrink-0 rounded-full object-cover"
-              src={post.integration.picture || ''}
-              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-              width={16}
-              height={16}
-            />
+            {isBrandMark(post.integration?.providerIdentifier) ? (
+              <BrandMarkLead
+                integration={{
+                  picture: post.integration.picture,
+                  identifier: post.integration.providerIdentifier,
+                  name: post.integration.name,
+                }}
+                size={16}
+              />
+            ) : (
+              <>
+                <img
+                  className="size-[16px] shrink-0 rounded-[4px] object-cover"
+                  src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                />
+                <ImageWithFallback
+                  className="size-[16px] shrink-0 rounded-full object-cover"
+                  src={post.integration.picture || ''}
+                  fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                  width={16}
+                  height={16}
+                />
+              </>
+            )}
             <span className="min-w-0 truncate text-[10px] font-[700] -tracking-[0.1px] text-pqMuted">
               {/* `fromUtc(...)`, the same reading the cell above uses to
                   decide which hour row this card belongs in. `newDayjs(x)` parses
@@ -2825,19 +2868,33 @@ const ListItem: FC<{
             ref={leadRef}
             className="flex min-w-0 items-center gap-[9px]"
           >
-            <img
-              className="size-[26px] shrink-0 rounded-[8px] object-cover"
-              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-            />
-            <ImageWithFallback
-              className="size-[26px] shrink-0 rounded-[8px] object-cover"
-              src={post.integration.picture || ''}
-              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-              width={26}
-              height={26}
-            />
+            {isBrandMark(post.integration?.providerIdentifier) ? (
+              <BrandMarkLead
+                integration={{
+                  picture: post.integration.picture,
+                  identifier: post.integration.providerIdentifier,
+                  name: post.integration.name,
+                }}
+                size={26}
+                rounded="lg"
+              />
+            ) : (
+              <>
+                <img
+                  className="size-[26px] shrink-0 rounded-[8px] object-cover"
+                  src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                />
+                <ImageWithFallback
+                  className="size-[26px] shrink-0 rounded-[8px] object-cover"
+                  src={post.integration.picture || ''}
+                  fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                  width={26}
+                  height={26}
+                />
+              </>
+            )}
             <span className="min-w-0 truncate text-[13px] font-[600] text-pqText">
               {post.integration.name}
             </span>

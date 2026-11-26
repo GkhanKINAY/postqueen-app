@@ -15,7 +15,7 @@ import { getT } from '@gitroom/react/translation/get.translation.service.backend
 import { RenderPreviewDateClient } from '@gitroom/frontend/components/preview/render.preview.date.client';
 import { formatChannelHandle } from '@gitroom/frontend/components/channels/channel-handle';
 import { CreationMethodBadge } from '@gitroom/frontend/components/launches/creation.method.badge';
-import { PlatformMark } from '@gitroom/frontend/components/new-launch/channel.avatar';
+import { ChannelAvatar } from '@gitroom/frontend/components/new-launch/channel.avatar';
 // From the plain module: a server component can't call a 'use client' export.
 import { isBrandMark } from '@gitroom/frontend/components/new-launch/channel-picture';
 
@@ -171,25 +171,33 @@ export default async function Auth(
                 className="rounded-[14px] border border-pqBorder bg-pqInner p-[18px] md:p-[20px]"
               >
                 <div className="flex gap-[12px]">
-                  <div className="relative h-[50px] w-[50px] shrink-0">
-                    <ImageWithFallback
-                      className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
-                      alt={integration.name}
-                      src={integration.picture || '/no-picture.jpg'}
-                      fallbackSrc={`/icons/platforms/${integration.providerIdentifier}.png`}
-                      width={50}
-                      height={50}
+                  {/* A brand mark is never rounded or covered, and links
+                      to the channel; without a photo the mark itself is the
+                      face, never the square platform icon (see
+                      brandMarkPlacement). */}
+                  {isBrandMark(integration.providerIdentifier) ? (
+                    <ChannelAvatar
+                      integration={{
+                        picture: integration.picture,
+                        identifier: integration.providerIdentifier,
+                        name: integration.name,
+                      }}
+                      size={50}
+                      rounded="full"
+                      badgeSize={24}
+                      channel={integration.profile || ''}
+                      className="rounded-full border border-pqBorder"
                     />
-                    {/* A brand mark is never rounded or covered, and links
-                        to the channel (see channelBrandMark). */}
-                    {isBrandMark(integration.providerIdentifier) ? (
-                      <PlatformMark
-                        identifier={integration.providerIdentifier}
-                        size={24}
-                        channel={integration.profile || ''}
-                        className="absolute -bottom-[4px] -end-[8px]"
+                  ) : (
+                    <div className="relative h-[50px] w-[50px] shrink-0">
+                      <ImageWithFallback
+                        className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
+                        alt={integration.name}
+                        src={integration.picture || '/no-picture.jpg'}
+                        fallbackSrc={`/icons/platforms/${integration.providerIdentifier}.png`}
+                        width={50}
+                        height={50}
                       />
-                    ) : (
                       <div className="absolute -bottom-[4px] -end-[4px] h-[24px] w-[24px]">
                         <img
                           className="aspect-square h-full w-full rounded-full border border-pqBorder bg-pqAvatarBg"
@@ -197,8 +205,8 @@ export default async function Auth(
                           src={`/icons/platforms/${integration.providerIdentifier}.png`}
                         />
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1 space-y-[10px]">
                     <div className="flex flex-wrap items-center gap-x-[8px] gap-y-[4px]">
                       <h2 className="text-[14px] font-[600] text-pqText">

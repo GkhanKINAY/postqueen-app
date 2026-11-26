@@ -267,3 +267,37 @@ export const ChannelAvatar: FC<{
     </span>
   );
 };
+
+/**
+ * The platform icon and channel photo a post card leads with, for a platform
+ * with a brand mark (see channelBrandMark): the mark, never under its minimum
+ * height, and the channel's photo, or its initial where the other platforms
+ * fall back to their icon. The mark is centred on a row as high as the icon
+ * it stands in for and reaches past it, so a card keeps its height (the week
+ * view packs its hours by it).
+ */
+export const BrandMarkLead: FC<{
+  integration: {
+    picture?: string | null;
+    identifier: string;
+    name?: string;
+  };
+  size: number;
+  rounded?: 'full' | 'lg';
+}> = ({ integration, size, rounded = 'full' }) => (
+  <>
+    <span className="flex shrink-0 items-center" style={{ height: size }}>
+      <PlatformMark
+        identifier={integration.identifier}
+        size={size}
+        plateClassName=""
+      />
+    </span>
+    <ChannelAvatar
+      integration={integration}
+      size={size}
+      rounded={rounded}
+      badge={false}
+    />
+  </>
+);

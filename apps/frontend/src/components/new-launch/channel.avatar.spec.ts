@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
@@ -263,5 +264,45 @@ describe('YouTube official mark', () => {
     assert.match(youtubeSettings, /youtube_description_is_post_text/);
     assert.match(youtubeSettings, /label="Privacy Status"/);
     assert.match(youtubeSettings, /translationKey="label_privacy_status"/);
+  });
+});
+
+describe('YouTube official mark across the app', () => {
+  const root = fileURLToPath(new URL('../..', import.meta.url));
+  const read = (file: string) => readFileSync(join(root, file), 'utf8');
+
+  it('is checked for wherever a platform icon is drawn', () => {
+    // Nothing renders MenuComponent, and the connect hub's cells name no
+    // network with a brand mark.
+    const exempt = [
+      'components/launches/launches.component.tsx',
+      'components/public-api/connect-hub.tsx',
+    ];
+    const drawing = readdirSync(root, { recursive: true })
+      .map(String)
+      .filter(
+        (file) =>
+          file.endsWith('.tsx') &&
+          !file.endsWith('.spec.tsx') &&
+          read(file).includes('/icons/platforms/')
+      );
+    assert.ok(drawing.length > 15);
+    assert.deepEqual(
+      drawing.filter(
+        (file) => !exempt.includes(file) && !/isBrandMark\(/.test(read(file))
+      ),
+      []
+    );
+  });
+
+  it('leads post cards with the mark, on a row no higher than the icon', () => {
+    const calendar = read('components/launches/calendar.tsx');
+    const panel = read('components/launches/posts.panel.tsx');
+    assert.equal(calendar.match(/<BrandMarkLead\b/g)?.length, 4);
+    assert.equal(panel.match(/<BrandMarkLead\b/g)?.length, 1);
+    assert.match(
+      source,
+      /<span className="flex shrink-0 items-center" style=\{\{ height: size \}\}>\s*<PlatformMark/
+    );
   });
 });

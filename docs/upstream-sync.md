@@ -622,12 +622,18 @@ Left for later:
   Older than this sync.
 - Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
   until a one-off void pass.
-- The official YouTube mark is in the composer, its previews, the public
-  preview page, the first-billing link and the agents page. Elsewhere
-  (calendar cards, Channels list, channel filter and pick lists, posts panel,
-  analytics, plugs) YouTube keeps its square icon, drawn rounded, small or
-  greyed with its row. Upstream moved some of those to the mark; they can
-  follow on the same `PlatformMark`.
+- YouTube's official mark is now on every screen of the app that shows a
+  platform's icon (calendar cards, posts panel, Channels, channel filter and
+  pick lists, analytics, Add Channel, getting started, connect links, the
+  sign-in showcase), drawn by `PlatformMark` or the brand-aware
+  `ChannelAvatar` (2026-11-26 follow-up). The plugs lists draw it the same
+  way, though YouTube has no plugs today. Two places are left. The emails
+  still show `youtube.png` with rounded corners: Gmail does not show SVG, so
+  they need a PNG of the mark, which `scripts/email-icons.mjs` could draw.
+  The empty-state art (`no-channels.svg`, `no-channels-colors.svg`) has a
+  tilted YouTube icon among its decorations, which is a design question for
+  the owner. `MenuComponent` in `launches.component.tsx` still has its own
+  YouTube case, but nothing renders it.
 - An X article with a soft break has not been tried against X's API.
 - `nestjs-temporal-core` is marked "no longer supported" on npm.
 
