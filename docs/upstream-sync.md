@@ -500,13 +500,15 @@ Lessons, in the order they cost time:
 ## November 2026: what happened
 
 **140 commits past the watermark (`a5affe62c..44df988cb`, merges not counted):
-23 taken as they were, 75 adapted, 1 taken only for its guard, 16 already
-here, 18 skipped, 6 skipped on the owner's word, 1 deferred.** A commit counts
+23 taken as they were, 76 adapted, 1 taken only for its guard, 17 already
+here, 17 skipped, 6 skipped on the owner's word.** A commit counts
 as adapted when the commit that carries its hash here has an "Adapted for this
-fork" paragraph, and a folded commit counts once per upstream hash. All 99
+fork" paragraph, and a folded commit counts once per upstream hash. All 100
 (the guard included) are named by their full hash in a commit message on
-`main`. The guard is `4ff97adfa`'s (see the lessons). The owner's six and the
-deferred one are in the skip table below.
+`main`. The guard is `4ff97adfa`'s (see the lessons). The owner's six are in
+the skip table below. One commit, the model switch `2a86ee059`, was deferred
+at the sync and taken on 2026-11-26 (see "Taken after the sync" below); that
+made `1bf6d7665`, until then skipped, one already here.
 
 As in October, every commit was triaged against `origin/main` before anything
 was picked, by three read-only agents over consecutive ranges, and the owner
@@ -630,6 +632,20 @@ Left for later:
   follow on the same `PlatformMark`.
 - An X article with a soft break has not been tried against X's API.
 - `nestjs-temporal-core` is marked "no longer supported" on npm.
+
+Taken after the sync:
+
+- **The model switch, `2a86ee059` (2026-11-26).** Deferred at the sync until
+  its cost was weighed against the credit rates, then taken because OpenAI
+  shuts down `gpt-4.1-2025-04-14` and `gpt-4o-2024-08-06`, which the AI text
+  calls used, on 2027-01-14. Every OpenAI text call now uses `gpt-6.2-sol`,
+  the Copilot agent's `gpt-5.2` included, as upstream did; image models did
+  not change. Adapted: our two Copilot routes and the Mastra agent kept their
+  metering and only changed the model, `gpt-6.2-sol` got its credit rates
+  (its uncached input priced at the rate it bills for writing a prompt to its
+  cache, see `LLM_CREDIT_RATES`), and its TikTok Business scope deletion and
+  reformat were left out. `1bf6d7665`, which put those scopes back upstream,
+  is therefore empty here.
 
 **No post workflow came in.** `postWorkflowV1012` is still the one running,
 and upstream's next post workflow would still become our v1.0.13 (see
@@ -769,8 +785,6 @@ Skipped, deliberately:
 | `951cb5e45` | Owner: the republish guard stays; publishing a published post again still needs `republish: true` |
 | `4b7b9901a` `e5ba6362e` | Owner: LeadJourney, not taken |
 | `de62bd9d8` | Owner: a staff tool that grants AI image and video credits, not taken |
-| `2a86ee059` | **Deferred, not rejected** (owner). Moves the AI text calls from `gpt-4.1` to `gpt-6.2-sol`. Its vendor cost is to be measured against the credit rates first, as separate work. The same commit deleted the TikTok Business scope list and reformatted that file; that part is never taken |
-| `1bf6d7665` | Puts back the TikTok Business scope list `2a86ee059` deleted; net zero with it, so it comes or stays out with it |
 
 Already here, or empty once picked (second sync):
 
@@ -809,6 +823,7 @@ Already here, or empty once picked (second sync):
 | `a8b03f2df` | `finish.trial.tsx` already says the button charges now |
 | `aa3954ee8` | `f92427a14` already refuses only post ids of another organization (`countPostsOfOtherOrganizations`), so the editor's new ids go through |
 | `a4b92f2a0` | `5b2136dfe` already stores generator images before they enter the graph state |
+| `1bf6d7665` | Puts back the TikTok Business scope list `2a86ee059` deleted. That deletion was left out when `2a86ee059` was taken, so the list never left |
 | `82121e28c` | Deleted channels already return nothing on every analytics path before a refresh, and Facebook already skips the stored-expiry refresh (`tokenNeverExpires`, since v3.6.121). Instagram keeps its expiry on purpose: its user token, which expires after 60 days, is what audio search and the blocked-publish check use |
 
 Also left out of commits that were otherwise taken: `chatgpt-app-submission.json`
