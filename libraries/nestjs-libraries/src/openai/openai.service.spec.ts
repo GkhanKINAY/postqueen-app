@@ -342,7 +342,7 @@ describe('/copilot/chat', () => {
       id: 'resp_7',
       object: 'response',
       created_at: 1,
-      model: 'gpt-4.1-2025-04-14',
+      model: 'gpt-6.2-sol',
       output: [],
     };
     globalThis.fetch = fetchReturning(() =>
@@ -379,7 +379,7 @@ describe('/copilot/chat', () => {
     // The same adapter the controller builds; the runtime's default agent
     // runs on `getLanguageModel()`.
     const model: any = new OpenAIAdapter({
-      model: 'gpt-4.1',
+      model: 'gpt-6.2-sol',
       openai: service.meteredClient('org-1', 'copilot_chat'),
     }).getLanguageModel();
     const { stream } = await model.doStream({
@@ -390,12 +390,13 @@ describe('/copilot/chat', () => {
       /** drain **/
     }
     assert.match(sent[0].url, /\/responses$/);
+    assert.equal(sent[0].body.model, 'gpt-6.2-sol');
     assert.deepEqual(charges, [
       [
         'org-1',
         {
           key: 'llm:resp_7',
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-6.2-sol',
           inputTokens: 640,
           cachedInputTokens: 0,
           outputTokens: 32,

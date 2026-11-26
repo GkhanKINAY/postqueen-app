@@ -291,7 +291,7 @@ ${renderArray(
       name: 'postqueen',
       description: 'Agent that helps schedule posts and report social analytics for users',
       instructions: ({ requestContext }) => this.instructions(requestContext),
-      model: openai('gpt-5.2'),
+      model: openai('gpt-6.2-sol'),
       // Per run: the step cap, and the charge for every model call.
       defaultOptions: ({ requestContext }) =>
         this._copilotCreditsService.runOptions(requestContext),

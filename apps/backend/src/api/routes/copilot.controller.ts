@@ -147,7 +147,7 @@ export class CopilotController {
       runtime: new CopilotRuntime(),
       // Its own client, so every call is charged by the tokens it used.
       serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
+        model: 'gpt-6.2-sol',
         openai: this._openaiService.meteredClient(
           organization.id,
           'copilot_chat'
@@ -260,7 +260,7 @@ export class CopilotController {
       runtime,
       // properties: req.body.variables.properties,
       serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
+        model: 'gpt-6.2-sol',
       }),
       cors: this.runtimeCors(),
     });
