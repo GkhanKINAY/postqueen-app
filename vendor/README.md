@@ -21,10 +21,9 @@ orchestrator's workers and the backend's Temporal client are built on
 Every version of the package on npm is marked deprecated with "Package no
 longer supported", a notice npm support sets, and its source repository is
 gone. If the registry stops serving the tarball, `pnpm install` fails in CI
-and in the Docker image build. Serving the same
-file from this repository keeps installs working with no code change: the root
-`package.json` points at it with a `file:` spec, so every import still reads
-`'nestjs-temporal-core'`.
+and in the Docker image build. Serving the same file from this repository
+keeps installs working with no code change: the root `package.json` points at
+it with a `file:` spec, so every import still reads `'nestjs-temporal-core'`.
 
 pnpm checks the file against the integrity in `pnpm-lock.yaml` on every
 install, so a changed tarball fails the install instead of being used.
