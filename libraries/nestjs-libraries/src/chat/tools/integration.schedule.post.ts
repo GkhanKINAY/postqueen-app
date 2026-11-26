@@ -7,6 +7,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { HttpException, Injectable } from '@nestjs/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
@@ -72,7 +73,8 @@ export const toMedia = (a: Attachment) =>
 export class IntegrationSchedulePostTool implements AgentToolInterface {
   constructor(
     private _postsService: PostsService,
-    private _integrationService: IntegrationService
+    private _integrationService: IntegrationService,
+    private _integrationManager: IntegrationManager
   ) {}
   name = 'integrationSchedulePostTool';
 
@@ -205,19 +207,40 @@ If validation fails, the result contains output.errors describing what to fix; t
             );
           integrations[platform.integrationId] = integration;
 
+          // Wrapped in `output` as every other refusal here: the output
+          // schema has no top-level `errors`, so a bare one reached the agent
+          // as a failed output validation instead of the message.
           if (!integration) {
             return {
-              errors: 'Integration not found',
+              output: {
+                errors: 'Integration not found',
+              },
             };
           }
 
+          if (integration.disabled || integration.refreshNeeded) {
+            return {
+              output: {
+                errors: `${integration.name}: This channel needs to be reconnected before you can schedule posts. Please reconnect it from Channels.`,
+              },
+            };
+          }
+
+          // Unfinished as the Channels page decides it: a renewal can turn
+          // the flag off on a channel that never picked its page. Worded as
+          // the worker words a post it stops for this.
           if (
-            integration.disabled ||
-            integration.refreshNeeded ||
-            integration.inBetweenSteps
+            this._integrationService.needsPageSelection(
+              integration,
+              this._integrationManager.getSocialIntegration(
+                integration.providerIdentifier
+              )
+            )
           ) {
             return {
-              errors: `${integration.name}: This channel needs to be reconnected before you can schedule posts. Please reconnect it from Channels.`,
+              output: {
+                errors: `${integration.name}: The connection of this channel was not finished. Please finish connecting it from Channels and select the page or account to post to, then try again.`,
+              },
             };
           }
 
