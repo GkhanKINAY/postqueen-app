@@ -266,16 +266,12 @@ export class BadBody extends ApplicationFailure {
   }
 }
 
-// Why no answer is ever coming, or '' when asking again may get one: fetch
-// rejects with "fetch failed" and the reason as its cause. The SSRF guard
-// refuses the address with "Blocked IP"; ENOTFOUND is a host name that does
-// not exist.
-const unreachable = (err: any): string =>
-  err?.cause?.message === 'Blocked IP'
-    ? 'Blocked IP'
-    : err?.cause?.code === 'ENOTFOUND'
-    ? 'ENOTFOUND'
-    : '';
+// No answer is ever coming: the SSRF guard refuses the address. fetch
+// rejects with "fetch failed" and the guard's "Blocked IP" as its cause. A
+// host name that does not resolve (ENOTFOUND) is not counted here: resolvers
+// report a passing DNS failure that way too, and for our own uploads it
+// would tell the user to attach the media again.
+const unreachable = (err: any) => err?.cause?.message === 'Blocked IP';
 
 // The store could not answer this time: throttled (429), failing on its own
 // side (5xx), or no answer at all (0). Our own uploads route answers 503 with
@@ -325,11 +321,10 @@ async function requestMedia(
         : {}),
     } as any);
   } catch (err) {
-    const reason = unreachable(err);
-    if (reason) {
+    if (unreachable(err)) {
       throw new BadBody(
         identifier,
-        JSON.stringify({ path: stripQuery(path), reason }),
+        JSON.stringify({ path: stripQuery(path), reason: 'Blocked IP' }),
         '{}',
         MEDIA_READ_FAILED
       );

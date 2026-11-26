@@ -595,9 +595,27 @@ describe('sizing remote media', () => {
     assert.equal(count, 2);
   });
 
-  it('fails at once when no answer can ever come', async () => {
+  it('fails at once on an address the SSRF guard refuses', async () => {
+    let count = 0;
+    globalThis.fetch = (async () => {
+      count++;
+      throw new TypeError('fetch failed', { cause: new Error('Blocked IP') });
+    }) as typeof fetch;
+    // no mocked timers: a wait would hold this test for 5 seconds
+    await assert.rejects(
+      new Network().mediaSize(url, 'network'),
+      failsFor(MEDIA_READ_FAILED)
+    );
+    assert.equal(count, 1);
+  });
+
+  // A resolver reports a passing DNS failure as ENOTFOUND too.
+  it('asks once more for any other missing answer, a name that did not resolve included', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     for (const cause of [
-      new Error('Blocked IP'),
+      Object.assign(new Error('connect ECONNREFUSED'), {
+        code: 'ECONNREFUSED',
+      }),
       Object.assign(new Error('getaddrinfo ENOTFOUND cdn.example.com'), {
         code: 'ENOTFOUND',
       }),
@@ -607,30 +625,11 @@ describe('sizing remote media', () => {
         count++;
         throw new TypeError('fetch failed', { cause });
       }) as typeof fetch;
-      // no mocked timers: a wait would hold this test for 5 seconds
-      await assert.rejects(
-        new Network().mediaSize(url, 'network'),
-        failsFor(MEDIA_READ_FAILED)
-      );
-      assert.equal(count, 1);
+      const { err } = await settled(t, () => mediaHead(url, 'network'));
+      assert.ok(err instanceof BadBody, cause.message);
+      assert.equal(err.message, MEDIA_READ_SLOW);
+      assert.equal(count, 2);
     }
-  });
-
-  it('asks once more for any other missing answer', async (t) => {
-    t.mock.timers.enable({ apis: ['setTimeout'] });
-    let count = 0;
-    globalThis.fetch = (async () => {
-      count++;
-      throw new TypeError('fetch failed', {
-        cause: Object.assign(new Error('connect ECONNREFUSED'), {
-          code: 'ECONNREFUSED',
-        }),
-      });
-    }) as typeof fetch;
-    const { err } = await settled(t, () => mediaHead(url, 'network'));
-    assert.ok(err instanceof BadBody);
-    assert.equal(err.message, MEDIA_READ_SLOW);
-    assert.equal(count, 2);
   });
 
   it('gives a HEAD a deadline, and counts missing it as no answer', async (t) => {
