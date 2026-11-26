@@ -1,4 +1,6 @@
-# Vendored packages
+# vendor/
+
+Third-party packages served from this repository instead of the npm registry.
 
 ## nestjs-temporal-core-3.4.0.tgz
 
@@ -11,15 +13,15 @@ orchestrator's workers and the backend's Temporal client are built on
 - Integrity (sha512, base64), the same value `pnpm-lock.yaml` held for the
   registry copy:
   `sha512-GLCDofCHXMUkztx2UWF20fj9YkrMOKTb3gqhTGOTCAhjbzec6Ckh2lhHhdD2VIe8NiBHvZVZqDKahuf+WLX2qg==`
-- Licence: MIT, copyright Harsh Makwana. The licence text ships inside the
+- License: MIT, copyright Harsh Makwana. The license text ships inside the
   tarball as `package/LICENSE`.
 
 ### Why it is here
 
 Every version of the package on npm is marked deprecated with "Package no
 longer supported", a notice npm support sets, and its source repository is
-gone. If the registry stops serving the tarball, `pnpm install
---frozen-lockfile` fails in CI and in the Docker image build. Serving the same
+gone. If the registry stops serving the tarball, `pnpm install` fails in CI
+and in the Docker image build. Serving the same
 file from this repository keeps installs working with no code change: the root
 `package.json` points at it with a `file:` spec, so every import still reads
 `'nestjs-temporal-core'`.

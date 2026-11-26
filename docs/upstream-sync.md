@@ -611,6 +611,10 @@ open here, and is now closed:
   (#425); the composer's failed-post banner reads errors the way the calendar
   does (#424); an empty bold or underline no longer styles the text after it
   (#423).
+- `nestjs-temporal-core` is served from `vendor/`, the same 3.4.0 tarball
+  under the same integrity: npm marks every version of it "no longer
+  supported" and its source repository is gone, so an install could not count
+  on the registry keeping it (#435).
 
 Left for later:
 
@@ -629,11 +633,6 @@ Left for later:
   greyed with its row. Upstream moved some of those to the mark; they can
   follow on the same `PlatformMark`.
 - An X article with a soft break has not been tried against X's API.
-
-`nestjs-temporal-core` is now served from `vendor/`, the same 3.4.0 tarball
-under the same integrity: npm marks every version of it "no longer supported"
-and its source repository is gone, so an install could not count on the
-registry keeping it (#435).
 
 **No post workflow came in.** `postWorkflowV1012` is still the one running,
 and upstream's next post workflow would still become our v1.0.13 (see
@@ -1010,9 +1009,9 @@ The cost is paid at cherry-pick time:
 - A picked commit that touches `package.json` or the lockfile conflicts more
   often. Keep our version unless theirs is newer, then regenerate the lockfile
   with `pnpm install`.
-- **`nestjs-temporal-core` comes from `vendor/`, not npm.** Upstream uses the
-  same package from the registry (`^3.2.0` on 2026-11-24, older than our
-  3.4.0). Never take their `package.json` line for it. When a bump is wanted,
-  put that version's registry tarball in `vendor/`, check its sha512 against
-  the registry's `dist.integrity`, read what changed, and point our `file:`
-  spec at it, as `vendor/README.md` says.
+- `nestjs-temporal-core` comes from `vendor/`, not npm. Upstream uses the
+  same package from the registry (`^3.2.0` at `44df988cb`, 2026-11-24, older
+  than our 3.4.0). Never take their `package.json` line for it. When a bump
+  is wanted, put that version's registry tarball in `vendor/`, check its
+  sha512 against the registry's `dist.integrity`, read what changed, and
+  point our `file:` spec at it, as `vendor/README.md` says.
