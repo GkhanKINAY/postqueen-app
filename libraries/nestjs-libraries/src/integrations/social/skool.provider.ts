@@ -1,11 +1,10 @@
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
   BadBody,
-  MEDIA_READ_FAILED,
+  mediaGet,
+  mediaHead,
   SocialAbstract,
 } from '../social.abstract';
-import { getSsrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import {
   AuthTokenDetails,
   MediaContent,
@@ -232,27 +231,9 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
     for (const item of media) {
       // Size and type come from a HEAD request; the PUT below streams the
       // bytes so the file is never buffered in memory.
-      const headResponse = await fetch(item.path, {
-        method: 'HEAD',
-        // identity encoding so content-length matches the bytes the GET streams
-        headers: { 'accept-encoding': 'identity' },
-        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-        dispatcher: getSsrfSafeDispatcher(),
-      });
-      const contentType =
-        headResponse.headers.get('content-type') || 'application/octet-stream';
-      const contentLength =
-        ownUploadSize(item.path) ||
-        Number(headResponse.headers.get('content-length') || 0);
-      if (!headResponse.ok || !contentLength) {
-        // A permanent condition - fail fast instead of letting Temporal retry
-        throw new BadBody(
-          this.identifier,
-          '{}',
-          '{}',
-          'Could not determine the media size for upload'
-        );
-      }
+      const head = await mediaHead(item.path, this.identifier);
+      const contentType = head.type || 'application/octet-stream';
+      const contentLength = head.size;
       const fileName = item.path.split('/').pop() || 'file';
 
       const createFileResponse = await (
@@ -274,19 +255,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
         }, 'create file record')
       ).json();
 
-      const fileResponse = await fetch(item.path, {
-        headers: { 'accept-encoding': 'identity' },
-        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-        dispatcher: getSsrfSafeDispatcher(),
-      });
-      if (!fileResponse.ok || !fileResponse.body) {
-        throw new BadBody(
-          this.identifier,
-          JSON.stringify({ status: fileResponse.status }),
-          '{}',
-          MEDIA_READ_FAILED
-        );
-      }
+      const file = await mediaGet(item.path, this.identifier);
       const uploadResponse = await fetch(createFileResponse.write_url, {
         method: 'PUT',
         headers: {
@@ -294,7 +263,7 @@ export class SkoolProvider extends SocialAbstract implements SocialProvider {
           'Content-Length': String(contentLength),
           'x-amz-acl': createFileResponse.acl,
         },
-        body: fileResponse.body,
+        body: file,
         // Required by undici when streaming a request body.
         duplex: 'half',
       } as any);
