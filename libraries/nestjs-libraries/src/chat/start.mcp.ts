@@ -18,6 +18,7 @@ import { UPLOAD_WIDGET_URI, uploadWidgetHtml } from '@gitroom/nestjs-libraries/c
 import { CLIPPING_WIDGET_URI, clippingWidgetHtml } from '@gitroom/nestjs-libraries/chat/ui/clipping.widget';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { isBillingEnabled } from '@gitroom/helpers/utils/billing.enabled';
+import { askAgentTool } from '@gitroom/nestjs-libraries/chat/ask.agent.tool';
 
 type AppResources = NonNullable<
   ConstructorParameters<typeof MCPServer>[0]['appResources']
@@ -155,11 +156,13 @@ export const startMcp = async (app: INestApplication) => {
   const { [CLIPPING_WIDGET_URI]: hiddenWidget, ...claudeAppResources } =
     appResources;
 
+  // The agent is its own tool, ask_postqueen, on the servers a key or the
+  // SSE endpoint reaches. It is not MCPServer's `agents` option, whose tool
+  // answers with the whole run (see ask.agent.tool.ts)
   const serverConfig = {
     name: 'PostQueen MCP',
     version: '1.0.0',
-    tools,
-    agents: { postqueen: agent },
+    tools: { ...tools, ask_postqueen: askAgentTool('postqueen', agent) },
     appResources,
   };
 
@@ -172,9 +175,9 @@ export const startMcp = async (app: INestApplication) => {
     protocolVersion: '2026-07-28',
   });
 
-  // The directory-facing servers don't register the agent - it would be
-  // exposed as an annotation-less catch-all ask_postqueen tool, which the
-  // ChatGPT and Claude directory reviews reject
+  // The directory-facing servers don't get the agent's tool - it is an
+  // annotation-less catch-all ask_postqueen tool, which the ChatGPT and
+  // Claude directory reviews reject
   const oauthServer = new MCPServer({
     name: 'PostQueen MCP',
     version: '1.0.0',
