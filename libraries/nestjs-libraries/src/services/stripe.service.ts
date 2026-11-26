@@ -564,6 +564,20 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * Whether a subscription takes part in the duplicate rule
+   * (`subscriptionKeptOver`, `supersedeSubscriptions`) and can keep a plan
+   * alive when another ends (`deleteSubscription`). One stamped by another
+   * service sharing the Stripe account is never ours to cancel, to keep over
+   * ours, or to keep a plan on. One with no stamp at all counts as ours: a
+   * self-hosted install may still have subscriptions from before the stamp,
+   * and leaving them out could drop an organization to FREE.
+   */
+  private isOurSubscription(subscription: Stripe.Subscription) {
+    const service = subscription.metadata?.service;
+    return !service || service === SUBSCRIPTION_SERVICE_TAG;
+  }
+
+  /**
    * Every subscription of this customer that can still bill: what a cancel
    * has to reach. Not `incomplete_expired` (cancelling it is an error), and
    * not `incomplete` unless asked: it never took a first payment and lapses
@@ -1150,7 +1164,9 @@ export class StripeService extends PaymentProviderAbstract {
     }
 
     const beatsThis = (other: Stripe.Subscription) =>
-      other.id !== subscription.id && keepsOver(other, subscription);
+      other.id !== subscription.id &&
+      this.isOurSubscription(other) &&
+      keepsOver(other, subscription);
 
     const kept = (await this.entitlingSubscriptions(customer)).find(beatsThis);
     if (kept) {
@@ -1212,22 +1228,26 @@ export class StripeService extends PaymentProviderAbstract {
     const customer = subscription.customer as string;
     const sameCustomer = customer?.startsWith('cus_')
       ? (await this.entitlingSubscriptions(customer)).filter(
-          (other) => other.id !== subscription.id
+          (other) =>
+            other.id !== subscription.id && this.isOurSubscription(other)
         )
       : [];
     const elsewhere = await this.subscriptionsOnOrganizationCustomer(
       subscription
     );
-    const others = [...sameCustomer, ...(elsewhere?.entitled || [])];
+    const ourElsewhere = (elsewhere?.entitled || []).filter((other) =>
+      this.isOurSubscription(other)
+    );
+    const others = [...sameCustomer, ...ourElsewhere];
     if (
       !others.length ||
       others.some((other) => keepsOver(other, subscription))
     ) {
       return;
     }
-    if (elsewhere?.entitled.length) {
+    if (elsewhere && ourElsewhere.length) {
       Logger.warn(
-        `[stripe] organization ${elsewhere.org.id} now uses customer ${customer} (was ${elsewhere.org.paymentId}): subscription ${subscription.id} there is kept over ${elsewhere.entitled
+        `[stripe] organization ${elsewhere.org.id} now uses customer ${customer} (was ${elsewhere.org.paymentId}): subscription ${subscription.id} there is kept over ${ourElsewhere
           .map((other) => other.id)
           .join(', ')}`
       );
@@ -1604,7 +1624,9 @@ export class StripeService extends PaymentProviderAbstract {
     // re-read from its price, instead of dropping to FREE.
     const customer = event.data.object.customer as string;
     const [survivor] = customer?.startsWith('cus_')
-      ? await this.entitlingSubscriptions(customer)
+      ? (await this.entitlingSubscriptions(customer)).filter((other) =>
+          this.isOurSubscription(other)
+        )
       : [];
     if (survivor) {
       return this.keepSurvivingSubscription(event, survivor.id);
@@ -1684,6 +1706,9 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
+   * Voids what an ended subscription leaves unpaid, except a renewal that
+   * paying would restore, and keeps the card that pays that renewal.
+   *
    * When Stripe ends a subscription whose renewal it could not charge, the
    * unpaid invoice stays payable from the hosted invoice page. That page
    * keeps the paying card only when the customer has no default card;
@@ -1702,7 +1727,10 @@ export class StripeService extends PaymentProviderAbstract {
    *
    * Never throws, and a failure on one invoice does not stop the others. A
    * payment already flagged, and an invoice already void, is skipped, so a
-   * redelivered event changes nothing.
+   * redelivered event changes nothing. It runs in the background of
+   * `deleteSubscription`, fire-and-forget: a void that fails is warned about
+   * and not retried. If that invoice is paid anyway, `resubscribeOnLatePayment`
+   * reports the payment as an error for a person to refund.
    */
   private async keepCardOfUnpaidInvoices(
     subscriptionId: string,

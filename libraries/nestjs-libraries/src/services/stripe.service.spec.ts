@@ -227,6 +227,15 @@ const deleted = (id: string) =>
     data: { object: { id, customer: 'cus_1', cancellation_details: {} } },
   }) as unknown as Stripe.CustomerSubscriptionDeletedEvent;
 
+// `customer.subscription.updated` as Stripe sends it when a status changes:
+// the status before is in `previous_attributes`.
+const updated = (id: string, previous: Partial<Stripe.Subscription>) =>
+  ({
+    id: `evt_upd_${id}`,
+    type: 'customer.subscription.updated',
+    data: { object: { id, customer: 'cus_1' }, previous_attributes: previous },
+  }) as unknown as Stripe.CustomerSubscriptionUpdatedEvent;
+
 beforeEach(() => {
   subs = [];
   calls = [];
@@ -566,15 +575,6 @@ describe('a paid subscription next to a trial', () => {
 });
 
 describe('a subscription that becomes entitling next to another', () => {
-  // `customer.subscription.updated` as Stripe sends it when a status changes:
-  // the status before is in `previous_attributes`.
-  const updated = (id: string, previous: Partial<Stripe.Subscription>) =>
-    ({
-      id: `evt_upd_${id}`,
-      type: 'customer.subscription.updated',
-      data: { object: { id, customer: 'cus_1' }, previous_attributes: previous },
-    }) as unknown as Stripe.CustomerSubscriptionUpdatedEvent;
-
   // A checkout paid by a bank method, started before the customer paid a
   // cancelled subscription's renewal late, and settled after that payment
   // had resubscribed them.
@@ -736,6 +736,84 @@ describe('a subscription that becomes entitling next to another', () => {
       'GROWTH',
       'YEARLY',
     ]);
+  });
+});
+
+describe("another service's subscription on the same customer", () => {
+  // Another integration sharing the Stripe account stamps its own service.
+  const theirs = (id: string, created: number, extra: Partial<Sub> = {}) =>
+    sub(id, created, { metadata: { service: 'redsim' }, ...extra });
+  const ours = (id: string, created: number, extra: Partial<Sub> = {}) =>
+    sub(id, created, {
+      metadata: { service: 'postqueen', uniqueId: `u-${id}` },
+      ...extra,
+    });
+
+  it('never gets ours cancelled as a duplicate when it is older', async () => {
+    subs = [theirs('sub_theirs', 100), ours('sub_ours', 200)];
+    await service().createSubscription(created('sub_ours'));
+    await service().updateSubscription(
+      updated('sub_ours', { status: 'incomplete' }),
+    );
+
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('createOrUpdateSubscription').length, 2);
+  });
+
+  it('is never cancelled by ours when it is newer, here or on the organization customer', async () => {
+    subs = [ours('sub_ours', 100), theirs('sub_theirs', 200)];
+    await service().createSubscription(created('sub_ours'));
+    await service().updateSubscription(
+      updated('sub_ours', { status: 'incomplete' }),
+    );
+    assert.equal(called('subscriptions.cancel').length, 0);
+
+    // Ours on a second customer, theirs on the organization's: nothing is
+    // cancelled, and the organization stays where it is.
+    calls = [];
+    subs = [
+      theirs('sub_theirs', 200),
+      ours('sub_ours', 100, {
+        customer: 'cus_2',
+        metadata: {
+          service: 'postqueen',
+          uniqueId: 'u-sub_ours',
+          organizationId: 'org1',
+        },
+      }),
+    ];
+    await service().createSubscription({
+      ...created('sub_ours'),
+      data: { object: { id: 'sub_ours', customer: 'cus_2' } },
+    } as unknown as Stripe.CustomerSubscriptionCreatedEvent);
+    assert.equal(called('subscriptions.cancel').length, 0);
+    assert.equal(called('updateCustomerId').length, 0);
+    assert.equal(orgCustomer, 'cus_1');
+  });
+
+  it('never keeps our plan alive when ours ends', async () => {
+    subs = [theirs('sub_theirs', 100), ours('sub_ours', 200, { status: 'canceled' })];
+    await service().deleteSubscription(deleted('sub_ours'));
+
+    assert.deepEqual(called('deleteSubscription'), [['cus_1', 'stripe']]);
+    assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  // A subscription from before the stamp is ours, as it always was.
+  it('counts one without a stamp as ours', async (t) => {
+    t.mock.method(Logger, 'error', () => undefined);
+    subs = [sub('sub_unstamped', 100), ours('sub_ours', 200)];
+    await service().createSubscription(created('sub_ours'));
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_ours'],
+    );
+
+    calls = [];
+    subs = [sub('sub_unstamped', 100), ours('sub_ours', 200, { status: 'canceled' })];
+    await service().deleteSubscription(deleted('sub_ours'));
+    assert.equal(called('deleteSubscription').length, 0);
+    assert.equal(called('createOrUpdateSubscription').length, 1);
   });
 });
 
