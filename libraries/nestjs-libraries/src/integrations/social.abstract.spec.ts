@@ -673,11 +673,19 @@ describe('reading remote media', () => {
   const url = 'https://cdn.example.com/aB3xY9pQr7.mp4';
 
   // Answers the requests in turn with these statuses, the last one for good.
+  // A 0 is no answer: the connection was reset.
   const store = (...statuses: number[]) => {
     const asked: (string | undefined)[] = [];
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       const status = statuses[Math.min(asked.length, statuses.length - 1)];
       asked.push((init?.headers as Record<string, string>)?.Range);
+      if (!status) {
+        throw new TypeError('fetch failed', {
+          cause: Object.assign(new Error('read ECONNRESET'), {
+            code: 'ECONNRESET',
+          }),
+        });
+      }
       return new Response(status < 300 ? 'twelve bytes' : null, { status });
     }) as typeof fetch;
     return asked;
@@ -735,20 +743,40 @@ describe('reading remote media', () => {
     assert.ok(asked[1].signal instanceof AbortSignal);
   });
 
-  it('reads a chunk again when the store could not answer', async (t) => {
+  it('reads a chunk again when the store could not answer, or did not answer', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
-    const asked = store(503, 206);
-    const { value } = await settled(t, () =>
-      (new Network() as any).mediaChunk(url, 0, 11, 'network')
+    for (const first of [503, 0]) {
+      const asked = store(first, 206);
+      const { value } = await settled(t, () =>
+        (new Network() as any).mediaChunk(url, 0, 11, 'network')
+      );
+      assert.equal(String(value), 'twelve bytes', String(first));
+      assert.deepEqual(asked, ['bytes=0-11', 'bytes=0-11']);
+    }
+  });
+
+  it('fails a chunk at once on an address the SSRF guard refuses', async () => {
+    let count = 0;
+    globalThis.fetch = (async () => {
+      count++;
+      throw new TypeError('fetch failed', { cause: new Error('Blocked IP') });
+    }) as typeof fetch;
+    await assert.rejects(
+      (new Network() as any).mediaChunk(url, 0, 11, 'network'),
+      (err) => {
+        assert.ok(err instanceof BadBody);
+        assert.equal(err.message, MEDIA_READ_FAILED);
+        return true;
+      }
     );
-    assert.equal(String(value), 'twelve bytes');
-    assert.deepEqual(asked, ['bytes=0-11', 'bytes=0-11']);
+    assert.equal(count, 1);
   });
 
   it('fails a chunk the store will not give', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     for (const [status, message, asks] of [
       [503, MEDIA_READ_SLOW, 2],
+      [0, MEDIA_READ_SLOW, 2],
       [404, MEDIA_NOT_FOUND, 1],
       // a store that ignores the Range would corrupt the upload at this offset
       [200, MEDIA_READ_FAILED, 1],

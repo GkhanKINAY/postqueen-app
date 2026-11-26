@@ -902,8 +902,8 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   // never hold the whole file in memory: a ranged GET for remote URLs, a ranged
   // read stream for local files. `release` drops the source when the upload
   // ends without reading it to the end, so its connection is not held open.
-  // 'busy' when the store could not answer this time and `canRetry` says the
-  // caller may ask again (see mediaStoreBusy).
+  // 'busy' when the store could not answer this time, or did not answer at
+  // all, and `canRetry` says the caller may ask again (see mediaStoreBusy).
   private async tiktokChunkStream(
     path: string,
     start: number,
@@ -912,32 +912,38 @@ export class TiktokProvider extends SocialAbstract implements SocialProvider {
   ) {
     if (path.indexOf('http') === 0) {
       const controller = new AbortController();
-      // identity encoding so the store keeps content-length and can answer
-      // with the requested range, matching every other media read
-      const response = await fetch(path, {
-        headers: {
-          Range: `bytes=${start}-${end}`,
-          'accept-encoding': 'identity',
-        },
-        dispatcher: getSsrfSafeDispatcher(),
-        signal: controller.signal,
-      } as any);
+      let response: Response | undefined;
+      try {
+        // identity encoding so the store keeps content-length and can answer
+        // with the requested range, matching every other media read
+        response = await fetch(path, {
+          headers: {
+            Range: `bytes=${start}-${end}`,
+            'accept-encoding': 'identity',
+          },
+          dispatcher: getSsrfSafeDispatcher(),
+          signal: controller.signal,
+        } as any);
+      } catch (err) {
+        // no answer at all, `response` stays undefined: a busy store below
+      }
 
       // A store that ignores Range (200 with the full file) or answers with an
       // error page would corrupt the upload at this offset.
-      if (response.status !== 206) {
-        await response.body?.cancel().catch(() => {});
-        if (canRetry && mediaStoreBusy(response.status)) {
+      if (response?.status !== 206) {
+        await response?.body?.cancel().catch(() => {});
+        const status = response?.status || 0;
+        if (canRetry && mediaStoreBusy(status)) {
           return 'busy' as const;
         }
         throw new BadBody(
           'tiktok-error-upload',
-          rangeReadFailure(response),
+          response ? rangeReadFailure(response) : '{}',
           '{}',
-          `We could not read this video from PostQueen's media storage (status ${
-            response.status
-          }), so it was not sent to TikTok. ${
-            mediaStoreBusy(response.status)
+          `We could not read this video from PostQueen's media storage${
+            status ? ` (status ${status})` : ''
+          }, so it was not sent to TikTok. ${
+            mediaStoreBusy(status)
               ? 'Try again in a few minutes.'
               : 'Attach the video again, then schedule the post.'
           }`

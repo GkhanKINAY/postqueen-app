@@ -741,13 +741,28 @@ export abstract class SocialAbstract {
         }
         return Buffer.from(await response.arrayBuffer());
       } catch (err) {
-        if (!isReadTimeout(err)) {
+        // already decided above: a refused range, or the second read's verdict
+        if (err instanceof ApplicationFailure) {
           throw err;
         }
 
-        // A stall is transient and nothing has been sent to the platform for
-        // this range yet, so read it once more before giving up.
+        if (unreachable(err)) {
+          throw new BadBody(
+            identifier,
+            JSON.stringify({ reason: 'Blocked IP', start, end }),
+            Buffer.from('{}'),
+            MEDIA_READ_FAILED
+          );
+        }
+
+        // No answer, or one that stalled mid-body. Transient, and nothing has
+        // been sent to the platform for this range yet, so read it once more
+        // before giving up. A stall has already waited out its deadline; no
+        // answer at all waits as for a busy store.
         if (!retried) {
+          if (!isReadTimeout(err)) {
+            await timer(5000);
+          }
           return this.mediaChunk(path, start, end, identifier, true);
         }
 
@@ -755,7 +770,11 @@ export abstract class SocialAbstract {
         // message is what the user is shown.
         throw new BadBody(
           identifier,
-          JSON.stringify({ timeoutMs: MEDIA_READ_TIMEOUT, start, end }),
+          JSON.stringify(
+            isReadTimeout(err)
+              ? { timeoutMs: MEDIA_READ_TIMEOUT, start, end }
+              : { start, end }
+          ),
           Buffer.from('{}'),
           MEDIA_READ_SLOW
         );

@@ -876,7 +876,7 @@ describe('TikTok video chunk upload', () => {
   let puts: number[];
 
   // `answers` are TikTok's to each PUT, `store` the media store's to each
-  // ranged read (206 when not given).
+  // ranged read (206 when not given, no answer at all for a 0).
   const run = async (answers: number[], store: number[] = []) => {
     const realFetch = globalThis.fetch;
     const realSetTimeout = globalThis.setTimeout;
@@ -894,6 +894,9 @@ describe('TikTok video chunk upload', () => {
       }
       const status = store[reads.length] ?? 206;
       reads.push(init.signal);
+      if (!status) {
+        throw new TypeError('fetch failed');
+      }
       return new Response(status === 206 ? 'chunk' : null, { status });
     }) as typeof fetch;
     try {
@@ -927,9 +930,22 @@ describe('TikTok video chunk upload', () => {
   });
 
   it('reads a chunk again when the media store could not answer', async () => {
-    await run([], [503, 429, 206]);
-    assert.equal(reads.length, 3);
+    await run([], [503, 429, 0, 206]);
+    assert.equal(reads.length, 4);
     assert.deepEqual(puts, [201]);
+  });
+
+  it('gives up on a store that never answers, saying to try again later', async () => {
+    await assert.rejects(run([], [0, 0, 0, 0, 206]), (err) => {
+      assert.ok(err instanceof BadBody);
+      assert.match(
+        err.message,
+        /media storage, so it was not sent to TikTok\. Try again in a few minutes/
+      );
+      return true;
+    });
+    assert.equal(reads.length, 4);
+    assert.deepEqual(puts, []);
   });
 
   it('gives up on a store that stays busy, saying to try again later', async () => {
