@@ -265,6 +265,17 @@ export class BadBody extends ApplicationFailure {
   }
 }
 
+// Why no answer is ever coming, or '' when asking again may get one: fetch
+// rejects with "fetch failed" and the reason as its cause. The SSRF guard
+// refuses the address with "Blocked IP"; ENOTFOUND is a host name that does
+// not exist.
+const unreachable = (err: any): string =>
+  err?.cause?.message === 'Blocked IP'
+    ? 'Blocked IP'
+    : err?.cause?.code === 'ENOTFOUND'
+    ? 'ENOTFOUND'
+    : '';
+
 /**
  * The size and type of a remote media file, from a HEAD, for the providers
  * that declare an upload's length before they stream it. A HEAD answers with
@@ -274,6 +285,8 @@ export class BadBody extends ApplicationFailure {
  * What a refused HEAD means decides how the post fails. Nothing has been sent
  * to the network yet when this runs:
  * - 404 or 410: the file is gone, and asking again gets the same answer.
+ * - no answer because none can come (see unreachable): MEDIA_READ_FAILED at
+ *   once, without the wait.
  * - 429, a 5xx, or no answer at all: the store could not answer this time.
  *   Our own uploads route answers 503 with Retry-After: 5 when its store times
  *   out or is throttled, so this waits that long and asks once more, the way
@@ -305,6 +318,14 @@ export async function mediaHead(
       signal: AbortSignal.timeout(MEDIA_READ_TIMEOUT),
     } as any);
   } catch (err) {
+    if (unreachable(err)) {
+      throw new BadBody(
+        identifier,
+        JSON.stringify({ path: stripQuery(path), reason: unreachable(err) }),
+        '{}',
+        MEDIA_READ_FAILED
+      );
+    }
     // no answer at all, `head` stays undefined
   }
 

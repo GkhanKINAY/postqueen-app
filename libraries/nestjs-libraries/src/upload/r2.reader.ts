@@ -63,17 +63,30 @@ export interface R2Object extends R2Head {
   contentRange?: string;
 }
 
-// The only failure that says the object is not there. GetObject names it
-// NoSuchKey; HeadObject has no body to name it in and reports NotFound. Both
-// carry the 404. A missing bucket is a 404 too, but it is this install's
-// settings that are wrong, not the file that is gone.
-const isMissing = (err: any) =>
-  err?.name === 'NoSuchKey' ||
-  err?.name === 'NotFound' ||
-  (err?.$metadata?.httpStatusCode === 404 && err?.name !== 'NoSuchBucket');
+// Whether a failed read says nothing about the object: no HTTP answer at all
+// (a timeout, a dropped connection, a socket pool with nothing free), our
+// credentials refused (401, 403), throttling (429), or the store's own
+// failure (5xx). Any other answer is about the object or the request for it
+// and keeps its meaning: a missing key (NoSuchKey from GetObject, NotFound
+// from HeadObject, which has no body to name it in) or any other refusal is
+// a 404. A missing bucket is a 404 too, but it is this install's settings
+// that are wrong, not the file that is gone.
+const storeFailed = (err: any) => {
+  if (err?.name === 'NoSuchKey' || err?.name === 'NotFound') {
+    return false;
+  }
+  const status = err?.$metadata?.httpStatusCode;
+  return (
+    !status ||
+    status === 401 ||
+    status === 403 ||
+    status === 429 ||
+    status >= 500 ||
+    err?.name === 'NoSuchBucket'
+  );
+};
 
-// Anything else (a timeout, throttling, a socket pool with nothing free, a
-// dropped connection) says nothing about the object: it may well be there.
+// A store that failed says nothing about the object: it may well be there.
 // Answering that as missing told the networks, and our own size reads, that
 // the file was gone for good. Logged by name and status only, so nothing of
 // the request it failed on is written out.
@@ -125,11 +138,11 @@ export async function readFromR2(
       return 'range-not-satisfiable';
     }
 
-    if (isMissing(err)) {
-      return null;
+    if (storeFailed(err)) {
+      return reportUnavailable(key, err);
     }
 
-    return reportUnavailable(key, err);
+    return null;
   }
 }
 
@@ -157,10 +170,10 @@ export async function headFromR2(
       etag: object.ETag,
     };
   } catch (err) {
-    if (isMissing(err)) {
-      return null;
+    if (storeFailed(err)) {
+      return reportUnavailable(key, err);
     }
 
-    return reportUnavailable(key, err);
+    return null;
   }
 }

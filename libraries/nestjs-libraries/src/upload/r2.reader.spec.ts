@@ -61,6 +61,16 @@ const tooMany = () =>
     message: 'Too many requests',
     $metadata: { httpStatusCode: 429 },
   });
+const status = (name: string, httpStatusCode: number) => () =>
+  new S3ServiceException({
+    name,
+    $fault: httpStatusCode >= 500 ? 'server' : 'client',
+    message: name,
+    $metadata: { httpStatusCode },
+  });
+const refusedCredentials = status('AccessDenied', 403);
+const unsigned = status('Unauthorized', 401);
+const badRequest = status('InvalidArgument', 400);
 // What the SDK's HTTP handler rejects with when no response headers arrive
 // within requestTimeout. It does so only with throwOnRequestTimeout set,
 // which r2() sets; without it the handler logs a warning and keeps waiting.
@@ -128,6 +138,8 @@ describe('readFromR2', () => {
   for (const [name, err] of [
     ['a throttled store', throttled],
     ['too many requests', tooMany],
+    ['credentials it refuses', refusedCredentials],
+    ['a request it cannot authenticate', unsigned],
     ['a read that timed out', timedOut],
     [
       'a dropped connection',
@@ -152,6 +164,16 @@ describe('readFromR2', () => {
       assert.match(lines[0], /aB3xY9pQr7\.mp4/);
     });
   }
+
+  // An answer about the request for this object keeps the meaning it had.
+  it('answers null for any other refusal, and logs nothing', async (t) => {
+    store(t, fails(badRequest()));
+    const { value, lines } = await logged(t, () =>
+      readFromR2('aB3xY9pQr7.mp4')
+    );
+    assert.equal(value, null);
+    assert.deepEqual(lines, []);
+  });
 
   it('logs the error by name and status, never the credentials', async (t) => {
     store(t, fails(throttled()));
@@ -226,11 +248,16 @@ describe('headFromR2', () => {
     assert.equal(await headFromR2('aB3xY9pQr7.mp4'), null);
   });
 
-  it('answers unavailable for a throttled store or a timeout', async (t) => {
+  it('answers unavailable when the store fails, whatever the object', async (t) => {
     t.mock.method(console, 'error', () => undefined);
-    for (const err of [throttled, tooMany, timedOut]) {
+    for (const err of [throttled, tooMany, timedOut, refusedCredentials]) {
       store(t, fails(err()));
       assert.equal(await headFromR2('aB3xY9pQr7.mp4'), 'unavailable');
     }
+  });
+
+  it('answers null for any other refusal', async (t) => {
+    store(t, fails(badRequest()));
+    assert.equal(await headFromR2('aB3xY9pQr7.mp4'), null);
   });
 });
