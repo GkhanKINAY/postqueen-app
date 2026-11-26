@@ -11,6 +11,10 @@ import { isPostsSwrKey } from '@gitroom/frontend/components/launches/posts-swr';
 import clsx from 'clsx';
 import { channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 import { useDateFormat } from '@gitroom/frontend/components/launches/helpers/date.format';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 interface DebugPostData {
   type: string;
@@ -234,11 +238,21 @@ export const ImportDebugPostModal: FC<{ close: () => void }> = ({ close }) => {
                         </div>
                       )}
                     </div>
-                    <img
-                      src={`/icons/platforms/${integration.identifier}.png`}
-                      className="w-[14px] h-[14px] rounded-[4px] ml-auto"
-                      alt={integration.identifier}
-                    />
+                    {/* A brand mark is never rounded (see channelBrandMark) */}
+                    {isBrandMark(integration.identifier) ? (
+                      <PlatformMark
+                        identifier={integration.identifier}
+                        size={14}
+                        className="ms-auto"
+                        plateClassName=""
+                      />
+                    ) : (
+                      <img
+                        src={`/icons/platforms/${integration.identifier}.png`}
+                        className="w-[14px] h-[14px] rounded-[4px] ml-auto"
+                        alt={integration.identifier}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

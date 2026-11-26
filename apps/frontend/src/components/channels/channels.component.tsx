@@ -8,6 +8,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
 import { TimeTable } from '@gitroom/frontend/components/launches/time.table';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -1390,19 +1394,32 @@ export const ChannelsComponent: FC = () => {
               )}
             >
               <span className="relative h-[32px] w-[32px] shrink-0">
-                <ImageWithFallback
-                  fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                  src={integration.picture || '/no-picture.jpg'}
-                  alt={integration.identifier}
-                  width={32}
-                  height={32}
-                  className="size-[32px] rounded-full object-cover"
-                />
-                <img
-                  src={`/icons/platforms/${integration.identifier}.png`}
-                  alt=""
-                  className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
-                />
+                {/* A brand mark is never rounded: ChannelAvatar draws the
+                    official one (see channelBrandMark). */}
+                {isBrandMark(integration.identifier) ? (
+                  <ChannelAvatar
+                    integration={integration}
+                    size={32}
+                    rounded="full"
+                    badgeSize={15}
+                  />
+                ) : (
+                  <>
+                    <ImageWithFallback
+                      fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                      src={integration.picture || '/no-picture.jpg'}
+                      alt={integration.identifier}
+                      width={32}
+                      height={32}
+                      className="size-[32px] rounded-full object-cover"
+                    />
+                    <img
+                      src={`/icons/platforms/${integration.identifier}.png`}
+                      alt=""
+                      className="absolute -bottom-[2px] -end-[2px] h-[15px] w-[15px] rounded-full border border-pqInner"
+                    />
+                  </>
+                )}
                 {needsAttention(integration) && (
                   <span className="absolute -start-[2px] -top-[2px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-pqWarn text-[10px] font-[700] text-pqOnBrand">
                     !
@@ -1561,26 +1578,42 @@ export const ChannelsComponent: FC = () => {
               )}
             >
               <div className="flex min-w-0 flex-1 items-center gap-[13px]">
-                <span
-                  className={clsx(
-                    'relative size-[52px] shrink-0',
-                    needsAttention(current) && 'opacity-50'
-                  )}
-                >
-                  <ImageWithFallback
-                    fallbackSrc={`/icons/platforms/${current.identifier}.png`}
-                    src={current.picture || '/no-picture.jpg'}
-                    alt={current.identifier}
-                    width={52}
-                    height={52}
-                    className="size-[52px] rounded-full object-cover"
+                {/* A disconnected channel is faded as a whole. A brand mark
+                    can't be: only its avatar is, and the mark links to the
+                    channel (see channelBrandMark). */}
+                {isBrandMark(current.identifier) ? (
+                  <ChannelAvatar
+                    integration={current}
+                    size={52}
+                    rounded="full"
+                    badgeSize={19}
+                    channel={current.internalId}
+                    dimClassName={
+                      needsAttention(current) ? 'opacity-50' : undefined
+                    }
                   />
-                  <img
-                    src={`/icons/platforms/${current.identifier}.png`}
-                    alt=""
-                    className="absolute -bottom-[3px] -end-[3px] size-[19px] rounded-full border border-pqInner object-cover"
-                  />
-                </span>
+                ) : (
+                  <span
+                    className={clsx(
+                      'relative size-[52px] shrink-0',
+                      needsAttention(current) && 'opacity-50'
+                    )}
+                  >
+                    <ImageWithFallback
+                      fallbackSrc={`/icons/platforms/${current.identifier}.png`}
+                      src={current.picture || '/no-picture.jpg'}
+                      alt={current.identifier}
+                      width={52}
+                      height={52}
+                      className="size-[52px] rounded-full object-cover"
+                    />
+                    <img
+                      src={`/icons/platforms/${current.identifier}.png`}
+                      alt=""
+                      className="absolute -bottom-[3px] -end-[3px] size-[19px] rounded-full border border-pqInner object-cover"
+                    />
+                  </span>
+                )}
                 <div className="min-w-0 max-w-[420px] flex-1">
                   <div className="truncate text-[19px] font-[600] leading-[1.2] -tracking-[0.01em] text-pqText">
                     {current.name}

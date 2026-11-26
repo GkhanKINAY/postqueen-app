@@ -88,6 +88,10 @@ import {
 } from '@gitroom/frontend/components/launches/post.card.actions';
 import { hasExtension } from '@gitroom/helpers/utils/has.extension';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  BrandMarkLead,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -2005,6 +2009,8 @@ const CalendarItem: FC<{
     onHeader: publishedOnHeader,
   } = usePublishedOnHeader(state === 'PUBLISHED');
   const channelHandle = postChannelHandle(post, integrations);
+  // A brand mark is wider than the icon it replaces (see BrandMarkLead).
+  const brand = isBrandMark(post.integration?.providerIdentifier);
   // Past QUEUE paints as Published, but the API row is still editable QUEUE.
   const canEdit = rawState !== 'PUBLISHED';
   const user = useUser();
@@ -2174,6 +2180,7 @@ const CalendarItem: FC<{
         onClick={onEdit}
         className={clsx(
           'relative z-[2] flex h-[24px] w-full min-w-0 shrink-0 cursor-pointer items-center gap-[5px] overflow-hidden rounded-[6px] bg-pqPop pe-[6px] ps-[4px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]',
+          brand && '@container',
           state === 'ERROR' && 'ring-1 ring-pqDanger',
           state === 'PUBLISHED' &&
             'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ok)_35%,var(--border))]'
@@ -2185,21 +2192,39 @@ const CalendarItem: FC<{
           style={{ background: accent }}
           aria-hidden="true"
         />
-        <img
-          className="size-[13px] shrink-0 rounded-[4px] object-cover"
-          src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-          alt=""
-        />
-        <span className="relative size-[13px] shrink-0">
-          <ImageWithFallback
-            className="size-[13px] rounded-full object-cover"
-            src={post.integration.picture || ''}
-            fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-            alt=""
-            width={13}
-            height={13}
+        {brand ? (
+          // Accent 3, mark 30.5, photo 13, an English 12-hour time 47 and
+          // their gaps: the photo goes under 116 px. The mark stays, so the
+          // network can always be told; below that the time cuts, as the
+          // other networks' does.
+          <BrandMarkLead
+            integration={{
+              picture: post.integration.picture,
+              identifier: post.integration.providerIdentifier,
+              name: post.integration.name,
+            }}
+            size={13}
+            avatarClassName="@max-[116px]:hidden"
           />
-        </span>
+        ) : (
+          <>
+            <img
+              className="size-[13px] shrink-0 rounded-[4px] object-cover"
+              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+              alt=""
+            />
+            <span className="relative size-[13px] shrink-0">
+              <ImageWithFallback
+                className="size-[13px] rounded-full object-cover"
+                src={post.integration.picture || ''}
+                fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                alt=""
+                width={13}
+                height={13}
+              />
+            </span>
+          </>
+        )}
         <span className="min-w-0 truncate text-[10px] font-[700] text-pqMuted">
           {timeLabel}
         </span>
@@ -2296,19 +2321,32 @@ const CalendarItem: FC<{
               ref={leadRef}
               className="flex min-w-0 items-center gap-[7px]"
             >
-              <img
-                className="size-[16px] shrink-0 rounded-[4px] object-cover"
-                src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-                alt=""
-              />
-              <ImageWithFallback
-                className="size-[16px] shrink-0 rounded-full object-cover"
-                src={post.integration.picture || ''}
-                fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-                alt=""
-                width={16}
-                height={16}
-              />
+              {brand ? (
+                <BrandMarkLead
+                  integration={{
+                    picture: post.integration.picture,
+                    identifier: post.integration.providerIdentifier,
+                    name: post.integration.name,
+                  }}
+                  size={16}
+                />
+              ) : (
+                <>
+                  <img
+                    className="size-[16px] shrink-0 rounded-[4px] object-cover"
+                    src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                    alt=""
+                  />
+                  <ImageWithFallback
+                    className="size-[16px] shrink-0 rounded-full object-cover"
+                    src={post.integration.picture || ''}
+                    fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                    alt=""
+                    width={16}
+                    height={16}
+                  />
+                </>
+              )}
               <span className="min-w-0 truncate text-[11.5px] text-pqSoft">
                 {post.integration.name}
                 {channelHandle ? ` · ${channelHandle}` : ''}
@@ -2461,25 +2499,44 @@ const CalendarItem: FC<{
           className={clsx(
             'flex min-w-0 items-center gap-[5px]',
             (!canHover || touch) && 'pe-[30px]',
+            brand && '@container min-h-[16px]',
           )}
         >
           <div
             ref={leadRef}
             className="flex min-w-0 items-center gap-[5px]"
           >
-            <img
-              className="size-[16px] shrink-0 rounded-[4px] object-cover"
-              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-            />
-            <ImageWithFallback
-              className="size-[16px] shrink-0 rounded-full object-cover"
-              src={post.integration.picture || ''}
-              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-              width={16}
-              height={16}
-            />
+            {brand ? (
+              // Mark 30.5, photo 16, an English 12-hour time 47 and their
+              // gaps: the photo goes under 106 px. The mark stays, so the
+              // network can always be told; below that the time cuts, as the
+              // other networks' does.
+              <BrandMarkLead
+                integration={{
+                  picture: post.integration.picture,
+                  identifier: post.integration.providerIdentifier,
+                  name: post.integration.name,
+                }}
+                size={16}
+                avatarClassName="@max-[106px]:hidden"
+              />
+            ) : (
+              <>
+                <img
+                  className="size-[16px] shrink-0 rounded-[4px] object-cover"
+                  src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                />
+                <ImageWithFallback
+                  className="size-[16px] shrink-0 rounded-full object-cover"
+                  src={post.integration.picture || ''}
+                  fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                  width={16}
+                  height={16}
+                />
+              </>
+            )}
             <span className="min-w-0 truncate text-[10px] font-[700] -tracking-[0.1px] text-pqMuted">
               {/* `fromUtc(...)`, the same reading the cell above uses to
                   decide which hour row this card belongs in. `newDayjs(x)` parses
@@ -2825,19 +2882,33 @@ const ListItem: FC<{
             ref={leadRef}
             className="flex min-w-0 items-center gap-[9px]"
           >
-            <img
-              className="size-[26px] shrink-0 rounded-[8px] object-cover"
-              src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-            />
-            <ImageWithFallback
-              className="size-[26px] shrink-0 rounded-[8px] object-cover"
-              src={post.integration.picture || ''}
-              fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
-              alt=""
-              width={26}
-              height={26}
-            />
+            {isBrandMark(post.integration?.providerIdentifier) ? (
+              <BrandMarkLead
+                integration={{
+                  picture: post.integration.picture,
+                  identifier: post.integration.providerIdentifier,
+                  name: post.integration.name,
+                }}
+                size={26}
+                rounded="lg"
+              />
+            ) : (
+              <>
+                <img
+                  className="size-[26px] shrink-0 rounded-[8px] object-cover"
+                  src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                />
+                <ImageWithFallback
+                  className="size-[26px] shrink-0 rounded-[8px] object-cover"
+                  src={post.integration.picture || ''}
+                  fallbackSrc={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
+                  alt=""
+                  width={26}
+                  height={26}
+                />
+              </>
+            )}
             <span className="min-w-0 truncate text-[13px] font-[600] text-pqText">
               {post.integration.name}
             </span>

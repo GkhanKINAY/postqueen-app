@@ -8,7 +8,14 @@ import { Spinner } from '@gitroom/react/ui/spinner';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Skeleton } from '@gitroom/react/ui/skeleton';
 import { EmptyState } from '@gitroom/react/ui/empty-state';
-import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import ImageWithFallback, {
+  useFallbackUntilLoaded,
+} from '@gitroom/react/helpers/image.with.fallback';
+import SafeImage from '@gitroom/react/helpers/safe.image';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import { Pagination } from '@gitroom/frontend/components/media/media.pagination';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
@@ -443,34 +450,69 @@ const PostThumb: FC<{
   post: AnalyticsPostRow;
   size?: number;
   className?: string;
-}> = ({ post, size = 40, className }) => (
-  <span
-    className={clsx('relative shrink-0 pb-[2px] pe-[2px]', className)}
-    style={className ? undefined : { width: size, height: size }}
-  >
-    <span className="block size-full overflow-hidden rounded-[8px] bg-pqSettings">
-      {post.thumbnail ? (
-        <ImageWithFallback
-          src={post.thumbnail}
-          fallbackSrc={`/icons/platforms/${post.platform}.png`}
-          width={size}
-          height={size}
-          className="size-full object-cover"
-          alt=""
+}> = ({ post, size = 40, className }) => {
+  // A brand mark is never rounded or cropped, so it can't be the badge or
+  // stand in for a thumbnail that is missing or still loading: it hangs off
+  // the corner, and the thumbnail shows the initial until it loads (see
+  // channelBrandMark).
+  const brand = isBrandMark(post.platform);
+  const brandThumbnail = useFallbackUntilLoaded(
+    brand ? post.thumbnail : undefined,
+    ''
+  );
+  const initial = (
+    <span className="flex size-full items-center justify-center text-[11px] font-[600] text-pqMuted">
+      {post.platform.slice(0, 1).toUpperCase()}
+    </span>
+  );
+  return (
+    <span
+      className={clsx('relative shrink-0 pb-[2px] pe-[2px]', className)}
+      style={className ? undefined : { width: size, height: size }}
+    >
+      <span className="block size-full overflow-hidden rounded-[8px] bg-pqSettings">
+        {brand ? (
+          brandThumbnail ? (
+            <SafeImage
+              src={brandThumbnail}
+              width={size}
+              height={size}
+              referrerPolicy="no-referrer"
+              className="size-full object-cover"
+              alt=""
+            />
+          ) : (
+            initial
+          )
+        ) : post.thumbnail ? (
+          <ImageWithFallback
+            src={post.thumbnail}
+            fallbackSrc={`/icons/platforms/${post.platform}.png`}
+            width={size}
+            height={size}
+            className="size-full object-cover"
+            alt=""
+          />
+        ) : (
+          initial
+        )}
+      </span>
+      {brand ? (
+        <PlatformMark
+          identifier={post.platform}
+          size={14}
+          className="absolute -bottom-[4px] -end-[8px]"
         />
       ) : (
-        <span className="flex size-full items-center justify-center text-[11px] font-[600] text-pqMuted">
-          {post.platform.slice(0, 1).toUpperCase()}
-        </span>
+        <img
+          src={`/icons/platforms/${post.platform}.png`}
+          alt=""
+          className="absolute -bottom-[2px] -end-[2px] size-[14px] rounded-full border border-pqInner object-cover"
+        />
       )}
     </span>
-    <img
-      src={`/icons/platforms/${post.platform}.png`}
-      alt=""
-      className="absolute -bottom-[2px] -end-[2px] size-[14px] rounded-full border border-pqInner object-cover"
-    />
-  </span>
-);
+  );
+};
 
 // Some providers bill every post read, so their post numbers are never read
 // on a timer, only when someone presses this.

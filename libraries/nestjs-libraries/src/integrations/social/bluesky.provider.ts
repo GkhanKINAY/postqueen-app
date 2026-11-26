@@ -9,6 +9,8 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { setHeartbeatDetails } from '@gitroom/nestjs-libraries/temporal/temporal.heartbeat';
 import {
   BadBody,
+  mediaGet,
+  mediaHead,
   RefreshToken,
   SocialAbstract,
   ValidityMedia,
@@ -29,7 +31,6 @@ import {
   getSsrfSafeAxios,
   getSsrfSafeDispatcher,
 } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
-import { ownUploadSize } from '@gitroom/nestjs-libraries/integrations/read.or.fetch';
 import sharp from 'sharp';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -120,34 +121,14 @@ async function startVideoUpload(
   // The video is never buffered in memory: the size comes from a HEAD request
   // and the bytes are streamed straight from the source into the upload.
   setHeartbeatDetails('bluesky: video size');
-  const headResponse = await fetch(videoPath, {
-    method: 'HEAD',
-    // identity encoding so content-length matches the bytes the GET streams
-    headers: { 'accept-encoding': 'identity' },
-    // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-    dispatcher: getSsrfSafeDispatcher(),
-  });
-  const videoSize =
-    ownUploadSize(videoPath) ||
-    Number(headResponse.headers.get('content-length') || 0);
-  if (!headResponse.ok || !videoSize) {
-    throw new BadBody(
-      'bluesky',
-      '{}',
-      {} as any,
-      'Could not determine the video size for Bluesky upload'
-    );
-  }
+  const { size: videoSize } = await mediaHead(
+    videoPath,
+    'bluesky',
+    'Could not determine the video size for Bluesky upload'
+  );
 
   setHeartbeatDetails('bluesky: read video');
-  const videoResponse = await fetch(videoPath, {
-    headers: { 'accept-encoding': 'identity' },
-    // @ts-ignore - undici-only option; blocks SSRF to internal IPs
-    dispatcher: getSsrfSafeDispatcher(),
-  });
-  if (!videoResponse.ok || !videoResponse.body) {
-    throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
-  }
+  const video = await mediaGet(videoPath, 'bluesky');
 
   console.log('Uploading video', videoPath, videoSize);
 
@@ -165,7 +146,7 @@ async function startVideoUpload(
       'Content-Type': 'video/mp4',
       'Content-Length': videoSize.toString(),
     },
-    body: videoResponse.body,
+    body: video,
     // Required by undici when streaming a request body.
     duplex: 'half',
   } as any);

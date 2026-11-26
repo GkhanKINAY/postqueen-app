@@ -171,7 +171,7 @@
     "multer": "2.5.0",
     "music-metadata": "^11.16.1",
     "nestjs-command": "^3.1.5",
-    "nestjs-temporal-core": "^3.4.0",
+    "nestjs-temporal-core": "file:vendor/nestjs-temporal-core-3.4.0.tgz",
     "next": "16.4.6",
     "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^1.2.0",

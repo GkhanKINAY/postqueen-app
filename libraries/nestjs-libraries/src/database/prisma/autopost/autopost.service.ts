@@ -13,6 +13,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import Parser from 'rss-parser';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import {
@@ -88,7 +89,8 @@ export class AutopostService {
     private _postsService: PostsService,
     private _notificationService: NotificationService,
     private _creditsService: CreditsService,
-    private _openaiService: OpenaiService
+    private _openaiService: OpenaiService,
+    private _integrationManager: IntegrationManager
   ) {}
 
   async stopAll(org: string) {
@@ -695,7 +697,9 @@ export class AutopostService {
     // Only in auto-publish mode. getIntegrationsList filters only deleted rows
     // and providers the build no longer has, so without this a broken or
     // downgraded channel gets a post every hour that can never publish — the
-    // recovery sweepers in posts.repository skip exactly these.
+    // recovery sweepers in posts.repository skip exactly these. Unfinished is
+    // decided as the Channels page decides it: a renewal can turn the flag
+    // off on a channel that never picked its page.
     //
     // Draft mode is the opposite case: a draft on a channel that needs
     // reconnecting is precisely what the user wants waiting for them once they
@@ -707,7 +711,15 @@ export class AutopostService {
       );
     const integrations = getPost.autoPublish
       ? allIntegrations.filter(
-          (f) => !f.disabled && !f.refreshNeeded && !f.inBetweenSteps
+          (f) =>
+            !f.disabled &&
+            !f.refreshNeeded &&
+            !this._integrationService.needsPageSelection(
+              f,
+              this._integrationManager.getSocialIntegration(
+                f.providerIdentifier
+              )
+            )
         )
       : allIntegrations;
 

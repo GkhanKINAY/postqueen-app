@@ -4,6 +4,10 @@ import { FC, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
+import {
+  ChannelAvatar,
+  isBrandMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 import type { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import { formatChannelHandle, channelListSubtitle } from '@gitroom/frontend/components/channels/channel-handle';
 
@@ -163,21 +167,31 @@ export const ChannelPickList: FC<{
                   </svg>
                 )}
               </span>
-              <span className="relative size-[22px] shrink-0">
-                <ImageWithFallback
-                  fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
-                  src={integration.picture || '/no-picture.jpg'}
-                  alt=""
-                  width={22}
-                  height={22}
-                  className="rounded-[6px]"
+              {/* A brand mark is bigger than this avatar: ChannelAvatar sets
+                  it beside, not on it (see channelBrandMark). */}
+              {isBrandMark(integration.identifier) ? (
+                <ChannelAvatar
+                  integration={integration}
+                  size={22}
+                  badgeSize={15}
                 />
-                <img
-                  src={`/icons/platforms/${integration.identifier}.png`}
-                  alt=""
-                  className="absolute -bottom-[4px] -end-[4px] size-[15px] rounded-full"
-                />
-              </span>
+              ) : (
+                <span className="relative size-[22px] shrink-0">
+                  <ImageWithFallback
+                    fallbackSrc={`/icons/platforms/${integration.identifier}.png`}
+                    src={integration.picture || '/no-picture.jpg'}
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="rounded-[6px]"
+                  />
+                  <img
+                    src={`/icons/platforms/${integration.identifier}.png`}
+                    alt=""
+                    className="absolute -bottom-[4px] -end-[4px] size-[15px] rounded-full"
+                  />
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-[500]">
                   {integration.name}

@@ -613,25 +613,30 @@ open here, and is now closed:
   (#425); the composer's failed-post banner reads errors the way the calendar
   does (#424); an empty bold or underline no longer styles the text after it
   (#423).
+- `nestjs-temporal-core` is served from `vendor/`, the same 3.4.0 tarball
+  under the same integrity: npm marks every version of it "no longer
+  supported" and its source repository is gone, so an install could not count
+  on the registry keeping it (#435).
+- The unpaid invoices left payable by subscriptions cancelled before #421
+  and #436 were voided by hand on 2026-11-26, with the owner's OK. What a
+  cancelled subscription leaves payable now is only a renewal of one Stripe
+  ended after its retries, which paying restores.
 
 Left for later:
 
-- The MCP channel list, the MCP schedule tool and autopost still read the
-  stored `inBetweenSteps` flag, as upstream's do. A post they make to an
-  unfinished channel fails before it is charged.
-- `updateSubscription` has no duplicate check, so an asynchronous checkout that
-  settles after a late-payment re-subscribe can leave two live subscriptions.
-  Older than this sync.
-- Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
-  until a one-off void pass.
-- The official YouTube mark is in the composer, its previews, the public
-  preview page, the first-billing link and the agents page. Elsewhere
-  (calendar cards, Channels list, channel filter and pick lists, posts panel,
-  analytics, plugs) YouTube keeps its square icon, drawn rounded, small or
-  greyed with its row. Upstream moved some of those to the mark; they can
-  follow on the same `PlatformMark`.
+- YouTube's official mark is now on every screen of the app that shows a
+  platform's icon (calendar cards, posts panel, Channels, channel filter and
+  pick lists, analytics, Add Channel, getting started, connect links, the
+  sign-in showcase), drawn by `PlatformMark` or the brand-aware
+  `ChannelAvatar` (#439). The plugs lists draw it the same
+  way, though YouTube has no plugs today. Two places are left. The emails
+  still show `youtube.png` with rounded corners: Gmail does not show SVG, so
+  they need a PNG of the mark, which `scripts/email-icons.mjs` could draw.
+  The empty-state art (`no-channels.svg`, `no-channels-colors.svg`) has a
+  tilted YouTube icon among its decorations, which is a design question for
+  the owner. `MenuComponent` in `launches.component.tsx` still has its own
+  YouTube case, but nothing renders it.
 - An X article with a soft break has not been tried against X's API.
-- `nestjs-temporal-core` is marked "no longer supported" on npm.
 
 Taken after the sync:
 
@@ -1022,3 +1027,9 @@ The cost is paid at cherry-pick time:
 - A picked commit that touches `package.json` or the lockfile conflicts more
   often. Keep our version unless theirs is newer, then regenerate the lockfile
   with `pnpm install`.
+- `nestjs-temporal-core` comes from `vendor/`, not npm. Upstream uses the
+  same package from the registry (`^3.2.0` at `44df988cb`, 2026-11-24, older
+  than our 3.4.0). Never take their `package.json` line for it. When a bump
+  is wanted, put that version's registry tarball in `vendor/`, check its
+  sha512 against the registry's `dist.integrity`, read what changed, and
+  point our `file:` spec at it, as `vendor/README.md` says.

@@ -2,6 +2,10 @@
 
 import { channelPlatformLabel } from '@gitroom/frontend/components/new-launch/channel-picture';
 import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
+import {
   ModalFormActions,
   useModals,
 } from '@gitroom/frontend/components/layout/new-modal';
@@ -632,11 +636,20 @@ const InviteLinkStep: FC<{
           {t('all_platforms', 'All platforms')}
         </button>
         <div className="flex items-center gap-[11px]">
-          <img
-            src={`/icons/platforms/${item.identifier}.png`}
-            alt=""
-            className="h-[32px] w-[32px] shrink-0 rounded-full"
-          />
+          {/* A brand mark is never rounded (see channelBrandMark) */}
+          {isBrandMark(item.identifier) ? (
+            <PlatformMark
+              identifier={item.identifier}
+              size={32}
+              plateClassName=""
+            />
+          ) : (
+            <img
+              src={`/icons/platforms/${item.identifier}.png`}
+              alt=""
+              className="h-[32px] w-[32px] shrink-0 rounded-full"
+            />
+          )}
           <span className="text-[16px] font-[600] -tracking-[0.01em]">
             {item.name}
           </span>
@@ -753,11 +766,20 @@ const ProviderSetupStep: FC<{
       </button>
 
       <div className="flex items-center gap-[14px]">
-        <img
-          src={`/icons/platforms/${item.identifier}.png`}
-          alt=""
-          className="h-[44px] w-[44px] rounded-full"
-        />
+        {/* A brand mark is never rounded (see channelBrandMark) */}
+        {isBrandMark(item.identifier) ? (
+          <PlatformMark
+            identifier={item.identifier}
+            size={44}
+            plateClassName=""
+          />
+        ) : (
+          <img
+            src={`/icons/platforms/${item.identifier}.png`}
+            alt=""
+            className="h-[44px] w-[44px] rounded-full"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-[19px] font-[600] -tracking-[0.01em]">
             {item.name}
@@ -1307,8 +1329,16 @@ export const AddProviderComponent: FC<{
                   <div className="relative">
                     {/* No lock badge on the tile — owner: only show the lock
                         when the user opens the connect step (TrialLock below). */}
-                    {item.identifier === 'youtube' ? (
-                      <img src={`/icons/platforms/youtube.svg`} />
+                    {isBrandMark(item.identifier) ? (
+                      // The official mark, plate included as high as the
+                      // other tiles' 32 px icons (see channelBrandMark)
+                      <span className="flex">
+                        <PlatformMark
+                          identifier={item.identifier}
+                          size={42}
+                          plateClassName=""
+                        />
+                      </span>
                     ) : (
                       <img
                         className={clsx(

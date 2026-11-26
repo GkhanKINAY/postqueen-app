@@ -7,6 +7,10 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { Spinner } from '@gitroom/react/ui/spinner';
 import { PostQueenLogo } from '@gitroom/frontend/components/ui/logo.component';
+import {
+  isBrandMark,
+  PlatformMark,
+} from '@gitroom/frontend/components/new-launch/channel.avatar';
 
 interface ConnectLinkDetails {
   identifier: string;
@@ -191,11 +195,20 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
                 <path d="M8 12h8" />
               </svg>
             </div>
-            <img
-              src={`/icons/platforms/${data.identifier}.png`}
-              alt={data.name}
-              className="h-[64px] w-[64px] rounded-[16px]"
-            />
+            {/* A brand mark is never rounded (see channelBrandMark) */}
+            {isBrandMark(data.identifier) ? (
+              <PlatformMark
+                identifier={data.identifier}
+                size={64}
+                plateClassName=""
+              />
+            ) : (
+              <img
+                src={`/icons/platforms/${data.identifier}.png`}
+                alt={data.name}
+                className="h-[64px] w-[64px] rounded-[16px]"
+              />
+            )}
           </div>
 
           <div className="flex flex-col gap-[24px] p-[24px] md:p-[32px]">
