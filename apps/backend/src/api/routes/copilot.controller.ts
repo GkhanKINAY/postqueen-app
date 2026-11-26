@@ -174,7 +174,7 @@ export class CopilotController {
       endpoint: '/copilot/chat',
       // The default agent the runtime would build from the adapter, built
       // here to ask for low reasoning effort: gpt-6.2-sol reasons by default,
-      // which gpt-4.1 never did, and refuses `none`.
+      // which gpt-4.1 never did.
       runtime: new CopilotRuntime({
         agents: {
           default: new BuiltInAgent({

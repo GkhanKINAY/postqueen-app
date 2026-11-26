@@ -646,12 +646,14 @@ Taken after the sync:
   calls used, on 2027-01-14. Every OpenAI text call now uses `gpt-6.2-sol`,
   the Copilot agent's `gpt-5.2` included, as upstream did; image models did
   not change. Every call asks for low reasoning effort: the model reasons by
-  default, refuses `none`, and bills its reasoning as output. Adapted: our two Copilot routes and the Mastra agent kept their
-  metering and only changed the model, `gpt-6.2-sol` got its credit rates
-  (its uncached input priced at the rate it bills for writing a prompt to its
-  cache, see `LLM_CREDIT_RATES`), and its TikTok Business scope deletion and
-  reformat were left out. `1bf6d7665`, which put those scopes back upstream,
-  is therefore empty here.
+  default and bills its reasoning as output, so fixed credit prices stay
+  covered and the Copilot stays about as quick as before. Adapted: our two
+  Copilot routes and the Mastra agent kept their metering and changed the
+  model and its effort, `gpt-6.2-sol` got its credit rates (its uncached
+  input priced at the rate it bills for writing a prompt to its cache, see
+  `LLM_CREDIT_RATES`), and its TikTok Business scope deletion and reformat
+  were left out. `1bf6d7665`, which put those scopes back upstream, is
+  therefore empty here.
 
 **No post workflow came in.** `postWorkflowV1012` is still the one running,
 and upstream's next post workflow would still become our v1.0.13 (see
