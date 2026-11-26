@@ -832,7 +832,11 @@ export const LLM_CONTINUATION_FLOOR = -500;
  *
  * The estimates were made on gpt-4.1. gpt-6.2-sol bills the same input, or a
  * quarter more for a prompt it writes to its cache, a quarter more output,
- * and its reasoning as output on top (see `LLM_CREDIT_RATES`).
+ * and its reasoning as output on top (see `LLM_CREDIT_RATES`). Every call
+ * these prices pay for runs at low reasoning effort to keep that bounded,
+ * and so do the model calls inside the other fixed prices: an image's
+ * prompt, Image Text Slides, a HeyGen voice script and clip picking. The
+ * metered Copilot keeps the model's default, since it pays for the tokens.
  */
 export const AI_FIXED_CREDIT_COSTS_PROPOSAL: Record<
   CreditPricing,

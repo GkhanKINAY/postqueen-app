@@ -53,6 +53,11 @@ interface WorkflowChannelsState {
 const model = new ChatOpenAI({
   apiKey: process.env.OPENAI_API_KEY || 'sk-proj-',
   model: 'gpt-6.2-sol',
+  // A fixed price pays for these calls (`autopostText`, `autopostPicture`),
+  // so their reasoning is kept low. Sent as a model kwarg: @langchain/openai
+  // only sends its own `reasoning` option to the o-series and gpt-5 models it
+  // knows by name.
+  modelKwargs: { reasoning_effort: 'low' },
 });
 
 const generateContent = z.object({

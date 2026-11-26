@@ -643,6 +643,34 @@ describe('Model tokens', () => {
   });
 });
 
+describe('Fixed-price model calls', () => {
+  // A fixed price cannot follow what a call reasons, so every such call asks
+  // for low effort. @langchain/openai only sends its own `reasoning` option
+  // to the models it knows by name, so the LangChain ones pass it as a kwarg.
+  it('run at low reasoning effort', () => {
+    const openai = read('../../../openai/openai.service.ts');
+    const parses = openai.split('openai.chat.completions.parse(').slice(1);
+    assert.equal(parses.length, 6);
+    for (const call of parses) {
+      const body = call.slice(0, call.indexOf('messages:'));
+      assert.match(body, /model: 'gpt-6\.2-sol',/);
+      assert.match(body, /reasoning_effort: 'low',/);
+    }
+    const chatModel = (text: string) =>
+      between(text, 'new ChatOpenAI({', '});');
+    assert.match(
+      chatModel(read('../../../agent/agent.graph.service.ts')),
+      /useResponsesApi: true,[\s\S]*modelKwargs: \{ reasoning: \{ effort: 'low' \} \},/
+    );
+    for (const rel of [
+      '../../../agent/agent.graph.insert.service.ts',
+      '../autopost/autopost.service.ts',
+    ]) {
+      assert.match(chatModel(read(rel)), /modelKwargs: \{ reasoning_effort: 'low' \},/, rel);
+    }
+  });
+});
+
 describe('Fixed charges for the older AI features', () => {
   it('are proposals in whole hundredths, a picture priced as a medium square image', () => {
     for (const cp of CREDIT_PRICINGS) {

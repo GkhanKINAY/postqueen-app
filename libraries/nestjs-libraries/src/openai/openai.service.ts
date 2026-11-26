@@ -220,6 +220,10 @@ export class OpenaiService {
       await openai.chat.completions.parse(
         {
           model: 'gpt-6.2-sol',
+          // a fixed price pays for every call in this service (clips, an
+          // image, a video, a thread split), so their reasoning is low;
+          // generatePosts and extractWebsiteText have no caller
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -296,6 +300,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
       (
         await openai.chat.completions.parse({
           model: 'gpt-6.2-sol',
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -317,6 +322,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
       (
         await openai.chat.completions.parse({
           model: 'gpt-6.2-sol',
+          reasoning_effort: 'low',
           messages: [
             {
               role: 'system',
@@ -489,6 +495,7 @@ Clips must not overlap. Write the title and the post in this language, whatever 
           (
             await openai.chat.completions.parse({
               model: 'gpt-6.2-sol',
+              reasoning_effort: 'low',
               messages: [
                 {
                   role: 'system',
