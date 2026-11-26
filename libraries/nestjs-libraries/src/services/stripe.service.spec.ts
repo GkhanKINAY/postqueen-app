@@ -565,6 +565,119 @@ describe('a paid subscription next to a trial', () => {
   });
 });
 
+describe('a subscription that becomes entitling next to another', () => {
+  // `customer.subscription.updated` as Stripe sends it when a status changes:
+  // the status before is in `previous_attributes`.
+  const updated = (id: string, previous: Partial<Stripe.Subscription>) =>
+    ({
+      id: `evt_upd_${id}`,
+      type: 'customer.subscription.updated',
+      data: { object: { id, customer: 'cus_1' }, previous_attributes: previous },
+    }) as unknown as Stripe.CustomerSubscriptionUpdatedEvent;
+
+  // A checkout paid by a bank method, started before the customer paid a
+  // cancelled subscription's renewal late, and settled after that payment
+  // had resubscribed them.
+  const checkoutAndLatePayment = () => [
+    sub('sub_checkout', 100),
+    sub('sub_late', 200, {
+      metadata: { uniqueId: 'u-sub_late', late_payment_invoice: 'in_late' },
+    }),
+  ];
+
+  it('keeps the older checkout when it settles, and cancels the newer re-subscription', async (t) => {
+    const errors = t.mock.method(Logger, 'error', () => undefined);
+    subs = checkoutAndLatePayment();
+    await service().updateSubscription(
+      updated('sub_checkout', { status: 'incomplete' }),
+    );
+
+    assert.deepEqual(called('subscriptions.cancel'), [
+      [
+        'sub_late',
+        { cancellation_details: { comment: 'duplicate-subscription' } },
+      ],
+    ]);
+    // The organization is on the one kept.
+    assert.deepEqual(
+      called('createOrUpdateSubscription').map((args) => args[2]),
+      ['u-sub_checkout'],
+    );
+    // The payment to refund is the late invoice, and its credits stay.
+    const said = String(errors.mock.calls.at(-1)?.arguments[0]);
+    assert.match(said, /made for invoice in_late paid late/);
+    assert.match(said, /in_late was not refunded, and its credits stay granted/);
+  });
+
+  it('is cancelled, and nothing is granted, when it settles after an older one was granted', async (t) => {
+    t.mock.method(Logger, 'error', () => undefined);
+    subs = [sub('sub_old', 100), sub('sub_new', 200)];
+    const result = await service().updateSubscription(
+      updated('sub_new', { status: 'incomplete' }),
+    );
+
+    assert.deepEqual(result, {
+      ok: true,
+      granted: false,
+      reason: 'duplicate subscription',
+    });
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_new'],
+    );
+    assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('cancels once, and grants nothing more, when the event comes again', async (t) => {
+    t.mock.method(Logger, 'error', () => undefined);
+    subs = checkoutAndLatePayment();
+    const event = updated('sub_checkout', { status: 'incomplete' });
+    await service().updateSubscription(event);
+    await service().updateSubscription(event);
+
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_late'],
+    );
+    // The same plan written again, nothing on top: the update path grants
+    // credits only to a trial, and these are paid.
+    const writes = called('createOrUpdateSubscription');
+    assert.equal(writes.length, 2);
+    assert.deepEqual(writes[1], writes[0]);
+
+    calls = [];
+    subs = [sub('sub_old', 100), sub('sub_new', 200)];
+    const losing = updated('sub_new', { status: 'incomplete' });
+    await service().updateSubscription(losing);
+    await service().updateSubscription(losing);
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_new'],
+    );
+    assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('leaves a plain plan change with no other subscription as it was', async () => {
+    subs = [
+      sub('sub_only', 100, { items: { data: [{ price: growthYear }] } as any }),
+    ];
+    await service().updateSubscription(
+      updated('sub_only', { items: { data: [{ price: proPrice }] } as any }),
+    );
+
+    assert.equal(called('subscriptions.cancel').length, 0);
+    const writes = called('createOrUpdateSubscription');
+    assert.equal(writes.length, 1);
+    assert.deepEqual(writes[0].slice(2, 7), [
+      'u-sub_only',
+      'cus_1',
+      pricing.GROWTH.channel,
+      'GROWTH',
+      'YEARLY',
+    ]);
+  });
+});
+
 describe('a subscription ending next to another', () => {
   it('keeps the organization on the one left, at its own tier', async () => {
     subs = [

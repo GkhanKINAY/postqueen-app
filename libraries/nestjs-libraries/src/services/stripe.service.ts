@@ -1103,7 +1103,8 @@ export class StripeService extends PaymentProviderAbstract {
   }
 
   /**
-   * Cancels a new subscription when another one already entitles the same
+   * Cancels a new subscription, or one that has just become entitling (see
+   * `updateSubscription`), when another one already entitles the same
    * organization and is the one to keep (`keepsOver`), and says whether it
    * did.
    *
@@ -1119,7 +1120,9 @@ export class StripeService extends PaymentProviderAbstract {
    * list, the organization) still throws, and Stripe retries the event.
    */
   private async cancelDuplicateSubscription(
-    event: Stripe.CustomerSubscriptionCreatedEvent
+    event:
+      | Stripe.CustomerSubscriptionCreatedEvent
+      | Stripe.CustomerSubscriptionUpdatedEvent
   ) {
     const subscription = event.data.object;
     const customer = subscription.customer as string;
@@ -1250,6 +1253,16 @@ export class StripeService extends PaymentProviderAbstract {
     if (duplicate.status === 'trialing') {
       Logger.warn(
         `[stripe] trial ${duplicate.id} on customer ${duplicate.customer} gave way to ${keptId}; cancelled it, nothing was charged (event ${eventId})`
+      );
+      return;
+    }
+    // One made for an invoice paid late (`resubscribeOnLatePayment`) charged
+    // nothing of its own: the payment waiting for a refund is that invoice's,
+    // and its period's credits were granted with it.
+    const paidLate = duplicate.metadata?.[LATE_PAYMENT_INVOICE];
+    if (paidLate) {
+      Logger.error(
+        `[stripe] subscription ${duplicate.id} on customer ${duplicate.customer}, made for invoice ${paidLate} paid late, duplicates ${keptId}; cancelled it (event ${eventId}). The payment of ${paidLate} was not refunded, and its credits stay granted.`
       );
       return;
     }
@@ -1486,6 +1499,27 @@ export class StripeService extends PaymentProviderAbstract {
         granted: false,
         reason: `status ${event.data.object.status}`,
       };
+    }
+
+    // A subscription that has just become entitling (an asynchronous payment
+    // that settled, `incomplete` to `active`; a retry that paid) meets the
+    // rule a new one meets in `createSubscription`: cancelled when another
+    // subscription is the one to keep, and the others cancelled when it is.
+    // Without it, a checkout paid by a bank method that settled after a late
+    // payment had resubscribed the customer (`resubscribeOnLatePayment`) left
+    // both billing. Only on that change: an update of one already entitling
+    // (a renewal, a plan change, a trial that converts) leaves the others to
+    // the paths that made them.
+    const statusBefore = event.data.previous_attributes?.status;
+    if (
+      statusBefore &&
+      statusBefore !== 'active' &&
+      statusBefore !== 'trialing'
+    ) {
+      if (await this.cancelDuplicateSubscription(event)) {
+        return { ok: true, granted: false, reason: 'duplicate subscription' };
+      }
+      await this.supersedeSubscriptions(event.data.object, event.id);
     }
 
     await this.adoptSubscriptionCustomer(event.data.object);
