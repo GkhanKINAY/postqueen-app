@@ -617,11 +617,11 @@ Left for later:
 - The MCP channel list, the MCP schedule tool and autopost still read the
   stored `inBetweenSteps` flag, as upstream's do. A post they make to an
   unfinished channel fails before it is charged.
-- `updateSubscription` has no duplicate check, so an asynchronous checkout that
-  settles after a late-payment re-subscribe can leave two live subscriptions.
-  Older than this sync.
 - Unpaid invoices of subscriptions cancelled before v3.6.176 stay payable
-  until a one-off void pass.
+  until a one-off void pass. That pass also takes the unpaid invoices other
+  than renewals (an upgrade charged at once, say) of subscriptions Stripe
+  ended after its retries before #436: paying one bought nothing, and only
+  since then are they voided when Stripe ends a subscription.
 - The official YouTube mark is in the composer, its previews, the public
   preview page, the first-billing link and the agents page. Elsewhere
   (calendar cards, Channels list, channel filter and pick lists, posts panel,
