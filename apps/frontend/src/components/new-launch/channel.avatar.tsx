@@ -274,7 +274,9 @@ export const ChannelAvatar: FC<{
  * height, and the channel's photo, or its initial where the other platforms
  * fall back to their icon. The mark is centred on a row as high as the icon
  * it stands in for and reaches past it, so a card keeps its height (the week
- * view packs its hours by it).
+ * view packs its hours by it). The mark being wider than the icon, a narrow
+ * card hides the photo, then the mark, so the time next to them stays whole:
+ * `avatarClassName` and `markClassName` take the card's container queries.
  */
 export const BrandMarkLead: FC<{
   integration: {
@@ -284,9 +286,20 @@ export const BrandMarkLead: FC<{
   };
   size: number;
   rounded?: 'full' | 'lg';
-}> = ({ integration, size, rounded = 'full' }) => (
+  markClassName?: string;
+  avatarClassName?: string;
+}> = ({
+  integration,
+  size,
+  rounded = 'full',
+  markClassName,
+  avatarClassName,
+}) => (
   <>
-    <span className="flex shrink-0 items-center" style={{ height: size }}>
+    <span
+      className={clsx('flex shrink-0 items-center', markClassName)}
+      style={{ height: size }}
+    >
       <PlatformMark
         identifier={integration.identifier}
         size={size}
@@ -298,6 +311,7 @@ export const BrandMarkLead: FC<{
       size={size}
       rounded={rounded}
       badge={false}
+      className={avatarClassName}
     />
   </>
 );

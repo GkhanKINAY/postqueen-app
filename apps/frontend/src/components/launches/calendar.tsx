@@ -2009,6 +2009,8 @@ const CalendarItem: FC<{
     onHeader: publishedOnHeader,
   } = usePublishedOnHeader(state === 'PUBLISHED');
   const channelHandle = postChannelHandle(post, integrations);
+  // A brand mark is wider than the icon it replaces (see BrandMarkLead).
+  const brand = isBrandMark(post.integration?.providerIdentifier);
   // Past QUEUE paints as Published, but the API row is still editable QUEUE.
   const canEdit = rawState !== 'PUBLISHED';
   const user = useUser();
@@ -2178,6 +2180,7 @@ const CalendarItem: FC<{
         onClick={onEdit}
         className={clsx(
           'relative z-[2] flex h-[24px] w-full min-w-0 shrink-0 cursor-pointer items-center gap-[5px] overflow-hidden rounded-[6px] bg-pqPop pe-[6px] ps-[4px] text-start shadow-[inset_0_0_0_1px_var(--border)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--brand)]',
+          brand && '@container',
           state === 'ERROR' && 'ring-1 ring-pqDanger',
           state === 'PUBLISHED' &&
             'shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ok)_35%,var(--border))]'
@@ -2189,7 +2192,9 @@ const CalendarItem: FC<{
           style={{ background: accent }}
           aria-hidden="true"
         />
-        {isBrandMark(post.integration?.providerIdentifier) ? (
+        {brand ? (
+          // Accent 3, mark 30.5, photo 13, an English 12-hour time 47 and
+          // their gaps: the photo goes under 116 px, the mark under 98.
           <BrandMarkLead
             integration={{
               picture: post.integration.picture,
@@ -2197,6 +2202,8 @@ const CalendarItem: FC<{
               name: post.integration.name,
             }}
             size={13}
+            markClassName="@max-[98px]:hidden"
+            avatarClassName="@max-[116px]:hidden"
           />
         ) : (
           <>
@@ -2313,7 +2320,7 @@ const CalendarItem: FC<{
               ref={leadRef}
               className="flex min-w-0 items-center gap-[7px]"
             >
-              {isBrandMark(post.integration?.providerIdentifier) ? (
+              {brand ? (
                 <BrandMarkLead
                   integration={{
                     picture: post.integration.picture,
@@ -2491,13 +2498,16 @@ const CalendarItem: FC<{
           className={clsx(
             'flex min-w-0 items-center gap-[5px]',
             (!canHover || touch) && 'pe-[30px]',
+            brand && '@container min-h-[16px]',
           )}
         >
           <div
             ref={leadRef}
             className="flex min-w-0 items-center gap-[5px]"
           >
-            {isBrandMark(post.integration?.providerIdentifier) ? (
+            {brand ? (
+              // Mark 30.5, photo 16, an English 12-hour time 47 and their
+              // gaps: the photo goes under 106 px, the mark under 85.
               <BrandMarkLead
                 integration={{
                   picture: post.integration.picture,
@@ -2505,6 +2515,8 @@ const CalendarItem: FC<{
                   name: post.integration.name,
                 }}
                 size={16}
+                markClassName="@max-[85px]:hidden"
+                avatarClassName="@max-[106px]:hidden"
               />
             ) : (
               <>

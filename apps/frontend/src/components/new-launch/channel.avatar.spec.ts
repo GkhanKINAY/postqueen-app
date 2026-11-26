@@ -302,7 +302,23 @@ describe('YouTube official mark across the app', () => {
     assert.equal(panel.match(/<BrandMarkLead\b/g)?.length, 1);
     assert.match(
       source,
-      /<span className="flex shrink-0 items-center" style=\{\{ height: size \}\}>\s*<PlatformMark/
+      /className=\{clsx\('flex shrink-0 items-center', markClassName\)\}\s*style=\{\{ height: size \}\}\s*>\s*<PlatformMark/
+    );
+  });
+
+  it('gives the time of a narrow card room before its photo or mark', () => {
+    const calendar = read('components/launches/calendar.tsx');
+    // Week cards and month chips query their own width, brand marks only,
+    // so the other networks' cards are laid out as before.
+    assert.match(calendar, /brand && '@container min-h-\[16px\]'/);
+    assert.match(calendar, /brand && '@container',/);
+    assert.match(
+      calendar,
+      /markClassName="@max-\[85px\]:hidden"\s*avatarClassName="@max-\[106px\]:hidden"/
+    );
+    assert.match(
+      calendar,
+      /markClassName="@max-\[98px\]:hidden"\s*avatarClassName="@max-\[116px\]:hidden"/
     );
   });
 });
