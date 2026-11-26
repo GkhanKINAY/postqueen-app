@@ -598,14 +598,18 @@ export class StripeService extends PaymentProviderAbstract {
    * Stripe marks `paid`, so "has a paid invoice" is true of every trial from its
    * first second. Not `amount_paid` either, which is 0 on an invoice settled
    * from the customer's credit balance.
+   *
+   * `except` leaves one invoice out: whether it had paid before that one.
    */
-  private async hasPaidInvoice(subscriptionId: string) {
+  private async hasPaidInvoice(subscriptionId: string, except?: string) {
     const invoices = await stripe.invoices.list({
       subscription: subscriptionId,
       status: 'paid',
       limit: 100,
     });
-    return invoices.data.some((invoice) => invoice.total > 0);
+    return invoices.data.some(
+      (invoice) => invoice.total > 0 && invoice.id !== except
+    );
   }
 
   /**
@@ -1125,9 +1129,24 @@ export class StripeService extends PaymentProviderAbstract {
       | Stripe.CustomerSubscriptionUpdatedEvent
   ) {
     const subscription = event.data.object;
+    const kept = await this.subscriptionKeptOver(subscription);
+    if (!kept) {
+      return false;
+    }
+    await this.cancelAsDuplicate(subscription, kept.id, event.id);
+    return true;
+  }
+
+  /**
+   * The subscription that entitles this one's organization and is the one to
+   * keep over it (`keepsOver`), if there is one: the rule
+   * `cancelDuplicateSubscription` cancels by, and the one a first payment is
+   * granted by (`paymentSucceeded`).
+   */
+  private async subscriptionKeptOver(subscription: Stripe.Subscription) {
     const customer = subscription.customer as string;
     if (!customer?.startsWith('cus_')) {
-      return false;
+      return undefined;
     }
 
     const beatsThis = (other: Stripe.Subscription) =>
@@ -1135,8 +1154,7 @@ export class StripeService extends PaymentProviderAbstract {
 
     const kept = (await this.entitlingSubscriptions(customer)).find(beatsThis);
     if (kept) {
-      await this.cancelAsDuplicate(subscription, kept.id, event.id);
-      return true;
+      return kept;
     }
 
     // A first checkout creates no customer up front (see `embedded`), so two
@@ -1148,12 +1166,7 @@ export class StripeService extends PaymentProviderAbstract {
     const elsewhere = await this.subscriptionsOnOrganizationCustomer(
       subscription
     );
-    const keptThere = elsewhere?.entitled.find(beatsThis);
-    if (keptThere) {
-      await this.cancelAsDuplicate(subscription, keptThere.id, event.id);
-      return true;
-    }
-    return false;
+    return elsewhere?.entitled.find(beatsThis);
   }
 
   /**
@@ -1224,31 +1237,41 @@ export class StripeService extends PaymentProviderAbstract {
       );
     }
     for (const other of others) {
-      await this.cancelAsDuplicate(other, subscription.id, eventId);
+      await this.cancelAsDuplicate(other, subscription.id, eventId, true);
     }
   }
 
+  /**
+   * `superseded`: the duplicate was entitling until the one kept over it
+   * became so (see `supersedeSubscriptions`), so it may have held the plan,
+   * and what it was paid may have brought credits.
+   */
   private async cancelAsDuplicate(
     duplicate: Stripe.Subscription,
     keptId: string,
-    eventId: string
+    eventId: string,
+    superseded = false
   ) {
+    // Ended already: by an earlier delivery, or by the other event of the
+    // pair (`created` and `updated` both get here), which logged it. Saying
+    // it again would read as a second payment to refund.
     if (
-      duplicate.status !== 'canceled' &&
-      duplicate.status !== 'incomplete_expired'
+      duplicate.status === 'canceled' ||
+      duplicate.status === 'incomplete_expired'
     ) {
-      try {
-        await stripe.subscriptions.cancel(duplicate.id, {
-          cancellation_details: { comment: DUPLICATE_SUBSCRIPTION },
-        });
-      } catch (err) {
-        Logger.error(
-          `[stripe] subscription ${duplicate.id} duplicates ${keptId}, and cancelling it failed (event ${eventId}): ${
-            (err as Error)?.message || err
-          }`
-        );
-        return;
-      }
+      return;
+    }
+    try {
+      await stripe.subscriptions.cancel(duplicate.id, {
+        cancellation_details: { comment: DUPLICATE_SUBSCRIPTION },
+      });
+    } catch (err) {
+      Logger.error(
+        `[stripe] subscription ${duplicate.id} duplicates ${keptId}, and cancelling it failed (event ${eventId}): ${
+          (err as Error)?.message || err
+        }`
+      );
+      return;
     }
     if (duplicate.status === 'trialing') {
       Logger.warn(
@@ -1263,6 +1286,12 @@ export class StripeService extends PaymentProviderAbstract {
     if (paidLate) {
       Logger.error(
         `[stripe] subscription ${duplicate.id} on customer ${duplicate.customer}, made for invoice ${paidLate} paid late, duplicates ${keptId}; cancelled it (event ${eventId}). The payment of ${paidLate} was not refunded, and its credits stay granted.`
+      );
+      return;
+    }
+    if (superseded) {
+      Logger.error(
+        `[stripe] subscription ${duplicate.id} on customer ${duplicate.customer} was entitling until ${keptId}, which is kept over it, became so; cancelled it (event ${eventId}). Its payments were not refunded, and any credits they brought stay granted.`
       );
       return;
     }
@@ -1508,13 +1537,22 @@ export class StripeService extends PaymentProviderAbstract {
     // Without it, a checkout paid by a bank method that settled after a late
     // payment had resubscribed the customer (`resubscribeOnLatePayment`) left
     // both billing. Only on that change: an update of one already entitling
-    // (a renewal, a plan change, a trial that converts) leaves the others to
-    // the paths that made them.
+    // (a renewal, a plan change, a trial that converts, and the recovery from
+    // dunning of one that had paid before, which `past_due` entitles, see
+    // `isEntitled`) leaves the others to the paths that made them.
     const statusBefore = event.data.previous_attributes?.status;
+    const latestInvoice = event.data.object.latest_invoice;
     if (
       statusBefore &&
       statusBefore !== 'active' &&
-      statusBefore !== 'trialing'
+      statusBefore !== 'trialing' &&
+      !(
+        statusBefore === 'past_due' &&
+        (await this.hasPaidInvoice(
+          event.data.object.id,
+          typeof latestInvoice === 'string' ? latestInvoice : latestInvoice?.id
+        ))
+      )
     ) {
       if (await this.cancelDuplicateSubscription(event)) {
         return { ok: true, granted: false, reason: 'duplicate subscription' };
@@ -1545,7 +1583,10 @@ export class StripeService extends PaymentProviderAbstract {
     // In the background, with its own catch: it only prepares a later
     // payment, so a slow or failing Stripe call must neither hold nor fail the
     // downgrade below.
-    this.keepCardOfUnpaidInvoices(event.data.object.id).catch(() => {});
+    this.keepCardOfUnpaidInvoices(
+      event.data.object.id,
+      event.data.object.cancellation_details?.reason
+    ).catch(() => {});
 
     // A trial refused for its card was never granted, and recording an end
     // date would show "your plan ended" on the paywall of an account that never
@@ -1651,17 +1692,22 @@ export class StripeService extends PaymentProviderAbstract {
    * the subscription a late payment restores (`resubscribeOnLatePayment`)
    * renews on it.
    *
-   * Only a renewal stays payable: paying it is what brings the plan back.
-   * Any other unpaid invoice of the ended subscription (an upgrade charged
-   * at once, a first invoice) would take the money and buy nothing, so it
-   * is voided here, as `voidUnpaidInvoices` voids those of a cancel someone
-   * asked for.
+   * Only the renewal of a subscription Stripe ended for a failed payment
+   * (`reason`) stays payable: paying it is what brings the plan back. Any
+   * other unpaid invoice of the ended subscription (an upgrade charged at
+   * once, a first invoice, or any invoice of one that ended for another
+   * reason, such as a duplicate or a dispute) would take the money and buy
+   * nothing, so it is voided here, as `voidUnpaidInvoices` voids those of a
+   * cancel someone asked for.
    *
    * Never throws, and a failure on one invoice does not stop the others. A
    * payment already flagged, and an invoice already void, is skipped, so a
    * redelivered event changes nothing.
    */
-  private async keepCardOfUnpaidInvoices(subscriptionId: string) {
+  private async keepCardOfUnpaidInvoices(
+    subscriptionId: string,
+    reason?: Stripe.Subscription.CancellationDetails.Reason | null
+  ) {
     try {
       const invoices = await stripe.invoices.list({
         subscription: subscriptionId,
@@ -1671,12 +1717,15 @@ export class StripeService extends PaymentProviderAbstract {
         if (invoice.status !== 'open' && invoice.status !== 'uncollectible') {
           continue;
         }
-        if (invoice.billing_reason !== 'subscription_cycle') {
+        if (
+          reason !== 'payment_failed' ||
+          invoice.billing_reason !== 'subscription_cycle'
+        ) {
           try {
             await stripe.invoices.voidInvoice(invoice.id!);
           } catch (err) {
             Logger.warn(
-              `[stripe] unpaid invoice ${invoice.id} of ended subscription ${subscriptionId}, not a renewal, not voided: ${
+              `[stripe] unpaid invoice ${invoice.id} of ended subscription ${subscriptionId}, which paying would not restore, not voided: ${
                 (err as Error)?.message || err
               }`
             );
@@ -1728,7 +1777,7 @@ export class StripeService extends PaymentProviderAbstract {
    * to the founding plan) and when a new subscription's first payment
    * arrives. Not when Stripe itself ends a subscription whose retries ran
    * out: its renewal invoice stays payable (see `keepCardOfUnpaidInvoices`,
-   * which voids the others).
+   * which voids everything else an ended subscription leaves unpaid).
    *
    * Never throws, and a failure on one invoice does not stop the others.
    */
@@ -3544,7 +3593,18 @@ export class StripeService extends PaymentProviderAbstract {
       (await this._subscriptionService.isManagedBy(customer, STRIPE_PROVIDER))
         ? await this._organizationService.getOrgByCustomerId(customer)
         : null;
-    if (org && (await this.isEntitled(subscription))) {
+    // The first payment of a subscription that gives way to another grants
+    // nothing: its subscription event, which can come before or after this
+    // one, cancels it as a duplicate (`cancelDuplicateSubscription`), and the
+    // payment is refunded by request.
+    if (
+      org &&
+      (await this.isEntitled(subscription)) &&
+      !(
+        event.data.object.billing_reason === 'subscription_create' &&
+        (await this.subscriptionKeptOver(subscription))
+      )
+    ) {
       await this.grantPeriodCredits(
         org.id,
         subscription,

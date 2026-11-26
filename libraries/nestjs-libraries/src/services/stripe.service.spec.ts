@@ -628,12 +628,34 @@ describe('a subscription that becomes entitling next to another', () => {
     assert.equal(called('createOrUpdateSubscription').length, 0);
   });
 
-  it('cancels once, and grants nothing more, when the event comes again', async (t) => {
-    t.mock.method(Logger, 'error', () => undefined);
+  it('says of a newer one that was entitling that its payments were not refunded', async (t) => {
+    const errors = t.mock.method(Logger, 'error', () => undefined);
+    subs = [sub('sub_checkout', 100), sub('sub_card', 200)];
+    await service().updateSubscription(
+      updated('sub_checkout', { status: 'incomplete' }),
+    );
+
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_card'],
+    );
+    const said = String(errors.mock.calls.at(-1)?.arguments[0]);
+    assert.match(
+      said,
+      /sub_card on customer cus_1 was entitling until sub_checkout, which is kept over it, became so/,
+    );
+    assert.match(said, /any credits they brought stay granted/);
+  });
+
+  it('cancels once, logs once, and grants nothing more, when the events come again', async (t) => {
+    const errors = t.mock.method(Logger, 'error', () => undefined);
     subs = checkoutAndLatePayment();
     const event = updated('sub_checkout', { status: 'incomplete' });
     await service().updateSubscription(event);
     await service().updateSubscription(event);
+    // The cancelled one's own `created`, delivered late.
+    await service().createSubscription(created('sub_late'));
+    assert.equal(errors.mock.callCount(), 1);
 
     assert.deepEqual(
       called('subscriptions.cancel').map(([id]) => id),
@@ -655,6 +677,45 @@ describe('a subscription that becomes entitling next to another', () => {
       ['sub_new'],
     );
     assert.equal(called('createOrUpdateSubscription').length, 0);
+  });
+
+  it('leaves another subscription alone on a plan change, a trial that converts, or a recovery from dunning', async () => {
+    // One that had paid before its renewal failed was entitled all along.
+    subscriptionInvoices = [
+      { id: 'in_first', total: 4900 },
+      { id: 'in_renewal', total: 4900 },
+    ];
+    for (const previous of [
+      { items: { data: [{ price: growthYear }] } as any },
+      { status: 'trialing' as const },
+      { status: 'past_due' as const },
+    ]) {
+      subs = [
+        sub('sub_old', 100),
+        sub('sub_new', 200, { latest_invoice: 'in_renewal' as any }),
+      ];
+      await service().updateSubscription(updated('sub_new', previous));
+      assert.equal(called('subscriptions.cancel').length, 0);
+    }
+    assert.equal(called('createOrUpdateSubscription').length, 3);
+  });
+
+  it('applies the rule to a past-due one paid for the first time', async (t) => {
+    t.mock.method(Logger, 'error', () => undefined);
+    // A trial whose first charge failed, and a later checkout, live since.
+    subscriptionInvoices = [{ id: 'in_retry', total: 4900 }];
+    subs = [
+      sub('sub_trial', 100, { latest_invoice: 'in_retry' as any }),
+      sub('sub_checkout', 200),
+    ];
+    await service().updateSubscription(
+      updated('sub_trial', { status: 'past_due' }),
+    );
+
+    assert.deepEqual(
+      called('subscriptions.cancel').map(([id]) => id),
+      ['sub_checkout'],
+    );
   });
 
   it('leaves a plain plan change with no other subscription as it was', async () => {
@@ -965,11 +1026,31 @@ describe('the unpaid invoices of a cancelled subscription', () => {
     assert.deepEqual(voided(), []);
   });
 
-  it('stay payable when Stripe ends the subscription after its retries', async () => {
+  it('stay payable when Stripe ends the subscription after its retries', async (t) => {
     subs = [sub('sub_failed', 200, { status: 'canceled', metadata: OURS })];
-    await service().deleteSubscription(deleted('sub_failed'));
+    const ending = service();
+    const kept = t.mock.method(
+      ending as any,
+      'keepCardOfUnpaidInvoices',
+      async () => undefined,
+    );
+    await ending.deleteSubscription({
+      ...deleted('sub_failed'),
+      data: {
+        object: {
+          id: 'sub_failed',
+          customer: 'cus_1',
+          cancellation_details: { reason: 'payment_failed' },
+        },
+      },
+    } as unknown as Stripe.CustomerSubscriptionDeletedEvent);
 
+    // Not voided with the others: handed on with the reason it ended.
     assert.deepEqual(voided(), []);
+    assert.deepEqual(kept.mock.calls[0].arguments, [
+      'sub_failed',
+      'payment_failed',
+    ]);
   });
 
   it('keep the card that pays them, when Stripe ends the subscription', async (t) => {
@@ -1015,7 +1096,10 @@ describe('the unpaid invoices of a cancelled subscription', () => {
       }),
     });
     try {
-      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+      await (service() as any).keepCardOfUnpaidInvoices(
+        'sub_failed',
+        'payment_failed',
+      );
     } finally {
       fake(probe.invoices, { retrieve });
       fake(probe.paymentIntents, { update });
@@ -1079,12 +1163,15 @@ describe('the unpaid invoices of a cancelled subscription', () => {
       update: record('paymentIntents.update', (id) => ({ id })),
     });
     try {
-      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+      await (service() as any).keepCardOfUnpaidInvoices(
+        'sub_failed',
+        'payment_failed',
+      );
       // One refusal does not stop the next, and is reported.
       assert.deepEqual(voided(), ['in_upgrade', 'in_first', 'in_refused']);
       assert.match(
         String(warned.mock.calls.at(-1)?.arguments[0]),
-        /in_refused of ended subscription sub_failed, not a renewal, not voided/,
+        /in_refused of ended subscription sub_failed, which paying would not restore, not voided/,
       );
       // The renewal stays payable, on the card that pays it.
       assert.deepEqual(
@@ -1095,8 +1182,23 @@ describe('the unpaid invoices of a cancelled subscription', () => {
 
       // The event again: only what is still unpaid is tried.
       calls = [];
-      await (service() as any).keepCardOfUnpaidInvoices('sub_failed');
+      await (service() as any).keepCardOfUnpaidInvoices(
+        'sub_failed',
+        'payment_failed',
+      );
       assert.deepEqual(voided(), ['in_refused']);
+
+      // Ended for another reason (a duplicate, a dispute): paying a renewal
+      // would not restore it either, so nothing stays payable.
+      calls = [];
+      invoices = [renewal('in_renewal_2', 'subscription_cycle')];
+      subscriptionInvoices = invoices;
+      await (service() as any).keepCardOfUnpaidInvoices(
+        'sub_failed',
+        'cancellation_requested',
+      );
+      assert.deepEqual(voided(), ['in_renewal_2']);
+      assert.equal(called('paymentIntents.update').length, 0);
     } finally {
       fake(probe.invoices, { retrieve, voidInvoice });
       fake(probe.paymentIntents, { update });
@@ -2749,6 +2851,33 @@ describe('yearly credits, a month at a time', () => {
       },
     });
   const latest = () => ledger[ledger.length - 1];
+
+  it('grants nothing for the first payment of a subscription that gives way to another', async () => {
+    const first = () =>
+      withPlans().paymentSucceeded({
+        data: {
+          object: {
+            id: 'in_first',
+            customer: 'cus_1',
+            amount_paid: 100,
+            billing_reason: 'subscription_create',
+            parent: { subscription_details: { subscription: 'sub_y' } },
+          },
+        },
+      } as unknown as Stripe.InvoicePaymentSucceededEvent);
+    // An older subscription of the organization is the one kept.
+    subs = [
+      sub('sub_old', 50, { metadata: { service: 'postqueen' } }),
+      running(month(0), month(1), 'PRO', {}, {}, 'month'),
+    ];
+    await first();
+    assert.equal(ledger.length, 0);
+
+    // On its own, the same first payment brings its period's credits.
+    subs = [running(month(0), month(1), 'PRO', {}, {}, 'month')];
+    await first();
+    assert.equal(ledger.length, 1);
+  });
 
   it('gives a subscription sold on v2, stamped at checkout, the v2 month', async () => {
     subs = [
